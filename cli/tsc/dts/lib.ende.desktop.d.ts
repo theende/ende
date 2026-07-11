@@ -382,6 +382,17 @@ declare namespace Ende {
     deno?: boolean;
   }
 
+  /** Options for {@linkcode BrowserWindow.printToPdf}. */
+  export interface PrintToPdfOptions {
+    /** Also write the PDF to this file, replacing it if it exists. The promise
+     * still resolves with the same bytes.
+     *
+     * Requires `allow-write` permission for the path, checked the way
+     * {@linkcode Ende.writeFile} checks it, before anything is rendered. A
+     * relative path resolves against the current working directory. */
+    path?: string;
+  }
+
   export interface BrowserWindowOptions {
     title?: string;
     /** @default {800} */
@@ -431,6 +442,22 @@ declare namespace Ende {
      *
      * @default {false} */
     transparent?: boolean;
+    /** Whether the window is shown when it is created. Set `false` to keep it
+     * off screen, for example to render a page and call
+     * {@linkcode BrowserWindow.printToPdf} without showing it. Call
+     * {@linkcode BrowserWindow.show} to reveal it later.
+     *
+     * The first `BrowserWindow` takes over the app's initial window, which is
+     * already loading the app's page, and is hidden by this option. If the page
+     * may load before your code creates that window, set
+     * `desktop.initialWindow.showOnFirstLoad` to `false` in `ende.json` so it
+     * never flashes on screen.
+     *
+     * With the CEF backend, a hidden window can appear for a moment before it
+     * is hidden.
+     *
+     * @default {true} */
+    visible?: boolean;
   }
 
   interface BrowserWindowObject {
@@ -637,6 +664,29 @@ declare namespace Ende {
     unbind<N extends keyof T>(name: N): void;
     /** @throws {BrowserWindowValue} */
     executeJs(script: string): Promise<BrowserWindowValue>;
+
+    /** Render the window's current page to a PDF and resolve with its bytes.
+     * With {@linkcode PrintToPdfOptions.path}, the bytes are also written to
+     * that file before the promise resolves.
+     *
+     * Works on hidden windows too (see {@linkcode BrowserWindowOptions.visible}),
+     * so an app can make PDFs without showing a window.
+     *
+     * ```ts
+     * const win = new Ende.BrowserWindow({ visible: false });
+     * win.addEventListener("load", async () => {
+     *   const pdf = await win.printToPdf({ path: "report.pdf" });
+     *   console.log(`wrote ${pdf.length} bytes`);
+     * }, { once: true });
+     * ```
+     *
+     * Rejects with {@linkcode Ende.errors.NotCapable} if writing `path` isn't
+     * permitted, {@linkcode Ende.errors.NotSupported} on the `raw` backend,
+     * which has no web page, and {@linkcode Ende.errors.BadResource} if the
+     * window is closed.
+     *
+     * @tags allow-write */
+    printToPdf(options?: PrintToPdfOptions): Promise<Uint8Array>;
 
     setTitle(title: string): void;
 

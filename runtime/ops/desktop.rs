@@ -10,6 +10,8 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
+use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::OnceLock;
 use std::sync::atomic::AtomicBool;
@@ -337,6 +339,12 @@ fn warn_deprecated_devtools_deno_option() -> bool {
   true
 }
 
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrintToPdfOptions {
+  pub path: Option<String>,
+}
+
 /// A single event type that flows from the laufey backend to the Ende runtime.
 #[derive(Debug, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -602,6 +610,10 @@ pub trait DesktopApi: Send + Sync + 'static {
   /// `transparent` gives the window a transparent background so the page's own
   /// alpha composites against whatever is behind the window. These are all
   /// creation-time properties and cannot be changed afterwards.
+  /// `hidden` creates the window without showing it, so an app can drive a
+  /// window off-screen (e.g. a headless print-to-PDF flow) and reveal it
+  /// later with `show`, or never at all.
+  #[allow(clippy::too_many_arguments, reason = "construction")]
   fn create_window(
     &self,
     width: i32,
@@ -610,6 +622,7 @@ pub trait DesktopApi: Send + Sync + 'static {
     no_activate: bool,
     transparent_titlebar: bool,
     transparent: bool,
+    hidden: bool,
   ) -> u32;
   /// Close a specific window. Also answers a pending native close request
   /// for it (see `answer_close_request`).
@@ -698,6 +711,21 @@ pub trait DesktopApi: Send + Sync + 'static {
       dyn FnOnce(Result<DesktopValue, DesktopValue>) + Send + 'static,
     >,
   );
+
+  /// Render the window's current page to a PDF and pass the bytes to
+  /// `callback`. Errors, including "unsupported by this backend", go through
+  /// its `Err`. The backend never writes a file: `BrowserWindow.printToPdf()`
+  /// writes its `path` itself, after a write permission check. The callback
+  /// runs exactly once, on any thread (normally the UI thread), so it must
+  /// only hand the result off.
+  fn print_to_pdf(
+    &self,
+    window_id: u32,
+    callback: Box<dyn FnOnce(Result<Vec<u8>, String>) + Send + 'static>,
+  );
+  /// Whether the backend can render a page to PDF. The raw backend has no
+  /// web page, so it can't.
+  fn supports_print_to_pdf(&self) -> bool;
 
   fn alert(&self, title: &str, message: &str);
   /// Show a modal confirm dialog. Blocks the calling thread until the
@@ -927,12 +955,25 @@ impl BrowserWindow {
   ) -> Result<v8::Global<v8::Value>, deno_error::JsErrorBox> {
     let api = desktop_api(state, "BrowserWindow")?;
 
+    let visible = options.as_ref().and_then(|o| o.visible).unwrap_or(true);
+
     // Use the initial window if this is the first BrowserWindow,
     // otherwise create a new one.
-    let window_id = state
+    let window_id = match state
       .try_borrow::<InitialWindowId>()
       .and_then(|iw| iw.0.lock().unwrap().take())
-      .unwrap_or_else(|| {
+    {
+      // First BrowserWindow: reuse the pre-created initial window. That window
+      // is created hidden and auto-revealed once its first navigation paints;
+      // honor `{ visible: false }` by hiding it now, which also flags it so the
+      // deferred reveal does not override the app's intent.
+      Some(id) => {
+        if !visible {
+          api.hide(id);
+        }
+        id
+      }
+      None => {
         let width = options.as_ref().and_then(|o| o.width).unwrap_or(800);
         let height = options.as_ref().and_then(|o| o.height).unwrap_or(600);
         let frameless =
@@ -956,8 +997,10 @@ impl BrowserWindow {
           no_activate,
           transparent_titlebar,
           transparent,
+          !visible,
         )
-      });
+      }
+    };
 
     // Default the window title to the app name when the app doesn't set one,
     // so the window shows e.g. "MyApp" instead of the backend's internal
@@ -1175,6 +1218,44 @@ impl BrowserWindow {
     Ok(ExecuteJsResult(result))
   }
 
+  async fn print_to_pdf(
+    &self,
+    state: Rc<RefCell<OpState>>,
+    #[serde] options: Option<PrintToPdfOptions>,
+  ) -> Result<DesktopValue, deno_error::JsErrorBox> {
+    if self.api.is_closed(self.window_id) {
+      return Err(deno_error::JsErrorBox::new(
+        "BadResource",
+        "printToPdf(): the window is closed",
+      ));
+    }
+    if !self.api.supports_print_to_pdf() {
+      return Err(deno_error::JsErrorBox::new(
+        "NotSupported",
+        "printToPdf() is not supported by this desktop backend (the raw backend has no web page)",
+      ));
+    }
+    let output =
+      check_pdf_output(&state.borrow(), options.and_then(|o| o.path))?;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    self.api.print_to_pdf(
+      self.window_id,
+      Box::new(move |result| {
+        let _ = tx.send(result);
+      }),
+    );
+    let bytes = rx
+      .await
+      .map_err(|_| {
+        deno_error::JsErrorBox::generic("print_to_pdf callback dropped")
+      })?
+      .map_err(deno_error::JsErrorBox::generic)?;
+    if let Some((fs, path)) = output {
+      write_pdf(fs, path, &bytes).await?;
+    }
+    Ok(DesktopValue::Binary(bytes))
+  }
+
   fn set_application_menu(&self, #[serde] menu: Vec<MenuItem>) {
     self.api.set_application_menu(self.window_id, menu);
   }
@@ -1254,6 +1335,57 @@ impl BrowserWindow {
   }
 }
 
+/// Checks the `path` of `BrowserWindow.printToPdf()` the way `Ende.writeFile`
+/// checks its path, before anything is rendered, so a denied write fails fast.
+/// Returns where to write the PDF, or `None` when there is no `path`.
+fn check_pdf_output(
+  state: &OpState,
+  path: Option<String>,
+) -> Result<
+  Option<(ende_fs::FileSystemRc, ende_permissions::CheckedPathBuf)>,
+  deno_error::JsErrorBox,
+> {
+  let Some(path) = path else {
+    return Ok(None);
+  };
+  let path = state
+    .borrow::<ende_permissions::PermissionsContainer>()
+    .check_open(
+      Cow::Owned(PathBuf::from(path)),
+      ende_permissions::OpenAccessKind::Write,
+      Some("BrowserWindow.printToPdf()"),
+    )
+    .map_err(deno_error::JsErrorBox::from_err)?
+    .into_owned();
+  Ok(Some((
+    state.borrow::<ende_fs::FileSystemRc>().clone(),
+    path,
+  )))
+}
+
+/// Writes a rendered PDF to a path `check_pdf_output` allowed, through the
+/// runtime's file system like `Ende.writeFile`. The backend never writes it.
+async fn write_pdf(
+  fs: ende_fs::FileSystemRc,
+  path: ende_permissions::CheckedPathBuf,
+  bytes: &[u8],
+) -> Result<(), deno_error::JsErrorBox> {
+  let display = path.display().to_string();
+  fs.write_file_async(
+    path,
+    ende_fs::OpenOptions::write(true, false, false, None),
+    bytes.into(),
+  )
+  .await
+  .map_err(|err| {
+    let err = ende_fs::FsOpsError::from(err);
+    deno_error::JsErrorBox::new(
+      deno_error::JsErrorClass::get_class(&err),
+      format!("{err}: printToPdf '{display}'"),
+    )
+  })
+}
+
 #[derive(FromV8)]
 struct BrowserWindowOptions {
   title: Option<String>,
@@ -1268,6 +1400,7 @@ struct BrowserWindowOptions {
   no_activate: Option<bool>,
   transparent_titlebar: Option<bool>,
   transparent: Option<bool>,
+  visible: Option<bool>,
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -2408,6 +2541,7 @@ mod tests {
   use super::PendingBindResponses;
   use super::PermissionState;
   use super::Tray;
+  use super::check_pdf_output;
   use super::dylib_magic_ok;
   use super::permission_state_to_web_string;
   use super::register_bind_call;
@@ -2420,6 +2554,70 @@ mod tests {
   // fail if you change a field name or remove a `#[serde(rename_all =
   // "camelCase")]` so you find out at test time, not at runtime in the
   // packaged app.
+
+  // --- printToPdf `path` permission ---
+
+  fn pdf_state(allow_write: Option<Vec<String>>) -> ende_core::OpState {
+    use ende_permissions::Permissions;
+    use ende_permissions::PermissionsContainer;
+    use ende_permissions::PermissionsOptions;
+    use ende_permissions::RuntimePermissionDescriptorParser;
+
+    let parser =
+      RuntimePermissionDescriptorParser::new(sys_traits::impls::RealSys);
+    let perms = Permissions::from_options(
+      &parser,
+      &PermissionsOptions {
+        allow_write,
+        ..Default::default()
+      },
+    )
+    .unwrap();
+    let mut state = ende_core::OpState::new(None);
+    state.put(PermissionsContainer::new(
+      std::sync::Arc::new(parser),
+      perms,
+    ));
+    state.put::<ende_fs::FileSystemRc>(ende_fs::sync::new_rc(ende_fs::RealFs));
+    state
+  }
+
+  #[test]
+  fn print_to_pdf_without_path_needs_no_permission() {
+    let state = pdf_state(None);
+    assert!(check_pdf_output(&state, None).unwrap().is_none());
+  }
+
+  #[test]
+  fn print_to_pdf_path_is_denied_without_write_permission() {
+    let dir = test_util::TempDir::new();
+    let target = dir.path().join("out.pdf");
+    let state = pdf_state(None);
+    let err = check_pdf_output(&state, Some(target.to_string()))
+      .err()
+      .unwrap();
+    assert_eq!(deno_error::JsErrorClass::get_class(&err), "NotCapable");
+    assert!(!target.exists());
+  }
+
+  #[tokio::test]
+  async fn print_to_pdf_path_is_written_with_write_permission() {
+    let dir = test_util::TempDir::new();
+    let target = dir.path().join("out.pdf");
+    let state = pdf_state(Some(vec![dir.path().to_string()]));
+    let (fs, path) = check_pdf_output(&state, Some(target.to_string()))
+      .unwrap()
+      .unwrap();
+    super::write_pdf(fs, path, b"%PDF-1.4").await.unwrap();
+    assert_eq!(target.read_to_string(), "%PDF-1.4");
+
+    // The grant covers only that directory.
+    let outside = test_util::TempDir::new().path().join("out.pdf");
+    let err = check_pdf_output(&state, Some(outside.to_string()))
+      .err()
+      .unwrap();
+    assert_eq!(deno_error::JsErrorClass::get_class(&err), "NotCapable");
+  }
 
   #[test]
   fn js_wrapped_desktop_methods_use_private_symbols() {

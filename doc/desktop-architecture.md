@@ -172,6 +172,16 @@ dir so its watcher sees real files.
   `close()` fires no `close` event, so the documented "`preventDefault()`, ask,
   then `close()`" pattern can't loop.
 
+- **Hidden windows** (`hidden_by_app` in `cli/rt_desktop/lib.rs`): a window the
+  app hid (`{ visible: false }`, `hide()`) is recorded so neither the initial
+  window's first-load reveal nor the 10 s navigate fallback shows it; `show()`
+  clears it. laufey 0.7.0's CEF backend ignores the `hidden` creation flag, so
+  libendert also hides such windows explicitly (CEF can flash them).
+- **`printToPdf()`**: the backend only renders. A `path` is never handed to
+  laufey, which would write it unchecked on the UI thread. The op checks write
+  permission the way `Ende.writeFile` does, before rendering, then writes the
+  bytes through the runtime's `FileSystem`. The raw backend has no page and
+  rejects with `NotSupported`.
 - **Fork re-entry guard** (`lib.rs:1145`): framework dev servers fork worker
   processes that re-exec _this same dylib_. A worker is detected by the
   combination of argv shaped like `<exe> run … script.js` **and** a parent
