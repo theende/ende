@@ -82,6 +82,7 @@ use crate::graph_container::ModuleGraphContainer;
 use crate::graph_container::ModuleGraphUpdatePermit;
 use crate::graph_util::BuildGraphOptions;
 use crate::graph_util::BuildGraphRequest;
+use crate::graph_util::GraphRootsValidOptions;
 use crate::graph_util::ModuleGraphBuilder;
 use crate::resolver::CliResolver;
 use crate::sys::CliSys;
@@ -128,6 +129,7 @@ pub struct PrepareModuleLoadOptions<'a> {
   pub file_permission_api_name: Option<&'static str>,
   pub ext_overwrite: Option<&'a String>,
   pub allow_unknown_media_types: bool,
+  pub allow_sloppy_imports_hints_for_unreferenced_roots: bool,
   /// Whether to skip validating the graph roots. This is useful
   /// for when you want to defer doing this until later (ex. get the
   /// graph back, reload some specifiers in it, then do graph validation).
@@ -175,6 +177,7 @@ impl ModuleLoadPreparer {
       file_permission_api_name,
       ext_overwrite,
       allow_unknown_media_types,
+      allow_sloppy_imports_hints_for_unreferenced_roots,
       skip_graph_roots_validation,
       file_content_overrides,
       file_header_overrides,
@@ -229,7 +232,15 @@ impl ModuleLoadPreparer {
       .await?;
 
     if !skip_graph_roots_validation {
-      self.graph_roots_valid(graph, roots, allow_unknown_media_types, false)?;
+      self.graph_roots_valid(
+        graph,
+        roots,
+        GraphRootsValidOptions {
+          allow_unknown_media_types,
+          allow_unknown_jsr_exports: false,
+          allow_sloppy_imports_hints_for_unreferenced_roots,
+        },
+      )?;
     }
 
     drop(_pb_clear_guard);
@@ -304,15 +315,11 @@ impl ModuleLoadPreparer {
     &self,
     graph: &ModuleGraph,
     roots: &[ModuleSpecifier],
-    allow_unknown_media_types: bool,
-    allow_unknown_jsr_exports: bool,
+    options: GraphRootsValidOptions,
   ) -> Result<(), JsErrorBox> {
-    self.module_graph_builder.graph_roots_valid(
-      graph,
-      roots,
-      allow_unknown_media_types,
-      allow_unknown_jsr_exports,
-    )
+    self
+      .module_graph_builder
+      .graph_roots_valid(graph, roots, options)
   }
 }
 
@@ -568,6 +575,28 @@ fn patch_react_cves_source(
     Some(s) => ModuleSourceCode::String(s.into()),
     None => code,
   }
+}
+
+fn has_prepared_dynamic_import(
+  graph: &ModuleGraph,
+  specifier: &ModuleSpecifier,
+  maybe_referrer: Option<&str>,
+) -> bool {
+  let Some(referrer) =
+    maybe_referrer.and_then(|referrer| ModuleSpecifier::parse(referrer).ok())
+  else {
+    return false;
+  };
+  let Some(referrer) = graph.get(&referrer) else {
+    return false;
+  };
+  let specifier = graph.resolve(specifier);
+  referrer.dependencies().values().any(|dependency| {
+    dependency.is_dynamic
+      && dependency
+        .get_code()
+        .is_some_and(|dependency| graph.resolve(dependency) == specifier)
+  })
 }
 
 impl<TGraphContainer: ModuleGraphContainer>
@@ -1131,7 +1160,7 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
   fn prepare_load(
     &self,
     specifier: &ModuleSpecifier,
-    _maybe_referrer: Option<String>,
+    maybe_referrer: Option<String>,
     maybe_code: Option<String>,
     options: ModuleLoadOptions,
   ) -> Pin<Box<dyn Future<Output = Result<(), ModuleLoaderError>>>> {
@@ -1178,35 +1207,48 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
         &inner.parent_permissions
       };
 
-      if options.is_dynamic_import {
-        // This doesn't acquire a graph update permit because that will
-        // clone the graph which is a bit slow.
-        let mut graph = graph_container.graph();
-        // When the specifier is already in the graph then it means it
-        // was previously loaded, so we can skip that and only check if
-        // this part of the graph is valid.
-        if !graph.roots.is_empty() && graph.get(&specifier).is_some() {
-          let did_reload = inner
-            .maybe_reload_dynamic(&graph, &specifier, permissions)
-            .await
-            .map_err(JsErrorBox::from_err)?;
-          if did_reload {
-            graph = inner.graph_container.graph();
-          }
+      let allow_sloppy_imports_hints_for_unreferenced_roots =
+        if options.is_dynamic_import {
+          // This doesn't acquire a graph update permit because that will
+          // clone the graph which is a bit slow.
+          let mut graph = graph_container.graph();
+          let has_prepared_dynamic_import = has_prepared_dynamic_import(
+            &graph,
+            &specifier,
+            maybe_referrer.as_deref(),
+          );
+          // When the specifier is already in the graph then it means it
+          // was previously loaded, so we can skip that and only check if
+          // this part of the graph is valid.
+          if !graph.roots.is_empty() && graph.get(&specifier).is_some() {
+            let did_reload = inner
+              .maybe_reload_dynamic(&graph, &specifier, permissions)
+              .await
+              .map_err(JsErrorBox::from_err)?;
+            if did_reload {
+              graph = inner.graph_container.graph();
+            }
 
-          log::debug!("Skipping prepare module load.");
-          // roots are already validated so we can skip those
-          if did_reload || !graph.roots.contains(&specifier) {
-            module_load_preparer.graph_roots_valid(
-              &graph,
-              &[specifier],
-              false,
-              false,
-            )?;
+            log::debug!("Skipping prepare module load.");
+            // roots are already validated so we can skip those
+            if did_reload || !graph.roots.contains(&specifier) {
+              module_load_preparer.graph_roots_valid(
+                &graph,
+                &[specifier],
+                GraphRootsValidOptions {
+                  allow_unknown_media_types: false,
+                  allow_unknown_jsr_exports: false,
+                  allow_sloppy_imports_hints_for_unreferenced_roots:
+                    has_prepared_dynamic_import,
+                },
+              )?;
+            }
+            return Ok(());
           }
-          return Ok(());
-        }
-      }
+          has_prepared_dynamic_import
+        } else {
+          true
+        };
 
       let is_dynamic = options.is_dynamic_import || inner.is_worker; // consider workers as dynamic for permissions
       let lib = inner.lib;
@@ -1257,6 +1299,7 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
               file_permission_api_name: None,
               ext_overwrite: None,
               allow_unknown_media_types: false,
+              allow_sloppy_imports_hints_for_unreferenced_roots,
               skip_graph_roots_validation: is_dynamic,
               file_content_overrides: file_overrides,
               file_header_overrides: header_overrides,
@@ -1281,8 +1324,11 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
         module_load_preparer.graph_roots_valid(
           &graph_container.graph(),
           specifiers,
-          false,
-          false,
+          GraphRootsValidOptions {
+            allow_unknown_media_types: false,
+            allow_unknown_jsr_exports: false,
+            allow_sloppy_imports_hints_for_unreferenced_roots,
+          },
         )?;
       }
 

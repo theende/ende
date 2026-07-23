@@ -227,7 +227,15 @@ pub async fn cache_top_level_deps(
       )
       .await?;
     maybe_graph_error = graph_builder
-      .graph_roots_valid(graph, &roots, true, true)
+      .graph_roots_valid(
+        graph,
+        &roots,
+        crate::graph_util::GraphRootsValidOptions {
+          allow_unknown_media_types: true,
+          allow_unknown_jsr_exports: true,
+          allow_sloppy_imports_hints_for_unreferenced_roots: true,
+        },
+      )
       .and_then(|()| {
         // An export the app may never import shouldn't fail the whole
         // command just because it uses something Ende doesn't support.
