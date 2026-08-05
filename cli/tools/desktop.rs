@@ -2366,9 +2366,9 @@ fn rewrite_helper_plist_identifier(
 /// Re-uses the JIT entitlements that ship with the laufey CEF bundle
 /// (`Contents/Frameworks/<helper>.app/Contents/Resources/...entitlements...`
 /// or, more robustly, the per-helper entitlements laufey bundles next to
-/// each helper). When entitlements aren't present we fall back to
-/// signing without them — the binary will still launch but V8 won't
-/// get JIT permission.
+/// each helper). When laufey ships no browser entitlements (0.7.0 ships
+/// none for any backend) and the identity is real, the main bundle gets
+/// [`WEBVIEW_ENTITLEMENTS`] instead, because Ende's V8 runs in that process.
 fn codesign_macos_bundle(
   app_bundle: &Path,
   identity: &str,
@@ -2447,13 +2447,67 @@ fn codesign_macos_bundle(
     }
   }
 
-  // Finally the main bundle. Use the browser-process entitlements if
-  // laufey shipped them; otherwise sign with no entitlements (still
-  // launches, just no JIT for V8 in the browser process — which doesn't
-  // host V8 anyway, so this is fine).
+  // Finally the main bundle. Prefer the entitlements laufey ships; when it
+  // ships none, supply the JIT entitlement here. On every backend
+  // CFBundleExecutable is the laufey binary, which loads the runtime dylib
+  // and runs Ende's V8 in-process (with CEF, that's the browser process).
+  // laufey 0.7.0 ships no entitlements for any backend.
   let browser_entitlements = locate_browser_entitlements(app_bundle);
-  codesign_one(app_bundle, identity, browser_entitlements.as_deref(), None)?;
+  // Bound to a local so the temp file outlives the codesign call below.
+  let webview_entitlements =
+    if browser_entitlements.is_none() && identity != "-" {
+      Some(write_webview_entitlements()?)
+    } else {
+      None
+    };
+  let entitlements = browser_entitlements
+    .as_deref()
+    .or_else(|| webview_entitlements.as_ref().map(|f| f.path()));
+  codesign_one(app_bundle, identity, entitlements, None)?;
   Ok(())
+}
+
+/// Entitlements the webview backend needs under the Hardened Runtime.
+///
+/// `codesign_one` passes `--options runtime` for any real identity, and under
+/// the Hardened Runtime `mmap(MAP_JIT)` is denied unless the binary carries
+/// `com.apple.security.cs.allow-jit`. That is how V8 reserves its CodeRange,
+/// so without this a Developer ID-signed webview app aborts before its window
+/// ever opens:
+///
+/// ```text
+/// # Fatal process out of memory: Failed to reserve virtual memory for CodeRange
+/// ```
+///
+/// Only `allow-jit` is here. `allow-unsigned-executable-memory` and
+/// `disable-library-validation` are its usual companions in Electron guides,
+/// but each widens the attack surface the Hardened Runtime exists to narrow,
+/// and neither is needed: V8 takes the `MAP_JIT` path on macOS, and every
+/// dylib in the bundle is signed with the same identity.
+const WEBVIEW_ENTITLEMENTS: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+</dict>
+</plist>
+"#;
+
+/// Write [`WEBVIEW_ENTITLEMENTS`] somewhere `codesign --entitlements` can read.
+///
+/// A temp file rather than `Contents/Resources/entitlements.plist`: the
+/// entitlements are baked into the signature itself, so a copy inside the
+/// bundle would ship in every app without ever being read again.
+fn write_webview_entitlements() -> Result<tempfile::NamedTempFile, AnyError> {
+  let mut file = tempfile::Builder::new()
+    .prefix("ende-desktop-entitlements-")
+    .suffix(".plist")
+    .tempfile()
+    .context("failed to create the entitlements plist")?;
+  std::io::Write::write_all(&mut file, WEBVIEW_ENTITLEMENTS.as_bytes())
+    .context("failed to write the entitlements plist")?;
+  Ok(file)
 }
 
 /// Read `CFBundleIdentifier` out of `Contents/Info.plist` via `plutil`.
@@ -5631,6 +5685,37 @@ mod disclaim_spawn {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  // --- codesign entitlements ---
+
+  #[test]
+  fn webview_entitlements_grant_jit() {
+    // Losing this key doesn't fail the build — it produces a signed app that
+    // aborts on launch reserving V8's CodeRange, which is only visible to
+    // whoever downloads it.
+    assert!(
+      WEBVIEW_ENTITLEMENTS.contains("com.apple.security.cs.allow-jit"),
+      "the JIT entitlement is what makes a signed webview app launchable"
+    );
+  }
+
+  #[test]
+  #[cfg(target_os = "macos")]
+  fn webview_entitlements_are_a_valid_plist() {
+    // Hand-written XML that `codesign --entitlements` rejects would break
+    // every signed build, so lint it with the same parser the OS uses.
+    let file = write_webview_entitlements().unwrap();
+    let output = std::process::Command::new("plutil")
+      .arg("-lint")
+      .arg(file.path())
+      .output()
+      .unwrap();
+    assert!(
+      output.status.success(),
+      "plutil rejected the entitlements plist: {}",
+      String::from_utf8_lossy(&output.stdout)
+    );
+  }
 
   // --- macOS Info.plist ---
 
