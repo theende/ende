@@ -1854,7 +1854,7 @@ impl LaufeyBackendResolver {
     }
 
     let dir = self.ensure_downloaded(backend, target).await?;
-    locate_app_bundle(&dir, backend).ok_or_else(|| {
+    locate_app_bundle(&dir, backend)?.ok_or_else(|| {
       ende_core::anyhow::anyhow!(
         "could not find '{backend}' .app bundle inside {} (backend may not ship as an app for target '{target}')",
         dir.display()
@@ -2078,13 +2078,76 @@ fn locate_backend_binary(
   }
 }
 
-fn locate_app_bundle(dir: &Path, backend: &str) -> Option<PathBuf> {
+/// Find the backend's `.app` bundle inside an extracted archive directory.
+///
+/// The raw backend (`laufey_winit`) ships as a bare binary, not a bundle, so
+/// the first call for it wraps the binary in a minimal `laufey_winit.app`
+/// (see [`create_winit_app_bundle`]). Errors creating that bundle are
+/// returned rather than reported as "not found".
+fn locate_app_bundle(
+  dir: &Path,
+  backend: &str,
+) -> Result<Option<PathBuf>, AnyError> {
   let name = match backend {
     "cef" => "laufey.app",
+    "raw" => "laufey_winit.app",
     _ => "laufey_webview.app",
   };
   let p = dir.join(name);
-  p.exists().then_some(p)
+  if p.exists() {
+    return Ok(Some(p));
+  }
+  if backend == "raw" && dir.join("laufey_winit").is_file() {
+    create_winit_app_bundle(dir, &p)?;
+    return Ok(Some(p));
+  }
+  Ok(None)
+}
+
+/// Wrap the bare `laufey_winit` binary in `dir` in a minimal `.app` at
+/// `bundle`. The packaging step only needs `CFBundleExecutable` from it: it
+/// copies the bundle as the app shell and writes its own Info.plist.
+///
+/// `dir` is the shared backend cache, so the bundle is assembled in a sibling
+/// tempdir and renamed into place. A concurrent `ende desktop` never sees a
+/// half-written bundle, and if one wins the rename, its bundle is used.
+fn create_winit_app_bundle(dir: &Path, bundle: &Path) -> Result<(), AnyError> {
+  const INFO_PLIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict><key>CFBundleExecutable</key><string>laufey_winit</string></dict></plist>
+"#;
+  let staging = tempfile::Builder::new()
+    .prefix(".staging-laufey_winit.app-")
+    .tempdir_in(dir)
+    .with_context(|| format!("failed to stage tempdir in {}", dir.display()))?;
+  let macos_dir = staging.path().join("Contents/MacOS");
+  std::fs::create_dir_all(&macos_dir)
+    .with_context(|| format!("failed to create {}", macos_dir.display()))?;
+  let binary = dir.join("laufey_winit");
+  std::fs::copy(&binary, macos_dir.join("laufey_winit")).with_context(
+    || {
+      format!(
+        "failed to copy {} into the laufey_winit.app bundle",
+        binary.display()
+      )
+    },
+  )?;
+  std::fs::write(staging.path().join("Contents/Info.plist"), INFO_PLIST)
+    .context("failed to write the laufey_winit.app Info.plist")?;
+
+  let staging_path = staging.into_path();
+  if let Err(e) = std::fs::rename(&staging_path, bundle) {
+    let _ = std::fs::remove_dir_all(&staging_path);
+    // `rename` refuses a non-empty target: a concurrent process already
+    // created the bundle, so use theirs.
+    if !bundle.exists() {
+      return Err(ende_core::anyhow::anyhow!(
+        "failed to rename the laufey_winit.app bundle into {}: {e}",
+        bundle.display()
+      ));
+    }
+  }
+  Ok(())
 }
 
 /// Target triple to use when selecting a laufey backend archive. Honors
@@ -2866,13 +2929,16 @@ fn reject_backend_file_collision(
 
 /// The runtime dylib filename each macOS LAUFEY backend resolves when the
 /// backend binary is the bundle's CFBundleExecutable (i.e. no `--runtime`
-/// argument is passed). The two macOS backends use different conventions:
+/// argument is passed). The macOS backends use different conventions:
 /// - `webview` searches a hardcoded `libruntime.dylib` via [NSBundle mainBundle]
 ///   (laufey `webview/src/main_mac.mm`).
 /// - `cef` derives `<backend-executable-basename>.dylib` next to the binary
 ///   (laufey `LaufeyFindColocatedRuntime`, `cef/src/runtime_loader.cc`).
+/// - `raw` does the same as `cef` (laufey `find_colocated_runtime`,
+///   `backend-winit-common/src/lib.rs`); its only `libruntime.dylib` lookup is
+///   relative to the working directory, which is `/` under LaunchServices.
 fn macos_runtime_dylib_name(backend: &str, laufey_exe_stem: &str) -> String {
-  if backend == "cef" {
+  if backend == "cef" || backend == "raw" {
     format!("{laufey_exe_stem}.dylib")
   } else {
     "libruntime.dylib".to_string()
@@ -2889,7 +2955,8 @@ fn macos_runtime_dylib_name(backend: &str, laufey_exe_stem: &str) -> String {
 ///     MacOS/
 ///       laufey_webview    (LAUFEY backend binary; the bundle executable)
 ///       libruntime.dylib  (compiled Ende runtime + user code; the `cef`
-///                          backend uses `<backend-executable>.dylib` instead)
+///                          and `raw` backends use `<backend-executable>.dylib`
+///                          instead)
 ///     Resources/
 ///       AppIcon.icns      (optional)
 /// ```
@@ -5605,7 +5672,8 @@ mod tests {
   #[test]
   fn macos_runtime_dylib_name_is_backend_specific() {
     // webview resolves a hardcoded libruntime.dylib via [NSBundle mainBundle];
-    // cef resolves <executable-basename>.dylib next to the backend binary.
+    // cef and raw resolve <executable-basename>.dylib next to the backend
+    // binary.
     assert_eq!(
       macos_runtime_dylib_name("webview", "laufey_webview"),
       "libruntime.dylib"
@@ -5613,6 +5681,10 @@ mod tests {
     assert_eq!(
       macos_runtime_dylib_name("cef", "laufey_cef"),
       "laufey_cef.dylib"
+    );
+    assert_eq!(
+      macos_runtime_dylib_name("raw", "laufey_winit"),
+      "laufey_winit.dylib"
     );
   }
 
@@ -6793,6 +6865,95 @@ def456  other.zip
     // accidentally match).
     let tmp = tempfile::tempdir().unwrap();
     assert!(locate_dev_app_bundle(tmp.path(), "raw").is_none());
+  }
+
+  #[test]
+  fn locate_app_bundle_creates_winit_bundle() {
+    // The raw backend doesn't ship a .app bundle, so locate_app_bundle must
+    // create a minimal one around the bare binary.
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("raw/aarch64-apple-darwin");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("laufey_winit"), b"binary").unwrap();
+
+    let bundle = locate_app_bundle(&dir, "raw")
+      .unwrap()
+      .expect("expected a synthetic .app bundle");
+    assert_eq!(bundle, dir.join("laufey_winit.app"));
+    assert_eq!(
+      std::fs::read(bundle.join("Contents/MacOS/laufey_winit")).unwrap(),
+      b"binary"
+    );
+    let plist =
+      std::fs::read_to_string(bundle.join("Contents/Info.plist")).unwrap();
+    assert!(
+      plist
+        .contains("<key>CFBundleExecutable</key><string>laufey_winit</string>"),
+      "{plist}"
+    );
+  }
+
+  #[test]
+  fn locate_app_bundle_reuses_existing_winit_bundle() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+    std::fs::write(dir.join("laufey_winit"), b"binary").unwrap();
+    let first = locate_app_bundle(dir, "raw").unwrap().unwrap();
+    // A second call must not rebuild (or clobber) the bundle, and no staging
+    // dir may be left behind in the shared cache.
+    std::fs::write(first.join("Contents/MacOS/laufey_winit"), b"kept").unwrap();
+    let second = locate_app_bundle(dir, "raw").unwrap().unwrap();
+    assert_eq!(first, second);
+    assert_eq!(
+      std::fs::read(second.join("Contents/MacOS/laufey_winit")).unwrap(),
+      b"kept"
+    );
+    let mut entries: Vec<_> = std::fs::read_dir(dir)
+      .unwrap()
+      .map(|e| e.unwrap().file_name().into_string().unwrap())
+      .collect();
+    entries.sort();
+    assert_eq!(entries, ["laufey_winit", "laufey_winit.app"]);
+  }
+
+  #[test]
+  fn locate_app_bundle_raw_without_binary_is_none() {
+    let tmp = tempfile::tempdir().unwrap();
+    assert!(locate_app_bundle(tmp.path(), "raw").unwrap().is_none());
+    assert!(!tmp.path().join("laufey_winit.app").exists());
+  }
+
+  // Creating the bundle can fail (here: a read-only cache dir). That must
+  // surface as an error, not as "could not find 'raw' .app bundle".
+  #[cfg(unix)]
+  #[test]
+  fn locate_app_bundle_reports_winit_bundle_errors() {
+    use std::os::unix::fs::PermissionsExt;
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("raw");
+    std::fs::create_dir(&dir).unwrap();
+    std::fs::write(dir.join("laufey_winit"), b"binary").unwrap();
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o555))
+      .unwrap();
+    let result = locate_app_bundle(&dir, "raw");
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755))
+      .unwrap();
+    let err = result.expect_err("expected an I/O error");
+    assert!(
+      format!("{err:#}").contains("failed to stage tempdir"),
+      "{err:#}"
+    );
+  }
+
+  #[test]
+  fn locate_app_bundle_finds_webview() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("webview");
+    std::fs::create_dir_all(&dir).unwrap();
+    let app = dir.join("laufey_webview.app");
+    std::fs::create_dir_all(&app).unwrap();
+    let found = locate_app_bundle(&dir, "webview").unwrap();
+    assert_eq!(found.as_deref(), Some(app.as_path()));
   }
 
   #[test]
