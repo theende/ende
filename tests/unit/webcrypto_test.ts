@@ -3576,7 +3576,7 @@ Deno.test(async function argon2DeriveBitsRfcVectors() {
           nonce,
           secretValue,
           associatedData,
-        } as AnyAlg,
+        },
         key,
         256,
       ),
