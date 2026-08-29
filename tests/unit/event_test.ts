@@ -211,6 +211,39 @@ Deno.test(function inspectEvent() {
   );
 });
 
+// Regression for https://github.com/denoland/deno/issues/36510
+// Inspecting subclass prototypes must not evaluate their getters (and throw).
+Deno.test(function inspectEventSubclassPrototypes() {
+  for (
+    const base of [
+      ErrorEvent,
+      CloseEvent,
+      MessageEvent,
+      CustomEvent,
+      ProgressEvent,
+      PromiseRejectionEvent,
+    ]
+  ) {
+    assertStringIncludes(Deno.inspect(base.prototype), "Event {");
+    // A subclass prototype passes the base prototype ancestry check without
+    // being initialized.
+    class Derived extends base {}
+    assertStringIncludes(Deno.inspect(Derived.prototype), "bubbles: [Getter]");
+  }
+
+  // ensure instances still inspect normally
+  assertStringIncludes(
+    Deno.inspect(new ErrorEvent("err", { message: "boom" })),
+    "ErrorEvent",
+  );
+  assertStringIncludes(
+    Deno.inspect(
+      new CustomEvent("evt", { detail: { hello: "world" } }),
+    ),
+    "detail:",
+  );
+});
+
 Deno.test(function removeEventListenerWithEmptyObjectOptions() {
   const target = new EventTarget();
   let callCount = 0;
