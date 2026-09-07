@@ -177,6 +177,14 @@ dir so its watcher sees real files.
   window's first-load reveal nor the 10 s navigate fallback shows it; `show()`
   clears it. laufey 0.7.0's CEF backend ignores the `hidden` creation flag, so
   libendert also hides such windows explicitly (CEF can flash them).
+- **Initial window** (`create_initial_window`): its size and creation-time style
+  come from ende.json `desktop.initialWindow`, baked into the metadata
+  (`InitialWindowConfig`); an invalid value fails `ende desktop`. The first
+  `BrowserWindow` adopts it, so its `frameless`/`transparent`/... options are
+  ignored, and `width`/`height` resize it only when given.
+  `showOnFirstLoad:
+  false` puts it in `hidden_by_app`, so nothing reveals it
+  until `show()`.
 - **`printToPdf()`**: the backend only renders. A `path` is never handed to
   laufey, which would write it unchecked on the UI thread. The op checks write
   permission the way `Ende.writeFile` does, before rendering, then writes the

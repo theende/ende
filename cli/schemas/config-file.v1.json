@@ -192,6 +192,52 @@
               "description": "Base URL for auto-update release artifacts."
             }
           }
+        },
+        "initialWindow": {
+          "type": "object",
+          "description": "The window the app starts with. The first `BrowserWindow` the app creates takes it over, so its creation-time options are set here.",
+          "additionalProperties": false,
+          "properties": {
+            "width": {
+              "type": "integer",
+              "description": "Width in pixels.",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 800
+            },
+            "height": {
+              "type": "integer",
+              "description": "Height in pixels.",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 600
+            },
+            "frameless": {
+              "type": "boolean",
+              "description": "Remove the title bar and standard window chrome.",
+              "default": false
+            },
+            "noActivate": {
+              "type": "boolean",
+              "description": "Create a floating, non-activating panel that doesn't take key focus when shown.",
+              "default": false
+            },
+            "transparentTitlebar": {
+              "type": "boolean",
+              "description": "Make the title bar transparent.",
+              "default": false
+            },
+            "transparent": {
+              "type": "boolean",
+              "description": "Give the window a transparent background (macOS and Linux with the system WebView).",
+              "default": false
+            },
+            "showOnFirstLoad": {
+              "type": "boolean",
+              "description": "Show the window once its first page has loaded. Set `false` to keep it hidden until the app calls `show()`.",
+              "default": true
+            }
+          }
         }
       }
     },

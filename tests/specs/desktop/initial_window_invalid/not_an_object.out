@@ -1,0 +1,4 @@
+[WILDCARD]error: Failed to parse "desktop" configuration
+
+Caused by:
+    "initialWindow" must be an object, got [800,600]

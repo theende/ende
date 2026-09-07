@@ -835,6 +835,13 @@ pub enum PermissionState {
 /// window; subsequent constructors create new windows.
 pub struct InitialWindowId(pub std::sync::Mutex<Option<u32>>);
 
+/// The initial window's size from ende.json `desktop.initialWindow`. The
+/// first `BrowserWindow` keeps the dimension its options don't set.
+pub struct InitialWindowSize {
+  pub width: i32,
+  pub height: i32,
+}
+
 /// The compiled app's name (from ende.json `desktop.app.name`, falling back to
 /// the output file name). Used as the default window title so a window the app
 /// doesn't explicitly title shows the app name instead of the backend's
@@ -959,19 +966,21 @@ impl BrowserWindow {
 
     // Use the initial window if this is the first BrowserWindow,
     // otherwise create a new one.
-    let window_id = match state
+    let (window_id, adopted) = match state
       .try_borrow::<InitialWindowId>()
       .and_then(|iw| iw.0.lock().unwrap().take())
     {
       // First BrowserWindow: reuse the pre-created initial window. That window
-      // is created hidden and auto-revealed once its first navigation paints;
-      // honor `{ visible: false }` by hiding it now, which also flags it so the
+      // is created hidden from `desktop.initialWindow` and auto-revealed once
+      // its first navigation paints (unless `showOnFirstLoad` is false), so
+      // its creation-time options can't change here. Honor
+      // `{ visible: false }` by hiding it now, which also flags it so the
       // deferred reveal does not override the app's intent.
       Some(id) => {
         if !visible {
           api.hide(id);
         }
-        id
+        (id, true)
       }
       None => {
         let width = options.as_ref().and_then(|o| o.width).unwrap_or(800);
@@ -990,7 +999,7 @@ impl BrowserWindow {
           .as_ref()
           .and_then(|o| o.transparent)
           .unwrap_or(false);
-        api.create_window(
+        let id = api.create_window(
           width,
           height,
           frameless,
@@ -998,7 +1007,8 @@ impl BrowserWindow {
           transparent_titlebar,
           transparent,
           !visible,
-        )
+        );
+        (id, false)
       }
     };
 
@@ -1017,11 +1027,25 @@ impl BrowserWindow {
       if let Some(title) = &options.title {
         api.set_title(window_id, title);
       }
-      api.set_window_size(
-        window_id,
-        options.width.unwrap_or(800),
-        options.height.unwrap_or(600),
-      );
+      if !adopted {
+        api.set_window_size(
+          window_id,
+          options.width.unwrap_or(800),
+          options.height.unwrap_or(600),
+        );
+      } else if options.width.is_some() || options.height.is_some() {
+        // The initial window already has the size from
+        // `desktop.initialWindow`: keep the dimension the app didn't pass.
+        // (Not `get_window_size`: the raw backend reports physical pixels.)
+        let (width, height) = state
+          .try_borrow::<InitialWindowSize>()
+          .map_or((800, 600), |size| (size.width, size.height));
+        api.set_window_size(
+          window_id,
+          options.width.unwrap_or(width),
+          options.height.unwrap_or(height),
+        );
+      }
       if let (Some(x), Some(y)) = (options.x, options.y) {
         api.set_window_position(window_id, x, y);
       }

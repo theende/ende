@@ -1,0 +1,4 @@
+[WILDCARD]error: Failed to parse "desktop" configuration
+
+Caused by:
+    invalid "initialWindow.width": invalid value: integer `0`, expected a nonzero u16

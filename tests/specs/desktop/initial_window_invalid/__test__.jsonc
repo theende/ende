@@ -1,0 +1,19 @@
+// Copyright 2026 the Ende authors. MIT license.
+
+// An invalid `desktop.initialWindow` fails `ende desktop` with a config error
+// that names the key, instead of building the app with the default window.
+{
+  "tempDir": true,
+  "tests": {
+    "zero_width": {
+      "args": "desktop --config zero_width.json main.ts",
+      "output": "zero_width.out",
+      "exitCode": 1
+    },
+    "not_an_object": {
+      "args": "desktop --config not_an_object.json main.ts",
+      "output": "not_an_object.out",
+      "exitCode": 1
+    }
+  }
+}

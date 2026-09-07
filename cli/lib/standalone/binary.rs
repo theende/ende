@@ -100,6 +100,34 @@ pub struct Metadata {
   /// app's WebView2 user data folder on Windows.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub app_identifier: Option<String>,
+  /// Initial desktop window options from ende.json `desktop.initialWindow`.
+  #[serde(default)]
+  pub initial_window: InitialWindowConfig,
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize)]
+pub struct InitialWindowConfig {
+  pub width: u16,
+  pub height: u16,
+  pub frameless: bool,
+  pub no_activate: bool,
+  pub transparent_titlebar: bool,
+  pub transparent: bool,
+  pub show_on_first_load: bool,
+}
+
+impl Default for InitialWindowConfig {
+  fn default() -> Self {
+    Self {
+      width: 800,
+      height: 600,
+      frameless: false,
+      no_activate: false,
+      transparent_titlebar: false,
+      transparent: false,
+      show_on_first_load: true,
+    }
+  }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

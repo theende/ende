@@ -647,6 +647,16 @@ declare namespace Ende {
   export class BrowserWindow<
     T extends ValidBindings<T> = WindowBindings,
   > extends EventTarget {
+    /** Create a window.
+     *
+     * The first `BrowserWindow` an app creates takes over the app's initial
+     * window, which is created at startup from `desktop.initialWindow` in
+     * `ende.json` and is already loading the app's page. Its creation-time
+     * options (`frameless`, `noActivate`, `transparentTitlebar` and
+     * `transparent`) can't change, so set them in `desktop.initialWindow`.
+     * `width` and `height` resize it, and `visible: false` hides it. With
+     * `desktop.initialWindow.showOnFirstLoad` set to `false`, it stays hidden
+     * until {@linkcode BrowserWindow.show} is called. */
     constructor(options?: BrowserWindowOptions);
 
     readonly windowId: number;

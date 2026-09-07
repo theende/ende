@@ -25,6 +25,7 @@ use ende_core::serde_json;
 use ende_core::url::Url;
 use ende_lib::args::CaData;
 use ende_lib::args::UnstableConfig;
+use ende_lib::standalone::binary::InitialWindowConfig;
 use ende_lib::standalone::binary::MAGIC_BYTES;
 use ende_lib::standalone::binary::Metadata;
 use ende_lib::standalone::binary::RemoteModuleEntry;
@@ -794,6 +795,28 @@ impl<'a> EndeCompileBinaryWriter<'a> {
     } else {
       None
     };
+    // `ende desktop` has already parsed the desktop config, but don't fall
+    // back to the defaults if it's invalid.
+    let initial_window = if self.is_desktop {
+      self
+        .cli_options
+        .start_dir
+        .to_desktop_config()?
+        .initial_window
+        .as_ref()
+        .map(|w| InitialWindowConfig {
+          width: w.width,
+          height: w.height,
+          frameless: w.frameless,
+          no_activate: w.no_activate,
+          transparent_titlebar: w.transparent_titlebar,
+          transparent: w.transparent,
+          show_on_first_load: w.show_on_first_load,
+        })
+        .unwrap_or_default()
+    } else {
+      InitialWindowConfig::default()
+    };
 
     let metadata = Metadata {
       argv: compile_flags.args.clone(),
@@ -891,6 +914,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
         .ok()
         .and_then(|c| c.release.as_ref()?.base_url.clone()),
       app_identifier,
+      initial_window,
     };
 
     let (data_section_bytes, section_sizes) = serialize_binary_data_section(

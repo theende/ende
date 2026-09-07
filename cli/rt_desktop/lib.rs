@@ -441,20 +441,34 @@ impl WefDesktopApi {
   /// verbatim. Deferring the reveal to load-finished means the window's first
   /// visible frame already has content. See
   /// https://github.com/denoland/deno/issues/35530.
-  fn create_initial_window(&self, width: i32, height: i32) -> u32 {
+  ///
+  /// Its size and creation-time style come from ende.json
+  /// `desktop.initialWindow`. With `showOnFirstLoad: false` it isn't revealed
+  /// at all: the app calls `show()`.
+  fn create_initial_window(
+    &self,
+    options: ende_lib::standalone::binary::InitialWindowConfig,
+  ) -> u32 {
     let window = laufey::Window::new_with_options(
-      width,
-      height,
+      i32::from(options.width),
+      i32::from(options.height),
       laufey::WindowOptions {
-        frameless: false,
-        no_activate: false,
-        transparent_titlebar: false,
+        frameless: options.frameless,
+        no_activate: options.no_activate,
+        transparent_titlebar: options.transparent_titlebar,
         hidden: true,
-        transparent: false,
+        transparent: options.transparent,
       },
     );
-    let window = self.setup_window_events(window, true);
+    let window = self.setup_window_events(window, options.show_on_first_load);
     let id = window.id();
+    if !options.show_on_first_load {
+      // `desktop.initialWindow.showOnFirstLoad: false`: the app shows it. Keep
+      // the navigate fallback from showing it too, and hide it explicitly
+      // because laufey 0.7.0's CEF backend ignores `hidden`.
+      self.hidden_by_app.lock().unwrap().insert(id);
+      window.hide();
+    }
 
     self.open_windows.lock().unwrap().insert(id);
     id
@@ -2066,6 +2080,7 @@ async fn run_desktop(
   // App name (ende.json `desktop.app.name`, baked in at compile time) used as
   // the default window title. Moved into the op_state_init closure below.
   let app_name = data.metadata.app_name.clone();
+  let initial_window = data.metadata.initial_window;
 
   let run_opts = RunOptions {
     auto_serve: true,
@@ -2125,7 +2140,7 @@ async fn run_desktop(
       // Create the initial window (hidden) and wire up event handlers. It is
       // revealed from its `on_page_load` handler once content has painted, so
       // the user never sees the empty pre-navigation frame (issue #35530).
-      let window_id = api.create_initial_window(800, 600);
+      let window_id = api.create_initial_window(initial_window);
       initial_window_id.store(window_id, Ordering::Release);
 
       // Title the initial window with the app name up front, so an app that
@@ -2148,6 +2163,10 @@ async fn run_desktop(
       state.put(endert::desktop::InitialWindowId(std::sync::Mutex::new(
         Some(window_id),
       )));
+      state.put(ende_runtime::ops::desktop::InitialWindowSize {
+        width: i32::from(initial_window.width),
+        height: i32::from(initial_window.height),
+      });
       if let Some(name) = app_name.filter(|n| !n.is_empty()) {
         state.put(ende_runtime::ops::desktop::DesktopAppName(name));
       }

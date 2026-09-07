@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::collections::HashSet;
+use std::num::NonZeroU16;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -913,6 +914,71 @@ struct SerializedDesktopMacOSConfig {
   pub codesign_identity: Option<String>,
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+struct SerializedDesktopInitialWindowConfig {
+  pub width: Option<NonZeroU16>,
+  pub height: Option<NonZeroU16>,
+  pub frameless: Option<bool>,
+  pub no_activate: Option<bool>,
+  pub transparent_titlebar: Option<bool>,
+  pub transparent: Option<bool>,
+  pub show_on_first_load: Option<bool>,
+}
+
+/// Parses `desktop.initialWindow` key by key, so an error names the key, and a
+/// non-object (serde would read `[300, 200]` as a struct) is rejected.
+fn deserialize_initial_window<'de, D>(
+  deserializer: D,
+) -> Result<Option<SerializedDesktopInitialWindowConfig>, D::Error>
+where
+  D: Deserializer<'de>,
+{
+  use serde::de::Error;
+
+  const FIELDS: &[&str] = &[
+    "width",
+    "height",
+    "frameless",
+    "noActivate",
+    "transparentTitlebar",
+    "transparent",
+    "showOnFirstLoad",
+  ];
+  let Some(value) = Option::<serde_json::Value>::deserialize(deserializer)?
+  else {
+    return Ok(None);
+  };
+  let serde_json::Value::Object(map) = value else {
+    return Err(D::Error::custom(format!(
+      "\"initialWindow\" must be an object, got {value}"
+    )));
+  };
+  let mut config = SerializedDesktopInitialWindowConfig::default();
+  for (key, value) in map {
+    fn parse<'de, T: Deserialize<'de>, E: Error>(
+      key: &str,
+      value: serde_json::Value,
+    ) -> Result<T, E> {
+      T::deserialize(value).map_err(|err| {
+        E::custom(format!("invalid \"initialWindow.{key}\": {err}"))
+      })
+    }
+    match key.as_str() {
+      "width" => config.width = parse(&key, value)?,
+      "height" => config.height = parse(&key, value)?,
+      "frameless" => config.frameless = parse(&key, value)?,
+      "noActivate" => config.no_activate = parse(&key, value)?,
+      "transparentTitlebar" => {
+        config.transparent_titlebar = parse(&key, value)?
+      }
+      "transparent" => config.transparent = parse(&key, value)?,
+      "showOnFirstLoad" => config.show_on_first_load = parse(&key, value)?,
+      _ => return Err(D::Error::unknown_field(&key, FIELDS)),
+    }
+  }
+  Ok(Some(config))
+}
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[serde(default, deny_unknown_fields)]
 struct SerializedDesktopConfig {
@@ -923,6 +989,11 @@ struct SerializedDesktopConfig {
   #[serde(rename = "errorReporting")]
   pub error_reporting: Option<SerializedDesktopErrorReportingConfig>,
   pub macos: Option<SerializedDesktopMacOSConfig>,
+  #[serde(
+    rename = "initialWindow",
+    deserialize_with = "deserialize_initial_window"
+  )]
+  pub initial_window: Option<SerializedDesktopInitialWindowConfig>,
 }
 
 impl SerializedDesktopConfig {
@@ -974,6 +1045,15 @@ impl SerializedDesktopConfig {
         .map(|e| DesktopErrorReportingConfig { url: e.url }),
       macos: self.macos.map(|m| DesktopMacOSConfig {
         codesign_identity: m.codesign_identity,
+      }),
+      initial_window: self.initial_window.map(|w| DesktopInitialWindowConfig {
+        width: w.width.map(NonZeroU16::get).unwrap_or(800),
+        height: w.height.map(NonZeroU16::get).unwrap_or(600),
+        frameless: w.frameless.unwrap_or(false),
+        no_activate: w.no_activate.unwrap_or(false),
+        transparent_titlebar: w.transparent_titlebar.unwrap_or(false),
+        transparent: w.transparent.unwrap_or(false),
+        show_on_first_load: w.show_on_first_load.unwrap_or(true),
       }),
     }
   }
@@ -1030,6 +1110,17 @@ pub struct DesktopMacOSConfig {
   pub codesign_identity: Option<String>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct DesktopInitialWindowConfig {
+  pub width: u16,
+  pub height: u16,
+  pub frameless: bool,
+  pub no_activate: bool,
+  pub transparent_titlebar: bool,
+  pub transparent: bool,
+  pub show_on_first_load: bool,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct DesktopConfig {
   pub app: Option<DesktopAppConfig>,
@@ -1038,6 +1129,7 @@ pub struct DesktopConfig {
   pub release: Option<DesktopReleaseConfig>,
   pub error_reporting: Option<DesktopErrorReportingConfig>,
   pub macos: Option<DesktopMacOSConfig>,
+  pub initial_window: Option<DesktopInitialWindowConfig>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -3525,5 +3617,89 @@ mod tests {
       );
       assert_eq!(lock_config.frozen(), frozen);
     }
+  }
+
+  #[test]
+  fn desktop_initial_window_config() {
+    let config = ConfigFile::new(
+      r#"{
+        "desktop": {
+          "initialWindow": {
+            "width": 320,
+            "height": 220,
+            "frameless": true,
+            "noActivate": true,
+            "transparentTitlebar": true,
+            "transparent": true,
+            "showOnFirstLoad": false
+          }
+        }
+      }"#,
+      root_url().join("ende.json").unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(
+      config.to_desktop_config().unwrap().initial_window,
+      Some(DesktopInitialWindowConfig {
+        width: 320,
+        height: 220,
+        frameless: true,
+        no_activate: true,
+        transparent_titlebar: true,
+        transparent: true,
+        show_on_first_load: false,
+      }),
+    );
+  }
+
+  #[test]
+  fn desktop_initial_window_rejects_zero_dimensions() {
+    let config = ConfigFile::new(
+      r#"{ "desktop": { "initialWindow": { "width": 0 } } }"#,
+      root_url().join("ende.json").unwrap(),
+    )
+    .unwrap();
+
+    assert!(config.to_desktop_config().is_err());
+  }
+
+  #[test]
+  fn desktop_initial_window_errors_name_the_key() {
+    fn error(initial_window: &str) -> String {
+      let config = ConfigFile::new(
+        &format!(r#"{{ "desktop": {{ "initialWindow": {initial_window} }} }}"#),
+        root_url().join("ende.json").unwrap(),
+      )
+      .unwrap();
+      let err = config.to_desktop_config().unwrap_err();
+      std::error::Error::source(&err).unwrap().to_string()
+    }
+
+    assert!(
+      error(r#"{ "height": 0 }"#).contains(r#"invalid "initialWindow.height""#)
+    );
+    assert!(
+      error(r#"{ "width": 70000 }"#)
+        .contains(r#"invalid "initialWindow.width""#)
+    );
+    assert!(
+      error(r#"{ "showOnFirstLoad": "no" }"#)
+        .contains(r#"invalid "initialWindow.showOnFirstLoad""#)
+    );
+    assert!(error(r#"{ "widht": 300 }"#).contains("unknown field `widht`"));
+    assert!(
+      error("[300, 200]").contains(r#""initialWindow" must be an object"#)
+    );
+  }
+
+  #[test]
+  fn desktop_initial_window_null_is_unset() {
+    let config = ConfigFile::new(
+      r#"{ "desktop": { "initialWindow": null } }"#,
+      root_url().join("ende.json").unwrap(),
+    )
+    .unwrap();
+    assert_eq!(config.to_desktop_config().unwrap().initial_window, None);
   }
 }
