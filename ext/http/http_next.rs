@@ -4531,6 +4531,7 @@ async fn serve_http11_raw(
   request_info: HttpConnectionProperties,
   callback: Rc<ServerCallback>,
   cancel: Rc<CancelHandle>,
+  connection_cancel: Rc<CancelHandle>,
   server_state: SignallingRc<HttpServerState>,
   automatic_compression: bool,
 ) -> Result<(), HttpNextError> {
@@ -4711,7 +4712,7 @@ async fn serve_http11_raw(
         Rc::new(RawH1RequestBody::new(
           body_conn.clone(),
           parsed.request_body_len,
-          cancel.clone(),
+          connection_cancel.clone(),
         ))
       });
       let request_body_for_cancel = request_body_resource.clone();
@@ -5111,10 +5112,11 @@ async fn serve_http2_autodetect(
   svc: impl HttpService<Incoming, ResBody = HttpRecordResponse> + 'static,
   request_info: HttpConnectionProperties,
   callback: Rc<ServerCallback>,
-  cancel: Rc<CancelHandle>,
+  cancel_handles: (Rc<CancelHandle>, Rc<CancelHandle>),
   server_state: SignallingRc<HttpServerState>,
   options: Options,
 ) -> Result<(), HttpNextError> {
+  let (cancel, connection_cancel) = cancel_handles;
   let prefix = NetworkStreamPrefixCheck::new(io, HTTP2_PREFIX);
   let Some((matches, io)) = prefix
     .match_prefix_or_shutdown(
@@ -5134,6 +5136,7 @@ async fn serve_http2_autodetect(
       request_info,
       callback,
       cancel,
+      connection_cancel,
       server_state,
       options.automatic_compression,
     )
@@ -5204,6 +5207,7 @@ fn serve_https(
   let raw_request_info = request_info.clone();
   let raw_callback = callback.clone();
   let raw_server_state = server_state.clone();
+  let raw_connection_cancel = connection_cancel_handle.clone();
   let svc = service_fn(move |req: Request| {
     let callback = callback.clone();
     let request_info = request_info.clone();
@@ -5242,6 +5246,7 @@ fn serve_https(
           raw_request_info,
           raw_callback,
           listen_cancel_handle,
+          raw_connection_cancel.clone(),
           raw_server_state,
           options.automatic_compression,
         )
@@ -5252,7 +5257,7 @@ fn serve_https(
           svc,
           raw_request_info,
           raw_callback,
-          listen_cancel_handle,
+          (listen_cancel_handle, raw_connection_cancel.clone()),
           raw_server_state,
           options,
         ))
@@ -5325,6 +5330,7 @@ fn serve_http(
           .try_or_cancel(connection_cancel_handle),
         )
       } else {
+        let connection_cancel_handle_for_raw = connection_cancel_handle.clone();
         spawn(
           async move {
             serve_http11_raw(
@@ -5332,6 +5338,7 @@ fn serve_http(
               raw_request_info,
               raw_callback,
               listen_cancel_handle,
+              connection_cancel_handle_for_raw,
               raw_server_state,
               options.automatic_compression,
             )
