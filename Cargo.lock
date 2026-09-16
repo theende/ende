@@ -2500,7 +2500,7 @@ dependencies = [
  "anyhow",
  "ende_core",
  "ende_core_testing",
- "fastwebsockets 0.10.0",
+ "fastwebsockets",
  "http",
  "http-body-util",
  "hyper",
@@ -2692,7 +2692,7 @@ dependencies = [
  "ende_v8",
  "eszip",
  "faster-hex",
- "fastwebsockets 0.8.1",
+ "fastwebsockets",
  "flate2",
  "fluent-uri",
  "glob",
@@ -3218,7 +3218,7 @@ version = "0.33.0"
 dependencies = [
  "deno_error",
  "ende_core",
- "fastwebsockets 0.8.1",
+ "fastwebsockets",
  "http",
  "http-body-util",
  "hyper",
@@ -3525,7 +3525,7 @@ dependencies = [
  "ende_websocket",
  "ende_webstorage",
  "faster-hex",
- "fastwebsockets 0.8.1",
+ "fastwebsockets",
  "http",
  "http-body-util",
  "hyper",
@@ -3708,7 +3708,7 @@ dependencies = [
  "ende_net",
  "ende_permissions",
  "ende_tls",
- "fastwebsockets 0.8.1",
+ "fastwebsockets",
  "h2",
  "http",
  "http-body-util",
@@ -3961,26 +3961,6 @@ name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
-
-[[package]]
-name = "fastwebsockets"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9dac026e15fb7e44d768880b868a0fd5bd30ffdee272e88b3060f657a5a72947"
-dependencies = [
- "base64 0.21.7",
- "bytes",
- "http-body-util",
- "hyper",
- "hyper-util",
- "pin-project",
- "rand 0.8.6",
- "sha1",
- "simdutf8",
- "thiserror 1.0.69",
- "tokio",
- "utf-8",
-]
 
 [[package]]
 name = "fastwebsockets"
@@ -5432,7 +5412,7 @@ dependencies = [
  "deno_unsync",
  "ende_cache_dir",
  "ende_lockfile",
- "fastwebsockets 0.8.1",
+ "fastwebsockets",
  "file_test_runner",
  "futures",
  "hickory-proto",
@@ -9328,7 +9308,7 @@ dependencies = [
  "bytes",
  "deno_unsync",
  "faster-hex",
- "fastwebsockets 0.8.1",
+ "fastwebsockets",
  "futures",
  "h2",
  "http",
