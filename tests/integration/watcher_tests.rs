@@ -120,6 +120,25 @@ where
     .unwrap_or_else(|| panic!("Output ended without containing \"{}\"", s))
 }
 
+/// Waits for the first line containing any of `patterns`, for tests that
+/// must tell one outcome from another.
+async fn wait_contains_any<R>(
+  patterns: &[&str],
+  lines: &mut LoggingLines<R>,
+) -> String
+where
+  R: tokio::io::AsyncBufRead + Unpin,
+{
+  let timeout = tokio::time::Duration::from_secs(60);
+  tokio::time::timeout(
+    timeout,
+    wait_for(|line| patterns.iter().any(|p| line.contains(p)), lines),
+  )
+  .await
+  .unwrap_or_else(|_| panic!("Output did not contain any of {patterns:?}"))
+  .unwrap_or_else(|| panic!("Output ended without containing {patterns:?}"))
+}
+
 /// Before test cases touch files, they need to wait for the watcher to be
 /// ready. Waiting for subcommand output is insufficient.
 /// The file watcher takes a moment to start watching files due to
@@ -3093,6 +3112,68 @@ export function foo() {
 
   wait_contains("Replaced changed module", &mut stderr_lines).await;
   wait_contains("<h1>Hello world</h1>", &mut stdout_lines).await;
+
+  check_alive_then_kill(child);
+}
+
+/// With --inspect the first emit of a TypeScript module carries an inline
+/// source map, and the HMR emit doesn't. V8 rejected the patch as a
+/// top-level change, so every edit restarted the process.
+#[test(flaky)]
+async fn run_hmr_ts_with_inspect() {
+  let t = TempDir::new();
+  let file_to_watch = t.path().join("main.ts");
+  file_to_watch.write(
+    r#"
+import { fun } from "./fun.ts";
+
+let i = 0;
+setInterval(() => {
+  console.log(i++, fun());
+}, 100);
+"#,
+  );
+  let file_to_watch2 = t.path().join("fun.ts");
+  file_to_watch2.write(
+    r#"
+export function fun(): string {
+  return "before";
+}
+"#,
+  );
+
+  let mut child = util::ende_cmd()
+    .current_dir(t.path())
+    .arg("run")
+    .arg("--watch-hmr")
+    .arg("--inspect=127.0.0.1:0")
+    .arg("-L")
+    .arg("debug")
+    .arg(&file_to_watch)
+    .env("NO_COLOR", "1")
+    .piped_output()
+    .spawn()
+    .unwrap();
+  let (mut stdout_lines, mut stderr_lines) = child_lines(&mut child);
+  wait_contains("Debugger listening", &mut stderr_lines).await;
+  wait_for_watcher("main.ts", &mut stderr_lines).await;
+  wait_contains("5 before", &mut stdout_lines).await;
+
+  file_to_watch2.write(
+    r#"
+export function fun(): string {
+  return "after";
+}
+"#,
+  );
+
+  let line = wait_contains_any(
+    &["Replaced changed module", "Restarting", "Failed to reload"],
+    &mut stderr_lines,
+  )
+  .await;
+  assert_contains!(line, "Replaced changed module");
+  wait_contains("after", &mut stdout_lines).await;
 
   check_alive_then_kill(child);
 }
