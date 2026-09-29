@@ -2515,6 +2515,7 @@ fn desktop_parse(
     backend: result.get_one("backend").map(|s| s.to_string()),
     all_targets: result.get_bool("all-targets"),
     identifier: None,
+    display_name: None,
     deep_links: Vec::new(),
     codesign_identity: None,
     inspect_renderer,
