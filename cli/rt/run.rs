@@ -43,6 +43,7 @@ use ende_runtime::WorkerExecutionMode;
 use ende_runtime::WorkerLogLevel;
 use ende_runtime::code_cache::CodeCache;
 use ende_runtime::ende_fs::FileSystem;
+use ende_runtime::ende_permissions::CheckSpecifierKind;
 use ende_runtime::ende_permissions::Permissions;
 use ende_runtime::ende_permissions::PermissionsContainer;
 use ende_runtime::ende_tls::RootCertStoreProvider;
@@ -58,11 +59,13 @@ use crate::binary::StandaloneModules;
 use crate::binary::transpile_runtime_module;
 use crate::code_cache::EndeCompileCodeCache;
 use crate::file_system::EndeRtSys;
+use crate::file_system::FileBackedVfs;
 
 struct SharedModuleLoaderState {
   blob_store: Arc<BlobStore>,
   code_cache: Option<Arc<EndeCompileCodeCache>>,
   modules: Arc<StandaloneModules>,
+  vfs: Arc<FileBackedVfs>,
   workspace_resolver: WorkspaceResolver<EndeRtSys>,
 }
 
@@ -97,6 +100,10 @@ impl SharedModuleLoaderState {
 #[derive(Clone)]
 struct EmbeddedModuleLoader {
   shared: Arc<SharedModuleLoaderState>,
+  permissions: PermissionsContainer,
+  /// Whether this loader belongs to a web worker. A worker's main module is
+  /// checked against read permissions like a dynamic import (as in `ende run`).
+  is_worker: bool,
   sys: EndeRtSys,
   /// For blob/object-URL module workers, the captured root blob and its
   /// specifier. Used so the worker's root module load resolves from the
@@ -112,6 +119,28 @@ impl std::fmt::Debug for EmbeddedModuleLoader {
 }
 
 impl EmbeddedModuleLoader {
+  /// Local files that aren't embedded in the binary are read from the host
+  /// file system. When loaded via `import()` or as a worker's main module,
+  /// they must pass the read permission check, the same as in `ende run`.
+  fn check_host_fs_read_permission(
+    &self,
+    specifier: &Url,
+    is_dynamic_import: bool,
+  ) -> Result<(), JsErrorBox> {
+    if specifier.scheme() != "file" || !(is_dynamic_import || self.is_worker) {
+      return Ok(());
+    }
+    if let Ok(path) = deno_path_util::url_to_file_path(specifier)
+      && self.shared.vfs.file_entry(&path).is_ok()
+    {
+      return Ok(());
+    }
+    self
+      .permissions
+      .check_specifier(specifier, CheckSpecifierKind::Dynamic)
+      .map_err(JsErrorBox::from_err)
+  }
+
   fn resolve_inner(
     &self,
     raw_specifier: &str,
@@ -179,6 +208,13 @@ impl EmbeddedModuleLoader {
     original_specifier: &Url,
     options: ModuleLoadOptions,
   ) -> ende_core::ModuleLoadResponse {
+    if let Err(err) = self.check_host_fs_read_permission(
+      original_specifier,
+      options.is_dynamic_import,
+    ) {
+      return ende_core::ModuleLoadResponse::Sync(Err(err));
+    }
+
     match self.shared.modules.read(original_specifier) {
       Ok(Some(module)) => {
         match options.requested_module_type {
@@ -534,10 +570,14 @@ struct StandaloneModuleLoaderFactory {
 impl StandaloneModuleLoaderFactory {
   pub fn create_result(
     &self,
+    permissions: PermissionsContainer,
+    is_worker: bool,
     maybe_main_module_blob: Option<(ModuleSpecifier, Arc<Blob>)>,
   ) -> CreateModuleLoaderResult {
     let loader = Rc::new(EmbeddedModuleLoader {
       shared: self.shared.clone(),
+      permissions,
+      is_worker,
       sys: self.sys.clone(),
       maybe_main_module_blob,
     });
@@ -550,18 +590,18 @@ impl StandaloneModuleLoaderFactory {
 impl ModuleLoaderFactory for StandaloneModuleLoaderFactory {
   fn create_for_main(
     &self,
-    _root_permissions: PermissionsContainer,
+    root_permissions: PermissionsContainer,
   ) -> CreateModuleLoaderResult {
-    self.create_result(None)
+    self.create_result(root_permissions, false, None)
   }
 
   fn create_for_worker(
     &self,
     _parent_permissions: PermissionsContainer,
-    _permissions: PermissionsContainer,
+    permissions: PermissionsContainer,
     maybe_main_module_blob: Option<(ModuleSpecifier, Arc<Blob>)>,
   ) -> CreateModuleLoaderResult {
-    self.create_result(maybe_main_module_blob)
+    self.create_result(permissions, true, maybe_main_module_blob)
   }
 }
 
@@ -695,7 +735,7 @@ pub async fn run_with_options(
     metadata,
     modules,
     root_path,
-    vfs: _,
+    vfs,
   } = data;
 
   let root_cert_store_provider = Arc::new(StandaloneRootCertStoreProvider {
@@ -768,6 +808,7 @@ pub async fn run_with_options(
       blob_store: blob_store.clone(),
       code_cache: code_cache.clone(),
       modules,
+      vfs,
       workspace_resolver,
     }),
     sys: sys.clone(),
