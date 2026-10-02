@@ -1467,17 +1467,18 @@ async fn package_windows_app_dir(
     std::fs::rename(&staged_backend, &launcher_path)?;
   }
 
-  // Handle icon — drop an .ico next to the launcher. Embedding the icon
-  // into the .exe itself requires rcedit or equivalent and is out of scope.
+  // Handle icon — copy `AppIcon.ico` beside the launcher and embed it into
+  // `<app>.exe` so Explorer shows the custom icon (#36767).
+  let app_icon_ico = app_dir.join("AppIcon.ico");
   if let Some(ref icon) = desktop_flags.icon {
-    let dest = app_dir.join("AppIcon.ico");
+    let dest = &app_icon_ico;
     match icon {
       crate::args::IconConfig::Single(path) => {
         let icon_path = cli_options.initial_cwd().join(path);
         if icon_path.exists() {
           match icon_path.extension().and_then(|e| e.to_str()) {
             Some("ico") => {
-              std::fs::copy(&icon_path, &dest)?;
+              std::fs::copy(&icon_path, dest)?;
             }
             _ => {
               log::warn!(
@@ -1491,9 +1492,12 @@ async fn package_windows_app_dir(
         }
       }
       crate::args::IconConfig::Set(entries) => {
-        convert_icon_set_to_ico(cli_options.initial_cwd(), entries, &dest)?;
+        convert_icon_set_to_ico(cli_options.initial_cwd(), entries, dest)?;
       }
     }
+  }
+  if app_icon_ico.exists() {
+    embed_icon_in_windows_exe(&launcher_path, &app_icon_ico)?;
   }
 
   // Drop the deep-link registration script next to the launcher.
@@ -1503,6 +1507,38 @@ async fn package_windows_app_dir(
   let _ = std::fs::remove_file(dylib_path);
 
   Ok(app_dir)
+}
+
+/// Embed an `.ico` into a Windows launcher `.exe`, so Explorer, the taskbar and
+/// shortcuts without their own icon show it.
+///
+/// libsui writes a new resource section holding only the icon, so the exe's
+/// existing resources are dropped. laufey 0.7.0's backends carry only the
+/// linker's default manifest (`asInvoker`), which changes nothing for a 64-bit
+/// exe, and `ende compile --icon` has always done the same to `endert.exe`.
+fn embed_icon_in_windows_exe(
+  exe_path: &Path,
+  ico_path: &Path,
+) -> Result<(), AnyError> {
+  let original_bin = std::fs::read(exe_path)
+    .with_context(|| format!("Failed to read {}", exe_path.display()))?;
+  let icon = std::fs::read(ico_path)
+    .with_context(|| format!("Failed to read {}", ico_path.display()))?;
+  let mut updated = Vec::new();
+  libsui::PortableExecutable::from(&original_bin)
+    .and_then(|pe| pe.set_icon(&icon))
+    .and_then(|pe| pe.build(&mut updated))
+    .with_context(|| {
+      format!(
+        "Failed to embed icon {} into {}",
+        ico_path.display(),
+        exe_path.display()
+      )
+    })?;
+  let tmp = exe_path.with_extension("exe.tmp");
+  std::fs::write(&tmp, &updated)?;
+  std::fs::rename(&tmp, exe_path)?;
+  Ok(())
 }
 
 /// Create a Linux app directory from the compiled desktop dylib.
@@ -4666,6 +4702,11 @@ fn version_core_fields(version: &str) -> Vec<&str> {
   core.split('.').collect()
 }
 
+/// The MSI `Icon` table key of the app icon. Windows Installer extracts each
+/// icon to a file named after its key and points shortcuts at that file, so the
+/// key keeps the `.ico` extension.
+const MSI_ICON_NAME: &str = "AppIcon.ico";
+
 /// Wrap a Windows app directory in a Windows Installer `.msi` package.
 ///
 /// The MSI database is authored entirely in pure Rust via the `msi` crate, with
@@ -4700,6 +4741,13 @@ fn create_windows_msi(
     .file_name()
     .map(|s| s.to_string_lossy().into_owned())
     .unwrap_or_else(|| "App".to_string());
+  // `package_windows_app_dir` stages the app's icon as `AppIcon.ico`.
+  let app_icon_ico = app_dir.join("AppIcon.ico");
+  let msi_icon = if app_icon_ico.exists() {
+    Some(std::fs::read(&app_icon_ico)?)
+  } else {
+    None
+  };
   // ende.json `version` when configured, reduced to the numeric
   // `major.minor.build` form MSI's ProductVersion requires (a semver
   // prerelease/build suffix would fail MSI validation); the default matches
@@ -5074,6 +5122,15 @@ fn create_windows_msi(
       ],
     )?;
   }
+  if msi_icon.is_some() {
+    package.create_table(
+      "Icon",
+      vec![
+        Column::build("Name").primary_key().id_string(72),
+        Column::build("Data").binary(),
+      ],
+    )?;
+  }
   for table in ["InstallExecuteSequence", "InstallUISequence"] {
     package.create_table(
       table,
@@ -5120,9 +5177,20 @@ fn create_windows_msi(
     Value::Null,
     Value::Null,
   ]))?;
+  if msi_icon.is_some() {
+    package.insert_rows(
+      Insert::into("Icon")
+        .row(vec![Value::Str(MSI_ICON_NAME.to_string()), Value::Binary]),
+    )?;
+  }
   if let Some((launcher_key, launcher_comp)) = &shortcut_target {
     short_counter += 1;
     let short_name = msi_short_name(short_counter, &app_name, false);
+    let (shortcut_icon, shortcut_icon_index) = if msi_icon.is_some() {
+      (Value::Str(MSI_ICON_NAME.to_string()), Value::Int(0))
+    } else {
+      (Value::Null, Value::Null)
+    };
     package.insert_rows(Insert::into("Shortcut").row(vec![
       Value::Str("AppShortcut".to_string()),
       Value::Str("ProgramMenuFolder".to_string()),
@@ -5133,9 +5201,9 @@ fn create_windows_msi(
       Value::Null, // Arguments (co-located auto-load)
       Value::Null, // Description
       Value::Null, // Hotkey
-      Value::Null, // Icon_
-      Value::Null, // IconIndex
-      Value::Null, // ShowCmd
+      shortcut_icon,
+      shortcut_icon_index,
+      Value::Null,                          // ShowCmd
       Value::Str("INSTALLDIR".to_string()), // WkDir
     ]))?;
   }
@@ -5228,6 +5296,12 @@ fn create_windows_msi(
     use std::io::Write as _;
     let mut stream = package.write_stream("appcab")?;
     stream.write_all(&cab_bytes)?;
+  }
+  // A Binary column's data lives in a stream named `<table>.<primary key>`.
+  if let Some(icon_bytes) = &msi_icon {
+    use std::io::Write as _;
+    let mut stream = package.write_stream(&format!("Icon.{MSI_ICON_NAME}"))?;
+    stream.write_all(icon_bytes)?;
   }
 
   package.flush()?;
@@ -8400,6 +8474,55 @@ def456  other.zip
       .collect();
     assert!(actions.iter().any(|a| a == "CreateShortcuts"));
     assert!(actions.iter().any(|a| a == "RemoveShortcuts"));
+
+    // No staged icon: no Icon table, and the shortcut falls back to the exe's.
+    assert!(!package.has_table("Icon"));
+    assert!(s["Icon_"].is_null());
+    assert!(s["IconIndex"].is_null());
+  }
+
+  #[test]
+  fn msi_authors_app_icon_for_the_shortcut() {
+    use std::io::Read as _;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let app_dir = fake_windows_app_dir(tmp.path(), "MyApp");
+    let ico = b"\0\0\x01\0fake-ico-bytes".to_vec();
+    std::fs::write(app_dir.join("AppIcon.ico"), &ico).unwrap();
+    let msi_path = tmp.path().join("MyApp.msi");
+    create_windows_msi(
+      &app_dir,
+      &msi_path,
+      &empty_desktop_flags(),
+      Some("x86_64-pc-windows-msvc"),
+      None,
+    )
+    .unwrap();
+    let mut package = msi::open(&msi_path).unwrap();
+
+    let icons: Vec<_> = package
+      .select_rows(msi::Select::table("Icon"))
+      .unwrap()
+      .collect();
+    assert_eq!(icons.len(), 1);
+    assert_eq!(icons[0]["Name"].as_str(), Some("AppIcon.ico"));
+
+    // The row's Binary data is the `Icon.<Name>` stream.
+    let mut data = Vec::new();
+    package
+      .read_stream("Icon.AppIcon.ico")
+      .unwrap()
+      .read_to_end(&mut data)
+      .unwrap();
+    assert_eq!(data, ico);
+
+    let shortcuts: Vec<_> = package
+      .select_rows(msi::Select::table("Shortcut"))
+      .unwrap()
+      .collect();
+    assert_eq!(shortcuts.len(), 1);
+    assert_eq!(shortcuts[0]["Icon_"].as_str(), Some("AppIcon.ico"));
+    assert_eq!(shortcuts[0]["IconIndex"].as_int(), Some(0));
   }
 
   // --- deep links ---
