@@ -136,6 +136,18 @@ fn zsh_description(help: &str) -> String {
   escaped
 }
 
+/// Render a flag as a single-quoted zsh `_arguments` spec, including its short
+/// form when it has one.
+fn zsh_flag_spec(arg: &ArgDef, long: &str) -> String {
+  let desc = zsh_description(arg.help);
+  match arg.short {
+    Some(short) => {
+      format!("'(-{short} --{long})'{{-{short},--{long}}}'{desc}'")
+    }
+    None => format!("'--{long}{desc}'"),
+  }
+}
+
 fn generate_zsh(cmd: &CommandDef) -> Vec<u8> {
   let name = cmd.name;
   let mut out = String::new();
@@ -165,26 +177,41 @@ fn generate_zsh(cmd: &CommandDef) -> Vec<u8> {
     "    )\n    _describe -t commands 'ende commands' commands\n}\n\n",
   );
 
+  // `ende [flags] <script>` runs the default subcommand, so the first
+  // positional can be either a subcommand or a script file.
+  let default_sub = cmd
+    .default_subcommand
+    .and_then(|name| cmd.find_subcommand(name));
+  if default_sub.is_some() {
+    out.push_str(&format!(
+      "_{name}_commands_or_files() {{\n    _alternative \\\n        'commands:command:_{name}_commands' \\\n        'files:file:_files'\n}}\n\n",
+    ));
+  }
+
   // Main function
   out.push_str(&format!("_{name}() {{\n"));
   out.push_str("    local line state\n\n");
   out.push_str("    _arguments -C \\\n");
 
-  // Global flags
-  for arg in cmd.all_args().filter(|a| !a.hidden && !a.positional) {
-    if let Some(long) = arg.long {
-      let desc = zsh_description(arg.help);
-      if let Some(short) = arg.short {
-        out.push_str(&format!(
-          "        '(-{short} --{long})'{{-{short},--{long}}}'{desc}' \\\n"
-        ));
-      } else {
-        out.push_str(&format!("        '--{long}{desc}' \\\n"));
-      }
+  // Global flags, plus the default subcommand's flags since they are accepted
+  // before the script in a bare invocation (e.g. `ende -A main.ts`).
+  let mut seen = std::collections::HashSet::new();
+  let root_args = cmd
+    .all_args()
+    .chain(default_sub.into_iter().flat_map(|sub| sub.all_args()));
+  for arg in root_args.filter(|a| !a.hidden && !a.positional) {
+    if let Some(long) = arg.long
+      && seen.insert(long)
+    {
+      out.push_str(&format!("        {} \\\n", zsh_flag_spec(arg, long)));
     }
   }
 
-  out.push_str(&format!("        \":: :_{name}_commands\" \\\n"));
+  if default_sub.is_some() {
+    out.push_str(&format!("        \":: :_{name}_commands_or_files\" \\\n"));
+  } else {
+    out.push_str(&format!("        \":: :_{name}_commands\" \\\n"));
+  }
   out.push_str("        \"*::arg:->args\" \\\n");
   out.push_str("        && ret=0\n\n");
 
@@ -202,11 +229,21 @@ fn generate_zsh(cmd: &CommandDef) -> Vec<u8> {
     ));
     for arg in sub.all_args().filter(|a| !a.hidden && !a.positional) {
       if let Some(long) = arg.long {
-        let desc = zsh_description(arg.help);
-        out.push_str(&format!("                '--{long}{desc}' \\\n"));
+        out.push_str(&format!(
+          "                {} \\\n",
+          zsh_flag_spec(arg, long)
+        ));
       }
     }
     out.push_str("                '*:file:_files'\n            ;;\n");
+  }
+  if default_sub.is_some() {
+    // Anything else in the first position is a script for the default
+    // subcommand; complete its arguments as files. The script itself is
+    // already handled by `_ende_commands_or_files` above.
+    out.push_str(
+      "        *)\n            (( CURRENT > 1 )) && _files\n            ;;\n",
+    );
   }
 
   out.push_str("        esac\n    ;;\n    esac\n}\n\n");
@@ -781,6 +818,26 @@ mod tests {
   }
 
   #[test]
+  fn generate_zsh_completes_files_for_bare_run() {
+    // Regression test for denoland/deno#36959: `ende -A ./<TAB>` only offered subcommands
+    // for the first positional and nothing after a non-subcommand word, so
+    // script paths never completed for a bare `ende [flags] <script>`.
+    let s =
+      String::from_utf8(generate("zsh", &crate::defs::ENDE_ROOT)).unwrap();
+    assert!(s.contains("_ende_commands_or_files() {"), "{s}");
+    assert!(s.contains("'files:file:_files'"), "{s}");
+    assert!(s.contains("\":: :_ende_commands_or_files\""), "{s}");
+    assert!(
+      s.contains("        *)\n            (( CURRENT > 1 )) && _files\n"),
+      "{s}"
+    );
+    // The default subcommand's flags are accepted at the root.
+    let root = &s[s.find("_ende() {").unwrap()..s.find("case $state").unwrap()];
+    assert!(root.contains("'--watch["), "{root}");
+    assert_eq!(root.matches("'--env-file[").count(), 1, "{root}");
+  }
+
+  #[test]
   fn generate_zsh_descriptions_are_single_line_and_escaped() {
     let s =
       String::from_utf8(generate("zsh", &crate::defs::ENDE_ROOT)).unwrap();
@@ -800,7 +857,7 @@ mod tests {
       "{s}"
     );
     assert!(s.contains("_ende_commands() {"), "{s}");
-    assert!(s.contains("\":: :_ende_commands\""), "{s}");
+    assert!(s.contains("'commands:command:_ende_commands'"), "{s}");
     assert!(!s.contains("_deno"), "{s}");
   }
 
