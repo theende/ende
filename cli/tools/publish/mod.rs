@@ -161,7 +161,10 @@ pub async fn publish(
     cli_factory.compiler_options_resolver()?.clone(),
   ));
   let publish_preparer = PublishPreparer::new(
-    GraphDiagnosticsCollector::new(parsed_source_cache.clone()),
+    GraphDiagnosticsCollector::new(
+      parsed_source_cache.clone(),
+      cli_factory.workspace_resolver().await?.clone(),
+    ),
     cli_factory.module_graph_creator().await?.clone(),
     cli_factory.type_checker().await?.clone(),
     cli_options.clone(),
