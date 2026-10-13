@@ -20,6 +20,80 @@ import {
 // automatically via regex, so ensure that this line maintains this format.
 const cacheVersion = 125;
 
+// Lean CI. While `fullMatrix` is false, CI only runs on pushes to and PRs
+// against `primary`, and only runs: pre-build, lint (linux + macOS), the debug
+// build/test/libs jobs for linux-x86_64 and macos-aarch64 (minus the
+// node_compat suite), and the ci-status gate. Turned off: Windows, release
+// builds and publishing (tag builds), WPT, benchmarks, node_compat, ende_core
+// nextest/miri. Steps that need denoland-only secrets or infrastructure stay
+// gated on `isDenoland` either way.
+// Restore the full matrix once Ende is fully operational by setting this to
+// true and regenerating.
+const fullMatrix = false;
+const primaryBranch = "primary";
+
+// Tests that fail by design until something outside this repo exists. They
+// stay enabled (they run locally and in CI), but the CI test step tolerates
+// exactly these failures; any other failing test still fails the job. Names
+// are file_test_runner test names (`<test crate>::<path>`). Remove an entry as
+// soon as the reason is gone.
+const knownCiFailures: { name: string; reason: string }[] = [
+  ...["unit::lint_plugin_test", "integration::coverage::no_snaps"].map(
+    (name) => ({
+      name,
+      reason: "upstream @std/testing reads Deno.version.deno, which Ende " +
+        "removed; fixed once std is published under @ende",
+    }),
+  ),
+  ...[
+    "stable",
+    "canary",
+    "out",
+    "space_in_tmp",
+    "specific_stable",
+    "specific_canary",
+  ].map((name) => ({
+    name: `specs::upgrade::${name}`,
+    reason: "needs real releases at dl.ende.sh",
+  })),
+];
+
+// The test crates use file_test_runner, which only supports a single
+// positional substring filter (no libtest `--skip`). So instead of excluding
+// the known failures up front, run the whole suite and then read the JSON
+// report the harness writes on CI (target/test_results_<crate>.json): pass if
+// every failed test is in `knownCiFailures`, fail otherwise (including when
+// the report is missing or lists no failures, e.g. a build error or crash).
+function runTestsToleratingKnownFailures(command: string, report: string) {
+  const known = JSON.stringify(
+    Object.fromEntries(knownCiFailures.map((f) => [f.name, f.reason])),
+  );
+  if (known.includes("'")) {
+    throw new Error("knownCiFailures must not contain single quotes");
+  }
+  return [
+    `report="${report}"`,
+    // the target dir is cached, so never read a report from an earlier run
+    'rm -f "$report"',
+    "status=0",
+    `${command} || status=$?`,
+    'if [ "$status" -eq 0 ]; then exit 0; fi',
+    'if [ ! -f "$report" ]; then',
+    '  echo "::error::tests exited with $status and wrote no $report"',
+    '  exit "$status"',
+    "fi",
+    `known='${known}'`,
+    `failed=$(jq -r '.tests[] | select(.failed) | .name' "$report")`,
+    `unexpected=$(jq -r --argjson known "$known" '.tests[] | select(.failed) | .name | select($known[.] == null)' "$report")`,
+    'if [ -z "$failed" ] || [ -n "$unexpected" ]; then',
+    '  echo "::error::tests exited with $status; failures not in knownCiFailures (.github/workflows/ci.ts):"',
+    '  echo "${unexpected:-<none listed in $report>}"',
+    '  exit "$status"',
+    "fi",
+    `jq -r --argjson known "$known" '.tests[] | select(.failed) | "::warning::tolerated known failure \\(.name): \\($known[.name])"' "$report"`,
+  ].join("\n");
+}
+
 const ubuntuX86Runner = "ubuntu-24.04";
 const ubuntuARMRunner = "ubuntu-24.04-arm";
 const ubuntuARMXlRunner = "ubuntu-24.04-arm64-xl";
@@ -35,7 +109,7 @@ const macosArmRunner = "macos-14";
 // wpt.fyi, larger runners). They only run on denoland/deno and are skipped on
 // theende/ende until Ende has its own equivalents.
 const isDenoland = conditions.isRepository("denoland/deno");
-const isMainBranch = conditions.isBranch("main");
+const isMainBranch = conditions.isBranch(primaryBranch);
 const isTag = conditions.isTag();
 const isNotTag = isTag.not();
 const isMainOrTag = isMainBranch.or(isTag);
@@ -559,7 +633,7 @@ const notDocsOnly = preBuildJob.outputs.docs_only.notEquals("true");
 
 // === build job ===
 
-const buildItems = handleBuildItems([{
+const allBuildItems = handleBuildItems([{
   ...Runners.macosX86,
   profile: "debug",
 }, {
@@ -607,6 +681,14 @@ const buildItems = handleBuildItems([{
   use_sysroot: true,
   skip_pr: true,
 }]);
+// Lean CI keeps only the debug builds for linux-x86_64 and macos-aarch64.
+const buildItems = fullMatrix
+  ? allBuildItems
+  : allBuildItems.filter((item) =>
+    item.profile === "debug" &&
+    ((item.os === "linux" && item.arch === "x86_64") ||
+      (item.os === "macos" && item.arch === "aarch64"))
+  );
 
 const buildJobs = buildItems.map((rawBuildItem) => {
   const buildItem = defineExprObj(rawBuildItem);
@@ -716,9 +798,9 @@ const buildJobs = buildItems.map((rawBuildItem) => {
       if: preBuildJob.outputs.skip_build.notEquals("true").and(notDocsOnly),
       runsOn: buildItem.runner,
       // This is required to successfully authenticate with Azure using OIDC for
-      // code signing.
+      // code signing, which only runs on denoland/deno.
       environment: {
-        name: isMainOrTag.then("build").else(""),
+        name: isDenoland.and(isMainOrTag).then("build").else(""),
       },
       timeoutMinutes: 240,
       defaults,
@@ -814,7 +896,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             run: [
               `target/release/ende -A tools/release/create_symcache.ts target/release/ende-${buildItem.arch}-apple-darwin.symcache`,
               "strip -x -S target/release/ende",
-              'if [[ "$GITHUB_REF" == "refs/heads/main" || "$GITHUB_REF" == refs/tags/* ]]; then',
+              `if [[ "$GITHUB_REF" == "refs/heads/${primaryBranch}" || "$GITHUB_REF" == refs/tags/* ]]; then`,
               '  echo "Key is $(echo $APPLE_CODESIGN_KEY | base64 -d | wc -c) bytes"',
               "  rcodesign sign target/release/ende " +
               "--code-signature-flags=runtime " +
@@ -1368,8 +1450,12 @@ const buildJobs = buildItems.map((rawBuildItem) => {
       ["integration", 2],
       ["node_compat", 3],
     ]);
+    // Lean CI skips the node_compat suite.
+    const ciTestCrates = fullMatrix
+      ? testCrates
+      : testCrates.filter((tc) => tc.name !== "node_compat");
     const testMatrix = defineMatrix({
-      include: testCrates.flatMap((tc) => {
+      include: ciTestCrates.flatMap((tc) => {
         const total = shardedCrates.get(tc.name) ?? 1;
         return Array.from({ length: total }, (_, i) => ({
           test_crate: tc.name,
@@ -1466,8 +1552,10 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           {
             name: "Test (debug)",
             if: isDebug,
-            run:
+            run: runTestsToleratingKnownFailures(
               `cargo test -p ${testMatrix.test_package} --test ${testMatrix.test_crate}`,
+              `target/test_results_${testMatrix.test_crate}.json`,
+            ),
             env: {
               CARGO_PROFILE_DEV_DEBUG: 0,
               CI_SHARD_INDEX: isPr.then(testMatrix.shard_index).else(""),
@@ -1479,8 +1567,10 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             if: isRelease.and(
               isDenoland.or(buildItem.use_sysroot),
             ),
-            run:
+            run: runTestsToleratingKnownFailures(
               `cargo test -p ${testMatrix.test_package} --test ${testMatrix.test_crate} --release`,
+              `target/test_results_${testMatrix.test_crate}.json`,
+            ),
             env: {
               CI_SHARD_INDEX: isPr.then(testMatrix.shard_index).else(""),
               CI_SHARD_TOTAL: isPr.then(testMatrix.shard_total).else(""),
@@ -1809,7 +1899,7 @@ const lintMatrix = defineMatrix({
     ...Runners.windowsX86,
     profile: "debug",
     job: "lint",
-  }],
+  }].filter((item) => fullMatrix || item.os !== "windows"),
 });
 
 const lintJob = job("lint", {
@@ -2027,16 +2117,19 @@ const endeCoreMiriJob = job("ende-core-miri", {
 
 // === ci status job (status check gate) ===
 
+// Jobs that only run with the full matrix (see `fullMatrix`).
+const fullMatrixOnlyJobs = fullMatrix
+  ? [benchJob, endeCoreTestJob, endeCoreMiriJob]
+  : [];
+
 const ciStatusJob = job("ci-status", {
   name: "ci status",
-  // We use this job in the main branch rule status checks for PRs.
+  // We use this job in the primary branch rule status checks for PRs.
   // All jobs that are required to pass on a PR should be listed here.
   needs: [
-    benchJob,
+    ...fullMatrixOnlyJobs,
     ...buildJobs.map((j) => [j.buildJob, ...j.additionalJobs]).flat(),
     lintJob,
-    endeCoreTestJob,
-    endeCoreMiriJob,
   ],
   if: preBuildJob.outputs.skip_build.notEquals("true")
     .and(conditions.status.always()),
@@ -2062,10 +2155,12 @@ const workflow = createWorkflow({
   },
   on: {
     push: {
-      branches: ["main"],
-      tags: ["*"],
+      branches: [primaryBranch],
+      // tag pushes run the release build and publish jobs
+      ...(fullMatrix ? { tags: ["*"] } : {}),
     },
     pull_request: {
+      branches: [primaryBranch],
       types: [
         "opened",
         "reopened",
@@ -2083,13 +2178,11 @@ const workflow = createWorkflow({
   },
   jobs: [
     preBuildJob,
-    benchJob,
     ...buildJobs.map((j) => [j.buildJob, ...j.additionalJobs]).flat(),
     lintJob,
-    endeCoreTestJob,
-    endeCoreMiriJob,
+    ...fullMatrixOnlyJobs,
     ciStatusJob,
-    publishCanaryJob,
+    ...(fullMatrix ? [publishCanaryJob] : []),
   ],
 });
 

@@ -8,6 +8,13 @@ import {
   step,
 } from "jsr:@david/gagen@0.3.1";
 
+// The weekday run is off until Ende is fully operational (it also uploads to
+// denoland's dl.deno.land bucket and Slack). Set to true to restore it; manual
+// `workflow_dispatch` runs still work.
+const runOnSchedule = false;
+// The report upload and Slack summary use denoland-only S3/Slack credentials.
+const isDenoland = conditions.isRepository("denoland/deno");
+
 const matrix = defineMatrix({
   include: [
     { os: "linux", runner: "ubuntu-latest" },
@@ -41,6 +48,7 @@ const testJob = job("test", {
     }),
     step({
       name: "Upload the report to dl.deno.land",
+      if: isDenoland,
       env: {
         AWS_ACCESS_KEY_ID: "${{ vars.S3_ACCESS_KEY_ID }}",
         AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRET_ACCESS_KEY }}",
@@ -56,7 +64,7 @@ const testJob = job("test", {
 const workflow = createWorkflow({
   name: "ecosystem_compat_test",
   on: {
-    schedule: [{ cron: "0 10 * * 1-5" }],
+    ...(runOnSchedule ? { schedule: [{ cron: "0 10 * * 1-5" }] } : {}),
     workflow_dispatch: {},
   },
   jobs: [
@@ -65,7 +73,7 @@ const workflow = createWorkflow({
       id: "summary",
       runsOn: "ubuntu-latest",
       needs: [testJob],
-      if: conditions.status.always(),
+      if: conditions.status.always().and(isDenoland),
       steps: [
         step({
           name: "Checkout",

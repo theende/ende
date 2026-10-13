@@ -8,7 +8,14 @@ import {
   step,
 } from "jsr:@david/gagen@0.3.1";
 
-const isMainBranch = conditions.isBranch("main");
+const isMainBranch = conditions.isBranch("primary");
+// The report upload and Slack summary use denoland-only S3/Slack credentials.
+const isDenoland = conditions.isRepository("denoland/deno");
+
+// The nightly run is off until Ende is fully operational (it also uploads to
+// denoland's dl.deno.land bucket and Slack). Set to true to restore it; manual
+// `workflow_dispatch` runs still work.
+const runOnSchedule = false;
 
 const shardCount = 3;
 const matrix = defineMatrix({
@@ -75,7 +82,7 @@ const gzipReport = step.dependsOn(runTests)({
 
 const uploadReport = step.dependsOn(gzipReport)({
   name: "Upload the report to dl.deno.land",
-  if: isMainBranch,
+  if: isDenoland.and(isMainBranch),
   env: {
     AWS_ACCESS_KEY_ID: "${{ vars.S3_ACCESS_KEY_ID }}",
     AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRET_ACCESS_KEY }}",
@@ -171,7 +178,7 @@ const postSlack = step.dependsOn(uploadMonthSummary)({
 const workflow = createWorkflow({
   name: "node_compat_test",
   on: {
-    schedule: [{ cron: "0 10 * * *" }],
+    ...(runOnSchedule ? { schedule: [{ cron: "0 10 * * *" }] } : {}),
     workflow_dispatch: {},
   },
   jobs: [
@@ -180,7 +187,7 @@ const workflow = createWorkflow({
       id: "summary",
       runsOn: "ubuntu-latest",
       needs: [testJob],
-      if: conditions.status.always().and(isMainBranch),
+      if: conditions.status.always().and(isDenoland).and(isMainBranch),
       steps: [postSlack],
     },
   ],
