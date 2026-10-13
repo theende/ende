@@ -17,7 +17,7 @@
       "args": "run -A spawn_node.mjs",
       "envs": {
         "PATH": "",
-        "DENO_DISABLE_NODE_SHIM": "1"
+        "ENDE_DISABLE_NODE_SHIM": "1"
       },
       "output": "spawn_node_disabled.out"
     },

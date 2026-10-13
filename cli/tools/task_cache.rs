@@ -425,7 +425,7 @@ fn compute_static_hash(
   // Fold in the target OS, architecture, and Deno version: a task's output can
   // legitimately differ across platforms or releases even when its inputs are
   // byte-for-byte identical, so a cache shared across them (e.g. a synced
-  // DENO_DIR) must not hit across them.
+  // ENDE_DIR) must not hit across them.
   hasher.write_str(env!("CARGO_PKG_VERSION"));
   hasher.write_str(std::env::consts::OS);
   hasher.write_str(std::env::consts::ARCH);

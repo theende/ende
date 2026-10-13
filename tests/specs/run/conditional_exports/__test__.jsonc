@@ -17,7 +17,7 @@
     {
       "args": "run -A main.js",
       "envs": {
-        "DENO_CONDITIONS": "react-server"
+        "ENDE_CONDITIONS": "react-server"
       },
       "output": "condition.out",
       "exitCode": 1

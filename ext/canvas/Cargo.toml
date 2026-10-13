@@ -17,6 +17,7 @@ path = "lib.rs"
 bytemuck.workspace = true
 deno_error.workspace = true
 ende_core.workspace = true
+ende_env.workspace = true
 ende_image.workspace = true
 ende_permissions.workspace = true
 ende_webgpu.workspace = true

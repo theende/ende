@@ -1,5 +1,5 @@
 // Simulates source patterns from vulnerable react-server-dom-* builds so the
-// DENO_PATCH_REACT_CVE mitigation has something to rewrite at load time. The
+// ENDE_PATCH_REACT_CVE mitigation has something to rewrite at load time. The
 // `resolved_model` / `fulfilled` markers below mirror the identifiers the
 // matcher keys off of, and the surrounding padding mirrors the size of the
 // real (minified) snippets the matcher scans.

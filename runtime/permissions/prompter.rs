@@ -534,7 +534,7 @@ impl PermissionPrompter for TtyPrompter {
       } else {
         writeln!(
           &mut output,
-          "┠─ To see a stack trace for this prompt, set the DENO_TRACE_PERMISSIONS environmental variable.",
+          "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.",
         ).unwrap();
         1
       };

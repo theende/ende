@@ -1226,7 +1226,7 @@ impl<'a> ResolverFactory<'a> {
         .config_data
         .map(|d| {
           let unstable_sloppy_imports =
-            std::env::var("DENO_UNSTABLE_SLOPPY_IMPORTS").is_ok()
+            ende_env::var("ENDE_UNSTABLE_SLOPPY_IMPORTS").is_ok()
               || d.unstable.contains("sloppy-imports");
           let pkg_json_dep_resolution = if d.byonm {
             PackageJsonDepResolution::Disabled

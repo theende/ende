@@ -45,6 +45,7 @@ ende_canvas.workspace = true
 ende_core.workspace = true
 ende_cron.workspace = true
 ende_crypto.workspace = true
+ende_env.workspace = true
 ende_features.workspace = true
 ende_fetch.workspace = true
 ende_ffi.workspace = true

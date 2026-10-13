@@ -2,7 +2,7 @@
 
 import { trace } from "npm:@opentelemetry/api@1.9.0";
 
-Deno.env.set("DENO_CRON_TEST_SCHEDULE_OFFSET", "100");
+Deno.env.set("ENDE_CRON_TEST_SCHEDULE_OFFSET", "100");
 
 const tracer = trace.getTracer("example-tracer");
 

@@ -5,7 +5,7 @@
       "args": "test -A",
       "output": "test.out",
       "envs": {
-        "DENO_COVERAGE_DIR": "my_coverage_dir"
+        "ENDE_COVERAGE_DIR": "my_coverage_dir"
       },
       "exitCode": 0
     },

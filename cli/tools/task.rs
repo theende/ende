@@ -201,15 +201,15 @@ pub async fn execute_script(
   let mut env_vars = task_runner::real_env_vars();
 
   if flags.tunnel {
-    env_vars.insert("DENO_CONNECTED".into(), "1".into());
+    insert_connected_env_vars(&mut env_vars);
   }
 
-  // Precedence: explicit `--jobs` flag > `DENO_JOBS` env var >
+  // Precedence: explicit `--jobs` flag > `ENDE_JOBS` env var >
   // `available_parallelism()` default.
   let no_of_concurrent_tasks = task_flags
     .concurrency
     .or_else(|| {
-      std::env::var("DENO_JOBS")
+      ende_env::var("ENDE_JOBS")
         .ok()?
         .parse::<NonZeroUsize>()
         .ok()
@@ -1627,9 +1627,30 @@ impl TaskNameFilter<'_> {
   }
 }
 
+/// Tells task scripts that ende runs connected to a tunnel. The deprecated
+/// `DENO_CONNECTED` name is set too so scripts that read it keep working.
+fn insert_connected_env_vars(env_vars: &mut HashMap<OsString, OsString>) {
+  env_vars.insert("ENDE_CONNECTED".into(), "1".into());
+  env_vars.insert("DENO_CONNECTED".into(), "1".into());
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn connected_env_vars_are_set_under_both_names() {
+    let mut env_vars = HashMap::new();
+    insert_connected_env_vars(&mut env_vars);
+    assert_eq!(
+      env_vars.get(&OsString::from("ENDE_CONNECTED")),
+      Some(&OsString::from("1"))
+    );
+    assert_eq!(
+      env_vars.get(&OsString::from("DENO_CONNECTED")),
+      Some(&OsString::from("1"))
+    );
+  }
 
   #[test]
   fn test_arg_to_task_name_filter() {

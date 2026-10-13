@@ -1,4 +1,4 @@
-// Connections accepted via the DENO_SERVE_ADDRESS override carry
+// Connections accepted via the ENDE_SERVE_ADDRESS override carry
 // absolute-form request targets; node:http servers must see origin-form
 // req.url.
 import { createServer } from "node:http";

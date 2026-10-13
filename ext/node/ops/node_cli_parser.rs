@@ -49,7 +49,7 @@ pub struct TranslatedArgs {
   /// Whether the child process needs npm process state
   pub needs_npm_process_state: bool,
   /// Comma-separated trace event categories from --trace-event-categories,
-  /// to be propagated via DENO_NODE_TRACE_EVENT_CATEGORIES.
+  /// to be propagated via ENDE_NODE_TRACE_EVENT_CATEGORIES.
   pub trace_event_categories: Option<String>,
 }
 

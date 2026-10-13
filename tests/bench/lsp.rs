@@ -121,10 +121,10 @@ fn bench_deco_apps_edits(deno_exe: &Path) -> Duration {
   // with a fairly large number of documents in memory.
   // make sure that's the case
   let res = client.write_request(
-    "deno/virtualTextDocument",
+    "ende/virtualTextDocument",
     json!({
       "textDocument": {
-        "uri": "deno:/status.md"
+        "uri": "ende:/status.md"
       }
     }),
   );
@@ -163,10 +163,10 @@ fn bench_big_file_edits(deno_exe: &Path) -> Duration {
   let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "deno/didRefreshDenoConfigurationTree");
-  client.change_configuration(json!({ "deno": { "enable": true } }));
+  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  client.change_configuration(json!({ "ende": { "enable": true } }));
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "deno/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
 
   client.write_notification(
     "textDocument/didOpen",
@@ -215,8 +215,8 @@ fn bench_code_lens(deno_exe: &Path) -> Duration {
   let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "deno/didRefreshDenoConfigurationTree");
-  client.change_configuration(json!({ "deno": {
+  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  client.change_configuration(json!({ "ende": {
     "enable": true,
     "codeLens": {
       "implementations": true,
@@ -225,7 +225,7 @@ fn bench_code_lens(deno_exe: &Path) -> Duration {
     },
   } }));
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "deno/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
 
   client.write_notification(
     "textDocument/didOpen",
@@ -260,10 +260,10 @@ fn bench_find_replace(deno_exe: &Path) -> Duration {
   let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "deno/didRefreshDenoConfigurationTree");
-  client.change_configuration(json!({ "deno": { "enable": true } }));
+  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  client.change_configuration(json!({ "ende": { "enable": true } }));
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "deno/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
 
   for i in 0..10 {
     client.write_notification(
@@ -335,10 +335,10 @@ fn bench_startup_shutdown(deno_exe: &Path) -> Duration {
   let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "deno/didRefreshDenoConfigurationTree");
-  client.change_configuration(json!({ "deno": { "enable": true } }));
+  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  client.change_configuration(json!({ "ende": { "enable": true } }));
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "deno/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
 
   client.write_notification(
     "textDocument/didOpen",

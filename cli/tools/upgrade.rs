@@ -316,7 +316,7 @@ async fn print_release_notes(
 
 pub fn upgrade_check_enabled() -> bool {
   matches!(
-    env::var("DENO_NO_UPDATE_CHECK"),
+    ende_env::var("ENDE_NO_UPDATE_CHECK"),
     Err(env::VarError::NotPresent)
   )
 }
@@ -1466,7 +1466,7 @@ fn get_latest_version_url(
 
 fn base_upgrade_url() -> Cow<'static, str> {
   // this is used by the test suite
-  if let Ok(url) = env::var("DENO_DONT_USE_INTERNAL_BASE_UPGRADE_URL") {
+  if let Ok(url) = env::var("ENDE_DONT_USE_INTERNAL_BASE_UPGRADE_URL") {
     Cow::Owned(url)
   } else {
     Cow::Borrowed("https://dl.deno.land")
@@ -1479,7 +1479,7 @@ fn get_download_url(
 ) -> Result<Url, AnyError> {
   let download_url = match release_channel {
     ReleaseChannel::Stable | ReleaseChannel::Alpha | ReleaseChannel::Beta => {
-      let release_url = if std::env::var_os("DENO_TESTING_UPGRADE").is_some() {
+      let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
         "http://localhost:4545/deno-upgrade"
       } else {
         RELEASE_URL
@@ -1580,7 +1580,7 @@ fn get_delta_download_url(
   current_version: &str,
   target_version: &str,
 ) -> Result<Url, AnyError> {
-  let release_url = if std::env::var_os("DENO_TESTING_UPGRADE").is_some() {
+  let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
     "http://localhost:4545/deno-upgrade"
   } else {
     RELEASE_URL
@@ -1598,7 +1598,7 @@ fn get_delta_checksum_url(
   current_version: &str,
   target_version: &str,
 ) -> Result<Url, AnyError> {
-  let release_url = if std::env::var_os("DENO_TESTING_UPGRADE").is_some() {
+  let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
     "http://localhost:4545/deno-upgrade"
   } else {
     RELEASE_URL
@@ -1613,7 +1613,7 @@ fn get_delta_checksum_url(
 
 /// Construct the URL for the uncompressed binary's SHA-256 checksum file.
 fn get_binary_checksum_url(target_version: &str) -> Result<Url, AnyError> {
-  let release_url = if std::env::var_os("DENO_TESTING_UPGRADE").is_some() {
+  let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
     "http://localhost:4545/deno-upgrade"
   } else {
     RELEASE_URL

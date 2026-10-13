@@ -685,7 +685,7 @@ impl<
 }
 
 /// Whether the React CVE source patches are enabled. Opt in by setting the
-/// `DENO_PATCH_REACT_CVE` environment variable to a non-empty value other than
+/// `ENDE_PATCH_REACT_CVE` environment variable to a non-empty value other than
 /// `0`.
 ///
 /// The variable is read exactly once (via `sys`) and cached. Module loading
@@ -694,8 +694,7 @@ impl<
 pub fn is_react_cve_patch_enabled(sys: &impl sys_traits::EnvVar) -> bool {
   static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
   *ENABLED.get_or_init(|| {
-    sys
-      .env_var("DENO_PATCH_REACT_CVE")
+    ende_env::env_var(sys, "ENDE_PATCH_REACT_CVE")
       .map(|v| !v.is_empty() && v != "0")
       .unwrap_or(false)
   })
@@ -710,7 +709,7 @@ pub fn is_react_cve_patch_enabled(sys: &impl sys_traits::EnvVar) -> bool {
 ///   forever.
 ///
 /// Callers must gate this behind [`is_react_cve_patch_enabled`] (the patches
-/// are opt-in via the `DENO_PATCH_REACT_CVE` environment variable) and only
+/// are opt-in via the `ENDE_PATCH_REACT_CVE` environment variable) and only
 /// apply it to JavaScript source.
 pub fn patch_react_cves<'a>(
   filename: &str,

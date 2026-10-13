@@ -58,11 +58,13 @@ pub fn semantic_tokens_registration_options()
     "typescript",
     "typescriptreact",
   ];
-  const SCHEMES: [&str; 5] = [
+  const SCHEMES: [&str; 7] = [
     "file",
     "untitled",
+    "ende",
     "deno",
     "vscode-notebook-cell",
+    "ende-notebook-cell",
     "deno-notebook-cell",
   ];
   let mut document_filters =

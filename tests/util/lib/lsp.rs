@@ -189,6 +189,20 @@ impl LspStdoutReader {
       || self.pending_messages.0.lock().iter().any(&is_match)
   }
 
+  pub fn count_messages(
+    &self,
+    is_match: impl Fn(&LspMessage) -> bool,
+  ) -> usize {
+    self.read_messages.iter().filter(|m| is_match(m)).count()
+      + self
+        .pending_messages
+        .0
+        .lock()
+        .iter()
+        .filter(|m| is_match(m))
+        .count()
+  }
+
   pub fn read_message<R>(
     &mut self,
     mut get_match: impl FnMut(&LspMessage) -> Option<R>,
@@ -237,10 +251,11 @@ impl InitializeParamsBuilder {
   pub fn new(config: Value) -> Self {
     let mut config_as_options = json!({});
     if let Some(object) = config.as_object() {
-      if let Some(deno) = object.get("deno")
-        && let Some(deno) = deno.as_object()
+      // settings under the `ende` section, or the legacy `deno` section
+      if let Some(settings) = object.get("ende").or_else(|| object.get("deno"))
+        && let Some(settings) = settings.as_object()
       {
-        config_as_options = json!(deno.clone());
+        config_as_options = json!(settings.clone());
       }
       let config_as_options = config_as_options.as_object_mut().unwrap();
       if let Some(typescript) = object.get("typescript") {
@@ -592,6 +607,7 @@ pub struct LspClientBuilder {
   deno_dir: TempDir,
   envs: HashMap<OsString, OsString>,
   collect_perf: bool,
+  legacy_deno_client: bool,
 }
 
 impl LspClientBuilder {
@@ -610,7 +626,15 @@ impl LspClientBuilder {
       deno_dir,
       envs: Default::default(),
       collect_perf: false,
+      legacy_deno_client: false,
     }
+  }
+
+  /// Act as a legacy Deno client, which uses the `deno` settings section and
+  /// expects `deno/*` custom notifications.
+  pub fn legacy_deno_client(mut self) -> Self {
+    self.legacy_deno_client = true;
+    self
   }
 
   pub fn deno_exe(mut self, exe_path: impl AsRef<Path>) -> Self {
@@ -674,12 +698,12 @@ impl LspClientBuilder {
       args.push("--log-level=debug".to_string());
     }
     command
-      .env("DENO_DIR", deno_dir.path())
+      .env("ENDE_DIR", deno_dir.path())
       .env("NPM_CONFIG_REGISTRY", npm_registry_url())
       .env("JSR_URL", jsr_registry_url())
       // turn on diagnostic synchronization communication
-      .env("DENO_INTERNAL_DIAGNOSTIC_BATCH_NOTIFICATIONS", "1")
-      .env("DENO_NO_UPDATE_CHECK", "1")
+      .env("ENDE_INTERNAL_DIAGNOSTIC_BATCH_NOTIFICATIONS", "1")
+      .env("ENDE_NO_UPDATE_CHECK", "1")
       .args(args)
       .stdin(Stdio::piped())
       .stdout(Stdio::piped());
@@ -755,6 +779,7 @@ impl LspClientBuilder {
       perf: perf_rx.map(Perf::new),
       open_docs: Default::default(),
       notebook_cells: Default::default(),
+      legacy_deno_client: self.legacy_deno_client,
     })
   }
 }
@@ -857,6 +882,7 @@ pub struct LspClient {
   perf: Option<Perf>,
   open_docs: IndexMap<Uri, i32>,
   notebook_cells: HashMap<Uri, Vec<Uri>>,
+  legacy_deno_client: bool,
 }
 
 impl Drop for LspClient {
@@ -875,6 +901,25 @@ impl Drop for LspClient {
 impl LspClient {
   pub fn deno_dir(&self) -> &TempDir {
     &self.deno_dir
+  }
+
+  /// The settings section this client sends: `ende`, or `deno` for a legacy
+  /// client.
+  pub fn settings_section(&self) -> &'static str {
+    if self.legacy_deno_client {
+      "deno"
+    } else {
+      "ende"
+    }
+  }
+
+  /// The prefix of the custom methods this client expects from the server.
+  fn custom_method_prefix(&self) -> &'static str {
+    if self.legacy_deno_client {
+      "deno/"
+    } else {
+      "ende/"
+    }
   }
 
   pub fn duration(&self) -> Duration {
@@ -940,9 +985,10 @@ impl LspClient {
     &mut self,
     do_build: impl Fn(&mut InitializeParamsBuilder),
   ) {
+    let section = self.settings_section();
     self.initialize_with_config(
       do_build,
-      json!({ "deno": {
+      json!({ section: {
         "enable": true,
         "cache": null,
         "certificateStores": null,
@@ -995,12 +1041,12 @@ impl LspClient {
       && let Some(options) = options.as_object()
       && let Some(config) = config.as_object_mut()
     {
-      let mut deno = options.clone();
+      let mut settings = options.clone();
       let typescript = options.get("typescript");
       let javascript = options.get("javascript");
-      deno.remove("typescript");
-      deno.remove("javascript");
-      config.insert("deno".to_string(), json!(deno));
+      settings.remove("typescript");
+      settings.remove("javascript");
+      config.insert(self.settings_section().to_string(), json!(settings));
       if let Some(typescript) = typescript {
         config.insert("typescript".to_string(), typescript.clone());
       }
@@ -1206,14 +1252,15 @@ impl LspClient {
           .collect(),
       );
     }
-    self.read_notification_with_method::<()>(
-      "deno/internalTestDiagnosticBatchStart",
-    );
+    let prefix = self.custom_method_prefix();
+    self.read_notification_with_method::<()>(&format!(
+      "{prefix}internalTestDiagnosticBatchStart"
+    ));
     // Most tests have just one open document.
     let mut diagnostics = Vec::with_capacity(1);
     loop {
       let (method, params) = self.read_notification::<Value>();
-      if method == "deno/internalTestDiagnosticBatchEnd" {
+      if method == format!("{prefix}internalTestDiagnosticBatchEnd") {
         break;
       }
       if method == "textDocument/publishDiagnostics" {
@@ -1235,6 +1282,14 @@ impl LspClient {
 
   pub fn wait_exit(&mut self) -> std::io::Result<std::process::ExitStatus> {
     self.child.wait()
+  }
+
+  /// The number of notifications with `method` received so far.
+  pub fn notification_count(&self, method: &str) -> usize {
+    self.reader.count_messages(|message| match message {
+      LspMessage::Notification(m, _) => m == method,
+      _ => false,
+    })
   }
 
   // it's flaky to assert for a notification because a notification

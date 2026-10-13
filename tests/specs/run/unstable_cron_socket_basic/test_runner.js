@@ -26,7 +26,7 @@ await new Promise((resolve) => setTimeout(resolve, 500));
 
 // Run the main script
 const mainEnv = {
-  DENO_UNSTABLE_CRON_SOCK: `unix:${socketPath}`,
+  ENDE_UNSTABLE_CRON_SOCK: `unix:${socketPath}`,
 };
 const mainProcess = new Deno.Command(Deno.execPath(), {
   args: [

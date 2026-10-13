@@ -66,7 +66,7 @@ use crate::stream::WebSocketStream;
 mod stream;
 
 static USE_WRITEV: Lazy<bool> = Lazy::new(|| {
-  let enable = std::env::var("DENO_USE_WRITEV").ok();
+  let enable = ende_env::var("ENDE_USE_WRITEV").ok();
 
   if let Some(val) = enable {
     return !val.is_empty();

@@ -12,7 +12,7 @@
     "sloppy2": {
       "args": "run --check main.ts",
       "envs": {
-        "DENO_COMPAT": "1"
+        "ENDE_COMPAT": "1"
       },
       "output": "sloppy.out"
     },

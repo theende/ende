@@ -160,14 +160,14 @@ impl DatabaseHandler for SqliteDbHandler {
       Arc<dyn Fn() -> rusqlite::Result<rusqlite::Connection> + Send + Sync>;
     let (conn_gen, notifier_key): (ConnGen, _) = spawn_blocking(move || {
       denokv_sqlite::sqlite_retry_loop(move || {
-        let mode = match std::env::var("DENO_KV_DB_MODE")
+        let mode = match ende_env::var("ENDE_KV_DB_MODE")
           .unwrap_or_default()
           .as_str()
         {
           "disk" | "" => Mode::Disk,
           "memory" => Mode::InMemory,
           _ => {
-            log::warn!("Unknown DENO_KV_DB_MODE value, defaulting to disk");
+            log::warn!("Unknown ENDE_KV_DB_MODE value, defaulting to disk");
             Mode::Disk
           }
         };

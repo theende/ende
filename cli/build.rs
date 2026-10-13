@@ -434,8 +434,8 @@ fn emit_dts_rerun_if_changed() {
 
 #[allow(clippy::disallowed_methods, reason = "build code")]
 fn emit_startup_order_link_args(out_dir: &Path) {
-  const ENABLE_ENV: &str = "DENO_USE_STARTUP_ORDER";
-  const ORDER_FILE_ENV: &str = "DENO_STARTUP_ORDER_FILE";
+  const ENABLE_ENV: &str = "ENDE_USE_STARTUP_ORDER";
+  const ORDER_FILE_ENV: &str = "ENDE_STARTUP_ORDER_FILE";
 
   println!("cargo:rerun-if-env-changed={ENABLE_ENV}");
   println!("cargo:rerun-if-env-changed={ORDER_FILE_ENV}");
@@ -553,7 +553,7 @@ fn main() {
   let target = env::var("TARGET").unwrap();
   let host = env::var("HOST").unwrap();
   let skip_cross_check =
-    env::var("DENO_SKIP_CROSS_BUILD_CHECK").is_ok_and(|v| v == "1");
+    env::var("ENDE_SKIP_CROSS_BUILD_CHECK").is_ok_and(|v| v == "1");
   if !skip_cross_check && target != host {
     panic!("Cross compiling with snapshot is not supported.");
   }
@@ -573,10 +573,10 @@ fn main() {
     compress_sources(&out_dir);
   }
 
-  if let Ok(c) = env::var("DENO_CANARY") {
-    println!("cargo:rustc-env=DENO_CANARY={c}");
+  if let Ok(c) = env::var("ENDE_CANARY") {
+    println!("cargo:rustc-env=ENDE_CANARY={c}");
   }
-  println!("cargo:rerun-if-env-changed=DENO_CANARY");
+  println!("cargo:rerun-if-env-changed=ENDE_CANARY");
 
   println!("cargo:rustc-env=TARGET={}", env::var("TARGET").unwrap());
   println!("cargo:rustc-env=PROFILE={}", env::var("PROFILE").unwrap());

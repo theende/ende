@@ -1,7 +1,7 @@
 {
   "tempDir": true,
   "envs": {
-    "DENO_CERT": "$PWD/RootCA.pem"
+    "ENDE_CERT": "$PWD/RootCA.pem"
   },
   "steps": [{
     "args": "install",

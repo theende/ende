@@ -39,10 +39,10 @@ fn main() {
   let options = TranslateOptions::for_node_cli();
   let result = translate_to_deno_args(parsed_args, &options);
 
-  // Set DENO_TLS_CA_STORE if needed
+  // Set ENDE_TLS_CA_STORE if needed
   if result.use_system_ca {
     // SAFETY: This is set before any threads are spawned.
-    unsafe { std::env::set_var("DENO_TLS_CA_STORE", "system") };
+    unsafe { std::env::set_var("ENDE_TLS_CA_STORE", "system") };
   }
 
   let mut deno_args = result.deno_args;

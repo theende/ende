@@ -200,8 +200,7 @@ pub fn op_node_get_ca_certificates<TSys: ExtNodeSys + 'static>(
     "extra" => Ok(parse_extra_ca_certs(sys)),
     "default" => {
       let mut certs = Vec::new();
-      let stores_value = sys
-        .env_var("DENO_TLS_CA_STORE")
+      let stores_value = ende_env::env_var(sys, "ENDE_TLS_CA_STORE")
         .ok()
         .unwrap_or_else(|| "mozilla".to_string());
       let stores = stores_value

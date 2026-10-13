@@ -37,14 +37,14 @@ pub struct FrameworkDetection {
 /// endpoints, Vite SSR handlers) keeps access to `Deno.desktop` — matching the
 /// compiled app, where the server also runs in the desktop runtime (#35899).
 ///
-/// The runtime publishes `DENO_SERVE_ADDRESS` before user code runs and the
+/// The runtime publishes `ENDE_SERVE_ADDRESS` before user code runs and the
 /// webview polls-then-navigates to that port. Binding Vite to it explicitly
 /// (rather than relying on the node:http listen override alone) keeps the
 /// port Vite believes it serves on — `printUrls`, HMR websocket origin — in
 /// agreement with where it actually listens.
 const VITE_DEV_ENTRYPOINT: &str = r#"// @ts-nocheck
 import { createServer } from "vite";
-const addr = Deno.env.get("DENO_SERVE_ADDRESS") ?? "";
+const addr = Deno.env.get("ENDE_SERVE_ADDRESS") ?? "";
 const match = addr.match(/^tcp:(.+):(\d+)$/);
 const server = await createServer({
   server: match

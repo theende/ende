@@ -1830,7 +1830,7 @@ fn extract_network_stream<U: CanDowncastUpgrade>(
 
 #[op2]
 pub fn op_http_serve_address_override() -> (u8, String, u32, bool) {
-  if let Ok(val) = std::env::var("DENO_SERVE_ADDRESS") {
+  if let Ok(val) = ende_env::var("ENDE_SERVE_ADDRESS") {
     return parse_serve_address(&val);
   };
 
@@ -1843,7 +1843,7 @@ pub fn op_http_serve_address_override() -> (u8, String, u32, bool) {
 
 #[op2(fast)]
 pub fn op_http_serve_default_compression() -> bool {
-  match std::env::var("DENO_SERVE_AUTOMATIC_COMPRESSION") {
+  match ende_env::var("ENDE_SERVE_AUTOMATIC_COMPRESSION") {
     Ok(value) => !matches!(value.to_ascii_lowercase().as_str(), "0" | "false"),
     Err(_) => false,
   }
@@ -1866,7 +1866,7 @@ fn parse_serve_address(input: &str) -> (u8, String, u32, bool) {
           (1, hostname, addr.port() as u32, duplicate)
         }
         Err(_) => {
-          log::error!("DENO_SERVE_ADDRESS: invalid TCP address: {}", addr);
+          log::error!("ENDE_SERVE_ADDRESS: invalid TCP address: {}", addr);
           (0, String::new(), 0, false)
         }
       }
@@ -1874,7 +1874,7 @@ fn parse_serve_address(input: &str) -> (u8, String, u32, bool) {
     Some(("unix", addr)) => {
       // Unix socket path
       if addr.is_empty() {
-        log::error!("DENO_SERVE_ADDRESS: empty unix socket path");
+        log::error!("ENDE_SERVE_ADDRESS: empty unix socket path");
         return (0, String::new(), 0, duplicate);
       }
       (2, addr.to_string(), 0, duplicate)
@@ -1889,7 +1889,7 @@ fn parse_serve_address(input: &str) -> (u8, String, u32, bool) {
             match cid.parse::<u32>() {
               Ok(cid) => cid.to_string(),
               Err(_) => {
-                log::error!("DENO_SERVE_ADDRESS: invalid vsock CID: {}", cid);
+                log::error!("ENDE_SERVE_ADDRESS: invalid vsock CID: {}", cid);
                 return (0, String::new(), 0, false);
               }
             }
@@ -1897,7 +1897,7 @@ fn parse_serve_address(input: &str) -> (u8, String, u32, bool) {
           let port = match port.parse::<u32>() {
             Ok(port) => port,
             Err(_) => {
-              log::error!("DENO_SERVE_ADDRESS: invalid vsock port: {}", port);
+              log::error!("ENDE_SERVE_ADDRESS: invalid vsock port: {}", port);
               return (0, String::new(), 0, false);
             }
           };
@@ -1908,7 +1908,7 @@ fn parse_serve_address(input: &str) -> (u8, String, u32, bool) {
     }
     Some(("tunnel", _)) => (4, String::new(), 0, duplicate),
     Some((_, _)) | None => {
-      log::error!("DENO_SERVE_ADDRESS: invalid address format: {}", input);
+      log::error!("ENDE_SERVE_ADDRESS: invalid address format: {}", input);
       (0, String::new(), 0, false)
     }
   }

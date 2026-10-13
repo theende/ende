@@ -60,14 +60,14 @@ impl DatabaseHandler for MultiBackendDbHandler {
     mut path: Option<String>,
   ) -> Result<Self::DB, JsErrorBox> {
     if path.is_none()
-      && let Ok(x) = std::env::var("DENO_KV_DEFAULT_PATH")
+      && let Ok(x) = ende_env::var("ENDE_KV_DEFAULT_PATH")
       && !x.is_empty()
     {
       path = Some(x);
     }
 
     if let Some(path) = &mut path
-      && let Ok(prefix) = std::env::var("DENO_KV_PATH_PREFIX")
+      && let Ok(prefix) = ende_env::var("ENDE_KV_PATH_PREFIX")
     {
       *path = format!("{}{}", prefix, path);
     }
@@ -76,7 +76,7 @@ impl DatabaseHandler for MultiBackendDbHandler {
     // do not silently fall back to a local/in-memory store. `error` rejects
     // the open with a clear message; `warn` logs once and allows the fallback.
     // A distributed database is one served over http(s) (see `remote_or_sqlite`).
-    if let Ok(mode) = std::env::var("DENO_KV_REQUIRES_DISTRIBUTED_DATABASE") {
+    if let Ok(mode) = ende_env::var("ENDE_KV_REQUIRES_DISTRIBUTED_DATABASE") {
       let is_distributed = path
         .as_deref()
         .is_some_and(|p| p.starts_with("https://") || p.starts_with("http://"));

@@ -3,7 +3,7 @@
 // deno-lint-ignore-file no-console
 
 // Note: when benchmarking across different Deno version, make sure to clear
-// the DENO_DIR cache.
+// the ENDE_DIR cache.
 let [total, count] = typeof Deno !== "undefined" ? Deno.args : [];
 
 total = total ? parseInt(total, 0) : 50;

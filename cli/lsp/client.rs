@@ -12,8 +12,10 @@ use lsp_types::Uri;
 use tower_lsp::lsp_types as lsp;
 use tower_lsp::lsp_types::ConfigurationItem;
 
+use super::config::DEPRECATED_SETTINGS_SECTION;
 use super::config::SETTINGS_SECTION;
 use super::config::WorkspaceSettings;
+use super::legacy_client;
 use super::lsp_custom;
 use super::testing::lsp_custom as testing_lsp_custom;
 use crate::lsp::logging::lsp_warn;
@@ -126,6 +128,19 @@ impl Client {
     });
   }
 
+  pub fn log_message(
+    &self,
+    message_type: lsp::MessageType,
+    message: impl std::fmt::Display,
+  ) {
+    // do on a task in case the caller currently is in the lsp lock
+    let client = self.0.clone();
+    let message = message.to_string();
+    spawn(async move {
+      client.log_message(message_type, message).await;
+    });
+  }
+
   pub fn show_message(
     &self,
     message_type: lsp::MessageType,
@@ -204,6 +219,7 @@ trait ClientTrait: Send + Sync {
     &self,
     scopes: Vec<Option<lsp::Uri>>,
   ) -> Result<Vec<WorkspaceSettings>, AnyError>;
+  async fn log_message(&self, message_type: lsp::MessageType, text: String);
   async fn show_message(&self, message_type: lsp::MessageType, text: String);
   async fn register_capability(
     &self,
@@ -213,6 +229,22 @@ trait ClientTrait: Send + Sync {
 
 #[derive(Clone)]
 struct TowerClient(tower_lsp::Client);
+
+/// Sends a custom notification under its `deno/*` name to legacy clients and
+/// under its `ende/*` name otherwise.
+macro_rules! send_custom_notification {
+  ($client:expr, $($notification:ident)::+, $params:expr) => {
+    if legacy_client::is_legacy() {
+      $client
+        .send_notification::<$($notification)::+<true>>($params)
+        .await
+    } else {
+      $client
+        .send_notification::<$($notification)::+<false>>($params)
+        .await
+    }
+  };
+}
 
 #[async_trait]
 impl ClientTrait for TowerClient {
@@ -229,49 +261,49 @@ impl ClientTrait for TowerClient {
     &self,
     params: lsp_custom::RegistryStateNotificationParams,
   ) {
-    self
-      .0
-      .send_notification::<lsp_custom::RegistryStateNotification>(params)
-      .await
+    send_custom_notification!(
+      self.0,
+      lsp_custom::RegistryStateNotification,
+      params
+    )
   }
 
   async fn send_diagnostic_batch_start_notification(&self) {
-    self
-      .0
-      .send_notification::<lsp_custom::DiagnosticBatchStartNotification>(())
-      .await
+    send_custom_notification!(
+      self.0,
+      lsp_custom::DiagnosticBatchStartNotification,
+      ()
+    )
   }
 
   async fn send_diagnostic_batch_end_notification(&self) {
-    self
-      .0
-      .send_notification::<lsp_custom::DiagnosticBatchEndNotification>(())
-      .await
+    send_custom_notification!(
+      self.0,
+      lsp_custom::DiagnosticBatchEndNotification,
+      ()
+    )
   }
 
   async fn send_test_notification(&self, notification: TestingNotification) {
     match notification {
       TestingNotification::Module(params) => {
-        self
-          .0
-          .send_notification::<testing_lsp_custom::TestModuleNotification>(
-            params,
-          )
-          .await
-      }
-      TestingNotification::DeleteModule(params) => self
-        .0
-        .send_notification::<testing_lsp_custom::TestModuleDeleteNotification>(
-          params,
+        send_custom_notification!(
+          self.0,
+          testing_lsp_custom::TestModuleNotification,
+          params
         )
-        .await,
+      }
+      TestingNotification::DeleteModule(params) => send_custom_notification!(
+        self.0,
+        testing_lsp_custom::TestModuleDeleteNotification,
+        params
+      ),
       TestingNotification::Progress(params) => {
-        self
-          .0
-          .send_notification::<testing_lsp_custom::TestRunProgressNotification>(
-            params,
-          )
-          .await
+        send_custom_notification!(
+          self.0,
+          testing_lsp_custom::TestRunProgressNotification,
+          params
+        )
       }
     }
   }
@@ -280,34 +312,33 @@ impl ClientTrait for TowerClient {
     &self,
     params: lsp_custom::DidRefreshDenoConfigurationTreeNotificationParams,
   ) {
-    self
-      .0
-      .send_notification::<lsp_custom::DidRefreshDenoConfigurationTreeNotification>(
-        params,
-      )
-      .await
+    send_custom_notification!(
+      self.0,
+      lsp_custom::DidRefreshDenoConfigurationTreeNotification,
+      params
+    )
   }
 
   async fn send_did_change_deno_configuration_notification(
     &self,
     params: lsp_custom::DidChangeDenoConfigurationNotificationParams,
   ) {
-    self
-      .0
-      .send_notification::<lsp_custom::DidChangeDenoConfigurationNotification>(
-        params,
-      )
-      .await
+    send_custom_notification!(
+      self.0,
+      lsp_custom::DidChangeDenoConfigurationNotification,
+      params
+    )
   }
 
   async fn send_did_upgrade_check_notification(
     &self,
     params: lsp_custom::DidUpgradeCheckNotificationParams,
   ) {
-    self
-      .0
-      .send_notification::<lsp_custom::DidUpgradeCheckNotification>(params)
-      .await
+    send_custom_notification!(
+      self.0,
+      lsp_custom::DidUpgradeCheckNotification,
+      params
+    )
   }
 
   async fn refresh_diagnostics(&self) -> Result<(), AnyError> {
@@ -335,6 +366,10 @@ impl ClientTrait for TowerClient {
               },
               ConfigurationItem {
                 scope_uri: scope_uri.clone(),
+                section: Some(DEPRECATED_SETTINGS_SECTION.to_string()),
+              },
+              ConfigurationItem {
+                scope_uri: scope_uri.clone(),
                 section: Some("javascript".to_string()),
               },
               ConfigurationItem {
@@ -351,11 +386,19 @@ impl ClientTrait for TowerClient {
         let mut configs = configs.into_iter();
         let mut result = Vec::with_capacity(scopes.len());
         for _ in 0..scopes.len() {
+          let ende = json!(configs.next());
           let deno = json!(configs.next());
           let javascript = json!(configs.next());
           let typescript = json!(configs.next());
+          let (settings, warning) = legacy_client::select_settings(ende, deno);
+          if let Some(warning) = warning {
+            lsp_warn!("{warning}");
+            self
+              .log_message(lsp::MessageType::WARNING, warning.to_string())
+              .await;
+          }
           result.push(WorkspaceSettings::from_raw_settings(
-            deno, javascript, typescript,
+            settings, javascript, typescript,
           ));
         }
         Ok(result)
@@ -364,6 +407,10 @@ impl ClientTrait for TowerClient {
         bail!("Error getting workspace configurations: {}", err)
       }
     }
+  }
+
+  async fn log_message(&self, message_type: lsp::MessageType, message: String) {
+    self.0.log_message(message_type, message).await
   }
 
   async fn show_message(

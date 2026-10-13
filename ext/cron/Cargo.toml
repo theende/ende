@@ -18,6 +18,7 @@ async-trait.workspace = true
 chrono = { workspace = true, features = ["now"] }
 deno_error.workspace = true
 ende_core.workspace = true
+ende_env.workspace = true
 ende_features.workspace = true
 once_cell.workspace = true
 serde = { workspace = true, features = ["derive"] }

@@ -8,8 +8,8 @@ fn main() {
   // toggled (see libs/core/modules/import_graph.rs).
   #[allow(clippy::print_stdout, reason = "build script output")]
   {
-    println!("cargo:rerun-if-env-changed=DENO_SNAPSHOT_IMPORT_GRAPH");
-    println!("cargo:rerun-if-env-changed=DENO_SNAPSHOT_MINIFY_SOURCES");
+    println!("cargo:rerun-if-env-changed=ENDE_SNAPSHOT_IMPORT_GRAPH");
+    println!("cargo:rerun-if-env-changed=ENDE_SNAPSHOT_MINIFY_SOURCES");
   }
   #[cfg(not(feature = "disable"))]
   {
@@ -55,7 +55,7 @@ fn create_cli_snapshot(
   let residual_sources_dir = out_dir.join("residual_sources");
   std::fs::create_dir_all(&residual_sources_dir).unwrap();
   let minify_sources =
-    std::env::var_os("DENO_SNAPSHOT_MINIFY_SOURCES").is_some();
+    std::env::var_os("ENDE_SNAPSHOT_MINIFY_SOURCES").is_some();
 
   let mut residual_js: Vec<(&str, std::path::PathBuf)> = Vec::new();
   let mut residual_esm: Vec<(&str, std::path::PathBuf)> = Vec::new();

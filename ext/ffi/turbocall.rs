@@ -243,7 +243,7 @@ pub(crate) fn compile_trampoline(
     f.def_var(options_v, args[argx]);
 
     static TRACE_TURBO: LazyLock<bool> = LazyLock::new(|| {
-      std::env::var("DENO_UNSTABLE_FFI_TRACE_TURBO").as_deref() == Ok("1")
+      ende_env::var("ENDE_UNSTABLE_FFI_TRACE_TURBO").as_deref() == Ok("1")
     });
 
     if *TRACE_TURBO {

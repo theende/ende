@@ -5273,7 +5273,7 @@ class Http2Server extends net.Server {
   }
 }
 
-// Applies the DENO_SERVE_ADDRESS override before delegating to
+// Applies the ENDE_SERVE_ADDRESS override before delegating to
 // net.Server.prototype.listen, like node:http's Server.listen does.
 //
 // Connections accepted from the override listener carry the sniffed

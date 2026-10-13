@@ -5,7 +5,6 @@ mod flags_net;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::env;
 use std::net::SocketAddr;
 use std::num::NonZeroUsize;
 use std::path::Path;
@@ -249,10 +248,10 @@ impl WorkspaceTestOptions {
       shard: test_flags.shard,
       trace_leaks: test_flags.trace_leaks,
       sanitize_ops: test_flags.sanitize_ops
-        || std::env::var("DENO_TEST_SANITIZE_OPS").ok().as_deref() == Some("1")
+        || ende_env::var("ENDE_TEST_SANITIZE_OPS").ok().as_deref() == Some("1")
         || config_sanitize_ops,
       sanitize_resources: test_flags.sanitize_resources
-        || std::env::var("DENO_TEST_SANITIZE_RESOURCES")
+        || ende_env::var("ENDE_TEST_SANITIZE_RESOURCES")
           .ok()
           .as_deref()
           == Some("1")
@@ -1115,12 +1114,12 @@ impl CliOptions {
         .coverage_dir
         .as_ref()
         .map(|dir| self.initial_cwd.join(dir))
-        .or_else(|| env::var_os("DENO_COVERAGE_DIR").map(PathBuf::from)),
+        .or_else(|| ende_env::var_os("ENDE_COVERAGE_DIR").map(PathBuf::from)),
       DenoSubcommand::Run(flags) => flags
         .coverage_dir
         .as_ref()
         .map(|dir| self.initial_cwd.join(dir))
-        .or_else(|| env::var_os("DENO_COVERAGE_DIR").map(PathBuf::from)),
+        .or_else(|| ende_env::var_os("ENDE_COVERAGE_DIR").map(PathBuf::from)),
       _ => None,
     }
   }
@@ -1416,7 +1415,7 @@ impl CliOptions {
   pub fn take_binary_npm_command_name(&self) -> Option<String> {
     match self.sub_command() {
       DenoSubcommand::Run(flags) => {
-        const NPM_CMD_NAME_ENV_VAR_NAME: &str = "DENO_INTERNAL_NPM_CMD_NAME";
+        const NPM_CMD_NAME_ENV_VAR_NAME: &str = "ENDE_INTERNAL_NPM_CMD_NAME";
         match std::env::var(NPM_CMD_NAME_ENV_VAR_NAME) {
           Ok(var) => {
             // remove the env var so that child sub processes won't pick this up
@@ -1684,7 +1683,7 @@ fn resolve_import_map_specifier(
 
 /// Resolves the no_prompt value based on the cli flags and environment.
 pub fn resolve_no_prompt(flags: &PermissionFlags) -> bool {
-  flags.no_prompt || has_flag_env_var(&CliSys::default(), "DENO_NO_PROMPT")
+  flags.no_prompt || has_flag_env_var(&CliSys::default(), "ENDE_NO_PROMPT")
 }
 
 pub fn config_to_deno_graph_workspace_member(
@@ -1721,7 +1720,7 @@ pub fn get_default_v8_flags() -> Vec<String> {
 pub fn parallelism_count(parallel: bool) -> NonZeroUsize {
   parallel
     .then(|| {
-      if let Ok(value) = env::var("DENO_JOBS") {
+      if let Ok(value) = ende_env::var("ENDE_JOBS") {
         value.parse::<NonZeroUsize>().ok()
       } else {
         std::thread::available_parallelism().ok()

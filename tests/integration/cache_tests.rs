@@ -15,7 +15,7 @@ fn xdg_cache_home_dir() {
   context
     .new_command()
     .env_remove("HOME")
-    .env_remove("DENO_DIR")
+    .env_remove("ENDE_DIR")
     .env_clear()
     .env("XDG_CACHE_HOME", &xdg_cache_home)
     .args(

@@ -25,7 +25,7 @@ fn install_basic() {
     .envs([
       ("HOME", temp_dir_str.as_str()),
       ("USERPROFILE", temp_dir_str.as_str()),
-      ("DENO_INSTALL_ROOT", ""),
+      ("ENDE_INSTALL_ROOT", ""),
     ])
     .run();
 
@@ -75,7 +75,7 @@ fn install_basic() {
     .envs([
       ("HOME", temp_dir_str.as_str()),
       ("USERPROFILE", temp_dir_str.as_str()),
-      ("DENO_INSTALL_ROOT", ""),
+      ("ENDE_INSTALL_ROOT", ""),
     ])
     .run()
     .skip_output_check()
@@ -109,7 +109,7 @@ fn install_basic_global() {
     .envs([
       ("HOME", temp_dir_str.as_str()),
       ("USERPROFILE", temp_dir_str.as_str()),
-      ("DENO_INSTALL_ROOT", ""),
+      ("ENDE_INSTALL_ROOT", ""),
     ])
     .run();
 
@@ -165,7 +165,7 @@ fn install_basic_global() {
     .envs([
       ("HOME", temp_dir_str.as_str()),
       ("USERPROFILE", temp_dir_str.as_str()),
-      ("DENO_INSTALL_ROOT", ""),
+      ("ENDE_INSTALL_ROOT", ""),
     ])
     .run()
     .skip_output_check()
@@ -290,7 +290,7 @@ fn install_custom_dir_env_var() {
     .envs([
       ("HOME", temp_dir_str.as_str()),
       ("USERPROFILE", temp_dir_str.as_str()),
-      ("DENO_INSTALL_ROOT", temp_dir_str.as_str()),
+      ("ENDE_INSTALL_ROOT", temp_dir_str.as_str()),
     ])
     .run()
     .skip_output_check()
@@ -342,7 +342,7 @@ fn installer_test_custom_dir_with_bin() {
     .envs([
       ("HOME", temp_dir_str.as_str()),
       ("USERPROFILE", temp_dir_str.as_str()),
-      ("DENO_INSTALL_ROOT", temp_dir_with_bin.as_str()),
+      ("ENDE_INSTALL_ROOT", temp_dir_with_bin.as_str()),
     ])
     .run()
     .skip_output_check()
@@ -404,7 +404,7 @@ fn installer_test_local_module_run() {
     .envs([
       ("HOME", temp_dir_str.as_str()),
       ("USERPROFILE", temp_dir_str.as_str()),
-      ("DENO_INSTALL_ROOT", ""),
+      ("ENDE_INSTALL_ROOT", ""),
     ])
     .run()
     .skip_output_check()
@@ -484,7 +484,7 @@ fn check_local_by_default() {
     .envs([
       ("HOME", temp_dir_str.as_str()),
       ("USERPROFILE", temp_dir_str.as_str()),
-      ("DENO_INSTALL_ROOT", ""),
+      ("ENDE_INSTALL_ROOT", ""),
     ])
     .run()
     .skip_output_check()
@@ -509,7 +509,7 @@ fn check_local_by_default2() {
       ("HOME", temp_dir_str.as_str()),
       ("NO_COLOR", "1"),
       ("USERPROFILE", temp_dir_str.as_str()),
-      ("DENO_INSTALL_ROOT", ""),
+      ("ENDE_INSTALL_ROOT", ""),
     ])
     .run()
     .skip_output_check()
@@ -532,7 +532,7 @@ fn unprefixed_global_install_defaults_to_npm() {
   let env_vars = [
     ("HOME", temp_dir_str.as_str()),
     ("USERPROFILE", temp_dir_str.as_str()),
-    ("DENO_INSTALL_ROOT", ""),
+    ("ENDE_INSTALL_ROOT", ""),
   ];
 
   // Bare npm name (no prefix) installs successfully from npm.

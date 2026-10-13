@@ -136,7 +136,18 @@ impl DatabaseHandler for RemoteDbHandler {
     state: Rc<RefCell<OpState>>,
     path: Option<String>,
   ) -> Result<Self::DB, JsErrorBox> {
-    const ENV_VAR_NAME: &str = "DENO_KV_ACCESS_TOKEN";
+    const ENV_VAR_NAME: &str = "ENDE_KV_ACCESS_TOKEN";
+    const DEPRECATED_ENV_VAR_NAME: &str = "DENO_KV_ACCESS_TOKEN";
+
+    // Check permission for the variable that will actually be read, so the
+    // deprecated name is never read under a grant for the new one.
+    let use_deprecated_name = std::env::var_os(ENV_VAR_NAME).is_none()
+      && std::env::var_os(DEPRECATED_ENV_VAR_NAME).is_some();
+    let permission_env_var_name = if use_deprecated_name {
+      DEPRECATED_ENV_VAR_NAME
+    } else {
+      ENV_VAR_NAME
+    };
 
     let Some(url) = path else {
       return Err(JsErrorBox::type_error("Missing database url"));
@@ -153,17 +164,17 @@ impl DatabaseHandler for RemoteDbHandler {
       let mut state = state.borrow_mut();
       let permissions = state.borrow_mut::<PermissionsContainer>();
       permissions
-        .check_env(ENV_VAR_NAME)
+        .check_env(permission_env_var_name)
         .map_err(JsErrorBox::from_err)?;
       permissions
         .check_net_url(&parsed_url, "Deno.openKv")
         .map_err(JsErrorBox::from_err)?;
     }
 
-    let access_token = std::env::var(ENV_VAR_NAME)
+    let access_token = ende_env::var(ENV_VAR_NAME)
       .map_err(anyhow::Error::from)
       .with_context(|| {
-        "Missing DENO_KV_ACCESS_TOKEN environment variable. Please set it to your access token from https://console.deno.com"
+        "Missing ENDE_KV_ACCESS_TOKEN environment variable. Please set it to your access token from https://console.deno.com"
       }).map_err(|e| JsErrorBox::generic(e.to_string()))?;
 
     let metadata_endpoint = MetadataEndpoint {

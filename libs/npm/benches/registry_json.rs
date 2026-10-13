@@ -97,7 +97,7 @@ fn read_packument(package_name: &str) -> String {
     panic!(
       "failed reading benchmark packument {}: {err}\n\
        set FAST_REGISTRY_JSON_PACKUMENT_DIR to a directory containing \
-       <package>/registry.json files, or set DENO_DIR to a populated Deno cache",
+       <package>/registry.json files, or set ENDE_DIR to a populated Deno cache",
       path.display()
     )
   })
@@ -111,7 +111,7 @@ fn registry_path(package_name: &str) -> PathBuf {
   if let Ok(dir) = std::env::var("FAST_REGISTRY_JSON_PACKUMENT_DIR") {
     return PathBuf::from(dir).join(package_name).join("registry.json");
   }
-  if let Ok(deno_dir) = std::env::var("DENO_DIR") {
+  if let Ok(deno_dir) = std::env::var("ENDE_DIR") {
     return PathBuf::from(deno_dir)
       .join("npm")
       .join("registry.npmjs.org")
@@ -119,7 +119,7 @@ fn registry_path(package_name: &str) -> PathBuf {
       .join("registry.json");
   }
   panic!(
-    "set FAST_REGISTRY_JSON_PACKUMENT_DIR or DENO_DIR before running \
+    "set FAST_REGISTRY_JSON_PACKUMENT_DIR or ENDE_DIR before running \
      fast-registry-json benchmarks"
   );
 }

@@ -1,7 +1,7 @@
 {
   "tempDir": true,
   "envs": {
-    "DENO_DIR": "$PWD/deno_dir"
+    "ENDE_DIR": "$PWD/deno_dir"
   },
   "steps": [{
     // Regression guard for #35991: with a cwd ende.json age cutoff, `deno x`

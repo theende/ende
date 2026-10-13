@@ -2,7 +2,7 @@
   "tempDir": true,
   "envs": {
     "PATH": "",
-    "DENO_TEST_JUPYTER_PATH": "$PWD"
+    "ENDE_TEST_JUPYTER_PATH": "$PWD"
   },
   "steps": [{
     "args": "jupyter --install",

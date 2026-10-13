@@ -20,6 +20,7 @@ wgpu-core = { workspace = true, features = ["trace", "replay", "serde", "strict_
 wgpu-types = { workspace = true, features = ["serde", "std"] }
 
 ende_core.workspace = true
+ende_env.workspace = true
 deno_error.workspace = true
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["full"] }

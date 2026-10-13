@@ -1,7 +1,7 @@
 {
   "tempDir": true,
   "envs": {
-    "DENO_DIR": "./deno_dir"
+    "ENDE_DIR": "./deno_dir"
   },
   "steps": [{
     "args": "cache --allow-import main.ts",

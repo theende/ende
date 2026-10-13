@@ -78,7 +78,7 @@ const MAX_BUFFER = 1024 * 1024;
 // Internal env var used to tell a compiled-binary child process (spawned by
 // fork()) which embedded module to run as its main module instead of the
 // baked-in entrypoint. Kept in sync with cli/rt/run.rs.
-const INTERNAL_CHILD_ENTRYPOINT_ENV_VAR = "DENO_INTERNAL_CHILD_ENTRYPOINT";
+const INTERNAL_CHILD_ENTRYPOINT_ENV_VAR = "ENDE_INTERNAL_CHILD_ENTRYPOINT";
 
 // `Buffer.prototype.slice` is Buffer-specific (not the Array/String primordial),
 // so the lint match on `.slice` and the spread are false positives here.
@@ -253,21 +253,21 @@ function fork(
     if (result.caStores?.length) {
       options.env = {
         ...(options.env ?? lazyProcess().default.env),
-        DENO_TLS_CA_STORE: ArrayPrototypeJoin(result.caStores, ","),
+        ENDE_TLS_CA_STORE: ArrayPrototypeJoin(result.caStores, ","),
       };
     }
     if (result.useOpensslCa) {
       options.env = {
         ...(options.env ?? lazyProcess().default.env),
-        DENO_NODE_USE_OPENSSL_CA: "1",
+        ENDE_NODE_USE_OPENSSL_CA: "1",
       };
-    } else if (options.env?.DENO_NODE_USE_OPENSSL_CA) {
-      delete options.env.DENO_NODE_USE_OPENSSL_CA;
+    } else if (options.env?.ENDE_NODE_USE_OPENSSL_CA) {
+      delete options.env.ENDE_NODE_USE_OPENSSL_CA;
     }
     if (result.traceEventCategories) {
       options.env = {
         ...(options.env ?? lazyProcess().default.env),
-        DENO_NODE_TRACE_EVENT_CATEGORIES: result.traceEventCategories,
+        ENDE_NODE_TRACE_EVENT_CATEGORIES: result.traceEventCategories,
       };
     }
   }

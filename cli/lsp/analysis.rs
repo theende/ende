@@ -1263,7 +1263,7 @@ mod tests {
           range,
           severity: Some(lsp::DiagnosticSeverity::WARNING),
           code: Some(lsp::NumberOrString::String("code1".to_string())),
-          source: Some("deno-lint".to_string()),
+          source: Some("ende-lint".to_string()),
           message: "message1".to_string(),
           ..Default::default()
         },
@@ -1282,7 +1282,7 @@ mod tests {
           range,
           severity: Some(lsp::DiagnosticSeverity::WARNING),
           code: Some(lsp::NumberOrString::String("code2".to_string())),
-          source: Some("deno-lint".to_string()),
+          source: Some("ende-lint".to_string()),
           message: "message2\nhint2".to_string(),
           ..Default::default()
         },

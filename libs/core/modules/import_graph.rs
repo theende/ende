@@ -4,12 +4,12 @@
 //!
 //! Two independent knobs:
 //!
-//! - `DENO_SNAPSHOT_IMPORT_GRAPH=<path>` — append a JSONL graph entry per
+//! - `ENDE_SNAPSHOT_IMPORT_GRAPH=<path>` — append a JSONL graph entry per
 //!   import/lazy-load to the given file. Designed for snapshot-build
 //!   analysis but works at runtime too. Each line is `{"from","to","kind"}`
 //!   where `kind` is `"esm"` | `"lazy_esm"` | `"lazy_script"`.
 //!
-//! - `DENO_LOG_LAZY_LOAD=1` — print a short line to stderr each time a
+//! - `ENDE_LOG_LAZY_LOAD=1` — print a short line to stderr each time a
 //!   `lazy_loaded_esm` module is loaded via `op_lazy_load_esm` or a
 //!   `lazy_loaded_js` script via `op_load_ext_script`. Use to see what
 //!   `deno run hello.js` actually evaluates at startup (i.e. what *fell
@@ -20,7 +20,7 @@
 
 // This module is a developer-facing instrumentation knob gated entirely on
 // env vars set by humans running snapshot builds or debugging startup time
-// (`DENO_SNAPSHOT_IMPORT_GRAPH`, `DENO_LOG_LAZY_LOAD`). Using `sys_traits`
+// (`ENDE_SNAPSHOT_IMPORT_GRAPH`, `ENDE_LOG_LAZY_LOAD`). Using `sys_traits`
 // here would force every embedder to plumb a Sys through, for zero benefit
 // since this code never runs except when those env vars are set. Same for
 // stderr: this is a debug print to a human, not user-facing CLI output.
@@ -39,8 +39,8 @@ use std::sync::OnceLock;
 
 use crate::v8;
 
-const ENV_VAR: &str = "DENO_SNAPSHOT_IMPORT_GRAPH";
-const STDERR_ENV_VAR: &str = "DENO_LOG_LAZY_LOAD";
+const ENV_VAR: &str = "ENDE_SNAPSHOT_IMPORT_GRAPH";
+const STDERR_ENV_VAR: &str = "ENDE_LOG_LAZY_LOAD";
 
 struct Writer {
   inner: Mutex<BufWriter<File>>,
@@ -75,7 +75,7 @@ pub(crate) fn is_enabled() -> bool {
 fn stderr_log_enabled() -> bool {
   static ENABLED: OnceLock<bool> = OnceLock::new();
   *ENABLED.get_or_init(|| {
-    matches!(std::env::var_os(STDERR_ENV_VAR).as_deref(), Some(v) if v != "0" && !v.is_empty())
+    matches!(ende_env::var_os(STDERR_ENV_VAR).as_deref(), Some(v) if v != "0" && !v.is_empty())
   })
 }
 

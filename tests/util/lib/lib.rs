@@ -83,7 +83,7 @@ pub fn env_vars_for_jsr_tests() -> Vec<(String, String)> {
   let mut vars = env_vars_for_jsr_tests_with_git_check();
 
   vars.push((
-    "DENO_TESTING_DISABLE_GIT_CHECK".to_string(),
+    "ENDE_TESTING_DISABLE_GIT_CHECK".to_string(),
     "1".to_string(),
   ));
 
@@ -142,7 +142,7 @@ pub fn env_vars_for_jsr_npm_tests() -> Vec<(String, String)> {
     ("JSR_NPM_URL".to_string(), npm_jsr_registry_url()),
     ("JSR_URL".to_string(), jsr_registry_url()),
     (
-      "DENO_TESTING_DISABLE_GIT_CHECK".to_string(),
+      "ENDE_TESTING_DISABLE_GIT_CHECK".to_string(),
       "1".to_string(),
     ),
     ("DISABLE_JSR_PROVENANCE".to_string(), "true".to_string()),
@@ -258,7 +258,7 @@ pub fn target_dir() -> PathRef {
 
 pub fn deno_exe_path() -> PathRef {
   // Allow overriding the deno executable path via environment variable
-  if let Ok(path) = std::env::var("DENO_TEST_UTIL_DENO_EXE") {
+  if let Ok(path) = std::env::var("ENDE_TEST_UTIL_ENDE_EXE") {
     return PathRef::new(PathBuf::from(path));
   }
   // Something like /Users/rld/src/deno/target/debug/deps/deno
@@ -565,7 +565,7 @@ pub fn deno_cmd() -> TestCommandBuilder {
 
 pub fn deno_cmd_with_deno_dir(deno_dir: &TempDir) -> TestCommandBuilder {
   TestCommandBuilder::new(deno_dir.clone())
-    .env("DENO_DIR", deno_dir.path())
+    .env("ENDE_DIR", deno_dir.path())
     .env("NPM_CONFIG_REGISTRY", npm_registry_unset_url())
     .env("JSR_NPM_URL", npm_jsr_registry_unset_url())
     .env("NODEJS_ORG_MIRROR", nodejs_org_mirror_unset_url())
@@ -580,7 +580,7 @@ pub fn run_powershell_script_file(
   let mut command = Command::new("powershell.exe");
 
   command
-    .env("DENO_DIR", deno_dir.path())
+    .env("ENDE_DIR", deno_dir.path())
     .current_dir(testdata_path())
     .arg("-file")
     .arg(script_file_path);

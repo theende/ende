@@ -4,11 +4,17 @@ use ende_core::serde::Deserialize;
 use ende_core::serde::Serialize;
 use tower_lsp::lsp_types as lsp;
 
-pub const PERFORMANCE_REQUEST: &str = "deno/performance";
-pub const INFERRED_TYPE_REQUEST: &str = "deno/inferredType";
+// Custom requests are accepted under their `ende/*` names and, from legacy
+// clients, under their `deno/*` names.
+pub const PERFORMANCE_REQUEST: &str = "ende/performance";
+pub const LEGACY_PERFORMANCE_REQUEST: &str = "deno/performance";
+pub const INFERRED_TYPE_REQUEST: &str = "ende/inferredType";
+pub const LEGACY_INFERRED_TYPE_REQUEST: &str = "deno/inferredType";
 pub const INFERRED_TYPE_COMMAND: &str = "deno.inferredType";
-pub const TASK_REQUEST: &str = "deno/taskDefinitions";
-pub const VIRTUAL_TEXT_DOCUMENT: &str = "deno/virtualTextDocument";
+pub const TASK_REQUEST: &str = "ende/taskDefinitions";
+pub const LEGACY_TASK_REQUEST: &str = "deno/taskDefinitions";
+pub const VIRTUAL_TEXT_DOCUMENT: &str = "ende/virtualTextDocument";
+pub const LEGACY_VIRTUAL_TEXT_DOCUMENT: &str = "deno/virtualTextDocument";
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,12 +45,18 @@ pub struct RegistryStateNotificationParams {
   pub suggestions: bool,
 }
 
-pub enum RegistryStateNotification {}
+/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+pub enum RegistryStateNotification<const LEGACY: bool> {}
 
-impl lsp::notification::Notification for RegistryStateNotification {
+impl<const LEGACY: bool> lsp::notification::Notification
+  for RegistryStateNotification<LEGACY>
+{
   type Params = RegistryStateNotificationParams;
-
-  const METHOD: &'static str = "deno/registryState";
+  const METHOD: &'static str = if LEGACY {
+    "deno/registryState"
+  } else {
+    "ende/registryState"
+  };
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -69,13 +81,18 @@ pub struct DidRefreshDenoConfigurationTreeNotificationParams {
   pub deno_dir_npm_folder_uri: Option<lsp::Uri>,
 }
 
-pub enum DidRefreshDenoConfigurationTreeNotification {}
+/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+pub enum DidRefreshDenoConfigurationTreeNotification<const LEGACY: bool> {}
 
-impl lsp::notification::Notification
-  for DidRefreshDenoConfigurationTreeNotification
+impl<const LEGACY: bool> lsp::notification::Notification
+  for DidRefreshDenoConfigurationTreeNotification<LEGACY>
 {
   type Params = DidRefreshDenoConfigurationTreeNotificationParams;
-  const METHOD: &'static str = "deno/didRefreshDenoConfigurationTree";
+  const METHOD: &'static str = if LEGACY {
+    "deno/didRefreshDenoConfigurationTree"
+  } else {
+    "ende/didRefreshDenoConfigurationTree"
+  };
 }
 
 #[derive(Debug, Eq, Hash, PartialEq, Copy, Clone, Deserialize, Serialize)]
@@ -123,20 +140,32 @@ pub struct DidChangeDenoConfigurationNotificationParams {
 // TODO(nayeemrmn): This is being replaced by
 // `DidRefreshDenoConfigurationTreeNotification` for Deno > v2.0.0. Remove it
 // soon.
-pub enum DidChangeDenoConfigurationNotification {}
+/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+pub enum DidChangeDenoConfigurationNotification<const LEGACY: bool> {}
 
-impl lsp::notification::Notification
-  for DidChangeDenoConfigurationNotification
+impl<const LEGACY: bool> lsp::notification::Notification
+  for DidChangeDenoConfigurationNotification<LEGACY>
 {
   type Params = DidChangeDenoConfigurationNotificationParams;
-  const METHOD: &'static str = "deno/didChangeDenoConfiguration";
+  const METHOD: &'static str = if LEGACY {
+    "deno/didChangeDenoConfiguration"
+  } else {
+    "ende/didChangeDenoConfiguration"
+  };
 }
 
-pub enum DidUpgradeCheckNotification {}
+/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+pub enum DidUpgradeCheckNotification<const LEGACY: bool> {}
 
-impl lsp::notification::Notification for DidUpgradeCheckNotification {
+impl<const LEGACY: bool> lsp::notification::Notification
+  for DidUpgradeCheckNotification<LEGACY>
+{
   type Params = DidUpgradeCheckNotificationParams;
-  const METHOD: &'static str = "deno/didUpgradeCheck";
+  const METHOD: &'static str = if LEGACY {
+    "deno/didUpgradeCheck"
+  } else {
+    "ende/didUpgradeCheck"
+  };
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -154,18 +183,32 @@ pub struct DidUpgradeCheckNotificationParams {
 
 /// This notification is only sent for testing purposes
 /// in order to group diagnostics.
-pub enum DiagnosticBatchStartNotification {}
+/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+pub enum DiagnosticBatchStartNotification<const LEGACY: bool> {}
 
-impl lsp::notification::Notification for DiagnosticBatchStartNotification {
+impl<const LEGACY: bool> lsp::notification::Notification
+  for DiagnosticBatchStartNotification<LEGACY>
+{
   type Params = ();
-  const METHOD: &'static str = "deno/internalTestDiagnosticBatchStart";
+  const METHOD: &'static str = if LEGACY {
+    "deno/internalTestDiagnosticBatchStart"
+  } else {
+    "ende/internalTestDiagnosticBatchStart"
+  };
 }
 
 /// This notification is only sent for testing purposes
 /// in order to group diagnostics.
-pub enum DiagnosticBatchEndNotification {}
+/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+pub enum DiagnosticBatchEndNotification<const LEGACY: bool> {}
 
-impl lsp::notification::Notification for DiagnosticBatchEndNotification {
+impl<const LEGACY: bool> lsp::notification::Notification
+  for DiagnosticBatchEndNotification<LEGACY>
+{
   type Params = ();
-  const METHOD: &'static str = "deno/internalTestDiagnosticBatchEnd";
+  const METHOD: &'static str = if LEGACY {
+    "deno/internalTestDiagnosticBatchEnd"
+  } else {
+    "ende/internalTestDiagnosticBatchEnd"
+  };
 }

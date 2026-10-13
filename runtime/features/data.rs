@@ -22,7 +22,7 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     help_text: "Enable unstable bare node builtins feature",
     show_in_help: false,
     kind: UnstableFeatureKind::Cli,
-    env_var: Some("DENO_UNSTABLE_BARE_NODE_BUILTINS"),
+    env_var: Some("ENDE_UNSTABLE_BARE_NODE_BUILTINS"),
   },
   UnstableFeatureDescription {
     name: "broadcast-channel",
@@ -85,14 +85,14 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     help_text: "Lazily loads statically analyzable dynamic imports when not running with type checking. Warning: This may change the order of semver specifier resolution.",
     show_in_help: true,
     kind: UnstableFeatureKind::Cli,
-    env_var: Some("DENO_UNSTABLE_LAZY_DYNAMIC_IMPORTS"),
+    env_var: Some("ENDE_UNSTABLE_LAZY_DYNAMIC_IMPORTS"),
   },
   UnstableFeatureDescription {
     name: "lockfile-v5",
     help_text: "Enable unstable lockfile v5",
     show_in_help: true,
     kind: UnstableFeatureKind::Cli,
-    env_var: Some("DENO_UNSTABLE_LOCKFILE_V5"),
+    env_var: Some("ENDE_UNSTABLE_LOCKFILE_V5"),
   },
   UnstableFeatureDescription {
     name: "net",
@@ -122,7 +122,7 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     help_text: "Enable unstable lazy caching of npm dependencies, downloading them only as needed (disabled: all npm packages in package.json are installed on startup; enabled: only npm packages that are actually referenced in an import are installed",
     show_in_help: true,
     kind: UnstableFeatureKind::Cli,
-    env_var: Some("DENO_UNSTABLE_NPM_LAZY_CACHING"),
+    env_var: Some("ENDE_UNSTABLE_NPM_LAZY_CACHING"),
   },
   UnstableFeatureDescription {
     name: "otel",
@@ -143,21 +143,21 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     help_text: "Enable unstable 'bytes' imports.",
     show_in_help: true,
     kind: UnstableFeatureKind::Runtime,
-    env_var: Some("DENO_UNSTABLE_RAW_IMPORTS"),
+    env_var: Some("ENDE_UNSTABLE_RAW_IMPORTS"),
   },
   UnstableFeatureDescription {
     name: "sloppy-imports",
     help_text: "Enable unstable resolving of specifiers by extension probing, .js to .ts, and directory probing",
     show_in_help: true,
     kind: UnstableFeatureKind::Cli,
-    env_var: Some("DENO_UNSTABLE_SLOPPY_IMPORTS"),
+    env_var: Some("ENDE_UNSTABLE_SLOPPY_IMPORTS"),
   },
   UnstableFeatureDescription {
     name: "subdomain-wildcards",
     help_text: "Enable subdomain wildcards support for the `--allow-net` flag",
     show_in_help: false,
     kind: UnstableFeatureKind::Cli,
-    env_var: Some("DENO_UNSTABLE_SUBDOMAIN_WILDCARDS"),
+    env_var: Some("ENDE_UNSTABLE_SUBDOMAIN_WILDCARDS"),
   },
   UnstableFeatureDescription {
     name: "temporal",
@@ -206,6 +206,6 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     help_text: "Enable unstable TypeScript Go integration",
     show_in_help: true,
     kind: UnstableFeatureKind::Cli,
-    env_var: Some("DENO_UNSTABLE_TSGO"),
+    env_var: Some("ENDE_UNSTABLE_TSGO"),
   },
 ];

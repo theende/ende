@@ -980,7 +980,7 @@ async fn serve_watch_parallel_stops_old_workers() {
     .arg("debug")
     .arg(&file_to_watch)
     .env("NO_COLOR", "1")
-    .env("DENO_JOBS", "4")
+    .env("ENDE_JOBS", "4")
     .piped_output()
     .spawn()
     .unwrap();

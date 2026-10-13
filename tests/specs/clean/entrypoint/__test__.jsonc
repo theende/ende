@@ -5,7 +5,7 @@
     "npm": {
       "steps": [
         {
-          "envs": { "DENO_DIR": "./denodir" },
+          "envs": { "ENDE_DIR": "./denodir" },
           "args": "install --node-modules-dir npm:chalk npm:@denotest/add",
           "output": "[WILDCARD]"
         },
@@ -14,7 +14,7 @@
           "output": "npm_init.out"
         },
         {
-          "envs": { "DENO_DIR": "./denodir" },
+          "envs": { "ENDE_DIR": "./denodir" },
           "args": "clean -e --node-modules-dir npm:@denotest/add",
           "output": "Removed [WILDCARD] files, [WILDCARD] from [WILDCARD]\n"
         },
@@ -23,7 +23,7 @@
           "output": "npm_cleaned.out"
         },
         {
-          "envs": { "DENO_DIR": "./denodir" },
+          "envs": { "ENDE_DIR": "./denodir" },
           "args": "install --node-modules-dir npm:chalk npm:@denotest/add",
           "output": "[WILDCARD]"
         },
@@ -32,7 +32,7 @@
           "output": "npm_init.out"
         },
         {
-          "envs": { "DENO_DIR": "./denodir" },
+          "envs": { "ENDE_DIR": "./denodir" },
           "args": "clean -e --node-modules-dir --dry-run npm:@denotest/add",
           "output": "npm_clean_dry_run.out"
         }
@@ -41,7 +41,7 @@
     "jsr_http": {
       "steps": [
         {
-          "envs": { "DENO_DIR": "./denodir" },
+          "envs": { "ENDE_DIR": "./denodir" },
           "args": "run -A jsr_http1.ts",
           "output": "[WILDCARD]"
         },
@@ -50,12 +50,12 @@
           "output": "jsr_http_init.out"
         },
         {
-          "envs": { "DENO_DIR": "./denodir" },
+          "envs": { "ENDE_DIR": "./denodir" },
           "args": "run -A jsr_http2.ts",
           "output": "[WILDCARD]"
         },
         {
-          "envs": { "DENO_DIR": "./denodir" },
+          "envs": { "ENDE_DIR": "./denodir" },
           "args": "clean -e jsr_http2.ts",
           "output": "[WILDCARD]"
         },
@@ -64,7 +64,7 @@
           "output": "jsr_http_cleaned.out"
         },
         {
-          "envs": { "DENO_DIR": "./denodir" },
+          "envs": { "ENDE_DIR": "./denodir" },
           "args": "run -A jsr_http2.ts",
           "output": "" // nothing downloaded
         },
@@ -77,7 +77,7 @@
     "vendor": {
       "steps": [
         {
-          "envs": { "DENO_DIR": "./denodir" },
+          "envs": { "ENDE_DIR": "./denodir" },
           "args": "run -A --node-modules-dir --vendor vendor1.ts",
           "output": "[WILDCARD]"
         },
@@ -86,7 +86,7 @@
           "output": "vendor_init.out"
         },
         {
-          "envs": { "DENO_DIR": "./denodir" },
+          "envs": { "ENDE_DIR": "./denodir" },
           "args": "clean -e --node-modules-dir --vendor vendor2.ts",
           "output": "vendor_clean_output.out"
         },

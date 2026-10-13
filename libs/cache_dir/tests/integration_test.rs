@@ -28,8 +28,8 @@ fn test_global_create_cache() {
   let cache_path = dir.path().join("foobar");
   // HttpCache should be created lazily on first use:
   // when zipping up a local project with no external dependencies
-  // "$DENO_DIR/remote" is empty. When unzipping such project
-  // "$DENO_DIR/remote" might not get restored and in situation
+  // "$ENDE_DIR/remote" is empty. When unzipping such project
+  // "$ENDE_DIR/remote" might not get restored and in situation
   // when directory is owned by root we might not be able
   // to create that directory. However if it's not needed it
   // doesn't make sense to return error in such specific scenarios.

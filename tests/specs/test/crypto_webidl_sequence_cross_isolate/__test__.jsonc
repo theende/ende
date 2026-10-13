@@ -12,7 +12,7 @@
   // dangled into a disposed isolate.
   //
   // The bug only reproduces once module transpilation is cached: a cold
-  // DENO_DIR does enough extra per-file work that the blocking-pool threads
+  // ENDE_DIR does enough extra per-file work that the blocking-pool threads
   // are not reused in the offending pattern. The first step below warms the
   // cache; the second step runs against the warm cache, which is where the
   // dangling handle was read. Both steps must report all five files passing.

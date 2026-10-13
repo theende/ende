@@ -357,7 +357,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
   }
 
   fn open_devtools(&self, window_id: u32, renderer: bool, deno: bool) {
-    if let Ok(mux) = env::var("DENO_DESKTOP_MUX_WS") {
+    if let Ok(mux) = env::var("ENDE_DESKTOP_MUX_WS") {
       // Reuse an existing DevTools window when one is already open, so
       // repeated `openDevtools()` calls don't pile up windows.
       if let Some(id) = *self.devtools_window.lock().unwrap()
@@ -1316,7 +1316,7 @@ laufey::main!(|| {
 
   laufey::set_js_namespace("bindings");
 
-  // Allocate the desktop serve port and publish it via DENO_SERVE_ADDRESS
+  // Allocate the desktop serve port and publish it via ENDE_SERVE_ADDRESS
   // BEFORE the tokio runtime is built. Once the runtime spins up its
   // mio IO thread (and, optionally, the inspector server thread),
   // `setenv` is no longer thread-safe on glibc — Rust 1.81+ marks it
@@ -1331,12 +1331,13 @@ laufey::main!(|| {
       return;
     }
   };
+  // Also set under the deprecated `DENO_SERVE_ADDRESS` name so user code
+  // that reads it keeps working.
+  let serve_address = format!("tcp:127.0.0.1:{}", desktop_serve_port);
   // SAFETY: see the block comment above — single-threaded at this point.
   unsafe {
-    std::env::set_var(
-      "DENO_SERVE_ADDRESS",
-      format!("tcp:127.0.0.1:{}", desktop_serve_port),
-    );
+    std::env::set_var("ENDE_SERVE_ADDRESS", &serve_address);
+    std::env::set_var("DENO_SERVE_ADDRESS", &serve_address);
   }
 
   // Read the embedded standalone section, extract the VFS, and chdir
@@ -1499,12 +1500,12 @@ fn run_headless_worker() {
 
     let sys = if data.metadata.self_extracting.is_some() {
       // VFS should already be extracted by the parent process.
-      // In dev mode (external dev server via DENO_DESKTOP_DEV_URL or
-      // in-runtime dev server via DENO_DESKTOP_FRAMEWORK_DEV), keep the
+      // In dev mode (external dev server via ENDE_DESKTOP_DEV_URL or
+      // in-runtime dev server via ENDE_DESKTOP_FRAMEWORK_DEV), keep the
       // source directory as CWD (inherited from parent). In production
       // mode, set CWD to extraction directory.
-      if env::var("DENO_DESKTOP_DEV_URL").is_err()
-        && env::var("DENO_DESKTOP_FRAMEWORK_DEV").is_err()
+      if env::var("ENDE_DESKTOP_DEV_URL").is_err()
+        && env::var("ENDE_DESKTOP_FRAMEWORK_DEV").is_err()
       {
         let _ = std::env::set_current_dir(&data.root_path);
       }
@@ -1734,20 +1735,20 @@ async fn run_desktop(
   // disabled the inspector and the user wondered why DevTools showed
   // nothing. Bail rather than no-op so the failure is visible.
   let inspect_internal_port = match env::var(
-    "DENO_DESKTOP_INSPECT_INTERNAL_PORT",
+    "ENDE_DESKTOP_INSPECT_INTERNAL_PORT",
   ) {
     Ok(s) => match s.parse::<std::net::SocketAddr>() {
       Ok(addr) => Some(addr),
       Err(e) => {
         bail!(
-          "DENO_DESKTOP_INSPECT_INTERNAL_PORT={s:?} is not a valid SocketAddr: {e}"
+          "ENDE_DESKTOP_INSPECT_INTERNAL_PORT={s:?} is not a valid SocketAddr: {e}"
         );
       }
     },
     Err(_) => None,
   };
-  let inspect_brk = env::var("DENO_DESKTOP_INSPECT_BRK").is_ok();
-  let inspect_wait = env::var("DENO_DESKTOP_INSPECT_WAIT").is_ok();
+  let inspect_brk = env::var("ENDE_DESKTOP_INSPECT_BRK").is_ok();
+  let inspect_wait = env::var("ENDE_DESKTOP_INSPECT_WAIT").is_ok();
   if let Some(addr) = inspect_internal_port {
     ende_runtime::ende_inspector_server::create_inspector_server(
       addr,
@@ -1762,31 +1763,31 @@ async fn run_desktop(
     log::debug!("[desktop] inspector server bound on {addr}");
   }
 
-  // DENO_SERVE_ADDRESS is published by `laufey::main!` before the
+  // ENDE_SERVE_ADDRESS is published by `laufey::main!` before the
   // tokio runtime is built — see the comment there for why we can't
   // do it from here. `desktop_serve_port` is the port we put into it.
 
-  // Enable HMR if DENO_DESKTOP_HMR is set to a directory path
+  // Enable HMR if ENDE_DESKTOP_HMR is set to a directory path
   // (set by `deno compile --desktop --hmr`).
-  let hmr_watch_dir = env::var("DENO_DESKTOP_HMR").ok().map(PathBuf::from);
+  let hmr_watch_dir = env::var("ENDE_DESKTOP_HMR").ok().map(PathBuf::from);
 
   // Framework dev servers handle their own HMR via websocket.
   // For non-framework apps, V8-level HMR reloads the webview.
   //
   // Two framework-dev shapes exist (see `run_desktop_hmr` in
   // cli/tools/desktop.rs):
-  // - DENO_DESKTOP_DEV_URL: the CLI spawned an external dev-server process
+  // - ENDE_DESKTOP_DEV_URL: the CLI spawned an external dev-server process
   //   and parsed its URL; navigate there directly.
-  // - DENO_DESKTOP_FRAMEWORK_DEV: the embedded entrypoint boots the dev
+  // - ENDE_DESKTOP_FRAMEWORK_DEV: the embedded entrypoint boots the dev
   //   server inside this runtime on the desktop serve port (so server code
   //   keeps `Deno.desktop`, #35899); use the regular serve-port poll.
-  let external_dev_url = env::var("DENO_DESKTOP_DEV_URL").ok();
+  let external_dev_url = env::var("ENDE_DESKTOP_DEV_URL").ok();
   let is_framework_dev = external_dev_url.is_some()
-    || env::var("DENO_DESKTOP_FRAMEWORK_DEV").is_ok();
+    || env::var("ENDE_DESKTOP_FRAMEWORK_DEV").is_ok();
 
   // In dev mode, restore CWD to the source directory so the framework
   // dev server watches the original source files, not the extracted VFS.
-  if is_framework_dev && let Ok(source_dir) = env::var("DENO_DESKTOP_HMR") {
+  if is_framework_dev && let Ok(source_dir) = env::var("ENDE_DESKTOP_HMR") {
     std::env::set_current_dir(&source_dir)?;
   }
 
@@ -1943,7 +1944,7 @@ async fn run_desktop(
   // Do a full HTTP request instead of just a TCP connect — frameworks
   // like Vite accept connections before they're ready to serve.
   let wait_for_debugger = inspect_brk || inspect_wait;
-  let mux_addr = env::var("DENO_DESKTOP_MUX_WS").ok();
+  let mux_addr = env::var("ENDE_DESKTOP_MUX_WS").ok();
   let navigate_fut = async move {
     use tokio::io::AsyncReadExt;
     use tokio::io::AsyncWriteExt;

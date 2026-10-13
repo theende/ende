@@ -20,6 +20,7 @@ bytes.workspace = true
 chrono = { workspace = true, features = ["now"] }
 deno_error.workspace = true
 ende_core.workspace = true
+ende_env.workspace = true
 futures.workspace = true
 http.workspace = true
 http-body.workspace = true

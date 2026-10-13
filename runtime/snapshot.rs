@@ -104,7 +104,7 @@ pub fn create_runtime_snapshot(
 
   let lazy_extension_files = collect_lazy_extension_files(&extensions);
   let minify_sources =
-    std::env::var_os("DENO_SNAPSHOT_MINIFY_SOURCES").is_some();
+    std::env::var_os("ENDE_SNAPSHOT_MINIFY_SOURCES").is_some();
 
   let output = create_snapshot(
     CreateSnapshotOptions {

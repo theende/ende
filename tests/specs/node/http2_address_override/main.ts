@@ -1,4 +1,4 @@
-// node:http2 servers honor the DENO_SERVE_ADDRESS override, and HTTP/2 is
+// node:http2 servers honor the ENDE_SERVE_ADDRESS override, and HTTP/2 is
 // forwarded natively (no downgrade): response trailers -- which only exist
 // in HTTP/2 framing and are what gRPC rides on -- must survive the trip.
 import http2 from "node:http2";

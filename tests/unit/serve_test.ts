@@ -4065,7 +4065,7 @@ Deno.test(
           await check({ automaticCompression: true });
         `,
         ],
-        env: { DENO_SERVE_AUTOMATIC_COMPRESSION: envValue },
+        env: { ENDE_SERVE_AUTOMATIC_COMPRESSION: envValue },
         stdout: "piped",
         stderr: "inherit",
       }).output();

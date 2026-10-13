@@ -20,7 +20,7 @@ try {
 }
 
 // Defined in test_util/src/lib.rs
-Deno.env.set("DENO_KV_ACCESS_TOKEN", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+Deno.env.set("ENDE_KV_ACCESS_TOKEN", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
 Deno.test({
   name: "openKv :memory: no permissions",

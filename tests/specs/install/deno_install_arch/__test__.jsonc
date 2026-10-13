@@ -4,7 +4,7 @@
   "steps": [{
     "args": "install",
     "envs": {
-      "DENO_INSTALL_ARCH": "aarch64"
+      "ENDE_INSTALL_ARCH": "aarch64"
     },
     "output": "[WILDCARD]"
   }, {

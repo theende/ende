@@ -320,7 +320,7 @@ impl<'a, TSys: FsMetadata> LifecycleScripts<'a, TSys> {
 }
 
 pub static LIFECYCLE_SCRIPTS_RUNNING_ENV_VAR: &str =
-  "DENO_INTERNAL_IS_LIFECYCLE_SCRIPT";
+  "ENDE_INTERNAL_IS_LIFECYCLE_SCRIPT";
 
 pub fn is_running_lifecycle_script(sys: &impl sys_traits::EnvVar) -> bool {
   sys.env_var(LIFECYCLE_SCRIPTS_RUNNING_ENV_VAR).is_ok()

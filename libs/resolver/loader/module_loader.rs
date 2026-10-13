@@ -686,7 +686,7 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
       )
       .await?;
     // Apply load-time security mitigations for known React Server Components
-    // CVEs to the translated source. Opt in via `DENO_PATCH_REACT_CVE`.
+    // CVEs to the translated source. Opt in via `ENDE_PATCH_REACT_CVE`.
     let text = if crate::is_react_cve_patch_enabled(&self.sys) {
       crate::patch_react_cves(specifier.as_str(), text)
     } else {

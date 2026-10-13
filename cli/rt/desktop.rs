@@ -214,7 +214,7 @@ pub const DESKTOP_JS: &str = r#"
   // Binding-call correlation: when --inspect is active, both the Deno
   // and renderer consoles emit matching console.debug messages so the
   // developer can trace a binding call across isolates.
-  // bindingTrace is only useful under --inspect (where DENO_DESKTOP_MUX_WS
+  // bindingTrace is only useful under --inspect (where ENDE_DESKTOP_MUX_WS
   // is set by the parent). `Deno.env.get` THROWS `NotCapable` if the
   // runtime wasn't compiled with --allow-env, which aborts DESKTOP_JS
   // execution before the event-loop IIFE below has a chance to register.
@@ -225,7 +225,7 @@ pub const DESKTOP_JS: &str = r#"
   let bindingTrace = false;
   try {
     bindingTrace = typeof Deno.env?.get === "function"
-      && Deno.env.get("DENO_DESKTOP_MUX_WS") != null;
+      && Deno.env.get("ENDE_DESKTOP_MUX_WS") != null;
   } catch (_) {
     // No env access — fine, we just don't trace binding calls.
   }
@@ -1353,15 +1353,15 @@ mod tests {
 
   #[test]
   fn desktop_js_wraps_binding_trace_env_read_in_try_catch() {
-    // The original bug: `Deno.env.get("DENO_DESKTOP_MUX_WS")` threw
+    // The original bug: `Deno.env.get("ENDE_DESKTOP_MUX_WS")` threw
     // NotCapable when --allow-env wasn't granted, aborting the rest of
     // DESKTOP_JS. The fix is to wrap that read in try/catch and let it
     // soft-fail. A regression that removed the try/catch would
     // reintroduce the "blank window where nothing works" failure mode.
-    let near = locate_around(DESKTOP_JS, "DENO_DESKTOP_MUX_WS");
+    let near = locate_around(DESKTOP_JS, "ENDE_DESKTOP_MUX_WS");
     assert!(
       near.contains("try {") || near.contains("try{"),
-      "DENO_DESKTOP_MUX_WS read must be wrapped in try/catch; got:\n{near}"
+      "ENDE_DESKTOP_MUX_WS read must be wrapped in try/catch; got:\n{near}"
     );
   }
 
@@ -1641,7 +1641,7 @@ mod tests {
   /// near this token contains a try/catch" without coupling the test
   /// to a precise line range.
   fn locate_around(hay: &str, needle: &str) -> String {
-    // The first occurrence of DENO_DESKTOP_MUX_WS in DESKTOP_JS is
+    // The first occurrence of ENDE_DESKTOP_MUX_WS in DESKTOP_JS is
     // inside a comment block; the *code* occurrence is the second. We
     // want the window around the code path, so search after the first.
     let first = hay.find(needle).unwrap_or_else(|| {

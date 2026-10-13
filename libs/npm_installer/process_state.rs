@@ -27,7 +27,7 @@ pub trait NpmProcessStateFromEnvVarSys:
 
 /// The serialized npm process state which can be written to a file and then
 /// the FD or path can be passed to a spawned deno process via the
-/// `DENO_DONT_USE_INTERNAL_NODE_COMPAT_STATE_FD` env var.
+/// `ENDE_DONT_USE_INTERNAL_NODE_COMPAT_STATE_FD` env var.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NpmProcessState {
   pub kind: NpmProcessStateKind,

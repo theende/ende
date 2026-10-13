@@ -501,7 +501,7 @@ impl WebWorker {
     let enable_testing_features = options.bootstrap.enable_testing_features;
 
     fn create_cache_inner(options: &WebWorkerOptions) -> Option<CreateCache> {
-      if let Ok(var) = std::env::var("DENO_CACHE_LSC_ENDPOINT") {
+      if let Ok(var) = ende_env::var("ENDE_CACHE_LSC_ENDPOINT") {
         let elems: Vec<_> = var.split(",").collect();
         if elems.len() == 2 {
           let endpoint = elems[0];

@@ -576,7 +576,7 @@ async fn install_jsr_packages(
     }
 
     let registry_name = format!("@jsr/{npm_name}");
-    let npm_jsr_registry = std::env::var("DENO_NPM_JSR_REGISTRY")
+    let npm_jsr_registry = ende_env::var("ENDE_NPM_JSR_REGISTRY")
       .unwrap_or_else(|_| "https://npm.jsr.io".to_string());
     let metadata_url = format!(
       "{}/{}",
@@ -707,7 +707,7 @@ pub type HttpModulePaths = BTreeMap<Url, String>;
 /// Materialize http(s): modules referenced from `deno.json` `imports` (and
 /// their transitive remote/relative imports) into `.ende/remote/<host><path>`.
 ///
-/// Uses `CliFileFetcher`, which transparently reuses `DENO_DIR` cache, follows
+/// Uses `CliFileFetcher`, which transparently reuses `ENDE_DIR` cache, follows
 /// redirects, and exposes response headers. When a module advertises types via
 /// the `X-TypeScript-Types` header (esm.sh and friends), the types URL is
 /// fetched too and the paths entry for the original URL is pointed at the

@@ -12,11 +12,11 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum DenoDirResolutionError {
   #[error(
-    "Could not resolve global Deno cache directory. Please make sure that either the DENO_DIR environment variable is set or the cache directory is available."
+    "Could not resolve global Deno cache directory. Please make sure that either the ENDE_DIR environment variable is set or the cache directory is available."
   )]
   NoCacheOrHomeDir,
   #[error(
-    "Could not resolve global Deno cache directory because the current working directory could not be resolved. Please set the DENO_DIR environment variable and ensure it is pointing at an absolute path."
+    "Could not resolve global Deno cache directory because the current working directory could not be resolved. Please set the ENDE_DIR environment variable and ensure it is pointing at an absolute path."
   )]
   FailedCwd {
     #[source]
@@ -45,14 +45,14 @@ pub fn resolve_deno_dir<'a, Sys: ResolveDenoDirSys>(
   let maybe_custom_root = options
     .maybe_custom_root
     .map(Cow::Borrowed)
-    .or_else(|| sys.env_var_path("DENO_DIR").map(Cow::Owned));
+    .or_else(|| ende_env::env_var_path(sys, "ENDE_DIR").map(Cow::Owned));
   let root = if let Some(root) = maybe_custom_root {
     root
   } else if let Some(xdg_cache_dir) = sys.env_var_path("XDG_CACHE_HOME") {
     Cow::Owned(xdg_cache_dir.join("ende"))
   } else if let Some(cache_dir) = sys.env_cache_dir() {
     // We use the OS cache dir because all files ende writes are cache files
-    // Once that changes we need to start using different roots if DENO_DIR
+    // Once that changes we need to start using different roots if ENDE_DIR
     // is not set, and keep a single one if it is.
     Cow::Owned(cache_dir.join("ende"))
   } else if let Some(home_dir) = sys.env_home_dir() {
@@ -152,8 +152,11 @@ mod test {
       .envs
       .insert("XDG_CACHE_HOME".into(), "/xdg/cache".into());
     assert_eq!(resolve(&sys), PathBuf::from("/xdg/cache/ende"));
-    // DENO_DIR is used as-is (renaming the env var is a separate step)
-    sys.envs.insert("DENO_DIR".into(), "/custom".into());
+    // the deprecated DENO_DIR is used as-is
+    sys.envs.insert("DENO_DIR".into(), "/deprecated".into());
+    assert_eq!(resolve(&sys), PathBuf::from("/deprecated"));
+    // ENDE_DIR is used as-is and wins over DENO_DIR
+    sys.envs.insert("ENDE_DIR".into(), "/custom".into());
     assert_eq!(resolve(&sys), PathBuf::from("/custom"));
   }
 }

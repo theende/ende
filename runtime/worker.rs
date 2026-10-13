@@ -66,7 +66,7 @@ pub type FormatJsErrorFn = dyn Fn(&JsError) -> String + Sync + Send;
 
 #[cfg(target_os = "linux")]
 pub(crate) static MEMORY_TRIM_HANDLER_ENABLED: LazyLock<bool> =
-  LazyLock::new(|| std::env::var_os("DENO_USR2_MEMORY_TRIM").is_some());
+  LazyLock::new(|| ende_env::var_os("ENDE_USR2_MEMORY_TRIM").is_some());
 
 #[cfg(target_os = "linux")]
 pub(crate) static SIGUSR2_RX: LazyLock<tokio::sync::watch::Receiver<()>> =
@@ -471,7 +471,7 @@ impl MainWorker {
     mut options: WorkerOptions,
   ) -> (Self, BootstrapOptions) {
     fn create_cache_inner(options: &WorkerOptions) -> Option<CreateCache> {
-      if let Ok(var) = std::env::var("DENO_CACHE_LSC_ENDPOINT") {
+      if let Ok(var) = ende_env::var("ENDE_CACHE_LSC_ENDPOINT") {
         let elems: Vec<_> = var.split(",").collect();
         if elems.len() == 2 {
           let endpoint = elems[0];
@@ -818,11 +818,7 @@ impl MainWorker {
 
   pub fn bootstrap(&mut self, options: BootstrapOptions) {
     // Diagnostic env var; not on the sys_traits surface in this crate.
-    #[allow(
-      clippy::disallowed_methods,
-      reason = "diagnostic env var; not part of the sys_traits surface"
-    )]
-    let phase_enabled = std::env::var_os("DENO_STARTUP_PHASES")
+    let phase_enabled = ende_env::var_os("ENDE_STARTUP_PHASES")
       .is_some_and(|v| !v.is_empty() && v != "0");
     let t0 = if phase_enabled {
       Some(std::time::Instant::now())

@@ -150,7 +150,7 @@ impl GPUAdapter {
     )?
     .or_better_values_from(&wgpu_types::Limits::default());
 
-    let trace = std::env::var_os("DENO_WEBGPU_TRACE")
+    let trace = ende_env::var_os("ENDE_WEBGPU_TRACE")
       .map(|path| wgpu_types::Trace::Directory(std::path::PathBuf::from(path)))
       .unwrap_or_default();
 

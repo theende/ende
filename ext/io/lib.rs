@@ -88,7 +88,7 @@ pub use pipe::pipe;
 /// which extra numeric stdio fd slots it inherited. Both `ende_process` (which
 /// sets it) and `ende_io` (which consumes it at startup) reference this single
 /// constant so the name has one source of truth.
-pub const DENO_EXTRA_STDIO_FDS_ENV_VAR: &str = "DENO_EXTRA_STDIO_FDS";
+pub const DENO_EXTRA_STDIO_FDS_ENV_VAR: &str = "ENDE_EXTRA_STDIO_FDS";
 
 /// Abstraction over `AsRawFd` (unix) and `AsRawHandle` (windows)
 pub trait AsRawIoHandle {

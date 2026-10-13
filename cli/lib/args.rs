@@ -33,11 +33,13 @@ pub fn npm_pkg_req_ref_to_binary_command(
 }
 
 pub fn has_trace_permissions_enabled(sys: &impl EnvVar) -> bool {
-  has_flag_env_var(sys, "DENO_TRACE_PERMISSIONS")
+  has_flag_env_var(sys, "ENDE_TRACE_PERMISSIONS")
 }
 
+/// Whether the `ENDE_*` env var `name` (or its deprecated `DENO_*` name) is
+/// set to `1`.
 pub fn has_flag_env_var(sys: &impl EnvVar, name: &str) -> bool {
-  match sys.env_var_os(name) {
+  match ende_env::env_var_os(sys, name) {
     Some(value) => value == "1",
     None => false,
   }
@@ -135,7 +137,7 @@ pub fn get_root_cert_store(
   let mut root_cert_store = RootCertStore::empty();
   let ca_stores: Vec<String> = maybe_ca_stores
     .or_else(|| {
-      let env_ca_store = sys.env_var("DENO_TLS_CA_STORE").ok()?;
+      let env_ca_store = ende_env::env_var(sys, "ENDE_TLS_CA_STORE").ok()?;
       Some(
         env_ca_store
           .split(',')
@@ -177,8 +179,11 @@ pub fn get_root_cert_store(
     }
   }
 
-  let ca_data = maybe_ca_data
-    .or_else(|| sys.env_var("DENO_CERT").ok().and_then(CaData::parse));
+  let ca_data = maybe_ca_data.or_else(|| {
+    ende_env::env_var(sys, "ENDE_CERT")
+      .ok()
+      .and_then(CaData::parse)
+  });
   if let Some(ca_data) = ca_data {
     let result = match ca_data {
       CaData::File(ca_file) => {

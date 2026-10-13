@@ -119,7 +119,7 @@ impl AuthDomain {
 
 impl AuthTokens {
   pub fn new_from_sys<TSys: EnvVar>(sys: &TSys) -> Self {
-    Self::new(sys.env_var("DENO_AUTH_TOKENS").ok())
+    Self::new(ende_env::env_var(sys, "ENDE_AUTH_TOKENS").ok())
   }
 
   /// Create a new set of tokens based on the provided string. It is intended

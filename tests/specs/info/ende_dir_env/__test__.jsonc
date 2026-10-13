@@ -1,0 +1,26 @@
+{
+  "tempDir": true,
+  "tests": {
+    // ENDE_DIR sets the cache directory.
+    "ende_dir": {
+      "envs": { "ENDE_DIR": "$PWD/ende_cache" },
+      "args": "info",
+      "output": "ende_dir.out"
+    },
+    // The deprecated DENO_DIR is still read, with exactly one warning.
+    "deno_dir": {
+      "envs": { "DENO_DIR": "$PWD/deno_cache" },
+      "args": "info",
+      "output": "deno_dir.out"
+    },
+    // ENDE_DIR wins over DENO_DIR, and there is no warning.
+    "both": {
+      "envs": {
+        "ENDE_DIR": "$PWD/ende_cache",
+        "DENO_DIR": "$PWD/deno_cache"
+      },
+      "args": "info",
+      "output": "ende_dir.out"
+    }
+  }
+}

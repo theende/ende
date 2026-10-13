@@ -386,7 +386,7 @@ fn create_symlink(
 
 fn find_section() -> Result<&'static [u8], AnyError> {
   #[cfg(windows)]
-  if std::env::var_os("DENO_INTERNAL_RT_USE_FILE_FALLBACK").is_some() {
+  if std::env::var_os("ENDE_INTERNAL_RT_USE_FILE_FALLBACK").is_some() {
     return read_from_file_fallback();
   }
 

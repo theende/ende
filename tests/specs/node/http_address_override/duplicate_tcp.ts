@@ -1,6 +1,6 @@
 import * as http from "node:http";
 
-// With DENO_SERVE_ADDRESS=duplicate,tcp:127.0.0.1:9402 the server should
+// With ENDE_SERVE_ADDRESS=duplicate,tcp:127.0.0.1:9402 the server should
 // answer on BOTH the user's address AND the override address.
 const server = http.createServer((_req, res) => res.end("hello"));
 server.listen(9400, "127.0.0.1", async () => {

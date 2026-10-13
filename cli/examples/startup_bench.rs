@@ -10,9 +10,9 @@
 //!   cargo run --example startup_bench --release -- [iters]
 //!
 //! Env vars:
-//!   DENO_STARTUP_PHASES=1   Print per-phase breakdown of one iteration
+//!   ENDE_STARTUP_PHASES=1   Print per-phase breakdown of one iteration
 //!                           (V8 init, isolate+snapshot, ops, bootstrap JS).
-//!   DENO_STARTUP_PROFILE=1  Skip the warmup so the first iter shows in profile.
+//!   ENDE_STARTUP_PROFILE=1  Skip the warmup so the first iter shows in profile.
 //!
 //! Tips for fast iteration:
 //!   - Add a release-fast profile (lto=off, codegen-units=256, incremental=true)

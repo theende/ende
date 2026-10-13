@@ -28,6 +28,7 @@ deno_path_util.workspace = true
 deno_whoami.workspace = true
 ende_core.workspace = true
 ende_dotenv.workspace = true
+ende_env.workspace = true
 ende_fs.workspace = true
 ende_inspector_server.workspace = true
 ende_io.workspace = true

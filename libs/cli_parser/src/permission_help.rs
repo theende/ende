@@ -12,7 +12,7 @@ Docs: https://docs.deno.com/go/permissions
   -A, --allow-all                           Allow all permissions.
   -P, --permission-set[=<NAME>]             Loads the permission set from the config file.
   --no-prompt                               Always throw if required permission wasn't passed.
-                                            Can also be set via the DENO_NO_PROMPT environment variable.
+                                            Can also be set via the ENDE_NO_PROMPT environment variable.
   -R, --allow-read[=<PATH>...]              Allow file system read access. Optionally specify allowed paths.
                                             --allow-read  |  --allow-read=\"/etc,/var/log.txt\"
   -W, --allow-write[=<PATH>...]             Allow file system write access. Optionally specify allowed paths.
@@ -50,9 +50,9 @@ Docs: https://docs.deno.com/go/permissions
                                             --ignore-env  |  --ignore-env=\"PORT,HOME,PATH\"
   --ignore-read[=<PATH>...]                 Ignore file system read access with a `NotFound` error. Optionally specify ignored paths.
                                             --ignore-read  |  --ignore-read=\"/etc,/var/log.txt\"
-  DENO_TRACE_PERMISSIONS                    Environmental variable to enable stack traces in permission prompts.
-                                            DENO_TRACE_PERMISSIONS=1 deno run main.ts
-  DENO_AUDIT_PERMISSIONS                    Environmental variable to audit all permissions accesses. Set to a file path for JSONL output, or \"otel\" to emit as OpenTelemetry log events via the configured OTel exporter.
-                                            DENO_AUDIT_PERMISSIONS=./audit.jsonl deno run main.ts
-                                            DENO_AUDIT_PERMISSIONS=otel deno run main.ts
+  ENDE_TRACE_PERMISSIONS                    Environmental variable to enable stack traces in permission prompts.
+                                            ENDE_TRACE_PERMISSIONS=1 deno run main.ts
+  ENDE_AUDIT_PERMISSIONS                    Environmental variable to audit all permissions accesses. Set to a file path for JSONL output, or \"otel\" to emit as OpenTelemetry log events via the configured OTel exporter.
+                                            ENDE_AUDIT_PERMISSIONS=./audit.jsonl deno run main.ts
+                                            ENDE_AUDIT_PERMISSIONS=otel deno run main.ts
 ";

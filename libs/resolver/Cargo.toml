@@ -43,6 +43,7 @@ deno_terminal.workspace = true
 deno_unsync.workspace = true
 ende_cache_dir.workspace = true
 ende_config.workspace = true
+ende_env.workspace = true
 ende_lockfile.workspace = true
 ende_maybe_sync.workspace = true
 ende_npm.workspace = true

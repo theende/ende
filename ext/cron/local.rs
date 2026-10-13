@@ -324,7 +324,7 @@ impl CronHandle for CronExecutionHandle {
 fn compute_next_deadline(cron_expression: &str) -> Result<u64, CronError> {
   let now = chrono::Utc::now();
 
-  if let Ok(test_schedule) = env::var("DENO_CRON_TEST_SCHEDULE_OFFSET")
+  if let Ok(test_schedule) = env::var("ENDE_CRON_TEST_SCHEDULE_OFFSET")
     && let Ok(offset) = test_schedule.parse::<u64>()
   {
     return Ok(now.timestamp_millis() as u64 + offset);

@@ -28,7 +28,7 @@ async function runUpgrade(args: string[]) {
     args: ["upgrade", ...args],
     env: {
       ...Deno.env.toObject(),
-      "DENO_TESTING_UPGRADE": "1",
+      "ENDE_TESTING_UPGRADE": "1",
     },
     stdout: "inherit",
     stderr: "inherit",

@@ -1615,7 +1615,7 @@ fn permission_help_section_is_rendered() {
   let run = help::render_subcommand_help(&defs::DENO_ROOT, "run").unwrap();
   assert!(run.contains("Permission options:"));
   assert!(run.contains("Allow file system read access"));
-  assert!(run.contains("DENO_TRACE_PERMISSIONS"));
+  assert!(run.contains("ENDE_TRACE_PERMISSIONS"));
   // Hidden from the table above, documented in the section below.
   assert!(!run.contains("  -R, --allow-read[=VALUE...]  \n"));
 

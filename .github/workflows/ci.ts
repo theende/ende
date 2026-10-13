@@ -1013,7 +1013,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               // do this on PRs as well as main so that PRs can use the cargo build cache from main
               name: "Configure canary build",
               if: isNotTag,
-              run: 'echo "DENO_CANARY=true" >> $GITHUB_ENV',
+              run: 'echo "ENDE_CANARY=true" >> $GITHUB_ENV',
             },
             ...(usesFramePointerPanicTrace
               ? [{
@@ -1039,7 +1039,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             {
               name: "Build release",
               env: {
-                DENO_SNAPSHOT_MINIFY_SOURCES: "1",
+                ENDE_SNAPSHOT_MINIFY_SOURCES: "1",
               },
               run: [
                 // On macOS aarch64, link through lzld so system frameworks
@@ -1092,9 +1092,9 @@ const buildJobs = buildItems.map((rawBuildItem) => {
                 if: runStartupOrder,
                 run: cargoBuildReleaseCommand,
                 env: {
-                  DENO_SNAPSHOT_MINIFY_SOURCES: "1",
-                  DENO_USE_STARTUP_ORDER: "1",
-                  DENO_STARTUP_ORDER_FILE:
+                  ENDE_SNAPSHOT_MINIFY_SOURCES: "1",
+                  ENDE_USE_STARTUP_ORDER: "1",
+                  ENDE_STARTUP_ORDER_FILE:
                     `\${{ github.workspace }}/${startupOrderPath}`,
                 },
               }, {
@@ -1754,7 +1754,7 @@ const benchJob = job(
         {
           name: "Build deno",
           env: {
-            DENO_SNAPSHOT_MINIFY_SOURCES: "1",
+            ENDE_SNAPSHOT_MINIFY_SOURCES: "1",
           },
           run: "cargo build --release -p ende",
         },

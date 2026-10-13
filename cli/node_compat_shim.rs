@@ -18,19 +18,19 @@
 //!
 //! Both are best-effort and only kick in when a real `node` is not already
 //! available on `PATH`, so existing Node.js setups are never shadowed. The
-//! behavior can be disabled entirely with `DENO_DISABLE_NODE_SHIM=1`.
+//! behavior can be disabled entirely with `ENDE_DISABLE_NODE_SHIM=1`.
 
 use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
 
 /// Env var that disables the whole feature when set to a truthy value.
-const DISABLE_ENV_VAR: &str = "DENO_DISABLE_NODE_SHIM";
+const DISABLE_ENV_VAR: &str = "ENDE_DISABLE_NODE_SHIM";
 /// Internal marker set once the shim has been put on PATH, used to avoid the
 /// shim recursively validating against itself when a spawned `node` (which is
 /// really deno) re-enters this code.
-const ACTIVE_ENV_VAR: &str = "DENO_NODE_SHIM_ACTIVE";
-/// Name of the directory under DENO_DIR that holds the `node` shim.
+const ACTIVE_ENV_VAR: &str = "ENDE_NODE_SHIM_ACTIVE";
+/// Name of the directory under ENDE_DIR that holds the `node` shim.
 const SHIM_DIR_NAME: &str = "node_compat_bin";
 
 fn is_truthy(value: &str) -> bool {
@@ -41,7 +41,7 @@ fn is_truthy(value: &str) -> bool {
 }
 
 fn env_disabled() -> bool {
-  std::env::var(DISABLE_ENV_VAR)
+  ende_env::var(DISABLE_ENV_VAR)
     .map(|v| is_truthy(&v))
     .unwrap_or(false)
 }
@@ -83,7 +83,7 @@ fn is_node_arg0(arg0: &OsString) -> bool {
 /// Deno args and return the rewritten argv. Otherwise returns `args` unchanged.
 ///
 /// Must be called before any threads are spawned, as it may mutate process
-/// environment variables (`NODE_OPTIONS`, `DENO_TLS_CA_STORE`, ...).
+/// environment variables (`NODE_OPTIONS`, `ENDE_TLS_CA_STORE`, ...).
 pub fn maybe_rewrite_node_arg0(args: Vec<OsString>) -> Vec<OsString> {
   let Some(arg0) = args.first() else {
     return args;
@@ -145,7 +145,7 @@ pub fn maybe_rewrite_node_arg0(args: Vec<OsString>) -> Vec<OsString> {
 fn apply_env_side_effects(result: &node_shim::TranslatedArgs) {
   if result.use_system_ca {
     // SAFETY: called before any threads are spawned.
-    unsafe { std::env::set_var("DENO_TLS_CA_STORE", "system") };
+    unsafe { std::env::set_var("ENDE_TLS_CA_STORE", "system") };
   }
   if !result.node_options.is_empty() {
     let options = result.node_options.join(" ");
@@ -162,7 +162,7 @@ fn apply_env_side_effects(result: &node_shim::TranslatedArgs) {
     // SAFETY: called before any threads are spawned.
     unsafe {
       std::env::set_var(
-        "DENO_NODE_TRACE_EVENT_CATEGORIES",
+        "ENDE_NODE_TRACE_EVENT_CATEGORIES",
         &result.trace_event_categories,
       )
     };

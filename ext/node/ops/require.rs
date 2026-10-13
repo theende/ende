@@ -571,7 +571,7 @@ pub fn op_require_read_file<TSys: ExtNodeSys + 'static>(
       .map_err(|e| RequireErrorKind::ReadModule(e).into_box())?
   };
   // Apply load-time security mitigations for known React Server Components
-  // CVEs to required (CommonJS) source. Opt in via `DENO_PATCH_REACT_CVE`.
+  // CVEs to required (CommonJS) source. Opt in via `ENDE_PATCH_REACT_CVE`.
   let sys = state.borrow::<TSys>();
   if ende_resolver::is_react_cve_patch_enabled(sys) {
     match ende_resolver::patch_react_cves(file_path_str, code.as_str().into()) {

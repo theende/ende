@@ -2,6 +2,6 @@
   "args": "run v8_flags.js",
   "output": "v8_flags.js.out",
   "envs": {
-    "DENO_V8_FLAGS": "--expose-gc"
+    "ENDE_V8_FLAGS": "--expose-gc"
   }
 }

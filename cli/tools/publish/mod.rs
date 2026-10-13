@@ -189,7 +189,7 @@ pub async fn publish(
     bail!("No packages to publish");
   }
 
-  if std::env::var("DENO_TESTING_DISABLE_GIT_CHECK")
+  if std::env::var("ENDE_TESTING_DISABLE_GIT_CHECK")
     .ok()
     .is_none()
     && !publish_flags.allow_dirty
@@ -429,7 +429,7 @@ impl PublishPreparer {
         colors::yellow("Warning"),
       );
       Ok(Arc::new(graph))
-    } else if std::env::var("DENO_INTERNAL_FAST_CHECK_OVERWRITE").as_deref()
+    } else if std::env::var("ENDE_INTERNAL_FAST_CHECK_OVERWRITE").as_deref()
       == Ok("1")
     {
       if check_if_git_repo_dirty(self.cli_options.initial_cwd())
@@ -437,7 +437,7 @@ impl PublishPreparer {
         .is_some()
       {
         bail!(
-          "When using DENO_INTERNAL_FAST_CHECK_OVERWRITE, the git repo must be in a clean state."
+          "When using ENDE_INTERNAL_FAST_CHECK_OVERWRITE, the git repo must be in a clean state."
         );
       }
 
@@ -456,7 +456,7 @@ impl PublishPreparer {
         }
       }
 
-      bail!("Exiting due to DENO_INTERNAL_FAST_CHECK_OVERWRITE")
+      bail!("Exiting due to ENDE_INTERNAL_FAST_CHECK_OVERWRITE")
     } else {
       log::info!("Checking for slow types in the public API...");
       for package in package_configs {

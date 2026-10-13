@@ -5,7 +5,7 @@ const tempDir = Deno.makeTempDirSync();
 const cronSocketPath = join(tempDir, "cron.sock");
 const controlSocketPath = join(tempDir, "control.sock");
 
-// 1. Spawn main.js with NO DENO_UNSTABLE_CRON_SOCK initially
+// 1. Spawn main.js with NO ENDE_UNSTABLE_CRON_SOCK initially
 const mainProcess = new Deno.Command(Deno.execPath(), {
   args: [
     "run",
@@ -15,8 +15,8 @@ const mainProcess = new Deno.Command(Deno.execPath(), {
     join(testDir, "main.js"),
   ],
   env: {
-    // NO DENO_UNSTABLE_CRON_SOCK here!
-    DENO_UNSTABLE_CONTROL_SOCK: `unix:${controlSocketPath}`,
+    // NO ENDE_UNSTABLE_CRON_SOCK here!
+    ENDE_UNSTABLE_CONTROL_SOCK: `unix:${controlSocketPath}`,
   },
   stderr: "inherit",
 }).spawn();
@@ -39,11 +39,11 @@ const controlWriter = controlConn.writable.getWriter();
 const cronListener = Deno.listen({ transport: "unix", path: cronSocketPath });
 console.error("[TEST] Cron listener started");
 
-// 4. Send Start command WITH DENO_UNSTABLE_CRON_SOCK in env
+// 4. Send Start command WITH ENDE_UNSTABLE_CRON_SOCK in env
 const startCmd = JSON.stringify({
   cwd: Deno.cwd(),
   args: ["run", "--unstable-cron", "--allow-net", join(testDir, "main.js")],
-  env: [["DENO_UNSTABLE_CRON_SOCK", `unix:${cronSocketPath}`]],
+  env: [["ENDE_UNSTABLE_CRON_SOCK", `unix:${cronSocketPath}`]],
 }) + "\n";
 console.error("[TEST] Sending Start command");
 await controlWriter.write(new TextEncoder().encode(startCmd));

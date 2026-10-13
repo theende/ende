@@ -380,7 +380,7 @@ impl ModuleMap {
     }?;
 
     // `LazyEsmModuleLoader` only knows the in-binary static sources and has no
-    // DENO_DIR access, so `source.code_cache` is always `None` here. Read the
+    // ENDE_DIR access, so `source.code_cache` is always `None` here. Read the
     // persisted V8 code cache from the REAL loader (Cli/EmbeddedModuleLoader)
     // instead — the same seam the residual `lazy_loaded_js` path uses. Without
     // this, residual ESM (node:process, node:module, the stream/net/tty
@@ -641,7 +641,7 @@ impl ModuleMap {
     };
     let bootstrap_param = v8::String::new(tc_scope, "__bootstrap").unwrap();
     // Persist a V8 code cache for this residual `lazy_loaded_js` module through
-    // the same on-disk (DENO_DIR) cache user scripts use, keyed by specifier +
+    // the same on-disk (ENDE_DIR) cache user scripts use, keyed by specifier +
     // source hash. Residuals ship source-only in the binary, so without this a
     // node-heavy program re-pays parse+compile of the whole node-polyfill
     // closure at runtime on every cold start. The first run compiles and

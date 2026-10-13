@@ -54,7 +54,7 @@ fn upgrade_prompt() {
   let cmd = context
     .new_command()
     .args("run --log-level=debug main.js")
-    .env_remove("DENO_NO_UPDATE_CHECK");
+    .env_remove("ENDE_NO_UPDATE_CHECK");
   // run once and wait for the version to be stored
   cmd.with_pty(|mut pty| {
     pty.expect("Finished upgrade checker.");
@@ -79,7 +79,7 @@ fn upgrade_lsp_repl_sleeps() {
     .use_http_server()
     .use_temp_cwd()
     .env(
-      "DENO_DONT_USE_INTERNAL_BASE_UPGRADE_URL",
+      "ENDE_DONT_USE_INTERNAL_BASE_UPGRADE_URL",
       "http://localhost:4545/upgrade/sleep",
     )
     .build();
@@ -89,7 +89,7 @@ fn upgrade_lsp_repl_sleeps() {
   context
     .new_command()
     .args("repl")
-    .env_remove("DENO_NO_UPDATE_CHECK")
+    .env_remove("ENDE_NO_UPDATE_CHECK")
     .with_pty(|mut pty| {
       pty.write_line("123 + 456\n");
       pty.expect("579");
@@ -105,7 +105,7 @@ fn upgrade_context() -> TestContext {
     .use_http_server()
     .use_temp_cwd()
     .env(
-      "DENO_DONT_USE_INTERNAL_BASE_UPGRADE_URL",
+      "ENDE_DONT_USE_INTERNAL_BASE_UPGRADE_URL",
       "http://localhost:4545",
     )
     .build()

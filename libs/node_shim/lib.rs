@@ -3198,10 +3198,10 @@ pub struct TranslatedArgs {
   pub deno_args: Vec<String>,
   /// Node options that should be added to NODE_OPTIONS env var
   pub node_options: Vec<String>,
-  /// Whether to set DENO_TLS_CA_STORE=system
+  /// Whether to set ENDE_TLS_CA_STORE=system
   pub use_system_ca: bool,
   /// Comma-separated trace event categories from --trace-event-categories,
-  /// propagated to the spawned process via DENO_NODE_TRACE_EVENT_CATEGORIES.
+  /// propagated to the spawned process via ENDE_NODE_TRACE_EVENT_CATEGORIES.
   pub trace_event_categories: String,
 }
 

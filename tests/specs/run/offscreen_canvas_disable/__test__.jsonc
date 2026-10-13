@@ -6,12 +6,12 @@
       "args": "run main.js",
       "output": "present.out"
     },
-    // DENO_DISABLE_OFFSCREEN_CANVAS removes the global, restoring the
+    // ENDE_DISABLE_OFFSCREEN_CANVAS removes the global, restoring the
     // pre-2.8 fallback path for libraries that feature-detect on it.
     "env_removes_offscreen_canvas": {
       "args": "run main.js",
       "envs": {
-        "DENO_DISABLE_OFFSCREEN_CANVAS": "1"
+        "ENDE_DISABLE_OFFSCREEN_CANVAS": "1"
       },
       "output": "absent.out"
     },
@@ -19,7 +19,7 @@
     "env_true_removes_offscreen_canvas": {
       "args": "run main.js",
       "envs": {
-        "DENO_DISABLE_OFFSCREEN_CANVAS": "true"
+        "ENDE_DISABLE_OFFSCREEN_CANVAS": "true"
       },
       "output": "absent.out"
     }

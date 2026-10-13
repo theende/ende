@@ -45,6 +45,7 @@ members = [
   "libs/dcore",
   "libs/dotenv",
   "libs/ende_v8",
+  "libs/env",
   "libs/eszip",
   "libs/http_h1",
   "libs/inspector_server",
@@ -156,6 +157,7 @@ ende_core = { version = "0.412.0", path = "./libs/core", default-features = fals
 ende_core_testing = { path = "./libs/core_testing" }
 ende_crypto_provider = { version = "0.53.0", path = "./libs/crypto" }
 ende_dotenv = { version = "0.28.0", path = "./libs/dotenv" }
+ende_env = { version = "0.1.0", path = "./libs/env" }
 ende_features = { version = "0.56.0", path = "./runtime/features" }
 ende_http_h1 = { version = "0.10.0", path = "./libs/http_h1" }
 ende_inspector_server = { version = "0.33.0", path = "./libs/inspector_server" }

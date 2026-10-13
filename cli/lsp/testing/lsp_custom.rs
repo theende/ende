@@ -4,8 +4,10 @@ use ende_core::serde::Deserialize;
 use ende_core::serde::Serialize;
 use tower_lsp::lsp_types as lsp;
 
-pub const TEST_RUN_CANCEL_REQUEST: &str = "deno/testRunCancel";
-pub const TEST_RUN_REQUEST: &str = "deno/testRun";
+pub const TEST_RUN_CANCEL_REQUEST: &str = "ende/testRunCancel";
+pub const LEGACY_TEST_RUN_CANCEL_REQUEST: &str = "deno/testRunCancel";
+pub const TEST_RUN_REQUEST: &str = "ende/testRun";
+pub const LEGACY_TEST_RUN_REQUEST: &str = "deno/testRun";
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,12 +55,18 @@ pub struct TestModuleNotificationParams {
   pub tests: Vec<TestData>,
 }
 
-pub enum TestModuleNotification {}
+/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+pub enum TestModuleNotification<const LEGACY: bool> {}
 
-impl lsp::notification::Notification for TestModuleNotification {
+impl<const LEGACY: bool> lsp::notification::Notification
+  for TestModuleNotification<LEGACY>
+{
   type Params = TestModuleNotificationParams;
-
-  const METHOD: &'static str = "deno/testModule";
+  const METHOD: &'static str = if LEGACY {
+    "deno/testModule"
+  } else {
+    "ende/testModule"
+  };
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -68,12 +76,18 @@ pub struct TestModuleDeleteNotificationParams {
   pub text_document: lsp::TextDocumentIdentifier,
 }
 
-pub enum TestModuleDeleteNotification {}
+/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+pub enum TestModuleDeleteNotification<const LEGACY: bool> {}
 
-impl lsp::notification::Notification for TestModuleDeleteNotification {
+impl<const LEGACY: bool> lsp::notification::Notification
+  for TestModuleDeleteNotification<LEGACY>
+{
   type Params = TestModuleDeleteNotificationParams;
-
-  const METHOD: &'static str = "deno/testModuleDelete";
+  const METHOD: &'static str = if LEGACY {
+    "deno/testModuleDelete"
+  } else {
+    "ende/testModuleDelete"
+  };
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -179,10 +193,16 @@ pub struct TestMessage {
   pub location: Option<lsp::Location>,
 }
 
-pub enum TestRunProgressNotification {}
+/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+pub enum TestRunProgressNotification<const LEGACY: bool> {}
 
-impl lsp::notification::Notification for TestRunProgressNotification {
+impl<const LEGACY: bool> lsp::notification::Notification
+  for TestRunProgressNotification<LEGACY>
+{
   type Params = TestRunProgressParams;
-
-  const METHOD: &'static str = "deno/testRunProgress";
+  const METHOD: &'static str = if LEGACY {
+    "deno/testRunProgress"
+  } else {
+    "ende/testRunProgress"
+  };
 }

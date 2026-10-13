@@ -137,7 +137,7 @@ Server.prototype.closeIdleConnections =
   HttpServer.prototype.closeIdleConnections;
 Server.prototype.setTimeout = HttpServer.prototype.setTimeout;
 
-// Same DENO_SERVE_ADDRESS override hook as http.Server, but on
+// Same ENDE_SERVE_ADDRESS override hook as http.Server, but on
 // https.Server. The override listener is plain cleartext HTTP (it
 // goes directly through _connectionListener, bypassing tls wrapping)
 // because the typical use case -- Deno Deploy / desktop runtime

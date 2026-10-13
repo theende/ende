@@ -622,7 +622,7 @@ fn missing_deno_dir() {
     "repl",
     Some(vec!["1"]),
     Some(vec![
-      ("DENO_DIR".to_owned(), deno_dir_path.to_string()),
+      ("ENDE_DIR".to_owned(), deno_dir_path.to_string()),
       ("NO_COLOR".to_owned(), "1".to_owned()),
     ]),
     false,
@@ -642,7 +642,7 @@ fn custom_history_path() {
     "repl",
     Some(vec!["1"]),
     Some(vec![
-      ("DENO_REPL_HISTORY".to_owned(), history_path.to_string()),
+      ("ENDE_REPL_HISTORY".to_owned(), history_path.to_string()),
       ("NO_COLOR".to_owned(), "1".to_owned()),
     ]),
     false,
@@ -661,8 +661,8 @@ fn disable_history_file() {
     "repl",
     Some(vec!["1"]),
     Some(vec![
-      ("DENO_DIR".to_owned(), deno_dir.path().to_string()),
-      ("DENO_REPL_HISTORY".to_owned(), "".to_owned()),
+      ("ENDE_DIR".to_owned(), deno_dir.path().to_string()),
+      ("ENDE_REPL_HISTORY".to_owned(), "".to_owned()),
       ("NO_COLOR".to_owned(), "1".to_owned()),
     ]),
     false,
@@ -1000,7 +1000,7 @@ fn npm_packages() {
   let mut env_vars = util::env_vars_for_npm_tests();
   env_vars.push(("NO_COLOR".to_owned(), "1".to_owned()));
   let temp_dir = TempDir::new();
-  env_vars.push(("DENO_DIR".to_string(), temp_dir.path().to_string()));
+  env_vars.push(("ENDE_DIR".to_string(), temp_dir.path().to_string()));
 
   {
     let (out, err) = util::run_and_collect_output_with_args(

@@ -5,7 +5,7 @@
     "args": "install npm:@denotest/bin",
     "output": "[WILDCARD]"
   }, {
-    "args": "run -A update.ts $DENO_DIR",
+    "args": "run -A update.ts $ENDE_DIR",
     "output": ""
   }, {
     // should not error

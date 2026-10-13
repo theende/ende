@@ -3417,7 +3417,7 @@ function preEnableTraceEvents() {
   }
   traceEventsPreEnabled = true;
   const traceCategoriesEnv = op_get_env_no_permission_check(
-    "DENO_NODE_TRACE_EVENT_CATEGORIES",
+    "ENDE_NODE_TRACE_EVENT_CATEGORIES",
   );
   if (!traceCategoriesEnv) {
     return;

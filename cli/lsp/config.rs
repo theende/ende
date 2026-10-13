@@ -61,6 +61,7 @@ use lsp_types::Uri;
 use node_resolver::NodeResolverOptions;
 use tower_lsp::lsp_types as lsp;
 
+use super::legacy_client::is_virtual_document_scheme;
 use super::logging::lsp_log;
 use super::lsp_custom;
 use super::urls::uri_to_url;
@@ -79,7 +80,9 @@ use crate::util::fs::canonicalize_path_maybe_not_exists;
 use crate::util::progress_bar::ProgressBar;
 use crate::util::progress_bar::ProgressBarStyle;
 
-pub const SETTINGS_SECTION: &str = "deno";
+pub const SETTINGS_SECTION: &str = "ende";
+/// Still read when a client doesn't provide [`SETTINGS_SECTION`].
+pub const DEPRECATED_SETTINGS_SECTION: &str = "deno";
 
 fn is_true() -> bool {
   true
@@ -538,7 +541,7 @@ pub struct WorkspaceSettings {
   pub enable_paths: Option<Vec<String>>,
 
   /// An option that points to a path string of the path to utilise as the
-  /// cache/DENO_DIR for the language server.
+  /// cache/ENDE_DIR for the language server.
   #[serde(default, deserialize_with = "empty_string_none")]
   pub cache: Option<String>,
 
@@ -548,7 +551,7 @@ pub struct WorkspaceSettings {
   pub cache_on_save: bool,
 
   /// Override the default stores used to validate certificates. This overrides
-  /// the environment variable `DENO_TLS_CA_STORE` if present.
+  /// the environment variable `ENDE_TLS_CA_STORE` if present.
   pub certificate_stores: Option<Vec<String>>,
 
   /// An option that points to a path string of the config file to apply to
@@ -599,7 +602,7 @@ pub struct WorkspaceSettings {
   pub testing: TestingSettings,
 
   /// An option which sets the cert file to use when attempting to fetch remote
-  /// resources. This overrides `DENO_CERT` if present.
+  /// resources. This overrides `ENDE_CERT` if present.
   #[serde(default, deserialize_with = "empty_string_none")]
   pub tls_certificate: Option<String>,
 
@@ -1108,7 +1111,7 @@ impl Config {
   }
 
   pub fn uri_enabled(&self, uri: &Uri) -> bool {
-    if uri.scheme().as_str().eq_ignore_ascii_case("deno") {
+    if is_virtual_document_scheme(uri.scheme().as_str()) {
       return true;
     }
     self.specifier_enabled(&uri_to_url(uri))
@@ -1477,7 +1480,7 @@ impl ConfigData {
             workspace_cache: Some(workspace_cache),
             discover_pkg_json: !has_flag_env_var(
               &CliSys::default(),
-              "DENO_NO_PACKAGE_JSON",
+              "ENDE_NO_PACKAGE_JSON",
             ),
             maybe_vendor_override: None,
           },

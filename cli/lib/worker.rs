@@ -157,7 +157,7 @@ fn get_cache_storage_dir_for_key(
 
 /// By default V8 uses 1.4Gb heap limit which is meant for browser tabs.
 /// Instead probe for the total memory on the system and use it instead
-/// as a default. In case the platform is Linux and `DENO_USE_CGROUPS` is set,
+/// as a default. In case the platform is Linux and `ENDE_USE_CGROUPS` is set,
 /// parse cgroup config to get the cgroup-constrained memory limit.
 pub fn create_isolate_create_params<TSys: DenoLibSys>(
   #[allow(
@@ -195,8 +195,8 @@ mod linux {
     let system_total_memory = ende_runtime::ende_os::sys_info::mem_info()
       .map(|mem_info| mem_info.total);
 
-    // For performance, parse cgroup config only when DENO_USE_CGROUPS is set
-    if sys.env_var_os("DENO_USE_CGROUPS").is_none() {
+    // For performance, parse cgroup config only when ENDE_USE_CGROUPS is set
+    if ende_env::env_var_os(sys, "ENDE_USE_CGROUPS").is_none() {
       return system_total_memory;
     }
 

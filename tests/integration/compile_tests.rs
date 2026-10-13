@@ -53,7 +53,7 @@ fn compile_basic() {
   let output = context
     .new_command()
     // it should fail creating this, but still work
-    .env("DENO_DIR", readonly_sub_dir)
+    .env("ENDE_DIR", readonly_sub_dir)
     .name(exe)
     .run();
   output.assert_matches_text("Welcome to Deno!\n");
@@ -892,7 +892,7 @@ fn run_npm_bin_compile_test(opts: RunNpmBinCompileOptions) {
   eprintln!("{}", output.combined_output());
   output.skip_output_check();
 
-  // delete the npm folder in the DENO_DIR to ensure it's not using it
+  // delete the npm folder in the ENDE_DIR to ensure it's not using it
   context.deno_dir().remove_dir_all("./npm");
 
   // run

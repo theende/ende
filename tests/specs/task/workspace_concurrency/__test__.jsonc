@@ -3,7 +3,7 @@
   // root for the duration of its run. If two tasks ever overlap the lock
   // acquisition fails and the run exits non-zero, so a clean exit proves the
   // tasks ran sequentially. With `--jobs 1` they never overlap, even when
-  // `DENO_JOBS` asks for more.
+  // `ENDE_JOBS` asks for more.
   "tempDir": true,
   "tests": {
     "concurrency_one_is_sequential": {
@@ -11,11 +11,11 @@
       "output": "sequential.out"
     },
     // The `--concurrency` alias behaves the same as `--jobs` and overrides
-    // `DENO_JOBS`.
+    // `ENDE_JOBS`.
     "flag_overrides_deno_jobs": {
       "args": "task -r --no-prefix --concurrency 1 work",
       "envs": {
-        "DENO_JOBS": "3"
+        "ENDE_JOBS": "3"
       },
       "output": "sequential.out"
     },

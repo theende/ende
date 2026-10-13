@@ -1251,7 +1251,7 @@ impl VfsRoot {
         // "outside root" is the common host-FS fallback path in
         // desktop --hmr / runtime-dynamic imports. Don't print at all
         // by default; the caller falls through to a real filesystem
-        // read. Set DENO_LOG=endert=debug to see it.
+        // read. Set ENDE_LOG=endert=debug to see it.
         log::debug!(
           target: "endert",
           "[VFS] path outside root '{}': {}",

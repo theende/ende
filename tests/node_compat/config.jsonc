@@ -814,7 +814,7 @@
       // (per-test, not globally) routes the test through the branch where
       // Deno's aws-lc-rs/BoringSSL backend matches the externally-linked
       // OpenSSL expectations, without affecting other tests' branches.
-      "env": { "DENO_INTERNAL_NODE_TEST_FORCE_SHARED_OPENSSL": "1" }
+      "env": { "ENDE_INTERNAL_NODE_TEST_FORCE_SHARED_OPENSSL": "1" }
     },
     "parallel/test-crypto-rsa-pss-default-salt-length.js": {},
     "parallel/test-crypto-sec-level.js": {},

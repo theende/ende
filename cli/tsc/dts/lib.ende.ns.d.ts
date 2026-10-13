@@ -902,7 +902,7 @@ declare namespace Ende {
      * in the application code.
      *
      * Can also be enabled globally with the `--sanitize-ops` CLI flag,
-     * the `DENO_TEST_SANITIZE_OPS=1` environment variable, or the
+     * the `ENDE_TEST_SANITIZE_OPS=1` environment variable, or the
      * `test.sanitizeOps` option in `deno.json`. Can be set per-module
      * with {@linkcode Deno.test.sanitizer}.
      *
@@ -913,7 +913,7 @@ declare namespace Ende {
      * test match the open resources at the end of the test.
      *
      * Can also be enabled globally with the `--sanitize-resources` CLI flag,
-     * the `DENO_TEST_SANITIZE_RESOURCES=1` environment variable, or the
+     * the `ENDE_TEST_SANITIZE_RESOURCES=1` environment variable, or the
      * `test.sanitizeResources` option in `deno.json`. Can be set per-module
      * with {@linkcode Deno.test.sanitizer}.
      *

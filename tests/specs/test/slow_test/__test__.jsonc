@@ -1,7 +1,7 @@
 {
   "args": "test main.js",
   "envs": {
-    "DENO_SLOW_TEST_TIMEOUT": "1"
+    "ENDE_SLOW_TEST_TIMEOUT": "1"
   },
   "output": "main.out",
   "exitCode": 0

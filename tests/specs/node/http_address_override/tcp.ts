@@ -1,6 +1,6 @@
 import * as http from "node:http";
 
-// With DENO_SERVE_ADDRESS=tcp:127.0.0.1:9401 the override should replace
+// With ENDE_SERVE_ADDRESS=tcp:127.0.0.1:9401 the override should replace
 // the user-supplied port (9400) with 9401. The second server should
 // bind to its own address since the override is consumed only once.
 const server1 = http.createServer((_req, res) => res.end("one"));

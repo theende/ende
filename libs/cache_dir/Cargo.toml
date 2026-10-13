@@ -26,6 +26,7 @@ data-url = { workspace = true, optional = true }
 deno_error = { workspace = true, features = ["url"] }
 deno_media_type.workspace = true
 deno_path_util.workspace = true
+ende_env.workspace = true
 ende_maybe_sync.workspace = true
 http = { workspace = true, optional = true }
 log.workspace = true

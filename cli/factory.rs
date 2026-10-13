@@ -774,7 +774,7 @@ impl CliFactory {
           // lockfile written by an older deno is treated as not satisfying
           // the requirements and the whole npm graph is re-resolved against
           // the registry, which fails under `--cached-only` (offline
-          // isolates booting from an immutable, pre-baked `DENO_DIR`). See
+          // isolates booting from an immutable, pre-baked `ENDE_DIR`). See
           // denoland/deno#26427 for the original install-path dedup. This is
           // safe on `deno run`: the dedup only affects the in-memory
           // resolution snapshot and does not rewrite the user's lockfile
@@ -1152,11 +1152,11 @@ impl CliFactory {
         }
       }
 
-      // Deno Deploy: when DENO_KV_REQUIRES_DISTRIBUTED_DATABASE=error, force the
+      // Deno Deploy: when ENDE_KV_REQUIRES_DISTRIBUTED_DATABASE=error, force the
       // unstable KV feature on so `Deno.openKv()` is always exposed. The open
       // path then rejects with a clear "no database attached" error instead of
       // the runtime hiding the API and reporting "Deno.openKv is not a function".
-      if std::env::var("DENO_KV_REQUIRES_DISTRIBUTED_DATABASE").as_deref()
+      if ende_env::var("ENDE_KV_REQUIRES_DISTRIBUTED_DATABASE").as_deref()
         == Ok("error")
         && !checker.check("kv")
       {
@@ -1368,7 +1368,7 @@ impl CliFactory {
       inspect_wait: cli_options.inspect_wait(),
       trace_ops: cli_options.trace_ops().clone(),
       is_standalone: false,
-      auto_serve: std::env::var("DENO_AUTO_SERVE").is_ok(),
+      auto_serve: ende_env::var("ENDE_AUTO_SERVE").is_ok(),
       is_inspecting: cli_options.is_inspecting(),
       location: cli_options.location_flag().clone(),
       // if the user ran a binary command, we'll need to set process.argv[0]
@@ -1404,7 +1404,7 @@ impl CliFactory {
       // removes the global, restoring the pre-2.8 fallback path. Truthy
       // values are `1` and `true`.
       disable_offscreen_canvas: matches!(
-        std::env::var("DENO_DISABLE_OFFSCREEN_CANVAS").as_deref(),
+        ende_env::var("ENDE_DISABLE_OFFSCREEN_CANVAS").as_deref(),
         Ok("1") | Ok("true")
       ),
     })
@@ -1469,7 +1469,7 @@ impl CliFactory {
             // otherwise leaves dangling type-only re-exports that crash at
             // runtime. Truthy values are `1` and `true`.
             force_disable_verbatim_module_syntax: matches!(
-              std::env::var("DENO_DISABLE_VERBATIM_MODULE_SYNTAX").as_deref(),
+              ende_env::var("ENDE_DISABLE_VERBATIM_MODULE_SYNTAX").as_deref(),
               Ok("1") | Ok("true")
             ),
           },

@@ -1,7 +1,7 @@
 {
   "tempDir": true,
   "envs": {
-    "DENO_DIR": "$PWD/deno_dir"
+    "ENDE_DIR": "$PWD/deno_dir"
   },
   // Regression test for issue #35991: in the npm auto-install re-run path,
   // `deno x` built the child `deno run` argv from the internal runner flags,

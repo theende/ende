@@ -806,7 +806,7 @@ pub(crate) fn trust_proxy_headers() -> bool {
   static TRUST_PROXY_HEADERS: OnceLock<bool> = OnceLock::new();
 
   *TRUST_PROXY_HEADERS.get_or_init(|| {
-    std::env::var_os("DENO_TRUST_PROXY_HEADERS")
+    ende_env::var_os("ENDE_TRUST_PROXY_HEADERS")
       .is_some_and(|value| value == "1")
   })
 }

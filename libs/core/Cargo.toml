@@ -39,6 +39,7 @@ deno_core_icudata = { workspace = true, optional = true }
 deno_error = { workspace = true, features = ["serde_json", "serde", "url", "tokio"] }
 deno_path_util.workspace = true
 deno_unsync = { workspace = true, features = ["tokio"] }
+ende_env.workspace = true
 ende_ops.workspace = true
 futures.workspace = true
 indexmap.workspace = true

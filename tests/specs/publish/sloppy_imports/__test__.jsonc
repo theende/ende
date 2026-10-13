@@ -1,7 +1,7 @@
 {
   "envs": {
     "DISABLE_JSR_PROVENANCE": "true",
-    "DENO_TESTING_DISABLE_GIT_CHECK": "1"
+    "ENDE_TESTING_DISABLE_GIT_CHECK": "1"
   },
   "tempDir": true,
   "steps": [{

@@ -1,0 +1,1 @@
+error: Uncaught (in promise) NotCapable: Requires env access to "DENO_KV_ACCESS_TOKEN"[WILDCARD]

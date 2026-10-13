@@ -26,20 +26,23 @@ pub async fn deploy(
   flags.no_lock = true;
   flags.minimum_dependency_age = Some(NewestDependencyDate::Disabled);
   if deploy_flags.sandbox {
+    // Also set under the deprecated `DENO_DEPLOY_CLI_SANDBOX` name, which the
+    // deploy CLI may still read.
     // SAFETY: only this subcommand is running, nothing else, so it's safe to set an env var.
     unsafe {
+      std::env::set_var("ENDE_DEPLOY_CLI_SANDBOX", "1");
       std::env::set_var("DENO_DEPLOY_CLI_SANDBOX", "1");
     }
   }
 
-  let dev_specifier = std::env::var("DENO_DEPLOY_CLI_SPECIFIER").ok();
+  let dev_specifier = ende_env::var("ENDE_DEPLOY_CLI_SPECIFIER").ok();
 
   // The jsr-fetched CLI resolves its imports from JSR package metadata and
   // reads the user's config itself, in-process. Disable config discovery so
   // the workspace at the user's cwd isn't applied to the deploy CLI's own
   // module graph (which otherwise breaks when a workspace member's name
   // collides with one of the CLI's dependencies). The dev path
-  // (DENO_DEPLOY_CLI_SPECIFIER) still wants discovery relative to the CLI
+  // (ENDE_DEPLOY_CLI_SPECIFIER) still wants discovery relative to the CLI
   // source.
   if dev_specifier.is_none() {
     flags.config_flag = ConfigFlag::Disabled;

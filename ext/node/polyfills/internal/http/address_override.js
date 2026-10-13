@@ -1,8 +1,8 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-// Support for DENO_SERVE_ADDRESS override in Node.js http.Server.
+// Support for ENDE_SERVE_ADDRESS override in Node.js http.Server.
 //
-// When DENO_SERVE_ADDRESS is set, node:http servers behave like the
+// When ENDE_SERVE_ADDRESS is set, node:http servers behave like the
 // top-level Deno.serve(): the first server to call `listen()` consumes
 // the override.
 //

@@ -31,6 +31,7 @@ brotli.workspace = true
 bytes.workspace = true
 deno_error.workspace = true
 ende_core.workspace = true
+ende_env.workspace = true
 ende_http_h1.workspace = true
 ende_net.workspace = true
 ende_telemetry.workspace = true

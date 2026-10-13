@@ -19,6 +19,7 @@ cranelift-native.workspace = true
 deno_error.workspace = true
 dlopen2.workspace = true
 ende_core.workspace = true
+ende_env.workspace = true
 ende_permissions.workspace = true
 endert_helper.workspace = true
 libffi.workspace = true

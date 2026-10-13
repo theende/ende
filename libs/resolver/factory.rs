@@ -614,7 +614,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
       });
       let resolve_workspace_discover_options = || {
         let discover_pkg_json = !self.options.no_npm
-          && !self.has_flag_env_var("DENO_NO_PACKAGE_JSON");
+          && !self.has_flag_env_var("ENDE_NO_PACKAGE_JSON");
         if !discover_pkg_json {
           log::debug!("package.json auto-discovery is disabled");
         }
@@ -702,7 +702,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
   }
 
   fn has_flag_env_var(&self, name: &str) -> bool {
-    let value = self.sys.env_var_os(name);
+    let value = ende_env::env_var_os(&self.sys, name);
     match value {
       Some(value) => value == "1",
       None => false,

@@ -16,7 +16,7 @@ fn tokio_env<T: FromStr>(name: &'static str, default: T) -> T
 where
   <T as FromStr>::Err: Debug,
 {
-  match std::env::var(name) {
+  match ende_env::var(name) {
     Ok(value) => value.parse().unwrap(),
     Err(_) => default,
   }
@@ -29,13 +29,13 @@ pub fn create_basic_runtime() -> tokio::runtime::Runtime {
   tokio::runtime::Builder::new_current_thread()
     .enable_io()
     .enable_time()
-    .event_interval(tokio_env("DENO_TOKIO_EVENT_INTERVAL", event_interval))
+    .event_interval(tokio_env("ENDE_TOKIO_EVENT_INTERVAL", event_interval))
     .global_queue_interval(tokio_env(
-      "DENO_TOKIO_GLOBAL_QUEUE_INTERVAL",
+      "ENDE_TOKIO_GLOBAL_QUEUE_INTERVAL",
       global_queue_interval,
     ))
     .max_io_events_per_tick(tokio_env(
-      "DENO_TOKIO_MAX_IO_EVENTS_PER_TICK",
+      "ENDE_TOKIO_MAX_IO_EVENTS_PER_TICK",
       max_io_events_per_tick,
     ))
     // Stack size for the blocking pool only — this is a current_thread
@@ -92,7 +92,7 @@ where
   #[cfg(tokio_unstable)]
   let join_handle = if metrics_enabled {
     rt.spawn(async move {
-      let metrics_interval: u64 = std::env::var("DENO_TOKIO_METRICS_INTERVAL")
+      let metrics_interval: u64 = ende_env::var("ENDE_TOKIO_METRICS_INTERVAL")
         .ok()
         .and_then(|val| val.parse().ok())
         .unwrap_or(1000);
@@ -145,6 +145,6 @@ where
   F: std::future::Future<Output = R> + 'static,
   R: Send + 'static,
 {
-  let metrics_enabled = std::env::var("DENO_TOKIO_METRICS").ok().is_some();
+  let metrics_enabled = ende_env::var("ENDE_TOKIO_METRICS").ok().is_some();
   create_and_run_current_thread_inner(future, metrics_enabled)
 }

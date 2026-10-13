@@ -1,7 +1,7 @@
 {
   "tempDir": true,
   "envs": {
-    "DENO_DIR": "$PWD/deno_dir"
+    "ENDE_DIR": "$PWD/deno_dir"
   },
   "steps": [{
     // The cwd ende.json sets a cutoff between the two publish dates, so 2.0.0

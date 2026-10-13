@@ -19,7 +19,7 @@
           "args": "run foo.ts",
           "output": "0\n0\n",
           "envs": {
-            "DENO_COVERAGE_DIR": "my_coverage_dir"
+            "ENDE_COVERAGE_DIR": "my_coverage_dir"
           }
         },
         {

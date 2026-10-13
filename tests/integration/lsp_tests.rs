@@ -276,7 +276,7 @@ fn lsp_doc_lint_diagnostics() {
   let messages = diagnostics
     .for_file(&mod_uri)
     .into_iter()
-    .filter(|d| d.source.as_deref() == Some("deno-doc"))
+    .filter(|d| d.source.as_deref() == Some("ende-doc"))
     .map(|d| d.message)
     .collect::<Vec<_>>();
   assert!(
@@ -308,7 +308,7 @@ fn lsp_doc_lint_diagnostics() {
     diagnostics
       .for_file(&other_uri)
       .into_iter()
-      .all(|d| d.source.as_deref() != Some("deno-doc")),
+      .all(|d| d.source.as_deref() != Some("ende-doc")),
     "non-export module should not be doc linted"
   );
 
@@ -464,7 +464,7 @@ fn lsp_import_map_diagnostics() {
         },
         "severity": 1,
         "code": "import-map-diagnostic",
-        "source": "deno",
+        "source": "ende",
         "message": "Invalid address \"null\" for the specifier key \"bad\". Addresses must be strings.",
       },
       {
@@ -474,7 +474,7 @@ fn lsp_import_map_diagnostics() {
         },
         "severity": 1,
         "code": "import-map-diagnostic",
-        "source": "deno",
+        "source": "ende",
         "message": "Invalid top-level key \"unexpected\". Only \"imports\" and \"scopes\" can be present.",
       },
       {
@@ -484,7 +484,7 @@ fn lsp_import_map_diagnostics() {
         },
         "severity": 1,
         "code": "no-cache",
-        "source": "deno",
+        "source": "ende",
         "message": "Uncached or missing remote URL: https://deno.land/x/example/mod.ts",
         "data": {
           "specifier": "https://deno.land/x/example/mod.ts",
@@ -521,7 +521,7 @@ fn lsp_import_map_diagnostics() {
             },
             "severity": 1,
             "code": "no-cache",
-            "source": "deno",
+            "source": "ende",
             "message": "Uncached or missing remote URL: https://deno.land/x/example/mod.ts",
             "data": {
               "specifier": "https://deno.land/x/example/mod.ts",
@@ -1071,7 +1071,7 @@ fn lsp_deno_config_setting_no_workspace() {
         },
         "severity": 2,
         "code": "camelcase",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "Identifier 'foo_bar' is not in camel case.\nConsider renaming `foo_bar` to `fooBar`",
       },
     ]),
@@ -1252,7 +1252,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
   client.initialize_default();
   let mut res = client
     .read_notification_with_method::<Value>(
-      "deno/didRefreshDenoConfigurationTree",
+      "ende/didRefreshDenoConfigurationTree",
     )
     .unwrap();
   res.as_object_mut().unwrap().remove("denoDirNpmFolderUri");
@@ -1308,7 +1308,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
   client.read_diagnostics();
   let mut res = client
     .read_notification_with_method::<Value>(
-      "deno/didRefreshDenoConfigurationTree",
+      "ende/didRefreshDenoConfigurationTree",
     )
     .unwrap();
   res.as_object_mut().unwrap().remove("denoDirNpmFolderUri");
@@ -1362,13 +1362,13 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
     }),
   );
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "disablePaths": ["non_workspace1"],
     },
   }));
   let mut res = client
     .read_notification_with_method::<Value>(
-      "deno/didRefreshDenoConfigurationTree",
+      "ende/didRefreshDenoConfigurationTree",
     )
     .unwrap();
   res.as_object_mut().unwrap().remove("denoDirNpmFolderUri");
@@ -1426,7 +1426,7 @@ fn lsp_did_change_deno_configuration_notification() {
   client.initialize_default();
 
   let res = client
-    .read_notification_with_method::<Value>("deno/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -1459,7 +1459,7 @@ fn lsp_did_change_deno_configuration_notification() {
   }));
   client.read_diagnostics();
   let res = client
-    .read_notification_with_method::<Value>("deno/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -1481,7 +1481,7 @@ fn lsp_did_change_deno_configuration_notification() {
   }));
   client.read_diagnostics();
   let res = client
-    .read_notification_with_method::<Value>("deno/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -1503,7 +1503,7 @@ fn lsp_did_change_deno_configuration_notification() {
   }));
   client.read_diagnostics();
   let res = client
-    .read_notification_with_method::<Value>("deno/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -1525,7 +1525,7 @@ fn lsp_did_change_deno_configuration_notification() {
   }));
   client.read_diagnostics();
   let res = client
-    .read_notification_with_method::<Value>("deno/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -1559,7 +1559,7 @@ fn lsp_deno_task() {
   );
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
-  let res = client.write_request("deno/taskDefinitions", json!(null));
+  let res = client.write_request("ende/taskDefinitions", json!(null));
   assert_eq!(
     res,
     json!([
@@ -1601,7 +1601,7 @@ fn lsp_import_attributes() {
     builder.set_import_map("data:application/json;utf8,{\"imports\": { \"example\": \"https://deno.land/x/example/mod.ts\" }}");
   });
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
       "codeLens": {
         "test": true,
@@ -1630,7 +1630,7 @@ fn lsp_import_attributes() {
   assert_eq!(
     json!(
       diagnostics
-        .messages_with_file_and_source("file:///a/a.ts", "deno")
+        .messages_with_file_and_source("file:///a/a.ts", "ende")
         .diagnostics
     ),
     json!([
@@ -1641,7 +1641,7 @@ fn lsp_import_attributes() {
         },
         "severity": 1,
         "code": "no-attribute-type",
-        "source": "deno",
+        "source": "ende",
         "message": "The module is a JSON module and not being imported with an import attribute. Consider adding `with { type: \"json\" }` to the import statement."
       }
     ])
@@ -1666,7 +1666,7 @@ fn lsp_import_attributes() {
             },
             "severity": 1,
             "code": "no-attribute-type",
-            "source": "deno",
+            "source": "ende",
             "message": "The module is a JSON module and not being imported with an import attribute. Consider adding `with { type: \"json\" }` to the import statement."
           }],
           "only": ["quickfix"]
@@ -1686,7 +1686,7 @@ fn lsp_import_attributes() {
           },
           "severity": 1,
           "code": "no-attribute-type",
-          "source": "deno",
+          "source": "ende",
           "message": "The module is a JSON module and not being imported with an import attribute. Consider adding `with { type: \"json\" }` to the import statement."
         }
       ],
@@ -1949,7 +1949,7 @@ const inferred = {
   client.did_open_file(&file);
   let mut assert_inferred_type_contains = |name: &str, expected: &[&str]| {
     let res = client.write_request(
-      "deno/inferredType",
+      "ende/inferredType",
       json!({
         "textDocument": file.identifier(),
         "position": file.range_of(name).start,
@@ -1972,7 +1972,7 @@ const inferred = {
   );
 
   let res = client.write_request(
-    "deno/inferredType",
+    "ende/inferredType",
     json!({
       "textDocument": file.identifier(),
       "position": file.range_of("inferred").start,
@@ -2028,7 +2028,7 @@ fn lsp_hover_asset() {
     "textDocument/hover",
     json!({
       "textDocument": {
-        "uri": "deno:/asset/lib.es2015.symbol.wellknown.d.ts"
+        "uri": "ende:/asset/lib.es2015.symbol.wellknown.d.ts"
       },
       "position": { "line": 109, "character": 13 }
     }),
@@ -2066,7 +2066,7 @@ fn lsp_hover_disabled() {
   client.initialize(|builder| {
     builder.set_deno_enable(false);
   });
-  client.change_configuration(json!({ "deno": { "enable": false } }));
+  client.change_configuration(json!({ "ende": { "enable": false } }));
   client.did_open(json!({
     "textDocument": {
       "uri": "file:///a/file.ts",
@@ -2095,7 +2095,7 @@ fn lsp_inlay_hints() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
     },
     "typescript": {
@@ -2207,7 +2207,7 @@ fn lsp_inlay_hints() {
           {
             "value": "string",
             "location": {
-              "uri": "deno:/asset/lib.es5.d.ts",
+              "uri": "ende:/asset/lib.es5.d.ts",
               "range": {
                 "start": { "line": 39, "character": 26 },
                 "end": { "line": 39, "character": 32 },
@@ -2224,7 +2224,7 @@ fn lsp_inlay_hints() {
           {
             "value": "radix",
             "location": {
-              "uri": "deno:/asset/lib.es5.d.ts",
+              "uri": "ende:/asset/lib.es5.d.ts",
               "range": {
                 "start": { "line": 39, "character": 42 },
                 "end": { "line": 39, "character": 47 },
@@ -2251,7 +2251,7 @@ fn lsp_inlay_hints() {
           {
             "value": "callbackfn",
             "location": {
-              "uri": "deno:/asset/lib.es5.d.ts",
+              "uri": "ende:/asset/lib.es5.d.ts",
               "range": {
                 "start": { "line": 1467, "character": 11 },
                 "end": { "line": 1467, "character": 21 },
@@ -2304,7 +2304,7 @@ fn lsp_inlay_hints_computed_property_name() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
     },
     "typescript": {
@@ -2418,7 +2418,7 @@ fn lsp_suggestion_actions_disabled() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
       "lint": false,
     },
@@ -2460,7 +2460,7 @@ fn lsp_suggestion_actions_disabled() {
         },
         "severity": 4,
         "code": 6385,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "'deprecatedFunction' is deprecated.",
         "relatedInformation": [
           {
@@ -2483,7 +2483,7 @@ fn lsp_suggestion_actions_disabled() {
         },
         "severity": 4,
         "code": 6133,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "'unsusedVariable' is declared but its value is never read.",
         "tags": [1],
       },
@@ -2518,7 +2518,7 @@ fn lsp_workspace_disable_enable_paths() {
             name: "project".to_string(),
           }]);
       },
-      json!({ "deno": {
+      json!({ "ende": {
         "disablePaths": ["./worker/node.ts"],
         "enablePaths": ["./worker"],
       } }),
@@ -3403,7 +3403,7 @@ fn lsp_document_preload_limit_zero_deno_json_detection() {
     builder.set_preload_limit(0);
   });
   let res = client
-    .read_notification_with_method::<Value>("deno/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -3821,7 +3821,7 @@ fn lsp_goto_type_definition_builtin() {
         .as_str()
         .unwrap())
       .collect::<Vec<_>>(),
-    vec!["deno:/asset/lib.ende.fetch.d.ts"],
+    vec!["ende:/asset/lib.ende.fetch.d.ts"],
   );
   client.shutdown();
 }
@@ -4793,7 +4793,7 @@ fn lsp_code_lens_references() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
       "codeLens": {
         "references": true,
@@ -4994,7 +4994,7 @@ fn lsp_code_lens_implementations() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
       "codeLens": {
         "implementations": true,
@@ -5430,7 +5430,7 @@ fn lsp_code_lens_test_disabled() {
     })));
   });
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
       "codeLens": {
         "test": false,
@@ -5463,7 +5463,7 @@ fn lsp_code_lens_non_doc_nav_tree() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
       "codeLens": {
         "implementations": true,
@@ -5492,10 +5492,10 @@ fn lsp_code_lens_non_doc_nav_tree() {
     }),
   );
   client.write_request(
-    "deno/virtualTextDocument",
+    "ende/virtualTextDocument",
     json!({
       "textDocument": {
-        "uri": "deno:/asset/lib.ende.shared_globals.d.ts"
+        "uri": "ende:/asset/lib.ende.shared_globals.d.ts"
       }
     }),
   );
@@ -5503,7 +5503,7 @@ fn lsp_code_lens_non_doc_nav_tree() {
     "textDocument/codeLens",
     json!({
       "textDocument": {
-        "uri": "deno:/asset/lib.ende.shared_globals.d.ts"
+        "uri": "ende:/asset/lib.ende.shared_globals.d.ts"
       }
     }),
   );
@@ -5516,7 +5516,7 @@ fn lsp_code_lens_non_doc_nav_tree() {
         "end": { "line": 416, "character": 19 }
       },
       "data": {
-        "uri": "deno:/asset/lib.ende.shared_globals.d.ts",
+        "uri": "ende:/asset/lib.ende.shared_globals.d.ts",
         "source": "references"
       }
     }),
@@ -5530,7 +5530,7 @@ fn lsp_nav_tree_updates() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
       "codeLens": {
         "implementations": true,
@@ -5988,7 +5988,7 @@ fn lsp_code_actions() {
             },
             "severity": 1,
             "code": 1308,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "'await' expressions are only allowed within async functions and at the top levels of modules.",
             "relatedInformation": []
           }],
@@ -6009,7 +6009,7 @@ fn lsp_code_actions() {
         },
         "severity": 1,
         "code": 1308,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "'await' expressions are only allowed within async functions and at the top levels of modules.",
         "relatedInformation": []
       }],
@@ -6043,7 +6043,7 @@ fn lsp_code_actions() {
         },
         "severity": 1,
         "code": 1308,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "'await' expressions are only allowed within async functions and at the top levels of modules.",
         "relatedInformation": []
       }],
@@ -6066,7 +6066,7 @@ fn lsp_code_actions() {
           },
           "severity": 1,
           "code": 1308,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "'await' expressions are only allowed within async functions and at the top levels of modules.",
           "relatedInformation": []
         }],
@@ -6095,7 +6095,7 @@ fn lsp_code_actions() {
           },
           "severity": 1,
           "code": 1308,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "'await' expressions are only allowed within async functions and at the top levels of modules.",
           "relatedInformation": []
         }
@@ -6195,41 +6195,41 @@ fn test_lsp_code_actions_ordering() {
   }
   let res = serde_json::to_value(actions).unwrap();
 
-  // Ensure ordering is "deno" -> "deno-ts" -> "deno-lint".
+  // Ensure ordering is "ende" -> "ende-ts" -> "ende-lint".
   assert_eq!(
     res,
     json!([
       {
         "title": "Cache \"https://deno.land/x/a/mod.ts\" and its dependencies.",
-        "source": "deno",
+        "source": "ende",
       },
       {
         "title": "Add async modifier to containing function",
-        "source": "deno-ts",
+        "source": "ende-ts",
       },
       {
         "title": "Disable prefer-const for this line",
-        "source": "deno-lint",
+        "source": "ende-lint",
       },
       {
         "title": "Disable prefer-const for the entire file",
-        "source": "deno-lint",
+        "source": "ende-lint",
       },
       {
         "title": "Ignore lint errors for the entire file",
-        "source": "deno-lint",
+        "source": "ende-lint",
       },
       {
         "title": "Disable no-await-in-sync-fn for this line",
-        "source": "deno-lint",
+        "source": "ende-lint",
       },
       {
         "title": "Disable no-await-in-sync-fn for the entire file",
-        "source": "deno-lint",
+        "source": "ende-lint",
       },
       {
         "title": "Ignore lint errors for the entire file",
-        "source": "deno-lint",
+        "source": "ende-lint",
       },
     ])
   );
@@ -6243,10 +6243,10 @@ fn lsp_status_file() {
   client.initialize_default();
 
   let res = client.write_request(
-    "deno/virtualTextDocument",
+    "ende/virtualTextDocument",
     json!({
       "textDocument": {
-        "uri": "deno:/status.md"
+        "uri": "ende:/status.md"
       }
     }),
   );
@@ -6254,10 +6254,10 @@ fn lsp_status_file() {
   assert!(res.starts_with("# Deno Language Server Status"));
 
   let res = client.write_request(
-    "deno/virtualTextDocument",
+    "ende/virtualTextDocument",
     json!({
       "textDocument": {
-        "uri": "deno:/status.md?1"
+        "uri": "ende:/status.md?1"
       }
     }),
   );
@@ -6356,7 +6356,7 @@ fn lsp_code_actions_deno_cache() {
       }
     }));
   assert_eq!(
-    diagnostics.messages_with_source("deno"),
+    diagnostics.messages_with_source("ende"),
     serde_json::from_value(json!({
       "uri": "file:///a/file.ts",
       "diagnostics": [{
@@ -6366,7 +6366,7 @@ fn lsp_code_actions_deno_cache() {
         },
         "severity": 1,
         "code": "no-cache",
-        "source": "deno",
+        "source": "ende",
         "message": "Uncached or missing remote URL: https://deno.land/x/a/mod.ts",
         "data": { "specifier": "https://deno.land/x/a/mod.ts" }
       }],
@@ -6394,7 +6394,7 @@ fn lsp_code_actions_deno_cache() {
             },
             "severity": 1,
             "code": "no-cache",
-            "source": "deno",
+            "source": "ende",
             "message": "Unable to load the remote module: \"https://deno.land/x/a/mod.ts\".",
             "data": {
               "specifier": "https://deno.land/x/a/mod.ts"
@@ -6416,7 +6416,7 @@ fn lsp_code_actions_deno_cache() {
         },
         "severity": 1,
         "code": "no-cache",
-        "source": "deno",
+        "source": "ende",
         "message": "Unable to load the remote module: \"https://deno.land/x/a/mod.ts\".",
         "data": {
           "specifier": "https://deno.land/x/a/mod.ts"
@@ -6453,7 +6453,7 @@ fn lsp_code_actions_deno_cache_jsr() {
     },
   }));
   assert_eq!(
-    json!(diagnostics.messages_with_source("deno")),
+    json!(diagnostics.messages_with_source("ende")),
     json!({
       "uri": url_to_uri(&temp_dir.url().join("file.ts").unwrap()).unwrap(),
       "diagnostics": [{
@@ -6463,7 +6463,7 @@ fn lsp_code_actions_deno_cache_jsr() {
         },
         "severity": 1,
         "code": "not-installed-jsr",
-        "source": "deno",
+        "source": "ende",
         "message": "JSR package \"@denotest/add@1\" is not installed or doesn't exist.",
         "data": { "specifier": "jsr:@denotest/add@1" },
       }],
@@ -6486,7 +6486,7 @@ fn lsp_code_actions_deno_cache_jsr() {
           },
           "severity": 1,
           "code": "not-installed-jsr",
-          "source": "deno",
+          "source": "ende",
           "message": "JSR package \"@denotest/add@1\" is not installed or doesn't exist.",
           "data": { "specifier": "jsr:@denotest/add@1" },
         }],
@@ -6506,7 +6506,7 @@ fn lsp_code_actions_deno_cache_jsr() {
         },
         "severity": 1,
         "code": "not-installed-jsr",
-        "source": "deno",
+        "source": "ende",
         "message": "JSR package \"@denotest/add@1\" is not installed or doesn't exist.",
         "data": { "specifier": "jsr:@denotest/add@1" },
       }],
@@ -7018,7 +7018,7 @@ fn lsp_diagnostics_linked_pkg_wrong_name_hint() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   let diagnostics = client.did_open_file(&file);
-  let messages = diagnostics.messages_with_source("deno");
+  let messages = diagnostics.messages_with_source("ende");
   let message = messages.diagnostics[0].message.as_str();
   assert!(
     message.contains(
@@ -7067,7 +7067,7 @@ fn lsp_jsr_code_action_missing_declaration() {
             },
             "severity": 8,
             "code": 2304,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'assertReturnType'.",
             "relatedInformation": [],
           },
@@ -7096,7 +7096,7 @@ fn lsp_jsr_code_action_missing_declaration() {
             },
             "severity": 8,
             "code": 2304,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'assertReturnType'.",
             "relatedInformation": [],
           },
@@ -7248,7 +7248,7 @@ fn lsp_code_actions_deno_cache_npm() {
     }
   }));
   assert_eq!(
-    diagnostics.messages_with_source("deno"),
+    diagnostics.messages_with_source("ende"),
     serde_json::from_value(json!({
       "uri": "file:///a/file.ts",
       "diagnostics": [{
@@ -7258,7 +7258,7 @@ fn lsp_code_actions_deno_cache_npm() {
         },
         "severity": 1,
         "code": "not-installed-npm",
-        "source": "deno",
+        "source": "ende",
         "message": "npm package \"chalk@5\" is not installed or doesn't exist.",
         "data": { "specifier": "npm:chalk@5" }
       }],
@@ -7285,7 +7285,7 @@ fn lsp_code_actions_deno_cache_npm() {
           },
           "severity": 1,
           "code": "not-installed-npm",
-          "source": "deno",
+          "source": "ende",
           "message": "npm package \"chalk@5\" is not installed or doesn't exist.",
           "data": { "specifier": "npm:chalk@5" }
         }],
@@ -7305,7 +7305,7 @@ fn lsp_code_actions_deno_cache_npm() {
         },
         "severity": 1,
         "code": "not-installed-npm",
-        "source": "deno",
+        "source": "ende",
         "message": "npm package \"chalk@5\" is not installed or doesn't exist.",
         "data": { "specifier": "npm:chalk@5" }
       }],
@@ -7337,7 +7337,7 @@ fn lsp_code_actions_deno_cache_all() {
       "#,
     }
   }));
-  let mut deno_diagnostics = diagnostics.messages_with_source("deno");
+  let mut deno_diagnostics = diagnostics.messages_with_source("ende");
   deno_diagnostics
     .diagnostics
     .sort_by_key(|d| d.range.start.line);
@@ -7353,7 +7353,7 @@ fn lsp_code_actions_deno_cache_all() {
           },
           "severity": 1,
           "code": "no-cache",
-          "source": "deno",
+          "source": "ende",
           "message": "Uncached or missing remote URL: https://deno.land/x/a/mod.ts",
           "data": { "specifier": "https://deno.land/x/a/mod.ts" },
         },
@@ -7364,7 +7364,7 @@ fn lsp_code_actions_deno_cache_all() {
           },
           "severity": 1,
           "code": "not-installed-npm",
-          "source": "deno",
+          "source": "ende",
           "message": "npm package \"chalk@5\" is not installed or doesn't exist.",
           "data": { "specifier": "npm:chalk@5" },
         },
@@ -7393,7 +7393,7 @@ fn lsp_code_actions_deno_cache_all() {
             },
             "severity": 1,
             "code": "no-cache",
-            "source": "deno",
+            "source": "ende",
             "message": "Uncached or missing remote URL: https://deno.land/x/a/mod.ts",
             "data": {
               "specifier": "https://deno.land/x/a/mod.ts",
@@ -7421,7 +7421,7 @@ fn lsp_code_actions_deno_cache_all() {
           },
           "severity": 1,
           "code": "no-cache",
-          "source": "deno",
+          "source": "ende",
           "message": "Uncached or missing remote URL: https://deno.land/x/a/mod.ts",
           "data": {
             "specifier": "https://deno.land/x/a/mod.ts",
@@ -7444,7 +7444,7 @@ fn lsp_code_actions_deno_cache_all() {
             },
             "severity": 1,
             "code": "no-cache",
-            "source": "deno",
+            "source": "ende",
             "message": "Uncached or missing remote URL: https://deno.land/x/a/mod.ts",
             "data": {
               "specifier": "https://deno.land/x/a/mod.ts",
@@ -7457,7 +7457,7 @@ fn lsp_code_actions_deno_cache_all() {
             },
             "severity": 1,
             "code": "not-installed-npm",
-            "source": "deno",
+            "source": "ende",
             "message": "npm package \"chalk@5\" is not installed or doesn't exist.",
             "data": { "specifier": "npm:chalk@5" },
           },
@@ -7501,7 +7501,7 @@ fn lsp_npm_managed_no_export_diagnostic() {
         },
         "severity": 1,
         "code": "no-export-npm",
-        "source": "deno",
+        "source": "ende",
         "message": "NPM package \"chalk@5\" does not define an export \"non-existent\".",
       },
     ]),
@@ -7569,7 +7569,7 @@ fn lsp_cache_on_save() {
 
   let diagnostics = client.did_open_file(&file);
   assert_eq!(
-    diagnostics.messages_with_source("deno"),
+    diagnostics.messages_with_source("ende"),
     serde_json::from_value(json!({
       "uri": file.uri(),
       "diagnostics": [{
@@ -7579,7 +7579,7 @@ fn lsp_cache_on_save() {
         },
         "severity": 1,
         "code": "no-cache",
-        "source": "deno",
+        "source": "ende",
         "message": "Uncached or missing remote URL: http://localhost:4545/subdir/print_hello.ts",
         "data": { "specifier": "http://localhost:4545/subdir/print_hello.ts" }
       }],
@@ -7626,7 +7626,7 @@ fn lsp_asset_document_dom_code_action() {
   let res = client.write_request(
     "textDocument/codeAction",
     json!({
-      "textDocument": { "uri": "deno:/asset/lib.dom.d.ts" },
+      "textDocument": { "uri": "ende:/asset/lib.dom.d.ts" },
       "range": {
         "start": { "line": 0, "character": 0 },
         "end": { "line": 0, "character": 0 },
@@ -7658,7 +7658,7 @@ fn lsp_cache_then_definition() {
   }));
   // Prior to the fix, this would cause a faulty memoization that maps the
   // URL "http://localhost:4545/run/002_hello.ts" to itself, preventing it from
-  // being reverse-mapped to "deno:/http/localhost:4545/run/002_hello.ts" on
+  // being reverse-mapped to "ende:/http/localhost:4545/run/002_hello.ts" on
   // "textDocument/definition" request.
   client.cache(
     ["http://localhost:4545/run/002_hello.ts"],
@@ -7680,7 +7680,7 @@ fn lsp_cache_then_definition() {
           "start": { "line": 0, "character": 7 },
           "end": { "line": 0, "character": 47 },
         },
-        "targetUri": "deno:/http/localhost:4545/run/002_hello.ts",
+        "targetUri": "ende:/http/localhost:4545/run/002_hello.ts",
         "targetRange": {
           "start": { "line": 0, "character": 0 },
           "end": { "line": 1, "character": 0 },
@@ -7692,7 +7692,7 @@ fn lsp_cache_then_definition() {
       }])
     } else {
       json!([{
-        "targetUri": "deno:/http/localhost:4545/run/002_hello.ts",
+        "targetUri": "ende:/http/localhost:4545/run/002_hello.ts",
         "targetRange": {
           "start": { "line": 0, "character": 0 },
           "end": { "line": 1, "character": 0 },
@@ -7733,14 +7733,14 @@ fn lsp_virtual_text_document_non_normalized_uri() {
     .unwrap();
   assert_eq!(
     target_uri,
-    "deno:/http/127.0.0.1:4250/@denotest/add/1.0.0/mod.ts"
+    "ende:/http/127.0.0.1:4250/@denotest/add/1.0.0/mod.ts"
   );
   let res = client.write_request(
-    "deno/virtualTextDocument",
+    "ende/virtualTextDocument",
     json!({
       "textDocument": {
         // The client encodes `@` to `%40`, but we should normalize it back.
-        "uri": "deno:/http/127.0.0.1:4250/%40denotest/add/1.0.0/mod.ts"
+        "uri": "ende:/http/127.0.0.1:4250/%40denotest/add/1.0.0/mod.ts"
       }
     }),
   );
@@ -7755,7 +7755,7 @@ fn lsp_code_actions_imports() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
     },
     "typescript": {
@@ -7828,7 +7828,7 @@ export class DuckConfig {
           },
           "severity": 1,
           "code": 2304,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Cannot find name 'DuckConfigOptions'."
         }, {
           "range": {
@@ -7837,7 +7837,7 @@ export class DuckConfig {
           },
           "severity": 1,
           "code": 2304,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Cannot find name 'DuckConfig'."
         }],
         "only": ["quickfix"]
@@ -7856,7 +7856,7 @@ export class DuckConfig {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfigOptions'."
       }],
       "edit": {
@@ -7882,7 +7882,7 @@ export class DuckConfig {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfigOptions'."
       }],
       "data": {
@@ -7899,7 +7899,7 @@ export class DuckConfig {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfig'."
       }],
       "edit": {
@@ -7929,7 +7929,7 @@ export class DuckConfig {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfigOptions'."
       }, {
         "range": {
@@ -7938,7 +7938,7 @@ export class DuckConfig {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfig'."
       }],
       "data": {
@@ -7959,7 +7959,7 @@ export class DuckConfig {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfigOptions'."
       }, {
         "range": {
@@ -7968,7 +7968,7 @@ export class DuckConfig {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfig'."
       }],
       "edit": {
@@ -8043,7 +8043,7 @@ fn lsp_code_actions_imports_dts() {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'SomeType'.",
       }],
       "edit": {
@@ -8127,7 +8127,7 @@ fn lsp_code_actions_import_map_remap() {
             },
             "severity": 4,
             "code": "import-map-remap",
-            "source": "deno",
+            "source": "ende",
             "message": "The import specifier can be remapped to \"foo\" which will resolve it via the active import map.",
             "data": { "from": "./foo.ts", "to": "foo" },
           },
@@ -8157,7 +8157,7 @@ fn lsp_code_actions_import_map_remap() {
             },
             "severity": 4,
             "code": "import-map-remap",
-            "source": "deno",
+            "source": "ende",
             "message": "The import specifier can be remapped to \"bar\" which will resolve it via the active import map.",
             "data": { "from": "./bar.ts", "to": "bar" },
           },
@@ -8497,7 +8497,7 @@ fn lsp_code_actions_imports_respects_fmt_config() {
           },
           "severity": 1,
           "code": 2304,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Cannot find name 'DuckConfigOptions'."
         }],
         "only": ["quickfix"]
@@ -8516,7 +8516,7 @@ fn lsp_code_actions_imports_respects_fmt_config() {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfigOptions'."
       }],
       "edit": {
@@ -8546,7 +8546,7 @@ fn lsp_code_actions_imports_respects_fmt_config() {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfigOptions'."
       }],
       "data": {
@@ -8567,7 +8567,7 @@ fn lsp_code_actions_imports_respects_fmt_config() {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfigOptions'."
       }],
       "edit": {
@@ -8617,7 +8617,7 @@ fn lsp_quote_style_from_workspace_settings() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
     },
     "typescript": {
@@ -8643,7 +8643,7 @@ fn lsp_quote_style_from_workspace_settings() {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfigOptions'.",
       }],
       "only": ["quickfix"],
@@ -8665,7 +8665,7 @@ fn lsp_quote_style_from_workspace_settings() {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfigOptions'.",
       }],
       "edit": {
@@ -8708,7 +8708,7 @@ fn lsp_quote_style_from_workspace_settings() {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'DuckConfigOptions'.",
       }],
       "edit": {
@@ -9194,7 +9194,7 @@ fn lsp_code_actions_deadlock() {
           },
           "severity": 1,
           "code": 7031,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Binding element 'debugFlag' implicitly has an 'any' type."
         }],
         "only": [ "quickfix" ]
@@ -9571,7 +9571,7 @@ fn lsp_npm_completions_auto_import_and_quick_fix_no_import_map() {
     }
   }));
   let diagnostics = diagnostics
-    .messages_with_file_and_source("file:///a/b.ts", "deno-ts")
+    .messages_with_file_and_source("file:///a/b.ts", "ende-ts")
     .diagnostics;
   let res = client.write_request(
     "textDocument/codeAction",
@@ -9602,7 +9602,7 @@ fn lsp_npm_completions_auto_import_and_quick_fix_no_import_map() {
           },
           "severity": 1,
           "code": 2304,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Cannot find name 'getClient'.",
         }
       ],
@@ -9679,7 +9679,7 @@ fn lsp_npm_completions_auto_import_and_quick_fix_no_import_map() {
     }
   }));
   let diagnostics = diagnostics
-    .messages_with_file_and_source("file:///a/d.ts", "deno-ts")
+    .messages_with_file_and_source("file:///a/d.ts", "ende-ts")
     .diagnostics;
   let res = client.write_request(
     "textDocument/codeAction",
@@ -9710,7 +9710,7 @@ fn lsp_npm_completions_auto_import_and_quick_fix_no_import_map() {
           },
           "severity": 1,
           "code": 2304,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Cannot find name 'chalk'.",
         }
       ],
@@ -9810,7 +9810,7 @@ fn lsp_npm_auto_import_and_quick_fix_byonm() {
       url_to_uri(&temp_dir.url().join("file.ts").unwrap())
         .unwrap()
         .as_str(),
-      "deno-ts",
+      "ende-ts",
     )
     .diagnostics;
   let res = client.write_request(
@@ -10293,7 +10293,7 @@ fn lsp_npm_types_nested_js_dts() {
         },
         "severity": 1,
         "code": 2322,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Type 'string' is not assignable to type 'number'.",
       },
     ])
@@ -10596,7 +10596,7 @@ fn lsp_semantic_tokens_for_disabled_module() {
     |builder| {
       builder.set_deno_enable(false);
     },
-    json!({ "deno": {
+    json!({ "ende": {
       "enable": false
     } }),
   );
@@ -10736,7 +10736,7 @@ fn lsp_completions_auto_import_and_quick_fix_with_import_map() {
       url_to_uri(&temp_dir.url().join("b.ts").unwrap())
         .unwrap()
         .as_str(),
-      "deno-ts",
+      "ende-ts",
     )
     .diagnostics;
   let res = client.write_request(
@@ -10768,7 +10768,7 @@ fn lsp_completions_auto_import_and_quick_fix_with_import_map() {
           },
           "severity": 1,
           "code": 2304,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Cannot find name 'getClient'.",
         }
       ],
@@ -10851,7 +10851,7 @@ fn lsp_completions_auto_import_and_quick_fix_with_import_map() {
       url_to_uri(&temp_dir.url().join("d.ts").unwrap())
         .unwrap()
         .as_str(),
-      "deno-ts",
+      "ende-ts",
     )
     .diagnostics;
   let res = client.write_request(
@@ -10883,7 +10883,7 @@ fn lsp_completions_auto_import_and_quick_fix_with_import_map() {
           },
           "severity": 1,
           "code": 2304,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Cannot find name 'chalk'.",
         }
       ],
@@ -10966,7 +10966,7 @@ fn lsp_completions_auto_import_and_quick_fix_with_import_map() {
       url_to_uri(&temp_dir.url().join("f.ts").unwrap())
         .unwrap()
         .as_str(),
-      "deno-ts",
+      "ende-ts",
     )
     .diagnostics;
   let res = client.write_request(
@@ -10998,7 +10998,7 @@ fn lsp_completions_auto_import_and_quick_fix_with_import_map() {
           },
           "severity": 1,
           "code": 2304,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Cannot find name 'printHello'.",
         }
       ],
@@ -12253,7 +12253,7 @@ fn lsp_npm_specifier_unopened_file() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
 
-  // cache the other.ts file to the DENO_DIR
+  // cache the other.ts file to the ENDE_DIR
   client.cache_specifier(temp_dir.url().join("other.ts").unwrap());
   client.read_diagnostics();
 
@@ -12322,7 +12322,7 @@ fn lsp_completions_node_builtin() {
   }));
 
   let non_existent_diagnostics = diagnostics
-    .messages_with_file_and_source("file:///a/file.ts", "deno")
+    .messages_with_file_and_source("file:///a/file.ts", "ende")
     .diagnostics
     .into_iter()
     .filter(|d| {
@@ -12339,7 +12339,7 @@ fn lsp_completions_node_builtin() {
         },
         "severity": 1,
         "code": "resolver-error",
-        "source": "deno",
+        "source": "ende",
         "message": "No such built-in module: node:non-existent"
       }
     ])
@@ -12615,7 +12615,7 @@ fn lsp_auto_discover_registry() {
     }),
   );
   let res = client
-    .read_notification_with_method::<Value>("deno/registryState")
+    .read_notification_with_method::<Value>("ende/registryState")
     .unwrap();
   assert_eq!(
     res,
@@ -12858,7 +12858,7 @@ fn lsp_npmrc() {
         },
         "severity": 1,
         "code": 2322,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Type 'number' is not assignable to type 'string'.",
       },
     ]),
@@ -12908,7 +12908,7 @@ fn lsp_lockfile_redirect_resolution() {
           "start": { "line": 0, "character": 7 },
           "end": { "line": 0, "character": 45 },
         },
-        "targetUri": "deno:/http/localhost:4545/subdir/mod2.ts",
+        "targetUri": "ende:/http/localhost:4545/subdir/mod2.ts",
         "targetRange": {
           "start": { "line": 0, "character": 0 },
           "end": { "line": 1, "character": 0 },
@@ -12920,7 +12920,7 @@ fn lsp_lockfile_redirect_resolution() {
       }])
     } else {
       json!([{
-        "targetUri": "deno:/http/localhost:4545/subdir/mod2.ts",
+        "targetUri": "ende:/http/localhost:4545/subdir/mod2.ts",
         "targetRange": {
           "start": { "line": 0, "character": 0 },
           "end": { "line": 1, "character": 0 },
@@ -12959,7 +12959,7 @@ fn lsp_diagnostics_brackets_in_file_name() {
         },
         "severity": 4,
         "code": 6385,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "'a' is deprecated.",
         "relatedInformation": [
           {
@@ -13005,7 +13005,7 @@ fn lsp_diagnostics_deprecated() {
           },
           "severity": 4,
           "code": 6385,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "'a' is deprecated.",
           "relatedInformation": [
             {
@@ -13089,7 +13089,7 @@ fn lsp_diagnostics_refresh_dependents() {
   assert_eq!(
     json!(
       diagnostics
-        .messages_with_file_and_source("file:///a/file_02.ts", "deno-ts")
+        .messages_with_file_and_source("file:///a/file_02.ts", "ende-ts")
     ),
     json!({
       "uri": "file:///a/file_02.ts",
@@ -13101,7 +13101,7 @@ fn lsp_diagnostics_refresh_dependents() {
           },
           "severity": 1,
           "code": 2305,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Module '\"./file_01.ts\"' has no exported member 'b'."
         }
       ],
@@ -13165,7 +13165,7 @@ fn lsp_did_change_watched_files_evicts_deleted_on_disk_doc() {
   }));
   client.handle_refresh_diagnostics_request();
   let diagnostics = client.read_diagnostics();
-  let messages = diagnostics.messages_with_source("deno");
+  let messages = diagnostics.messages_with_source("ende");
   assert_eq!(messages.diagnostics.len(), 1, "{:?}", diagnostics.all());
   assert_eq!(
     messages.diagnostics[0].code,
@@ -13203,7 +13203,7 @@ fn lsp_did_change_watched_files_refreshes_changed_on_disk_doc() {
   }));
   client.handle_refresh_diagnostics_request();
   let diagnostics = client.read_diagnostics();
-  let messages = diagnostics.messages_with_source("deno-ts");
+  let messages = diagnostics.messages_with_source("ende-ts");
   assert!(
     !messages.diagnostics.is_empty(),
     "expected a deno-ts diagnostic for the missing export, got {:?}",
@@ -13377,7 +13377,7 @@ fn lsp_jupyter_import_map_and_diagnostics() {
             },
             "severity": 1,
             "code": 2322,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Type 'number' is not assignable to type 'string'.",
           },
           // Note: `const name = "Hello"` does not error here even though it
@@ -13436,7 +13436,7 @@ fn lsp_jupyter_import_map_and_diagnostics() {
             },
             "severity": 1,
             "code": 2304,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'someNumber'.",
           },
         ],
@@ -13528,7 +13528,7 @@ fn lsp_jupyter_completions() {
       },
       "documentation": {
         "kind": "markdown",
-        "value": "Asynchronously reads and returns the entire contents of a file as an UTF-8\ndecoded string.\n\n```ts\nconst data = await Deno.readTextFile(\"hello.txt\");\nconsole.log(data);\n```\n\nThe returned promise rejects if the operation fails, for example with\n[`Deno.errors.NotFound`](deno:/asset/lib.ende.ns.d.ts#174,5-174,43) if the file does not exist,\n[`Deno.errors.IsADirectory`](deno:/asset/lib.ende.ns.d.ts#307,5-307,47) if `path` refers to a directory, or\n[`Deno.errors.PermissionDenied`](deno:/asset/lib.ende.ns.d.ts#185,5-185,51) if the required permission has not\nbeen granted.\n\nRequires `allow-read` permission.\n\n*@tags* — allow-read\n\n\n*@category* — File System\n",
+        "value": "Asynchronously reads and returns the entire contents of a file as an UTF-8\ndecoded string.\n\n```ts\nconst data = await Deno.readTextFile(\"hello.txt\");\nconsole.log(data);\n```\n\nThe returned promise rejects if the operation fails, for example with\n[`Deno.errors.NotFound`](ende:/asset/lib.ende.ns.d.ts#174,5-174,43) if the file does not exist,\n[`Deno.errors.IsADirectory`](ende:/asset/lib.ende.ns.d.ts#307,5-307,47) if `path` refers to a directory, or\n[`Deno.errors.PermissionDenied`](ende:/asset/lib.ende.ns.d.ts#185,5-185,51) if the required permission has not\nbeen granted.\n\nRequires `allow-read` permission.\n\n*@tags* — allow-read\n\n\n*@category* — File System\n",
       },
       "sortText": "11",
     }),
@@ -13630,7 +13630,7 @@ fn lsp_untitled_file_diagnostics() {
             },
             "severity": 1,
             "code": 2345,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Argument of type 'number' is not assignable to parameter of type 'string | URL'.",
           },
         ],
@@ -14706,7 +14706,7 @@ fn lsp_configuration_did_change() {
       "text": "import * as a from \"http://localhost:4545/x/a@\""
     }
   }));
-  client.change_configuration(json!({ "deno": {
+  client.change_configuration(json!({ "ende": {
     "enable": true,
     "codeLens": {
       "implementations": true,
@@ -14793,7 +14793,7 @@ fn lsp_completions_complete_function_calls() {
     }
   }));
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
     },
     "typescript": {
@@ -14982,7 +14982,7 @@ fn lsp_workspace_symbol() {
       .location
       .uri
       .as_str()
-      .starts_with("deno:/asset/")
+      .starts_with("ende:/asset/")
     {
       symbol_information.location.range = Default::default();
     }
@@ -14992,7 +14992,7 @@ fn lsp_workspace_symbol() {
       "name": "ClassFieldDecoratorContext",
       "kind": 11,
       "location": {
-        "uri": "deno:/asset/lib.decorators.d.ts",
+        "uri": "ende:/asset/lib.decorators.d.ts",
         "range": {
           "start": { "line": 0, "character": 0 },
           "end": { "line": 0, "character": 0 },
@@ -15003,7 +15003,7 @@ fn lsp_workspace_symbol() {
       "name": "HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE",
       "kind": 13,
       "location": {
-        "uri": "deno:/asset/node/http2.d.cts",
+        "uri": "ende:/asset/node/http2.d.cts",
         "range": {
           "start": { "line": 0, "character": 0 },
           "end": { "line": 0, "character": 0 },
@@ -15063,7 +15063,7 @@ fn lsp_workspace_symbol() {
       "name": "strictFieldWhitespaceValidation",
       "kind": if false { 7 } else { 8 },
       "location": {
-        "uri": "deno:/asset/node/http2.d.cts",
+        "uri": "ende:/asset/node/http2.d.cts",
         "range": {
           "start": { "line": 0, "character": 0 },
           "end": { "line": 0, "character": 0 },
@@ -15079,7 +15079,7 @@ fn lsp_workspace_symbol() {
         "name": "effectiveLocalWindowSize",
         "kind": 7,
         "location": {
-          "uri": "deno:/asset/node/http2.d.cts",
+          "uri": "ende:/asset/node/http2.d.cts",
           "range": {
             "start": { "line": 0, "character": 0 },
             "end": { "line": 0, "character": 0 },
@@ -15094,7 +15094,7 @@ fn lsp_workspace_symbol() {
         "name": "onHistoryFileLoaded",
         "kind": 7,
         "location": {
-          "uri": "deno:/asset/node/repl.d.cts",
+          "uri": "ende:/asset/node/repl.d.cts",
           "range": {
             "start": { "line": 0, "character": 0 },
             "end": { "line": 0, "character": 0 },
@@ -15142,7 +15142,7 @@ fn lsp_code_actions_ignore_lint() {
             },
             "severity": 1,
             "code": "prefer-const",
-            "source": "deno-lint",
+            "source": "ende-lint",
             "message": "'message' is never reassigned\nUse 'const' instead",
             "relatedInformation": []
           }
@@ -15163,7 +15163,7 @@ fn lsp_code_actions_ignore_lint() {
         },
         "severity": 1,
         "code": "prefer-const",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "'message' is never reassigned\nUse 'const' instead",
         "relatedInformation": []
       }],
@@ -15188,7 +15188,7 @@ fn lsp_code_actions_ignore_lint() {
         },
         "severity": 1,
         "code": "prefer-const",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "'message' is never reassigned\nUse 'const' instead",
         "relatedInformation": []
       }],
@@ -15213,7 +15213,7 @@ fn lsp_code_actions_ignore_lint() {
         },
         "severity": 1,
         "code": "prefer-const",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "'message' is never reassigned\nUse 'const' instead",
         "relatedInformation": []
       }],
@@ -15270,7 +15270,7 @@ console.log(snake_case);
           },
           "severity": 1,
           "code": "prefer-const",
-          "source": "deno-lint",
+          "source": "ende-lint",
           "message": "'snake_case' is never reassigned\nUse 'const' instead",
           "relatedInformation": []
         }],
@@ -15290,7 +15290,7 @@ console.log(snake_case);
         },
         "severity": 1,
         "code": "prefer-const",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "'snake_case' is never reassigned\nUse 'const' instead",
         "relatedInformation": []
       }],
@@ -15315,7 +15315,7 @@ console.log(snake_case);
         },
         "severity": 1,
         "code": "prefer-const",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "'snake_case' is never reassigned\nUse 'const' instead",
         "relatedInformation": []
       }],
@@ -15340,7 +15340,7 @@ console.log(snake_case);
         },
         "severity": 1,
         "code": "prefer-const",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "'snake_case' is never reassigned\nUse 'const' instead",
         "relatedInformation": []
       }],
@@ -15492,7 +15492,7 @@ fn lsp_no_slow_types_diagnostics() {
   let mod_diagnostics = diagnostics.all();
   assert!(
     mod_diagnostics.iter().any(|d| {
-      d.source.as_deref() == Some("deno-lint")
+      d.source.as_deref() == Some("ende-lint")
         && d.code
           == Some(lsp::NumberOrString::String("no-slow-types".to_string()))
     }),
@@ -15971,7 +15971,7 @@ Deno.test({
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
       "unstable": ["kv"],
     },
@@ -15987,7 +15987,7 @@ Deno.test({
   }));
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testModule");
+    client.read_notification_with_method::<Value>("ende/testModule");
   let params: TestModuleNotificationParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.text_document.uri.as_str(), uri.as_str());
@@ -16027,7 +16027,7 @@ Deno.test({
   );
 
   let res = client.write_request_with_res_as::<TestRunResponseParams>(
-    "deno/testRun",
+    "ende/testRun",
     json!({
       "id": 1,
       "kind": "run",
@@ -16038,7 +16038,7 @@ Deno.test({
   assert_eq!(res.enqueued[0].ids.len(), 1);
   let id = res.enqueued[0].ids[0].clone();
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   assert_eq!(
     notification,
     Some(json!({
@@ -16056,7 +16056,7 @@ Deno.test({
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   let notification_value = notification
     .as_ref()
     .unwrap()
@@ -16092,7 +16092,7 @@ Deno.test({
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   assert_eq!(
     notification,
     Some(json!({
@@ -16111,7 +16111,7 @@ Deno.test({
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   let mut notification = notification.unwrap();
   let duration = notification
     .as_object_mut()
@@ -16140,7 +16140,7 @@ Deno.test({
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   let notification = notification.unwrap();
   let obj = notification.as_object().unwrap();
   assert_eq!(obj.get("id"), Some(&json!(1)));
@@ -16159,7 +16159,7 @@ Deno.test({
       assert!(message.contains_key("duration"));
 
       let notification =
-        client.read_notification_with_method::<Value>("deno/testRunProgress");
+        client.read_notification_with_method::<Value>("ende/testRunProgress");
       assert_eq!(
         notification,
         Some(json!({
@@ -16193,7 +16193,7 @@ Deno.test({
   assert_eq!(client.read_diagnostics().all().len(), 0);
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testModuleDelete");
+    client.read_notification_with_method::<Value>("ende/testModuleDelete");
   assert_eq!(
     notification,
     Some(json!({
@@ -16252,7 +16252,7 @@ Deno.test("test", async (testContext) => {
   client.did_open_file(&file);
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testModule");
+    client.read_notification_with_method::<Value>("ende/testModule");
   let params: TestModuleNotificationParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.text_document.uri.as_str(), file.uri().as_str());
@@ -16264,7 +16264,7 @@ Deno.test("test", async (testContext) => {
   assert_eq!(params.tests[0].steps.len(), 0);
 
   let res = client.write_request_with_res_as::<TestRunResponseParams>(
-    "deno/testRun",
+    "ende/testRun",
     json!({
       "id": 1,
       "kind": "run",
@@ -16283,7 +16283,7 @@ Deno.test("test", async (testContext) => {
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   assert_eq!(
     notification,
     Some(json!({
@@ -16299,7 +16299,7 @@ Deno.test("test", async (testContext) => {
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testModule");
+    client.read_notification_with_method::<Value>("ende/testModule");
   let params: TestModuleNotificationParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.text_document.uri.as_str(), file.uri().as_str());
@@ -16312,7 +16312,7 @@ Deno.test("test", async (testContext) => {
   assert_eq!(params.tests[0].steps[0].label, "test case 1");
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   assert_eq!(
     notification,
     Some(json!({
@@ -16329,7 +16329,7 @@ Deno.test("test", async (testContext) => {
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   let params: TestRunProgressParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.message.typ, "output");
@@ -16346,7 +16346,7 @@ Deno.test("test", async (testContext) => {
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   let params: TestRunProgressParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.message.typ, "passed");
@@ -16360,7 +16360,7 @@ Deno.test("test", async (testContext) => {
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testModule");
+    client.read_notification_with_method::<Value>("ende/testModule");
   let params: TestModuleNotificationParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.text_document.uri.as_str(), file.uri().as_str());
@@ -16370,7 +16370,7 @@ Deno.test("test", async (testContext) => {
   assert_eq!(params.tests[0].steps[0].label, "test case 2");
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   let params: TestRunProgressParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.message.typ, "started");
@@ -16384,7 +16384,7 @@ Deno.test("test", async (testContext) => {
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   let params: TestRunProgressParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.message.typ, "output");
@@ -16401,7 +16401,7 @@ Deno.test("test", async (testContext) => {
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   let params: TestRunProgressParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.message.typ, "passed");
@@ -16415,7 +16415,7 @@ Deno.test("test", async (testContext) => {
   );
 
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   let params: TestRunProgressParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   if params.message.typ != "end" {
@@ -16428,7 +16428,7 @@ Deno.test("test", async (testContext) => {
       })),
     );
     let notification =
-      client.read_notification_with_method::<Value>("deno/testRunProgress");
+      client.read_notification_with_method::<Value>("ende/testRunProgress");
     let params: TestRunProgressParams =
       serde_json::from_value(notification.unwrap()).unwrap();
     assert_eq!(params.message.typ, "end");
@@ -16454,7 +16454,7 @@ fn lsp_testing_api_failure() {
   client.initialize_default();
   client.did_open_file(&file);
   let notification =
-    client.read_notification_with_method::<Value>("deno/testModule");
+    client.read_notification_with_method::<Value>("ende/testModule");
   let params: TestModuleNotificationParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.text_document.uri.as_str(), file.uri().as_str());
@@ -16472,7 +16472,7 @@ fn lsp_testing_api_failure() {
   );
   assert_eq!(json!(&test.steps), json!([]));
   let res = client.write_request_with_res_as::<TestRunResponseParams>(
-    "deno/testRun",
+    "ende/testRun",
     json!({
       "id": 1,
       "kind": "run",
@@ -16486,7 +16486,7 @@ fn lsp_testing_api_failure() {
   assert_eq!(res.enqueued[0].ids.len(), 1);
   let id = res.enqueued[0].ids[0].clone();
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   assert_eq!(
     notification,
     Some(json!({
@@ -16501,7 +16501,7 @@ fn lsp_testing_api_failure() {
     })),
   );
   let notification =
-    client.read_notification_with_method::<Value>("deno/testRunProgress");
+    client.read_notification_with_method::<Value>("ende/testRunProgress");
   let notification = notification.unwrap();
   let obj = notification.as_object().unwrap();
   assert_eq!(obj.get("id"), Some(&json!(1)));
@@ -16535,7 +16535,7 @@ fn lsp_testing_api_failure() {
         ]),
       );
       let notification =
-        client.read_notification_with_method::<Value>("deno/testRunProgress");
+        client.read_notification_with_method::<Value>("ende/testRunProgress");
       assert_eq!(
         notification,
         Some(json!({
@@ -16573,14 +16573,14 @@ fn lsp_testing_api_empty_test_name() {
   client.initialize_default();
   client.did_open_file(&file);
   let notification =
-    client.read_notification_with_method::<Value>("deno/testModule");
+    client.read_notification_with_method::<Value>("ende/testModule");
   let params: TestModuleNotificationParams =
     serde_json::from_value(notification.unwrap()).unwrap();
   assert_eq!(params.text_document.uri.as_str(), file.uri().as_str());
   // Both the valid test and the empty-named test are statically collected.
   assert_eq!(params.tests.len(), 2);
   let res = client.write_request_with_res_as::<TestRunResponseParams>(
-    "deno/testRun",
+    "ende/testRun",
     json!({
       "id": 1,
       "kind": "run",
@@ -16592,7 +16592,7 @@ fn lsp_testing_api_empty_test_name() {
   let mut saw_empty_name_error = false;
   loop {
     let notification = client
-      .read_notification_with_method::<Value>("deno/testRunProgress")
+      .read_notification_with_method::<Value>("ende/testRunProgress")
       .unwrap();
     let message = notification
       .as_object()
@@ -16649,9 +16649,9 @@ fn lsp_testing_api_inherits_test_task_env_file() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.did_open_file(&file);
-  client.read_notification_with_method::<Value>("deno/testModule");
+  client.read_notification_with_method::<Value>("ende/testModule");
   client.write_request_with_res_as::<TestRunResponseParams>(
-    "deno/testRun",
+    "ende/testRun",
     json!({
       "id": 1,
       "kind": "run",
@@ -16660,7 +16660,7 @@ fn lsp_testing_api_inherits_test_task_env_file() {
   let mut passed = false;
   loop {
     let notification = client
-      .read_notification_with_method::<Value>("deno/testRunProgress")
+      .read_notification_with_method::<Value>("ende/testRunProgress")
       .unwrap();
     let message = notification
       .as_object()
@@ -16733,10 +16733,10 @@ fn lsp_testing_api_test_task_env_file_conflicting_scopes_first_wins() {
   client.initialize_default();
   client.did_open_file(&file_a);
   client.did_open_file(&file_b);
-  client.read_notification_with_method::<Value>("deno/testModule");
-  client.read_notification_with_method::<Value>("deno/testModule");
+  client.read_notification_with_method::<Value>("ende/testModule");
+  client.read_notification_with_method::<Value>("ende/testModule");
   client.write_request_with_res_as::<TestRunResponseParams>(
-    "deno/testRun",
+    "ende/testRun",
     json!({
       "id": 1,
       "kind": "run",
@@ -16747,7 +16747,7 @@ fn lsp_testing_api_test_task_env_file_conflicting_scopes_first_wins() {
   let mut failed = 0;
   loop {
     let notification = client
-      .read_notification_with_method::<Value>("deno/testRunProgress")
+      .read_notification_with_method::<Value>("ende/testRunProgress")
       .unwrap();
     let message = notification
       .as_object()
@@ -16796,7 +16796,7 @@ fn lsp_testing_api_describe_it_failure() {
   client.initialize_default();
   client.did_open_file(&file);
   let notification = client
-    .read_notification_with_method::<Value>("deno/testModule")
+    .read_notification_with_method::<Value>("ende/testModule")
     .unwrap();
   let params: TestModuleNotificationParams =
     serde_json::from_value(notification).unwrap();
@@ -16831,7 +16831,7 @@ fn lsp_testing_api_describe_it_failure() {
     }),
   );
   let res = client.write_request_with_res_as::<TestRunResponseParams>(
-    "deno/testRun",
+    "ende/testRun",
     json!({
       "id": 1,
       "kind": "run",
@@ -16849,7 +16849,7 @@ fn lsp_testing_api_describe_it_failure() {
     }),
   );
   let notification = client
-    .read_notification_with_method::<Value>("deno/testRunProgress")
+    .read_notification_with_method::<Value>("ende/testRunProgress")
     .unwrap();
   assert_eq!(
     notification,
@@ -16865,7 +16865,7 @@ fn lsp_testing_api_describe_it_failure() {
     }),
   );
   let notification = client
-    .read_notification_with_method::<Value>("deno/testRunProgress")
+    .read_notification_with_method::<Value>("ende/testRunProgress")
     .unwrap();
   assert_eq!(
     notification,
@@ -16882,7 +16882,7 @@ fn lsp_testing_api_describe_it_failure() {
     }),
   );
   let notification = client
-    .read_notification_with_method::<Value>("deno/testRunProgress")
+    .read_notification_with_method::<Value>("ende/testRunProgress")
     .unwrap();
   let params: TestRunProgressParams =
     serde_json::from_value(notification).unwrap();
@@ -16938,7 +16938,7 @@ fn lsp_testing_api_describe_it_failure() {
     }),
   );
   let notification = client
-    .read_notification_with_method::<Value>("deno/testRunProgress")
+    .read_notification_with_method::<Value>("ende/testRunProgress")
     .unwrap();
   let params: TestRunProgressParams =
     serde_json::from_value(notification).unwrap();
@@ -16999,7 +16999,7 @@ fn lsp_testing_api_describe_it() {
   client.initialize_default();
   client.did_open_file(&file);
   let notification = client
-    .read_notification_with_method::<Value>("deno/testModule")
+    .read_notification_with_method::<Value>("ende/testModule")
     .unwrap();
   let params: TestModuleNotificationParams =
     serde_json::from_value(notification).unwrap();
@@ -17034,7 +17034,7 @@ fn lsp_testing_api_describe_it() {
     }),
   );
   let res = client.write_request_with_res_as::<TestRunResponseParams>(
-    "deno/testRun",
+    "ende/testRun",
     json!({
       "id": 1,
       "kind": "run",
@@ -17052,7 +17052,7 @@ fn lsp_testing_api_describe_it() {
     }),
   );
   let notification = client
-    .read_notification_with_method::<Value>("deno/testRunProgress")
+    .read_notification_with_method::<Value>("ende/testRunProgress")
     .unwrap();
   assert_eq!(
     notification,
@@ -17068,7 +17068,7 @@ fn lsp_testing_api_describe_it() {
     }),
   );
   let notification = client
-    .read_notification_with_method::<Value>("deno/testRunProgress")
+    .read_notification_with_method::<Value>("ende/testRunProgress")
     .unwrap();
   assert_eq!(
     notification,
@@ -17085,7 +17085,7 @@ fn lsp_testing_api_describe_it() {
     }),
   );
   let notification = client
-    .read_notification_with_method::<Value>("deno/testRunProgress")
+    .read_notification_with_method::<Value>("ende/testRunProgress")
     .unwrap();
   let params: TestRunProgressParams =
     serde_json::from_value(notification).unwrap();
@@ -17106,7 +17106,7 @@ fn lsp_testing_api_describe_it() {
     }),
   );
   let notification = client
-    .read_notification_with_method::<Value>("deno/testRunProgress")
+    .read_notification_with_method::<Value>("ende/testRunProgress")
     .unwrap();
   let params: TestRunProgressParams =
     serde_json::from_value(notification).unwrap();
@@ -17347,7 +17347,7 @@ fn lsp_data_urls_with_jsx_compiler_option() {
         "end": { "line": 1, "character": 1 }
       }
     }, {
-      "uri": "deno:/data-url/cf9f10f60e24884c7fdecbcda56d3a6690d806c60fb4492c8e7473181560a7d2.ts",
+      "uri": "ende:/data-url/cf9f10f60e24884c7fdecbcda56d3a6690d806c60fb4492c8e7473181560a7d2.ts",
       "range": {
         "start": { "line": 0, "character": 7 },
         "end": {"line": 0, "character": 14 },
@@ -17404,7 +17404,7 @@ fn lsp_node_modules_dir() {
     "{ \"nodeModulesDir\": \"auto\" }\n",
   );
   let refresh_config = |client: &mut LspClient| {
-    client.change_configuration(json!({ "deno": {
+    client.change_configuration(json!({ "ende": {
       "enable": true,
       "config": "./ende.json",
       "codeLens": {
@@ -17601,7 +17601,7 @@ fn lsp_vendor_dir() {
   assert_eq!(
     json!(
       diagnostics
-        .messages_with_file_and_source(remote_file_uri.as_str(), "deno-ts")
+        .messages_with_file_and_source(remote_file_uri.as_str(), "ende-ts")
         .diagnostics
     ),
     json!([
@@ -17612,7 +17612,7 @@ fn lsp_vendor_dir() {
         },
         "severity": 1,
         "code": 2322,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Type 'Date' is not assignable to type 'number'."
       }
     ]),
@@ -17620,7 +17620,7 @@ fn lsp_vendor_dir() {
   assert_eq!(
     json!(
       diagnostics
-        .messages_with_file_and_source(file.uri().as_str(), "deno-ts")
+        .messages_with_file_and_source(file.uri().as_str(), "ende-ts")
         .diagnostics
     ),
     json!([
@@ -17631,7 +17631,7 @@ fn lsp_vendor_dir() {
         },
         "severity": 1,
         "code": 2322,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Type 'number' is not assignable to type 'string'."
       }
     ]),
@@ -17668,7 +17668,7 @@ fn lsp_vendor_dir() {
   assert_eq!(
     json!(
       diagnostics
-        .messages_with_file_and_source(file.uri().as_str(), "deno")
+        .messages_with_file_and_source(file.uri().as_str(), "ende")
         .diagnostics
     ),
     json!([
@@ -17679,7 +17679,7 @@ fn lsp_vendor_dir() {
         },
         "severity": 1,
         "code": "resolver-error",
-        "source": "deno",
+        "source": "ende",
         "message": "Importing from the vendor directory is not permitted. Use a remote specifier instead or disable vendoring."
       }
     ]),
@@ -18256,7 +18256,7 @@ fn lsp_deno_json_scopes_compiler_options() {
             },
             "severity": 1,
             "code": 2304,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'WorkerGlobalScope'.",
           },
         ],
@@ -18272,7 +18272,7 @@ fn lsp_deno_json_scopes_compiler_options() {
             },
             "severity": 1,
             "code": 2304,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'Window'.",
           },
         ],
@@ -18361,7 +18361,7 @@ fn lsp_vendor_dir_workspace_folder_added() {
 
   // The declaration of `returnsHi` must resolve into the project's vendor
   // directory. Without the `update_cache()` call the import resolves against the
-  // global cache instead, so the declaration's URI is a `deno:` specifier and
+  // global cache instead, so the declaration's URI is an `ende:` specifier and
   // none of the references point at the vendored file.
   let res = client.write_request(
     "textDocument/references",
@@ -18426,7 +18426,7 @@ fn lsp_deno_json_scopes_declaration_files() {
             },
             "severity": 1,
             "code": 2304,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'Bar'.",
           },
         ],
@@ -18442,7 +18442,7 @@ fn lsp_deno_json_scopes_declaration_files() {
             },
             "severity": 1,
             "code": 2304,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'Foo'.",
           },
         ],
@@ -18954,7 +18954,7 @@ fn lsp_deno_json_workspace_lint_config() {
     },
   }));
   assert_eq!(
-    json!(diagnostics.messages_with_source("deno-lint")),
+    json!(diagnostics.messages_with_source("ende-lint")),
     json!({
       "uri": url_to_uri(&temp_dir.url().join("file.ts").unwrap()).unwrap(),
       "diagnostics": [{
@@ -18964,7 +18964,7 @@ fn lsp_deno_json_workspace_lint_config() {
         },
         "severity": 2,
         "code": "camelcase",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "Identifier 'snake_case_var' is not in camel case.\nConsider renaming `snake_case_var` to `snakeCaseVar`",
       }],
       "version": 1,
@@ -18991,7 +18991,7 @@ fn lsp_deno_json_workspace_lint_config() {
     },
   }));
   assert_eq!(
-    json!(diagnostics.messages_with_source("deno-lint")),
+    json!(diagnostics.messages_with_source("ende-lint")),
     json!({
       "uri": url_to_uri(&temp_dir.url().join("project1/file.ts").unwrap()).unwrap(),
       "diagnostics": [{
@@ -19001,7 +19001,7 @@ fn lsp_deno_json_workspace_lint_config() {
         },
         "severity": 2,
         "code": "ban-untagged-todo",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "TODO should be tagged with (@username) or (#issue)\nAdd a user tag or issue reference to the TODO comment, e.g. TODO(@djones), TODO(djones), TODO(#123)",
       }, {
         "range": {
@@ -19010,7 +19010,7 @@ fn lsp_deno_json_workspace_lint_config() {
         },
         "severity": 2,
         "code": "camelcase",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "Identifier 'snake_case_var' is not in camel case.\nConsider renaming `snake_case_var` to `snakeCaseVar`",
       }],
       "version": 1,
@@ -19039,7 +19039,7 @@ fn lsp_deno_json_workspace_lint_config() {
     },
   }));
   assert_eq!(
-    json!(diagnostics.messages_with_source("deno-lint")),
+    json!(diagnostics.messages_with_source("ende-lint")),
     json!({
       "uri": url_to_uri(&temp_dir.url().join("project2/file.ts").unwrap()).unwrap(),
       "diagnostics": [{
@@ -19049,7 +19049,7 @@ fn lsp_deno_json_workspace_lint_config() {
         },
         "severity": 2,
         "code": "camelcase",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "Identifier 'snake_case_var' is not in camel case.\nConsider renaming `snake_case_var` to `snakeCaseVar`",
       }],
       "version": 1,
@@ -19111,7 +19111,7 @@ fn lsp_jsx_no_unused_vars() {
   let lint_diagnostics = diagnostics
     .all()
     .into_iter()
-    .filter(|d| d.source.as_deref() == Some("deno-lint"))
+    .filter(|d| d.source.as_deref() == Some("ende-lint"))
     .collect::<Vec<_>>();
   assert_eq!(
     json!(lint_diagnostics),
@@ -19122,7 +19122,7 @@ fn lsp_jsx_no_unused_vars() {
       },
       "severity": 2,
       "code": "no-unused-vars",
-      "source": "deno-lint",
+      "source": "ende-lint",
       "message": "`unused` is never used\nIf this is intentional, prefix it with an underscore like `_unused`",
     }])
   );
@@ -19145,7 +19145,7 @@ fn lsp_jsx_no_unused_vars() {
   let lint_diagnostics = diagnostics
     .all()
     .into_iter()
-    .filter(|d| d.source.as_deref() == Some("deno-lint"))
+    .filter(|d| d.source.as_deref() == Some("ende-lint"))
     .collect::<Vec<_>>();
   assert_eq!(
     json!(lint_diagnostics),
@@ -19156,7 +19156,7 @@ fn lsp_jsx_no_unused_vars() {
       },
       "severity": 2,
       "code": "no-unused-vars",
-      "source": "deno-lint",
+      "source": "ende-lint",
       "message": "`React` is never used\nIf this is intentional, prefix it with an underscore like `_React`",
     }, {
       "range": {
@@ -19165,7 +19165,7 @@ fn lsp_jsx_no_unused_vars() {
       },
       "severity": 2,
       "code": "no-unused-vars",
-      "source": "deno-lint",
+      "source": "ende-lint",
       "message": "`unused` is never used\nIf this is intentional, prefix it with an underscore like `_unused`",
     }])
   );
@@ -19321,7 +19321,7 @@ fn lsp_workspace_lockfile() {
           "start": { "line": 0, "character": 7 },
           "end": { "line": 0, "character": 45 },
         },
-        "targetUri": "deno:/http/localhost:4545/subdir/mod2.ts",
+        "targetUri": "ende:/http/localhost:4545/subdir/mod2.ts",
         "targetRange": {
           "start": { "line": 0, "character": 0 },
           "end": { "line": 1, "character": 0 },
@@ -19333,7 +19333,7 @@ fn lsp_workspace_lockfile() {
       }])
     } else {
       json!([{
-        "targetUri": "deno:/http/localhost:4545/subdir/mod2.ts",
+        "targetUri": "ende:/http/localhost:4545/subdir/mod2.ts",
         "targetRange": {
           "start": { "line": 0, "character": 0 },
           "end": { "line": 1, "character": 0 },
@@ -19665,7 +19665,7 @@ fn lsp_tsconfig_scopes() {
             },
             "severity": 1,
             "code": 2584,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'document'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'.",
           },
         ],
@@ -19681,7 +19681,7 @@ fn lsp_tsconfig_scopes() {
             },
             "severity": 1,
             "code": 2304,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'Deno'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'ende.ns' or add a triple-slash directive to the top of your entrypoint (main file): /// <reference lib=\"ende.ns\" />",
           },
         ],
@@ -19788,7 +19788,7 @@ fn lsp_tsconfig_references_extends_include() {
             },
             "severity": 1,
             "code": 2584,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'document'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'.",
           },
         ],
@@ -19804,7 +19804,7 @@ fn lsp_tsconfig_references_extends_include() {
             },
             "severity": 1,
             "code": 2304,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Cannot find name 'Deno'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'ende.ns' or add a triple-slash directive to the top of your entrypoint (main file): /// <reference lib=\"ende.ns\" />",
           },
         ],
@@ -19865,7 +19865,7 @@ fn lsp_tsconfig_node_modules_dts_diagnostics() {
         },
         "severity": 1,
         "code": 2304,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'Deno'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'ende.ns' or add a triple-slash directive to the top of your entrypoint (main file): /// <reference lib=\"ende.ns\" />",
       },
     ]),
@@ -19993,7 +19993,7 @@ fn lsp_tsconfig_root_dirs() {
         },
         "severity": 1,
         "code": 2322,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Type 'number' is not assignable to type 'string'.",
       },
     ]),
@@ -20020,7 +20020,7 @@ fn lsp_tsconfig_watched() {
         },
         "severity": 1,
         "code": 2584,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Cannot find name 'document'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'.",
       },
     ]),
@@ -20190,7 +20190,7 @@ fn lsp_npm_workspace_npm_reqs() {
         },
         "severity": 1,
         "code": 2322,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Type 'string' is not assignable to type 'number'.",
       },
     ]),
@@ -20220,7 +20220,7 @@ fn lsp_import_unstable_bare_node_builtins_auto_discovered() {
   }));
 
   let diagnostics = diagnostics
-    .messages_with_file_and_source(main_uri.as_str(), "deno")
+    .messages_with_file_and_source(main_uri.as_str(), "ende")
     .diagnostics
     .into_iter()
     .filter(|d| {
@@ -20261,7 +20261,7 @@ fn lsp_import_unstable_bare_node_builtins_auto_discovered() {
           },
           "severity": 2,
           "code": "import-node-prefix-missing",
-          "source": "deno",
+          "source": "ende",
           "message": "\"path\" is resolved to \"node:path\". If you want to use a built-in Node module, add a \"node:\" prefix.",
           "data": {
             "specifier": "path"
@@ -20332,7 +20332,7 @@ fn lsp_byonm() {
         },
         "severity": 1,
         "code": "resolver-error",
-        "source": "deno",
+        "source": "ende",
         "message": "Could not find a matching package for 'npm:chalk@5' in the node_modules directory. Ensure you have all your JSR and npm dependencies listed in your deno.json or package.json, then run `deno install`. Alternatively, turn on auto-install by specifying `\"nodeModulesDir\": \"auto\"` in your deno.json file.",
       },
       {
@@ -20348,7 +20348,7 @@ fn lsp_byonm() {
         },
         "severity": 1,
         "code": "resolver-error",
-        "source": "deno",
+        "source": "ende",
         "message": "Could not resolve \"@denotest/esm-basic\", but found it in a package.json. Deno expects the node_modules/ directory to be up to date. Did you forget to run `deno install`?",
       },
     ])
@@ -20377,7 +20377,7 @@ fn lsp_byonm() {
         },
         "severity": 1,
         "code": "resolver-error",
-        "source": "deno",
+        "source": "ende",
         "message": "Could not find a matching package for 'npm:chalk@5' in the node_modules directory. Ensure you have all your JSR and npm dependencies listed in your deno.json or package.json, then run `deno install`. Alternatively, turn on auto-install by specifying `\"nodeModulesDir\": \"auto\"` in your deno.json file.",
       },
     ])
@@ -20455,7 +20455,7 @@ fn lsp_sloppy_imports() {
         },
         "severity": 2,
         "code": "no-sloppy-imports",
-        "source": "deno-lint",
+        "source": "ende-lint",
         "message": "Sloppy imports are not allowed.",
         "data": [{
           "description": "Add a '.ts' extension.",
@@ -20474,7 +20474,7 @@ fn lsp_sloppy_imports() {
       },
       "severity": 2,
       "code": "no-sloppy-imports",
-      "source": "deno-lint",
+      "source": "ende-lint",
       "message": "Sloppy imports are not allowed.",
       "data": [{
         "description": "Change the extension to '.ts'.",
@@ -20493,7 +20493,7 @@ fn lsp_sloppy_imports() {
       },
       "severity": 2,
       "code": "no-sloppy-imports",
-      "source": "deno-lint",
+      "source": "ende-lint",
       "message": "Sloppy imports are not allowed.",
       "data": [{
         "description": "Change the extension to '.d.ts'.",
@@ -20526,7 +20526,7 @@ fn lsp_sloppy_imports_prefers_dts() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   client.change_configuration(json!({
-    "deno": {
+    "ende": {
       "enable": true,
       "unstable": ["sloppy-imports"],
     },
@@ -20543,7 +20543,7 @@ fn lsp_sloppy_imports_prefers_dts() {
       },
       "severity": 2,
       "code": "no-sloppy-imports",
-      "source": "deno-lint",
+      "source": "ende-lint",
       "message": "Sloppy imports are not allowed.",
       "data": [{
         "description": "Change the extension to '.d.ts'.",
@@ -20621,7 +20621,7 @@ fn sloppy_imports_not_enabled() {
     },
   }));
   assert_eq!(
-    diagnostics.messages_with_source("deno"),
+    diagnostics.messages_with_source("ende"),
     lsp::PublishDiagnosticsParams {
       uri: temp_dir.join("file.ts").uri_file(),
       diagnostics: vec![lsp::Diagnostic {
@@ -20637,7 +20637,7 @@ fn sloppy_imports_not_enabled() {
         },
         severity: Some(lsp::DiagnosticSeverity::ERROR),
         code: Some(lsp::NumberOrString::String("no-local".to_string())),
-        source: Some("deno".to_string()),
+        source: Some("ende".to_string()),
         message: format!(
           "Unable to load a local module: {}\nMaybe add a '.ts' extension.",
           temp_dir.join("a").url_file(),
@@ -20670,7 +20670,7 @@ fn sloppy_imports_not_enabled() {
           },
           "severity": 3,
           "code": "no-local",
-          "source": "deno",
+          "source": "ende",
           "message": format!(
             "Unable to load a local module: {}\nMaybe add a '.ts' extension.",
             temp_dir.join("a").url_file(),
@@ -20697,7 +20697,7 @@ fn sloppy_imports_not_enabled() {
         },
         "severity": 3,
         "code": "no-local",
-        "source": "deno",
+        "source": "ende",
         "message": format!(
           "Unable to load a local module: {}\nMaybe add a '.ts' extension.",
           temp_dir.join("a").url_file(),
@@ -20808,7 +20808,7 @@ fn lsp_open_file_in_managed_node_modules_dir() {
       },
       "severity": 1,
       "code": 2552,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Cannot find name 'strang'. Did you mean 'string'?",
     }]),
   );
@@ -21066,7 +21066,7 @@ fn lsp_cjs_import_dual() {
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type '\"cjs\"' is not assignable to type '\"esm\"'.",
     }])
   );
@@ -21115,7 +21115,7 @@ fn lsp_type_commonjs() {
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type '\"cjs\"' is not assignable to type '\"other\"'.",
     }])
   );
@@ -21353,7 +21353,7 @@ fn lsp_wasm_module() {
         },
         "severity": 1,
         "code": 2345,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Argument of type 'string' is not assignable to parameter of type 'number'."
       }
     ])
@@ -21394,7 +21394,7 @@ fn lsp_wasm_module_multi_value_return() {
         },
         "severity": 1,
         "code": 2322,
-        "source": "deno-ts",
+        "source": "ende-ts",
         "message": "Type '[number, number]' is not assignable to type 'number'."
       }
     ])
@@ -21474,7 +21474,7 @@ fn lsp_wasm_module_change_watched() {
   assert_eq!(diagnostics.all().len(), 1);
   assert_json_subset(
     json!(diagnostics.all()),
-    json!([{ "code": 2305, "source": "deno-ts" }]),
+    json!([{ "code": 2305, "source": "ende-ts" }]),
   );
 
   // Recompile the wasm file on disk so it now exports `add`, then notify the
@@ -21684,7 +21684,7 @@ fn ambient_module_errors_suppressed() {
         "range": source.range_of("\"./not-real.bad\""),
         "severity": 1,
         "code": "no-local",
-        "source": "deno",
+        "source": "ende",
         "message": format!(
           "Unable to load a local module: {}\nPlease check the file path.",
           temp_dir.join("./not-real.bad").url_file()
@@ -21744,7 +21744,7 @@ fn definitely_typed_fallback() {
           "range": source.range_of("_res"),
           "severity": 1,
           "code": 2322,
-          "source": "deno-ts",
+          "source": "ende-ts",
           "message": "Type 'number' is not assignable to type 'boolean'."
         }
       ])
@@ -21920,7 +21920,7 @@ fn lsp_import_json_module_import_attribute_variations() {
       },
       "severity": 1,
       "code": "no-attribute-type",
-      "source": "deno",
+      "source": "ende",
       "message": "The module is a JSON module and not being imported with an import attribute. Consider adding `with { type: \"json\" }` to the import statement."
     }])
   );
@@ -22007,7 +22007,7 @@ console.log(invalid, validBytes, validText);
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type 'Uint8Array<ArrayBuffer>' is not assignable to type 'number'."
     },
     {
@@ -22023,7 +22023,7 @@ console.log(invalid, validBytes, validText);
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type 'Uint8Array<ArrayBuffer>' is not assignable to type 'number'."
     },
     {
@@ -22039,7 +22039,7 @@ console.log(invalid, validBytes, validText);
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type 'Uint8Array<ArrayBuffer>' is not assignable to type 'number'."
     },
     {
@@ -22055,7 +22055,7 @@ console.log(invalid, validBytes, validText);
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type 'Uint8Array<ArrayBuffer>' is not assignable to type 'number'."
     },
     {
@@ -22071,7 +22071,7 @@ console.log(invalid, validBytes, validText);
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type 'string' is not assignable to type 'number'."
     },
     {
@@ -22087,7 +22087,7 @@ console.log(invalid, validBytes, validText);
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type 'string' is not assignable to type 'number'."
     },
     {
@@ -22103,7 +22103,7 @@ console.log(invalid, validBytes, validText);
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type 'string' is not assignable to type 'number'."
     },
     {
@@ -22119,7 +22119,7 @@ console.log(invalid, validBytes, validText);
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type 'string' is not assignable to type 'number'."
     },
     {
@@ -22135,7 +22135,7 @@ console.log(invalid, validBytes, validText);
       },
       "severity": 1,
       "code": 2322,
-      "source": "deno-ts",
+      "source": "ende-ts",
       "message": "Type 'string' is not assignable to type 'number'."
     }
     ])
@@ -22473,7 +22473,7 @@ fn lsp_push_diagnostics() {
             },
             "severity": 1,
             "code": 2322,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Type 'number' is not assignable to type 'string'.",
           },
         ],
@@ -22489,7 +22489,7 @@ fn lsp_push_diagnostics() {
             },
             "severity": 1,
             "code": "import-prefix-missing",
-            "source": "deno",
+            "source": "ende",
             "message": "Import \"foo\" not a dependency\n  hint: If you want to use the npm package, try running `deno add npm:foo`",
           },
         ],
@@ -22505,7 +22505,7 @@ fn lsp_push_diagnostics() {
             },
             "severity": 2,
             "code": "ban-ts-comment",
-            "source": "deno-lint",
+            "source": "ende-lint",
             "message": "`@ts-ignore` is not allowed without comment\nAdd an in-line comment explaining the reason for using `@ts-ignore`, like `// @ts-ignore: <reason>`",
           },
         ],
@@ -22566,7 +22566,7 @@ fn lsp_force_push_based_diagnostics_setting() {
             },
             "severity": 1,
             "code": 2322,
-            "source": "deno-ts",
+            "source": "ende-ts",
             "message": "Type 'number' is not assignable to type 'string'.",
           },
         ],
@@ -22582,7 +22582,7 @@ fn lsp_force_push_based_diagnostics_setting() {
             },
             "severity": 1,
             "code": "import-prefix-missing",
-            "source": "deno",
+            "source": "ende",
             "message": "Import \"foo\" not a dependency\n  hint: If you want to use the npm package, try running `deno add npm:foo`",
           },
         ],
@@ -22598,7 +22598,7 @@ fn lsp_force_push_based_diagnostics_setting() {
             },
             "severity": 2,
             "code": "ban-ts-comment",
-            "source": "deno-lint",
+            "source": "ende-lint",
             "message": "`@ts-ignore` is not allowed without comment\nAdd an in-line comment explaining the reason for using `@ts-ignore`, like `// @ts-ignore: <reason>`",
           },
         ],
@@ -22633,7 +22633,7 @@ fn lsp_dts_entrypoint_unresolved_import() {
   client.initialize_default();
   let diagnostics = client.did_open_file(&file);
   assert_eq!(
-    json!(diagnostics.messages_with_source("deno").diagnostics),
+    json!(diagnostics.messages_with_source("ende").diagnostics),
     json!([
       {
         "range": {
@@ -22642,7 +22642,7 @@ fn lsp_dts_entrypoint_unresolved_import() {
         },
         "severity": 1,
         "code": "import-prefix-missing",
-        "source": "deno",
+        "source": "ende",
         "message": "Import \"some-non-existent-package\" not a dependency\n  hint: If you want to use the npm package, try running `deno add npm:some-non-existent-package`",
       },
     ]),
@@ -22672,7 +22672,7 @@ fn lsp_isolated_declarations() {
   );
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
-  client.change_configuration(json!({ "deno": { "enable": true }}));
+  client.change_configuration(json!({ "ende": { "enable": true }}));
 
   let diagnostics = client.did_open_file(&file);
   let diagnostics = diagnostics.all();
@@ -22692,7 +22692,7 @@ fn lsp_idle_memory_release() {
     .new_lsp_command()
     .collect_perf()
     // Fire the idle release quickly so the test doesn't wait out the default.
-    .env("DENO_LSP_IDLE_MEMORY_RELEASE_MS", "50")
+    .env("ENDE_LSP_IDLE_MEMORY_RELEASE_MS", "50")
     .build();
   client.initialize_default();
 
@@ -22737,5 +22737,197 @@ fn lsp_idle_memory_release() {
     "unexpected hover after idle release: {value:?}",
   );
 
+  client.shutdown();
+}
+
+#[test(timeout = 300)]
+fn lsp_modern_client_receives_ende_names() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let temp_dir = context.temp_dir();
+  temp_dir.write("ende.json", json!({}).to_string());
+  let file =
+    temp_dir.source_file("file.ts", "export const d: Date = new Date();\n");
+  let mut client = context.new_lsp_command().build();
+  client.initialize_default();
+  // custom notifications use `ende/*` names
+  client
+    .read_notification_with_method::<Value>(
+      "ende/didRefreshDenoConfigurationTree",
+    )
+    .unwrap();
+  let diagnostics = client.did_open_file(&file);
+  assert_eq!(json!(diagnostics.all()), json!([]));
+  // virtual documents use the `ende:` scheme
+  let res = client.write_request(
+    "textDocument/definition",
+    json!({
+      "textDocument": { "uri": file.uri() },
+      "position": { "line": 0, "character": 17 },
+    }),
+  );
+  let res = res.to_string();
+  assert!(res.contains("\"ende:/asset/"), "{res}");
+  assert!(!res.contains("deno:"), "{res}");
+  assert_eq!(client.notification_count("window/logMessage"), 0);
+  assert_eq!(
+    client.notification_count("deno/didRefreshDenoConfigurationTree"),
+    0
+  );
+  client.shutdown();
+}
+
+#[test(timeout = 300)]
+fn lsp_legacy_client_receives_deno_names() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let temp_dir = context.temp_dir();
+  // No config file: the server is only enabled through `"enable": true` in
+  // the `deno` settings section.
+  let file = temp_dir.source_file(
+    "file.ts",
+    "export const d: Date = new Date();\nexport const n: number = \"\";\n",
+  );
+  let mut client = context.new_lsp_command().legacy_deno_client().build();
+  client.initialize_default();
+  // the deprecated settings section is reported to the client
+  let message = client
+    .read_notification_with_method::<Value>("window/logMessage")
+    .unwrap();
+  assert_eq!(
+    message,
+    json!({
+      "type": 2,
+      "message": "The \"deno\" settings section is deprecated. Use \"ende\" instead.",
+    }),
+  );
+  // custom notifications use `deno/*` names
+  client
+    .read_notification_with_method::<Value>(
+      "deno/didRefreshDenoConfigurationTree",
+    )
+    .unwrap();
+  // the settings from the `deno` section are used
+  let diagnostics = client.did_open_file(&file);
+  assert_eq!(diagnostics.all().len(), 1);
+  assert_eq!(diagnostics.all()[0].source.as_deref(), Some("ende-ts"));
+  // virtual documents use the `deno:` scheme
+  let res = client.write_request(
+    "textDocument/definition",
+    json!({
+      "textDocument": { "uri": file.uri() },
+      "position": { "line": 0, "character": 17 },
+    }),
+  );
+  let res = res.to_string();
+  assert!(res.contains("\"deno:/asset/"), "{res}");
+  assert!(!res.contains("ende:"), "{res}");
+  // the warning is only logged once
+  client.change_configuration(json!({ "deno": { "enable": true } }));
+  client.write_request(
+    "deno/virtualTextDocument",
+    json!({ "textDocument": { "uri": "deno:/status.md" } }),
+  );
+  assert_eq!(client.notification_count("window/logMessage"), 1);
+  assert_eq!(
+    client.notification_count("ende/didRefreshDenoConfigurationTree"),
+    0
+  );
+  client.shutdown();
+}
+
+#[test(timeout = 300)]
+fn lsp_legacy_request_from_modern_client() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let temp_dir = context.temp_dir();
+  temp_dir.write("ende.json", json!({}).to_string());
+  let file =
+    temp_dir.source_file("file.ts", "export const d: Date = new Date();\n");
+  let mut client = context.new_lsp_command().build();
+  client.initialize_default();
+  client.did_open_file(&file);
+  // `deno/*` requests are answered, and both URI schemes are accepted
+  for uri in ["deno:/status.md", "ende:/status.md"] {
+    let res = client.write_request(
+      "deno/virtualTextDocument",
+      json!({ "textDocument": { "uri": uri } }),
+    );
+    assert!(
+      res.as_str().unwrap().contains("Language Server Status"),
+      "{res}"
+    );
+  }
+  let res = client.write_request(
+    "deno/virtualTextDocument",
+    json!({ "textDocument": { "uri": "deno:/asset/lib.es5.d.ts" } }),
+  );
+  assert!(res.as_str().unwrap().contains("interface Date"));
+  // the client identified itself through the `ende` settings section, so the
+  // server keeps sending the `ende` form
+  let res = client.write_request(
+    "textDocument/definition",
+    json!({
+      "textDocument": { "uri": file.uri() },
+      "position": { "line": 0, "character": 17 },
+    }),
+  );
+  let res = res.to_string();
+  assert!(res.contains("\"ende:/asset/"), "{res}");
+  assert!(!res.contains("deno:"), "{res}");
+  client.shutdown();
+}
+
+#[test(timeout = 300)]
+fn lsp_code_actions_accept_deno_diagnostic_source() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let mut client = context.new_lsp_command().build();
+  client.initialize_default();
+  let diagnostics = client.did_open(json!({
+    "textDocument": {
+      "uri": "file:///a/file.ts",
+      "languageId": "typescript",
+      "version": 1,
+      "text": "import * as a from \"https://deno.land/x/a/mod.ts\";\n\nconsole.log(a);\n"
+    }
+  }));
+  // diagnostics are published with the `ende` source
+  assert_eq!(diagnostics.all()[0].source.as_deref(), Some("ende"));
+  // a diagnostic with the `deno` source of older servers still gets its fix
+  let diagnostic = json!({
+    "range": {
+      "start": { "line": 0, "character": 19 },
+      "end": { "line": 0, "character": 49 }
+    },
+    "severity": 1,
+    "code": "no-cache",
+    "source": "deno",
+    "message": "Uncached or missing remote URL: https://deno.land/x/a/mod.ts",
+    "data": { "specifier": "https://deno.land/x/a/mod.ts" }
+  });
+  let res = client.write_request(
+    "textDocument/codeAction",
+    json!({
+      "textDocument": { "uri": "file:///a/file.ts" },
+      "range": {
+        "start": { "line": 0, "character": 19 },
+        "end": { "line": 0, "character": 49 }
+      },
+      "context": {
+        "diagnostics": [diagnostic],
+        "only": ["quickfix"]
+      }
+    }),
+  );
+  assert_eq!(
+    res,
+    json!([{
+      "title": "Cache \"https://deno.land/x/a/mod.ts\" and its dependencies.",
+      "kind": "quickfix",
+      "diagnostics": [diagnostic],
+      "command": {
+        "title": "",
+        "command": "deno.cache",
+        "arguments": [["https://deno.land/x/a/mod.ts"], "file:///a/file.ts"]
+      }
+    }])
+  );
   client.shutdown();
 }

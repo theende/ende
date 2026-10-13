@@ -948,7 +948,7 @@ function updateOutgoingData(socket, state, delta) {
 // ---- parserOnIncoming: creates ServerResponse, emits 'request' ----
 
 function parserOnIncoming(server, socket, state, req, keepAlive) {
-  // Connections accepted via the DENO_SERVE_ADDRESS override carry
+  // Connections accepted via the ENDE_SERVE_ADDRESS override carry
   // absolute-form request targets (the control plane forwards the full
   // public URL, which is how Deno.serve() reconstructs request.url).
   // Node applications expect origin-form, so strip scheme and authority.
@@ -1553,7 +1553,7 @@ function storeHTTPOptions(options) {
 ObjectSetPrototypeOf(Server.prototype, net.Server.prototype);
 ObjectSetPrototypeOf(Server, net.Server);
 
-// Applies the DENO_SERVE_ADDRESS override before delegating to
+// Applies the ENDE_SERVE_ADDRESS override before delegating to
 // net.Server.prototype.listen.
 //
 // TCP overrides rewrite the address passed to listen(). Non-TCP and

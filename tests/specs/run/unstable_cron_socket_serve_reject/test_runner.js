@@ -18,8 +18,8 @@ const mainProcess = new Deno.Command(Deno.execPath(), {
     join(testDir, "main.js"),
   ],
   env: {
-    DENO_UNSTABLE_CRON_SOCK: `unix:${cronSocketPath}`,
-    DENO_UNSTABLE_CONTROL_SOCK: `unix:${controlSocketPath}`,
+    ENDE_UNSTABLE_CRON_SOCK: `unix:${cronSocketPath}`,
+    ENDE_UNSTABLE_CONTROL_SOCK: `unix:${controlSocketPath}`,
   },
 }).spawn();
 

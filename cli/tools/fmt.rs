@@ -1010,7 +1010,7 @@ impl Formatter for CheckFormatter {
             // When checking formatting, only update the incremental cache when
             // the file is the same since we don't bother checking for stable
             // formatting here. Additionally, ensure this is done during check
-            // so that CIs that cache the DENO_DIR will get the benefit of
+            // so that CIs that cache the ENDE_DIR will get the benefit of
             // incremental formatting
             incremental_cache.update_file(&file_path, &cache_text);
           }

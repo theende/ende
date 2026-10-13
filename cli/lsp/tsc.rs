@@ -80,6 +80,7 @@ use super::documents::DocumentModule;
 use super::documents::DocumentText;
 use super::language_server;
 use super::language_server::StateSnapshot;
+use super::legacy_client::is_virtual_document_scheme;
 use super::logging::lsp_log;
 use super::performance::Performance;
 use super::performance::PerformanceMark;
@@ -2258,11 +2259,7 @@ fn target_uri_for_client(
   snapshot: &StateSnapshot,
 ) -> Option<Uri> {
   if !snapshot.client_needs_file_uris_for_virtual_documents
-    || !target_module
-      .uri
-      .scheme()
-      .as_str()
-      .eq_ignore_ascii_case("deno")
+    || !is_virtual_document_scheme(target_module.uri.scheme().as_str())
   {
     return None;
   }
@@ -5229,12 +5226,12 @@ impl<'a> ToV8<'a> for TscRequestArray {
 /// collect garbage and return memory to the OS. Kept comfortably longer than
 /// typical bursts of editor activity so we don't run a collection in the middle
 /// of someone's editing session. Overridable via the
-/// `DENO_LSP_IDLE_MEMORY_RELEASE_MS` env var (mainly so tests don't have to wait
+/// `ENDE_LSP_IDLE_MEMORY_RELEASE_MS` env var (mainly so tests don't have to wait
 /// out the full delay; a very large value effectively disables the behavior).
 static IDLE_MEMORY_RELEASE_DELAY: std::sync::LazyLock<std::time::Duration> =
   std::sync::LazyLock::new(|| {
     const DEFAULT_MS: u64 = 5000;
-    let ms = std::env::var("DENO_LSP_IDLE_MEMORY_RELEASE_MS")
+    let ms = std::env::var("ENDE_LSP_IDLE_MEMORY_RELEASE_MS")
       .ok()
       .and_then(|s| s.parse::<u64>().ok())
       .unwrap_or(DEFAULT_MS);
@@ -5977,7 +5974,7 @@ fn run_tsc_thread(
       }
     };
     let main_loop_fut = {
-      let enable_debug = std::env::var("DENO_TSC_DEBUG")
+      let enable_debug = ende_env::var("ENDE_TSC_DEBUG")
         .map(|s| {
           let s = s.trim();
           s == "1" || s.eq_ignore_ascii_case("true")

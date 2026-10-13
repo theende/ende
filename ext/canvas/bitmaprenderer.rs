@@ -469,7 +469,7 @@ pub fn create<'s>(
       id, width, height, ..
     } = &*surface_data.borrow();
     let instance = instance.unwrap();
-    let backends = std::env::var("DENO_WEBGPU_BACKEND").map_or_else(
+    let backends = ende_env::var("ENDE_WEBGPU_BACKEND").map_or_else(
       |_| wgpu_types::Backends::all(),
       |s| wgpu_types::Backends::from_comma_list(&s),
     );

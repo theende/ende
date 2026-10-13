@@ -12,7 +12,7 @@ async function runUpgrade(
     args: ["upgrade", ...args],
     env: {
       ...Deno.env.toObject(),
-      DENO_TESTING_UPGRADE: "1",
+      ENDE_TESTING_UPGRADE: "1",
     },
     stdout: "piped",
     stderr: "piped",

@@ -133,9 +133,16 @@ function writeNativeCryptoDebug(message: string) {
   core.print(`${message}\n`, true);
 }
 
+// `ENDE_TLS_CA_STORE`, falling back to the deprecated `DENO_TLS_CA_STORE`
+// (the Rust side prints the deprecation warning when it reads it).
+function getTlsCaStoreEnv(): string | null {
+  return op_get_env_no_permission_check("ENDE_TLS_CA_STORE") ??
+    op_get_env_no_permission_check("DENO_TLS_CA_STORE");
+}
+
 function emitDefaultCertificatesDebug() {
   const useOpenSslCa =
-    op_get_env_no_permission_check("DENO_NODE_USE_OPENSSL_CA") === "1";
+    op_get_env_no_permission_check("ENDE_NODE_USE_OPENSSL_CA") === "1";
   if (useOpenSslCa) {
     return;
   }
@@ -143,7 +150,7 @@ function emitDefaultCertificatesDebug() {
   const stores: string[] = [];
   ArrayPrototypeForEach(
     StringPrototypeSplit(
-      op_get_env_no_permission_check("DENO_TLS_CA_STORE") ?? "mozilla",
+      getTlsCaStoreEnv() ?? "mozilla",
       ",",
     ),
     (store) => {
@@ -253,7 +260,7 @@ function getDefaultMinVersion(): string {
 let hasDefaultCACertificatesOverride = false;
 
 function hasStore(store: string): boolean {
-  const storesValue = op_get_env_no_permission_check("DENO_TLS_CA_STORE");
+  const storesValue = getTlsCaStoreEnv();
   if (storesValue == null) {
     return false;
   }
@@ -291,7 +298,7 @@ function getDefaultUsesSystemCertificates(): boolean {
 }
 
 function getDefaultUsesBundledCertificates(): boolean {
-  const storesValue = op_get_env_no_permission_check("DENO_TLS_CA_STORE");
+  const storesValue = getTlsCaStoreEnv();
   if (storesValue != null) {
     return hasStore("mozilla");
   }

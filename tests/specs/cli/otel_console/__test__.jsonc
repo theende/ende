@@ -5,7 +5,7 @@
         "OTEL_DENO": "true",
         "OTEL_DENO_CONSOLE": "capture",
         "OTEL_EXPORTER_OTLP_PROTOCOL": "console",
-        "DENO_UNSTABLE_OTEL_DETERMINISTIC": "0",
+        "ENDE_UNSTABLE_OTEL_DETERMINISTIC": "0",
         "OTEL_BSP_SCHEDULE_DELAY": "0"
       },
       "args": "run -A spans.ts",

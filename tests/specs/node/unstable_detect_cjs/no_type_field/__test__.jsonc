@@ -7,7 +7,7 @@
     {
       "args": "run --check --quiet --allow-read=. main.ts",
       "envs": {
-        "DENO_COMPAT": "1"
+        "ENDE_COMPAT": "1"
       },
       "output": "main.out"
     }

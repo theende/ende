@@ -1,5 +1,5 @@
 const server1 = Deno.serve({
-  port: 9000, // This should be overridden to 9001 by DENO_SERVE_ADDRESS
+  port: 9000, // This should be overridden to 9001 by ENDE_SERVE_ADDRESS
   onListen({ port, hostname }) {
     console.log(`Server 1 listening on ${hostname}:${port}`);
   },

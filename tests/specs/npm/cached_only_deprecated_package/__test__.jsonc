@@ -8,7 +8,7 @@
   }, {
     // drop the cached packument so the deprecated package's registry info is no
     // longer available
-    "args": "run -A remove_registry.ts $DENO_DIR",
+    "args": "run -A remove_registry.ts $ENDE_DIR",
     "output": ""
   }, {
     // should not error even though the deprecated package's registry info is

@@ -21,12 +21,18 @@ use crate::sys::CliSys;
 /// An `.env` file ships alongside the code it accompanies, so letting it set
 /// Deno's own control variables would let that file change runtime behavior
 /// the user did not opt into, for example silently enabling tunnel mode
-/// (`DENO_CONNECTED`) or overriding the tunnel control endpoint
-/// (`DENO_DEPLOY_TUNNEL_ENDPOINT`). Env files are meant to provide
+/// (`ENDE_CONNECTED`) or overriding the tunnel control endpoint
+/// (`ENDE_DEPLOY_TUNNEL_ENDPOINT`). Env files are meant to provide
 /// configuration to the user's program, not to reconfigure Deno itself, so
-/// these keys are ignored when they originate from an env file.
-const ENV_FILE_DENYLIST: &[&str] =
-  &["DENO_CONNECTED", "DENO_DEPLOY_TUNNEL_ENDPOINT"];
+/// these keys are ignored when they originate from an env file. The
+/// deprecated `DENO_*` names are listed too because they are still read as
+/// fallbacks.
+const ENV_FILE_DENYLIST: &[&str] = &[
+  "ENDE_CONNECTED",
+  "ENDE_DEPLOY_TUNNEL_ENDPOINT",
+  "DENO_CONNECTED",
+  "DENO_DEPLOY_TUNNEL_ENDPOINT",
+];
 
 /// Whether `key` is a Deno-internal control variable that must not be set from
 /// an env file. The comparison is ASCII case-insensitive because environment

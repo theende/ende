@@ -59,7 +59,7 @@ impl ServeClientBuilder {
     self.map(|t| {
       let t = t.arg("--parallel");
       if let Some(n) = n {
-        t.env("DENO_JOBS", n.to_string())
+        t.env("ENDE_JOBS", n.to_string())
       } else {
         t
       }
@@ -279,14 +279,14 @@ async fn deno_run_serve_with_tcp_from_env() {
     .arg("run")
     .arg("--allow-net")
     .arg("./serve/run_serve.ts")
-    .env("DENO_SERVE_ADDRESS", "tcp:127.0.0.1:0")
+    .env("ENDE_SERVE_ADDRESS", "tcp:127.0.0.1:0")
     .stderr_piped()
     .spawn()
     .unwrap();
   let stderr = BufReader::new(child.stderr.as_mut().unwrap());
   let msg = stderr.lines().next().unwrap().unwrap();
 
-  // Deno.serve() listens on 0.0.0.0 by default. This checks DENO_SERVE_ADDRESS
+  // Deno.serve() listens on 0.0.0.0 by default. This checks ENDE_SERVE_ADDRESS
   // is not ignored by ensuring it's listening on 127.0.0.1.
   let port_regex = Regex::new(r"http:\/\/127\.0\.0\.1:(\d+)").unwrap();
   let port = port_regex.captures(&msg).unwrap().get(1).unwrap().as_str();
@@ -323,7 +323,7 @@ async fn deno_run_serve_with_unix_socket_from_env() {
     .arg(format!("--allow-write={}", sock.display()))
     .arg(format!("--allow-net=unix:{}", sock.display()))
     .arg("./serve/run_serve.ts")
-    .env("DENO_SERVE_ADDRESS", format!("unix:{}", sock.display()))
+    .env("ENDE_SERVE_ADDRESS", format!("unix:{}", sock.display()))
     .stderr_piped()
     .spawn()
     .unwrap();
@@ -361,7 +361,7 @@ async fn deno_run_serve_with_duplicate_env_addr() {
     .arg(format!("--allow-write={}", sock.display()))
     .arg("./serve/run_serve.ts")
     .env(
-      "DENO_SERVE_ADDRESS",
+      "ENDE_SERVE_ADDRESS",
       format!("duplicate,unix:{}", sock.display()),
     )
     .stderr_piped()

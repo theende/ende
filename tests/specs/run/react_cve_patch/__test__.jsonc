@@ -7,7 +7,7 @@
     "enabled": {
       "args": "run main.js",
       "envs": {
-        "DENO_PATCH_REACT_CVE": "1"
+        "ENDE_PATCH_REACT_CVE": "1"
       },
       "output": "enabled.out"
     },
@@ -18,7 +18,7 @@
     "rce_only_enabled": {
       "args": "run rce_only_main.js",
       "envs": {
-        "DENO_PATCH_REACT_CVE": "1"
+        "ENDE_PATCH_REACT_CVE": "1"
       },
       "output": "keys: [\"a\",\"b\"]\n"
     },
@@ -29,7 +29,7 @@
     "dos_only_enabled": {
       "args": "run dos_only_main.js",
       "envs": {
-        "DENO_PATCH_REACT_CVE": "1"
+        "ENDE_PATCH_REACT_CVE": "1"
       },
       "output": "then: rejected Cannot have cyclic thenables.\n"
     }

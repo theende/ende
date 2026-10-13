@@ -322,7 +322,7 @@ pub static RUNTIME_MISC_ARGS: &[ArgDef] = &[
     .num_args(NumArgs::ZeroOrMore)
     .require_equals()
     .value_delimiter(',')
-.help("To see a list of all available flags use --v8-flags=--help\n  Flags can also be set via the DENO_V8_FLAGS environment variable.\n  Any flags set with this flag are appended after the DENO_V8_FLAGS environment variable"),
+.help("To see a list of all available flags use --v8-flags=--help\n  Flags can also be set via the ENDE_V8_FLAGS environment variable.\n  Any flags set with this flag are appended after the ENDE_V8_FLAGS environment variable"),
   ArgDef::new("seed")
     .long("seed")
     .action(ArgAction::Set)
@@ -363,7 +363,7 @@ pub static RUNTIME_MISC_ARGS: &[ArgDef] = &[
     .action(ArgAction::Append)
     .num_args(NumArgs::OneOrMore)
     .value_delimiter(',')
-.help("Use this argument to specify custom conditions for npm package exports. You can also use DENO_CONDITIONS env var.\n\nDocs: https://docs.deno.com/go/conditional-exports"),
+.help("Use this argument to specify custom conditions for npm package exports. You can also use ENDE_CONDITIONS env var.\n\nDocs: https://docs.deno.com/go/conditional-exports"),
 ];
 
 pub static CPU_PROF_ARGS: &[ArgDef] = &[
@@ -671,7 +671,7 @@ static RUN_ARGS: &[ArgDef] = &[
     .num_args(NumArgs::Optional)
     .require_equals()
     .conflicts_with(&["inspect", "inspect-brk", "inspect-wait"])
-.help("Collect coverage profile data into DIR. If DIR is not specified, it uses 'coverage/'.\n  This option can also be set via the DENO_COVERAGE_DIR environment variable."),
+.help("Collect coverage profile data into DIR. If DIR is not specified, it uses 'coverage/'.\n  This option can also be set via the ENDE_COVERAGE_DIR environment variable."),
   ArgDef::new("tunnel")
     .long("tunnel")
     .long_aliases(&["connected"])
@@ -759,7 +759,7 @@ pub static SERVE_SUBCOMMAND: CommandDef = CommandDef {
       .hidden()
 .help("Execute tasks with a tunnel to Deno Deploy.\n\n    Create a secure connection between your local machine and Deno Deploy,\n    providing access to centralised environment variables, logging,\n    and serving from your local environment to the public internet"),
     ArgDef::new("parallel").long("parallel").set_true()
-.help("Run multiple server workers in parallel. Parallelism defaults to the number of available CPUs or the value of the DENO_JOBS environment variable"),
+.help("Run multiple server workers in parallel. Parallelism defaults to the number of available CPUs or the value of the ENDE_JOBS environment variable"),
     ArgDef::new("check")
       .long("check")
       .action(ArgAction::Set)
@@ -1152,7 +1152,7 @@ pub static TEST_SUBCOMMAND: CommandDef = CommandDef {
       .num_args(NumArgs::Optional)
       .require_equals()
       .conflicts_with(&["inspect", "inspect-brk", "inspect-wait"])
-.help("Collect coverage profile data into DIR. If DIR is not specified, it uses 'coverage/'.\n  This option can also be set via the DENO_COVERAGE_DIR environment variable."),
+.help("Collect coverage profile data into DIR. If DIR is not specified, it uses 'coverage/'.\n  This option can also be set via the ENDE_COVERAGE_DIR environment variable."),
     ArgDef::new("clean").long("clean").set_true()
 .help("Empty the temporary coverage profile data directory before running tests.\n  Note: running multiple `deno test --clean` calls in series or parallel for the same coverage directory may cause race conditions."),
     ArgDef::new("fail-fast")
@@ -1175,7 +1175,7 @@ pub static TEST_SUBCOMMAND: CommandDef = CommandDef {
       .value_parser(ValueParser::U64)
 .help("Shuffle the order in which the tests are run"),
     ArgDef::new("parallel").long("parallel").set_true()
-.help("Run test modules in parallel. Parallelism defaults to the number of available CPUs or the value of the DENO_JOBS environment variable"),
+.help("Run test modules in parallel. Parallelism defaults to the number of available CPUs or the value of the ENDE_JOBS environment variable"),
     ArgDef::new("sanitize-ops").long("sanitize-ops").set_true()
 .help("Enable the ops sanitizer, which ensures that all async ops started in a test are completed before the test ends"),
     ArgDef::new("sanitize-resources")
@@ -1640,7 +1640,7 @@ pub static TASK_SUBCOMMAND: CommandDef = CommandDef {
       .long_aliases(&["concurrency"])
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Maximum number of tasks to run concurrently.\nOverrides the DENO_JOBS environment variable; defaults to the number of\navailable CPUs. Use 1 to force sequential execution. Only affects runs\nwhere multiple tasks can run concurrently (workspace runs, or a task with\nparallelizable dependencies)"),
+.help("Maximum number of tasks to run concurrently.\nOverrides the ENDE_JOBS environment variable; defaults to the number of\navailable CPUs. Use 1 to force sequential execution. Only affects runs\nwhere multiple tasks can run concurrently (workspace runs, or a task with\nparallelizable dependencies)"),
     ArgDef::new("env-file")
       .long("env-file")
       .long_aliases(&["env"])

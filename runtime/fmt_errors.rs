@@ -589,7 +589,7 @@ fn get_message_suggestions_inner(
         FixSuggestion::hint_multiline(&[
           "If the certificate is trusted by your operating system (for example, issued",
           cstr!(
-            "by <u>mkcert</> or a corporate proxy), run again with <u>DENO_TLS_CA_STORE=mozilla,system</>."
+            "by <u>mkcert</> or a corporate proxy), run again with <u>ENDE_TLS_CA_STORE=mozilla,system</>."
           ),
         ]),
         FixSuggestion::hint(cstr!(
@@ -712,7 +712,7 @@ fn get_message_suggestions_inner(
 }
 
 static SHOULD_FILTER_FRAMES: LazyLock<bool> =
-  LazyLock::new(|| std::env::var("DENO_NO_FILTER_FRAMES").is_err());
+  LazyLock::new(|| ende_env::var("ENDE_NO_FILTER_FRAMES").is_err());
 
 /// Format a [`JsError`] for terminal output.
 pub fn format_js_error(

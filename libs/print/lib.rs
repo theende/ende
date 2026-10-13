@@ -96,7 +96,7 @@ mod tests {
     reason = "test spawns itself as a child process"
   )]
   fn does_not_panic_on_closed_stdout() {
-    if std::env::var_os("DENO_PRINT_TEST_CHILD").is_some() {
+    if std::env::var_os("ENDE_PRINT_TEST_CHILD").is_some() {
       // more than any pipe buffer holds, so writes keep happening after
       // the parent closes the read end
       for i in 0..1_000_000 {
@@ -111,7 +111,7 @@ mod tests {
     let mut child = std::process::Command::new(exe)
       .arg("tests::does_not_panic_on_closed_stdout")
       .arg("--exact")
-      .env("DENO_PRINT_TEST_CHILD", "1")
+      .env("ENDE_PRINT_TEST_CHILD", "1")
       .stdout(std::process::Stdio::piped())
       .stderr(std::process::Stdio::null())
       .spawn()

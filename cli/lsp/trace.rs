@@ -86,7 +86,7 @@ mod real_tracing {
     let filter = if let Some(directive) = config.filter.as_ref() {
       filter.parse(directive)?
     } else {
-      filter.with_env_var("DENO_LSP_TRACE").from_env()?
+      filter.parse(ende_env::var("ENDE_LSP_TRACE").unwrap_or_default())?
     };
     let open_telemetry_layer = match config.collector {
       TracingCollector::OpenTelemetry => Some(OpenTelemetryLayer::new(

@@ -1184,11 +1184,11 @@ ObjectDefineProperty(process, "config", {
       // single test to opt into the "externally-linked OpenSSL" branch of
       // upstream Node test fixtures, where Deno's aws-lc-rs/BoringSSL
       // backend matches that branch's expectations. Not for user code; the
-      // env var is reserved (DENO_INTERNAL_*) and undocumented.
+      // env var is reserved (ENDE_INTERNAL_*) and undocumented.
       let forceSharedOpenssl = false;
       try {
         forceSharedOpenssl =
-          Deno.env.get("DENO_INTERNAL_NODE_TEST_FORCE_SHARED_OPENSSL") === "1";
+          Deno.env.get("ENDE_INTERNAL_NODE_TEST_FORCE_SHARED_OPENSSL") === "1";
       } catch {
         // Permission denied or no env access; leave forceSharedOpenssl false.
       }

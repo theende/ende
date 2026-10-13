@@ -644,7 +644,7 @@ fn get_display_reporter<TData>()
   if *file_test_runner::NO_CAPTURE
     || *IS_CI
     || !std::io::stderr().is_terminal()
-    || std::env::var("DENO_TEST_UTIL_REPORTER").ok().as_deref() == Some("log")
+    || std::env::var("ENDE_TEST_UTIL_REPORTER").ok().as_deref() == Some("log")
   {
     Box::new(file_test_runner::reporter::LogReporter::default())
   } else {

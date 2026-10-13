@@ -22,6 +22,7 @@ use crate::lsp::completions;
 use crate::lsp::completions::CompletionItemData;
 use crate::lsp::config::CodeLensSettings;
 use crate::lsp::config::UpdateImportsOnFileMoveEnabled;
+use crate::lsp::diagnostics::DiagnosticSource;
 use crate::lsp::diagnostics::ts_json_to_diagnostics;
 use crate::lsp::documents::Document;
 use crate::lsp::language_server;
@@ -338,7 +339,10 @@ impl TsServer {
         let supported_code_fixes =
           ts_server.get_supported_code_fixes(snapshot.clone()).await?;
         let fixable_diagnostics = context.diagnostics.iter().filter(|d| {
-          d.source.as_deref() == Some("deno-ts")
+          d.source
+            .as_deref()
+            .and_then(DiagnosticSource::from_lsp_source)
+            == Some(DiagnosticSource::Ts)
             && match &d.code {
               Some(lsp::NumberOrString::String(code)) => {
                 supported_code_fixes.contains(code)

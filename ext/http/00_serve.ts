@@ -1153,7 +1153,7 @@ function formatHostName(hostname: string): string {
   return StringPrototypeIncludes(hostname, ":") ? `[${hostname}]` : hostname;
 }
 
-// Flag to track if DENO_SERVE_ADDRESS override has been consumed
+// Flag to track if ENDE_SERVE_ADDRESS override has been consumed
 let serveAddressOverrideConsumed = false;
 
 function serve(arg1, arg2) {

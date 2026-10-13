@@ -19,7 +19,7 @@
       "output": "no_package_json.out",
       "cwd": "code",
       "envs": {
-        "DENO_NO_PACKAGE_JSON": "1"
+        "ENDE_NO_PACKAGE_JSON": "1"
       }
     },
     "no_pkg_json_imports": {

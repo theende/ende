@@ -301,7 +301,7 @@ pub fn real_env_vars() -> HashMap<OsString, OsString> {
 
 // WARNING: Do not depend on this env var in user code. It's not stable API.
 pub(crate) static USE_PKG_JSON_HIDDEN_ENV_VAR_NAME: &str =
-  "DENO_INTERNAL_TASK_USE_PKG_JSON";
+  "ENDE_INTERNAL_TASK_USE_PKG_JSON";
 
 pub struct NpmCommand;
 
@@ -518,7 +518,7 @@ impl ShellCommand for NodeModulesFileRunCommand {
     );
     // set this environment variable so that the launched process knows the npm command name
     context.state.apply_env_var(
-      OsStr::new("DENO_INTERNAL_NPM_CMD_NAME"),
+      OsStr::new("ENDE_INTERNAL_NPM_CMD_NAME"),
       OsStr::new(&self.command_name),
     );
     executable_command.execute(ShellCommandContext { args, ..context })

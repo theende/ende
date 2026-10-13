@@ -5,7 +5,7 @@ const testPath = `${tempDirPath}/test.ts`;
 
 const command = new Deno.Command(Deno.execPath(), {
   env: {
-    DENO_UNSTABLE_CONTROL_SOCK: `unix:${sockPath}`,
+    ENDE_UNSTABLE_CONTROL_SOCK: `unix:${sockPath}`,
   },
 });
 
@@ -61,7 +61,7 @@ const nodeTestPath = `${tempDirPath}/node_test.ts`;
 
 const nodeCommand = new Deno.Command(Deno.execPath(), {
   env: {
-    DENO_UNSTABLE_CONTROL_SOCK: `unix:${nodeSockPath}`,
+    ENDE_UNSTABLE_CONTROL_SOCK: `unix:${nodeSockPath}`,
   },
 });
 
@@ -103,8 +103,8 @@ const nodeData = JSON.stringify({
   cwd: tempDirPath,
   args: ["run", "-A", "node_test.ts"],
   env: [
-    ["DENO_AUTO_SERVE", "1"],
-    ["DENO_SERVE_ADDRESS", `duplicate,unix:${nodeOverrideSockPath}`],
+    ["ENDE_AUTO_SERVE", "1"],
+    ["ENDE_SERVE_ADDRESS", `duplicate,unix:${nodeOverrideSockPath}`],
   ],
 });
 
@@ -126,7 +126,7 @@ const h2TestPath = `${tempDirPath}/h2_test.ts`;
 
 const h2Command = new Deno.Command(Deno.execPath(), {
   env: {
-    DENO_UNSTABLE_CONTROL_SOCK: `unix:${h2SockPath}`,
+    ENDE_UNSTABLE_CONTROL_SOCK: `unix:${h2SockPath}`,
   },
 });
 
@@ -168,8 +168,8 @@ const h2Data = JSON.stringify({
   cwd: tempDirPath,
   args: ["run", "-A", "h2_test.ts"],
   env: [
-    ["DENO_AUTO_SERVE", "1"],
-    ["DENO_SERVE_ADDRESS", `duplicate,unix:${h2OverrideSockPath}`],
+    ["ENDE_AUTO_SERVE", "1"],
+    ["ENDE_SERVE_ADDRESS", `duplicate,unix:${h2OverrideSockPath}`],
   ],
 });
 

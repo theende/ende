@@ -235,12 +235,12 @@ pub struct UnstableEnvVarNames {
   pub tsgo: &'static str,
 }
 pub static UNSTABLE_ENV_VAR_NAMES: UnstableEnvVarNames = UnstableEnvVarNames {
-  bare_node_builtins: "DENO_UNSTABLE_BARE_NODE_BUILTINS",
-  lazy_dynamic_imports: "DENO_UNSTABLE_LAZY_DYNAMIC_IMPORTS",
-  lockfile_v5: "DENO_UNSTABLE_LOCKFILE_V5",
-  npm_lazy_caching: "DENO_UNSTABLE_NPM_LAZY_CACHING",
-  raw_imports: "DENO_UNSTABLE_RAW_IMPORTS",
-  sloppy_imports: "DENO_UNSTABLE_SLOPPY_IMPORTS",
-  subdomain_wildcards: "DENO_UNSTABLE_SUBDOMAIN_WILDCARDS",
-  tsgo: "DENO_UNSTABLE_TSGO",
+  bare_node_builtins: "ENDE_UNSTABLE_BARE_NODE_BUILTINS",
+  lazy_dynamic_imports: "ENDE_UNSTABLE_LAZY_DYNAMIC_IMPORTS",
+  lockfile_v5: "ENDE_UNSTABLE_LOCKFILE_V5",
+  npm_lazy_caching: "ENDE_UNSTABLE_NPM_LAZY_CACHING",
+  raw_imports: "ENDE_UNSTABLE_RAW_IMPORTS",
+  sloppy_imports: "ENDE_UNSTABLE_SLOPPY_IMPORTS",
+  subdomain_wildcards: "ENDE_UNSTABLE_SUBDOMAIN_WILDCARDS",
+  tsgo: "ENDE_UNSTABLE_TSGO",
 };

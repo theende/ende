@@ -46,6 +46,7 @@ deno_terminal.workspace = true
 ende_cache_dir = { workspace = true, features = ["sync"] }
 ende_config = { workspace = true, features = ["sync", "workspace"] }
 ende_core.workspace = true
+ende_env.workspace = true
 ende_lib.workspace = true
 ende_node.workspace = true
 ende_npm.workspace = true

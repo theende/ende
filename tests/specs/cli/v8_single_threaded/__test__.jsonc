@@ -10,7 +10,7 @@
       "if": "linux",
       "args": "run --allow-all --v8-flags=--single-threaded main.ts",
       "envs": {
-        "DENO_V8_FLAGS": "--single-threaded"
+        "ENDE_V8_FLAGS": "--single-threaded"
       },
       "output": "false\n"
     },

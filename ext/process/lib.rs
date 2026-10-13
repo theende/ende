@@ -330,7 +330,7 @@ pub trait NpmProcessStateProvider:
 {
   /// Gets a string containing the serialized npm state of the process.
   ///
-  /// This will be set on the `DENO_DONT_USE_INTERNAL_NODE_COMPAT_STATE` environment
+  /// This will be set on the `ENDE_DONT_USE_INTERNAL_NODE_COMPAT_STATE` environment
   /// variable when doing a `child_process.fork`. The implementor can then check this environment
   /// variable on startup to repopulate the internal npm state.
   fn get_npm_process_state(&self) -> String {
@@ -680,7 +680,7 @@ pub fn npm_process_state_tempfile(
 }
 
 pub const NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME: &str =
-  "DENO_DONT_USE_INTERNAL_NODE_COMPAT_STATE_FD";
+  "ENDE_DONT_USE_INTERNAL_NODE_COMPAT_STATE_FD";
 
 fn create_command(
   state: &mut OpState,

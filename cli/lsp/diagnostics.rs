@@ -39,6 +39,7 @@ use import_map::ImportMapErrorKind;
 use log::error;
 use lsp_types::Uri;
 use node_resolver::NodeResolutionKind;
+use sys_traits::EnvVar;
 use text_size::TextSize;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -88,10 +89,22 @@ pub enum DiagnosticSource {
 impl DiagnosticSource {
   pub fn as_lsp_source(&self) -> &'static str {
     match self {
-      Self::Deno => "deno",
-      Self::Doc => "deno-doc",
-      Self::Lint => "deno-lint",
-      Self::Ts => "deno-ts",
+      Self::Deno => "ende",
+      Self::Doc => "ende-doc",
+      Self::Lint => "ende-lint",
+      Self::Ts => "ende-ts",
+    }
+  }
+
+  /// Parses the source of a diagnostic sent by the client. Also accepts the
+  /// `deno*` sources of diagnostics published by older servers.
+  pub fn from_lsp_source(source: &str) -> Option<Self> {
+    match source {
+      "ende" | "deno" => Some(Self::Deno),
+      "ende-doc" | "deno-doc" => Some(Self::Doc),
+      "ende-lint" | "deno-lint" => Some(Self::Lint),
+      "ende-ts" | "deno-ts" => Some(Self::Ts),
+      _ => None,
     }
   }
 }
@@ -107,10 +120,9 @@ pub type NoSlowTypesDiagnosticsCache = OnceCellMap<
 >;
 
 fn should_send_diagnostic_batch_notifications() -> bool {
-  ende_lib::args::has_flag_env_var(
-    &CliSys::default(),
-    "DENO_INTERNAL_DIAGNOSTIC_BATCH_NOTIFICATIONS",
-  )
+  CliSys::default()
+    .env_var_os("ENDE_INTERNAL_DIAGNOSTIC_BATCH_NOTIFICATIONS")
+    .is_some_and(|value| value == "1")
 }
 
 #[derive(Debug)]
@@ -2316,7 +2328,7 @@ mod tests {
               },
               "severity": 1,
               "code": "import-map-diagnostic",
-              "source": "deno",
+              "source": "ende",
               "message": "Invalid address \"null\" for the specifier key \"bad\". Addresses must be strings.",
             },
             {
@@ -2326,7 +2338,7 @@ mod tests {
               },
               "severity": 1,
               "code": "import-map-diagnostic",
-              "source": "deno",
+              "source": "ende",
               "message": "Invalid top-level key \"unexpected\". Only \"imports\" and \"scopes\" can be present.",
             },
             {
@@ -2336,7 +2348,7 @@ mod tests {
               },
               "severity": 1,
               "code": "no-cache",
-              "source": "deno",
+              "source": "ende",
               "message": "Uncached or missing remote URL: https://deno.land/x/example/mod.ts",
               "data": {
                 "specifier": "https://deno.land/x/example/mod.ts",
@@ -2374,7 +2386,7 @@ mod tests {
               },
               "severity": 1,
               "code": "import-map-diagnostic",
-              "source": "deno",
+              "source": "ende",
               "message": "Unable to parse import map JSON: EOF while parsing a value at line 1 column 13",
             },
           ],
@@ -2437,7 +2449,7 @@ mod tests {
               },
               "severity": 4,
               "code": "import-map-remap",
-              "source": "deno",
+              "source": "ende",
               "message": "The import specifier can be remapped to \"/~/std/assert/mod.ts\" which will resolve it via the active import map.",
               "data": {
                 "from": "../std/assert/mod.ts",
@@ -2465,7 +2477,7 @@ mod tests {
       },
       severity: Some(lsp::DiagnosticSeverity::HINT),
       code: Some(lsp::NumberOrString::String("import-map-remap".to_string())),
-      source: Some("deno".to_string()),
+      source: Some("ende".to_string()),
       message: "The import specifier can be remapped to \"/~/std/assert/mod.ts\" which will resolve it via the active import map.".to_string(),
       data: Some(json!({
         "from": "../std/assert/mod.ts",
@@ -2494,7 +2506,7 @@ mod tests {
             },
             "severity": 4,
             "code": "import-map-remap",
-            "source": "deno",
+            "source": "ende",
             "message": "The import specifier can be remapped to \"/~/std/assert/mod.ts\" which will resolve it via the active import map.",
             "data": {
               "from": "../std/assert/mod.ts",
@@ -2555,7 +2567,7 @@ mod tests {
               },
               "severity": 1,
               "code": "import-prefix-missing",
-              "source": "deno",
+              "source": "ende",
               "message": "Import \"bad.js\" not a dependency",
             },
             {
@@ -2565,7 +2577,7 @@ mod tests {
               },
               "severity": 1,
               "code": "import-prefix-missing",
-              "source": "deno",
+              "source": "ende",
               "message": "Import \"bad.js\" not a dependency",
             },
             {
@@ -2575,7 +2587,7 @@ mod tests {
               },
               "severity": 1,
               "code": "import-prefix-missing",
-              "source": "deno",
+              "source": "ende",
               "message": "Import \"bad.d.ts\" not a dependency",
             },
           ],
@@ -2612,7 +2624,7 @@ mod tests {
               },
               "severity": 1,
               "code": "no-local",
-              "source": "deno",
+              "source": "ende",
               "message": format!(
                 "Unable to load a local module: {}🦕.ts\nPlease check the file path.",
                 temp_dir.url(),

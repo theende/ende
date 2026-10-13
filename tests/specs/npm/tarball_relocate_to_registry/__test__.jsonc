@@ -10,12 +10,12 @@
       "steps": [
         {
           "args": "install",
-          "envs": { "DENO_DIR": "$PWD/deno_dir_one" },
+          "envs": { "ENDE_DIR": "$PWD/deno_dir_one" },
           "output": "install.out"
         },
         {
           "args": "run -A remove_node_modules.ts",
-          "envs": { "DENO_DIR": "$PWD/deno_dir_one" },
+          "envs": { "ENDE_DIR": "$PWD/deno_dir_one" },
           "output": ""
         },
         {
@@ -24,7 +24,7 @@
           // exercises registry-aware lockfile reconstruction.
           "args": "install",
           "envs": {
-            "DENO_DIR": "$PWD/deno_dir_two",
+            "ENDE_DIR": "$PWD/deno_dir_two",
             "NPM_CONFIG_REGISTRY": "http://localhost:4260/sub/path/"
           },
           "output": "install_from_lock.out"
@@ -33,7 +33,7 @@
           // ensure the package is actually cached and usable
           "args": "run --cached-only main.js",
           "envs": {
-            "DENO_DIR": "$PWD/deno_dir_two",
+            "ENDE_DIR": "$PWD/deno_dir_two",
             "NPM_CONFIG_REGISTRY": "http://localhost:4260/sub/path/"
           },
           "output": "run.out"

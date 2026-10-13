@@ -1,6 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use std::env;
 use std::path::PathBuf;
 
 use ende_cache_dir::DenoDirResolutionError;
@@ -23,7 +22,7 @@ pub type DenoDirProviderRc<TSys> =
   ende_maybe_sync::MaybeArc<DenoDirProvider<TSys>>;
 
 /// Lazily creates the deno dir which might be useful in scenarios
-/// where functionality wants to continue if the DENO_DIR can't be created.
+/// where functionality wants to continue if the ENDE_DIR can't be created.
 pub struct DenoDirProvider<TSys: DenoDirSys> {
   options: DenoDirOptions,
   sys: TSys,
@@ -56,7 +55,7 @@ impl<TSys: DenoDirSys> DenoDirProvider<TSys> {
 }
 
 /// `DenoDir` serves as coordinator for multiple `DiskCache`s containing them
-/// in single directory that can be controlled with `$DENO_DIR` env variable.
+/// in single directory that can be controlled with `$ENDE_DIR` env variable.
 #[derive(Debug, Clone)]
 pub struct DenoDir<TSys: DiskCacheSys> {
   /// Example: /Users/rld/.deno/
@@ -77,7 +76,7 @@ impl<TSys: DiskCacheSys> DenoDir<TSys> {
     }
   }
 
-  /// The root directory of the DENO_DIR for display purposes only.
+  /// The root directory of the ENDE_DIR for display purposes only.
   pub fn root_path_for_display(&self) -> std::path::Display<'_> {
     self.root.display()
   }
@@ -151,13 +150,9 @@ impl<TSys: DiskCacheSys> DenoDir<TSys> {
   }
 
   /// Path used for the REPL history file.
-  /// Can be overridden or disabled by setting `DENO_REPL_HISTORY` environment variable.
+  /// Can be overridden or disabled by setting `ENDE_REPL_HISTORY` environment variable.
   pub fn repl_history_file_path(&self) -> Option<PathBuf> {
-    #[allow(
-      clippy::disallowed_methods,
-      reason = "needs real environment variable"
-    )]
-    if let Some(deno_repl_history) = env::var_os("DENO_REPL_HISTORY") {
+    if let Some(deno_repl_history) = ende_env::var_os("ENDE_REPL_HISTORY") {
       if deno_repl_history.is_empty() {
         None
       } else {

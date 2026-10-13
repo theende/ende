@@ -34,11 +34,7 @@ fn startup_phases_enabled() -> bool {
     // `sys_traits` here is intentional: the snapshot/runtime layers don't
     // thread an `EnvProvider` through this code path, and this opt-in
     // tracing is only useful when running an actual `deno` binary anyway.
-    #[allow(
-      clippy::disallowed_methods,
-      reason = "diagnostic env var; not part of the sys_traits surface"
-    )]
-    let v = std::env::var_os("DENO_STARTUP_PHASES");
+    let v = ende_env::var_os("ENDE_STARTUP_PHASES");
     v.is_some_and(|v| !v.is_empty() && v != "0")
   })
 }

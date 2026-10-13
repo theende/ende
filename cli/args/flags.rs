@@ -95,7 +95,7 @@ pub fn resolve_compile_target(flags: &CompileFlags) -> String {
 }
 
 fn npm_system_info_from_env() -> NpmSystemInfo {
-  let arch = std::env::var_os("DENO_INSTALL_ARCH");
+  let arch = ende_env::var_os("ENDE_INSTALL_ARCH");
   if let Some(var) = arch.as_ref().and_then(|s| s.to_str()) {
     NpmSystemInfo::from_rust(std::env::consts::OS, var)
   } else {
@@ -470,13 +470,13 @@ impl FlagsExt for Flags {
           }
         }
       },
-      deterministic_prefix: std::env::var("DENO_UNSTABLE_OTEL_DETERMINISTIC")
+      deterministic_prefix: ende_env::var("ENDE_UNSTABLE_OTEL_DETERMINISTIC")
         .as_deref()
         .map(u8::from_str)
         .map(|x| match x {
           Ok(x) => Some(x),
           Err(_) => {
-            log::warn!("'DENO_UNSTABLE_OTEL_DETERMINISTIC' env var value not recognized, only integers are accepted");
+            log::warn!("'ENDE_UNSTABLE_OTEL_DETERMINISTIC' env var value not recognized, only integers are accepted");
             None
           }
         })

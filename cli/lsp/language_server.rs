@@ -68,10 +68,12 @@ use super::client::Client;
 use super::code_lens;
 use super::completions;
 use super::config::Config;
+use super::config::DEPRECATED_SETTINGS_SECTION;
 use super::config::SETTINGS_SECTION;
 use super::config::WorkspaceSettings;
 use super::diagnostics;
 use super::diagnostics::DiagnosticDataSpecifier;
+use super::diagnostics::DiagnosticSource;
 use super::diagnostics::DiagnosticsServer;
 use super::diagnostics::DiagnosticsUpdateMessage;
 use super::documents::Document;
@@ -79,6 +81,7 @@ use super::documents::DocumentModule;
 use super::documents::DocumentModules;
 use super::documents::LanguageId;
 use super::jsr::CliJsrSearchApi;
+use super::legacy_client;
 use super::logging::lsp_log;
 use super::logging::lsp_warn;
 use super::lsp_custom;
@@ -578,6 +581,61 @@ impl LanguageServer {
     }
   }
 
+  // The `deno/*` names of the custom requests above. Calling one marks the
+  // client as a legacy client.
+
+  pub async fn legacy_performance_request(
+    &self,
+    token: CancellationToken,
+  ) -> LspResult<Option<Value>> {
+    legacy_client::on_legacy_method_called();
+    self.performance_request(token).await
+  }
+
+  pub async fn legacy_inferred_type(
+    &self,
+    params: Option<Value>,
+    token: CancellationToken,
+  ) -> LspResult<Option<Value>> {
+    legacy_client::on_legacy_method_called();
+    self.inferred_type(params, token).await
+  }
+
+  pub async fn legacy_task_definitions(
+    &self,
+    token: CancellationToken,
+  ) -> LspResult<Vec<TaskDefinition>> {
+    legacy_client::on_legacy_method_called();
+    self.task_definitions(token).await
+  }
+
+  pub async fn legacy_test_run_request(
+    &self,
+    params: Option<Value>,
+    token: CancellationToken,
+  ) -> LspResult<Option<Value>> {
+    legacy_client::on_legacy_method_called();
+    self.test_run_request(params, token).await
+  }
+
+  pub async fn legacy_test_run_cancel_request(
+    &self,
+    params: Option<Value>,
+    token: CancellationToken,
+  ) -> LspResult<Option<Value>> {
+    legacy_client::on_legacy_method_called();
+    self.test_run_cancel_request(params, token).await
+  }
+
+  pub async fn legacy_virtual_text_document(
+    &self,
+    params: Option<Value>,
+    token: CancellationToken,
+  ) -> LspResult<Option<Value>> {
+    legacy_client::on_legacy_method_called();
+    self.virtual_text_document(params, token).await
+  }
+
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
   pub async fn refresh_configuration(&self) {
     let (folders, capable) = {
@@ -694,7 +752,9 @@ impl Inner {
     let Some(document) = self.document_modules.documents.get(uri) else {
       match exists {
         Exists::Enforce
-          if !uri.scheme().as_str().eq_ignore_ascii_case("deno") =>
+          if !legacy_client::is_virtual_document_scheme(
+            uri.scheme().as_str(),
+          ) =>
         {
           return Err(LspError::invalid_params(format!(
             "Unable to find document for: {}",
@@ -775,7 +835,7 @@ impl Inner {
         .tracing
         .clone()
         .or_else(|| {
-          std::env::var("DENO_LSP_TRACE").ok().map(|_| {
+          ende_env::var("ENDE_LSP_TRACE").ok().map(|_| {
             super::trace::TracingConfig {
               enable: true,
               ..Default::default()
@@ -1313,15 +1373,11 @@ impl Inner {
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
   fn did_open(&mut self, params: DidOpenTextDocumentParams) {
     let mark = self.performance.mark_with_args("lsp.did_open", &params);
-    // `deno:` documents are read-only and should only be handled as server
-    // documents.
-    if params
-      .text_document
-      .uri
-      .scheme()
-      .as_str()
-      .eq_ignore_ascii_case("deno")
-    {
+    // Virtual (`ende:`/`deno:`) documents are read-only and should only be
+    // handled as server documents.
+    if legacy_client::is_virtual_document_scheme(
+      params.text_document.uri.scheme().as_str(),
+    ) {
       return;
     }
     let language_id =
@@ -1365,14 +1421,11 @@ impl Inner {
     let mark = self
       .performance
       .mark_with_args("lsp.did_change_batched", &batch_queue.uri);
-    // `deno:` documents are read-only and should only be handled as server
-    // documents.
-    if batch_queue
-      .uri
-      .scheme()
-      .as_str()
-      .eq_ignore_ascii_case("deno")
-    {
+    // Virtual (`ende:`/`deno:`) documents are read-only and should only be
+    // handled as server documents.
+    if legacy_client::is_virtual_document_scheme(
+      batch_queue.uri.scheme().as_str(),
+    ) {
       batch_queue.clear();
       return;
     }
@@ -1494,15 +1547,11 @@ impl Inner {
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
   fn did_close(&mut self, params: DidCloseTextDocumentParams) {
     let mark = self.performance.mark_with_args("lsp.did_close", &params);
-    // `deno:` documents are read-only and should only be handled as server
-    // documents.
-    if params
-      .text_document
-      .uri
-      .scheme()
-      .as_str()
-      .eq_ignore_ascii_case("deno")
-    {
+    // Virtual (`ende:`/`deno:`) documents are read-only and should only be
+    // handled as server documents.
+    if legacy_client::is_virtual_document_scheme(
+      params.text_document.uri.scheme().as_str(),
+    ) {
       return;
     }
     if let Some(diagnostics_server) = &self.diagnostics_server {
@@ -1637,13 +1686,21 @@ impl Inner {
   ) {
     if !self.config.workspace_configuration_capable() {
       let config = params.settings.as_object().map(|settings| {
-        let deno =
+        let ende =
           serde_json::to_value(settings.get(SETTINGS_SECTION)).unwrap();
+        let deno =
+          serde_json::to_value(settings.get(DEPRECATED_SETTINGS_SECTION))
+            .unwrap();
         let javascript =
           serde_json::to_value(settings.get("javascript")).unwrap();
         let typescript =
           serde_json::to_value(settings.get("typescript")).unwrap();
-        WorkspaceSettings::from_raw_settings(deno, javascript, typescript)
+        let (settings, warning) = legacy_client::select_settings(ende, deno);
+        if let Some(warning) = warning {
+          lsp_warn!("{warning}");
+          self.client.log_message(MessageType::WARNING, warning);
+        }
+        WorkspaceSettings::from_raw_settings(settings, javascript, typescript)
       });
       if let Some(settings) = config {
         self.config.set_workspace_settings(settings, vec![]);
@@ -2174,7 +2231,11 @@ impl Inner {
         .diagnostics
         .iter()
         .filter(|diagnostic| {
-          diagnostic.source.as_deref() == Some("deno")
+          diagnostic
+            .source
+            .as_deref()
+            .and_then(DiagnosticSource::from_lsp_source)
+            == Some(DiagnosticSource::Deno)
             && diagnostics::DenoDiagnostic::is_fixable(diagnostic)
         })
         .filter_map(|diagnostic| {
@@ -2305,8 +2366,12 @@ impl Inner {
     }
     .shared();
     for diagnostic in &params.context.diagnostics {
-      match diagnostic.source.as_deref() {
-        Some("deno") => {
+      match diagnostic
+        .source
+        .as_deref()
+        .and_then(DiagnosticSource::from_lsp_source)
+      {
+        Some(DiagnosticSource::Deno) => {
           if !diagnostics::DenoDiagnostic::is_fixable(diagnostic) {
             continue;
           }
@@ -2336,7 +2401,7 @@ impl Inner {
             }
           }
         }
-        Some("deno-lint") => {
+        Some(DiagnosticSource::Lint) => {
           if diagnostic.code.is_none() {
             continue;
           }
@@ -4659,13 +4724,10 @@ impl Inner {
     let mark = self
       .performance
       .mark_with_args("lsp.virtual_text_document", &params);
-    let contents = if params
-      .text_document
-      .uri
-      .scheme()
-      .as_str()
-      .eq_ignore_ascii_case("deno")
-      && params.text_document.uri.path().as_str() == "/status.md"
+    let contents = if legacy_client::is_virtual_document_scheme(
+      params.text_document.uri.scheme().as_str(),
+    ) && params.text_document.uri.path().as_str()
+      == "/status.md"
     {
       let mut contents = String::new();
       let mut open_docs = self

@@ -460,7 +460,7 @@ async fn run_subcommand(
           // SAFETY: called during single-threaded CLI startup
           unsafe {
             env::set_var(
-              "DENO_COVERAGE_DIR",
+              "ENDE_COVERAGE_DIR",
               canonicalize_path(&PathBuf::from(coverage_dir))?,
             )
           };
@@ -819,7 +819,7 @@ pub(crate) fn unstable_exit_cb(feature: &str, api_name: &str) {
 }
 
 fn maybe_setup_permission_broker() {
-  let Ok(socket_path) = std::env::var("DENO_PERMISSION_BROKER_PATH") else {
+  let Ok(socket_path) = ende_env::var("ENDE_PERMISSION_BROKER_PATH") else {
     return;
   };
   log::warn!(
@@ -838,12 +838,8 @@ pub(crate) fn boot_phase(label: &str) {
   static START: OnceLock<Instant> = OnceLock::new();
   static ENABLED: OnceLock<bool> = OnceLock::new();
   let start = START.get_or_init(Instant::now);
-  #[allow(
-    clippy::disallowed_methods,
-    reason = "diagnostic env var; startup profiling only"
-  )]
   let enabled =
-    *ENABLED.get_or_init(|| std::env::var_os("DENO_STARTUP_PHASES").is_some());
+    *ENABLED.get_or_init(|| ende_env::var_os("ENDE_STARTUP_PHASES").is_some());
   if enabled {
     #[allow(clippy::print_stderr, reason = "diagnostic")]
     {
@@ -1030,12 +1026,12 @@ async fn resolve_flags_and_init(
         }
       }
       Err(err) => {
-        log::debug!("could not resolve DENO_DIR for node compat shim: {err}");
+        log::debug!("could not resolve ENDE_DIR for node compat shim: {err}");
       }
     }
   }
 
-  if ende_lib::args::has_flag_env_var(&sys, "DENO_CONNECTED") {
+  if ende_lib::args::has_flag_env_var(&sys, "ENDE_CONNECTED") {
     flags.tunnel = true;
   }
 
@@ -1047,18 +1043,21 @@ async fn resolve_flags_and_init(
         initial_cwd.as_deref(),
       );
     }
+    // Also set under the deprecated `DENO_CONNECTED` name so user code that
+    // reads it keeps working.
     // SAFETY: We're doing this before any threads are created.
     unsafe {
+      std::env::set_var("ENDE_CONNECTED", "1");
       std::env::set_var("DENO_CONNECTED", "1");
     }
   }
 
   flags.unstable_config.fill_with_env(&sys);
-  if std::env::var("DENO_COMPAT").is_ok() {
+  if ende_env::var("ENDE_COMPAT").is_ok() {
     flags.unstable_config.enable_node_compat();
   }
   if flags.node_conditions.is_empty()
-    && let Ok(conditions) = std::env::var("DENO_CONDITIONS")
+    && let Ok(conditions) = ende_env::var("ENDE_CONDITIONS")
   {
     flags.node_conditions = conditions
       .split(",")
@@ -1089,7 +1088,7 @@ async fn resolve_flags_and_init(
     );
   }
 
-  if let Ok(audit_target) = std::env::var("DENO_AUDIT_PERMISSIONS") {
+  if let Ok(audit_target) = ende_env::var("ENDE_AUDIT_PERMISSIONS") {
     use ende_runtime::ende_permissions::AuditSink;
 
     let sink = if audit_target == "otel" {
@@ -1180,10 +1179,13 @@ fn wait_for_start(
   > + use<>,
 > {
   let startup_snapshot = ende_snapshots::CLI_SNAPSHOT?;
-  let addr = std::env::var("DENO_UNSTABLE_CONTROL_SOCK").ok()?;
+  let addr = ende_env::var("ENDE_UNSTABLE_CONTROL_SOCK").ok()?;
 
   // SAFETY: single-threaded at this point in startup
-  unsafe { std::env::remove_var("DENO_UNSTABLE_CONTROL_SOCK") };
+  unsafe {
+    std::env::remove_var("ENDE_UNSTABLE_CONTROL_SOCK");
+    std::env::remove_var("DENO_UNSTABLE_CONTROL_SOCK");
+  };
 
   let argv0 = args[0].clone();
 
@@ -1361,12 +1363,12 @@ async fn initialize_tunnel(
 
   let no_config = flags.config_flag == crate::args::ConfigFlag::Disabled;
 
-  let host = std::env::var("DENO_DEPLOY_TUNNEL_ENDPOINT")
+  let host = ende_env::var("ENDE_DEPLOY_TUNNEL_ENDPOINT")
     .unwrap_or_else(|_| "tunnel.global.prod.deno-cluster.net:443".into());
 
-  let env_token = env::var("DENO_DEPLOY_TOKEN").ok();
-  let env_org = env::var("DENO_DEPLOY_ORG").ok();
-  let env_app = env::var("DENO_DEPLOY_APP").ok();
+  let env_token = ende_env::var("ENDE_DEPLOY_TOKEN").ok();
+  let env_org = ende_env::var("ENDE_DEPLOY_ORG").ok();
+  let env_app = ende_env::var("ENDE_DEPLOY_APP").ok();
 
   let storage_token = tools::deploy::get_token_entry()
     .and_then(|e| e.get_password())

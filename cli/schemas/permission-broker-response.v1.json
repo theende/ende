@@ -1,8 +1,8 @@
 {
   "$id": "https://raw.githubusercontent.com/denoland/deno/main/cli/schemas/permission-broker-response.v1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Schema for DENO_PERMISSION_BROKER_PATH",
-  "description": "The schema of a single line of the DENO_PERMISSION_BROKER_PATH response.",
+  "title": "Schema for ENDE_PERMISSION_BROKER_PATH",
+  "description": "The schema of a single line of the ENDE_PERMISSION_BROKER_PATH response.",
   "type": "object",
   "$defs": {
     "id": {

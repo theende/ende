@@ -121,7 +121,7 @@ server.listen(0, "localhost", () => {
       ...forwardedEnv,
       OTEL_EXPORTER_OTLP_ENDPOINT: endpoint,
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc",
-      ...(grpcStatus !== "0" ? { DENO_LOG: "error" } : {}),
+      ...(grpcStatus !== "0" ? { ENDE_LOG: "error" } : {}),
     },
     stdout: "null",
   });

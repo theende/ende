@@ -1,7 +1,7 @@
 {
   "tempDir": true,
   "envs": {
-    "DENO_DIR": "$PWD/deno_dir"
+    "ENDE_DIR": "$PWD/deno_dir"
   },
   // Regression test for issue #35991 / PR #36025 review: the `write` permission
   // set is defined in an auto-discoverable cwd `ende.json` and selected with

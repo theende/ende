@@ -89,14 +89,14 @@ fn create_cache_storage_dir(
 
 impl SqliteBackedCache {
   pub fn new(cache_storage_dir: PathBuf) -> Result<Self, CacheError> {
-    let mode = match std::env::var("DENO_CACHE_DB_MODE")
+    let mode = match ende_env::var("ENDE_CACHE_DB_MODE")
       .unwrap_or_default()
       .as_str()
     {
       "disk" | "" => Mode::Disk,
       "memory" => Mode::InMemory,
       _ => {
-        log::warn!("Unknown DENO_CACHE_DB_MODE value, defaulting to disk");
+        log::warn!("Unknown ENDE_CACHE_DB_MODE value, defaulting to disk");
         Mode::Disk
       }
     };

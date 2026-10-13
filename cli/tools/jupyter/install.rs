@@ -14,7 +14,7 @@ use ende_core::serde_json::json;
 
 use crate::util::fs::canonicalize_path;
 
-static TEST_ENV_VAR_NAME: &str = "DENO_TEST_JUPYTER_PATH";
+static TEST_ENV_VAR_NAME: &str = "ENDE_TEST_JUPYTER_PATH";
 
 const DENO_ICON_32: &[u8] = include_bytes!("./resources/deno-logo-32x32.png");
 const DENO_ICON_64: &[u8] = include_bytes!("./resources/deno-logo-64x64.png");

@@ -52,7 +52,7 @@ The trace workloads cover:
 - `node:crypto`; and
 - `deno fmt --check`.
 
-Each generator creates temporary fixtures and a private `DENO_DIR`. The shared
+Each generator creates temporary fixtures and a private `ENDE_DIR`. The shared
 native runner suspends the generator while a workload executes so the
 generator's V8 threads cannot affect the trace.
 
@@ -100,8 +100,8 @@ The resulting order is passed to the Apple linker with `-order_file`.
 Build and preserve the baseline release executable:
 
 ```sh
-unset DENO_USE_STARTUP_ORDER DENO_STARTUP_ORDER_FILE
-DENO_SNAPSHOT_MINIFY_SOURCES=1 \
+unset ENDE_USE_STARTUP_ORDER ENDE_STARTUP_ORDER_FILE
+ENDE_SNAPSHOT_MINIFY_SOURCES=1 \
   cargo build --release --locked -p deno --bin deno \
     --features=deno/panic-trace
 cp -p target/release/deno target/release/deno-before-startup-order
@@ -135,9 +135,9 @@ target/release/deno run -A \
 Relink `deno`:
 
 ```sh
-DENO_SNAPSHOT_MINIFY_SOURCES=1 \
-DENO_USE_STARTUP_ORDER=1 \
-DENO_STARTUP_ORDER_FILE="$ORDER" \
+ENDE_SNAPSHOT_MINIFY_SOURCES=1 \
+ENDE_USE_STARTUP_ORDER=1 \
+ENDE_STARTUP_ORDER_FILE="$ORDER" \
   cargo build --release --locked -p deno --bin deno \
     --features=deno/panic-trace
 ```

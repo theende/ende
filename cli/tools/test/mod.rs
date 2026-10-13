@@ -6,7 +6,6 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::env;
 use std::fmt::Write as _;
 use std::future::poll_fn;
 use std::io::Write;
@@ -115,7 +114,8 @@ use crate::tools::coverage::reporter;
 use crate::tools::test::channel::ChannelClosedError;
 
 static SLOW_TEST_TIMEOUT: LazyLock<u64> = LazyLock::new(|| {
-  let base_timeout = env::var("DENO_SLOW_TEST_TIMEOUT").unwrap_or_default();
+  let base_timeout =
+    ende_env::var("ENDE_SLOW_TEST_TIMEOUT").unwrap_or_default();
   base_timeout.parse().unwrap_or(60).max(1)
 });
 
@@ -1193,7 +1193,7 @@ impl Drop for TestWatchdog {
 }
 
 async fn slow_test_watchdog(event_tracker: TestEventTracker, test_id: usize) {
-  // The slow test warning should pop up every DENO_SLOW_TEST_TIMEOUT*(2**n) seconds,
+  // The slow test warning should pop up every ENDE_SLOW_TEST_TIMEOUT*(2**n) seconds,
   // with a duration that is doubling each time. So for a warning time of 60s,
   // we should get a warning at 60s, 120s, 240s, etc.
   let base_timeout = *SLOW_TEST_TIMEOUT;

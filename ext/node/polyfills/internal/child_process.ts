@@ -1756,15 +1756,15 @@ function buildCommand(
     args = result.denoArgs;
     includeNpmProcessState = result.needsNpmProcessState;
     if (result.caStores?.length) {
-      env.DENO_TLS_CA_STORE = ArrayPrototypeJoin(result.caStores, ",");
+      env.ENDE_TLS_CA_STORE = ArrayPrototypeJoin(result.caStores, ",");
     }
     if (result.useOpensslCa) {
-      env.DENO_NODE_USE_OPENSSL_CA = "1";
+      env.ENDE_NODE_USE_OPENSSL_CA = "1";
     } else {
-      delete env.DENO_NODE_USE_OPENSSL_CA;
+      delete env.ENDE_NODE_USE_OPENSSL_CA;
     }
     if (result.traceEventCategories) {
-      env.DENO_NODE_TRACE_EVENT_CATEGORIES = result.traceEventCategories;
+      env.ENDE_NODE_TRACE_EVENT_CATEGORIES = result.traceEventCategories;
     }
 
     // Update NODE_OPTIONS if needed

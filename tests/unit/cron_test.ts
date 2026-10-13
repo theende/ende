@@ -158,7 +158,7 @@ Deno.test(async function duplicateCrons() {
 });
 
 Deno.test(async function basicTest() {
-  Deno.env.set("DENO_CRON_TEST_SCHEDULE_OFFSET", "100");
+  Deno.env.set("ENDE_CRON_TEST_SCHEDULE_OFFSET", "100");
 
   let count = 0;
   const { promise, resolve } = Promise.withResolvers<void>();
@@ -178,7 +178,7 @@ Deno.test(async function basicTest() {
 });
 
 Deno.test(async function basicTestWithJsonFormatScheduleExpression() {
-  Deno.env.set("DENO_CRON_TEST_SCHEDULE_OFFSET", "100");
+  Deno.env.set("ENDE_CRON_TEST_SCHEDULE_OFFSET", "100");
 
   let count = 0;
   const { promise, resolve } = Promise.withResolvers<void>();
@@ -203,7 +203,7 @@ Deno.test(async function basicTestWithJsonFormatScheduleExpression() {
 });
 
 Deno.test(async function multipleCrons() {
-  Deno.env.set("DENO_CRON_TEST_SCHEDULE_OFFSET", "100");
+  Deno.env.set("ENDE_CRON_TEST_SCHEDULE_OFFSET", "100");
 
   let count0 = 0;
   let count1 = 0;
@@ -237,7 +237,7 @@ Deno.test(async function multipleCrons() {
 });
 
 Deno.test(async function overlappingExecutions() {
-  Deno.env.set("DENO_CRON_TEST_SCHEDULE_OFFSET", "100");
+  Deno.env.set("ENDE_CRON_TEST_SCHEDULE_OFFSET", "100");
 
   let count = 0;
   const { promise: promise0, resolve: resolve0 } = Promise.withResolvers<
@@ -269,7 +269,7 @@ Deno.test(async function overlappingExecutions() {
 });
 
 Deno.test(async function retriesWithBackoffSchedule() {
-  Deno.env.set("DENO_CRON_TEST_SCHEDULE_OFFSET", "5000");
+  Deno.env.set("ENDE_CRON_TEST_SCHEDULE_OFFSET", "5000");
 
   let count = 0;
   const ac = new AbortController();
@@ -293,7 +293,7 @@ Deno.test(async function retriesWithBackoffSchedule() {
 });
 
 Deno.test(async function retriesWithBackoffScheduleOldApi() {
-  Deno.env.set("DENO_CRON_TEST_SCHEDULE_OFFSET", "5000");
+  Deno.env.set("ENDE_CRON_TEST_SCHEDULE_OFFSET", "5000");
 
   let count = 0;
   const ac = new AbortController();

@@ -2924,6 +2924,7 @@ dependencies = [
  "ende_config",
  "ende_core",
  "ende_dotenv",
+ "ende_env",
  "ende_lib",
  "ende_lockfile",
  "ende_npm",
@@ -3062,6 +3063,7 @@ dependencies = [
  "chrono",
  "deno_error",
  "ende_core",
+ "ende_env",
  "futures",
  "http",
  "http-body",
@@ -3090,6 +3092,7 @@ dependencies = [
  "deno_error",
  "deno_media_type",
  "deno_path_util",
+ "ende_env",
  "ende_maybe_sync",
  "http",
  "log",
@@ -3113,6 +3116,7 @@ dependencies = [
  "bytemuck",
  "deno_error",
  "ende_core",
+ "ende_env",
  "ende_image",
  "ende_permissions",
  "ende_webgpu",
@@ -3184,6 +3188,7 @@ dependencies = [
  "deno_error",
  "deno_path_util",
  "deno_unsync",
+ "ende_env",
  "ende_ops",
  "ende_v8",
  "futures",
@@ -3237,6 +3242,7 @@ dependencies = [
  "chrono",
  "deno_error",
  "ende_core",
+ "ende_env",
  "ende_features",
  "once_cell",
  "serde",
@@ -3308,6 +3314,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ende_env"
+version = "0.1.0"
+dependencies = [
+ "sys_traits",
+]
+
+[[package]]
 name = "ende_features"
 version = "0.56.0"
 dependencies = [
@@ -3366,6 +3379,7 @@ dependencies = [
  "deno_error",
  "dlopen2",
  "ende_core",
+ "ende_env",
  "ende_permissions",
  "endert_helper",
  "libffi",
@@ -3418,6 +3432,7 @@ dependencies = [
  "bytes",
  "deno_error",
  "ende_core",
+ "ende_env",
  "ende_http_h1",
  "ende_net",
  "ende_telemetry",
@@ -3523,6 +3538,7 @@ dependencies = [
  "denokv_remote",
  "denokv_sqlite",
  "ende_core",
+ "ende_env",
  "ende_features",
  "ende_fetch",
  "ende_permissions",
@@ -3557,6 +3573,7 @@ dependencies = [
  "deno_semver",
  "deno_terminal",
  "ende_bundle_runtime",
+ "ende_env",
  "ende_fs",
  "ende_node",
  "ende_npm",
@@ -3668,6 +3685,7 @@ dependencies = [
  "deno_whoami",
  "ende_core",
  "ende_dotenv",
+ "ende_env",
  "ende_fs",
  "ende_inspector_server",
  "ende_io",
@@ -4045,6 +4063,7 @@ dependencies = [
  "deno_unsync",
  "ende_cache_dir",
  "ende_config",
+ "ende_env",
  "ende_lockfile",
  "ende_maybe_sync",
  "ende_npm",
@@ -4093,6 +4112,7 @@ dependencies = [
  "ende_core",
  "ende_cron",
  "ende_crypto",
+ "ende_env",
  "ende_features",
  "ende_fetch",
  "ende_ffi",
@@ -4285,6 +4305,7 @@ version = "0.226.0"
 dependencies = [
  "deno_error",
  "ende_core",
+ "ende_env",
  "ende_image",
  "indexmap",
  "raw-window-handle",
@@ -4311,6 +4332,7 @@ dependencies = [
  "bytes",
  "deno_error",
  "ende_core",
+ "ende_env",
  "ende_fetch",
  "ende_net",
  "ende_permissions",
@@ -4351,6 +4373,7 @@ dependencies = [
  "ende_cache_dir",
  "ende_config",
  "ende_core",
+ "ende_env",
  "ende_lib",
  "ende_node",
  "ende_npm",

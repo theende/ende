@@ -9,7 +9,7 @@ implemented in our GPU backend library [wgpu](https://github.com/gfx-rs/wgpu).
 The spec is still very bare bones, and is still missing many details. As the
 spec becomes more concrete, we will implement to follow the spec more closely.
 
-In addition, setting the `DENO_WEBGPU_TRACE` environmental variable will output
+In addition, setting the `ENDE_WEBGPU_TRACE` environmental variable will output
 a
 [wgpu trace](https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications#tracing-infrastructure)
 to the specified directory.

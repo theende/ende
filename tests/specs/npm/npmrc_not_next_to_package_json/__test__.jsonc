@@ -1,7 +1,7 @@
 {
   "envs": {
-    "USERPROFILE": "$DENO_DIR",
-    "HOME": "$DENO_DIR"
+    "USERPROFILE": "$ENDE_DIR",
+    "HOME": "$ENDE_DIR"
   },
   "tempDir": true,
   "args": "install -L debug",

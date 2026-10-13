@@ -1341,7 +1341,7 @@ async fn run_desktop_hmr(
   // both, surprising users (and burning the inspector channel on hot
   // reloads they didn't request).
   if desktop_flags.hmr {
-    cmd.env("DENO_DESKTOP_HMR", &source_abs);
+    cmd.env("ENDE_DESKTOP_HMR", &source_abs);
   }
 
   // In-runtime framework dev: the compiled entrypoint boots the framework's
@@ -1349,11 +1349,11 @@ async fn run_desktop_hmr(
   // server-side code keeps access to `Deno.desktop` (#35899). Signal
   // rt_desktop to restore CWD to the source dir and leave hot reloading to
   // the framework; the webview finds the server via the regular
-  // DENO_SERVE_ADDRESS poll, so no external process and no URL scraping.
+  // ENDE_SERVE_ADDRESS poll, so no external process and no URL scraping.
   let in_runtime_dev = desktop_flags.hmr
     && framework.is_some_and(|f| f.hmr_entrypoint_code().is_some());
   if in_runtime_dev {
-    cmd.env("DENO_DESKTOP_FRAMEWORK_DEV", "1");
+    cmd.env("ENDE_DESKTOP_FRAMEWORK_DEV", "1");
   }
 
   let _dev_server_child = if desktop_flags.hmr
@@ -1369,7 +1369,7 @@ async fn run_desktop_hmr(
       fw.name,
       dev_url,
     );
-    cmd.env("DENO_DESKTOP_DEV_URL", &dev_url);
+    cmd.env("ENDE_DESKTOP_DEV_URL", &dev_url);
     Some(child)
   } else {
     None
@@ -1424,22 +1424,22 @@ async fn run_desktop_hmr(
 
     cmd
       .env(
-        "DENO_DESKTOP_INSPECT_INTERNAL_PORT",
+        "ENDE_DESKTOP_INSPECT_INTERNAL_PORT",
         deno_internal.to_string(),
       )
       // Exposed so rt_desktop's `openDevtools()` can launch a browser
       // pointed at the unified DevTools frontend instead of CEF's
       // renderer-only native window.
-      .env("DENO_DESKTOP_MUX_WS", handle.listen.to_string())
+      .env("ENDE_DESKTOP_MUX_WS", handle.listen.to_string())
       .env(
         "LAUFEY_REMOTE_DEBUGGING_PORT",
         cef_internal.port().to_string(),
       );
     if flags.inspect_brk.is_some() {
-      cmd.env("DENO_DESKTOP_INSPECT_BRK", "1");
+      cmd.env("ENDE_DESKTOP_INSPECT_BRK", "1");
     }
     if flags.inspect_wait.is_some() {
-      cmd.env("DENO_DESKTOP_INSPECT_WAIT", "1");
+      cmd.env("ENDE_DESKTOP_INSPECT_WAIT", "1");
     }
     Some(handle)
   } else {

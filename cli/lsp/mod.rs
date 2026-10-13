@@ -18,6 +18,7 @@ mod diagnostics;
 mod documents;
 mod jsr;
 pub mod language_server;
+mod legacy_client;
 mod lint;
 mod logging;
 mod lsp_custom;
@@ -70,6 +71,30 @@ pub async fn start() -> Result<(), AnyError> {
   .custom_method(
     lsp_custom::VIRTUAL_TEXT_DOCUMENT,
     LanguageServer::virtual_text_document,
+  )
+  .custom_method(
+    lsp_custom::LEGACY_PERFORMANCE_REQUEST,
+    LanguageServer::legacy_performance_request,
+  )
+  .custom_method(
+    lsp_custom::LEGACY_INFERRED_TYPE_REQUEST,
+    LanguageServer::legacy_inferred_type,
+  )
+  .custom_method(
+    lsp_custom::LEGACY_TASK_REQUEST,
+    LanguageServer::legacy_task_definitions,
+  )
+  .custom_method(
+    testing::LEGACY_TEST_RUN_REQUEST,
+    LanguageServer::legacy_test_run_request,
+  )
+  .custom_method(
+    testing::LEGACY_TEST_RUN_CANCEL_REQUEST,
+    LanguageServer::legacy_test_run_cancel_request,
+  )
+  .custom_method(
+    lsp_custom::LEGACY_VIRTUAL_TEXT_DOCUMENT,
+    LanguageServer::legacy_virtual_text_document,
   );
 
   let (service, socket, pending) = builder.finish();

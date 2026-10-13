@@ -961,14 +961,15 @@ impl TestCommandBuilder {
 
   fn build_envs(&self, cwd: &Path) -> HashMap<String, String> {
     let mut envs = self.envs.clone();
-    if !envs.contains_key("DENO_DIR") {
-      envs.insert("DENO_DIR".to_string(), self.deno_dir.path().to_string());
+    // a test that sets the deprecated DENO_DIR is testing the fallback to it
+    if !envs.contains_key("ENDE_DIR") && !envs.contains_key("DENO_DIR") {
+      envs.insert("ENDE_DIR".to_string(), self.deno_dir.path().to_string());
     }
     if !envs.contains_key("NPM_CONFIG_REGISTRY") {
       envs.insert("NPM_CONFIG_REGISTRY".to_string(), npm_registry_unset_url());
     }
-    if !envs.contains_key("DENO_NO_UPDATE_CHECK") {
-      envs.insert("DENO_NO_UPDATE_CHECK".to_string(), "1".to_string());
+    if !envs.contains_key("ENDE_NO_UPDATE_CHECK") {
+      envs.insert("ENDE_NO_UPDATE_CHECK".to_string(), "1".to_string());
     }
     if !envs.contains_key("JSR_URL") {
       envs.insert("JSR_URL".to_string(), jsr_registry_unset_url());
@@ -1002,7 +1003,7 @@ impl TestCommandBuilder {
   fn replace_vars(&self, text: &str, cwd: &Path) -> String {
     // todo(dsherret): use monch to extract out the vars
     text
-      .replace("$DENO_DIR", &self.deno_dir.path().to_string_lossy())
+      .replace("$ENDE_DIR", &self.deno_dir.path().to_string_lossy())
       .replace("$TESTDATA", &testdata_path().to_string_lossy())
       .replace("$TESTS", &tests_path().to_string_lossy())
       .replace("$PWD", &cwd.to_string_lossy())

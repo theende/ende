@@ -1407,7 +1407,7 @@ pub async fn run_with_options(
     match child_entrypoint {
       // Only honor the override for a genuine fork() child, which always wires
       // up an IPC channel (NODE_CHANNEL_FD). This is defense in depth against an
-      // accidental collision with a stray DENO_INTERNAL_CHILD_ENTRYPOINT, not a
+      // accidental collision with a stray ENDE_INTERNAL_CHILD_ENTRYPOINT, not a
       // security boundary: an attacker who can set one env var can set both, and
       // resolve_child_entrypoint's cwd-relative fallback will then run an
       // on-disk module with the binary's baked-in permissions. That on-disk
@@ -1679,7 +1679,7 @@ pub async fn run_with_options(
 
   // Desktop runtimes always need a baseline set of permissions to function:
   // the renderer is served over loopback HTTP, so net access to 127.0.0.1
-  // is mandatory; the desktop init JS reads `DENO_DESKTOP_*` env vars to
+  // is mandatory; the desktop init JS reads `ENDE_DESKTOP_*` env vars to
   // discover the inspector mux, HMR watch dir, etc. Without these, the
   // very first `Deno.serve(...)` or `Deno.env.get(...)` throws NotCapable
   // and aborts script execution before the event-loop IIFE registers —
@@ -1711,9 +1711,9 @@ pub async fn run_with_options(
       checker.enable_feature(feature.leak());
     }
     // Mirror cli/factory.rs: force-enable the unstable KV feature when
-    // DENO_KV_REQUIRES_DISTRIBUTED_DATABASE=error so Deno.openKv() is exposed
+    // ENDE_KV_REQUIRES_DISTRIBUTED_DATABASE=error so Deno.openKv() is exposed
     // and surfaces a clear "no database attached" error.
-    if std::env::var("DENO_KV_REQUIRES_DISTRIBUTED_DATABASE").as_deref()
+    if ende_env::var("ENDE_KV_REQUIRES_DISTRIBUTED_DATABASE").as_deref()
       == Ok("error")
       && !checker.check("kv")
     {
@@ -1726,7 +1726,7 @@ pub async fn run_with_options(
   // disk instead of silently falling back to an in-memory database. A compiled
   // binary is a standalone app, so we store under the platform's app data
   // directory (`%LOCALAPPDATA%`, `~/Library/Application Support`,
-  // `$XDG_DATA_HOME`) keyed by the app name, rather than polluting `DENO_DIR`.
+  // `$XDG_DATA_HOME`) keyed by the app name, rather than polluting `ENDE_DIR`.
   //
   // The app name is baked in at compile time (`--app-name`, otherwise the
   // output file name), so it is stable across runs and even if the binary is
@@ -1791,7 +1791,7 @@ pub async fn run_with_options(
     close_on_idle: !options.auto_serve,
     maybe_initial_cwd: None,
     disable_offscreen_canvas: matches!(
-      std::env::var("DENO_DISABLE_OFFSCREEN_CANVAS").as_deref(),
+      ende_env::var("ENDE_DISABLE_OFFSCREEN_CANVAS").as_deref(),
       Ok("1") | Ok("true")
     ),
   };
@@ -1963,7 +1963,7 @@ pub async fn run_with_options(
 // Internal env var carrying the module a fork()ed child of a compiled binary
 // should run. Kept in sync with ext/node/polyfills/child_process.ts.
 const INTERNAL_CHILD_ENTRYPOINT_ENV_VAR: &str =
-  "DENO_INTERNAL_CHILD_ENTRYPOINT";
+  "ENDE_INTERNAL_CHILD_ENTRYPOINT";
 
 /// Resolves the module path passed to `node:child_process.fork()` to the module
 /// that a compiled-binary child should run as its main module.
@@ -2122,11 +2122,11 @@ const DESKTOP_LOOPBACK_HOSTS: &[&str] = &["127.0.0.1", "localhost", "[::1]"];
 /// off-limits to arbitrary `Deno.env.get` calls in their app code while
 /// still letting the framework boot.
 const DESKTOP_ENV_KEYS: &[&str] = &[
-  "DENO_DESKTOP_MUX_WS",
-  "DENO_DESKTOP_HMR",
-  "DENO_DESKTOP_INSPECT_INTERNAL_PORT",
-  "DENO_DESKTOP_INSPECT_BRK",
-  "DENO_DESKTOP_INSPECT_WAIT",
+  "ENDE_DESKTOP_MUX_WS",
+  "ENDE_DESKTOP_HMR",
+  "ENDE_DESKTOP_INSPECT_INTERNAL_PORT",
+  "ENDE_DESKTOP_INSPECT_BRK",
+  "ENDE_DESKTOP_INSPECT_WAIT",
   "LAUFEY_RUNTIME_PATH",
   "LAUFEY_REMOTE_DEBUGGING_PORT",
 ];

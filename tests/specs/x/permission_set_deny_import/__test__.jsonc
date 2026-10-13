@@ -1,7 +1,7 @@
 {
   "tempDir": true,
   "envs": {
-    "DENO_DIR": "$PWD/deno_dir"
+    "ENDE_DIR": "$PWD/deno_dir"
   },
   // `deno x` installs with an internal factory whose config is a generated
   // temp `ende.json`, so the `-P` set named on the command line does not

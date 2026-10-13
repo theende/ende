@@ -338,9 +338,9 @@ async function generate(options: Options) {
             ...Deno.env.toObject(),
             DENO_ORDER_RUNNER_PRELOAD: tracer,
             DENO_FUNCTION_TRACE_OUT: tracePath,
-            DENO_DIR: denoDir,
-            DENO_NO_UPDATE_CHECK: "1",
-            DENO_NO_PACKAGE_JSON: "1",
+            ENDE_DIR: denoDir,
+            ENDE_NO_UPDATE_CHECK: "1",
+            ENDE_NO_PACKAGE_JSON: "1",
             NO_COLOR: "1",
           },
         });

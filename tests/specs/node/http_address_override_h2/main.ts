@@ -1,5 +1,5 @@
 // Control planes forward HTTP/2 requests (prior knowledge) to the
-// DENO_SERVE_ADDRESS override listener, so node:http servers must accept
+// ENDE_SERVE_ADDRESS override listener, so node:http servers must accept
 // both HTTP/1.1 and HTTP/2 connections there, like Deno.serve() does.
 import { createServer } from "node:http";
 import http2 from "node:http2";

@@ -49,6 +49,7 @@ use tower_lsp::lsp_types as lsp;
 use super::cache::LspCache;
 use super::cache::calculate_fs_version_at_path;
 use super::config::Config;
+use super::legacy_client;
 use super::logging::lsp_warn;
 use super::resolver::LspResolver;
 use super::resolver::ScopeDepInfo;
@@ -158,6 +159,12 @@ impl OpenDocument {
   }
 }
 
+/// The path of a virtual (`ende:` or `deno:`) document URI.
+fn virtual_document_path(uri: &Uri) -> Option<&str> {
+  legacy_client::is_virtual_document_scheme(uri.scheme().as_str())
+    .then(|| uri.path().as_str())
+}
+
 fn remote_or_asset_url_to_uri(url: &Url) -> Option<Uri> {
   if !matches!(url.scheme(), "http" | "https" | "asset") {
     return None;
@@ -174,7 +181,9 @@ fn remote_or_asset_url_to_uri(url: &Url) -> Option<Uri> {
     .decode_utf8_lossy(),
   );
   let uri = fluent_uri::Uri::builder()
-    .scheme(fluent_uri::component::Scheme::new_or_panic("deno"))
+    .scheme(fluent_uri::component::Scheme::new_or_panic(
+      legacy_client::virtual_document_scheme(),
+    ))
     .path(encoded_path.as_ref())
     .build()
     .expect("component constraints should be met by the above")
@@ -199,7 +208,9 @@ fn data_url_to_uri(url: &Url) -> Option<Uri> {
   encoded_path.encode_str::<fluent_uri::pct_enc::encoder::Path>(&hash);
   encoded_path.encode_str::<fluent_uri::pct_enc::encoder::Path>(extension);
   let uri = fluent_uri::Uri::builder()
-    .scheme(fluent_uri::component::Scheme::new_or_panic("deno"))
+    .scheme(fluent_uri::component::Scheme::new_or_panic(
+      legacy_client::virtual_document_scheme(),
+    ))
     .path(encoded_path.as_ref())
     .build()
     .expect("component constraints should be met by the above")
@@ -382,9 +393,8 @@ impl ServerDocument {
   }
 
   fn raw_import_types(uri: &Uri) -> Option<Self> {
-    if uri
-      .as_str()
-      .strip_prefix("deno:/text-import-types/")
+    if virtual_document_path(uri)
+      .and_then(|s| s.strip_prefix("/text-import-types/"))
       .and_then(|s| s.strip_suffix(".ts"))
       .is_some()
     {
@@ -395,9 +405,8 @@ impl ServerDocument {
         },
       });
     }
-    if uri
-      .as_str()
-      .strip_prefix("deno:/bytes-import-types/")
+    if virtual_document_path(uri)
+      .and_then(|s| s.strip_prefix("/bytes-import-types/"))
       .and_then(|s| s.strip_suffix(".ts"))
       .is_some()
     {
@@ -408,9 +417,8 @@ impl ServerDocument {
         },
       });
     }
-    if uri
-      .as_str()
-      .strip_prefix("deno:/css-import-types/")
+    if virtual_document_path(uri)
+      .and_then(|s| s.strip_prefix("/css-import-types/"))
       .and_then(|s| s.strip_suffix(".ts"))
       .is_some()
     {

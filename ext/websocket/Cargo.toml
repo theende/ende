@@ -17,6 +17,7 @@ path = "lib.rs"
 bytes.workspace = true
 deno_error.workspace = true
 ende_core.workspace = true
+ende_env.workspace = true
 ende_fetch.workspace = true
 ende_net.workspace = true
 ende_permissions.workspace = true

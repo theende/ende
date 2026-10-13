@@ -1,6 +1,6 @@
 {
   "envs": {
-    "DENO_TRUST_PROXY_HEADERS": "1"
+    "ENDE_TRUST_PROXY_HEADERS": "1"
   },
   "args": "run -A main.ts",
   "output": "main.out",

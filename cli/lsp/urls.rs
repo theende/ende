@@ -13,6 +13,8 @@ use ende_core::url::Position;
 use ende_core::url::Url;
 use lsp_types::Uri;
 
+use super::legacy_client::is_virtual_document_scheme;
+use super::legacy_client::virtual_document_scheme;
 use super::logging::lsp_warn;
 
 pub fn uri_parse_unencoded(s: &str) -> Result<Uri, AnyError> {
@@ -87,8 +89,15 @@ pub fn normalize_non_file_uri(uri: &Uri) -> Uri {
     &percent_encoding::percent_decode_str(uri.path().as_str())
       .decode_utf8_lossy(),
   );
+  // Virtual documents are accepted under both the `ende:` and the legacy
+  // `deno:` scheme, and are stored under the scheme sent to the client.
+  let scheme = if is_virtual_document_scheme(uri.scheme().as_str()) {
+    fluent_uri::component::Scheme::new_or_panic(virtual_document_scheme())
+  } else {
+    uri.scheme()
+  };
   fluent_uri::Uri::builder()
-    .scheme(uri.scheme())
+    .scheme(scheme)
     .optional(fluent_uri::build::Builder::authority, uri.authority())
     .path(encoded_path.as_ref())
     .optional(fluent_uri::build::Builder::query, uri.query())
@@ -147,6 +156,7 @@ pub fn uri_to_url(uri: &Uri) -> Url {
     if !scheme.as_str().eq_ignore_ascii_case("untitled")
       && !scheme.as_str().eq_ignore_ascii_case("vscode-notebook-cell")
       && !scheme.as_str().eq_ignore_ascii_case("deno-notebook-cell")
+      && !scheme.as_str().eq_ignore_ascii_case("ende-notebook-cell")
       && !scheme.as_str().eq_ignore_ascii_case("vscode-userdata")
     {
       return None;
@@ -185,6 +195,7 @@ pub fn uri_is_file_like(uri: &Uri) -> bool {
     || scheme.as_str().eq_ignore_ascii_case("untitled")
     || scheme.as_str().eq_ignore_ascii_case("vscode-notebook-cell")
     || scheme.as_str().eq_ignore_ascii_case("deno-notebook-cell")
+    || scheme.as_str().eq_ignore_ascii_case("ende-notebook-cell")
     || scheme.as_str().eq_ignore_ascii_case("vscode-userdata")
 }
 
@@ -198,6 +209,7 @@ pub fn uri_is_in_memory(uri: &Uri) -> bool {
   scheme.as_str().eq_ignore_ascii_case("untitled")
     || scheme.as_str().eq_ignore_ascii_case("vscode-notebook-cell")
     || scheme.as_str().eq_ignore_ascii_case("deno-notebook-cell")
+    || scheme.as_str().eq_ignore_ascii_case("ende-notebook-cell")
 }
 
 fn normalize_url(url: Url) -> Url {
