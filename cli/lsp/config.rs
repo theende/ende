@@ -1515,20 +1515,15 @@ impl ConfigData {
         )
         .await;
         // check if any of these need to be added to the workspace
-        let files = [
-          (
-            scope.join("deno.json").unwrap(),
-            ConfigWatchedFileType::DenoJson,
-          ),
-          (
-            scope.join("deno.jsonc").unwrap(),
-            ConfigWatchedFileType::DenoJson,
-          ),
-          (
+        let files = ende_config::deno_json::CONFIG_FILE_NAMES
+          .iter()
+          .map(|name| {
+            (scope.join(name).unwrap(), ConfigWatchedFileType::DenoJson)
+          })
+          .chain([(
             scope.join("package.json").unwrap(),
             ConfigWatchedFileType::PackageJson,
-          ),
-        ];
+          )]);
         for (url, file_type) in files {
           let Some(file_path) = url.to_file_path().ok() else {
             continue;
@@ -1986,10 +1981,11 @@ impl ConfigTree {
       let Ok(file_url) = Url::from_file_path(path) else {
         continue;
       };
-      if !(file_url.path().ends_with("/deno.json")
-        || file_url.path().ends_with("/deno.jsonc")
-        || file_url.path().ends_with("/package.json"))
-      {
+      let file_name = file_url.path().rsplit_once('/').map(|(_, name)| name);
+      if !file_name.is_some_and(|name| {
+        ende_config::deno_json::is_config_file_name(name)
+          || name == "package.json"
+      }) {
         continue;
       }
       let Ok(scope) = file_url.join(".").map(Arc::new) else {
@@ -2082,7 +2078,7 @@ fn resolve_node_modules_dir_mode(
   byonm: bool,
 ) -> NodeModulesDirMode {
   // For the language server, require an explicit opt-in via the
-  // `nodeModulesDir: true` setting in the deno.json file. This is to
+  // `nodeModulesDir: true` setting in the ende.json file. This is to
   // reduce the chance of modifying someone's node_modules directory
   // without them having asked us to do so.
   let node_modules_mode = workspace.node_modules_dir().ok().flatten();
@@ -2428,7 +2424,7 @@ mod tests {
     config
       .tree
       .inject_config_file(
-        ConfigFile::new("{}", root_uri.join("deno.json").unwrap()).unwrap(),
+        ConfigFile::new("{}", root_uri.join("ende.json").unwrap()).unwrap(),
       )
       .await;
     assert!(config.specifier_enabled(&root_uri));
@@ -2548,7 +2544,7 @@ mod tests {
             },
           })
           .to_string(),
-          root_uri.join("deno.json").unwrap(),
+          root_uri.join("ende.json").unwrap(),
         )
         .unwrap(),
       )
@@ -2573,7 +2569,7 @@ mod tests {
             },
           })
           .to_string(),
-          root_uri.join("deno.json").unwrap(),
+          root_uri.join("ende.json").unwrap(),
         )
         .unwrap(),
       )
@@ -2590,7 +2586,7 @@ mod tests {
             },
           })
           .to_string(),
-          root_uri.join("deno.json").unwrap(),
+          root_uri.join("ende.json").unwrap(),
         )
         .unwrap(),
       )

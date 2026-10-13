@@ -908,7 +908,7 @@ async fn serve_watch_all() {
 }
 
 // Regression test for https://github.com/denoland/deno/issues/30382.
-// Ensures that `deno serve --watch` applies the import map from deno.json when
+// Ensures that `deno serve --watch` applies the import map from ende.json when
 // resolving the main module, so a bare specifier entrypoint resolves the same
 // way it does without `--watch`.
 #[test(flaky)]
@@ -924,7 +924,7 @@ async fn serve_watch_with_import_map() {
     };",
   );
 
-  t.path().join("deno.json").write(
+  t.path().join("ende.json").write(
     "{
       \"imports\": {
         \"app\": \"./server.js\"

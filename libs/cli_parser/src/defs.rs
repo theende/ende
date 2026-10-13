@@ -252,7 +252,7 @@ pub static COMPILE_ARGS: &[ArgDef] = &[
     .long("lock")
     .action(ArgAction::Set)
     .num_args(NumArgs::Optional)
-.help("Check the specified lock file. (If value is not provided, defaults to \"./deno.lock\")"),
+.help("Check the specified lock file. (If value is not provided, defaults to \"./ende.lock\")"),
   ArgDef::new("no-lock").long("no-lock").set_true()
 .help("Disable auto discovery of the lock file"),
   ArgDef::new("frozen-lockfile")
@@ -589,7 +589,7 @@ pub static LOCK_ARGS: &[ArgDef] = &[
     .long("lock")
     .action(ArgAction::Set)
     .num_args(NumArgs::Optional)
-.help("Check the specified lock file. (If value is not provided, defaults to \"./deno.lock\")"),
+.help("Check the specified lock file. (If value is not provided, defaults to \"./ende.lock\")"),
   ArgDef::new("no-lock").long("no-lock").set_true()
 .help("Disable auto discovery of the lock file"),
   ArgDef::new("frozen-lockfile")
@@ -1660,7 +1660,7 @@ pub static TASK_SUBCOMMAND: CommandDef = CommandDef {
       .long("lock")
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
-.help("Check the specified lock file. (If value is not provided, defaults to \"./deno.lock\")"),
+.help("Check the specified lock file. (If value is not provided, defaults to \"./ende.lock\")"),
     ArgDef::new("no-lock").long("no-lock").set_true()
 .help("Disable auto discovery of the lock file"),
     ArgDef::new("frozen-lockfile")

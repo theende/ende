@@ -207,7 +207,7 @@ impl<
         .workspace_pkgs()
         .iter()
         .any(|pkg| !pkg.scripts.is_empty());
-    let deno_local_registry_dir = self.root_node_modules_path.join(".deno");
+    let deno_local_registry_dir = self.root_node_modules_path.join(".ende");
     if has_no_packages
       && (!self.clean_on_install
         || !self.sys.fs_exists_no_err(&deno_local_registry_dir))
@@ -227,7 +227,7 @@ impl<
     let bin_node_modules_dir_path = self.root_node_modules_path.join(".bin");
     let single_process_lock = LaxSingleProcessFsFlag::lock(
       sys.as_ref(),
-      deno_local_registry_dir.join(".deno.lock"),
+      deno_local_registry_dir.join(".ende.lock"),
       &self.reporter,
       // similar message used by cargo build
       "waiting for file lock on node_modules directory",
@@ -263,10 +263,10 @@ impl<
       setup_cache.set_clean_packages_hash(packages_hash);
     }
 
-    // 2. Write all the packages out the .deno directory.
+    // 2. Write all the packages out the .ende directory.
     //
     // Copy (hardlink in future) <global_registry_cache>/<package_id>/ to
-    // node_modules/.deno/<package_folder_id_folder_name>/node_modules/<package_name>
+    // node_modules/.ende/<package_folder_id_folder_name>/node_modules/<package_name>
     let workspace_lifecycle_packages =
       self.resolve_workspace_lifecycle_packages(snapshot)?;
     let mut cache_futures = FuturesUnordered::new();
@@ -565,7 +565,7 @@ impl<
         let package_folder_name = get_package_folder_id_folder_name(
           &package.get_package_cache_folder_id(),
         );
-        // node_modules/.deno/<package_folder_id_folder_name>/node_modules/<package_name> -> local package folder
+        // node_modules/.ende/<package_folder_id_folder_name>/node_modules/<package_name> -> local package folder
         let target = join_package_name(
           Cow::Owned(
             deno_local_registry_dir
@@ -649,10 +649,10 @@ impl<
     }
     drop(cache_futures);
 
-    // 5. Symlink all the dependencies into the .deno directory.
+    // 5. Symlink all the dependencies into the .ende directory.
     //
-    // Symlink node_modules/.deno/<package_id>/node_modules/<dep_name> to
-    // node_modules/.deno/<dep_id>/node_modules/<dep_package_name>
+    // Symlink node_modules/.ende/<package_id>/node_modules/<dep_name> to
+    // node_modules/.ende/<dep_id>/node_modules/<dep_package_name>
     for package in package_partitions.iter_all() {
       let package_folder_name = get_package_folder_id_folder_name(
         &package.get_package_cache_folder_id(),
@@ -787,7 +787,7 @@ impl<
 
     // 7. Create symlinks for the remaining top level packages in the node_modules folder.
     // (These may be present if they are not in the package.json dependencies)
-    // Symlink node_modules/.deno/<package_id>/node_modules/<package_name> to
+    // Symlink node_modules/.ende/<package_id>/node_modules/<package_name> to
     // node_modules/<package_name>
     let mut ids = snapshot
       .top_level_packages()
@@ -876,7 +876,7 @@ impl<
       ensure_jsr_npmrc(sys.as_ref(), project_dir)?;
     }
 
-    // 8. Create a node_modules/.deno/node_modules/<package-name> directory with
+    // 8. Create a node_modules/.ende/node_modules/<package-name> directory with
     // the remaining packages
     for package in newest_packages_by_name.values() {
       match found_names.entry(&package.id.nv.name) {
@@ -1389,7 +1389,7 @@ fn ensure_jsr_npmrc<TSys: NpmCacheSys>(
   )
 }
 
-/// `node_modules/.deno/<package>/`
+/// `node_modules/.ende/<package>/`
 fn local_node_modules_package_folder(
   local_registry_dir: &Path,
   package: &NpmResolutionPackage,
@@ -1399,7 +1399,7 @@ fn local_node_modules_package_folder(
   ))
 }
 
-/// `node_modules/.deno/<package>/.scripts-run`
+/// `node_modules/.ende/<package>/.scripts-run`
 fn ran_scripts_file(
   local_registry_dir: &Path,
   package: &NpmResolutionPackage,
@@ -1415,7 +1415,7 @@ struct LocalLifecycleScripts<'a, TSys: FsOpen + FsMetadata> {
 }
 
 impl<TSys: FsOpen + FsMetadata> LocalLifecycleScripts<'_, TSys> {
-  /// `node_modules/.deno/<package>/.scripts-warned`
+  /// `node_modules/.ende/<package>/.scripts-warned`
   fn warned_scripts_file(&self, package: &NpmResolutionPackage) -> PathBuf {
     local_node_modules_package_folder(self.deno_local_registry_dir, package)
       .join(".scripts-warned")
@@ -1507,7 +1507,7 @@ impl<TSys: FsOpen + FsMetadata> LifecycleScriptsStrategy
 // Uses BTreeMap to preserve the ordering of the elements in memory, to ensure
 // the file generated from this datastructure is deterministic.
 // See: https://github.com/denoland/deno/issues/24479
-/// Represents a dependency at `node_modules/.deno/<package_id>/`
+/// Represents a dependency at `node_modules/.ende/<package_id>/`
 struct SetupCacheDep<'a> {
   previous: Option<&'a BTreeMap<String, String>>,
   current: &'a mut BTreeMap<String, String>,
@@ -1593,7 +1593,7 @@ impl<TSys: NpmCacheSys> LocalSetupCache<TSys> {
 
   /// Inserts and checks for the existence of a root symlink
   /// at `node_modules/<package_name>` pointing to
-  /// `node_modules/.deno/<package_id>/`
+  /// `node_modules/.ende/<package_id>/`
   pub fn insert_root_symlink(
     &mut self,
     name: &str,
@@ -1615,8 +1615,8 @@ impl<TSys: NpmCacheSys> LocalSetupCache<TSys> {
   }
 
   /// Inserts and checks for the existence of a symlink at
-  /// `node_modules/.deno/node_modules/<package_name>` pointing to
-  /// `node_modules/.deno/<package_id>/`
+  /// `node_modules/.ende/node_modules/<package_name>` pointing to
+  /// `node_modules/.ende/<package_id>/`
   pub fn insert_deno_symlink(
     &mut self,
     name: &str,
@@ -1795,7 +1795,7 @@ pub(crate) fn remove_stale_member_symlinks<TSys: LocalNpmInstallSys>(
     let Some(name) = file_name.to_str() else {
       continue;
     };
-    // Leave `.bin`, `.deno`, and any other dot-entries alone: they are not the
+    // Leave `.bin`, `.ende`, and any other dot-entries alone: they are not the
     // per-dependency alias links this loop manages.
     if name.starts_with('.') {
       continue;
@@ -1841,7 +1841,7 @@ pub(crate) struct MemberBinDep<'a> {
   /// The resolved npm package, used for its `bin` metadata.
   pub package: &'a NpmResolutionPackage,
   /// Where the package's `package.json` is read from: its real location in the
-  /// layout (the `.deno` store path for the isolated linker, or the hoisted
+  /// layout (the `.ende` store path for the isolated linker, or the hoisted
   /// package directory for the hoisted linker).
   pub read_path: PathBuf,
   /// The member's own link to the package
@@ -2099,7 +2099,7 @@ fn root_package_folder_names(
   folder_names
 }
 
-/// Cleans up unused packages from the node_modules/.deno directory.
+/// Cleans up unused packages from the node_modules/.ende directory.
 /// This removes any package folders that are not part of the current resolution.
 fn cleanup_unused_packages<TSys: LocalNpmInstallSys>(
   sys: &TSys,
@@ -2109,7 +2109,7 @@ fn cleanup_unused_packages<TSys: LocalNpmInstallSys>(
   root_folder_names: &BTreeSet<String>,
   setup_cache: &mut LocalSetupCache<TSys>,
 ) {
-  // Collect all package folder names that should exist in .deno/
+  // Collect all package folder names that should exist in .ende/
   let expected_folders: HashSet<_> = package_partitions
     .iter_all()
     .map(|package| {
@@ -2117,12 +2117,12 @@ fn cleanup_unused_packages<TSys: LocalNpmInstallSys>(
     })
     .collect();
 
-  // Clean up package folders in .deno/ that are no longer needed
+  // Clean up package folders in .ende/ that are no longer needed
   if let Ok(entries) = sys.fs_read_dir(deno_local_registry_dir) {
     for entry in entries.flatten() {
       let file_name = entry.file_name();
       if let Some(name_str) = file_name.to_str() {
-        if name_str == "node_modules" || name_str.starts_with(".deno.lock") {
+        if name_str == "node_modules" || name_str.starts_with(".ende.lock") {
           continue;
         }
 
@@ -2143,7 +2143,7 @@ fn cleanup_unused_packages<TSys: LocalNpmInstallSys>(
     })
     .collect::<HashSet<_>>();
 
-  // Clean up .deno/node_modules/* symlinks for packages no longer needed
+  // Clean up .ende/node_modules/* symlinks for packages no longer needed
   let deno_node_modules_dir = deno_local_registry_dir.join("node_modules");
   let _ignore = remove_unused_node_modules_symlinks(
     sys,
@@ -2188,7 +2188,7 @@ fn cleanup_unused_packages<TSys: LocalNpmInstallSys>(
 }
 
 /// Extracts the package folder name from a node_modules symlink target path.
-/// e.g. node_modules/.deno/chalk@5.0.1/node_modules/chalk -> chalk@5.0.1
+/// e.g. node_modules/.ende/chalk@5.0.1/node_modules/chalk -> chalk@5.0.1
 pub fn node_modules_package_actual_dir_to_name(
   path: &Path,
 ) -> Option<Cow<'_, str>> {
@@ -2441,14 +2441,14 @@ mod test {
   fn test_node_modules_package_actual_dir_to_name() {
     assert_eq!(
       node_modules_package_actual_dir_to_name(Path::new(
-        ".deno/chalk@5.0.1/node_modules/chalk"
+        ".ende/chalk@5.0.1/node_modules/chalk"
       ))
       .as_deref(),
       Some("chalk@5.0.1")
     );
     assert_eq!(
       node_modules_package_actual_dir_to_name(Path::new(
-        ".deno/@denotest+add@1.0.0/node_modules/@denotest/add"
+        ".ende/@denotest+add@1.0.0/node_modules/@denotest/add"
       ))
       .as_deref(),
       Some("@denotest+add@1.0.0")

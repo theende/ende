@@ -17,7 +17,7 @@
         }
       ]
     },
-    // jsr packages prefer deno.json even when only a package.json exists
+    // jsr packages prefer ende.json even when only a package.json exists
     "jsr": {
       "steps": [
         {
@@ -27,7 +27,7 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('deno.json').trim())"
+            "console.log(Deno.readTextFileSync('ende.json').trim())"
           ],
           "output": "jsr_deno.json.out"
         }

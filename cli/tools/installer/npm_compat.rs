@@ -4,8 +4,8 @@
 //!
 //! After `deno install` sets up node_modules/, this module:
 //! 1. Installs jsr: packages to node_modules/@jsr/ via npm.jsr.io
-//! 2. Mirrors http(s): modules into .deno/remote/<host><path>/...
-//! 3. Generates .deno/tsconfig.json with paths mappings for npm:/jsr:/https:
+//! 2. Mirrors http(s): modules into .ende/remote/<host><path>/...
+//! 3. Generates .ende/tsconfig.json with paths mappings for npm:/jsr:/https:
 //!
 //! This enables stock TypeScript tooling (tsc, tsserver, VS Code) to work
 //! with Deno projects that use jsr:, npm:, and http(s): specifiers.
@@ -132,7 +132,7 @@ pub async fn setup_npm_compat(
     install_jsr_packages(project_root, deno_imports, http_client).await?;
 
   // Mirror http(s): modules (and their transitive remote/relative imports)
-  // into .deno/remote/<host><path>/...
+  // into .ende/remote/<host><path>/...
   let http_modules = match install_http_modules(
     project_root,
     deno_imports,
@@ -194,7 +194,7 @@ pub async fn setup_npm_compat(
     })
     .unwrap_or_default();
 
-  // Generate .deno/tsconfig.json and ensure root tsconfig.json extends it
+  // Generate .ende/tsconfig.json and ensure root tsconfig.json extends it
   generate_deno_tsconfig(
     project_root,
     deno_compiler_options,
@@ -352,7 +352,7 @@ fn read_referenced_import_map(
 /// (and subpath exports) to its local source files, so stock tooling resolves
 /// e.g. `@std/assert` and `@std/assert/equals` to `../assert/mod.ts` and
 /// `../assert/equals.ts` rather than a published copy. Paths are relative to
-/// the generated `.deno/tsconfig.json`.
+/// the generated `.ende/tsconfig.json`.
 fn workspace_member_paths(
   project_root: &Path,
   deno_json: &Value,
@@ -426,7 +426,9 @@ fn expand_member_patterns(
           continue;
         }
         let dir = entry.path();
-        if (dir.join("deno.json").exists() || dir.join("deno.jsonc").exists())
+        if ende_config::deno_json::CONFIG_FILE_NAMES
+          .iter()
+          .any(|config_name| dir.join(config_name).exists())
           && let Some(name) = entry.file_name().to_str()
         {
           out.push(format!("{parent}/{name}"));
@@ -489,22 +491,18 @@ fn add_member_alias_paths(
 }
 
 fn read_deno_json(project_root: &Path) -> Result<Option<Value>, AnyError> {
-  let deno_json_path = project_root.join("deno.json");
-  let deno_jsonc_path = project_root.join("deno.jsonc");
-
-  if deno_json_path.exists() {
-    let content = std::fs::read_to_string(&deno_json_path)?;
-    Ok(Some(serde_json::from_str(&content)?))
-  } else if deno_jsonc_path.exists() {
-    let content = std::fs::read_to_string(&deno_jsonc_path)?;
-    let parsed: Option<Value> = jsonc_parser::parse_to_serde_value(
-      &content,
-      &jsonc_parser::ParseOptions::default(),
-    )?;
-    Ok(Some(parsed.unwrap_or(json!({}))))
-  } else {
-    Ok(None)
+  for name in ende_config::deno_json::CONFIG_FILE_NAMES {
+    let path = project_root.join(name);
+    if path.exists() {
+      let content = std::fs::read_to_string(&path)?;
+      let parsed: Option<Value> = jsonc_parser::parse_to_serde_value(
+        &content,
+        &jsonc_parser::ParseOptions::default(),
+      )?;
+      return Ok(Some(parsed.unwrap_or(json!({}))));
+    }
   }
+  Ok(None)
 }
 
 /// Generate tsconfig.deno.json at the project root with paths mappings.
@@ -703,11 +701,11 @@ fn extract_tarball_gz(gz_bytes: &[u8], dest: &Path) -> Result<(), AnyError> {
 
 /// A resolved entry for the tsconfig `paths` table: maps a user-facing URL
 /// (whatever appears in source as `import "..."`) to the local mirror file
-/// path (relative to `.deno/`) that tsc should resolve it to.
+/// path (relative to `.ende/`) that tsc should resolve it to.
 pub type HttpModulePaths = BTreeMap<Url, String>;
 
 /// Materialize http(s): modules referenced from `deno.json` `imports` (and
-/// their transitive remote/relative imports) into `.deno/remote/<host><path>`.
+/// their transitive remote/relative imports) into `.ende/remote/<host><path>`.
 ///
 /// Uses `CliFileFetcher`, which transparently reuses `DENO_DIR` cache, follows
 /// redirects, and exposes response headers. When a module advertises types via
@@ -719,7 +717,7 @@ pub type HttpModulePaths = BTreeMap<Url, String>;
 /// is acknowledged tech debt; a deno_graph walk is the production answer.
 ///
 /// Returns a map from user-facing URL to the local mirror path (relative to
-/// `.deno/`), suitable for direct use as tsconfig `paths` values.
+/// `.ende/`), suitable for direct use as tsconfig `paths` values.
 pub async fn install_http_modules(
   project_root: &Path,
   deno_imports: Option<&Value>,
@@ -749,7 +747,7 @@ pub async fn install_http_modules(
     return Ok(paths);
   }
 
-  let remote_root = project_root.join(".deno").join("remote");
+  let remote_root = project_root.join(".ende").join("remote");
 
   while let Some(requested_url) = queue.pop_front() {
     if paths.contains_key(&requested_url) {
@@ -858,7 +856,7 @@ pub async fn install_http_modules(
 }
 
 /// Write `bytes` to the local mirror file for `url`, returning the path
-/// relative to `.deno/` (suitable for tsconfig `paths`).
+/// relative to `.ende/` (suitable for tsconfig `paths`).
 fn write_mirror(
   remote_root: &Path,
   url: &Url,

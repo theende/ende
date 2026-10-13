@@ -24,9 +24,9 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('./deno.lock').trim());"
+            "console.log(Deno.readTextFileSync('./ende.lock').trim());"
           ],
-          "output": "deno.lock.out"
+          "output": "ende.lock.out"
         }
       ]
     }

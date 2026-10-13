@@ -2,7 +2,7 @@
 
 const linker = Deno.args[0];
 const outsidePath = linker === "isolated"
-  ? "node_modules/.deno/@denotest+invalid-bin-target@1.0.0/node_modules/@denotest/outside.js"
+  ? "node_modules/.ende/@denotest+invalid-bin-target@1.0.0/node_modules/@denotest/outside.js"
   : "node_modules/@denotest/outside.js";
 
 async function exists(path: string) {

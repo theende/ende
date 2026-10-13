@@ -9,7 +9,7 @@
     "if": "unix",
     "args": [
       "eval",
-      "const content = Deno.readTextFileSync('./bins/bin/.echo-lockfile-bad-tarball/deno.lock'); console.log(content.includes('evil.example.com') ? 'bad tarball found' : 'clean lockfile');"
+      "const content = Deno.readTextFileSync('./bins/bin/.echo-lockfile-bad-tarball/ende.lock'); console.log(content.includes('evil.example.com') ? 'bad tarball found' : 'clean lockfile');"
     ],
     "output": "no_lockfile.out"
   }, {
@@ -20,7 +20,7 @@
     "if": "windows",
     "args": [
       "eval",
-      "const content = Deno.readTextFileSync('./bins/bin/.echo-lockfile-bad-tarball/deno.lock'); console.log(content.includes('evil.example.com') ? 'bad tarball found' : 'clean lockfile');"
+      "const content = Deno.readTextFileSync('./bins/bin/.echo-lockfile-bad-tarball/ende.lock'); console.log(content.includes('evil.example.com') ? 'bad tarball found' : 'clean lockfile');"
     ],
     "output": "no_lockfile.out"
   }]

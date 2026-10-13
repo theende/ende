@@ -1842,7 +1842,7 @@ mod tests {
   #[test]
   fn lockfile_with_redirects() {
     let mut lockfile = new_lockfile(NewLockfileOptions {
-      file_path: PathBuf::from("/foo/deno.lock"),
+      file_path: PathBuf::from("/foo/ende.lock"),
       content: r#"{
   "version": "4",
   "redirects": {
@@ -1873,7 +1873,7 @@ mod tests {
   #[test]
   fn test_insert_redirect() {
     let mut lockfile = new_lockfile(NewLockfileOptions {
-      file_path: PathBuf::from("/foo/deno.lock"),
+      file_path: PathBuf::from("/foo/ende.lock"),
       content: r#"{
   "version": "4",
   "redirects": {
@@ -1913,7 +1913,7 @@ mod tests {
   #[test]
   fn test_insert_jsr() {
     let mut lockfile = new_lockfile(NewLockfileOptions {
-      file_path: PathBuf::from("/foo/deno.lock"),
+      file_path: PathBuf::from("/foo/ende.lock"),
       content: r#"{
   "version": "4",
   "specifiers": {

@@ -41,7 +41,7 @@ fn conditionally_loads_type_graph() {
 fn opt_out_top_level_exclude_via_bench_unexclude() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "bench": {
       "exclude": [ "!excluded.bench.ts" ]
     },

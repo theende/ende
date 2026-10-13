@@ -3,7 +3,7 @@
   "tests": {
     // Lifecycle scripts that invoke bins from the package's dependencies
     // (e.g. prebuild-install, node-gyp) must resolve those bins to the
-    // hoisted locations, not the isolated `.deno` layout.
+    // hoisted locations, not the isolated `.ende` layout.
     // https://github.com/denoland/deno/issues/35742
     "install_with_dep_bins": {
       "steps": [

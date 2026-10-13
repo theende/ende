@@ -18,7 +18,7 @@
       "steps": [{
         "args": [
           "eval",
-          "Deno.removeSync('deno.json')"
+          "Deno.removeSync('ende.json')"
         ],
         "output": ""
       }, {
@@ -35,7 +35,7 @@
       }, {
         "args": [
           "eval",
-          "try { Deno.statSync('node_modules/.deno'); } catch (e) { if (e instanceof Deno.errors.NotFound) { console.log('good'); } else { throw new Error('bad'); } }"
+          "try { Deno.statSync('node_modules/.ende'); } catch (e) { if (e instanceof Deno.errors.NotFound) { console.log('good'); } else { throw new Error('bad'); } }"
         ],
         "output": "good\n"
       }]

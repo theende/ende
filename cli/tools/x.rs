@@ -458,7 +458,11 @@ fn create_package_temp_dir(
   );
   let temp_dir = deno_dir.join("deno_x_cache").join(package_req_folder);
   if temp_dir.exists() {
-    if reload || !temp_dir.join("deno.lock").exists() {
+    if reload
+      || !temp_dir
+        .join(ende_config::deno_json::LOCKFILE_NAME)
+        .exists()
+    {
       std::fs::remove_dir_all(&temp_dir)?;
     } else {
       let temp_dir = canonicalize_path(&temp_dir).unwrap_or(temp_dir);
@@ -468,7 +472,8 @@ fn create_package_temp_dir(
   std::fs::create_dir_all(&temp_dir)?;
   let package_json_path = temp_dir.join("package.json");
   std::fs::write(&package_json_path, "{}")?;
-  let deno_json_path = temp_dir.join("deno.json");
+  let deno_json_path =
+    temp_dir.join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME);
   let mut deno_json_value = serde_json::json!({"nodeModulesDir": "auto"});
   if let Some(min_dep_age) =
     minimum_dependency_age_config_json(min_dep_age_config)
@@ -846,7 +851,10 @@ async fn autoinstall_package(
     let temp_node_modules = temp_dir.join("node_modules");
     new_flags.internal.root_node_modules_dir_override = Some(temp_node_modules);
     new_flags.config_flag = crate::args::ConfigFlag::Path(
-      temp_dir.join("deno.json").to_string_lossy().into_owned(),
+      temp_dir
+        .join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME)
+        .to_string_lossy()
+        .into_owned(),
     );
     match ignore_scripts {
       PackagesAllowedScripts::All => {
@@ -922,7 +930,8 @@ async fn autoinstall_package(
           )?;
         }
         ReqRef::Jsr(req_ref) => {
-          let deno_json = temp_dir.join("deno.json");
+          let deno_json =
+            temp_dir.join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME);
           let mut imports = serde_json::Map::new();
           imports.insert(
             req_ref.req().name.to_string(),

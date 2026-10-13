@@ -55,7 +55,8 @@ static HAS_DENO_JSON_IN_WORKING_DIR_ERR: once_cell::sync::Lazy<Option<String>> =
   once_cell::sync::Lazy::new(|| {
     let testdata_path = testdata_path();
     let mut current_dir = testdata_path.as_path();
-    let deno_json_names = ["deno.json", "deno.jsonc"];
+    let deno_json_names =
+      ["ende.json", "ende.jsonc", "deno.json", "deno.jsonc"];
     loop {
       for name in deno_json_names {
         let deno_json_path = current_dir.join(name);
@@ -63,7 +64,7 @@ static HAS_DENO_JSON_IN_WORKING_DIR_ERR: once_cell::sync::Lazy<Option<String>> =
           return Some(format!(
             concat!(
               "Found deno configuration file at {}. The test suite relies on ",
-              "a deno.json not existing in any ancestor directory. Please ",
+              "a config file not existing in any ancestor directory. Please ",
               "delete this file so the tests won't auto-discover it.",
             ),
             deno_json_path.display(),

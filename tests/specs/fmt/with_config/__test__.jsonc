@@ -1,7 +1,7 @@
 {
   "tests": {
     "fmt_with_config": {
-      "args": "fmt --config deno.jsonc subdir",
+      "args": "fmt --config ende.jsonc subdir",
       "output": "Checked 3 files\n"
     },
     "fmt_with_config_default": {
@@ -11,7 +11,7 @@
     },
     "fmt_with_config_and_flags": {
       // Check if CLI flags take precedence
-      "args": "fmt --config deno.jsonc --ignore=subdir/a.ts,subdir/b.ts",
+      "args": "fmt --config ende.jsonc --ignore=subdir/a.ts,subdir/b.ts",
       "output": "Checked 2 files\n"
     }
   }

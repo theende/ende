@@ -382,9 +382,10 @@ fn create_deno_json(
   flags: &Arc<Flags>,
   options: &CliOptions,
 ) -> Result<CliFactory, AnyError> {
-  std::fs::write(options.initial_cwd().join("deno.json"), "{}\n")
-    .context("Failed to create deno.json file")?;
-  log::info!("Created deno.json configuration file.");
+  let name = ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME;
+  std::fs::write(options.initial_cwd().join(name), "{}\n")
+    .with_context(|| format!("Failed to create {name} file"))?;
+  log::info!("Created {name} configuration file.");
   let factory = CliFactory::from_flags(flags.clone());
   Ok(factory)
 }
@@ -508,8 +509,12 @@ fn load_configs(
       let options = factory.cli_options()?.clone();
       let Some(deno_json) = options.start_dir.member_or_root_deno_json() else {
         bail!(
-          "Failed to discover the newly created deno.json at \"{}\". This can happen when the current directory is inside a node_modules directory.",
-          options.initial_cwd().join("deno.json").display(),
+          "Failed to discover the newly created {} at \"{}\". This can happen when the current directory is inside a node_modules directory.",
+          ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
+          options
+            .initial_cwd()
+            .join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME)
+            .display(),
         );
       };
       (
@@ -1397,22 +1402,21 @@ fn path_to_link_string(path: &Path) -> String {
   s.strip_prefix("./").map(|s| s.to_string()).unwrap_or(s)
 }
 
-/// Read the `"name"` field from a deno.json(c) in the given directory.
+/// Read the `"name"` field from the config file in the given directory.
 fn read_link_target_name(dir: &Path) -> Option<String> {
-  for filename in ["deno.json", "deno.jsonc"] {
+  for filename in ende_config::deno_json::CONFIG_FILE_NAMES {
     let path = dir.join(filename);
     let Ok(text) = std::fs::read_to_string(&path) else {
       continue;
     };
+    // the first config file found is the one that's used
     let parsed = jsonc_parser::parse_to_serde_value::<serde_json::Value>(
       &text,
       &Default::default(),
     );
-    if let Ok(v) = parsed
-      && let Some(name) = v.get("name").and_then(|n| n.as_str())
-    {
-      return Some(name.to_string());
-    }
+    return parsed
+      .ok()
+      .and_then(|v| v.get("name")?.as_str().map(|n| n.to_string()));
   }
   None
 }
@@ -1487,8 +1491,9 @@ pub async fn link(
     if !abs.is_dir() {
       bail!("Cannot link '{}': not a directory", raw_path);
     }
-    let has_config =
-      abs.join("deno.json").exists() || abs.join("deno.jsonc").exists();
+    let has_config = ende_config::deno_json::CONFIG_FILE_NAMES
+      .iter()
+      .any(|name| abs.join(name).exists());
     if !has_config {
       bail!(
         "Cannot link '{}': no deno.json found in directory. \

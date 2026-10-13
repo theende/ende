@@ -1,0 +1,3 @@
+Warning: "deno.lock" in [WILDLINE] is deprecated. Rename it to "ende.lock".
+Download http://localhost:4545/subdir/print_hello.ts
+Hello

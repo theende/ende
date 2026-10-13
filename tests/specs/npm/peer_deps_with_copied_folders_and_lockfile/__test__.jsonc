@@ -7,7 +7,7 @@
       "output": "main_first.out"
     },
     {
-      "args": "run -A assert-exists.ts deno.lock $DENO_DIR/npm/localhost_4260/@denotest/peer-dep-test-grandchild/1.0.0{,_1}",
+      "args": "run -A assert-exists.ts ende.lock $DENO_DIR/npm/localhost_4260/@denotest/peer-dep-test-grandchild/1.0.0{,_1}",
       "output": ""
     },
     {
@@ -23,7 +23,7 @@
       "output": "main_node_modules.out"
     },
     {
-      "args": "run -A assert-exists.ts node_modules/.deno/@denotest+peer-dep-test-grandchild@1.0.0{,_1}",
+      "args": "run -A assert-exists.ts node_modules/.ende/@denotest+peer-dep-test-grandchild@1.0.0{,_1}",
       "output": ""
     },
     {

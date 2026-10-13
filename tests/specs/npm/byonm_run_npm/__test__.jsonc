@@ -8,7 +8,7 @@
         // ensure it doesn't make any lockfile modifications and thus doesn't write to the lockfile
         "args": [
           "eval",
-          "try { Deno.statSync('deno.lock') } catch (e) { console.log(e instanceof Deno.errors.NotFound); }"
+          "try { Deno.statSync('ende.lock') } catch (e) { console.log(e instanceof Deno.errors.NotFound); }"
         ],
         "output": "true\n"
       }]

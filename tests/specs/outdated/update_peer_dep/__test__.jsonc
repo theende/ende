@@ -14,8 +14,8 @@
       "output": "update.out"
     },
     {
-      "args": "-A print_file.ts ./deno.lock",
-      "output": "deno.lock.out"
+      "args": "-A print_file.ts ./ende.lock",
+      "output": "ende.lock.out"
     }
   ]
 }

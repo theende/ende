@@ -29,7 +29,7 @@ fn cache_switching_config_then_no_config() {
     if with_config {
       let mut slice = vec![
         "--config".to_string(),
-        "check/cache_config_on_off/deno.json".to_string(),
+        "check/cache_config_on_off/ende.json".to_string(),
       ];
       args.append(&mut slice);
     }
@@ -209,7 +209,7 @@ async fn npm_module_check_then_error() {
     .use_http_server()
     .build();
   let temp_dir = test_context.temp_dir();
-  temp_dir.write("deno.json", "{}"); // so the lockfile gets loaded
+  temp_dir.write("ende.json", "{}"); // so the lockfile gets loaded
 
   // get the lockfiles values first (this is necessary because the test
   // server generates different tarballs based on the operating system)
@@ -222,7 +222,7 @@ async fn npm_module_check_then_error() {
     ])
     .run()
     .skip_output_check();
-  let lockfile_path = temp_dir.path().join("deno.lock");
+  let lockfile_path = temp_dir.path().join("ende.lock");
   let mut lockfile = ende_lockfile::Lockfile::new(
     NewLockfileOptions {
       file_path: lockfile_path.to_path_buf(),

@@ -18,7 +18,7 @@ if (Deno.args[0] === "install") {
       args: [
         "run",
         "--config",
-        Deno.realPathSync("../config/deno.json"),
+        Deno.realPathSync("../config/ende.json"),
         "--no-lock",
         "-A",
         "--unstable-ffi",
@@ -46,7 +46,7 @@ if (Deno.args[0] === "install") {
           args: [
             "run",
             "--config",
-            Deno.realPathSync("../config/deno.json"),
+            Deno.realPathSync("../config/ende.json"),
             "--no-lock",
             "-A",
             "--unstable-ffi",

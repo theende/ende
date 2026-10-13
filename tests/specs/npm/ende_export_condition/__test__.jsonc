@@ -1,0 +1,15 @@
+{
+  "tests": {
+    // The "ende" export condition is preferred over "deno" and "node".
+    "ende_condition_preferred": {
+      "args": "run ende_condition.ts",
+      "output": "ende_condition.out"
+    },
+    // "deno" is no longer a condition this runtime matches, so the "default"
+    // export is used.
+    "deno_condition_ignored": {
+      "args": "run deno_condition.ts",
+      "output": "deno_condition.out"
+    }
+  }
+}

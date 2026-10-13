@@ -10,7 +10,7 @@
         // verify the lockfile contains the overrides in packageJson section
         "args": [
           "eval",
-          "const lock = JSON.parse(Deno.readTextFileSync('deno.lock')); console.log(JSON.stringify(lock.workspace?.packageJson?.overrides || null))"
+          "const lock = JSON.parse(Deno.readTextFileSync('ende.lock')); console.log(JSON.stringify(lock.workspace?.packageJson?.overrides || null))"
         ],
         "output": "lockfile_overrides.out"
       }]

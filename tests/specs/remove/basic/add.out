@@ -1,4 +1,4 @@
-Created deno.json configuration file.
+Created ende.json configuration file.
 [UNORDERED_START]
 Add jsr:@std/http@1.0.0
 Add jsr:@std/assert@1.0.0

@@ -27,8 +27,8 @@
       "output": "Checked 1 file\n"
     },
     "deno_json_takes_precedence": {
-      // deno.json explicitly sets indentWidth=2; editorconfig must NOT override.
-      "args": "fmt --check --config with_deno_json/deno.json with_deno_json/file.ts",
+      // ende.json explicitly sets indentWidth=2; editorconfig must NOT override.
+      "args": "fmt --check --config with_deno_json/ende.json with_deno_json/file.ts",
       "output": "Checked 1 file\n"
     },
     "nested_overrides_parent": {
@@ -49,10 +49,10 @@
       "exitCode": 1
     },
     "deno_json_use_editor_config_false_opts_out": {
-      // "fmt": { "useEditorConfig": false } in deno.json disables reading
+      // "fmt": { "useEditorConfig": false } in ende.json disables reading
       // .editorconfig, so the indent_size=4 setting is ignored and the
       // 4-space file fails deno's default 2-space check.
-      "args": "fmt --check --config opt_out/deno.json opt_out/file.ts",
+      "args": "fmt --check --config opt_out/ende.json opt_out/file.ts",
       "output": "[WILDCARD]Found 1 not formatted file in 1 file\n",
       "exitCode": 1
     },
@@ -82,11 +82,11 @@
       "output": "Not formatted stdin\n"
     },
     "stdin_deno_json_use_editor_config_false_opts_out": {
-      // "useEditorConfig": false in deno.json disables .editorconfig for stdin
+      // "useEditorConfig": false in ende.json disables .editorconfig for stdin
       // too, so the root indent_size=4 is ignored and deno's default 2-space
-      // indent leaves the already-2-space input unchanged. Locks the deno.json
+      // indent leaves the already-2-space input unchanged. Locks the ende.json
       // opt-out for stdin, not just the --no-editorconfig CLI flag.
-      "args": "fmt --config opt_out/deno.json -",
+      "args": "fmt --config opt_out/ende.json -",
       "input": "function greet(name: string) {\n  return \"hello \" + name;\n}\n",
       "output": "function greet(name: string) {\n  return \"hello \" + name;\n}\n"
     },

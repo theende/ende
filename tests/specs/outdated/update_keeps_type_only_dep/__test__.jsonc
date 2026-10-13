@@ -19,7 +19,7 @@
         {
           "args": [
             "eval",
-            "const lock = JSON.parse(Deno.readTextFileSync('./deno.lock')); console.log(Object.keys(lock.specifiers).some((s) => s.startsWith('jsr:@denotest/no-module-graph')));"
+            "const lock = JSON.parse(Deno.readTextFileSync('./ende.lock')); console.log(Object.keys(lock.specifiers).some((s) => s.startsWith('jsr:@denotest/no-module-graph')));"
           ],
           "output": "type_only_dep_locked.out"
         },

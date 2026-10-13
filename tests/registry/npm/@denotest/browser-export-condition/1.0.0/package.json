@@ -6,7 +6,7 @@
   "exports": {
     ".": {
       "browser": "./browser.mjs",
-      "deno": "./deno.mjs",
+      "ende": "./ende.mjs",
       "node": "./node.js",
       "default": "./normal.js"
     }

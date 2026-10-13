@@ -7,7 +7,7 @@
     // guards the whole SPA path: detect Vite, run the build task, resolve the
     // generated entrypoint's `@std/http` import, include `dist/`, bundle, and
     // compile into a binary — then boot that binary. The `@std/http` import is
-    // remapped to a local stub in `deno.json` so the test stays hermetic. The
+    // remapped to a local stub in `ende.json` so the test stays hermetic. The
     // run step sets `EXIT_ON_LOAD` so the stub (which the entrypoint imports
     // before its blocking `Deno.serve`) prints a marker and exits, proving the
     // compiled binary starts and resolves the remapped import from the VFS

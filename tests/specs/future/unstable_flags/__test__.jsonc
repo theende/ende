@@ -2,12 +2,12 @@
   "steps": [
     {
       // Notice `--unstable-*` flags are not needed anymore
-      "args": "run -A --config ../../../config/deno.json main.js",
+      "args": "run -A --config ../../../config/ende.json main.js",
       "output": "main.out"
     },
     {
       // Notice `--unstable-*` flags are not needed anymore
-      "args": "run -A --config ../../../config/deno.json worker.js",
+      "args": "run -A --config ../../../config/ende.json worker.js",
       "output": "main.out"
     }
   ]

@@ -1,6 +1,7 @@
 {
   "engines": {
     "node": ">=18.0.0",
-    "deno": ">=1.0.0"
+    "ende": ">=1.0.0",
+    "deno": "totally-not-a-range"
   }
 }

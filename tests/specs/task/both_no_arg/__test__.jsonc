@@ -1,5 +1,5 @@
 {
-  "args": "task --config deno.json",
+  "args": "task --config ende.json",
   "output": "no_args.out",
   "exitCode": 0
 }

@@ -16,13 +16,13 @@ fn add_basic() {
   });
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&starting_deno_json);
+  temp_dir.join("ende.json").write_json(&starting_deno_json);
 
   let output = context.new_command().args("add jsr:@denotest/add").run();
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add jsr:@denotest/add");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./mod.ts",
@@ -48,14 +48,14 @@ fn add_basic_no_deno_json() {
   }
 }
 "#;
-  temp_dir.join("deno.json").assert_matches_text(expected);
+  temp_dir.join("ende.json").assert_matches_text(expected);
 }
 
 #[test]
 fn add_basic_with_empty_deno_json() {
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir();
-  temp_dir.write("deno.json", "");
+  temp_dir.write("ende.json", "");
 
   let output = context.new_command().args("add jsr:@denotest/add").run();
   output.assert_exit_code(0);
@@ -63,7 +63,7 @@ fn add_basic_with_empty_deno_json() {
   assert_contains!(output, "Add jsr:@denotest/add");
   temp_dir
     .path()
-    .join("deno.json")
+    .join("ende.json")
     .assert_matches_json(json!({
       "imports": {
         "@denotest/add": "jsr:@denotest/add@^1.0.0"
@@ -80,7 +80,7 @@ fn add_version_contraint() {
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add jsr:@denotest/add");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
       "@denotest/add": "jsr:@denotest/add@^1.0.0"
     }
@@ -96,7 +96,7 @@ fn add_tilde() {
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add jsr:@denotest/add");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
       "@denotest/add": "jsr:@denotest/add@~1.0.0"
     }
@@ -115,7 +115,7 @@ fn add_save_exact() {
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add jsr:@denotest/add");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
       "@denotest/add": "jsr:@denotest/add@1.0.0"
     }
@@ -134,7 +134,7 @@ fn add_exact_alias() {
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add jsr:@denotest/add");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
       "@denotest/add": "jsr:@denotest/add@1.0.0"
     }
@@ -150,7 +150,7 @@ fn add_multiple() {
   });
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&starting_deno_json);
+  temp_dir.join("ende.json").write_json(&starting_deno_json);
 
   let output = context
     .new_command()
@@ -159,7 +159,7 @@ fn add_multiple() {
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add jsr:@denotest/add");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./mod.ts",
@@ -179,7 +179,7 @@ fn add_npm() {
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add npm:chalk");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
       "chalk": "npm:chalk@^4.1.2"
     }
@@ -199,7 +199,7 @@ fn add_npm_latest_default_minimum_dependency_age_downgrades() {
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add npm:@denotest/min-release-age-latest@1.0.0");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
       "@denotest/min-release-age-latest": "npm:@denotest/min-release-age-latest@^1.0.0"
     }
@@ -210,7 +210,7 @@ fn add_npm_latest_default_minimum_dependency_age_downgrades() {
 fn add_npm_latest_minimum_dependency_age_downgrades() {
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "minimumDependencyAge": "2025-01-01T00:00:00.000Z",
   }));
 
@@ -221,7 +221,7 @@ fn add_npm_latest_minimum_dependency_age_downgrades() {
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add npm:@denotest/min-release-age-latest@1.0.0");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "minimumDependencyAge": "2025-01-01T00:00:00.000Z",
     "imports": {
       "@denotest/min-release-age-latest": "npm:@denotest/min-release-age-latest@^1.0.0"
@@ -233,7 +233,7 @@ fn add_npm_latest_minimum_dependency_age_downgrades() {
 fn add_npm_latest_minimum_dependency_age_disabled() {
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "minimumDependencyAge": false,
   }));
 
@@ -244,7 +244,7 @@ fn add_npm_latest_minimum_dependency_age_disabled() {
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add npm:@denotest/min-release-age-latest@2.0.0");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "minimumDependencyAge": false,
     "imports": {
       "@denotest/min-release-age-latest": "npm:@denotest/min-release-age-latest@^2.0.0"
@@ -265,7 +265,7 @@ fn add_npm_latest_npmrc_min_release_age_downgrades() {
   output.assert_exit_code(0);
   let output = output.combined_output();
   assert_contains!(output, "Add npm:@denotest/min-release-age-latest@1.0.0");
-  temp_dir.join("deno.json").assert_matches_json(json!({
+  temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
       "@denotest/min-release-age-latest": "npm:@denotest/min-release-age-latest@^1.0.0"
     }
@@ -308,7 +308,7 @@ fn approve_scripts_basic() {
   let context = pm_context_builder().build();
   context
     .temp_dir()
-    .write("deno.json", r#"{"nodeModulesDir": "manual"}"#);
+    .write("ende.json", r#"{"nodeModulesDir": "manual"}"#);
   context
     .new_command()
     .args("install npm:@denotest/node-lifecycle-scripts@1.0.0")
@@ -328,7 +328,7 @@ fn approve_scripts_basic() {
   context
     .temp_dir()
     .path()
-    .join("deno.json")
+    .join("ende.json")
     .assert_matches_json(json!({
       "nodeModulesDir": "manual",
       "imports": {
@@ -351,7 +351,7 @@ fn approve_scripts_deny_some() {
   let context = pm_context_builder().build();
   context
     .temp_dir()
-    .write("deno.json", r#"{"nodeModulesDir": "manual"}"#);
+    .write("ende.json", r#"{"nodeModulesDir": "manual"}"#);
   context
     .new_command()
     .args("install npm:@denotest/node-lifecycle-scripts@1.0.0 npm:@denotest/print-npm-user-agent@1.0.0")
@@ -370,7 +370,7 @@ fn approve_scripts_deny_some() {
       pty.expect("Approved npm:@denotest/node-lifecycle-scripts@1.0.0");
       pty.expect("Ran build script npm:@denotest/node-lifecycle-scripts@1.0.0");
     });
-  context.temp_dir().path().join("deno.json").assert_matches_json(json!({
+  context.temp_dir().path().join("ende.json").assert_matches_json(json!({
     "nodeModulesDir": "manual",
     "imports": {
       "@denotest/node-lifecycle-scripts": "npm:@denotest/node-lifecycle-scripts@1.0.0",
@@ -393,7 +393,7 @@ fn approve_scripts_no_lock_explicit_package() {
   let context = pm_context_builder().build();
   context
     .temp_dir()
-    .write("deno.json", r#"{"lock": false, "nodeModulesDir": "auto"}"#);
+    .write("ende.json", r#"{"lock": false, "nodeModulesDir": "auto"}"#);
   context.temp_dir().write(
     "package.json",
     r#"{"dependencies": {"@denotest/node-lifecycle-scripts": "*"}}"#,
@@ -420,7 +420,7 @@ fn approve_scripts_no_lock_detects_packages() {
   let context = pm_context_builder().build();
   context
     .temp_dir()
-    .write("deno.json", r#"{"lock": false, "nodeModulesDir": "auto"}"#);
+    .write("ende.json", r#"{"lock": false, "nodeModulesDir": "auto"}"#);
   context.temp_dir().write(
     "package.json",
     r#"{"dependencies": {"@denotest/node-lifecycle-scripts": "*"}}"#,
@@ -456,7 +456,7 @@ fn update_interactive_shows_version_req() {
   // (`1.0.1 -> 1.0.1`). Regression test for
   // https://github.com/denoland/deno/issues/34668
   context.temp_dir().write(
-    "deno.json",
+    "ende.json",
     r#"{"imports": {"@denotest/update-latest-semver": "npm:@denotest/update-latest-semver@^1.0.0"}}"#,
   );
   context

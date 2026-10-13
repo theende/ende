@@ -16,7 +16,7 @@ use test_util::test;
 fn publish_non_exported_files_using_import_map() {
   let context = publish_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./mod.ts",
@@ -54,7 +54,7 @@ fn publish_non_exported_files_using_import_map() {
 fn publish_warning_not_in_graph() {
   let context = publish_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./mod.ts",
@@ -91,7 +91,7 @@ fn publish_rejects_invalid_identities_before_authentication() {
     "@foo/package#other",
     "@foo/package\\other",
   ] {
-    temp_dir.join("deno.json").write_json(&json!({
+    temp_dir.join("ende.json").write_json(&json!({
       "name": name,
       "version": "1.0.0",
       "exports": "./mod.ts",
@@ -103,7 +103,7 @@ fn publish_rejects_invalid_identities_before_authentication() {
     assert_not_contains!(output.combined_output(), "No means to authenticate");
   }
 
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/package",
     "version": "1.0.0?other",
     "exports": "./mod.ts",
@@ -157,7 +157,7 @@ fn provenance_rejected_by_registry() {
 fn ignores_gitignore() {
   let context = publish_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./main.ts"
@@ -196,7 +196,7 @@ fn ignores_gitignore() {
 fn ignores_directories() {
   let context = publish_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exclude": [ "ignore" ],
@@ -242,7 +242,7 @@ fn ignores_directories() {
 fn not_include_gitignored_file_unless_exact_match_in_include() {
   let context = publish_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./main.ts",
@@ -250,7 +250,7 @@ fn not_include_gitignored_file_unless_exact_match_in_include() {
       // won't match ignored.ts because it needs to be
       // unexcluded via a negated glob in exclude
       "include": [
-        "deno.json",
+        "ende.json",
         "*.ts",
         "exact_include.ts",
         "sub"
@@ -295,7 +295,7 @@ fn gitignore_everything_excluded_override() {
   let temp_dir = context.temp_dir().path();
 
   temp_dir.join(".gitignore").write("*\n");
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./root_main.ts",
@@ -322,12 +322,12 @@ fn gitignore_everything_excluded_override() {
 fn includes_directories_with_gitignore_when_unexcluded() {
   let context = publish_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./main.ts",
     "publish": {
-      "include": [ "deno.json", "*.ts" ],
+      "include": [ "ende.json", "*.ts" ],
       "exclude": [ "!ignored.ts" ]
     }
   }));
@@ -348,7 +348,7 @@ fn includes_directories_with_gitignore_when_unexcluded() {
 fn includes_unexcluded_sub_dir() {
   let context = publish_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./included1.ts",
@@ -378,12 +378,12 @@ fn includes_unexcluded_sub_dir() {
 fn includes_directories() {
   let context = publish_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./main.ts",
     "publish": {
-      "include": [ "deno.json", "main.ts" ]
+      "include": [ "ende.json", "main.ts" ]
     }
   }));
   temp_dir.join("LICENSE").write("");
@@ -407,7 +407,7 @@ fn includes_directories() {
 fn not_includes_gitignored_dotenv() {
   let context = publish_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./main.ts",
@@ -429,7 +429,7 @@ fn not_includes_gitignored_dotenv() {
 fn not_includes_vendor_dir_only_when_vendor_true() {
   let context = publish_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./main.ts",
@@ -452,7 +452,7 @@ fn not_includes_vendor_dir_only_when_vendor_true() {
 
   // with vendor
   {
-    temp_dir.join("deno.json").write_json(&json!({
+    temp_dir.join("ende.json").write_json(&json!({
       "name": "@foo/bar",
       "version": "1.0.0",
       "exports": "./main.ts",
@@ -470,7 +470,7 @@ fn not_includes_vendor_dir_only_when_vendor_true() {
 fn allow_dirty() {
   let context = publish_context_builder_with_git_checks().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./main.ts",
@@ -499,7 +499,7 @@ Checking for slow types in the public API...
 Uncommitted changes:
 
 ?? LICENSE
-?? deno.json
+?? ende.json
 ?? main.ts
 
 error: Aborting due to uncommitted changes. Check in source code or run with --allow-dirty
@@ -521,7 +521,7 @@ error: Aborting due to uncommitted changes. Check in source code or run with --a
 fn allow_dirty_not_in_repo() {
   let context = publish_context_builder_with_git_checks().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./main.ts",
@@ -547,7 +547,7 @@ fn allow_dirty_not_in_repo() {
 fn allow_dirty_dry_run() {
   let context = publish_context_builder_with_git_checks().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("deno.json").write_json(&json!({
+  temp_dir.join("ende.json").write_json(&json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./main.ts",

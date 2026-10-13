@@ -1,7 +1,7 @@
 {
   "tempDir": true,
   "tests": {
-    // With "preferPackageJson": true in deno.json, `deno remove` (no flag)
+    // With "preferPackageJson": true in ende.json, `deno remove` (no flag)
     // removes the dependency from package.json.
     "removes_from_package_json": {
       "steps": [

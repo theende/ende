@@ -1,5 +1,5 @@
 const arg = Deno.args[0];
-const filePath = import.meta.dirname + "/deno.json";
+const filePath = import.meta.dirname + "/ende.json";
 const denoJson = JSON.parse(Deno.readTextFileSync(filePath));
 if (!(arg in denoJson.imports)) {
   throw new Error("Not found: " + arg);

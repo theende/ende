@@ -2295,7 +2295,7 @@ mod tests {
         LanguageId::Json,
       )],
       Some((
-        "deno.json",
+        "ende.json",
         r#"{
         "importMap": "./import-map.json"
       }"#,
@@ -2353,7 +2353,7 @@ mod tests {
     let (temp_dir, snapshot) = setup(
       &[("import-map.json", r#"{ "imports": "#, 1, LanguageId::Json)],
       Some((
-        "deno.json",
+        "ende.json",
         r#"{
         "importMap": "./import-map.json"
       }"#,
@@ -2407,7 +2407,7 @@ mod tests {
         ),
       ],
       Some((
-        "a/deno.json",
+        "a/ende.json",
         r#"{
         "imports": {
           "/~/std/": "../std/",

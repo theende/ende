@@ -41,7 +41,7 @@
         {
           "args": [
             "eval",
-            "console.log(JSON.stringify(JSON.parse(Deno.readTextFileSync('deno.json')).imports))"
+            "console.log(JSON.stringify(JSON.parse(Deno.readTextFileSync('ende.json')).imports))"
           ],
           "output": "{\"my-alias\":\"npm:@denotest/esm-basic@^1.0.0\"}\n"
         }
@@ -57,7 +57,7 @@
         {
           "args": [
             "eval",
-            "console.log(JSON.stringify(JSON.parse(Deno.readTextFileSync('deno.json')).imports))"
+            "console.log(JSON.stringify(JSON.parse(Deno.readTextFileSync('ende.json')).imports))"
           ],
           "output": "{\"my-jsr\":\"jsr:@denotest/add@^1.0.0\"}\n"
         }

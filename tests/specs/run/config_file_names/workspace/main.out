@@ -1,0 +1,2 @@
+Warning: "deno.json" in [WILDLINE]member is deprecated. Rename it to "ende.json".
+member deno.json

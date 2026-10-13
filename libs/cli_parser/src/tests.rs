@@ -1052,20 +1052,20 @@ fn run_seed() {
 fn run_config() {
   let r = parse(
     &TEST_ROOT,
-    &svec!["deno", "run", "--config", "deno.json", "script.ts"],
+    &svec!["deno", "run", "--config", "ende.json", "script.ts"],
   )
   .unwrap();
-  assert_eq!(r.get_one("config"), Some("deno.json"));
+  assert_eq!(r.get_one("config"), Some("ende.json"));
 }
 
 #[test]
 fn run_config_short() {
   let r = parse(
     &TEST_ROOT,
-    &svec!["deno", "run", "-c", "deno.json", "script.ts"],
+    &svec!["deno", "run", "-c", "ende.json", "script.ts"],
   )
   .unwrap();
-  assert_eq!(r.get_one("config"), Some("deno.json"));
+  assert_eq!(r.get_one("config"), Some("ende.json"));
 }
 
 #[test]

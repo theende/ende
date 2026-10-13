@@ -1,0 +1,11 @@
+{
+  "name": "@denotest/deno-only-export-condition",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "deno": "./deno.js",
+      "default": "./default.js"
+    }
+  }
+}

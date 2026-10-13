@@ -21,7 +21,7 @@
       "steps": [
         {
           "args": "run -A entry2.ts",
-          "output": "[WILDCARD]deno\n"
+          "output": "[WILDCARD]ende\n"
         },
         {
           "args": "bundle --platform browser --output bundled.js entry2.ts",

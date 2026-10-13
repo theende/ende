@@ -13,7 +13,7 @@
       "output": "[WILDCARD]"
     },
     {
-      "args": "run -A --no-lock ./mv.ts ./deno.lock.old ./deno.lock",
+      "args": "run -A --no-lock ./mv.ts ./ende.lock.old ./ende.lock",
       "output": ""
     },
     // trigger a lockfile update
@@ -29,9 +29,9 @@
       "args": [
         "eval",
         "--no-lock",
-        "console.log(Deno.readTextFileSync('./deno.lock').trim())"
+        "console.log(Deno.readTextFileSync('./ende.lock').trim())"
       ],
-      "output": "deno.lock.out"
+      "output": "ende.lock.out"
     }
   ]
 }

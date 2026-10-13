@@ -11,7 +11,7 @@
 - remote
 
 ./node_modules
-- .deno
+- .ende
 -- [WILDCARD]
 -- @denotest+add@1.0.0
 --- .initialized

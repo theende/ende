@@ -2,7 +2,7 @@
   "tempDir": true,
   "steps": [
     {
-      // No deno.lock exists, so `deno install` should seed one from
+      // No ende.lock exists, so `deno install` should seed one from
       // package-lock.json.
       "args": "install",
       "output": "install.out"
@@ -10,9 +10,9 @@
     {
       "args": [
         "eval",
-        "console.log(Deno.readTextFileSync('deno.lock').trim())"
+        "console.log(Deno.readTextFileSync('ende.lock').trim())"
       ],
-      "output": "deno.lock.out"
+      "output": "ende.lock.out"
     },
     {
       // Sanity check that the package resolved by the seeded lockfile is

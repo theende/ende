@@ -11,9 +11,9 @@
         {
           "args": [
             "eval",
-            "const now = Deno.readTextFileSync('./deno.lock'); console.log(now.trim());"
+            "const now = Deno.readTextFileSync('./ende.lock'); console.log(now.trim());"
           ],
-          "output": "deno.lock.orig.out"
+          "output": "ende.lock.orig.out"
         }
       ]
     },
@@ -67,12 +67,12 @@
           "output": "./update_compatible/update.out"
         },
         {
-          "args": "-A print_file.ts ./deno.json",
-          "output": "./update_compatible/deno.json.out"
+          "args": "-A print_file.ts ./ende.json",
+          "output": "./update_compatible/ende.json.out"
         },
         {
-          "args": "-A print_file.ts ./deno.lock",
-          "output": "./update_compatible/deno.lock.out"
+          "args": "-A print_file.ts ./ende.lock",
+          "output": "./update_compatible/ende.lock.out"
         }
       ]
     },
@@ -87,12 +87,12 @@
           "output": "update_latest/update.out"
         },
         {
-          "args": "-A print_file.ts ./deno.json",
-          "output": "./update_latest/deno.json.out"
+          "args": "-A print_file.ts ./ende.json",
+          "output": "./update_latest/ende.json.out"
         },
         {
-          "args": "-A print_file.ts ./deno.lock",
-          "output": "./update_latest/deno.lock.out"
+          "args": "-A print_file.ts ./ende.lock",
+          "output": "./update_latest/ende.lock.out"
         }
       ]
     },
@@ -107,8 +107,8 @@
           "output": "filtered/update.out"
         },
         {
-          "args": "-A print_file.ts ./deno.json",
-          "output": "filtered/deno.json.out"
+          "args": "-A print_file.ts ./ende.json",
+          "output": "filtered/ende.json.out"
         }
       ]
     },
@@ -123,13 +123,13 @@
           "output": "update_latest_lockfile_only/update.out"
         },
         {
-          // --lockfile-only must not touch deno.json.
-          "args": "-A print_file.ts ./deno.json",
-          "output": "./update_latest_lockfile_only/deno.json.out"
+          // --lockfile-only must not touch ende.json.
+          "args": "-A print_file.ts ./ende.json",
+          "output": "./update_latest_lockfile_only/ende.json.out"
         },
         {
-          "args": "-A print_file.ts ./deno.lock",
-          "output": "./update_latest_lockfile_only/deno.lock.out"
+          "args": "-A print_file.ts ./ende.lock",
+          "output": "./update_latest_lockfile_only/ende.lock.out"
         }
       ]
     }

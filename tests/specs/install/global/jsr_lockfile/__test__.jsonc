@@ -7,7 +7,7 @@
   }, {
     // Verify the lockfile was placed in the config directory
     "if": "unix",
-    "args": "eval console.log(Deno.readTextFileSync('./bins/bin/.echo-lockfile/deno.lock'))",
+    "args": "eval console.log(Deno.readTextFileSync('./bins/bin/.echo-lockfile/ende.lock'))",
     "output": "lockfile.out"
   }, {
     "if": "unix",
@@ -21,7 +21,7 @@
     "output": "install.out"
   }, {
     "if": "windows",
-    "args": "eval console.log(Deno.readTextFileSync('./bins/bin/.echo-lockfile/deno.lock'))",
+    "args": "eval console.log(Deno.readTextFileSync('./bins/bin/.echo-lockfile/ende.lock'))",
     "output": "lockfile.out"
   }, {
     "if": "windows",

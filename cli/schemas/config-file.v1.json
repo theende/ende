@@ -1177,7 +1177,7 @@
         "path": {
           "type": "string",
           "description": "The path to use for the lock file.",
-          "default": "deno.lock"
+          "default": "ende.lock"
         },
         "frozen": {
           "type": "boolean",

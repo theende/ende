@@ -2547,7 +2547,7 @@ const Counter = () => {
               },
             })
             .to_string(),
-            config.root_url().unwrap().join("deno.json").unwrap(),
+            config.root_url().unwrap().join("ende.json").unwrap(),
           )
           .unwrap(),
         )
@@ -2593,7 +2593,7 @@ const Counter = () => {
               },
             })
             .to_string(),
-            config.root_url().unwrap().join("deno.json").unwrap(),
+            config.root_url().unwrap().join("ende.json").unwrap(),
           )
           .unwrap(),
         )

@@ -184,7 +184,7 @@ pub fn napi_tests_path() -> PathRef {
 }
 
 pub fn deno_config_path() -> PathRef {
-  root_path().join("tests").join("config").join("deno.json")
+  root_path().join("tests").join("config").join("ende.json")
 }
 
 /// Test server registry url.

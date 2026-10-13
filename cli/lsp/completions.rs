@@ -954,8 +954,8 @@ fn get_remote_completions(
     .collect()
 }
 
-/// Returns true if the given file URL points to a Deno configuration file
-/// (`deno.json` or `deno.jsonc`).
+/// Returns true if the given file URL points to a config file (`ende.json`,
+/// `ende.jsonc` or the deprecated `deno.json`/`deno.jsonc`).
 pub fn is_deno_config_url(url: &ModuleSpecifier) -> bool {
   if url.scheme() != "file" {
     return false;
@@ -963,7 +963,7 @@ pub fn is_deno_config_url(url: &ModuleSpecifier) -> bool {
   let Some(name) = url.path_segments().and_then(|mut s| s.next_back()) else {
     return false;
   };
-  name == "deno.json" || name == "deno.jsonc"
+  ende_config::deno_json::is_config_file_name(name)
 }
 
 /// Walk a `jsonc_parser` AST looking for the innermost string literal whose

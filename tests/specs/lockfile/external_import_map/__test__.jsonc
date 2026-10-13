@@ -4,7 +4,7 @@
     "args": "run -A main.ts",
     "output": "[WILDCARD]"
   }, {
-    "args": ["eval", "console.log(Deno.readTextFileSync('deno.lock').trim())"],
-    "output": "deno.lock.out"
+    "args": ["eval", "console.log(Deno.readTextFileSync('ende.lock').trim())"],
+    "output": "ende.lock.out"
   }]
 }

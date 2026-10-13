@@ -97,7 +97,7 @@ fn bench_deco_apps_edits(deno_exe: &Path) -> Duration {
     c.set_deno_enable(true);
     c.set_unstable(true);
     c.set_preload_limit(1000);
-    c.set_config(apps.join("deno.json").as_path().to_string_lossy());
+    c.set_config(apps.join("ende.json").as_path().to_string_lossy());
   });
 
   let start = std::time::Instant::now();

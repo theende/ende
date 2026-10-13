@@ -189,7 +189,7 @@ pub struct LockfileFlags {
   pub skip_write: bool,
   pub no_config: bool,
   pub no_npm: bool,
-  /// When no `deno.lock` exists in the workspace, attempt to seed one by
+  /// When no lockfile exists in the workspace, attempt to seed one by
   /// translating a sibling `package-lock.json`. Currently only set by
   /// `deno install`.
   pub import_npm_lockfile: bool,
@@ -342,7 +342,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
     }
     let file_path = match flags.lock {
       Some(path) => path,
-      None => match workspace.resolve_lockfile_path()? {
+      None => match workspace.resolve_lockfile_path(&sys)? {
         Some(path) => path,
         None => return Ok(None),
       },
@@ -657,7 +657,14 @@ async fn try_import_npm_lockfile<TSys: LockfileSys>(
     // `file:`/`link:` entries) translates to an empty lockfile, and claiming
     // we seeded it would be misleading.
     if !lockfile.content.is_empty() {
-      log::info!("Seeded deno.lock from {}", path.display());
+      log::info!(
+        "Seeded {} from {}",
+        deno_lock_path
+          .file_name()
+          .map(|n| n.to_string_lossy())
+          .unwrap_or_default(),
+        path.display()
+      );
     }
     // Force write on first save so the imported state is persisted even if
     // no subsequent resolution mutates the lockfile.

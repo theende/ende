@@ -13,7 +13,7 @@
       "steps": [{
         "args": [
           "eval",
-          "Deno.writeTextFile('deno.json', '{\\n  \"unstable\": [\"fmt-component\"]\\n}\\n')"
+          "Deno.writeTextFile('ende.json', '{\\n  \"unstable\": [\"fmt-component\"]\\n}\\n')"
         ],
         "output": "[WILDCARD]"
       }, {

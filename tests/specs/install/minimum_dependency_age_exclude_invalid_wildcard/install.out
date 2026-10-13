@@ -1,13 +1,13 @@
 Warning "minimumDependencyAge.exclude" entry "npm:*" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "npm:@scope/*").
-    at file:///[WILDLINE]/deno.json
+    at file:///[WILDLINE]/ende.json
 Warning "minimumDependencyAge.exclude" entry "jsr:@denotest/*/add" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "npm:@scope/*").
-    at file:///[WILDLINE]/deno.json
+    at file:///[WILDLINE]/ende.json
 Add npm:@denotest/add@0.5.0
 Add jsr:@denotest/add@0.2.0
 Warning "minimumDependencyAge.exclude" entry "npm:*" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "npm:@scope/*").
-    at file:///[WILDLINE]/deno.json
+    at file:///[WILDLINE]/ende.json
 Warning "minimumDependencyAge.exclude" entry "jsr:@denotest/*/add" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "npm:@scope/*").
-    at file:///[WILDLINE]/deno.json
+    at file:///[WILDLINE]/ende.json
 [UNORDERED_START]
 Download http://localhost:4260/@denotest%2fadd
 Download http://127.0.0.1:4250/@denotest/add/0.2.0/mod.ts

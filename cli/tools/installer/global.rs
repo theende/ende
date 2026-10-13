@@ -16,6 +16,9 @@ use deno_path_util::resolve_url_or_path;
 use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::npm::NpmPackageReqReference;
 use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME;
+use ende_config::deno_json::DEPRECATED_LOCKFILE_NAME;
+use ende_config::deno_json::LOCKFILE_NAME;
 use ende_config::deno_json::NodeModulesDirMode;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::anyhow;
@@ -450,11 +453,25 @@ async fn setup_config_dir(
   fs::create_dir_all(&dir)
     .with_context(|| format!("failed creating '{}'", dir.display()))?;
 
+  // Installs made before the rename to Ende generated deno.json/deno.lock
+  // here. Remove the old config and carry the lockfile over to its new name.
+  remove_file_if_exists(&dir.join("deno.json"))?;
+  let legacy_lockfile_path = dir.join(DEPRECATED_LOCKFILE_NAME);
+  if legacy_lockfile_path.exists() {
+    if dir.join(LOCKFILE_NAME).exists() {
+      remove_file_if_exists(&legacy_lockfile_path)?;
+    } else {
+      fs::rename(&legacy_lockfile_path, dir.join(LOCKFILE_NAME)).with_context(
+        || format!("failed renaming '{}'", legacy_lockfile_path.display()),
+      )?;
+    }
+  }
+
   // When --force is specified, the user is explicitly asking for a fresh
   // install. Remove the stale auto-generated lockfile so dependency resolution
   // isn't constrained to previously pinned versions.
   if force {
-    let lockfile_path = dir.join("deno.lock");
+    let lockfile_path = dir.join(LOCKFILE_NAME);
     if lockfile_path.exists() {
       fs::remove_file(&lockfile_path).with_context(|| {
         format!("failed removing '{}'", lockfile_path.display())
@@ -494,7 +511,7 @@ async fn setup_config_dir(
       crate::colors::yellow("Warning"),
     );
   }
-  // The copied config lives at `<installation_dir>/.<name>/deno.json`, so any
+  // The copied config lives at `<installation_dir>/.<name>/ende.json`, so any
   // relative `./` / `../` paths in `imports` / `scopes` would resolve against
   // that new location instead of the original config dir, breaking module
   // resolution at runtime. Rewrite them to absolute `file://` URLs anchored to
@@ -527,7 +544,7 @@ async fn setup_config_dir(
       CstInputValue::String(mode.as_str().to_string()),
     );
   }
-  fs::write(dir.join("deno.json"), config.to_string())?;
+  fs::write(dir.join(DEFAULT_CONFIG_FILE_NAME), config.to_string())?;
 
   // write package.json for npm specifiers
   if let Ok(pkg_ref) =
@@ -543,13 +560,13 @@ async fn setup_config_dir(
     )?;
   }
 
-  // fetch deno.lock from JSR if this is a JSR package
+  // fetch the package's lockfile from JSR if this is a JSR package
   if !flags.no_lock
     && let Some(fetcher) = jsr_lockfile_fetcher
     && let Some(lockfile_content) =
       fetcher.fetch_lockfile(&bin_name_and_url.module_url).await
   {
-    fs::write(dir.join("deno.lock"), lockfile_content)?;
+    fs::write(dir.join(LOCKFILE_NAME), lockfile_content)?;
   }
 
   // create cloned flags to run cache_top_level_deps
@@ -565,8 +582,12 @@ async fn setup_config_dir(
   new_flags.node_modules_dir = flags.node_modules_dir;
   new_flags.internal.root_node_modules_dir_override =
     Some(dir.join("node_modules"));
-  new_flags.config_flag =
-    ConfigFlag::Path(dir.join("deno.json").to_string_lossy().into_owned());
+  new_flags.config_flag = ConfigFlag::Path(
+    dir
+      .join(DEFAULT_CONFIG_FILE_NAME)
+      .to_string_lossy()
+      .into_owned(),
+  );
   let entrypoint_flags = InstallEntrypointsFlags {
     lockfile_only: false,
     entrypoints: vec![bin_name_and_url.module_url.to_string()],
@@ -1002,7 +1023,7 @@ fn resolve_shim_data(
   let config_dir =
     installation_dir.join(format!(".{}", bin_name_and_url.config_dir_name()));
 
-  let deno_json_path = config_dir.join("deno.json");
+  let deno_json_path = config_dir.join(DEFAULT_CONFIG_FILE_NAME);
   executable_args.push("--config".to_string());
   executable_args.push(deno_json_path.to_string_lossy().into_owned());
 
@@ -1307,7 +1328,7 @@ fn get_installer_root() -> Result<PathBuf, AnyError> {
           format!("${home_env_var} is not defined"),
         )
       })?;
-  home_path.push(".deno");
+  home_path.push(".ende");
   Ok(home_path)
 }
 
@@ -1397,7 +1418,7 @@ impl JsrLockfileFetcher<'_> {
     // Parse and upgrade the lockfile to v5
     let lockfile = match ende_lockfile::Lockfile::new(
       ende_lockfile::NewLockfileOptions {
-        file_path: std::path::PathBuf::from("deno.lock"),
+        file_path: std::path::PathBuf::from(LOCKFILE_NAME),
         content,
         overwrite: false,
       },
@@ -1610,7 +1631,7 @@ mod tests {
 
     let content = fs::read_to_string(file_path).unwrap();
     let config_path = config_dir_for(&temp_dir.path().to_string(), "echo_test")
-      .join("deno.json");
+      .join("ende.json");
     if cfg!(windows) {
       assert!(content.contains(&format!(
         r#""run" "--config" "{}" "http://localhost:4545/echo.ts""#,
@@ -1627,7 +1648,7 @@ mod tests {
   #[tokio::test]
   async fn install_inferred_name() {
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
-    let config_path = config_dir_for(&temp_dir_str, "echo").join("deno.json");
+    let config_path = config_dir_for(&temp_dir_str, "echo").join("ende.json");
     let (bin_info, shim_data) = resolve_shim_data(
       &Flags::default(),
       &InstallFlagsGlobal {
@@ -1657,7 +1678,7 @@ mod tests {
   #[tokio::test]
   async fn install_unstable_legacy() {
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
-    let config_path = config_dir_for(&temp_dir_str, "echo").join("deno.json");
+    let config_path = config_dir_for(&temp_dir_str, "echo").join("ende.json");
     let (bin_info, shim_data) = resolve_shim_data(
       &Default::default(),
       &InstallFlagsGlobal {
@@ -1687,7 +1708,7 @@ mod tests {
   #[tokio::test]
   async fn install_unstable_features() {
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
-    let config_path = config_dir_for(&temp_dir_str, "echo").join("deno.json");
+    let config_path = config_dir_for(&temp_dir_str, "echo").join("ende.json");
     let (bin_info, shim_data) = resolve_shim_data(
       &Flags {
         unstable_config: UnstableConfig {
@@ -1725,7 +1746,7 @@ mod tests {
   #[tokio::test]
   async fn install_inferred_name_from_parent() {
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
-    let config_path = config_dir_for(&temp_dir_str, "subdir").join("deno.json");
+    let config_path = config_dir_for(&temp_dir_str, "subdir").join("ende.json");
     let (bin_info, shim_data) = resolve_shim_data(
       &Flags::default(),
       &InstallFlagsGlobal {
@@ -1756,7 +1777,7 @@ mod tests {
   async fn install_inferred_name_after_redirect_for_no_path_url() {
     let _http_server_guard = test_util::http_server();
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
-    let config_path = config_dir_for(&temp_dir_str, "a").join("deno.json");
+    let config_path = config_dir_for(&temp_dir_str, "a").join("ende.json");
     let (bin_info, shim_data) = resolve_shim_data(
       &Flags::default(),
       &InstallFlagsGlobal {
@@ -1790,7 +1811,7 @@ mod tests {
   async fn install_custom_dir_option() {
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
     let config_path =
-      config_dir_for(&temp_dir_str, "echo_test").join("deno.json");
+      config_dir_for(&temp_dir_str, "echo_test").join("ende.json");
     let (bin_info, shim_data) = resolve_shim_data(
       &Flags::default(),
       &InstallFlagsGlobal {
@@ -1821,7 +1842,7 @@ mod tests {
   async fn install_with_flags() {
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
     let config_path =
-      config_dir_for(&temp_dir_str, "echo_test").join("deno.json");
+      config_dir_for(&temp_dir_str, "echo_test").join("ende.json");
     let (bin_info, shim_data) = resolve_shim_data(
       &Flags {
         permissions: PermissionFlags {
@@ -1865,7 +1886,7 @@ mod tests {
   async fn install_prompt() {
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
     let config_path =
-      config_dir_for(&temp_dir_str, "echo_test").join("deno.json");
+      config_dir_for(&temp_dir_str, "echo_test").join("ende.json");
     let (_, shim_data) = resolve_shim_data(
       &Flags {
         permissions: PermissionFlags {
@@ -1902,7 +1923,7 @@ mod tests {
   async fn install_allow_all() {
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
     let config_path =
-      config_dir_for(&temp_dir_str, "echo_test").join("deno.json");
+      config_dir_for(&temp_dir_str, "echo_test").join("ende.json");
     let (_, shim_data) = resolve_shim_data(
       &Flags {
         permissions: PermissionFlags {
@@ -1938,7 +1959,7 @@ mod tests {
   #[tokio::test]
   async fn install_npm_lockfile_default() {
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
-    let config_path = config_dir_for(&temp_dir_str, "cowsay").join("deno.json");
+    let config_path = config_dir_for(&temp_dir_str, "cowsay").join("ende.json");
     let (_, shim_data) = resolve_shim_data(
       &Flags {
         permissions: PermissionFlags {
@@ -1974,7 +1995,7 @@ mod tests {
   #[tokio::test]
   async fn install_npm_no_lock() {
     let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
-    let config_path = config_dir_for(&temp_dir_str, "cowsay").join("deno.json");
+    let config_path = config_dir_for(&temp_dir_str, "cowsay").join("ende.json");
     let (_, shim_data) = resolve_shim_data(
       &Flags {
         permissions: PermissionFlags {
@@ -2134,7 +2155,7 @@ mod tests {
 
     // simulate a stale auto-generated lockfile from a prior install
     let config_dir = bin_dir.join(".echo_test");
-    let lockfile_path = config_dir.join("deno.lock");
+    let lockfile_path = config_dir.join("ende.lock");
     let stale_lockfile =
       r#"{"version":"5","specifiers":{"npm:cowsay@*":"1.0.0"}}"#;
     fs::write(&lockfile_path, stale_lockfile).unwrap();
@@ -2186,7 +2207,7 @@ mod tests {
     .await;
     assert!(result.is_ok());
 
-    let file_path = bin_dir.join(".echo_test").join("deno.json");
+    let file_path = bin_dir.join(".echo_test").join("ende.json");
     assert!(file_path.exists());
     let content = fs::read_to_string(file_path).unwrap();
     // setup_config_dir appends a workspace field to stop workspace discovery
@@ -2223,7 +2244,7 @@ mod tests {
     assert!(file_path.exists());
     let content = fs::read_to_string(file_path).unwrap();
     let config_path = config_dir_for(&temp_dir.path().to_string(), "echo_test")
-      .join("deno.json");
+      .join("ende.json");
     if cfg!(windows) {
       // TODO: see comment above this test
     } else {
@@ -2312,7 +2333,7 @@ mod tests {
     assert!(file_path.exists());
 
     let config_path = config_dir_for(&temp_dir.path().to_string(), "echo_test")
-      .join("deno.json");
+      .join("ende.json");
     let mut expected_string = format!(
       "--import-map '{import_map_url}' --config {} 'http://localhost:4545/cat.ts'",
       config_path.to_string_lossy()
@@ -2360,7 +2381,7 @@ mod tests {
     assert!(file_path.exists());
 
     let config_path = config_dir_for(&temp_dir.path().to_string(), "echo_test")
-      .join("deno.json");
+      .join("ende.json");
     let mut expected_string = format!(
       "run --config {} '{}'",
       config_path.to_string_lossy(),
@@ -2685,8 +2706,8 @@ mod tests {
     macho_bytes.extend_from_slice(&[0u8; 100]); // pad
     std::fs::write(bin_sub.join("tool.exe"), &macho_bytes).unwrap();
 
-    // Write the config dir's deno.json so the directory exists as expected
-    std::fs::write(config_dir.join("deno.json"), "{}").unwrap();
+    // Write the config dir's ende.json so the directory exists as expected
+    std::fs::write(config_dir.join("ende.json"), "{}").unwrap();
 
     let bin_name_and_url = BinaryNameAndUrl {
       name: "mytool".to_string(),
@@ -2798,7 +2819,7 @@ mod tests {
       args: vec![
         "run".to_string(),
         "--config".to_string(),
-        "path with spaces/deno.json".to_string(),
+        "path with spaces/ende.json".to_string(),
         "https://example.com/it's.ts".to_string(),
         "$(echo hi);&|<>*?[]".to_string(),
         "%PATH%/100%".to_string(),
@@ -2810,7 +2831,7 @@ mod tests {
     let content = fs::read_to_string(&file_path).unwrap();
     assert!(
       content.contains(
-        "exec deno run --config 'path with spaces/deno.json' \
+        "exec deno run --config 'path with spaces/ende.json' \
          'https://example.com/it'\\''s.ts' '$(echo hi);&|<>*?[]' \
          '%PATH%/100%' '' \"$@\""
       ),

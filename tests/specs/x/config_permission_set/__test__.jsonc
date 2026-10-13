@@ -5,7 +5,7 @@
   },
   // Regression test for issue #35991: in the npm auto-install re-run path,
   // `deno x` built the child `deno run` argv from the internal runner flags,
-  // whose `config_flag` was overwritten to a generated temp `deno.json`. The
+  // whose `config_flag` was overwritten to a generated temp `ende.json`. The
   // user's explicit `--config` (and the `-P`/`--permission-set` selection it
   // defines) was therefore dropped, so the child could not resolve the
   // permission set and failed with `NotCapable` — diverging from `deno run`.

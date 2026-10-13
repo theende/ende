@@ -8,7 +8,7 @@
       }, {
         "args": [
           "eval",
-          "console.log(Deno.readTextFileSync('deno.lock').trim());"
+          "console.log(Deno.readTextFileSync('ende.lock').trim());"
         ],
         "output": "lock.out"
       }]

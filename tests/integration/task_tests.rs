@@ -11,7 +11,7 @@ use util::test;
 fn deno_task_ansi_escape_codes() {
   let context = TestContextBuilder::default().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
-  temp_dir.write("deno.json", r#"{
+  temp_dir.write("ende.json", r#"{
   "tasks": {
     "dev": "echo 'BOOO!!!'",
     "next": "\u001b[3F\u001b[0G- dev\u001b[1E\u001b[2K    echo 'I am your friend.'"
@@ -36,7 +36,7 @@ fn deno_task_control_chars() {
   let context = TestContextBuilder::default().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
   temp_dir.write(
-    "deno.json",
+    "ende.json",
     r#"{
   "tasks": {
     "dev": "echo 'BOOO!!!' && \r    echo hi there is my command",

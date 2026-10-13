@@ -4,7 +4,7 @@ Check [WILDCARD]main.ts
 Simulating publish of @scope/package@0.0.0 with files:
    file:///[WILDLINE]/LICENSE ([WILDLINE])
    file:///[WILDLINE]/__test__.jsonc ([WILDLINE])
-   file:///[WILDLINE]/deno.json ([WILDLINE])
+   file:///[WILDLINE]/ende.json ([WILDLINE])
    file:///[WILDLINE]/main.out ([WILDLINE])
    file:///[WILDLINE]/main.ts ([WILDLINE])
    file:///[WILDLINE]/publish.out ([WILDLINE])

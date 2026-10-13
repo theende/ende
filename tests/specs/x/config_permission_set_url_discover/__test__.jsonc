@@ -4,7 +4,7 @@
     "DENO_DIR": "$PWD/deno_dir"
   },
   // Regression test for issue #35991 / PR #36025 review: the `write` permission
-  // set is defined in an auto-discoverable cwd `deno.json` and selected with
+  // set is defined in an auto-discoverable cwd `ende.json` and selected with
   // `-P=write`, and the target is a `data:` URL. `deno run <url>` disables config
   // discovery for a non-file:/non-npm: entrypoint, so the child could not find
   // the set and failed with `Could not find permission set 'write'`. `deno x`

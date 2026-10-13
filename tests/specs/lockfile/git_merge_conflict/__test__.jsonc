@@ -3,7 +3,7 @@
   "tests": {
     "resolves_on_install": {
       "steps": [{
-        // The pre-seeded deno.lock contains git merge conflict markers.
+        // The pre-seeded ende.lock contains git merge conflict markers.
         // Installing should resolve them automatically (union of both sides)
         // and rewrite the lockfile without markers.
         "args": "install --entrypoint main.ts",
@@ -12,7 +12,7 @@
         // Read with a raw `cat` so the rewrite is attributable to `install`
         // and not to `deno task` loading the lockfile itself.
         "commandName": "cat",
-        "args": "deno.lock",
+        "args": "ende.lock",
         "output": "lock.out"
       }]
     },
@@ -29,7 +29,7 @@
         // Read it with a raw `cat` (not `deno task`) so that reading does not
         // itself load and rewrite the lockfile.
         "commandName": "cat",
-        "args": "deno.lock",
+        "args": "ende.lock",
         "output": "frozen_lock.out"
       }]
     }

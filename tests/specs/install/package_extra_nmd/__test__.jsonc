@@ -65,7 +65,7 @@
         {
           "args": [
             "eval",
-            "Deno.removeSync(Deno.cwd() + '/node_modules/.deno/@denotest+extra-info@1.0.0/node_modules/@denotest/extra-info/package.json')"
+            "Deno.removeSync(Deno.cwd() + '/node_modules/.ende/@denotest+extra-info@1.0.0/node_modules/@denotest/extra-info/package.json')"
           ],
           "output": "[WILDCARD]"
         },

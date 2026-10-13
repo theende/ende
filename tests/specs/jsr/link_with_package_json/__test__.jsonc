@@ -2,7 +2,7 @@
   // Regression test for https://github.com/denoland/deno/issues/29835
   "tempDir": true,
   "tests": {
-    // A linked package that has a deno.json is a Deno/JSR link. Some packages
+    // A linked package that has a ende.json is a Deno/JSR link. Some packages
     // also ship a package.json only for other runtimes (e.g. Bun), and that
     // incidental package.json must not make Deno treat the link as an npm
     // package, which previously failed with "Linking npm packages requires

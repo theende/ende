@@ -5,7 +5,7 @@
   },
   "steps": [{
     // Companion for `config_url`: the policy lives in an auto-discoverable cwd
-    // `deno.json` (no `--config`). `deno run <url>` disables config discovery for
+    // `ende.json` (no `--config`). `deno run <url>` disables config discovery for
     // a `data:` entrypoint, so `deno x` explicitly forwards the discovered cwd
     // config to the re-run subprocess. Because the isolated install already
     // honored that cwd policy, the child must apply the same cutoff to the

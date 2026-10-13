@@ -8,9 +8,9 @@
     {
       "args": [
         "eval",
-        "console.log(Deno.readTextFileSync('deno.jsonc').trim())"
+        "console.log(Deno.readTextFileSync('ende.jsonc').trim())"
       ],
-      "output": "deno.jsonc.out"
+      "output": "ende.jsonc.out"
     }
   ]
 }

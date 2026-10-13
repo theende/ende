@@ -794,9 +794,9 @@ fn detect_package_version(dir: &Path, package: &str) -> Option<u32> {
 /// Uses JSONC-aware parsing so that commented deno.jsonc files are
 /// handled correctly instead of silently failing detection.
 fn read_deno_json_imports(dir: &Path) -> Option<Vec<String>> {
-  let content = std::fs::read_to_string(dir.join("deno.json"))
-    .or_else(|_| std::fs::read_to_string(dir.join("deno.jsonc")))
-    .ok()?;
+  let content = ende_config::deno_json::CONFIG_FILE_NAMES
+    .iter()
+    .find_map(|name| std::fs::read_to_string(dir.join(name)).ok())?;
   let config: serde_json::Value =
     jsonc_parser::parse_to_serde_value(&content, &Default::default())
       .ok()
@@ -935,12 +935,12 @@ mod tests {
 
   #[test]
   fn fresh1_with_deno_json_stays_fresh1() {
-    // Regression: fresh.gen.ts + deno.json (without @fresh/core import)
+    // Regression: fresh.gen.ts + ende.json (without @fresh/core import)
     // should be treated as Fresh 1, not Fresh 2.
     let dir = setup_dir();
     fs::write(dir.path().join("fresh.gen.ts"), "").unwrap();
     fs::write(
-      dir.path().join("deno.json"),
+      dir.path().join("ende.json"),
       r#"{"tasks":{"start":"deno run -A main.ts"}}"#,
     )
     .unwrap();
@@ -956,7 +956,7 @@ mod tests {
     let dir = setup_dir();
     fs::write(dir.path().join("fresh.gen.ts"), "").unwrap();
     fs::write(
-      dir.path().join("deno.json"),
+      dir.path().join("ende.json"),
       r#"{"imports":{"@fresh/core":"jsr:@fresh/core@^2"}}"#,
     )
     .unwrap();
@@ -1509,13 +1509,13 @@ mod tests {
     assert!(det.entrypoint_code.contains("server.ts"));
   }
 
-  // --- deno.json import-based detection ---
+  // --- ende.json import-based detection ---
 
   #[test]
   fn detects_fresh_from_deno_json_imports() {
     let dir = setup_dir();
     fs::write(
-      dir.path().join("deno.json"),
+      dir.path().join("ende.json"),
       r#"{"imports":{"fresh":"jsr:@fresh/core"}}"#,
     )
     .unwrap();
@@ -1527,7 +1527,7 @@ mod tests {
   fn detects_fresh_from_deno_json_fresh_core() {
     let dir = setup_dir();
     fs::write(
-      dir.path().join("deno.json"),
+      dir.path().join("ende.json"),
       r#"{"imports":{"@fresh/core":"jsr:@fresh/core@^2"}}"#,
     )
     .unwrap();
@@ -1539,7 +1539,7 @@ mod tests {
   fn detects_fresh_from_deno_jsonc() {
     let dir = setup_dir();
     fs::write(
-      dir.path().join("deno.jsonc"),
+      dir.path().join("ende.jsonc"),
       r#"{"imports":{"fresh":"jsr:@fresh/core"}}"#,
     )
     .unwrap();
@@ -1549,10 +1549,10 @@ mod tests {
 
   #[test]
   fn detects_fresh_from_commented_deno_jsonc() {
-    // Regression: deno.jsonc with comments should still be parsed correctly.
+    // Regression: ende.jsonc with comments should still be parsed correctly.
     let dir = setup_dir();
     fs::write(
-      dir.path().join("deno.jsonc"),
+      dir.path().join("ende.jsonc"),
       "{\n  // This is a comment\n  \"imports\": {\n    \"fresh\": \"jsr:@fresh/core\"\n  }\n}\n",
     )
     .unwrap();
@@ -1595,7 +1595,7 @@ mod tests {
     let dir = setup_dir();
     fs::write(dir.path().join("astro.config.mjs"), "").unwrap();
     fs::write(
-      dir.path().join("deno.json"),
+      dir.path().join("ende.json"),
       r#"{"imports":{"fresh":"jsr:@fresh/core"}}"#,
     )
     .unwrap();
@@ -1678,7 +1678,7 @@ mod tests {
   fn read_deno_json_imports_returns_keys() {
     let dir = setup_dir();
     fs::write(
-      dir.path().join("deno.json"),
+      dir.path().join("ende.json"),
       r#"{"imports":{"foo":"jsr:@foo/bar","baz":"npm:baz"}}"#,
     )
     .unwrap();
@@ -1696,7 +1696,7 @@ mod tests {
   #[test]
   fn read_deno_json_imports_no_imports_key() {
     let dir = setup_dir();
-    fs::write(dir.path().join("deno.json"), r#"{"tasks":{}}"#).unwrap();
+    fs::write(dir.path().join("ende.json"), r#"{"tasks":{}}"#).unwrap();
     assert!(read_deno_json_imports(dir.path()).is_none());
   }
 

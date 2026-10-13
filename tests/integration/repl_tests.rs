@@ -387,10 +387,10 @@ fn typescript_decorators() {
   let context = TestContextBuilder::default().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
   temp_dir.write(
-    "./deno.json",
+    "./ende.json",
     r#"{ "compilerOptions": { "experimentalDecorators": true } }"#,
   );
-  let config_path = temp_dir.target_path().join("./deno.json");
+  let config_path = temp_dir.target_path().join("./ende.json");
   util::with_pty(
     &["repl", "--config", config_path.to_string_lossy().as_ref()],
     |mut console| {
@@ -1104,7 +1104,7 @@ fn package_json_uncached_no_error() {
     .env("RUST_BACKTRACE", "1")
     .build();
   let temp_dir = test_context.temp_dir();
-  temp_dir.write("deno.json", "{ \"nodeModulesDir\": \"auto\" }");
+  temp_dir.write("ende.json", "{ \"nodeModulesDir\": \"auto\" }");
   temp_dir.write(
     "package.json",
     r#"{

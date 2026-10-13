@@ -66,7 +66,7 @@ pub async fn init_project(
 
     create_json_file(
       &dir,
-      "deno.json",
+      ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "tasks": {
           "dev": "deno run --watch main.ts"
@@ -148,7 +148,7 @@ Deno.test(async function serverFetchStatic() {
 
     create_json_file(
       &dir,
-      "deno.json",
+      ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "tasks": {
           "dev": "deno serve --watch -R main.ts",
@@ -189,7 +189,7 @@ Deno.test(function addTest() {
 
     create_json_file(
       &dir,
-      "deno.json",
+      ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "name": project_name,
         "version": "0.1.0",
@@ -251,7 +251,7 @@ Deno.test("returns json on /api", async () => {
 
     create_json_file(
       &dir,
-      "deno.json",
+      ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "tasks": {
           "dev": "deno run --watch --allow-net main.ts"

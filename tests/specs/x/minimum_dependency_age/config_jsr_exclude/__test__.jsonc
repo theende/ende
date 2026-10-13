@@ -4,7 +4,7 @@
     "DENO_DIR": "$PWD/deno_dir"
   },
   "steps": [{
-    // Structured `minimumDependencyAge` (age + exclude) in the cwd deno.json
+    // Structured `minimumDependencyAge` (age + exclude) in the cwd ende.json
     // must not break `deno x` or make it diverge from
     // `deno run jsr:@denotest/x-min-dep-age`, which selects the newest version
     // 2.0.0 (a directly-run `jsr:` specifier is not subject to the age cutoff).

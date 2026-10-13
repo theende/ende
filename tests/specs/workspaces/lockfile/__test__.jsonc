@@ -8,7 +8,7 @@
     // the lockfile should always go to the workspace root
     "args": [
       "eval",
-      "try { Deno.readTextFileSync('pkg/deno.lock'); console.log('should not run'); } catch {} console.log(Deno.readTextFileSync('deno.lock'))"
+      "try { Deno.readTextFileSync('pkg/ende.lock'); console.log('should not run'); } catch {} console.log(Deno.readTextFileSync('ende.lock'))"
     ],
     "output": "expected-lock.out"
   }, {
@@ -17,7 +17,7 @@
   }, {
     "args": [
       "eval",
-      "try { Deno.readTextFileSync('pkg/deno.lock'); console.log('should not run'); } catch {} console.log(Deno.readTextFileSync('deno.lock'))"
+      "try { Deno.readTextFileSync('pkg/ende.lock'); console.log('should not run'); } catch {} console.log(Deno.readTextFileSync('ende.lock'))"
     ],
     "output": "expected-lock.out"
   }]

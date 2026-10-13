@@ -1227,7 +1227,7 @@ mod tests {
     let cwd = get_cwd();
     let memory_sys = InMemorySys::new_with_cwd(&cwd);
     memory_sys.fs_insert_json(
-      cwd.join("deno.json"),
+      cwd.join("ende.json"),
       json!({
         "workspace": [
           "./jsr-package"
@@ -1249,7 +1249,7 @@ mod tests {
       }),
     );
     memory_sys.fs_insert_json(
-      cwd.join("jsr-package/deno.json"),
+      cwd.join("jsr-package/ende.json"),
       json!({
         "name": "@denotest/example",
         "version": "1.0.0",
@@ -1381,7 +1381,7 @@ export type * from "./c.d.ts";
     let cwd = get_cwd();
     let memory_sys = InMemorySys::new_with_cwd(&cwd);
     memory_sys.fs_insert_json(
-      cwd.join("deno.json"),
+      cwd.join("ende.json"),
       json!({
         "imports": {
           "lib/": "./lib/",
@@ -1424,7 +1424,7 @@ const laterUnrelatedText = "lib/";
     let cwd = get_cwd();
     let memory_sys = InMemorySys::new_with_cwd(&cwd);
     memory_sys.fs_insert_json(
-      cwd.join("deno.json"),
+      cwd.join("ende.json"),
       json!({
         "imports": {
           "double": "npm:package/path\"double",
@@ -1603,7 +1603,7 @@ export { a, data, helper, other, unsafe };
 import type { f } from "npm:@types/package@^1";
 export { d, e, f };
 "#;
-      // when using a deno.json or import map, it adds an extra slash at the
+      // when using a ende.json or import map, it adds an extra slash at the
       // start, which is harmless, so ignore that in order to normalize to the
       // expected source
       assert_eq!(unfurled_source.replace("npm:/", "npm:"), expected_source);
@@ -1615,11 +1615,11 @@ export { d, e, f };
 
     // these different scenarios should all have the same outcome
     let cwd = get_cwd();
-    // deno.json
+    // ende.json
     {
       let memory_sys = InMemorySys::new_with_cwd(&cwd);
       memory_sys.fs_insert_json(
-        cwd.join("deno.json"),
+        cwd.join("ende.json"),
         json!({
           "name": "@denotest/main",
           "version": "1.0.0",
@@ -1646,7 +1646,7 @@ export { d, e, f };
         }),
       );
       memory_sys.fs_insert_json(
-        cwd.join("deno.json"),
+        cwd.join("ende.json"),
         json!({
           "name": "@denotest/main",
           "version": "1.0.0",
@@ -1659,7 +1659,7 @@ export { d, e, f };
     {
       let memory_sys = InMemorySys::new_with_cwd(&cwd);
       memory_sys.fs_insert_json(
-        cwd.join("deno.json"),
+        cwd.join("ende.json"),
         json!({
           "name": "@denotest/main",
           "version": "1.0.0",
@@ -1696,7 +1696,7 @@ export { d, e, f };
       }),
     );
     memory_sys.fs_insert_json(
-      cwd.join("deno.json"),
+      cwd.join("ende.json"),
       json!({
         "name": "@denotest/main",
         "version": "1.0.0",
@@ -1760,7 +1760,7 @@ export { data, helper };
       }),
     );
     memory_sys.fs_insert_json(
-      cwd.join("deno.json"),
+      cwd.join("ende.json"),
       json!({
         "name": "@denotest/main",
         "version": "1.0.0",

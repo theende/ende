@@ -3,7 +3,7 @@
   "steps": [{
     "args": [
       "eval",
-      "Deno.writeTextFileSync('.gitignore', 'deno.jsonc')"
+      "Deno.writeTextFileSync('.gitignore', 'ende.jsonc')"
     ],
     "output": "[WILDCARD]"
   }, {

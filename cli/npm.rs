@@ -439,7 +439,7 @@ pub static NPM_CONFIG_USER_AGENT_ENV_VAR: &str = "npm_config_user_agent";
 
 pub fn get_npm_config_user_agent() -> String {
   format!(
-    "deno/{} npm/? deno/{} {} {}",
+    "ende/{} npm/? ende/{} {} {}",
     DENO_VERSION_INFO.deno,
     DENO_VERSION_INFO.deno,
     std::env::consts::OS,

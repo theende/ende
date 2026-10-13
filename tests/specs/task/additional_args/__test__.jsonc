@@ -1,4 +1,4 @@
 {
-  "args": "task -q --config deno.json echo 2",
+  "args": "task -q --config ende.json echo 2",
   "output": "task_additional_args.out"
 }

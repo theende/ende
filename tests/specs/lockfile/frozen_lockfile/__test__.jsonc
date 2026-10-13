@@ -62,7 +62,7 @@
         {
           "args": [
             "eval",
-            "Deno.writeTextFileSync('deno.json', `{ \"nodeModulesDir\": \"auto\" }`)"
+            "Deno.writeTextFileSync('ende.json', `{ \"nodeModulesDir\": \"auto\" }`)"
           ],
           "output": "[WILDCARD]"
         },
@@ -123,7 +123,7 @@
         {
           "args": [
             "eval",
-            "Deno.writeTextFileSync('deno.json', JSON.stringify({ lock: { frozen: true }, ...JSON.parse(Deno.readTextFileSync('deno.json')) }))"
+            "Deno.writeTextFileSync('ende.json', JSON.stringify({ lock: { frozen: true }, ...JSON.parse(Deno.readTextFileSync('ende.json')) }))"
           ],
           "output": ""
         },

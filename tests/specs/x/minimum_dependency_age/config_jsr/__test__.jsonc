@@ -4,7 +4,7 @@
     "DENO_DIR": "$PWD/deno_dir"
   },
   "steps": [{
-    // Regression guard for #35991: with a cwd deno.json age cutoff, `deno x`
+    // Regression guard for #35991: with a cwd ende.json age cutoff, `deno x`
     // installs the jsr target honoring that cutoff, so the re-run subprocess
     // MUST honor it too. `deno run jsr:<pkg>` disables config discovery for a
     // jsr entrypoint, so `deno x` explicitly forwards the discovered cwd config

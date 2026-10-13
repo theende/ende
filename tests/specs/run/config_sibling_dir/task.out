@@ -1,2 +1,2 @@
-Task run cd ../api && deno run --config=../src/deno.json ../src/main.ts
+Task run cd ../api && deno run --config=../src/ende.json ../src/main.ts
 running noop

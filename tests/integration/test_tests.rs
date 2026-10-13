@@ -124,8 +124,8 @@ fn conditionally_loads_type_graph() {
 fn workspace_dot_runs_test_module_once() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
-  temp_dir.write("deno.jsonc", r#"{ "workspace": ["./member"] }"#);
-  temp_dir.write("member/deno.json", "{}");
+  temp_dir.write("ende.jsonc", r#"{ "workspace": ["./member"] }"#);
+  temp_dir.write("member/ende.json", "{}");
   temp_dir.write("main_test.ts", "Deno.test('test', () => {});");
 
   let output = context.new_command().args("test .").run();

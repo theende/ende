@@ -10,7 +10,7 @@
       "output": "package_json.out"
     },
     {
-      "args": "eval globalThis.console.log(Deno.readTextFileSync('deno.lock'))",
+      "args": "eval globalThis.console.log(Deno.readTextFileSync('ende.lock'))",
       "output": "lock.out"
     }
   ]

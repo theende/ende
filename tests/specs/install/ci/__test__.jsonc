@@ -10,7 +10,7 @@
       "steps": [{
         "args": [
           "eval",
-          "import fs from 'node:fs'; fs.writeFileSync('deno.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic' }, nodeModulesDir: 'auto' }))"
+          "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic' }, nodeModulesDir: 'auto' }))"
         ],
         "output": ""
       }, {
@@ -25,7 +25,7 @@
       "steps": [{
         "args": [
           "eval",
-          "import fs from 'node:fs'; fs.writeFileSync('deno.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic' }, nodeModulesDir: 'auto' }))"
+          "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic' }, nodeModulesDir: 'auto' }))"
         ],
         "output": ""
       }, {
@@ -34,7 +34,7 @@
       }, {
         "args": [
           "eval",
-          "import fs from 'node:fs'; fs.writeFileSync('deno.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic', 'bin': 'npm:@denotest/bin' }, nodeModulesDir: 'auto' }))"
+          "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic', 'bin': 'npm:@denotest/bin' }, nodeModulesDir: 'auto' }))"
         ],
         "output": ""
       }, {

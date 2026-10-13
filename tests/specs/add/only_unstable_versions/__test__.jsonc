@@ -18,7 +18,7 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('deno.json').trim())"
+            "console.log(Deno.readTextFileSync('ende.json').trim())"
           ],
           "output": "add_jsr_deno.json.out"
         }

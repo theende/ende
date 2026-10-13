@@ -6,6 +6,8 @@
       "cwd": "mismatch",
       "output": "mismatch/install.out"
     },
+    // engines.deno is not checked (only node and ende are), so its invalid
+    // range is ignored
     "match_silent": {
       "args": "install",
       "cwd": "match",

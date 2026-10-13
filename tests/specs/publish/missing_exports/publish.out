@@ -1,6 +1,6 @@
 Warning "exports" field should be specified when specifying a "name".
-    at file:///[WILDLINE]/deno.json
-error: You did not specify an entrypoint in file:///[WILDLINE]/deno.json. Add `exports` mapping in the configuration file, eg:
+    at file:///[WILDLINE]/ende.json
+error: You did not specify an entrypoint in file:///[WILDLINE]/ende.json. Add `exports` mapping in the configuration file, eg:
 {
   "name": "@foo/bar",
   "version": "@foo/bar",

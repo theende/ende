@@ -170,7 +170,7 @@ impl<TSys: ByonmNpmResolverSys> ByonmNpmResolver<TSys> {
         // requirement. The package.json dep may intersect the req (e.g.,
         // dep is ^1.3.5, req is @1.3.6) but the physically installed
         // version might not satisfy it (e.g., 1.3.5 is installed).
-        // In that case, fall through to the .deno/ search.
+        // In that case, fall through to the .ende/ search.
         //
         // When the req is a tag (e.g. `latest`), we can't compare against
         // a parsed version, so trust the alias resolution.
@@ -195,7 +195,7 @@ impl<TSys: ByonmNpmResolverSys> ByonmNpmResolver<TSys> {
       }
     }
 
-    // check if node_modules/.deno/ matches this constraint
+    // check if node_modules/.ende/ matches this constraint
     if let Some(folder) = self.resolve_folder_in_root_node_modules(req) {
       return Ok(folder);
     }
@@ -348,9 +348,9 @@ impl<TSys: ByonmNpmResolverSys> ByonmNpmResolver<TSys> {
     &self,
     req: &PackageReq,
   ) -> Option<PathBuf> {
-    // now check if node_modules/.deno/ matches this constraint
+    // now check if node_modules/.ende/ matches this constraint
     let root_node_modules_dir = self.root_node_modules_dir.as_ref()?;
-    let node_modules_deno_dir = root_node_modules_dir.join(".deno");
+    let node_modules_deno_dir = root_node_modules_dir.join(".ende");
     let Ok(entries) = self.sys.fs_read_dir(&node_modules_deno_dir) else {
       return None;
     };

@@ -1069,7 +1069,7 @@ fn fmt() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "fmt", "--config", "deno.jsonc"]);
+  let r = flags_from_vec(svec!["deno", "fmt", "--config", "ende.jsonc"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1091,7 +1091,7 @@ fn fmt() {
         unstable_component: false,
         unstable_sql: false,
       }),
-      config_flag: ConfigFlag::Path("deno.jsonc".to_string()),
+      config_flag: ConfigFlag::Path("ende.jsonc".to_string()),
       ..Flags::default()
     }
   );
@@ -1100,7 +1100,7 @@ fn fmt() {
     "deno",
     "fmt",
     "--config",
-    "deno.jsonc",
+    "ende.jsonc",
     "--watch",
     "foo.ts"
   ]);
@@ -1125,7 +1125,7 @@ fn fmt() {
         unstable_component: false,
         unstable_sql: false,
       }),
-      config_flag: ConfigFlag::Path("deno.jsonc".to_string()),
+      config_flag: ConfigFlag::Path("ende.jsonc".to_string()),
       watch: Some(Default::default()),
       ..Flags::default()
     }
@@ -5136,7 +5136,7 @@ fn desktop_backend_default() {
   };
   assert_eq!(desktop.source_file, "main.tsx");
   // No --backend flag leaves the field unset so `desktop.backend` in
-  // deno.json (or the webview default) can take effect during config merge.
+  // ende.json (or the webview default) can take effect during config merge.
   assert_eq!(desktop.backend.as_deref(), None);
 }
 
@@ -5607,7 +5607,7 @@ fn task_subcommand_double_hyphen() {
     "deno",
     "task",
     "-c",
-    "deno.json",
+    "ende.json",
     "build",
     "--",
     "hello",
@@ -5629,7 +5629,7 @@ fn task_subcommand_double_hyphen() {
         if_present: false,
       }),
       argv: svec!["--", "hello", "world"],
-      config_flag: ConfigFlag::Path("deno.json".to_owned()),
+      config_flag: ConfigFlag::Path("ende.json".to_owned()),
       ..Flags::default()
     }
   );
@@ -5781,7 +5781,7 @@ fn task_subcommand_empty() {
 
 #[test]
 fn task_subcommand_config() {
-  let r = flags_from_vec(svec!["deno", "task", "--config", "deno.jsonc"]);
+  let r = flags_from_vec(svec!["deno", "task", "--config", "ende.jsonc"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5797,7 +5797,7 @@ fn task_subcommand_config() {
         concurrency: None,
         if_present: false,
       }),
-      config_flag: ConfigFlag::Path("deno.jsonc".to_string()),
+      config_flag: ConfigFlag::Path("ende.jsonc".to_string()),
       ..Flags::default()
     }
   );
@@ -5805,7 +5805,7 @@ fn task_subcommand_config() {
 
 #[test]
 fn task_subcommand_config_short() {
-  let r = flags_from_vec(svec!["deno", "task", "-c", "deno.jsonc"]);
+  let r = flags_from_vec(svec!["deno", "task", "-c", "ende.jsonc"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5821,7 +5821,7 @@ fn task_subcommand_config_short() {
         concurrency: None,
         if_present: false,
       }),
-      config_flag: ConfigFlag::Path("deno.jsonc".to_string()),
+      config_flag: ConfigFlag::Path("ende.jsonc".to_string()),
       ..Flags::default()
     }
   );
@@ -6113,7 +6113,7 @@ fn no_config() {
     "deno",
     "run",
     "--config",
-    "deno.json",
+    "ende.json",
     "--no-config",
     "script.ts",
   ]);
@@ -9360,10 +9360,10 @@ fn tier1_bundle_check_and_declaration() {
 #[test]
 fn tier1_audit_why_lock_flags() {
   let flags =
-    flags_from_vec(svec!["deno", "audit", "--lock=deno.lock", "--frozen"])
+    flags_from_vec(svec!["deno", "audit", "--lock=ende.lock", "--frozen"])
       .unwrap();
   assert!(matches!(&flags.subcommand, DenoSubcommand::Audit(_)));
-  assert_eq!(flags.lock, Some("deno.lock".to_string()));
+  assert_eq!(flags.lock, Some("ende.lock".to_string()));
   assert_eq!(flags.frozen_lockfile, Some(true));
 
   let flags = flags_from_vec(svec!["deno", "why", "--no-lock", "foo"]).unwrap();

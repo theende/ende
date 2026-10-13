@@ -27,7 +27,7 @@ fn fast_check_cache() {
     const value: number = add(1, 2);
     console.log(value);"#,
   );
-  temp_dir.path().join("deno.json").write_json(&json!({
+  temp_dir.path().join("ende.json").write_json(&json!({
     "vendor": true
   }));
 
@@ -154,7 +154,7 @@ async fn specifiers_in_lockfile() {
 
 console.log(version);"#,
   );
-  temp_dir.write("deno.json", "{}"); // to automatically create a lockfile
+  temp_dir.write("ende.json", "{}"); // to automatically create a lockfile
 
   test_context
     .new_command()
@@ -162,7 +162,7 @@ console.log(version);"#,
     .run()
     .assert_matches_text("0.1.1\n");
 
-  let lockfile_path = temp_dir.path().join("deno.lock");
+  let lockfile_path = temp_dir.path().join("ende.lock");
   let mut lockfile = Lockfile::new(
     NewLockfileOptions {
       file_path: lockfile_path.to_path_buf(),
@@ -283,7 +283,7 @@ fn install_cache_busts_if_version_not_found() {
   let deno_dir = test_context.deno_dir();
   let temp_dir = test_context.temp_dir();
   temp_dir.write(
-    "deno.json",
+    "ende.json",
     r#"{ "imports": { "@denotest/has-pre-release": "jsr:@denotest/has-pre-release@2.0.0-beta.1" } }"#,
   );
 
@@ -303,7 +303,7 @@ fn install_cache_busts_if_version_not_found() {
   );
 
   temp_dir.write(
-    "deno.json",
+    "ende.json",
     r#"{ "imports": { "@denotest/has-pre-release": "jsr:@denotest/has-pre-release@2.0.0-beta.2" } }"#,
   );
 
@@ -328,7 +328,7 @@ async fn lockfile_bad_package_integrity() {
 
 console.log(version);"#,
   );
-  temp_dir.write("deno.json", "{}"); // to automatically create a lockfile
+  temp_dir.write("ende.json", "{}"); // to automatically create a lockfile
 
   test_context
     .new_command()
@@ -336,7 +336,7 @@ console.log(version);"#,
     .run()
     .assert_matches_text("0.1.1\n");
 
-  let lockfile_path = temp_dir.path().join("deno.lock");
+  let lockfile_path = temp_dir.path().join("ende.lock");
   let mut lockfile = Lockfile::new(
     NewLockfileOptions {
       file_path: lockfile_path.to_path_buf(),
@@ -376,7 +376,7 @@ Investigate the lockfile; delete it to regenerate the lockfile or --reload to re
   // now try with a vendor folder
   temp_dir
     .path()
-    .join("deno.json")
+    .join("ende.json")
     .write_json(&json!({ "vendor": true }));
 
   // should fail again

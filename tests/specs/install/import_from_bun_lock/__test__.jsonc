@@ -2,7 +2,7 @@
   "tempDir": true,
   "steps": [
     {
-      // No deno.lock, package-lock.json, or pnpm-lock.yaml — fall back to
+      // No ende.lock, package-lock.json, or pnpm-lock.yaml — fall back to
       // translating bun's text lockfile.
       "args": "install",
       "output": "install.out"
@@ -10,9 +10,9 @@
     {
       "args": [
         "eval",
-        "console.log(Deno.readTextFileSync('deno.lock').trim())"
+        "console.log(Deno.readTextFileSync('ende.lock').trim())"
       ],
-      "output": "deno.lock.out"
+      "output": "ende.lock.out"
     },
     {
       "args": "run --cached-only main.js",

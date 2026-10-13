@@ -1,0 +1,48 @@
+{
+  "tempDir": true,
+  "tests": {
+    // ende.json is discovered without a warning.
+    "ende_json": {
+      "cwd": "ende_json",
+      "args": "run main.ts",
+      "output": "ende.json\n"
+    },
+    // ende.jsonc is discovered without a warning.
+    "ende_jsonc": {
+      "cwd": "ende_jsonc",
+      "args": "run main.ts",
+      "output": "ende.jsonc\n"
+    },
+    // deno.json still works, with a one-time deprecation warning.
+    "deno_json": {
+      "cwd": "deno_json",
+      "args": "run main.ts",
+      "output": "deno_json/main.out"
+    },
+    // deno.jsonc still works, with a one-time deprecation warning.
+    "deno_jsonc": {
+      "cwd": "deno_jsonc",
+      "args": "run main.ts",
+      "output": "deno_jsonc/main.out"
+    },
+    // When both exist, ende.json wins and nothing is printed.
+    "both": {
+      "cwd": "both",
+      "args": "run main.ts",
+      "output": "ende.json\n"
+    },
+    // An ende.json workspace root with a deno.json member warns once for the
+    // member.
+    "workspace_deno_json_member": {
+      "cwd": "workspace",
+      "args": "run member/main.ts",
+      "output": "workspace/main.out"
+    },
+    // Glob workspace members may mix ende.json and deno.json.
+    "workspace_glob_mixed_members": {
+      "cwd": "workspace_glob",
+      "args": "run main.ts",
+      "output": "workspace_glob/main.out"
+    }
+  }
+}

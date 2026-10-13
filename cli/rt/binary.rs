@@ -770,7 +770,7 @@ fn runtime_transpile_options(
       return fallback;
     };
     let cfg_path = 'outer: loop {
-      for name in ["deno.json", "deno.jsonc"] {
+      for name in ende_config::deno_json::CONFIG_FILE_NAMES {
         let candidate = dir.join(name);
         if candidate.exists() {
           break 'outer Some(candidate);

@@ -5,7 +5,7 @@
       "steps": [{
         "args": [
           "eval",
-          "Deno.writeTextFileSync('deno.json', JSON.stringify({name: '@test/dirty', version: '1.0.0', exports: './mod.ts'})); Deno.writeTextFileSync('mod.ts', 'export const x = 1;');"
+          "Deno.writeTextFileSync('ende.json', JSON.stringify({name: '@test/dirty', version: '1.0.0', exports: './mod.ts'})); Deno.writeTextFileSync('mod.ts', 'export const x = 1;');"
         ],
         "output": ""
       }, {
@@ -24,7 +24,7 @@
       "steps": [{
         "args": [
           "eval",
-          "Deno.writeTextFileSync('deno.json', JSON.stringify({name: '@test/dirty', version: '1.0.0', exports: './mod.ts'})); Deno.writeTextFileSync('mod.ts', 'export const x = 1;');"
+          "Deno.writeTextFileSync('ende.json', JSON.stringify({name: '@test/dirty', version: '1.0.0', exports: './mod.ts'})); Deno.writeTextFileSync('mod.ts', 'export const x = 1;');"
         ],
         "output": ""
       }, {

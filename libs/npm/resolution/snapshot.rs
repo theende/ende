@@ -1747,7 +1747,7 @@ mod tests {
     let api = TestNpmRegistryApi::default();
     let lockfile = Lockfile::new(
       NewLockfileOptions {
-        file_path: PathBuf::from("/deno.lock"),
+        file_path: PathBuf::from("/ende.lock"),
         content,
         overwrite: false,
       },
@@ -1779,7 +1779,7 @@ mod tests {
 
     let lockfile = Lockfile::new(
       NewLockfileOptions {
-        file_path: PathBuf::from("/deno.lock"),
+        file_path: PathBuf::from("/ende.lock"),
         content: r#"{
         "version": "2",
         "remote": {},
@@ -1834,7 +1834,7 @@ mod tests {
 
     let lockfile = Lockfile::new(
       NewLockfileOptions {
-        file_path: PathBuf::from("/deno.lock"),
+        file_path: PathBuf::from("/ende.lock"),
         content: r#"{
         "version": "4",
         "specifiers": {
@@ -2169,7 +2169,7 @@ mod tests {
     let api = TestNpmRegistryApi::default();
     let lockfile = Lockfile::new(
       NewLockfileOptions {
-        file_path: PathBuf::from("/deno.lock"),
+        file_path: PathBuf::from("/ende.lock"),
         content: r#"{
           "version": "5",
           "specifiers": {
@@ -2232,7 +2232,7 @@ mod tests {
     let api = TestNpmRegistryApi::default();
     let lockfile = Lockfile::new(
       NewLockfileOptions {
-        file_path: PathBuf::from("/deno.lock"),
+        file_path: PathBuf::from("/ende.lock"),
         content: r#"{
           "version": "5",
           "specifiers": {
@@ -2328,7 +2328,7 @@ mod tests {
     let make_lockfile = || async {
       Lockfile::new(
         NewLockfileOptions {
-          file_path: PathBuf::from("/deno.lock"),
+          file_path: PathBuf::from("/ende.lock"),
           content,
           overwrite: false,
         },

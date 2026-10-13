@@ -1,4 +1,4 @@
-[WILDCARD]Config file found at '[WILDCARD]deno.json'
+[WILDCARD]Config file found at '[WILDCARD]ende.json'
 [WILDCARD]
 error: Import "chalk" not a dependency
   hint: If you want to use the npm package, try running `deno add npm:chalk`

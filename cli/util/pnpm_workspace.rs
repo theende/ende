@@ -171,11 +171,16 @@ fn pick_target_config(dir: &Path) -> (PathBuf, ConfigKind) {
   if package_json.is_file() {
     return (package_json, ConfigKind::PackageJson);
   }
-  let jsonc = dir.join("deno.jsonc");
-  if jsonc.is_file() {
-    return (jsonc, ConfigKind::DenoConfig);
+  for name in ende_config::deno_json::CONFIG_FILE_NAMES {
+    let path = dir.join(name);
+    if path.is_file() {
+      return (path, ConfigKind::DenoConfig);
+    }
   }
-  (dir.join("deno.json"), ConfigKind::DenoConfig)
+  (
+    dir.join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME),
+    ConfigKind::DenoConfig,
+  )
 }
 
 /// Merges the parsed pnpm workspace into an existing config file (preserving
@@ -443,9 +448,9 @@ mod tests {
 
   #[test]
   fn apply_skips_existing_fields() {
-    // `deno.json` already declares `workspace`; nothing to add -> no-op.
+    // `ende.json` already declares `workspace`; nothing to add -> no-op.
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("deno.json");
+    let path = dir.path().join("ende.json");
     std::fs::write(&path, "{ \"workspace\": [\"a\"] }\n").unwrap();
     let parsed = PnpmWorkspace {
       packages: vec!["packages/*".to_string()],
@@ -462,7 +467,7 @@ mod tests {
   fn apply_adds_only_missing_fields() {
     // `workspace` is present but `catalog` is not: only `catalog` is added.
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("deno.json");
+    let path = dir.path().join("ende.json");
     std::fs::write(&path, "{ \"workspace\": [\"a\"] }\n").unwrap();
     let mut catalog = IndexMap::new();
     catalog.insert("react".to_string(), "^18.0.0".to_string());
@@ -509,9 +514,26 @@ mod tests {
   fn pick_target_prefers_package_json() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("package.json"), "{}\n").unwrap();
-    std::fs::write(dir.path().join("deno.json"), "{}\n").unwrap();
+    std::fs::write(dir.path().join("ende.json"), "{}\n").unwrap();
     let (path, kind) = pick_target_config(dir.path());
     assert!(matches!(kind, ConfigKind::PackageJson));
     assert_eq!(path, dir.path().join("package.json"));
+  }
+
+  #[test]
+  fn pick_target_config_file_names() {
+    let dir = tempfile::tempdir().unwrap();
+    // no config: a new ende.json
+    let (path, kind) = pick_target_config(dir.path());
+    assert!(matches!(kind, ConfigKind::DenoConfig));
+    assert_eq!(path, dir.path().join("ende.json"));
+    // an existing deprecated deno.jsonc is edited in place
+    std::fs::write(dir.path().join("deno.jsonc"), "{}\n").unwrap();
+    let (path, _) = pick_target_config(dir.path());
+    assert_eq!(path, dir.path().join("deno.jsonc"));
+    // ende.jsonc takes precedence over deno.jsonc
+    std::fs::write(dir.path().join("ende.jsonc"), "{}\n").unwrap();
+    let (path, _) = pick_target_config(dir.path());
+    assert_eq!(path, dir.path().join("ende.jsonc"));
   }
 }

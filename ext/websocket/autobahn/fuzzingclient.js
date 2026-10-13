@@ -19,7 +19,7 @@ if (ciHash.skip) {
 
 const AUTOBAHN_TESTSUITE_DOCKER =
   "crossbario/autobahn-testsuite:25.10.1@sha256:519915fb568b04c9383f70a1c405ae3ff44ab9e35835b085239c258b6fac3074";
-$`${self} run -A --config ${pwd}/../../../tests/config/deno.json ${pwd}/autobahn_server.js`
+$`${self} run -A --config ${pwd}/../../../tests/config/ende.json ${pwd}/autobahn_server.js`
   .spawn();
 
 for (let i = 0; i < 6; i++) {

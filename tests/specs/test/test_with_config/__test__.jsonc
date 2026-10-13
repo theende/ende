@@ -1,5 +1,5 @@
 {
-  "args": "test --config collect/deno.jsonc collect",
+  "args": "test --config collect/ende.jsonc collect",
   "exitCode": 0,
   "output": "main.out"
 }

@@ -1095,7 +1095,7 @@ impl Inner {
       }
     }
     for root_ancestor in root_ancestors {
-      for deno_json in ["deno.json", "deno.jsonc"] {
+      for deno_json in ende_config::deno_json::CONFIG_FILE_NAMES {
         let path = root_ancestor.join(deno_json);
         if path.exists() {
           workspace_files.insert(path);
@@ -1711,14 +1711,14 @@ impl Inner {
     let has_config_changes = changes.iter().any(|(specifier, _)| {
       let path = specifier.path();
       !path.contains("/node_modules/")
-        && (path.ends_with("/deno.json")
-          || path.ends_with("/deno.jsonc")
-          || path.ends_with("/package.json")
+        && (path.rsplit_once('/').is_some_and(|(_, name)| {
+          ende_config::deno_json::is_config_file_name(name)
+        }) || path.ends_with("/package.json")
           || path.ends_with("/tsconfig.json"))
         || path.ends_with("/node_modules/.package-lock.json")
         || path.ends_with("/node_modules/.yarn-integrity.json")
         || path.ends_with("/node_modules/.modules.yaml")
-        || path.ends_with("/node_modules/.deno/.setup-cache.bin")
+        || path.ends_with("/node_modules/.ende/.setup-cache.bin")
         || self.config.tree.is_watched_file(specifier)
         || self.compiler_options_resolver.is_watched_file(specifier)
     });
@@ -4871,7 +4871,7 @@ mod tests {
     temp_dir.write("root3/mod.ts", ""); // no, not enabled
 
     temp_dir.create_dir_all("root4_parent/root4");
-    temp_dir.write("root4_parent/deno.json", ""); // yes, enabled as deno.json above root
+    temp_dir.write("root4_parent/ende.json", ""); // yes, enabled as ende.json above root
     temp_dir.write("root4_parent/root4/main.ts", ""); // yes, enabled
 
     let mut config = Config::new_with_roots(vec![
@@ -4941,7 +4941,7 @@ mod tests {
     assert_eq!(
       json!(workspace_files),
       json!([
-        temp_dir.url().join("root4_parent/deno.json").unwrap(),
+        temp_dir.url().join("root4_parent/ende.json").unwrap(),
         temp_dir.url().join("root1/mod0.ts").unwrap(),
         temp_dir.url().join("root1/mod1.js").unwrap(),
         temp_dir.url().join("root1/mod2.tsx").unwrap(),
@@ -4970,7 +4970,7 @@ mod tests {
     let temp_dir = TempDir::new();
     temp_dir.write("repo/root.ts", ""); // no, root is disabled
     temp_dir.write(
-      "repo/apps/backend/deno.json",
+      "repo/apps/backend/ende.json",
       r#"{ "importMap": "import_map.json" }"#,
     ); // yes
     temp_dir.write(
@@ -5041,7 +5041,7 @@ mod tests {
     assert_eq!(
       json!(workspace_files),
       json!([
-        backend_url.join("deno.json").unwrap(),
+        backend_url.join("ende.json").unwrap(),
         backend_url.join("import_map.json").unwrap(),
         backend_url.join("src/run.ts").unwrap(),
       ])

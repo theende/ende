@@ -10,9 +10,9 @@
         {
           "args": [
             "eval",
-            "const now = Deno.readTextFileSync('./deno.lock'); console.log(now.trim());"
+            "const now = Deno.readTextFileSync('./ende.lock'); console.log(now.trim());"
           ],
-          "output": "deno.lock.orig.out"
+          "output": "ende.lock.orig.out"
         }
       ]
     },
@@ -65,8 +65,8 @@
           "output": "./update_compatible/package.json.out"
         },
         {
-          "args": "-A ./print_file.ts ./deno.lock",
-          "output": "./update_compatible/deno.lock.out"
+          "args": "-A ./print_file.ts ./ende.lock",
+          "output": "./update_compatible/ende.lock.out"
         }
       ]
     },
@@ -85,8 +85,8 @@
           "output": "update_latest/package.json.out"
         },
         {
-          "args": "-A ./print_file.ts ./deno.lock",
-          "output": "update_latest/deno.lock.out"
+          "args": "-A ./print_file.ts ./ende.lock",
+          "output": "update_latest/ende.lock.out"
         }
       ]
     },

@@ -1,0 +1,42 @@
+{
+  "tempDir": true,
+  "tests": {
+    // ende.lock is created by default.
+    "creates_ende_lock": {
+      "steps": [{
+        "cwd": "new",
+        "args": "run --allow-import main.ts",
+        "output": "Download http://localhost:4545/subdir/print_hello.ts\nHello\n"
+      }, {
+        "cwd": "new",
+        "args": "run --no-config --no-lock -R ../check.ts",
+        "output": "ende.lock: true (has remote)\ndeno.lock: false\n"
+      }]
+    },
+    // An existing deno.lock keeps being used (and updated), with a one-time
+    // deprecation warning.
+    "uses_existing_deno_lock": {
+      "steps": [{
+        "cwd": "deno_lock",
+        "args": "run --allow-import main.ts",
+        "output": "deno_lock/main.out"
+      }, {
+        "cwd": "deno_lock",
+        "args": "run --no-config --no-lock -R ../check.ts",
+        "output": "ende.lock: false\ndeno.lock: true (has remote)\n"
+      }]
+    },
+    // When both exist, ende.lock wins and deno.lock is left alone.
+    "ende_lock_wins": {
+      "steps": [{
+        "cwd": "both",
+        "args": "run --allow-import main.ts",
+        "output": "Download http://localhost:4545/subdir/print_hello.ts\nHello\n"
+      }, {
+        "cwd": "both",
+        "args": "run --no-config --no-lock -R ../check.ts",
+        "output": "ende.lock: true (has remote)\ndeno.lock: true (no remote)\n"
+      }]
+    }
+  }
+}

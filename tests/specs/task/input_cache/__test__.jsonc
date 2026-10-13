@@ -84,7 +84,7 @@
         {
           "args": [
             "eval",
-            "Deno.writeTextFileSync('deno.json', JSON.stringify({tasks:{build:{command:'deno run -q src/in.ts',files:['src/**/*.ts']}}}))"
+            "Deno.writeTextFileSync('ende.json', JSON.stringify({tasks:{build:{command:'deno run -q src/in.ts',files:['src/**/*.ts']}}}))"
           ],
           "output": ""
         },

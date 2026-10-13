@@ -1,5 +1,5 @@
 try {
-  Deno.readTextFileSync("./deno.json");
+  Deno.readTextFileSync("./ende.json");
   console.log("loaded");
 } catch (err) {
   console.log(err instanceof Deno.errors.NotFound);

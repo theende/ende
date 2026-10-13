@@ -21,7 +21,7 @@ fn init_subcommand_without_dir() {
   assert_contains!(stderr, "deno task dev");
   assert_contains!(stderr, "deno test");
 
-  assert!(cwd.join("deno.json").exists());
+  assert!(cwd.join("ende.json").exists());
 
   let output = context
     .new_command()
@@ -55,7 +55,7 @@ fn init_subcommand_with_dir_arg() {
   assert_contains!(stderr, "deno task dev");
   assert_contains!(stderr, "deno test");
 
-  assert!(cwd.join("my_dir/deno.json").exists());
+  assert!(cwd.join("my_dir/ende.json").exists());
 
   let output = context
     .new_command()
@@ -84,7 +84,7 @@ fn init_subcommand_with_quiet_arg() {
   output.assert_exit_code(0);
 
   assert_eq!(output.stdout(), "");
-  assert!(cwd.join("deno.json").exists());
+  assert!(cwd.join("ende.json").exists());
 
   let output = context
     .new_command()
@@ -127,7 +127,7 @@ Run these commands to get started
 ",
   );
 
-  assert!(cwd.join("deno.json").exists());
+  assert!(cwd.join("ende.json").exists());
 
   let output = context
     .new_command()
@@ -159,7 +159,7 @@ fn init_subcommand_empty() {
   assert_contains!(stderr, "deno task dev");
   assert!(!stderr.contains("deno test"));
 
-  let deno_json_path = cwd.join("deno.json");
+  let deno_json_path = cwd.join("ende.json");
   assert!(deno_json_path.exists());
 
   let deno_json_content = deno_json_path.read_to_string();
@@ -203,7 +203,7 @@ async fn init_subcommand_serve() {
   assert_contains!(stderr, "deno task dev");
   assert_contains!(stderr, "deno test -R");
 
-  assert!(cwd.join("deno.json").exists());
+  assert!(cwd.join("ende.json").exists());
 
   let mut child = context
     .new_command()

@@ -8,7 +8,7 @@
     },
     "providing": {
       "steps": [{
-        "args": "compile -P --include deno.json --output main main.ts",
+        "args": "compile -P --include ende.json --output main main.ts",
         "output": "[WILDCARD]"
       }, {
         "commandName": "./main",

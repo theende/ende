@@ -1,5 +1,5 @@
 {
-  "args": "test --doc --config ../../../config/deno.json lib.d.ts",
+  "args": "test --doc --config ../../../config/ende.json lib.d.ts",
   "exitCode": 0,
   "output": "lib.d.ts.out"
 }

@@ -4,7 +4,7 @@
     "DENO_DIR": "$PWD/deno_dir"
   },
   // `deno x` installs with an internal factory whose config is a generated
-  // temp `deno.json`, so the `-P` set named on the command line does not
+  // temp `ende.json`, so the `-P` set named on the command line does not
   // resolve against it. Resolving a set is fatal now that an unreadable
   // `--deny-import` policy fails the command instead of silently becoming an
   // empty deny list, so `deno x` resolves the rules against the user's own

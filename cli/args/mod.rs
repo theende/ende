@@ -1996,7 +1996,7 @@ mod test {
       "importMap": "import_map.json"
     }"#;
     let cwd = &resolve_cwd(None).unwrap();
-    let config_specifier = Url::parse("file:///deno/deno.jsonc").unwrap();
+    let config_specifier = Url::parse("file:///deno/ende.jsonc").unwrap();
     let config_file = ConfigFile::new(config_text, config_specifier).unwrap();
     let actual = resolve_import_map_specifier(
       Some("import-map.json"),
@@ -2014,7 +2014,7 @@ mod test {
   #[test]
   fn resolve_import_map_none() {
     let config_text = r#"{}"#;
-    let config_specifier = Url::parse("file:///deno/deno.jsonc").unwrap();
+    let config_specifier = Url::parse("file:///deno/ende.jsonc").unwrap();
     let config_file = ConfigFile::new(config_text, config_specifier).unwrap();
     let actual =
       resolve_import_map_specifier(None, Some(&config_file), Path::new("/"));
@@ -2067,7 +2067,7 @@ mod test {
     {
       let flags = PermissionFlags::default();
       let config = PermissionsObjectWithBase {
-        base: deno_path_util::url_from_file_path(&base_dir.join("deno.json"))
+        base: deno_path_util::url_from_file_path(&base_dir.join("ende.json"))
           .unwrap(),
         permissions: PermissionsObject {
           all: None,
@@ -2236,7 +2236,7 @@ mod test {
         ..Default::default()
       };
       let config = PermissionsObjectWithBase {
-        base: deno_path_util::url_from_file_path(&base_dir.join("deno.json"))
+        base: deno_path_util::url_from_file_path(&base_dir.join("ende.json"))
           .unwrap(),
         permissions: PermissionsObject {
           // will use all permissions except for the explicitly specified permissions

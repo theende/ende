@@ -1643,7 +1643,7 @@ mod tests {
           size: 0,
         }],
       },
-      config: "deno.json".to_string(),
+      config: "ende.json".to_string(),
       exports: HashMap::new(),
     };
 
@@ -1674,7 +1674,7 @@ mod tests {
           size: 0,
         }],
       },
-      config: "deno.json".to_string(),
+      config: "ende.json".to_string(),
       exports: HashMap::new(),
     };
 
@@ -1707,7 +1707,7 @@ mod tests {
           size: 0,
         }],
       },
-      config: "deno.json".to_string(),
+      config: "ende.json".to_string(),
       exports: HashMap::new(),
     };
 

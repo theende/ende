@@ -1,0 +1,4 @@
+{
+  // comments are allowed
+  "imports": { "name": "./name.ts" }
+}

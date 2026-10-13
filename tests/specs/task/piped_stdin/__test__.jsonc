@@ -1,4 +1,4 @@
 {
-  "args": "task -q --config deno.json piped",
+  "args": "task -q --config ende.json piped",
   "output": "task_piped_stdin.out"
 }

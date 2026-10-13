@@ -15,7 +15,7 @@ if (import.meta.main) {
       args: [
         "run",
         "--config",
-        Deno.realPathSync("../config/deno.json"),
+        Deno.realPathSync("../config/ende.json"),
         "--no-lock",
         "-A",
         "--unstable-ffi",

@@ -50,7 +50,7 @@ pub struct LifecycleScriptsExecutorOptions<'a> {
   /// Resolves the on-disk folder of a package for the node_modules layout
   /// being installed, so the executor can locate the dependency bins that
   /// lifecycle scripts invoke. When `None`, the executor falls back to its
-  /// own npm resolver, which assumes the isolated (`.deno`) layout — the
+  /// own npm resolver, which assumes the isolated (`.ende`) layout — the
   /// hoisted installer must provide this to map packages to their hoisted
   /// locations.
   pub resolve_pkg_folder: Option<ResolvePkgFolderFn<'a>>,

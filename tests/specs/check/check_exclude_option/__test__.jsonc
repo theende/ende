@@ -11,7 +11,7 @@
       "exitCode": 0
     },
     "without": {
-      "args": "check --quiet --config deno.json ignored/index.ts",
+      "args": "check --quiet --config ende.json ignored/index.ts",
       "output": "exclude_option.ts.error.out",
       "exitCode": 1
     }

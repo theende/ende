@@ -25,7 +25,7 @@ delete registry["_deno.etag"];
 Deno.writeTextFileSync(registryPath, JSON.stringify(registry));
 
 // Pin the lockfile back at the outdated 0.1.0.
-const lockPath = "deno.lock";
+const lockPath = "ende.lock";
 const lock = JSON.parse(Deno.readTextFileSync(lockPath));
 lock.specifiers["npm:@denotest/has-patch-versions@0.1"] = "0.1.0";
 lock.npm = {

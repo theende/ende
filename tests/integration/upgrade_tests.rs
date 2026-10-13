@@ -16,7 +16,7 @@ fn upgrade_invalid_lockfile() {
   let temp_dir = context.temp_dir();
   temp_dir.write("deno.deno", r#"{ \"lock\": true }"#);
   temp_dir.write(
-    "deno.lock",
+    "ende.lock",
     r#"{
   "version": "invalid",
 }"#,

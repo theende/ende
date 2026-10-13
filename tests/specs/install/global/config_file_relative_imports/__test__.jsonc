@@ -2,7 +2,7 @@
   "tempDir": true,
   "steps": [{
     "if": "unix",
-    "args": "install -g --root ./bins --config deno.json --name my-cli main.ts",
+    "args": "install -g --root ./bins --config ende.json --name my-cli main.ts",
     "output": "install.out"
   }, {
     "if": "unix",
@@ -12,7 +12,7 @@
     "exitCode": 0
   }, {
     "if": "windows",
-    "args": "install -g --root ./bins --config deno.json --name my-cli main.ts",
+    "args": "install -g --root ./bins --config ende.json --name my-cli main.ts",
     "output": "install.out"
   }, {
     "if": "windows",

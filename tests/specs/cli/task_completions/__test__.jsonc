@@ -13,7 +13,7 @@
         "/thing/deno",
         "task",
         "--config",
-        "./subdir/deno.json",
+        "./subdir/ende.json",
         ""
       ],
       "output": "config_flag.out"

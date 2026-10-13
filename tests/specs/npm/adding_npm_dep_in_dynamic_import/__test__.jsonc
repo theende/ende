@@ -4,7 +4,7 @@
     "args": "run --allow-read=. main.ts",
     "output": "main.out"
   }, {
-    "args": "task --quiet cat deno.lock",
+    "args": "task --quiet cat ende.lock",
     "output": "lock.out"
   }, {
     "args": "task rm_node_modules",
@@ -13,7 +13,7 @@
     "args": "run --allow-read=. main.ts",
     "output": "main2.out"
   }, {
-    "args": "task --quiet cat deno.lock",
+    "args": "task --quiet cat ende.lock",
     "output": "lock.out"
   }]
 }

@@ -297,13 +297,13 @@ fn deno_run_cjs_module() {
 fn deno_run_bin_lockfile() {
   let context = TestContextBuilder::for_npm().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
-  temp_dir.write("deno.json", "{}");
+  temp_dir.write("ende.json", "{}");
   let output = context
     .new_command()
     .args("run -A --quiet npm:@denotest/bin/cli-esm this is a test")
     .run();
   output.assert_matches_file("npm/deno_run_esm.out");
-  assert!(temp_dir.path().join("deno.lock").exists());
+  assert!(temp_dir.path().join("ende.lock").exists());
 }
 
 #[test]
@@ -328,7 +328,7 @@ fn node_modules_dir_cache() {
   assert!(
     node_modules
       .join(
-        ".deno/@denotest+dual-cjs-esm@1.0.0/node_modules/@denotest/dual-cjs-esm"
+        ".ende/@denotest+dual-cjs-esm@1.0.0/node_modules/@denotest/dual-cjs-esm"
       )
       .exists()
   );
@@ -409,7 +409,7 @@ fn lock_file_missing_top_level_package() {
   let temp_dir = util::TempDir::new();
 
   // write empty config file
-  temp_dir.write("deno.json", "{}");
+  temp_dir.write("ende.json", "{}");
 
   // Lock file that is automatically picked up has been intentionally broken,
   // by removing "cowsay" package from it. This test ensures that npm resolver
@@ -585,7 +585,7 @@ fn lock_file_missing_top_level_package() {
     }
   }
   "#;
-  temp_dir.write("deno.lock", lock_file_content);
+  temp_dir.write("ende.lock", lock_file_content);
   let main_contents = r#"
   import cowsay from "npm:cowsay";
   console.log(cowsay);
@@ -597,7 +597,7 @@ fn lock_file_missing_top_level_package() {
     .arg("run")
     .arg("--quiet")
     .arg("--lock")
-    .arg("deno.lock")
+    .arg("ende.lock")
     .arg("-A")
     .arg("main.ts")
     .envs(env_vars_for_npm_tests())
@@ -611,7 +611,7 @@ fn lock_file_missing_top_level_package() {
   test_util::assertions::assert_wildcard_match(
     &stderr,
     concat!(
-      "error: failed reading lockfile '[WILDLINE]deno.lock'\n",
+      "error: failed reading lockfile '[WILDLINE]ende.lock'\n",
       "\n",
       "Caused by:\n",
       "    0: The lockfile is corrupt. Remove the lockfile to regenerate it.\n",
@@ -628,7 +628,7 @@ fn lock_file_lock_write() {
   let deno_dir = util::new_deno_dir();
   let temp_dir = util::TempDir::new();
 
-  temp_dir.write("deno.json", "{}");
+  temp_dir.write("ende.json", "{}");
   let lock_file_content = r#"{
   "version": "5",
   "specifiers": {
@@ -804,7 +804,7 @@ fn lock_file_lock_write() {
   }
 }
 "#;
-  temp_dir.write("deno.lock", lock_file_content);
+  temp_dir.write("ende.lock", lock_file_content);
 
   let deno = util::deno_cmd_with_deno_dir(&deno_dir)
     .current_dir(temp_dir.path())
@@ -833,7 +833,7 @@ fn lock_file_lock_write() {
   let stderr = String::from_utf8(output.stderr).unwrap();
   assert!(stderr.is_empty());
   assert_eq!(
-    std::fs::read_to_string(temp_dir.path().join("deno.lock")).unwrap(),
+    std::fs::read_to_string(temp_dir.path().join("ende.lock")).unwrap(),
     lock_file_content,
   );
 }
@@ -845,7 +845,7 @@ fn auto_discover_lock_file() {
   let temp_dir = context.temp_dir();
 
   // write empty config file
-  temp_dir.write("deno.json", "{}");
+  temp_dir.write("ende.json", "{}");
 
   // write a lock file with borked integrity
   let lock_file_content = r#"{
@@ -860,7 +860,7 @@ fn auto_discover_lock_file() {
       }
     }
   }"#;
-  temp_dir.write("deno.lock", lock_file_content);
+  temp_dir.write("ende.lock", lock_file_content);
 
   let output = context
     .new_command()
@@ -1105,12 +1105,12 @@ fn binary_package_with_optional_dependencies() {
   let project_path = temp_dir_path.join("npm/binary_package");
 
   // write empty config file so a lockfile gets created
-  temp_dir.write("npm/binary_package/deno.json", "{}");
+  temp_dir.write("npm/binary_package/ende.json", "{}");
 
   // run it twice, with the first time creating the lockfile and the second using it
   for i in 0..2 {
     if i == 1 {
-      assert!(project_path.join("deno.lock").exists());
+      assert!(project_path.join("ende.lock").exists());
     }
 
     let output = context
@@ -1126,27 +1126,27 @@ fn binary_package_with_optional_dependencies() {
       );
       assert!(
         project_path
-          .join("node_modules/.deno/@denotest+binary-package-windows@1.0.0")
+          .join("node_modules/.ende/@denotest+binary-package-windows@1.0.0")
           .exists()
       );
       assert!(
         !project_path
-          .join("node_modules/.deno/@denotest+binary-package-linux@1.0.0")
+          .join("node_modules/.ende/@denotest+binary-package-linux@1.0.0")
           .exists()
       );
       assert!(
         !project_path
-          .join("node_modules/.deno/@denotest+binary-package-mac@1.0.0")
+          .join("node_modules/.ende/@denotest+binary-package-mac@1.0.0")
           .exists()
       );
       assert!(project_path
-        .join("node_modules/.deno/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-windows")
+        .join("node_modules/.ende/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-windows")
         .exists());
       assert!(!project_path
-        .join("node_modules/.deno/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-linux")
+        .join("node_modules/.ende/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-linux")
         .exists());
       assert!(!project_path
-        .join("node_modules/.deno/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-mac")
+        .join("node_modules/.ende/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-mac")
         .exists());
     }
 
@@ -1159,27 +1159,27 @@ fn binary_package_with_optional_dependencies() {
 
       assert!(
         !project_path
-          .join("node_modules/.deno/@denotest+binary-package-windows@1.0.0")
+          .join("node_modules/.ende/@denotest+binary-package-windows@1.0.0")
           .exists()
       );
       assert!(
         !project_path
-          .join("node_modules/.deno/@denotest+binary-package-linux@1.0.0")
+          .join("node_modules/.ende/@denotest+binary-package-linux@1.0.0")
           .exists()
       );
       assert!(
         project_path
-          .join("node_modules/.deno/@denotest+binary-package-mac@1.0.0")
+          .join("node_modules/.ende/@denotest+binary-package-mac@1.0.0")
           .exists()
       );
       assert!(!project_path
-        .join("node_modules/.deno/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-windows")
+        .join("node_modules/.ende/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-windows")
         .exists());
       assert!(!project_path
-        .join("node_modules/.deno/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-linux")
+        .join("node_modules/.ende/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-linux")
         .exists());
       assert!(project_path
-        .join("node_modules/.deno/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-mac")
+        .join("node_modules/.ende/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-mac")
         .exists());
     }
 
@@ -1191,27 +1191,27 @@ fn binary_package_with_optional_dependencies() {
       );
       assert!(
         !project_path
-          .join("node_modules/.deno/@denotest+binary-package-windows@1.0.0")
+          .join("node_modules/.ende/@denotest+binary-package-windows@1.0.0")
           .exists()
       );
       assert!(
         project_path
-          .join("node_modules/.deno/@denotest+binary-package-linux@1.0.0")
+          .join("node_modules/.ende/@denotest+binary-package-linux@1.0.0")
           .exists()
       );
       assert!(
         !project_path
-          .join("node_modules/.deno/@denotest+binary-package-mac@1.0.0")
+          .join("node_modules/.ende/@denotest+binary-package-mac@1.0.0")
           .exists()
       );
       assert!(!project_path
-        .join("node_modules/.deno/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-windows")
+        .join("node_modules/.ende/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-windows")
         .exists());
       assert!(project_path
-        .join("node_modules/.deno/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-linux")
+        .join("node_modules/.ende/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-linux")
         .exists());
       assert!(!project_path
-        .join("node_modules/.deno/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-mac")
+        .join("node_modules/.ende/@denotest+binary-package@1.0.0/node_modules/@denotest/binary-package-mac")
         .exists());
     }
   }
@@ -1224,7 +1224,7 @@ fn node_modules_dir_config_file() {
   let node_modules_dir = temp_dir.path().join("node_modules");
   let rm_node_modules = || std::fs::remove_dir_all(&node_modules_dir).unwrap();
 
-  temp_dir.write("deno.json", r#"{ "nodeModulesDir": "auto" }"#);
+  temp_dir.write("ende.json", r#"{ "nodeModulesDir": "auto" }"#);
   temp_dir.write("main.ts", "import 'npm:@denotest/esm-basic';");
 
   let deno_cache_cmd = test_context.new_command().args("cache --quiet main.ts");
@@ -1233,12 +1233,12 @@ fn node_modules_dir_config_file() {
 
   // now try adding a vendor flag, it should exist
   rm_node_modules();
-  temp_dir.write("deno.json", r#"{ "vendor": true }"#);
+  temp_dir.write("ende.json", r#"{ "vendor": true }"#);
   deno_cache_cmd.run();
   assert!(node_modules_dir.exists());
 
   rm_node_modules();
-  temp_dir.write("deno.json", r#"{ "nodeModulesDir": "none" }"#);
+  temp_dir.write("ende.json", r#"{ "nodeModulesDir": "none" }"#);
 
   deno_cache_cmd.run();
   assert!(!node_modules_dir.exists());
@@ -1269,12 +1269,12 @@ fn top_level_install_package_json_explicit_opt_in() {
   let node_modules_dir = temp_dir.path().join("node_modules");
   let rm_created_files = || {
     std::fs::remove_dir_all(&node_modules_dir).unwrap();
-    std::fs::remove_file(temp_dir.path().join("deno.lock")).unwrap();
+    std::fs::remove_file(temp_dir.path().join("ende.lock")).unwrap();
   };
 
   // when the node_modules_dir is explicitly opted into, we should always
   // ensure a top level package.json install occurs
-  temp_dir.write("deno.json", "{ \"nodeModulesDir\": \"auto\" }");
+  temp_dir.write("ende.json", "{ \"nodeModulesDir\": \"auto\" }");
   temp_dir.write(
     "package.json",
     "{ \"dependencies\": { \"@denotest/esm-basic\": \"1.0\" }}",
@@ -1365,8 +1365,8 @@ console.log(getKind());
   let output = test_context.new_command().args("run --check main.ts").run();
   output.assert_matches_text("Check main.ts\n2\n1\n2\nesm\n");
 
-  // should not have created the .deno directory
-  assert!(!dir.path().join("node_modules/.deno").exists());
+  // should not have created the .ende directory
+  assert!(!dir.path().join("node_modules/.ende").exists());
 
   // try chai
   dir.write(
@@ -1422,7 +1422,7 @@ fn node_modules_dir_manual_import_map() {
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
   let dir = test_context.temp_dir();
   dir.write(
-    "deno.json",
+    "ende.json",
     r#"{
     "nodeModulesDir": "manual",
     "imports": {
@@ -1506,7 +1506,7 @@ fn byonm_package_specifier_not_installed_and_invalid_subpath() {
 fn byonm_npm_workspaces() {
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
   let dir = test_context.temp_dir();
-  dir.write("deno.json", r#"{ "unstable": [ "byonm" ] }"#);
+  dir.write("ende.json", r#"{ "unstable": [ "byonm" ] }"#);
 
   dir.write(
     "package.json",
@@ -1721,7 +1721,7 @@ fn check_css_package_json_exports() {
 fn cjs_export_analysis_require_re_export() {
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
   let dir = test_context.temp_dir();
-  dir.write("deno.json", r#"{ "unstable": [ "byonm" ] }"#);
+  dir.write("ende.json", r#"{ "unstable": [ "byonm" ] }"#);
 
   dir.write(
     "package.json",
@@ -1775,7 +1775,7 @@ fn cjs_export_analysis_require_re_export() {
 fn cjs_rexport_analysis_json() {
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
   let dir = test_context.temp_dir();
-  dir.write("deno.json", r#"{ "unstable": [ "byonm" ] }"#);
+  dir.write("ende.json", r#"{ "unstable": [ "byonm" ] }"#);
 
   dir.write("package.json", r#"{ "name": "test" }"#);
   dir.write(
@@ -1837,7 +1837,7 @@ fn cjs_rexport_analysis_json() {
 fn cjs_export_analysis_import_cjs_directly_relative_import() {
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
   let dir = test_context.temp_dir();
-  dir.write("deno.json", r#"{ "unstable": [ "byonm" ] }"#);
+  dir.write("ende.json", r#"{ "unstable": [ "byonm" ] }"#);
 
   dir.write(
     "package.json",
@@ -1889,7 +1889,7 @@ fn run_cjs_in_node_modules_folder() {
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
   let temp_dir = test_context.temp_dir();
   temp_dir.write("package.json", "{}");
-  temp_dir.write("deno.json", r#"{ "unstable": ["byonm"] }"#);
+  temp_dir.write("ende.json", r#"{ "unstable": ["byonm"] }"#);
   let pkg_dir = temp_dir.path().join("node_modules/package");
   pkg_dir.create_dir_all();
   pkg_dir

@@ -8,8 +8,8 @@
           "output": "[WILDCARD]"
         },
         {
-          "args": ["eval", "console.log(Deno.readTextFileSync('deno.lock'))"],
-          "output": "deno.lock.json.out"
+          "args": ["eval", "console.log(Deno.readTextFileSync('ende.lock'))"],
+          "output": "ende.lock.json.out"
         },
         {
           "args": "install jsr:@denotest/add",
@@ -18,9 +18,9 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('deno.lock'))"
+            "console.log(Deno.readTextFileSync('ende.lock'))"
           ],
-          "output": "deno.lock.v5.json.out"
+          "output": "ende.lock.v5.json.out"
         }
       ]
     },
@@ -29,7 +29,7 @@
         {
           "args": [
             "eval",
-            "Deno.writeTextFileSync('deno.json', '{\"nodeModulesDir\":\"auto\"}')"
+            "Deno.writeTextFileSync('ende.json', '{\"nodeModulesDir\":\"auto\"}')"
           ],
           "output": ""
         },

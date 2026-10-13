@@ -4,7 +4,7 @@ Compile main.ts to [WILDCARD]
 Embedded Files
 
 [WILDCARD]
-├── deno.json ([WILDCARD])
+├── ende.json ([WILDCARD])
 └── main.ts ([WILDCARD])
 
 Files: [WILDCARD]

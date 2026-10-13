@@ -1,8 +1,8 @@
 import value from "npm:@denotest/MixedCase";
 console.log(value);
-console.log(pathExists("./node_modules/.deno"));
+console.log(pathExists("./node_modules/.ende"));
 console.log(
-  pathExists("./node_modules/.deno/_ibsgk3tporsxg5bpinavaskuifgfg@1.0.0"),
+  pathExists("./node_modules/.ende/_ibsgk3tporsxg5bpinavaskuifgfg@1.0.0"),
 );
 
 function pathExists(filePath: string) {

@@ -17,7 +17,7 @@ fn install_basic() {
   let temp_dir_str = temp_dir.path().to_string();
 
   // ensure a lockfile doesn't get created or updated locally
-  temp_dir.write("deno.json", "{}");
+  temp_dir.write("ende.json", "{}");
 
   let output = context
     .new_command()
@@ -34,9 +34,9 @@ fn install_basic() {
   assert_contains!(output_text, "✅ Successfully installed echo_test");
 
   // no lockfile should be created locally
-  assert!(!temp_dir.path().join("deno.lock").exists());
+  assert!(!temp_dir.path().join("ende.lock").exists());
 
-  let mut file_path = temp_dir.path().join(".deno/bin/echo_test");
+  let mut file_path = temp_dir.path().join(".ende/bin/echo_test");
   assert!(file_path.exists());
 
   if cfg!(windows) {
@@ -48,9 +48,9 @@ fn install_basic() {
   // more versatile.
   assert_eq!(content.chars().last().unwrap(), '\n');
 
-  // shim should point to a per-command config in .<name>/deno.json
-  let config_dir = temp_dir.path().join(".deno").join("bin").join(".echo_test");
-  let config_path = config_dir.join("deno.json");
+  // shim should point to a per-command config in .<name>/ende.json
+  let config_dir = temp_dir.path().join(".ende").join("bin").join(".echo_test");
+  let config_path = config_dir.join("ende.json");
   assert!(config_path.exists());
   if cfg!(windows) {
     assert_contains!(
@@ -82,7 +82,7 @@ fn install_basic() {
     .assert_exit_code(0);
 
   // ensure local lockfile still doesn't exist
-  assert!(!temp_dir.path().join("deno.lock").exists());
+  assert!(!temp_dir.path().join("ende.lock").exists());
   // ensure uninstall occurred
   assert!(!file_path.exists());
   // ensure config dir was cleaned up
@@ -99,7 +99,7 @@ fn install_basic_global() {
   let temp_dir_str = temp_dir.path().to_string();
 
   // ensure a lockfile doesn't get created or updated locally
-  temp_dir.write("deno.json", "{}");
+  temp_dir.write("ende.json", "{}");
 
   let output = context
     .new_command()
@@ -121,9 +121,9 @@ fn install_basic_global() {
   );
 
   // no lockfile should be created locally
-  assert!(!temp_dir.path().join("deno.lock").exists());
+  assert!(!temp_dir.path().join("ende.lock").exists());
 
-  let mut file_path = temp_dir.path().join(".deno/bin/echo_test");
+  let mut file_path = temp_dir.path().join(".ende/bin/echo_test");
   assert!(file_path.exists());
 
   if cfg!(windows) {
@@ -135,13 +135,13 @@ fn install_basic_global() {
   // more versatile.
   assert_eq!(content.chars().last().unwrap(), '\n');
 
-  // shim should point to a per-command config in .<name>/deno.json
+  // shim should point to a per-command config in .<name>/ende.json
   let config_path = temp_dir
     .path()
-    .join(".deno")
+    .join(".ende")
     .join("bin")
     .join(".echo_test")
-    .join("deno.json");
+    .join("ende.json");
   if cfg!(windows) {
     assert_contains!(
       content,
@@ -172,21 +172,21 @@ fn install_basic_global() {
     .assert_exit_code(0);
 
   // ensure local lockfile still doesn't exist
-  assert!(!temp_dir.path().join("deno.lock").exists());
+  assert!(!temp_dir.path().join("ende.lock").exists());
   // ensure uninstall occurred
   assert!(!file_path.exists());
 }
 
 // Regression test for #32798: a relative `--import-map` passed to a global
 // install (typically via `deno task`) must resolve against the user's cwd,
-// not the generated `~/.deno/bin/.<name>/` install dir.
+// not the generated `~/.ende/bin/.<name>/` install dir.
 #[test]
 fn install_global_from_task_with_relative_import_map() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
 
   temp_dir.write(
-    "deno.json",
+    "ende.json",
     r#"{
   "tasks": {
     "install": "deno install -A --global --root ./root --import-map imports.json -n test main.ts"
@@ -310,7 +310,7 @@ fn install_custom_dir_env_var() {
     .join("bin")
     .canonicalize()
     .join(".echo_test")
-    .join("deno.json");
+    .join("ende.json");
   if cfg!(windows) {
     assert_contains!(
       content,
@@ -362,7 +362,7 @@ fn installer_test_custom_dir_with_bin() {
     .join("bin")
     .canonicalize()
     .join(".echo_test")
-    .join("deno.json");
+    .join("ende.json");
   if cfg!(windows) {
     assert_contains!(
       content,
@@ -608,7 +608,7 @@ fn installer_second_module_looks_like_script_argument() {
 #[test]
 fn install_npm_global_config_dir() {
   // installing an npm: package should create a .<name>/ config dir
-  // with deno.json containing nodeModulesDir
+  // with ende.json containing nodeModulesDir
   let context = TestContextBuilder::new()
     .add_npm_env_vars()
     .use_http_server()
@@ -629,9 +629,9 @@ fn install_npm_global_config_dir() {
   let config_dir = bin_dir.join(".cli-esm");
   assert!(config_dir.exists(), "config dir should exist");
 
-  // deno.json should exist with nodeModulesDir
-  let deno_json = config_dir.join("deno.json");
-  assert!(deno_json.exists(), "deno.json should exist");
+  // ende.json should exist with nodeModulesDir
+  let deno_json = config_dir.join("ende.json");
+  assert!(deno_json.exists(), "ende.json should exist");
   let deno_json_content = deno_json.read_to_string();
   assert_contains!(deno_json_content, "nodeModulesDir");
   assert_contains!(deno_json_content, "manual");
@@ -685,9 +685,9 @@ fn install_npm_global_allow_scripts() {
   let config_dir = bin_dir.join(".lifecycle-scripts-simple");
   assert!(config_dir.exists(), "config dir should exist");
 
-  // deno.json should have nodeModulesDir
-  let deno_json = config_dir.join("deno.json");
-  assert!(deno_json.exists(), "deno.json should exist");
+  // ende.json should have nodeModulesDir
+  let deno_json = config_dir.join("ende.json");
+  assert!(deno_json.exists(), "ende.json should exist");
   let deno_json_content = deno_json.read_to_string();
   assert_contains!(deno_json_content, "nodeModulesDir");
 

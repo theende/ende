@@ -5,7 +5,7 @@
     {
       "args": [
         "eval",
-        "const abs = Deno.cwd() + (Deno.build.os === 'windows'?'\\\\add':'/add'); await Deno.writeTextFile('workspace/deno.json', JSON.stringify({workspace: ['./my-pkg'], links: [abs]}))"
+        "const abs = Deno.cwd() + (Deno.build.os === 'windows'?'\\\\add':'/add'); await Deno.writeTextFile('workspace/ende.json', JSON.stringify({workspace: ['./my-pkg'], links: [abs]}))"
       ],
       "output": ""
     },

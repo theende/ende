@@ -11,6 +11,6 @@ Deno.writeTextFileSync(path, JSON.stringify(data));
 Deno.remove("node_modules", { recursive: true });
 
 // assert this exists
-if (!Deno.statSync("deno.lock").isFile) {
-  throw new Error("Expected a deno.lock file.");
+if (!Deno.statSync("ende.lock").isFile) {
+  throw new Error("Expected a ende.lock file.");
 }

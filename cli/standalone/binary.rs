@@ -1150,7 +1150,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
               root_dir_url.specifier_key(i.base_url()).into_owned()
             } else {
               // just make a remote url local
-              "deno.json".to_string()
+              ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME.to_string()
             },
             json: i.to_json(),
           }

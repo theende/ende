@@ -4,7 +4,7 @@
     "DENO_DIR": "$PWD/deno_dir"
   },
   "steps": [{
-    // The cwd deno.json sets a cutoff between the two publish dates, so 2.0.0
+    // The cwd ende.json sets a cutoff between the two publish dates, so 2.0.0
     // (2025-06-01) is excluded and 1.0.0 (2025-01-01) is selected — same as
     // `deno run` would resolve with this config.
     "args": "x -y npm:@denotest/x-min-dep-age",

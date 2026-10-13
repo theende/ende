@@ -14,7 +14,7 @@
       // Simulate a lockfile produced by an older deno that did not track
       // workspace links, so on the next load the re-derived links differ and
       // the lockfile is flagged as changed.
-      "args": "run -A --no-lock strip_links.ts ./deno.lock",
+      "args": "run -A --no-lock strip_links.ts ./ende.lock",
       "output": ""
     },
     {

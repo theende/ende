@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! Generate `.deno/tsconfig.json` for use with stock TypeScript tooling
+//! Generate `.ende/tsconfig.json` for use with stock TypeScript tooling
 //! (tsc, tsgo).
 //!
 //! This module translates Deno's compiler options (from `deno.json`) into a
@@ -23,14 +23,14 @@ use super::get_types_declaration_file_text;
 /// Result of generating a tsconfig for stock TypeScript.
 #[derive(Debug)]
 pub struct GeneratedTsConfig {
-  /// Path to the generated `.deno/tsconfig.json`.
+  /// Path to the generated `.ende/tsconfig.json`.
   pub tsconfig_path: PathBuf,
 }
 
-/// Generate `.deno/tsconfig.json` and Deno type definitions for use with
+/// Generate `.ende/tsconfig.json` and Deno type definitions for use with
 /// stock TypeScript tooling.
 ///
-/// Writes Deno types to `.deno/types/deno/index.d.ts` (a private typeRoot
+/// Writes Deno types to `.ende/types/deno/index.d.ts` (a private typeRoot
 /// only the generated tsconfig points at). They deliberately do NOT go to
 /// `node_modules/@types/deno/`: TypeScript auto-discovers everything under
 /// `node_modules/@types/*` whenever `compilerOptions.types` is unset, which
@@ -39,7 +39,7 @@ pub struct GeneratedTsConfig {
 /// auto-loaded into Deno's checker, every global also declared in
 /// `lib.ende.shared_globals.d.ts` would duplicate (TS2403).
 ///
-/// Generates `.deno/tsconfig.json` with compiler options and paths mappings
+/// Generates `.ende/tsconfig.json` with compiler options and paths mappings
 /// for npm:/jsr: specifiers. Also ensures a root `tsconfig.json` exists
 /// that extends it.
 #[allow(
@@ -56,8 +56,8 @@ pub fn generate_tsconfig(
   has_node_types: bool,
   excludes: &[String],
 ) -> Result<GeneratedTsConfig, std::io::Error> {
-  // Write Deno type definitions to .deno/types/deno/ (private typeRoot).
-  let types_dir = project_root.join(".deno/types/deno");
+  // Write Deno type definitions to .ende/types/deno/ (private typeRoot).
+  let types_dir = project_root.join(".ende/types/deno");
   std::fs::create_dir_all(&types_dir)?;
   write_deno_types(&types_dir.join("index.d.ts"), has_node_types)?;
 
@@ -85,23 +85,23 @@ pub fn generate_tsconfig(
     excludes,
   );
 
-  // Write to .deno/tsconfig.json
-  let deno_dir = project_root.join(".deno");
+  // Write to .ende/tsconfig.json
+  let deno_dir = project_root.join(".ende");
   std::fs::create_dir_all(&deno_dir)?;
   let tsconfig_path = deno_dir.join("tsconfig.json");
   let content = serde_json::to_string_pretty(&tsconfig)
     .expect("failed to serialize tsconfig");
   std::fs::write(&tsconfig_path, &content)?;
 
-  // Ensure root tsconfig.json exists and extends .deno/tsconfig.json
+  // Ensure root tsconfig.json exists and extends .ende/tsconfig.json
   ensure_root_tsconfig(project_root)?;
 
   Ok(GeneratedTsConfig { tsconfig_path })
 }
 
-/// Ensure a root `tsconfig.json` exists that extends `.deno/tsconfig.json`.
+/// Ensure a root `tsconfig.json` exists that extends `.ende/tsconfig.json`.
 ///
-/// - No existing tsconfig: create one with `extends: "./.deno/tsconfig.json"`.
+/// - No existing tsconfig: create one with `extends: "./.ende/tsconfig.json"`.
 /// - Existing `extends` is a single string (or absent): coerce into an array
 ///   with our generated path FIRST, then the original entry. TS 5.0+ resolves
 ///   array extends left-to-right with later entries overriding earlier ones, so
@@ -115,7 +115,7 @@ pub fn generate_tsconfig(
 /// silently overwritten, which would drop the user's compiler options.
 fn ensure_root_tsconfig(project_root: &Path) -> Result<(), std::io::Error> {
   let root_tsconfig_path = project_root.join("tsconfig.json");
-  let extends_path = "./.deno/tsconfig.json";
+  let extends_path = "./.ende/tsconfig.json";
 
   if !root_tsconfig_path.exists() {
     let tsconfig = json!({ "extends": extends_path });
@@ -336,7 +336,7 @@ fn strip_top_level_type_decls(text: &str, names: &[&str]) -> String {
   out.join("\n")
 }
 
-/// Rebase a project-root-relative path onto `.deno/`, where the generated
+/// Rebase a project-root-relative path onto `.ende/`, where the generated
 /// tsconfig lives one level down: `.` -> `..`, `./src` -> `../src`,
 /// `src` -> `../src`, `../x` -> `../../x`. Absolute paths are left untouched.
 fn rebase_onto_deno_dir(path: &str) -> String {
@@ -351,7 +351,7 @@ fn rebase_onto_deno_dir(path: &str) -> String {
 
 /// Build the tsconfig JSON object.
 ///
-/// The generated tsconfig lives at `.deno/tsconfig.json`, so all paths
+/// The generated tsconfig lives at `.ende/tsconfig.json`, so all paths
 /// are relative to that directory (e.g. `../node_modules/...`).
 #[allow(
   clippy::too_many_arguments,
@@ -405,7 +405,7 @@ fn build_tsconfig(
 
   // Merge user-defined paths from deno.json compilerOptions — these take
   // priority over generated specifier mappings. The user's values are relative
-  // to the project root, but the generated tsconfig lives in `.deno/`, so each
+  // to the project root, but the generated tsconfig lives in `.ende/`, so each
   // value is rebased one level up (like every generated mapping above).
   if let Some(user_paths) = deno_compiler_options
     .and_then(|co| co.get("paths"))
@@ -428,7 +428,7 @@ fn build_tsconfig(
     }
   }
 
-  // Rebase the user's `baseUrl` onto `.deno/` too (`.` -> `..`, `./src` ->
+  // Rebase the user's `baseUrl` onto `.ende/` too (`.` -> `..`, `./src` ->
   // `../src`), for the same reason.
   if let Some(base_url) = deno_compiler_options
     .and_then(|co| co.get("baseUrl"))
@@ -460,7 +460,7 @@ fn build_tsconfig(
   if check_files.is_empty() {
     // No specific files — check entire project. Mirror the project's own
     // `exclude` (from deno.json) so we don't type-check paths Deno itself skips
-    // (test fixtures, generated output, etc.); the tsconfig lives in `.deno/`,
+    // (test fixtures, generated output, etc.); the tsconfig lives in `.ende/`,
     // so a project-root pattern `x` is rebased to `../x`.
     let mut exclude = vec![json!("../**/node_modules")];
     for pattern in excludes {
@@ -494,7 +494,7 @@ fn build_tsconfig(
 /// TypeScript via `node_modules` with `moduleResolution: "bundler"`.
 /// Map import-map aliases that point at local files/directories (e.g.
 /// `"@/": "./"`, `"utils": "./src/utils.ts"`) to project-relative paths. The
-/// generated tsconfig lives in `.deno/`, so a project-root path `./x` becomes
+/// generated tsconfig lives in `.ende/`, so a project-root path `./x` becomes
 /// `../x`. Trailing-slash prefix aliases become `<alias>*` -> `../<base>*`.
 /// Map import-map aliases whose target is a mirrored http(s) URL to the local
 /// mirror file, so code (and `jsxImportSource`) that imports the *alias* — e.g.
@@ -538,7 +538,7 @@ fn generate_local_alias_paths(
     if !(target.starts_with("./") || target.starts_with("../")) {
       continue;
     }
-    // Re-base a project-root-relative path onto `.deno/` (one level down).
+    // Re-base a project-root-relative path onto `.ende/` (one level down).
     let rebased = format!("../{}", target.trim_start_matches("./"));
     if let Some(prefix) = alias.strip_suffix('/') {
       // Prefix alias: `@/` -> `./` becomes `@/*` -> `../*`.
@@ -767,7 +767,7 @@ fn package_export_keys(pkg_dir: &Path) -> Vec<String> {
 /// Resolve the types entry point from a JSR package's package.json.
 ///
 /// Reads the `"exports"` field and looks for `"."` -> `"types"` condition.
-/// Returns a path relative to `.deno/` (e.g., `../node_modules/@jsr/std__assert/_dist/mod.d.ts`).
+/// Returns a path relative to `.ende/` (e.g., `../node_modules/@jsr/std__assert/_dist/mod.d.ts`).
 fn resolve_jsr_types_entry(pkg_dir: &Path, export_key: &str) -> Option<String> {
   let pkg_json_path = pkg_dir.join("package.json");
   let content = std::fs::read_to_string(&pkg_json_path).ok()?;
@@ -791,7 +791,7 @@ fn resolve_jsr_types_entry(pkg_dir: &Path, export_key: &str) -> Option<String> {
       }
     })?;
 
-  // Convert package-relative path to .deno/-relative path
+  // Convert package-relative path to .ende/-relative path
   let pkg_name = pkg_dir.file_name()?.to_string_lossy();
   let parent_name = pkg_dir
     .parent()
@@ -811,7 +811,7 @@ fn resolve_jsr_types_entry(pkg_dir: &Path, export_key: &str) -> Option<String> {
 /// Generate tsconfig "paths" entries for http(s): specifiers.
 ///
 /// The installer returns a map from user-facing URL → local mirror path
-/// (already relative to `.deno/`). For X-TypeScript-Types-bearing modules
+/// (already relative to `.ende/`). For X-TypeScript-Types-bearing modules
 /// the local path points at the `.d.ts` rather than the JS source.
 ///
 /// With `moduleResolution: "bundler"`, stock tsc accepts colon-containing
@@ -887,10 +887,10 @@ fn base_compiler_options() -> Map<String, Value> {
     "allowImportingTsExtensions": true,
 
     // Standard libs (Deno-specific libs like deno.window are replaced by
-    // the @types/deno package under .deno/types/)
+    // the @types/deno package under .ende/types/)
     "lib": ["esnext"],
 
-    // typeRoots points at our private .deno/types/ dir; "types: [deno]"
+    // typeRoots points at our private .ende/types/ dir; "types: [deno]"
     // tells tsc to load exactly that and nothing else. Without this, tsc
     // would auto-include every @types/* in node_modules, which would
     // collide with Deno's runtime types when this file is read by Deno's
@@ -939,7 +939,7 @@ fn merge_deno_options(base: &mut Map<String, Value>, user_opts: &Value) {
     "noUnusedLocals",
     "noUnusedParameters",
     // NOTE: `paths`, `baseUrl` are deliberately NOT passed through here — they
-    // hold project-root-relative paths that must be rebased onto `.deno/` (the
+    // hold project-root-relative paths that must be rebased onto `.ende/` (the
     // generated tsconfig lives one level down). They're handled in
     // `build_tsconfig`. (`rootDirs` has the same hazard but is passed through
     // for now; rebase it too if it ever matters.)
@@ -1212,7 +1212,7 @@ interface AlsoKeep {
     assert!(!paths.contains_key("npm:chalk/*"));
     assert!(!paths.contains_key("chalk/*"));
 
-    // Paths should be relative to .deno/
+    // Paths should be relative to .ende/
     assert_eq!(
       paths.get("npm:chalk").unwrap(),
       &json!(["../node_modules/chalk"])
@@ -1360,7 +1360,7 @@ interface AlsoKeep {
       .unwrap();
 
     // User's custom path should override the generated one, rebased onto
-    // `.deno/` (the generated tsconfig lives one level below the project root).
+    // `.ende/` (the generated tsconfig lives one level below the project root).
     assert_eq!(
       paths.get("npm:chalk").unwrap(),
       &json!(["../my-custom-chalk"])
@@ -1389,7 +1389,7 @@ interface AlsoKeep {
     let tsconfig: Value = serde_json::from_str(&content).unwrap();
     assert_eq!(
       tsconfig.get("extends").unwrap(),
-      &json!("./.deno/tsconfig.json")
+      &json!("./.ende/tsconfig.json")
     );
   }
 
@@ -1412,7 +1412,7 @@ interface AlsoKeep {
     // Should add extends
     assert_eq!(
       tsconfig.get("extends").unwrap(),
-      &json!("./.deno/tsconfig.json")
+      &json!("./.ende/tsconfig.json")
     );
     // Should preserve existing options
     assert_eq!(
@@ -1443,7 +1443,7 @@ interface AlsoKeep {
     // Ours goes first so the user's team config overrides our defaults.
     assert_eq!(
       tsconfig.get("extends").unwrap(),
-      &json!(["./.deno/tsconfig.json", "./team-shared.json"])
+      &json!(["./.ende/tsconfig.json", "./team-shared.json"])
     );
   }
 
@@ -1464,7 +1464,7 @@ interface AlsoKeep {
     let tsconfig: Value = serde_json::from_str(&content).unwrap();
     assert_eq!(
       tsconfig.get("extends").unwrap(),
-      &json!(["./.deno/tsconfig.json", "./a.json", "./b.json"])
+      &json!(["./.ende/tsconfig.json", "./a.json", "./b.json"])
     );
   }
 
@@ -1494,7 +1494,7 @@ interface AlsoKeep {
     // extends added, user's options not dropped.
     assert_eq!(
       parsed.get("extends").unwrap(),
-      &json!("./.deno/tsconfig.json")
+      &json!("./.ende/tsconfig.json")
     );
     assert_eq!(
       parsed.get("compilerOptions").and_then(|c| c.get("strict")),
@@ -1518,7 +1518,7 @@ interface AlsoKeep {
 
     std::fs::write(
       root.join("tsconfig.json"),
-      r#"{ "extends": ["./a.json", "./.deno/tsconfig.json"] }"#,
+      r#"{ "extends": ["./a.json", "./.ende/tsconfig.json"] }"#,
     )
     .unwrap();
 
@@ -1528,7 +1528,7 @@ interface AlsoKeep {
     let tsconfig: Value = serde_json::from_str(&content).unwrap();
     assert_eq!(
       tsconfig.get("extends").unwrap(),
-      &json!(["./a.json", "./.deno/tsconfig.json"])
+      &json!(["./a.json", "./.ende/tsconfig.json"])
     );
   }
 
@@ -1540,7 +1540,7 @@ interface AlsoKeep {
     // Create tsconfig with correct extends already set
     std::fs::write(
       root.join("tsconfig.json"),
-      r#"{ "extends": "./.deno/tsconfig.json", "compilerOptions": {} }"#,
+      r#"{ "extends": "./.ende/tsconfig.json", "compilerOptions": {} }"#,
     )
     .unwrap();
 
@@ -1550,7 +1550,7 @@ interface AlsoKeep {
     let tsconfig: Value = serde_json::from_str(&content).unwrap();
     assert_eq!(
       tsconfig.get("extends").unwrap(),
-      &json!("./.deno/tsconfig.json")
+      &json!("./.ende/tsconfig.json")
     );
   }
 }

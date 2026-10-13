@@ -2,7 +2,7 @@
   "tempDir": true,
   "tests": {
     "forces_all_deps_to_package_json": {
-      // When both deno.json and package.json exist, --package-json forces
+      // When both ende.json and package.json exist, --package-json forces
       // all packages (including jsr) into package.json
       "steps": [
         {
@@ -19,14 +19,14 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('deno.json').trim())"
+            "console.log(Deno.readTextFileSync('ende.json').trim())"
           ],
           "output": "{}\n"
         }
       ]
     },
     "creates_package_json_if_missing": {
-      // When only deno.json exists, --package-json creates package.json
+      // When only ende.json exists, --package-json creates package.json
       "steps": [
         {
           "args": [

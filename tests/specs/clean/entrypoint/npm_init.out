@@ -16,7 +16,7 @@
 ---- http://localhost:4260/@denotest%2fadd ([WILDLINE])
 
 ./node_modules
-- .deno
+- .ende
 -- [WILDCARD]
 -- @denotest+add@1.0.0
 --- .initialized

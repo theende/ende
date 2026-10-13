@@ -608,7 +608,7 @@ fn clean_node_modules(
     bail!("expected a node_modules directory, got: {}", dir.display());
   }
 
-  let base = dir.join(".deno");
+  let base = dir.join(".ende");
   let base_metadata = match std::fs::symlink_metadata(&base) {
     Ok(metadata) => metadata,
     Err(err)
@@ -621,13 +621,13 @@ fn clean_node_modules(
     }
     Err(err) => {
       return Err(err).with_context(|| {
-        format!("failed to stat node_modules/.deno at {}", base.display())
+        format!("failed to stat node_modules/.ende at {}", base.display())
       });
     }
   };
   if base_metadata.file_type().is_symlink() {
     bail!(
-      "refusing to clean symlinked node_modules/.deno directory at {}",
+      "refusing to clean symlinked node_modules/.ende directory at {}",
       base.display()
     );
   }
@@ -640,7 +640,7 @@ fn clean_node_modules(
     .map(ende_resolver::npm::get_package_folder_id_folder_name)
     .collect::<HashSet<_>>();
 
-  // remove the actual packages from node_modules/.deno
+  // remove the actual packages from node_modules/.ende
   let entries = match std::fs::read_dir(&base) {
     Ok(entries) => entries,
     // `base` was confirmed to be a real directory above, so reaching this arm
@@ -702,7 +702,7 @@ fn clean_node_modules(
     }
   };
 
-  // remove top level symlinks from node_modules/<package> to node_modules/.deno/<package>
+  // remove top level symlinks from node_modules/<package> to node_modules/.ende/<package>
   // where the target doesn't exist (because it was removed above)
   ende_npm_installer::remove_unused_node_modules_symlinks(
     &sys,
@@ -715,7 +715,7 @@ fn clean_node_modules(
   )
   .map_err(AnyError::from)?;
 
-  // remove symlinks from node_modules/.deno/node_modules/<package> to node_modules/.deno/<package>
+  // remove symlinks from node_modules/.ende/node_modules/<package> to node_modules/.ende/<package>
   // where the target doesn't exist (because it was removed above)
   let deno_nm = base.join("node_modules");
   ende_npm_installer::remove_unused_node_modules_symlinks(
@@ -805,7 +805,7 @@ mod tests {
     temp_dir.create_dir_all("node_modules");
     temp_dir.create_dir_all("victim/important_dir");
     temp_dir.write("victim/important_dir/secret.txt", "secret");
-    temp_dir.symlink_dir("victim", "node_modules/.deno");
+    temp_dir.symlink_dir("victim", "node_modules/.ende");
 
     let mut cleaner = FsCleaner::new(None);
     let node_modules = temp_dir.path().join("node_modules");

@@ -5,7 +5,7 @@
       "output": "collect.out"
     },
     "config_sub_dir": {
-      "args": "bench --config collect/deno.jsonc collect",
+      "args": "bench --config collect/ende.jsonc collect",
       "output": "collect.out"
     },
     "config_sub_dir_with_exclude": {

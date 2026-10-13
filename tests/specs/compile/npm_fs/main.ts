@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import assert from "node:assert/strict";
 
-// will be at node_modules\.deno\@denotest+esm-basic@1.0.0\node_modules\@denotest\esm-basic
+// will be at node_modules\.ende\@denotest+esm-basic@1.0.0\node_modules\@denotest\esm-basic
 const dirPath = path.dirname(fileURLToPath(url));
 const nodeModulesPath = path.join(dirPath, "../../../../../");
 const packageJsonText = `{

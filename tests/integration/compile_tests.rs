@@ -135,7 +135,7 @@ fn standalone_follow_redirects() {
       "--output",
       &exe.to_string_lossy(),
       "--config",
-      "../config/deno.json",
+      "../config/ende.json",
       "./compile/standalone_follow_redirects.ts",
     ])
     .run()
@@ -757,7 +757,7 @@ testing[WILDCARD]this
 
   // now try with byonm
   temp_dir.remove_dir_all("node_modules");
-  temp_dir.write("deno.json", r#"{"unstable":["byonm"]}"#);
+  temp_dir.write("ende.json", r#"{"unstable":["byonm"]}"#);
   context.run_npm("install");
 
   context
@@ -1084,7 +1084,7 @@ fn granular_unstable_features_config_file() {
     dir.path().join("app")
   };
   dir.write(
-    "deno.json",
+    "ende.json",
     serde_json::to_string_pretty(&serde_json::json!({
       "unstable": ["kv", "temporal"]
     }))
@@ -1095,7 +1095,7 @@ fn granular_unstable_features_config_file() {
     .args_vec([
       "compile",
       "--config",
-      &dir.path().join("deno.json").to_string(),
+      &dir.path().join("ende.json").to_string(),
       "--output",
       &exe.to_string_lossy(),
       "./unstable_features.ts",
@@ -1152,7 +1152,7 @@ fn standalone_config_file_respects_compiler_options() {
       "compile",
       "--allow-read",
       "--config",
-      "compile/compiler_options/deno.json",
+      "compile/compiler_options/ende.json",
       "--output",
       &exe.to_string_lossy(),
       "./compile/compiler_options/main.ts",

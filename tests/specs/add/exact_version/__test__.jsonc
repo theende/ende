@@ -10,7 +10,7 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('deno.json').trim())"
+            "console.log(Deno.readTextFileSync('ende.json').trim())"
           ],
           "output": "npm_deno.json.out"
         }
@@ -25,7 +25,7 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('deno.json').trim())"
+            "console.log(Deno.readTextFileSync('ende.json').trim())"
           ],
           "output": "jsr_deno.json.out"
         }

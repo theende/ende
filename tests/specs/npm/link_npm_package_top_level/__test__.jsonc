@@ -24,7 +24,7 @@
       }, {
         "args": [
           "eval",
-          "console.log(Deno.readTextFileSync('./main/deno.lock').trim())"
+          "console.log(Deno.readTextFileSync('./main/ende.lock').trim())"
         ],
         "output": "expected_lockfile.out"
       }, {
@@ -43,7 +43,7 @@
       }, {
         "args": [
           "eval",
-          "console.log(Deno.readTextFileSync('./main/deno.lock').trim())"
+          "console.log(Deno.readTextFileSync('./main/ende.lock').trim())"
         ],
         "output": "expected_lockfile_after_change.out"
       }, {

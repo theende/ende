@@ -357,7 +357,7 @@ impl<
         .workspace_pkgs()
         .iter()
         .any(|pkg| !pkg.scripts.is_empty());
-    let deno_marker_dir = self.root_node_modules_path.join(".deno");
+    let deno_marker_dir = self.root_node_modules_path.join(".ende");
     if has_no_packages
       && (!self.clean_on_install
         || !self.sys.fs_exists_no_err(&deno_marker_dir))
@@ -374,13 +374,13 @@ impl<
     // Create the node_modules directory
     sys.fs_create_dir_all(&self.root_node_modules_path)?;
 
-    // Use a marker directory for the lock file (reuse .deno for compatibility)
+    // Use a marker directory for the lock file (reuse .ende for compatibility)
     sys.fs_create_dir_all(&deno_marker_dir)?;
 
     let bin_node_modules_dir_path = self.root_node_modules_path.join(".bin");
     let single_process_lock = LaxSingleProcessFsFlag::lock(
       sys.as_ref(),
-      deno_marker_dir.join(".deno.lock"),
+      deno_marker_dir.join(".ende.lock"),
       &self.reporter,
       "waiting for file lock on node_modules directory",
     )
@@ -1056,7 +1056,7 @@ fn cleanup_hoisted_packages(
     for entry in entries.flatten() {
       let name = entry.file_name();
       let name_str = name.to_string_lossy();
-      // Skip hidden dirs (.deno, .bin) and expected packages
+      // Skip hidden dirs (.ende, .bin) and expected packages
       if name_str.starts_with('.') || expected_names.contains(name_str.as_ref())
       {
         continue;

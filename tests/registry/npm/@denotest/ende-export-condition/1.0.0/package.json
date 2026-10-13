@@ -1,0 +1,13 @@
+{
+  "name": "@denotest/ende-export-condition",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "ende": "./ende.js",
+      "deno": "./deno.js",
+      "node": "./node.js",
+      "default": "./default.js"
+    }
+  }
+}

@@ -5,7 +5,7 @@
       "steps": [{
         "args": "pack",
         "exitCode": 1,
-        "output": "[WILDCARD]error: Missing 'exports' field in '[WILDCARD]deno.json'[WILDCARD]\n"
+        "output": "[WILDCARD]error: Missing 'exports' field in '[WILDCARD]ende.json'[WILDCARD]\n"
       }]
     }
   }

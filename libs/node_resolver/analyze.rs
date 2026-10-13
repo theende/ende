@@ -294,7 +294,7 @@ impl<
           &entry.specifier,
           referrer,
           &[
-            Cow::Borrowed("deno"),
+            Cow::Borrowed("ende"),
             Cow::Borrowed("node"),
             Cow::Borrowed("require"),
             Cow::Borrowed("module-sync"),
@@ -387,9 +387,9 @@ impl<
               &reexport,
               &referrer,
               // FIXME(bartlomieju): check if these conditions are okay, probably
-              // should be `deno-require`, because `deno` is already used in `esm_resolver.rs`
+              // should be `ende-require`, because `ende` is already used in `esm_resolver.rs`
               &[
-                Cow::Borrowed("deno"),
+                Cow::Borrowed("ende"),
                 Cow::Borrowed("node"),
                 Cow::Borrowed("require"),
                 Cow::Borrowed("module-sync"),

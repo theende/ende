@@ -217,7 +217,7 @@ pub struct WorkspaceFactoryOptions {
   pub node_modules_linker: Option<NodeModulesLinkerMode>,
   pub no_lock: bool,
   pub no_npm: bool,
-  /// When no `deno.lock` exists, attempt to seed one by translating a
+  /// When no lockfile exists, attempt to seed one by translating a
   /// sibling `package-lock.json`. Currently set by `deno install`.
   pub import_npm_lockfile: bool,
   /// The process state if using ext/node and the current process was "forked".

@@ -71,7 +71,7 @@
     "global_lifecycle_scripts": {
       "steps": [
         {
-          "args": ["eval", "Deno.removeSync('deno.json')"],
+          "args": ["eval", "Deno.removeSync('ende.json')"],
           "output": ""
         },
         {
@@ -116,7 +116,7 @@
         {
           "args": [
             "eval",
-            "Deno.removeSync('./deno.json')"
+            "Deno.removeSync('./ende.json')"
           ],
           "output": "[WILDCARD]"
         },
@@ -170,7 +170,7 @@
     "lifecycle_scripts_no_deno_json": {
       "steps": [
         {
-          "args": ["eval", "Deno.removeSync('deno.json')"],
+          "args": ["eval", "Deno.removeSync('ende.json')"],
           "output": ""
         },
         {
@@ -182,7 +182,7 @@
     "lifecycle_scripts_no_deno_json_conflicting_bin": {
       "steps": [
         {
-          "args": ["eval", "Deno.removeSync('deno.json')"],
+          "args": ["eval", "Deno.removeSync('ende.json')"],
           "output": ""
         },
         {

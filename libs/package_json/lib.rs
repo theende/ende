@@ -809,7 +809,7 @@ impl PackageJson {
     for (engine, version_req) in engines {
       let actual = match engine.as_str() {
         "node" => node_version,
-        "deno" => deno_version,
+        "ende" => deno_version,
         _ => continue,
       };
       let parsed_req = match VersionReq::parse_from_npm(version_req) {
@@ -1424,7 +1424,8 @@ mod test {
     let json_value = serde_json::json!({
       "engines": {
         "node": ">=18.0.0",
-        "deno": "^2.0.0",
+        "ende": "^2.0.0",
+        "deno": ">=99.0.0",
         "npm": ">=9",
       },
     });
@@ -1433,17 +1434,17 @@ mod test {
         .unwrap();
     let engines = pj.engines.as_ref().unwrap();
     assert_eq!(engines.get("node").unwrap(), ">=18.0.0");
-    assert_eq!(engines.get("deno").unwrap(), "^2.0.0");
+    assert_eq!(engines.get("ende").unwrap(), "^2.0.0");
     assert_eq!(engines.get("npm").unwrap(), ">=9");
 
-    // satisfied for both engines we look at
+    // satisfied for both engines we look at (`deno` is not one of them)
     let mismatches = pj.check_engines("2.1.0", "20.0.0");
     assert!(
       mismatches.is_empty(),
       "expected no mismatches: {mismatches:?}"
     );
 
-    // node too old; deno still satisfied; npm is ignored
+    // node too old; ende still satisfied; deno and npm are ignored
     let mismatches = pj.check_engines("2.1.0", "16.0.0");
     assert_eq!(mismatches.len(), 1);
     assert_eq!(mismatches[0].engine, "node");
@@ -1460,7 +1461,7 @@ mod test {
     let pj = PackageJson::load_from_value(
       PathBuf::from("/package.json"),
       serde_json::json!({
-        "engines": { "deno": "not-a-range" },
+        "engines": { "ende": "not-a-range" },
       }),
     )
     .unwrap();

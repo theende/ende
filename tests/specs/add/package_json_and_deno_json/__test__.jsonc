@@ -17,7 +17,7 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('deno.json').trim())"
+            "console.log(Deno.readTextFileSync('ende.json').trim())"
           ],
           "output": "npm_prefer_deno.json.out"
         }
@@ -26,7 +26,7 @@
     "only_creates_deno_json_if_no_config": {
       "steps": [
         {
-          "args": ["eval", "Deno.removeSync('deno.json')"],
+          "args": ["eval", "Deno.removeSync('ende.json')"],
           "output": ""
         },
         {
@@ -36,7 +36,7 @@
         {
           "args": [
             "eval",
-            "try { Deno.statSync('deno.json'); console.log('bad'); } catch (e) { if (e instanceof Deno.errors.NotFound) { console.log('good'); } else { console.log('bad error', e); }}"
+            "try { Deno.statSync('ende.json'); console.log('bad'); } catch (e) { if (e instanceof Deno.errors.NotFound) { console.log('good'); } else { console.log('bad error', e); }}"
           ],
           "output": "good\n"
         }
@@ -59,7 +59,7 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('./subdir/deno.json').trim())"
+            "console.log(Deno.readTextFileSync('./subdir/ende.json').trim())"
           ],
           "output": "subdir/prefer_if_closer_deno.json.out"
         }

@@ -75,7 +75,7 @@ use crate::path::UrlOrPath;
 use crate::path::UrlOrPathRef;
 
 pub static IMPORT_CONDITIONS: &[Cow<'static, str>] = &[
-  Cow::Borrowed("deno"),
+  Cow::Borrowed("ende"),
   Cow::Borrowed("node"),
   Cow::Borrowed("import"),
   Cow::Borrowed("module-sync"),
@@ -92,7 +92,7 @@ pub struct NodeConditionOptions {
   pub conditions: Vec<Cow<'static, str>>,
   /// Provide a value to override the default import conditions.
   ///
-  /// Defaults to `["deno", "node", "import", "module-sync"]`
+  /// Defaults to `["ende", "node", "import", "module-sync"]`
   pub import_conditions_override: Option<Vec<Cow<'static, str>>>,
   /// Provide a value to override the default require conditions.
   ///
@@ -3181,7 +3181,7 @@ mod tests {
     assert_eq!(
       IMPORT_CONDITIONS,
       &[
-        Cow::Borrowed("deno"),
+        Cow::Borrowed("ende"),
         Cow::Borrowed("node"),
         Cow::Borrowed("import"),
         Cow::Borrowed("module-sync"),

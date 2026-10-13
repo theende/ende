@@ -22,7 +22,7 @@
     {
       // even though we didn't put it in .bin, make sure the bin entry is marked executable
       "if": "unix",
-      "commandName": "node_modules/.deno/@denotest+bin@1.0.0/node_modules/@denotest/bin/cli-cjs.js",
+      "commandName": "node_modules/.ende/@denotest+bin@1.0.0/node_modules/@denotest/bin/cli-cjs.js",
       "args": "hello",
       "output": "hello\n"
     }

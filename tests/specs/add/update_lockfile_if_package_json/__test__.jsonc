@@ -10,7 +10,7 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('deno.lock'))"
+            "console.log(Deno.readTextFileSync('ende.lock'))"
           ],
           "output": "lockfile_add.out"
         },
@@ -21,7 +21,7 @@
         {
           "args": [
             "eval",
-            "console.log(Deno.readTextFileSync('deno.lock'))"
+            "console.log(Deno.readTextFileSync('ende.lock'))"
           ],
           "output": "lockfile_remove.out"
         }

@@ -1,5 +1,5 @@
 {
-  "args": "run --config=deno.json http://localhost:4546/run/001_hello.js",
+  "args": "run --config=ende.json http://localhost:4546/run/001_hello.js",
   "output": "run.out",
   "exitCode": 10
 }

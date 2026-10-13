@@ -1,0 +1,10 @@
+{
+  "tempDir": true,
+  "steps": [{
+    "args": "init project",
+    "output": "[WILDCARD]"
+  }, {
+    "args": "run --no-config --no-lock -R check.ts",
+    "output": "project/ende.json: true\nproject/deno.json: false\n"
+  }]
+}

@@ -1,4 +1,4 @@
 {
-  "args": "check --quiet --config jsximportsource_importmap_config/deno.json jsximportsource_importmap_config/main.tsx",
+  "args": "check --quiet --config jsximportsource_importmap_config/ende.json jsximportsource_importmap_config/main.tsx",
   "output": ""
 }

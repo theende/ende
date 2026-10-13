@@ -25,6 +25,7 @@ use serde::de::Visitor;
 use serde::ser::Error;
 use serde_json::Value;
 use serde_json::json;
+use sys_traits::FsMetadata;
 use sys_traits::FsRead;
 use thiserror::Error;
 use url::Url;
@@ -37,9 +38,17 @@ use crate::import_map::scope_entries;
 use crate::import_map::value_to_dep_req;
 use crate::util::is_skippable_io_error;
 
+mod file_names;
 mod permissions;
 mod ts;
 
+pub use file_names::CONFIG_FILE_NAMES;
+pub use file_names::DEFAULT_CONFIG_FILE_NAME;
+pub use file_names::DEPRECATED_LOCKFILE_NAME;
+pub use file_names::LOCKFILE_NAME;
+pub use file_names::is_config_file_name;
+pub use file_names::resolve_default_lockfile_path;
+pub use file_names::warn_if_deprecated_file_name;
 pub use permissions::AllowDenyIgnorePermissionConfig;
 pub use permissions::AllowDenyIgnorePermissionConfigValue;
 pub use permissions::AllowDenyPermissionConfig;
@@ -1550,7 +1559,7 @@ pub trait DenoJsonCache {
 pub enum ConfigFileError {
   #[class(type)]
   #[error(
-    "Only file: specifiers are supported for security reasons in import maps stored in a deno.json. To use a remote import map, use the --import-map flag and \"deno.importMap\" in the language server config"
+    "Only file: specifiers are supported for security reasons in import maps stored in a ende.json. To use a remote import map, use the --import-map flag and \"deno.importMap\" in the language server config"
   )]
   OnlyFileSpecifiersSupported,
   #[class(inherit)]
@@ -1628,7 +1637,7 @@ pub enum ConfigFileExportsError {
   },
   #[class(type)]
   #[error(
-    "The path of the {key} must be a string, found invalid value '{value}'. Exports in deno.json do not support conditional exports."
+    "The path of the {key} must be a string, found invalid value '{value}'. Exports in ende.json do not support conditional exports."
   )]
   InvalidValueConditionalExports {
     key: Cow<'static, str>,
@@ -1737,7 +1746,6 @@ impl ConfigFile {
   pub(crate) fn resolve_config_file_names<'a>(
     additional_config_file_names: &[&'a str],
   ) -> Cow<'a, [&'a str]> {
-    const CONFIG_FILE_NAMES: [&str; 2] = ["deno.json", "deno.jsonc"];
     if additional_config_file_names.is_empty() {
       Cow::Borrowed(&CONFIG_FILE_NAMES)
     } else {
@@ -2750,15 +2758,18 @@ impl ConfigFile {
 
   pub fn resolve_lockfile_path(
     &self,
+    sys: &impl FsMetadata,
   ) -> Result<Option<PathBuf>, ToLockConfigError> {
     match self.to_lock_config()? {
       Some(LockConfig::Bool(lock)) if !lock => Ok(None),
       Some(LockConfig::PathBuf(lock)) => Ok(Some(lock)),
       Some(LockConfig::Object { path, .. }) if path.is_some() => Ok(path),
       _ => {
-        let mut path = url_to_file_path(&self.specifier)?;
-        path.set_file_name("deno.lock");
-        Ok(Some(path))
+        let path = url_to_file_path(&self.specifier)?;
+        Ok(Some(resolve_default_lockfile_path(
+          sys,
+          path.parent().unwrap(),
+        )))
       }
     }
   }
@@ -3243,7 +3254,7 @@ mod tests {
     }
 
     fn parse(json: &str) -> MinimumDependencyAgeConfig {
-      let specifier = Url::parse("file:///deno/deno.json").unwrap();
+      let specifier = Url::parse("file:///deno/ende.json").unwrap();
       let config_file = ConfigFile::new(json, specifier).unwrap();
       config_file
         .to_minimum_dependency_age_config(&TestEnv)
@@ -3294,7 +3305,7 @@ mod tests {
     assert!(config.exclude.is_empty());
 
     // Unknown field still errors.
-    let specifier = Url::parse("file:///deno/deno.json").unwrap();
+    let specifier = Url::parse("file:///deno/ende.json").unwrap();
     let config_file = ConfigFile::new(
       r#"{ "minimumDependencyAge": { "unknown": 1 } }"#,
       specifier,
@@ -3309,7 +3320,7 @@ mod tests {
     ));
 
     // Out-of-range numeric values should return an error instead of panicking.
-    let specifier = Url::parse("file:///deno/deno.json").unwrap();
+    let specifier = Url::parse("file:///deno/ende.json").unwrap();
     let config_file =
       ConfigFile::new(r#"{ "minimumDependencyAge": 138939752218 }"#, specifier)
         .unwrap();
@@ -3391,11 +3402,13 @@ mod tests {
   #[test]
   fn resolve_lockfile_path_from_unix_path() {
     let config_file =
-      ConfigFile::new("{}", Url::parse("file:///root/deno.json").unwrap())
+      ConfigFile::new("{}", Url::parse("file:///root/ende.json").unwrap())
         .unwrap();
-    let lockfile_path = config_file.resolve_lockfile_path().unwrap();
+    let lockfile_path = config_file
+      .resolve_lockfile_path(&sys_traits::impls::InMemorySys::default())
+      .unwrap();
     let lockfile_path = lockfile_path.unwrap();
-    assert_eq!(lockfile_path, PathBuf::from("/root/deno.lock"));
+    assert_eq!(lockfile_path, PathBuf::from("/root/ende.lock"));
   }
 
   #[test]
@@ -3522,7 +3535,7 @@ mod tests {
     // object key value
     run_test(
       r#"{ "exports": { "./mod": {} } }"#,
-      "The path of the './mod' export must be a string, found invalid value '{}'. Exports in deno.json do not support conditional exports.",
+      "The path of the './mod' export must be a string, found invalid value '{}'. Exports in ende.json do not support conditional exports.",
     );
     // non-map or string value
     run_test(
@@ -3622,7 +3635,7 @@ mod tests {
         "@std/test": "jsr:@std/test@0.2.0"
       }
     }"#;
-    let config_specifier = root_url().join("deno.json").unwrap();
+    let config_specifier = root_url().join("ende.json").unwrap();
     let config_file = ConfigFile::new(config_text, config_specifier).unwrap();
     let result = config_file.to_import_map_from_imports().unwrap();
 
@@ -3643,13 +3656,13 @@ mod tests {
       // will be ignored because imports and scopes takes precedence
       "importMap": "import_map.json",
     }"#;
-    let config_specifier = root_url().join("deno.json").unwrap();
+    let config_specifier = root_url().join("ende.json").unwrap();
     let config_file = ConfigFile::new(config_text, config_specifier).unwrap();
     let result = config_file.to_import_map(&UnreachableSys).unwrap().unwrap();
 
     assert_eq!(
       result.import_map.base_url(),
-      &root_url().join("deno.json").unwrap()
+      &root_url().join("ende.json").unwrap()
     );
     assert_eq!(
       json!(result.import_map.imports()),
@@ -3668,13 +3681,13 @@ mod tests {
       // will be ignored because imports and scopes takes precedence
       "importMap": "import_map.json",
     }"#;
-    let config_specifier = root_url().join("deno.json").unwrap();
+    let config_specifier = root_url().join("ende.json").unwrap();
     let config_file = ConfigFile::new(config_text, config_specifier).unwrap();
     let result = config_file.to_import_map(&UnreachableSys).unwrap().unwrap();
 
     assert_eq!(
       result.import_map.base_url(),
-      &root_url().join("deno.json").unwrap()
+      &root_url().join("ende.json").unwrap()
     );
     assert_eq!(
       json!(result.import_map),
@@ -3715,7 +3728,7 @@ mod tests {
     let config_text = r#"{
       "importMap": "import_map.json",
     }"#;
-    let config_specifier = root_url().join("deno.json").unwrap();
+    let config_specifier = root_url().join("ende.json").unwrap();
     let config_file = ConfigFile::new(config_text, config_specifier).unwrap();
     let result = config_file.to_import_map(&MockFs).unwrap().unwrap();
 
@@ -3737,14 +3750,14 @@ mod tests {
     let config_text = r#"{
       "importMap": "https://deno.land/import_map.json",
     }"#;
-    let config_specifier = root_url().join("deno.json").unwrap();
+    let config_specifier = root_url().join("ende.json").unwrap();
     let config_file = ConfigFile::new(config_text, config_specifier).unwrap();
     let err = config_file.to_import_map(&UnreachableSys).unwrap_err();
     assert_eq!(
       err.to_string(),
       concat!(
         "Only file: specifiers are supported for security reasons in ",
-        "import maps stored in a deno.json. To use a remote import map, ",
+        "import maps stored in a ende.json. To use a remote import map, ",
         "use the --import-map flag and \"deno.importMap\" in the ",
         "language server config"
       )
@@ -3781,7 +3794,7 @@ mod tests {
     }"#;
 
     let config =
-      ConfigFile::new(config_text, root_url().join("deno.jsonc").unwrap())
+      ConfigFile::new(config_text, root_url().join("ende.jsonc").unwrap())
         .unwrap();
     assert_eq!(
       config.resolve_tasks_config().unwrap(),
@@ -3799,7 +3812,7 @@ mod tests {
   fn resolve_import_map_url_parent() {
     let config_text = r#"{ "importMap": "../import_map.json" }"#;
     let file_path = deno_path_util::url_to_file_path(
-      &root_url().join("sub/deno.json").unwrap(),
+      &root_url().join("sub/ende.json").unwrap(),
     )
     .unwrap();
     let config_specifier =
@@ -3828,21 +3841,22 @@ mod tests {
       ),
       (
         r#"{ "lock": { "frozen": false } }"#,
-        (false, root_joined("deno.lock")),
+        (false, root_joined("ende.lock")),
       ),
       (
         r#"{ "lock": { "path": "mydeno.lock" } }"#,
         (false, root_joined("mydeno.lock")),
       ),
-      (r#"{ "lock": {} }"#, (false, root_joined("deno.lock"))),
+      (r#"{ "lock": {} }"#, (false, root_joined("ende.lock"))),
     ];
+    let sys = sys_traits::impls::InMemorySys::default();
     for (config_text, (frozen, resolved_path)) in cases {
       let config_file =
-        ConfigFile::new(config_text, root_url().join("deno.json").unwrap())
+        ConfigFile::new(config_text, root_url().join("ende.json").unwrap())
           .unwrap();
       let lock_config = config_file.to_lock_config().unwrap().unwrap();
       assert_eq!(
-        config_file.resolve_lockfile_path().unwrap().unwrap(),
+        config_file.resolve_lockfile_path(&sys).unwrap().unwrap(),
         resolved_path,
       );
       assert_eq!(lock_config.frozen(), frozen);
@@ -3873,7 +3887,7 @@ mod tests {
     fn get_result(
       text: &str,
     ) -> Result<AllowScriptsConfig, ToInvalidConfigError> {
-      let config_specifier = root_url().join("deno.json").unwrap();
+      let config_specifier = root_url().join("ende.json").unwrap();
       let config_file = ConfigFile::new(text, config_specifier).unwrap();
       config_file.to_allow_scripts_config()
     }

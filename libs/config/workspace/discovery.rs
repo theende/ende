@@ -33,6 +33,7 @@ use super::WorkspaceDiscoverErrorKind;
 use super::WorkspaceDiscoverOptions;
 use super::WorkspaceDiscoverStart;
 use super::WorkspaceRc;
+use crate::deno_json::CONFIG_FILE_NAMES;
 use crate::deno_json::ConfigFile;
 use crate::deno_json::ConfigFileRc;
 use crate::glob::FileCollector;
@@ -44,6 +45,15 @@ use crate::glob::is_glob_pattern;
 use crate::util::is_skippable_io_error;
 use crate::workspace::ConfigReadError;
 use crate::workspace::Workspace;
+
+/// File names that identify a workspace member or link directory.
+const MEMBER_CONFIG_FILE_NAMES: [&str; 5] = [
+  CONFIG_FILE_NAMES[0],
+  CONFIG_FILE_NAMES[1],
+  CONFIG_FILE_NAMES[2],
+  CONFIG_FILE_NAMES[3],
+  "package.json",
+];
 
 #[derive(Debug)]
 pub enum DenoOrPkgJson {
@@ -736,9 +746,10 @@ fn resolve_workspace_for_config_folder<
       maybe_config_folder.ok_or_else(|| {
         // it's fine this doesn't use all the possible config file names
         // as this is only used to enhance the error message
-        if member_dir_url.as_str().ends_with("/deno.json/")
-          || member_dir_url.as_str().ends_with("/deno.jsonc/")
-          || member_dir_url.as_str().ends_with("/package.json/")
+        let dir_url = member_dir_url.as_str();
+        if MEMBER_CONFIG_FILE_NAMES
+          .iter()
+          .any(|name| dir_url.ends_with(&format!("/{name}/")))
         {
           ResolveWorkspaceMemberErrorKind::NotFoundMaybeSpecifiedFile {
             dir_url: member_dir_url.clone(),
@@ -816,14 +827,16 @@ fn resolve_workspace_for_config_folder<
       .iter()
       .partition(|member| is_glob_pattern(member) || member.starts_with('!'));
 
-    // Deno workspaces can discover wildcard members that use either `deno.json`, `deno.jsonc` or `package.json`.
-    // But it only works for Deno workspaces, npm workspaces don't discover `deno.json(c)` files, otherwise
-    // we'd be incompatible with npm workspaces if we discovered more files.
+    // Deno workspaces can discover wildcard members that use any of the
+    // config file names (`ende.json(c)`, deprecated `deno.json(c)`) or
+    // `package.json`. But it only works for Deno workspaces, npm workspaces
+    // don't discover those config files, otherwise we'd be incompatible with
+    // npm workspaces if we discovered more files.
     let deno_json_paths = collect_member_config_folders(
       "Deno",
       pattern_members,
       &deno_json.dir_path(),
-      &["deno.json", "deno.jsonc", "package.json"],
+      &MEMBER_CONFIG_FILE_NAMES,
     )?;
 
     let mut member_dir_urls =
@@ -1081,7 +1094,7 @@ fn collect_link_config_folders<TSys: FsRead + FsMetadata + FsReadDir>(
   let pattern_entries = raw_links
     .into_iter()
     .flat_map(|raw_link| {
-      ["deno.json", "deno.jsonc", "package.json"]
+      MEMBER_CONFIG_FILE_NAMES
         .into_iter()
         .map(move |config_file_name| (raw_link, config_file_name))
     })

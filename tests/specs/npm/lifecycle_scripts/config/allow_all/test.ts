@@ -47,9 +47,9 @@ switch (kind) {
 }
 
 function modify(value: any) {
-  const obj = JSON.parse(Deno.readTextFileSync("deno.json"));
+  const obj = JSON.parse(Deno.readTextFileSync("ende.json"));
   obj.allowScripts = value;
-  Deno.writeTextFileSync("deno.json", JSON.stringify(obj));
+  Deno.writeTextFileSync("ende.json", JSON.stringify(obj));
 }
 
 function install(options: {

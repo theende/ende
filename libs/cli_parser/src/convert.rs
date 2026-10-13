@@ -720,7 +720,7 @@ fn reload_arg_parse(result: &ParseResult, flags: &mut Flags) {
 fn lock_args_parse(result: &ParseResult, flags: &mut Flags) {
   if result.contains("lock") {
     flags.lock =
-      Some(result.get_one("lock").unwrap_or("deno.lock").to_string());
+      Some(result.get_one("lock").unwrap_or("ende.lock").to_string());
   }
   if result.get_bool("no-lock") {
     flags.no_lock = true;
