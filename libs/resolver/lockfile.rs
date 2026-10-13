@@ -350,7 +350,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
     let root_folder = workspace.root_folder_configs();
     let frozen = flags.frozen_lockfile.unwrap_or_else(|| {
       root_folder
-        .deno_json
+        .ende_json
         .as_ref()
         .and_then(|c| c.to_lock_config().ok().flatten().map(|c| c.frozen()))
         .unwrap_or(false)
@@ -378,7 +378,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
             .collect::<HashSet<_>>()
         } else {
           root_folder
-            .deno_json
+            .ende_json
             .as_deref()
             .map(|d| d.dependencies(workspace.catalogs()))
             .unwrap_or_default()
@@ -407,7 +407,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
                   workspace.catalogs(),
                 ),
                 dependencies: folder
-                  .deno_json
+                  .ende_json
                   .as_deref()
                   .map(|d| d.dependencies(workspace.catalogs()))
                   .unwrap_or_default(),
@@ -475,12 +475,12 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
           };
           Some((key, value))
         })
-        .chain(workspace.link_deno_jsons().filter_map(|deno_json| {
-          let name = deno_json.json.name.as_ref()?;
+        .chain(workspace.link_ende_jsons().filter_map(|ende_json| {
+          let name = ende_json.json.name.as_ref()?;
           let key = StringBuilder::<String>::build(|builder| {
             builder.append("jsr:");
             builder.append(name);
-            if let Some(version) = &deno_json.json.version {
+            if let Some(version) = &ende_json.json.version {
               builder.append('@');
               builder.append(version);
             }
@@ -488,7 +488,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
           .unwrap();
           let value = ende_lockfile::LockfileLinkContent {
             // not this workspace's catalogs, so don't resolve against them
-            dependencies: deno_json.dependencies(&Default::default()),
+            dependencies: ende_json.dependencies(&Default::default()),
             optional_dependencies: Default::default(),
             peer_dependencies: Default::default(),
             peer_dependencies_meta: Default::default(),
@@ -598,10 +598,10 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
 /// `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock` wins.
 async fn try_import_npm_lockfile<TSys: LockfileSys>(
   sys: &TSys,
-  deno_lock_path: &std::path::Path,
+  ende_lock_path: &std::path::Path,
   api: &dyn ende_lockfile::NpmPackageInfoProvider,
 ) -> Result<Option<Lockfile>, AnyError> {
-  let Some(parent) = deno_lock_path.parent() else {
+  let Some(parent) = ende_lock_path.parent() else {
     return Ok(None);
   };
 
@@ -631,7 +631,7 @@ async fn try_import_npm_lockfile<TSys: LockfileSys>(
           .with_context(|| format!("Failed reading '{}'", path.display()));
       }
     };
-    let deno_lock_text = match translate(&text) {
+    let ende_lock_text = match translate(&text) {
       Ok(text) => text,
       Err(err) => {
         log::warn!(
@@ -645,8 +645,8 @@ async fn try_import_npm_lockfile<TSys: LockfileSys>(
     };
     let mut lockfile = Lockfile::new(
       ende_lockfile::NewLockfileOptions {
-        file_path: deno_lock_path.to_path_buf(),
-        content: &deno_lock_text,
+        file_path: ende_lock_path.to_path_buf(),
+        content: &ende_lock_text,
         overwrite: false,
       },
       api,
@@ -659,7 +659,7 @@ async fn try_import_npm_lockfile<TSys: LockfileSys>(
     if !lockfile.content.is_empty() {
       log::info!(
         "Seeded {} from {}",
-        deno_lock_path
+        ende_lock_path
           .file_name()
           .map(|n| n.to_string_lossy())
           .unwrap_or_default(),

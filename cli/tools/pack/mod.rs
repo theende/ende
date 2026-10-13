@@ -60,32 +60,32 @@ pub async fn pack(
   // Get package configs
   let mut packages = cli_options.start_dir.jsr_packages_for_publish();
   if packages.is_empty() {
-    match cli_options.start_dir.member_deno_json() {
-      Some(deno_json) => {
-        let Some(name) = deno_json.json.name.clone() else {
+    match cli_options.start_dir.member_ende_json() {
+      Some(ende_json) => {
+        let Some(name) = ende_json.json.name.clone() else {
           bail!(
             "Missing 'name' field in '{}'. Add a package name like:\n  {{\n    \"name\": \"@scope/package-name\",\n    ...\n  }}",
-            deno_json.specifier
+            ende_json.specifier
           );
         };
-        if deno_json.json.version.is_none() {
+        if ende_json.json.version.is_none() {
           bail!(
             "Missing 'version' field in '{}'. Add a version like:\n  {{\n    \"version\": \"1.0.0\",\n    ...\n  }}",
-            deno_json.specifier
+            ende_json.specifier
           );
         }
-        if deno_json.json.exports.is_none() {
+        if ende_json.json.exports.is_none() {
           bail!(
             "Missing 'exports' field in '{}'. Add an exports field like:\n  {{\n    \"exports\": \"./mod.ts\",\n    ...\n  }}",
-            deno_json.specifier
+            ende_json.specifier
           );
         }
 
         packages.push(JsrPackageConfig {
           name,
           member_dir: cli_options.start_dir.workspace.root_dir().clone(),
-          config_file: deno_json.clone(),
-          license: deno_json
+          config_file: ende_json.clone(),
+          license: ende_json
             .json
             .license
             .as_ref()
@@ -596,7 +596,7 @@ fn split_shebang(source: &str) -> (Option<&str>, &str) {
 
 /// Create transpile options from deno.json compiler options
 fn create_transpile_options(
-  config_file: &ende_config::deno_json::ConfigFile,
+  config_file: &ende_config::ende_json::ConfigFile,
 ) -> Result<deno_ast::TranspileOptions, AnyError> {
   // Get compiler options from deno.json
   let compiler_options = config_file.json.compiler_options.as_ref();
@@ -676,7 +676,7 @@ fn process_modules(
   paths: &[CollectedPath],
   parsed_source_cache: &ende_resolver::cache::ParsedSourceCache,
   pack_flags: &PackFlags,
-  config_file: &ende_config::deno_json::ConfigFile,
+  config_file: &ende_config::ende_json::ConfigFile,
 ) -> Result<Vec<ProcessedFile>, AnyError> {
   let mut processed = Vec::new();
 

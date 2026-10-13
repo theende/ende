@@ -24,8 +24,8 @@ use callback::op_ffi_unsafe_callback_ref;
 pub use dlfcn::DlfcnError;
 use dlfcn::ForeignFunction;
 use dlfcn::op_ffi_load;
-pub use endert_helper::DenoRtNativeAddonLoader;
-pub use endert_helper::DenoRtNativeAddonLoaderRc;
+pub use endert_helper::EndeRtNativeAddonLoader;
+pub use endert_helper::EndeRtNativeAddonLoaderRc;
 pub use ir::IRError;
 pub use repr::ReprError;
 use repr::*;
@@ -82,10 +82,10 @@ ende_core::extension!(ende_ffi,
   ],
   lazy_loaded_js = [ "00_ffi.js" ],
   options = {
-    deno_rt_native_addon_loader: Option<DenoRtNativeAddonLoaderRc>,
+    ende_rt_native_addon_loader: Option<EndeRtNativeAddonLoaderRc>,
   },
   state = |state, options| {
-    if let Some(loader) = options.deno_rt_native_addon_loader {
+    if let Some(loader) = options.ende_rt_native_addon_loader {
       state.put(loader);
     }
   },

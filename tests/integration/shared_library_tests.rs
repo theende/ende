@@ -18,7 +18,7 @@ fn linux_shared_libraries() {
 
   let ldd = std::process::Command::new("ldd")
     .arg("-L")
-    .arg(util::deno_exe_path())
+    .arg(util::ende_exe_path())
     .output()
     .expect("Failed to execute ldd");
 
@@ -106,7 +106,7 @@ fn macos_shared_libraries() {
 
   let otool = std::process::Command::new("otool")
     .arg("-L")
-    .arg(util::deno_exe_path())
+    .arg(util::ende_exe_path())
     .output()
     .expect("Failed to execute otool");
 

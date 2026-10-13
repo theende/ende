@@ -15,7 +15,7 @@ use deno_path_util::resolve_url_or_path;
 use deno_path_util::url_from_file_path;
 use deno_path_util::url_to_file_path;
 use deno_terminal::colors;
-use ende_config::deno_json::NodeModulesDirMode;
+use ende_config::ende_json::NodeModulesDirMode;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::anyhow;
 use ende_core::anyhow::bail;
@@ -28,7 +28,7 @@ use super::installer::BinNameResolver;
 use crate::args::CliOptions;
 use crate::args::CompileFlags;
 use crate::args::ConfigFlag;
-use crate::args::DenoSubcommand;
+use crate::args::EndeSubcommand;
 use crate::args::Flags;
 use crate::args::TypeCheckMode;
 use crate::factory::CliFactory;
@@ -152,7 +152,7 @@ async fn compile_inner(
 
   // Keep flags.subcommand in sync so resolve_main_module sees the
   // rewritten source_file instead of the original directory path.
-  flags.subcommand = DenoSubcommand::Compile(compile_flags.clone());
+  flags.subcommand = EndeSubcommand::Compile(compile_flags.clone());
 
   // Clean up temp entrypoints on exit (framework-detected and/or bundled).
   struct CleanupGuard(Vec<PathBuf>);
@@ -243,7 +243,7 @@ async fn compile_inner(
         .include
         .push(worker_path.display().to_string());
     }
-    flags.subcommand = DenoSubcommand::Compile(compile_flags.clone());
+    flags.subcommand = EndeSubcommand::Compile(compile_flags.clone());
     let mut cleanup = vec![bundle_path];
     cleanup.extend(extra_cleanup);
     Some(CleanupGuard(cleanup))

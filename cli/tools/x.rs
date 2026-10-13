@@ -9,8 +9,8 @@ use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageReq;
 use ende_cache_dir::file_fetcher::CacheSetting;
-use ende_config::deno_json::MinimumDependencyAgeConfig;
-use ende_config::deno_json::NewestDependencyDate;
+use ende_config::ende_json::MinimumDependencyAgeConfig;
+use ende_config::ende_json::NewestDependencyDate;
 use ende_core::anyhow;
 use ende_core::anyhow::Context;
 use ende_core::error::AnyError;
@@ -21,7 +21,7 @@ use node_resolver::BinValue;
 
 use crate::args::CliOptions;
 use crate::args::ConfigFlag;
-use crate::args::DenoXShimName;
+use crate::args::EndeXShimName;
 use crate::args::Flags;
 use crate::args::FlagsExt;
 use crate::args::XFlags;
@@ -95,7 +95,7 @@ fn config_flag_arg(flags: &Flags, initial_cwd: &Path) -> Option<String> {
 /// must be resolved to the discovered config path and forwarded explicitly. Two
 /// such sites (issue #35991):
 /// - the npm auto-install re-run, which executes the *installed bin file* (under
-///   `deno_dir/deno_x_cache/...`): its config auto-discovery anchors on the
+///   `ende_dir/deno_x_cache/...`): its config auto-discovery anchors on the
 ///   installed file's directory, NEVER the user's cwd (it finds the internal
 ///   temp `deno.json` instead).
 /// - the jsr/URL re-run, which executes a `jsr:`/`data:`/`http(s):` main module:
@@ -113,7 +113,7 @@ fn config_flag_arg_carrying_discovered(
   if matches!(flags.config_flag, ConfigFlag::Discover) {
     return cli_options
       .start_dir
-      .member_or_root_deno_json()
+      .member_or_root_ende_json()
       .and_then(|config| {
         deno_path_util::url_to_file_path(&config.specifier).ok()
       })
@@ -231,23 +231,23 @@ async fn resolve_local_bins(
 
 fn run_js_file(
   main_module: &ende_core::url::Url,
-  deno_args: &[String],
+  ende_args: &[String],
   argv: &[String],
   npm_process_state: Option<String>,
   npm: bool,
 ) -> Result<i32, AnyError> {
   use ende_runtime::ende_io::FromRawIoHandle;
 
-  let deno_exe = std::env::current_exe()
+  let ende_exe = std::env::current_exe()
     .and_then(|p| canonicalize_path(&p))
     .context("Failed to get current executable path")?;
 
   let mut args: Vec<std::ffi::OsString> = vec!["run".into()];
-  args.extend(deno_args.iter().map(|s| s.into()));
+  args.extend(ende_args.iter().map(|s| s.into()));
   args.push(main_module.as_str().into());
   args.extend(argv.iter().map(|s| s.into()));
 
-  let mut command = std::process::Command::new(deno_exe);
+  let mut command = std::process::Command::new(ende_exe);
   command.args(&args);
 
   let _temp_file = if let Some(state) = &npm_process_state {
@@ -289,10 +289,10 @@ pub(crate) fn get_npm_process_state(
   match npm_resolver {
     ende_resolver::npm::NpmResolver::Managed(managed) => {
       let linker_mode = match managed.linker_mode() {
-        ende_config::deno_json::NodeModulesLinkerMode::Hoisted => {
+        ende_config::ende_json::NodeModulesLinkerMode::Hoisted => {
           ende_npm_installer::process_state::NpmProcessStateLinkerMode::Hoisted
         }
-        ende_config::deno_json::NodeModulesLinkerMode::Isolated => {
+        ende_config::ende_json::NodeModulesLinkerMode::Isolated => {
           ende_npm_installer::process_state::NpmProcessStateLinkerMode::Isolated
         }
       };
@@ -325,11 +325,11 @@ pub(crate) fn run_bin_value(
   match bin_value {
     BinValue::JsFile(path_buf) => {
       let path = deno_path_util::url_from_file_path(path_buf.as_ref())?;
-      let mut deno_args = flags.to_permission_args();
-      deno_args.extend(unstable_args.iter().cloned());
-      deno_args.extend(forwarded_args.iter().cloned());
+      let mut ende_args = flags.to_permission_args();
+      ende_args.extend(unstable_args.iter().cloned());
+      ende_args.extend(forwarded_args.iter().cloned());
 
-      run_js_file(&path, &deno_args, &flags.argv, npm_process_state, true)
+      run_js_file(&path, &ende_args, &flags.argv, npm_process_state, true)
     }
     BinValue::Executable(mut path_buf) => {
       if cfg!(windows) && path_buf.extension().is_none() {
@@ -445,7 +445,7 @@ fn create_package_temp_dir(
   prefix: Option<&str>,
   package_req: &PackageReq,
   reload: bool,
-  deno_dir: &Path,
+  ende_dir: &Path,
   min_dep_age_config: &MinimumDependencyAgeConfig,
 ) -> Result<XTempDir, AnyError> {
   let mut package_req_folder = String::from(prefix.unwrap_or(""));
@@ -456,11 +456,11 @@ fn create_package_temp_dir(
       .replace(">", "gt")
       .replace("<", "lt"),
   );
-  let temp_dir = deno_dir.join("deno_x_cache").join(package_req_folder);
+  let temp_dir = ende_dir.join("deno_x_cache").join(package_req_folder);
   if temp_dir.exists() {
     if reload
       || !temp_dir
-        .join(ende_config::deno_json::LOCKFILE_NAME)
+        .join(ende_config::ende_json::LOCKFILE_NAME)
         .exists()
     {
       std::fs::remove_dir_all(&temp_dir)?;
@@ -472,18 +472,18 @@ fn create_package_temp_dir(
   std::fs::create_dir_all(&temp_dir)?;
   let package_json_path = temp_dir.join("package.json");
   std::fs::write(&package_json_path, "{}")?;
-  let deno_json_path =
-    temp_dir.join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME);
-  let mut deno_json_value = serde_json::json!({"nodeModulesDir": "auto"});
+  let ende_json_path =
+    temp_dir.join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME);
+  let mut ende_json_value = serde_json::json!({"nodeModulesDir": "auto"});
   if let Some(min_dep_age) =
     minimum_dependency_age_config_json(min_dep_age_config)
   {
-    deno_json_value
+    ende_json_value
       .as_object_mut()
       .unwrap()
       .insert("minimumDependencyAge".to_string(), min_dep_age);
   }
-  std::fs::write(&deno_json_path, serde_json::to_string(&deno_json_value)?)?;
+  std::fs::write(&ende_json_path, serde_json::to_string(&ende_json_value)?)?;
 
   let temp_dir = canonicalize_path(&temp_dir).unwrap_or(temp_dir);
   Ok(XTempDir::New(temp_dir))
@@ -491,13 +491,13 @@ fn create_package_temp_dir(
 
 fn write_shim(
   out_dir: &Path,
-  shim_name: DenoXShimName,
+  shim_name: EndeXShimName,
 ) -> Result<(), AnyError> {
   #[cfg(unix)]
   {
     use std::os::unix::fs::PermissionsExt;
     let out_path = out_dir.join(shim_name.name());
-    if let DenoXShimName::Other(_) = shim_name {
+    if let EndeXShimName::Other(_) = shim_name {
       std::fs::write(
         &out_path,
         r##"#!/bin/sh
@@ -690,14 +690,14 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
         reload,
         command_flags.yes,
         &command_flags.ignore_scripts,
-        &factory.deno_dir()?.root,
+        &factory.ende_dir()?.root,
         &min_dep_age_config,
         resolve_import_deny_rules(cli_options)?,
       )
       .await?;
       let mut runner_flags = (*managed_flags).clone();
       runner_flags.node_modules_dir =
-        Some(ende_config::deno_json::NodeModulesDirMode::Manual);
+        Some(ende_config::ende_json::NodeModulesDirMode::Manual);
       let runner_flags = Arc::new(runner_flags);
       let runner_factory = CliFactory::from_flags(runner_flags.clone());
       let runner_node_resolver = runner_factory.node_resolver().await?;
@@ -769,7 +769,7 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
         reload,
         command_flags.yes,
         &command_flags.ignore_scripts,
-        &factory.deno_dir()?.root,
+        &factory.ende_dir()?.root,
         &min_dep_age_config,
         resolve_import_deny_rules(cli_options)?,
       )
@@ -778,18 +778,18 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
       let npm_resolver = new_factory.npm_resolver().await?;
       let npm_process_state = get_npm_process_state(npm_resolver);
 
-      let mut deno_args = flags.to_permission_args();
-      deno_args.extend(unstable_args.iter().cloned());
-      deno_args.extend(forwarded.iter().cloned());
+      let mut ende_args = flags.to_permission_args();
+      ende_args.extend(unstable_args.iter().cloned());
+      ende_args.extend(forwarded.iter().cloned());
       let url =
         ende_core::url::Url::parse(&jsr_package_req_reference.to_string())?;
-      run_js_file(&url, &deno_args, &flags.argv, npm_process_state, false)
+      run_js_file(&url, &ende_args, &flags.argv, npm_process_state, false)
     }
     ReqRefOrUrl::Url(url) => {
-      let mut deno_args = flags.to_permission_args();
-      deno_args.extend(unstable_args.iter().cloned());
-      deno_args.extend(forwarded.iter().cloned());
-      run_js_file(&url, &deno_args, &flags.argv, None, false)
+      let mut ende_args = flags.to_permission_args();
+      ende_args.extend(unstable_args.iter().cloned());
+      ende_args.extend(forwarded.iter().cloned());
+      run_js_file(&url, &ende_args, &flags.argv, None, false)
     }
   }
 }
@@ -831,7 +831,7 @@ async fn autoinstall_package(
   reload: bool,
   yes: bool,
   ignore_scripts: &PackagesAllowedScripts,
-  deno_dir: &Path,
+  ende_dir: &Path,
   min_dep_age_config: &MinimumDependencyAgeConfig,
   import_deny_rules: Option<Vec<String>>,
 ) -> Result<(Arc<Flags>, CliFactory), AnyError> {
@@ -847,12 +847,12 @@ async fn autoinstall_package(
     new_flags.permissions.deny_import = import_deny_rules;
     new_flags.permission_set = None;
     new_flags.node_modules_dir =
-      Some(ende_config::deno_json::NodeModulesDirMode::Auto);
+      Some(ende_config::ende_json::NodeModulesDirMode::Auto);
     let temp_node_modules = temp_dir.join("node_modules");
     new_flags.internal.root_node_modules_dir_override = Some(temp_node_modules);
     new_flags.config_flag = crate::args::ConfigFlag::Path(
       temp_dir
-        .join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME)
+        .join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME)
         .to_string_lossy()
         .into_owned(),
     );
@@ -882,7 +882,7 @@ async fn autoinstall_package(
     Some(req_ref.prefix()),
     req_ref.req(),
     reload,
-    deno_dir,
+    ende_dir,
     min_dep_age_config,
   )?;
 
@@ -930,26 +930,26 @@ async fn autoinstall_package(
           )?;
         }
         ReqRef::Jsr(req_ref) => {
-          let deno_json =
-            temp_dir.join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME);
+          let ende_json =
+            temp_dir.join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME);
           let mut imports = serde_json::Map::new();
           imports.insert(
             req_ref.req().name.to_string(),
             serde_json::Value::String(format!("jsr:{}", req_ref.req())),
           );
-          let mut deno_json_value = serde_json::json!({
+          let mut ende_json_value = serde_json::json!({
             "nodeModulesDir": "manual",
             "imports": imports,
           });
           if let Some(min_dep_age) =
             minimum_dependency_age_config_json(min_dep_age_config)
           {
-            deno_json_value
+            ende_json_value
               .as_object_mut()
               .unwrap()
               .insert("minimumDependencyAge".to_string(), min_dep_age);
           }
-          std::fs::write(&deno_json, serde_json::to_string(&deno_json_value)?)?;
+          std::fs::write(&ende_json, serde_json::to_string(&ende_json_value)?)?;
         }
       }
 

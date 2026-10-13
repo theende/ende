@@ -41,7 +41,7 @@ use ende_core::serde_json::Value;
 use ende_core::unsync::spawn;
 use ende_core::url::Url;
 use ende_lib::util::result::any_and_jserrorbox_downcast_ref;
-use ende_resolver::deno_json::CompilerOptionsResolver;
+use ende_resolver::ende_json::CompilerOptionsResolver;
 use ende_runtime::worker::MainWorker;
 use node_resolver::NodeResolutionKind;
 use node_resolver::ResolutionMode;
@@ -346,7 +346,7 @@ impl ReplSession {
     assert_ne!(context_id, 0);
 
     let referrer =
-      ende_core::resolve_path("./$deno$repl.mts", cli_options.initial_cwd())
+      ende_core::resolve_path("./$ende$repl.mts", cli_options.initial_cwd())
         .unwrap();
 
     let cwd_url =

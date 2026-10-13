@@ -12,7 +12,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
-use test_util::DenoChild;
+use test_util::EndeChild;
 use test_util::TestContext;
 use test_util::TestContextBuilder;
 use test_util::assertions::assert_json_subset;
@@ -358,7 +358,7 @@ impl JupyterClient {
 }
 
 async fn wait_or_kill(
-  mut process: DenoChild,
+  mut process: EndeChild,
   wait: Duration,
 ) -> Result<Output> {
   let start = std::time::Instant::now();
@@ -372,7 +372,7 @@ async fn wait_or_kill(
   Ok(process.wait_with_output()?)
 }
 
-struct JupyterServerProcess(Option<DenoChild>);
+struct JupyterServerProcess(Option<EndeChild>);
 
 impl JupyterServerProcess {
   // Wait for the process to exit, or kill it after the given duration.

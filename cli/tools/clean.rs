@@ -46,9 +46,9 @@ pub async fn clean(
   }
 
   let factory = CliFactory::from_flags(flags);
-  let deno_dir = factory.deno_dir()?;
-  if deno_dir.root.exists() {
-    let no_of_files = walkdir::WalkDir::new(&deno_dir.root).into_iter().count();
+  let ende_dir = factory.ende_dir()?;
+  if ende_dir.root.exists() {
+    let no_of_files = walkdir::WalkDir::new(&ende_dir.root).into_iter().count();
     let progress_bar = ProgressBar::new(ProgressBarStyle::ProgressBars);
     let progress_guard =
       progress_bar.update_with_prompt(ProgressMessagePrompt::Cleaning, "");
@@ -58,9 +58,9 @@ pub async fn clean(
     // On a dry run, tally up what would be removed without deleting anything;
     // the reported output is otherwise identical to a real clean.
     if clean_flags.dry_run {
-      cleaner.tally(&deno_dir.root)?;
+      cleaner.tally(&ende_dir.root)?;
     } else {
-      cleaner.rm_rf(&deno_dir.root)?;
+      cleaner.rm_rf(&ende_dir.root)?;
     }
 
     // Drop the guard so that progress bar disappears.
@@ -69,7 +69,7 @@ pub async fn clean(
     log::info!(
       "{} {} {}",
       colors::green("Removed"),
-      deno_dir.root.display(),
+      ende_dir.root.display(),
       colors::gray(&format!(
         "({} files, {})",
         cleaner.files_removed + cleaner.dirs_removed,
@@ -136,7 +136,7 @@ fn format_locked_files_message(
         Some(exe) => exe.display().to_string(),
         None => process.name.clone(),
       };
-      let hint = if process.is_deno {
+      let hint = if process.is_ende {
         " (a running Ende process, likely the language server in your editor)"
       } else {
         ""
@@ -270,10 +270,10 @@ async fn clean_except(
   )?;
   let http_cache = factory.global_http_cache()?;
   let local_or_global_http_cache = factory.http_cache()?.clone();
-  let deno_dir = factory.deno_dir()?.clone();
-  let deno_dir_root_canonical =
-    try_get_canonicalized_root_dir(&sys, &deno_dir.root)
-      .unwrap_or(deno_dir.root.clone());
+  let ende_dir = factory.ende_dir()?.clone();
+  let ende_dir_root_canonical =
+    try_get_canonicalized_root_dir(&sys, &ende_dir.root)
+      .unwrap_or(ende_dir.root.clone());
 
   let mut permit = main_graph_container.acquire_update_permit().await;
   let graph = permit.graph_mut();
@@ -297,9 +297,9 @@ async fn clean_except(
   let mut npm_reqs = Vec::new();
 
   let mut keep_paths_trie = PathTrie::new();
-  if deno_dir_root_canonical != deno_dir.root {
+  if ende_dir_root_canonical != ende_dir.root {
     keep_paths_trie
-      .add_rewrite(deno_dir.root.clone(), deno_dir_root_canonical.clone());
+      .add_rewrite(ende_dir.root.clone(), ende_dir_root_canonical.clone());
   }
   for (_, entry) in graph.walk(
     roots.iter(),
@@ -345,11 +345,11 @@ async fn clean_except(
     {
       keep_paths_trie.insert(path);
     }
-    if let Some(path) = deno_dir
+    if let Some(path) = ende_dir
       .gen_cache
       .get_cache_filename_with_extension(url, "js")
     {
-      let path = deno_dir.gen_cache.location.join(path);
+      let path = ende_dir.gen_cache.location.join(path);
       keep_paths_trie.insert(path);
     }
   }
@@ -395,11 +395,11 @@ async fn clean_except(
   })?;
   walk_removing(
     &mut state,
-    walkdir::WalkDir::new(&deno_dir.root)
+    walkdir::WalkDir::new(&ende_dir.root)
       .contents_first(false)
       .min_depth(2),
     &keep_paths_trie,
-    &deno_dir.root,
+    &ende_dir.root,
     dry_run,
   )?;
   let mut node_modules_cleaned = FsCleaner::default();
@@ -418,8 +418,8 @@ async fn clean_except(
     && let GlobalOrLocalHttpCache::Local(cache) = local_or_global_http_cache
   {
     let mut trie = PathTrie::new();
-    if deno_dir_root_canonical != deno_dir.root {
-      trie.add_rewrite(deno_dir.root.clone(), deno_dir_root_canonical);
+    if ende_dir_root_canonical != ende_dir.root {
+      trie.add_rewrite(ende_dir.root.clone(), ende_dir_root_canonical);
     }
     let cache = cache.clone();
     add_jsr_meta_paths(graph, &mut trie, jsr_url, &|url| match cache
@@ -459,7 +459,7 @@ async fn clean_except(
   }
 
   if !dry_run {
-    log_stats(&state, &deno_dir.root);
+    log_stats(&state, &ende_dir.root);
 
     if let Some(dir) = node_modules_path {
       log_stats(&node_modules_cleaned, dir);
@@ -717,10 +717,10 @@ fn clean_node_modules(
 
   // remove symlinks from node_modules/.ende/node_modules/<package> to node_modules/.ende/<package>
   // where the target doesn't exist (because it was removed above)
-  let deno_nm = base.join("node_modules");
+  let ende_nm = base.join("node_modules");
   ende_npm_installer::remove_unused_node_modules_symlinks(
     &sys,
-    &deno_nm,
+    &ende_nm,
     &keep_ids,
     &mut |name, path| {
       setup_cache.remove_deno_symlink(name);
@@ -771,13 +771,13 @@ mod tests {
         pid: 1234,
         name: "deno".to_string(),
         exe: Some(PathBuf::from("C:/Program Files/deno/deno.exe")),
-        is_deno: true,
+        is_ende: true,
       },
       LockingProcess {
         pid: 5678,
         name: "Some Editor".to_string(),
         exe: None,
-        is_deno: false,
+        is_ende: false,
       },
     ];
     let message = format_locked_files_message(&paths, &processes);
@@ -800,7 +800,7 @@ mod tests {
   }
 
   #[test]
-  fn clean_node_modules_refuses_symlinked_deno_dir() {
+  fn clean_node_modules_refuses_symlinked_ende_dir() {
     let temp_dir = TempDir::new();
     temp_dir.create_dir_all("node_modules");
     temp_dir.create_dir_all("victim/important_dir");

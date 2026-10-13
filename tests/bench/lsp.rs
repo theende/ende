@@ -75,7 +75,7 @@ fn patch_uris<'a>(
   }
 }
 
-fn bench_deco_apps_edits(deno_exe: &Path) -> Duration {
+fn bench_deco_apps_edits(ende_exe: &Path) -> Duration {
   let mut requests: Vec<tower_lsp::jsonrpc::Request> =
     serde_json::from_slice(FIXTURE_DECO_APPS).unwrap();
   let apps =
@@ -87,14 +87,14 @@ fn bench_deco_apps_edits(deno_exe: &Path) -> Duration {
 
   let mut client = LspClientBuilder::new()
     .set_root_dir(apps.clone())
-    .deno_exe(deno_exe)
+    .ende_exe(ende_exe)
     .build();
   client.initialize(|c| {
     c.set_workspace_folders(vec![tower_lsp::lsp_types::WorkspaceFolder {
       uri: apps.uri_dir(),
       name: "apps".to_string(),
     }]);
-    c.set_deno_enable(true);
+    c.set_ende_enable(true);
     c.set_unstable(true);
     c.set_preload_limit(1000);
     c.set_config(apps.join("ende.json").as_path().to_string_lossy());
@@ -159,8 +159,8 @@ fn bench_deco_apps_edits(deno_exe: &Path) -> Duration {
 /// A benchmark that opens a 8000+ line TypeScript document, adds a function to
 /// the end of the document and does a level of hovering and gets quick fix
 /// code actions.
-fn bench_big_file_edits(deno_exe: &Path) -> Duration {
-  let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
+fn bench_big_file_edits(ende_exe: &Path) -> Duration {
+  let mut client = LspClientBuilder::new().ende_exe(ende_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
   assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
@@ -211,8 +211,8 @@ fn bench_big_file_edits(deno_exe: &Path) -> Duration {
   client.duration()
 }
 
-fn bench_code_lens(deno_exe: &Path) -> Duration {
-  let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
+fn bench_code_lens(ende_exe: &Path) -> Duration {
+  let mut client = LspClientBuilder::new().ende_exe(ende_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
   assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
@@ -256,8 +256,8 @@ fn bench_code_lens(deno_exe: &Path) -> Duration {
   client.duration()
 }
 
-fn bench_find_replace(deno_exe: &Path) -> Duration {
-  let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
+fn bench_find_replace(ende_exe: &Path) -> Duration {
+  let mut client = LspClientBuilder::new().ende_exe(ende_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
   assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
@@ -331,8 +331,8 @@ fn bench_find_replace(deno_exe: &Path) -> Duration {
 }
 
 /// A test that starts up the LSP, opens a single line document, and exits.
-fn bench_startup_shutdown(deno_exe: &Path) -> Duration {
-  let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
+fn bench_startup_shutdown(ende_exe: &Path) -> Duration {
+  let mut client = LspClientBuilder::new().ende_exe(ende_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
   assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
@@ -360,14 +360,14 @@ fn bench_startup_shutdown(deno_exe: &Path) -> Duration {
 }
 
 /// Generate benchmarks for the LSP server.
-pub fn benchmarks(deno_exe: &Path) -> HashMap<String, i64> {
+pub fn benchmarks(ende_exe: &Path) -> HashMap<String, i64> {
   println!("-> Start benchmarking lsp");
   let mut exec_times = HashMap::new();
 
   println!("   - Simple Startup/Shutdown ");
   let mut times = Vec::new();
   for _ in 0..10 {
-    times.push(bench_startup_shutdown(deno_exe));
+    times.push(bench_startup_shutdown(ende_exe));
   }
   let mean =
     (times.iter().sum::<Duration>() / times.len() as u32).as_millis() as i64;
@@ -377,7 +377,7 @@ pub fn benchmarks(deno_exe: &Path) -> HashMap<String, i64> {
   println!("   - Big Document/Several Edits ");
   let mut times = Vec::new();
   for _ in 0..5 {
-    times.push(bench_big_file_edits(deno_exe));
+    times.push(bench_big_file_edits(ende_exe));
   }
   let mean =
     (times.iter().sum::<Duration>() / times.len() as u32).as_millis() as i64;
@@ -387,7 +387,7 @@ pub fn benchmarks(deno_exe: &Path) -> HashMap<String, i64> {
   println!("   - Find/Replace");
   let mut times = Vec::new();
   for _ in 0..10 {
-    times.push(bench_find_replace(deno_exe));
+    times.push(bench_find_replace(ende_exe));
   }
   let mean =
     (times.iter().sum::<Duration>() / times.len() as u32).as_millis() as i64;
@@ -397,7 +397,7 @@ pub fn benchmarks(deno_exe: &Path) -> HashMap<String, i64> {
   println!("   - Code Lens");
   let mut times = Vec::new();
   for _ in 0..10 {
-    times.push(bench_code_lens(deno_exe));
+    times.push(bench_code_lens(ende_exe));
   }
   let mean =
     (times.iter().sum::<Duration>() / times.len() as u32).as_millis() as i64;
@@ -407,7 +407,7 @@ pub fn benchmarks(deno_exe: &Path) -> HashMap<String, i64> {
   println!("   - deco-cx/apps Multiple Edits + Navigation");
   let mut times = Vec::new();
   for _ in 0..5 {
-    times.push(bench_deco_apps_edits(deno_exe));
+    times.push(bench_deco_apps_edits(ende_exe));
   }
   let mean =
     (times.iter().sum::<Duration>() / times.len() as u32).as_millis() as i64;

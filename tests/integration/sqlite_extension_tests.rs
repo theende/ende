@@ -2,8 +2,8 @@
 
 use std::process::Command;
 
-use test_util::deno_cmd;
-use test_util::deno_config_path;
+use test_util::ende_cmd;
+use test_util::ende_config_path;
 use test_util::println;
 use test_util::testdata_path;
 use test_util::tests_path;
@@ -61,13 +61,13 @@ fn sqlite_extension() {
 
   let extension_test_file = testdata_path().join("sqlite_extension_test.ts");
 
-  let output = deno_cmd()
+  let output = ende_cmd()
     .arg("test")
     .arg("--allow-read")
     .arg("--allow-write")
     .arg("--allow-ffi")
     .arg("--config")
-    .arg(deno_config_path())
+    .arg(ende_config_path())
     .arg("--no-check")
     .arg(extension_test_file.as_path())
     .env("NO_COLOR", "1")

@@ -14,7 +14,7 @@ use ende_runtime::tokio_util::create_and_run_current_thread_with_maybe_metrics;
 use indexmap::IndexMap;
 
 use self::binary::extract_standalone;
-use self::file_system::DenoRtSys;
+use self::file_system::EndeRtSys;
 
 pub mod binary;
 mod code_cache;
@@ -88,9 +88,9 @@ pub fn main() {
       Ok(data) => {
         let sys = if data.metadata.self_extracting.is_some() {
           binary::extract_vfs_to_disk(&data.vfs, &data.root_path)?;
-          DenoRtSys::new_self_extracting(data.vfs.clone())
+          EndeRtSys::new_self_extracting(data.vfs.clone())
         } else {
-          DenoRtSys::new(data.vfs.clone())
+          EndeRtSys::new(data.vfs.clone())
         };
         ende_runtime::ende_telemetry::init(
           &sys,

@@ -79,8 +79,8 @@ use crate::graph_container::CollectSpecifiersOptions;
 use crate::graph_container::MainModuleGraphContainer;
 use crate::graph_container::ModuleGraphContainer;
 use crate::graph_container::ModuleGraphUpdatePermit;
-use crate::module_loader::CliDenoResolverModuleLoader;
 use crate::module_loader::CliEmitter;
+use crate::module_loader::CliEndeResolverModuleLoader;
 use crate::module_loader::ModuleLoadPreparer;
 use crate::module_loader::PrepareModuleLoadOptions;
 use crate::node::CliNodeResolver;
@@ -100,7 +100,7 @@ pub async fn prepare_inputs(
   node_resolver: &CliNodeResolver,
   init_cwd: &Path,
   bundle_flags: &BundleFlags,
-  plugin_handler: &mut DenoPluginHandler,
+  plugin_handler: &mut EndePluginHandler,
 ) -> Result<BundlerInput, AnyError> {
   let resolved_entrypoints = resolve_entrypoints(
     resolver,
@@ -255,7 +255,7 @@ pub async fn bundle_init(
     clippy::arc_with_non_send_sync,
     reason = "fine because only used in output positions"
   )]
-  let mut plugin_handler = Arc::new(DenoPluginHandler {
+  let mut plugin_handler = Arc::new(EndePluginHandler {
     file_fetcher: factory.file_fetcher()?.clone(),
     resolver: resolver.clone(),
     module_load_preparer,
@@ -879,7 +879,7 @@ pub async fn bundle_for_compile(
     inline_imports: true,
     packages: PackageHandling::Bundle,
     sourcemap: None,
-    platform: BundlePlatform::Deno,
+    platform: BundlePlatform::Ende,
     watch: false,
   };
 
@@ -1050,7 +1050,7 @@ async fn bundle_watch(
 }
 
 pub fn should_replace_require_shim(platform: BundlePlatform) -> bool {
-  *DISABLE_HACK && matches!(platform, BundlePlatform::Deno)
+  *DISABLE_HACK && matches!(platform, BundlePlatform::Ende)
 }
 
 fn get_input_paths_for_watch(response: &BuildResponse) -> Vec<PathBuf> {
@@ -1089,7 +1089,7 @@ pub type EsbuildFlags = Vec<String>;
 
 pub struct EsbuildBundler {
   client: esbuild_client::ProtocolClient,
-  plugin_handler: Arc<DenoPluginHandler>,
+  plugin_handler: Arc<EndePluginHandler>,
   on_end_rx: tokio::sync::mpsc::Receiver<esbuild_client::OnEndArgs>,
   mode: BundlingMode,
   cwd: PathBuf,
@@ -1100,7 +1100,7 @@ pub struct EsbuildBundler {
 impl EsbuildBundler {
   pub fn new(
     client: esbuild_client::ProtocolClient,
-    plugin_handler: Arc<DenoPluginHandler>,
+    plugin_handler: Arc<EndePluginHandler>,
     mode: BundlingMode,
     on_end_rx: tokio::sync::mpsc::Receiver<esbuild_client::OnEndArgs>,
     cwd: PathBuf,
@@ -1140,7 +1140,7 @@ impl EsbuildBundler {
       mangle_cache: None,
       node_paths: vec![],
       plugins: Some(vec![protocol::BuildPlugin {
-        name: "deno".into(),
+        name: "ende".into(),
         on_start: false,
         on_end: matches!(self.mode, BundlingMode::Watch),
         on_resolve: (vec![protocol::OnResolveSetupOptions {
@@ -1476,7 +1476,7 @@ pub struct DeferredResolveError {
 /// `\0` keeps it from colliding with any real filesystem path.
 const BROWSER_DISABLED_PREFIX: &str = "\0deno-browser-disabled:";
 
-pub struct DenoPluginHandler {
+pub struct EndePluginHandler {
   file_fetcher: Arc<CliFileFetcher>,
   resolver: Arc<CliResolver>,
   module_load_preparer: Arc<ModuleLoadPreparer>,
@@ -1486,7 +1486,7 @@ pub struct DenoPluginHandler {
   /// Whether reads and writes must respect the calling program's permissions.
   /// The directly invoked `deno bundle` command is a trusted CLI path.
   is_runtime_api: bool,
-  module_loader: Arc<CliDenoResolverModuleLoader>,
+  module_loader: Arc<CliEndeResolverModuleLoader>,
   externals_matcher: Option<ExternalsMatcher>,
   on_end_tx: tokio::sync::mpsc::Sender<esbuild_client::OnEndArgs>,
   deferred_resolve_errors: Arc<Mutex<Vec<DeferredResolveError>>>,
@@ -1498,7 +1498,7 @@ pub struct DenoPluginHandler {
   initial_cwd: Url,
 }
 
-impl DenoPluginHandler {
+impl EndePluginHandler {
   fn take_deferred_resolve_errors(&self) -> Vec<DeferredResolveError> {
     std::mem::take(&mut *self.deferred_resolve_errors.lock())
   }
@@ -1580,7 +1580,7 @@ fn side_effects_pattern_matches(pattern: &str, rel_path: &str) -> bool {
 }
 
 #[async_trait::async_trait(?Send)]
-impl esbuild_client::PluginHandler for DenoPluginHandler {
+impl esbuild_client::PluginHandler for EndePluginHandler {
   async fn on_resolve(
     &self,
     args: esbuild_client::OnResolveArgs,
@@ -1592,8 +1592,8 @@ impl esbuild_client::PluginHandler for DenoPluginHandler {
     {
       return Ok(Some(esbuild_client::OnResolveResult {
         path: Some(args.path),
-        plugin_name: Some("deno".to_string()),
-        namespace: Some("deno".to_string()),
+        plugin_name: Some("ende".to_string()),
+        namespace: Some("ende".to_string()),
         ..Default::default()
       }));
     }
@@ -1604,7 +1604,7 @@ impl esbuild_client::PluginHandler for DenoPluginHandler {
       return Ok(Some(esbuild_client::OnResolveResult {
         external: Some(true),
         path: Some(args.path),
-        plugin_name: Some("deno".to_string()),
+        plugin_name: Some("ende".to_string()),
         plugin_data: None,
         ..Default::default()
       }));
@@ -1624,7 +1624,7 @@ impl esbuild_client::PluginHandler for DenoPluginHandler {
       return Ok(Some(esbuild_client::OnResolveResult {
         external: Some(true),
         path: Some(args.path),
-        plugin_name: Some("deno".to_string()),
+        plugin_name: Some("ende".to_string()),
         plugin_data: None,
         ..Default::default()
       }));
@@ -1647,15 +1647,15 @@ impl esbuild_client::PluginHandler for DenoPluginHandler {
         if let Some(orig) = browser_map_disabled_specifier(&e) {
           return Ok(Some(esbuild_client::OnResolveResult {
             path: Some(format!("{BROWSER_DISABLED_PREFIX}{orig}")),
-            namespace: Some("deno".into()),
-            plugin_name: Some("deno".to_string()),
+            namespace: Some("ende".into()),
+            plugin_name: Some("ende".to_string()),
             ..Default::default()
           }));
         }
         return Ok(Some(esbuild_client::OnResolveResult {
           errors: Some(vec![esbuild_client::protocol::PartialMessage {
-            id: "deno_error".into(),
-            plugin_name: "deno".into(),
+            id: "ende_error".into(),
+            plugin_name: "ende".into(),
             text: e.to_string(),
             ..Default::default()
           }]),
@@ -1694,13 +1694,13 @@ impl esbuild_client::PluginHandler for DenoPluginHandler {
           || r.starts_with("http:")
           || r.starts_with("data:")
         {
-          Some("deno".into())
+          Some("ende".into())
         } else {
           None
         },
         external: Some(is_external),
         path: Some(r),
-        plugin_name: Some("deno".to_string()),
+        plugin_name: Some("ende".to_string()),
         plugin_data: None,
         side_effects,
         ..Default::default()
@@ -1742,11 +1742,11 @@ impl esbuild_client::PluginHandler for DenoPluginHandler {
         }
         return Ok(Some(esbuild_client::OnLoadResult {
           errors: Some(vec![esbuild_client::protocol::PartialMessage {
-            plugin_name: "deno".into(),
+            plugin_name: "ende".into(),
             text: e.to_string(),
             ..Default::default()
           }]),
-          plugin_name: Some("deno".to_string()),
+          plugin_name: Some("ende".to_string()),
           ..Default::default()
         }));
       }
@@ -1882,7 +1882,7 @@ fn browser_map_disabled_specifier(error: &BundleError) -> Option<String> {
   else {
     return None;
   };
-  let ende_resolver::DenoResolveErrorKind::Node(node_err) = e.as_kind() else {
+  let ende_resolver::EndeResolveErrorKind::Node(node_err) = e.as_kind() else {
     return None;
   };
   let node_resolver::errors::NodeResolveErrorKind::BrowserMapDisabled(disabled) =
@@ -1912,7 +1912,7 @@ fn maybe_ignorable_resolution_error(
 ) -> Option<String> {
   if let ende_resolver::graph::ResolveWithGraphErrorKind::Resolve(e) =
     error.as_kind()
-    && let ende_resolver::DenoResolveErrorKind::Node(node_err) = e.as_kind()
+    && let ende_resolver::EndeResolveErrorKind::Node(node_err) = e.as_kind()
     && let node_resolver::errors::NodeResolveErrorKind::PackageResolve(pkg_err) =
       node_err.as_kind()
     && let node_resolver::errors::PackageResolveErrorKind::PackageFolderResolve(
@@ -1944,7 +1944,7 @@ fn maybe_ignorable_resolution_error(
   }
 }
 
-impl DenoPluginHandler {
+impl EndePluginHandler {
   async fn reload_specifiers(
     &self,
     specifiers: &[PathBuf],
@@ -2665,7 +2665,7 @@ fn resolve_roots(
 async fn ensure_esbuild_downloaded(
   factory: &CliFactory,
 ) -> Result<PathBuf, AnyError> {
-  let deno_dir = factory.deno_dir()?;
+  let ende_dir = factory.ende_dir()?;
   let sys = factory.sys();
 
   // Esbuild is an implementation detail of the bundler, so resolve its
@@ -2678,7 +2678,7 @@ async fn ensure_esbuild_downloaded(
   let link_packages = WorkspaceNpmLinkPackagesRc::default();
 
   let esbuild_path = esbuild::ensure_esbuild(
-    deno_dir,
+    ende_dir,
     &npmrc,
     npm_cache_services.registry_info_provider(),
     &link_packages,
@@ -2742,7 +2742,7 @@ fn configure_esbuild_flags(
     ende_bundle_runtime::BundlePlatform::Browser => {
       builder.platform(esbuild_client::Platform::Browser);
     }
-    ende_bundle_runtime::BundlePlatform::Deno => {}
+    ende_bundle_runtime::BundlePlatform::Ende => {}
   }
 
   builder.build()

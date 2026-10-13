@@ -14,7 +14,7 @@ const DENO_CORE_PACKAGE_DIRS = [
   "libs/core_testing",
   "libs/core",
   "libs/core/examples/snapshot",
-  "libs/dcore",
+  "libs/ecore",
   "libs/ops",
   "libs/ops/compile_test_runner",
   "libs/serde_v8",

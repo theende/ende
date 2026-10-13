@@ -9,15 +9,15 @@ use anyhow::bail;
 use boxed_error::Boxed;
 use deno_path_util::fs::canonicalize_path_maybe_not_exists;
 use deno_semver::package::PackageName;
-use ende_cache_dir::DenoDirResolutionError;
+use ende_cache_dir::EndeDirResolutionError;
 use ende_cache_dir::GlobalHttpCacheRc;
 use ende_cache_dir::GlobalOrLocalHttpCache;
 use ende_cache_dir::LocalHttpCache;
 use ende_cache_dir::npm::NpmCacheDir;
-use ende_config::deno_json::MinimumDependencyAgeConfig;
-use ende_config::deno_json::NewestDependencyDate;
-use ende_config::deno_json::NodeModulesDirMode;
-use ende_config::deno_json::NodeModulesLinkerMode;
+use ende_config::ende_json::MinimumDependencyAgeConfig;
+use ende_config::ende_json::NewestDependencyDate;
+use ende_config::ende_json::NodeModulesDirMode;
+use ende_config::ende_json::NodeModulesLinkerMode;
 use ende_config::workspace::FolderConfigs;
 use ende_config::workspace::VendorEnablement;
 use ende_config::workspace::WorkspaceDirectory;
@@ -46,28 +46,28 @@ use node_resolver::cache::NodeResolutionSys;
 use thiserror::Error;
 use url::Url;
 
-use crate::DefaultRawDenoResolverRc;
-use crate::DenoResolverOptions;
+use crate::DefaultRawEndeResolverRc;
+use crate::EndeResolverOptions;
 use crate::NodeAndNpmResolvers;
 use crate::NpmCacheDirRc;
-use crate::RawDenoResolver;
+use crate::RawEndeResolver;
 use crate::WorkspaceResolverRc;
-use crate::cache::DenoDir;
-use crate::cache::DenoDirOptions;
-use crate::cache::DenoDirProvider;
-use crate::cache::DenoDirProviderRc;
-use crate::cache::DenoDirSys;
 use crate::cache::EmitCache;
 use crate::cache::EmitCacheRc;
+use crate::cache::EndeDir;
+use crate::cache::EndeDirOptions;
+use crate::cache::EndeDirProvider;
+use crate::cache::EndeDirProviderRc;
+use crate::cache::EndeDirSys;
 use crate::cjs::CjsTracker;
 use crate::cjs::CjsTrackerRc;
 use crate::cjs::IsCjsResolutionMode;
-use crate::cjs::analyzer::DenoCjsCodeAnalyzer;
+use crate::cjs::analyzer::EndeCjsCodeAnalyzer;
 use crate::cjs::analyzer::NodeAnalysisCacheRc;
 use crate::cjs::analyzer::NullNodeAnalysisCache;
-use crate::deno_json::CompilerOptionsOverrides;
-use crate::deno_json::CompilerOptionsResolver;
-use crate::deno_json::CompilerOptionsResolverRc;
+use crate::ende_json::CompilerOptionsOverrides;
+use crate::ende_json::CompilerOptionsResolver;
+use crate::ende_json::CompilerOptionsResolverRc;
 use crate::import_map::WorkspaceExternalImportMapLoader;
 use crate::import_map::WorkspaceExternalImportMapLoaderRc;
 use crate::loader::AllowJsonImports;
@@ -103,15 +103,15 @@ type Deferred<T> = once_cell::sync::OnceCell<T>;
 #[cfg(not(feature = "sync"))]
 type Deferred<T> = once_cell::unsync::OnceCell<T>;
 
-pub type DenoCjsModuleExportAnalyzerRc<TSys> = CjsModuleExportAnalyzerRc<
-  DenoCjsCodeAnalyzer<TSys>,
+pub type EndeCjsModuleExportAnalyzerRc<TSys> = CjsModuleExportAnalyzerRc<
+  EndeCjsCodeAnalyzer<TSys>,
   DenoInNpmPackageChecker,
   DenoIsBuiltInNodeModuleChecker,
   NpmResolver<TSys>,
   TSys,
 >;
-pub type DenoNodeCodeTranslatorRc<TSys> = NodeCodeTranslatorRc<
-  DenoCjsCodeAnalyzer<TSys>,
+pub type EndeNodeCodeTranslatorRc<TSys> = NodeCodeTranslatorRc<
+  EndeCjsCodeAnalyzer<TSys>,
   DenoInNpmPackageChecker,
   DenoIsBuiltInNodeModuleChecker,
   NpmResolver<TSys>,
@@ -130,7 +130,7 @@ pub struct HttpCacheCreateError(pub Box<HttpCacheCreateErrorKind>);
 #[derive(Debug, Error)]
 pub enum HttpCacheCreateErrorKind {
   #[error(transparent)]
-  DenoDirResolution(#[from] DenoDirResolutionError),
+  EndeDirResolution(#[from] EndeDirResolutionError),
   #[error(transparent)]
   WorkspaceDiscover(#[from] WorkspaceDiscoverError),
 }
@@ -141,7 +141,7 @@ pub struct NpmCacheDirCreateError(pub Box<NpmCacheDirCreateErrorKind>);
 #[derive(Debug, Error)]
 pub enum NpmCacheDirCreateErrorKind {
   #[error(transparent)]
-  DenoDirResolution(#[from] DenoDirResolutionError),
+  EndeDirResolution(#[from] EndeDirResolutionError),
   #[error(transparent)]
   NpmRcCreate(#[from] NpmRcCreateError),
 }
@@ -212,7 +212,7 @@ pub struct WorkspaceFactoryOptions {
   pub lock_arg: Option<PathBuf>,
   /// Whether to skip writing to the lockfile.
   pub lockfile_skip_write: bool,
-  pub maybe_custom_deno_dir_root: Option<PathBuf>,
+  pub maybe_custom_ende_dir_root: Option<PathBuf>,
   pub node_modules_dir: Option<NodeModulesDirMode>,
   pub node_modules_linker: Option<NodeModulesLinkerMode>,
   pub no_lock: bool,
@@ -235,7 +235,7 @@ pub type WorkspaceFactoryRc<TSys> =
 
 #[sys_traits::auto_impl]
 pub trait WorkspaceFactorySys:
-  DenoDirSys
+  EndeDirSys
   + crate::lockfile::LockfileSys
   + crate::npm::NpmResolverSys
   + ende_cache_dir::GlobalHttpCacheSys
@@ -247,7 +247,7 @@ pub trait WorkspaceFactorySys:
 
 pub struct WorkspaceFactory<TSys: WorkspaceFactorySys> {
   sys: TSys,
-  deno_dir_provider: Deferred<DenoDirProviderRc<TSys>>,
+  ende_dir_provider: Deferred<EndeDirProviderRc<TSys>>,
   emit_cache: Deferred<EmitCacheRc<TSys>>,
   global_http_cache: Deferred<GlobalHttpCacheRc<TSys>>,
   http_cache: Deferred<GlobalOrLocalHttpCache<TSys>>,
@@ -274,7 +274,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
   ) -> Self {
     Self {
       sys,
-      deno_dir_provider: Default::default(),
+      ende_dir_provider: Default::default(),
       emit_cache: Default::default(),
       global_http_cache: Default::default(),
       http_cache: Default::default(),
@@ -300,13 +300,13 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
     self.workspace_directory = Deferred::from(workspace_directory);
   }
 
-  pub fn deno_dir_provider(&self) -> &DenoDirProviderRc<TSys> {
-    self.deno_dir_provider.get_or_init(|| {
-      new_rc(DenoDirProvider::new(
+  pub fn ende_dir_provider(&self) -> &EndeDirProviderRc<TSys> {
+    self.ende_dir_provider.get_or_init(|| {
+      new_rc(EndeDirProvider::new(
         self.sys.clone(),
-        DenoDirOptions {
+        EndeDirOptions {
           maybe_initial_cwd: Some(self.initial_cwd.clone()),
-          maybe_custom_root: self.options.maybe_custom_deno_dir_root.clone(),
+          maybe_custom_root: self.options.maybe_custom_ende_dir_root.clone(),
         },
       ))
     })
@@ -316,7 +316,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
     self.emit_cache.get_or_try_init(|| {
       Ok(new_rc(EmitCache::new(
         &self.sys,
-        self.deno_dir()?.gen_cache.clone(),
+        self.ende_dir()?.gen_cache.clone(),
         #[cfg(feature = "deno_ast")]
         Cow::Borrowed(deno_ast::VERSION),
         #[cfg(not(feature = "deno_ast"))]
@@ -363,14 +363,14 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
     let workspace = &self.workspace_directory()?.workspace;
 
     if let Some(pkg_json) = workspace.root_pkg_json() {
-      if let Ok(deno_dir) = self.deno_dir() {
-        let deno_dir = &deno_dir.root;
-        // `deno_dir` can be symlink in macOS or on the CI
-        if let Ok(deno_dir) =
-          canonicalize_path_maybe_not_exists(&self.sys, deno_dir)
-          && pkg_json.path.starts_with(deno_dir)
+      if let Ok(ende_dir) = self.ende_dir() {
+        let ende_dir = &ende_dir.root;
+        // `ende_dir` can be symlink in macOS or on the CI
+        if let Ok(ende_dir) =
+          canonicalize_path_maybe_not_exists(&self.sys, ende_dir)
+          && pkg_json.path.starts_with(ende_dir)
         {
-          // if the package.json is in deno_dir, then do not use node_modules
+          // if the package.json is in ende_dir, then do not use node_modules
           // next to it as local node_modules dir
           return Ok(NodeModulesDirMode::None);
         }
@@ -443,7 +443,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
   pub fn node_modules_dir_path(&self) -> Result<Option<&Path>, anyhow::Error> {
     fn resolve_from_root(root_folder: &FolderConfigs, cwd: &Path) -> PathBuf {
       root_folder
-        .deno_json
+        .ende_json
         .as_ref()
         .map(|c| Cow::Owned(c.dir_path()))
         .or_else(|| {
@@ -489,15 +489,15 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
       .map(|p| p.as_deref())
   }
 
-  pub fn deno_dir(&self) -> Result<&DenoDir<TSys>, DenoDirResolutionError> {
-    self.deno_dir_provider().get_or_create()
+  pub fn ende_dir(&self) -> Result<&EndeDir<TSys>, EndeDirResolutionError> {
+    self.ende_dir_provider().get_or_create()
   }
 
   pub fn global_http_cache(
     &self,
-  ) -> Result<&GlobalHttpCacheRc<TSys>, DenoDirResolutionError> {
+  ) -> Result<&GlobalHttpCacheRc<TSys>, EndeDirResolutionError> {
     self.global_http_cache.get_or_try_init(|| {
-      let global_cache_dir = self.deno_dir()?.remote_folder_path();
+      let global_cache_dir = self.ende_dir()?.remote_folder_path();
       let global_http_cache = new_rc(ende_cache_dir::GlobalHttpCache::new(
         self.sys.clone(),
         global_cache_dir,
@@ -573,7 +573,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
     &self,
   ) -> Result<&NpmCacheDirRc, NpmCacheDirCreateError> {
     self.npm_cache_dir.get_or_try_init(|| {
-      let npm_cache_dir = self.deno_dir()?.npm_folder_path();
+      let npm_cache_dir = self.ende_dir()?.npm_folder_path();
       Ok(new_rc(NpmCacheDir::new(
         &self.sys,
         npm_cache_dir,
@@ -619,7 +619,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
           log::debug!("package.json auto-discovery is disabled");
         }
         WorkspaceDiscoverOptions {
-          deno_json_cache: None,
+          ende_json_cache: None,
           pkg_json_cache: Some(&node_resolver::PackageJsonThreadLocalCache),
           workspace_cache: None,
           additional_config_file_names: self
@@ -736,12 +736,12 @@ pub struct ResolverFactoryOptions {
 pub struct ResolverFactory<TSys: WorkspaceFactorySys> {
   options: ResolverFactoryOptions,
   sys: NodeResolutionSys<TSys>,
-  cjs_module_export_analyzer: Deferred<DenoCjsModuleExportAnalyzerRc<TSys>>,
+  cjs_module_export_analyzer: Deferred<EndeCjsModuleExportAnalyzerRc<TSys>>,
   cjs_tracker: Deferred<CjsTrackerRc<DenoInNpmPackageChecker, TSys>>,
   compiler_options_resolver: Deferred<CompilerOptionsResolverRc>,
   #[cfg(feature = "graph")]
-  deno_resolver:
-    async_once_cell::OnceCell<crate::graph::DefaultDenoResolverRc<TSys>>,
+  ende_resolver:
+    async_once_cell::OnceCell<crate::graph::DefaultEndeResolverRc<TSys>>,
   #[cfg(feature = "deno_ast")]
   emitter: Deferred<crate::emit::EmitterRc<DenoInNpmPackageChecker, TSys>>,
   #[cfg(feature = "graph")]
@@ -750,7 +750,7 @@ pub struct ResolverFactory<TSys: WorkspaceFactorySys> {
   #[cfg(feature = "graph")]
   jsr_version_resolver: Deferred<JsrVersionResolverRc>,
   minimum_dependency_age: Deferred<MinimumDependencyAgeConfig>,
-  node_code_translator: Deferred<DenoNodeCodeTranslatorRc<TSys>>,
+  node_code_translator: Deferred<EndeNodeCodeTranslatorRc<TSys>>,
   node_resolver: Deferred<
     NodeResolverRc<
       DenoInNpmPackageChecker,
@@ -776,7 +776,7 @@ pub struct ResolverFactory<TSys: WorkspaceFactorySys> {
   pkg_json_resolver: Deferred<PackageJsonResolverRc<TSys>>,
   #[cfg(all(feature = "graph", feature = "deno_ast"))]
   module_loader: Deferred<crate::loader::ModuleLoaderRc<TSys>>,
-  raw_deno_resolver: async_once_cell::OnceCell<DefaultRawDenoResolverRc<TSys>>,
+  raw_ende_resolver: async_once_cell::OnceCell<DefaultRawEndeResolverRc<TSys>>,
   workspace_factory: WorkspaceFactoryRc<TSys>,
   workspace_resolver: async_once_cell::OnceCell<WorkspaceResolverRc<TSys>>,
 }
@@ -794,9 +794,9 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
       cjs_module_export_analyzer: Default::default(),
       cjs_tracker: Default::default(),
       compiler_options_resolver: Default::default(),
-      raw_deno_resolver: Default::default(),
+      raw_ende_resolver: Default::default(),
       #[cfg(feature = "graph")]
-      deno_resolver: Default::default(),
+      ende_resolver: Default::default(),
       #[cfg(feature = "deno_ast")]
       emitter: Default::default(),
       #[cfg(feature = "graph")]
@@ -823,14 +823,14 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
     }
   }
 
-  pub async fn raw_deno_resolver(
+  pub async fn raw_ende_resolver(
     &self,
-  ) -> Result<&DefaultRawDenoResolverRc<TSys>, anyhow::Error> {
+  ) -> Result<&DefaultRawEndeResolverRc<TSys>, anyhow::Error> {
     self
-      .raw_deno_resolver
+      .raw_ende_resolver
       .get_or_try_init(
         async {
-          Ok(new_rc(RawDenoResolver::new(DenoResolverOptions {
+          Ok(new_rc(RawEndeResolver::new(EndeResolverOptions {
             in_npm_pkg_checker: self.in_npm_package_checker()?.clone(),
             node_and_req_resolver: if self.workspace_factory.no_npm() {
               None
@@ -858,9 +858,9 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
 
   pub fn cjs_module_export_analyzer(
     &self,
-  ) -> Result<&DenoCjsModuleExportAnalyzerRc<TSys>, anyhow::Error> {
+  ) -> Result<&EndeCjsModuleExportAnalyzerRc<TSys>, anyhow::Error> {
     self.cjs_module_export_analyzer.get_or_try_init(|| {
-      let code_analyzer = DenoCjsCodeAnalyzer::new(
+      let code_analyzer = EndeCjsCodeAnalyzer::new(
         self
           .options
           .node_analysis_cache
@@ -939,14 +939,14 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
   }
 
   #[cfg(feature = "graph")]
-  pub async fn deno_resolver(
+  pub async fn ende_resolver(
     &self,
-  ) -> Result<&crate::graph::DefaultDenoResolverRc<TSys>, anyhow::Error> {
+  ) -> Result<&crate::graph::DefaultEndeResolverRc<TSys>, anyhow::Error> {
     self
-      .deno_resolver
+      .ende_resolver
       .get_or_try_init(async {
-        Ok(new_rc(crate::graph::DenoResolver::new(
-          self.raw_deno_resolver().await?.clone(),
+        Ok(new_rc(crate::graph::EndeResolver::new(
+          self.raw_ende_resolver().await?.clone(),
           self.workspace_factory.sys.clone(),
           self.found_package_json_dep_flag.clone(),
           self.options.on_mapped_resolution_diagnostic.clone(),
@@ -1041,7 +1041,7 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
 
   pub fn node_code_translator(
     &self,
-  ) -> Result<&DenoNodeCodeTranslatorRc<TSys>, anyhow::Error> {
+  ) -> Result<&EndeNodeCodeTranslatorRc<TSys>, anyhow::Error> {
     self.node_code_translator.get_or_try_init(|| {
       Ok(new_rc(NodeCodeTranslator::new(
         self.cjs_module_export_analyzer()?.clone(),
@@ -1423,8 +1423,8 @@ pub fn npm_overrides_from_workspace(
 #[cfg(test)]
 mod tests {
   use chrono::TimeZone;
-  use ende_config::deno_json::MinimumDependencyAgeConfig;
-  use ende_config::deno_json::NewestDependencyDate;
+  use ende_config::ende_json::MinimumDependencyAgeConfig;
+  use ende_config::ende_json::NewestDependencyDate;
 
   use super::apply_minimum_dependency_age_fallbacks;
 

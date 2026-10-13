@@ -38,13 +38,13 @@ pub enum LoadError {
   Io(std::io::Error),
 }
 
-pub type DenoRtNativeAddonLoaderRc = Arc<dyn DenoRtNativeAddonLoader>;
+pub type EndeRtNativeAddonLoaderRc = Arc<dyn EndeRtNativeAddonLoader>;
 
 /// Loads native addons in `deno compile`.
 ///
 /// The implementation should provide the bytes from the binary
 /// of the native file.
-pub trait DenoRtNativeAddonLoader: Send + Sync {
+pub trait EndeRtNativeAddonLoader: Send + Sync {
   fn load_if_in_vfs(&self, path: &Path) -> Option<Cow<'static, [u8]>>;
 
   fn load_and_resolve_path<'a>(

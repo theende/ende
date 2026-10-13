@@ -16,10 +16,10 @@ use deno_path_util::resolve_url_or_path;
 use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::npm::NpmPackageReqReference;
 use ende_cache_dir::file_fetcher::CacheSetting;
-use ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME;
-use ende_config::deno_json::DEPRECATED_LOCKFILE_NAME;
-use ende_config::deno_json::LOCKFILE_NAME;
-use ende_config::deno_json::NodeModulesDirMode;
+use ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME;
+use ende_config::ende_json::DEPRECATED_LOCKFILE_NAME;
+use ende_config::ende_json::LOCKFILE_NAME;
+use ende_config::ende_json::NodeModulesDirMode;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::anyhow;
 use ende_core::anyhow::bail;
@@ -36,7 +36,7 @@ use regex::RegexBuilder;
 use super::bin_name_resolver::BinNameResolver;
 use crate::args::CompileFlags;
 use crate::args::ConfigFlag;
-use crate::args::DenoSubcommand;
+use crate::args::EndeSubcommand;
 use crate::args::Flags;
 use crate::args::FlagsExt;
 use crate::args::InstallEntrypointsFlags;
@@ -85,7 +85,7 @@ pub async fn install_global(
   let npmrc = factory.npmrc()?;
 
   if matches!(flags.config_flag, ConfigFlag::Discover)
-    && cli_options.workspace().deno_jsons().next().is_some()
+    && cli_options.workspace().ende_jsons().next().is_some()
   {
     log::warn!(
       "{} discovered config file will be ignored in the installed command. Use the --config flag if you wish to include it.",
@@ -404,7 +404,7 @@ async fn install_global_compiled(
   };
 
   let mut new_flags = flags.as_ref().clone();
-  new_flags.subcommand = DenoSubcommand::Compile(compile_flags.clone());
+  new_flags.subcommand = EndeSubcommand::Compile(compile_flags.clone());
 
   crate::tools::compile::compile(new_flags, compile_flags).await?;
 
@@ -594,7 +594,7 @@ async fn setup_config_dir(
     production: false,
     skip_types: false,
   };
-  new_flags.subcommand = DenoSubcommand::Install(InstallFlags::Local(
+  new_flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
     InstallFlagsLocal::Entrypoints(entrypoint_flags.clone()),
     Default::default(),
   ));
@@ -1023,9 +1023,9 @@ fn resolve_shim_data(
   let config_dir =
     installation_dir.join(format!(".{}", bin_name_and_url.config_dir_name()));
 
-  let deno_json_path = config_dir.join(DEFAULT_CONFIG_FILE_NAME);
+  let ende_json_path = config_dir.join(DEFAULT_CONFIG_FILE_NAME);
   executable_args.push("--config".to_string());
-  executable_args.push(deno_json_path.to_string_lossy().into_owned());
+  executable_args.push(ende_json_path.to_string_lossy().into_owned());
 
   if let Some(node_modules_dir) = flags.node_modules_dir {
     executable_args

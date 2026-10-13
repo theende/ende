@@ -4,8 +4,8 @@ use std::convert::Infallible;
 
 use deno_error::JsErrorBox;
 use deno_error::JsErrorClass;
-use ende_resolver::DenoResolveError;
-use ende_resolver::DenoResolveErrorKind;
+use ende_resolver::EndeResolveError;
+use ende_resolver::EndeResolveErrorKind;
 use ende_runtime::ende_core::error::AnyError;
 use ende_runtime::ende_core::error::CoreError;
 use ende_runtime::ende_core::error::CoreErrorKind;
@@ -60,12 +60,12 @@ pub fn any_and_jserrorbox_downcast_ref<
     })
 }
 
-pub fn downcast_ref_deno_resolve_error(
+pub fn downcast_ref_ende_resolve_error(
   err: &JsErrorBox,
-) -> Option<&DenoResolveErrorKind> {
+) -> Option<&EndeResolveErrorKind> {
   err
     .get_ref()
-    .downcast_ref::<DenoResolveError>()
+    .downcast_ref::<EndeResolveError>()
     .map(|e| e.as_kind())
-    .or_else(|| err.get_ref().downcast_ref::<DenoResolveErrorKind>())
+    .or_else(|| err.get_ref().downcast_ref::<EndeResolveErrorKind>())
 }

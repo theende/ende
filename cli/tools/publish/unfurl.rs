@@ -720,12 +720,12 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
     };
 
     // now look in the member and root deno json
-    let deno_jsons = [
-      self.workspace_dir.member_deno_json(),
-      self.workspace_dir.workspace.root_deno_json(),
+    let ende_jsons = [
+      self.workspace_dir.member_ende_json(),
+      self.workspace_dir.workspace.root_ende_json(),
     ];
-    for deno_json in deno_jsons.iter().flatten() {
-      let deps = deno_json
+    for ende_json in ende_jsons.iter().flatten() {
+      let deps = ende_json
         .dependencies(self.workspace_dir.workspace.catalogs())
         .into_iter()
         .collect::<BTreeSet<_>>();
@@ -1859,7 +1859,7 @@ export * from "jsr:@std/semver@1";
       sys,
       cwd.to_path_buf(),
       WorkspaceFactoryOptions {
-        maybe_custom_deno_dir_root: Some(cwd.join("deno_dir")),
+        maybe_custom_ende_dir_root: Some(cwd.join("deno_dir")),
         ..Default::default()
       },
     ));

@@ -42,7 +42,7 @@ declare global {
     __proto__: any;
   }
 
-  interface DenoCore {
+  interface EndeCore {
     encode(value: string): Uint8Array;
     // deno-lint-ignore no-explicit-any
     ops: Record<string, (...args: unknown[]) => any>;

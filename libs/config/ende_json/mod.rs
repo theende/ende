@@ -923,7 +923,7 @@ struct SerializedDesktopAppConfig {
   /// `com.acme.foo`). Used as the macOS `CFBundleIdentifier`, the Linux
   /// `.desktop` file identifier, and (eventually) the Windows
   /// AppUserModelID. Optional; when omitted a synthetic
-  /// `com.deno.desktop.<slug>` is generated from the app name.
+  /// `sh.ende.desktop.<slug>` is generated from the app name.
   pub identifier: Option<String>,
   /// Custom URL schemes (deep links) the app registers with the OS, e.g.
   /// `["acme"]` to handle `acme://...` links. Each entry is a bare scheme
@@ -1550,9 +1550,9 @@ pub struct ConfigFileJson {
   pub unstable: Vec<String>,
 }
 
-pub trait DenoJsonCache {
+pub trait EndeJsonCache {
   fn get(&self, path: &Path) -> Option<ConfigFileRc>;
-  fn set(&self, path: PathBuf, deno_json: ConfigFileRc);
+  fn set(&self, path: PathBuf, ende_json: ConfigFileRc);
 }
 
 #[derive(Debug, Error, JsError)]
@@ -1761,7 +1761,7 @@ impl ConfigFile {
 
   pub(crate) fn maybe_find_in_folder(
     sys: &impl FsRead,
-    maybe_cache: Option<&dyn DenoJsonCache>,
+    maybe_cache: Option<&dyn EndeJsonCache>,
     folder: &Path,
     config_file_names: &[&str],
   ) -> Result<Option<ConfigFileRc>, ConfigFileReadError> {

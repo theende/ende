@@ -159,11 +159,11 @@ fn init_subcommand_empty() {
   assert_contains!(stderr, "ende task dev");
   assert!(!stderr.contains("ende test"));
 
-  let deno_json_path = cwd.join("ende.json");
-  assert!(deno_json_path.exists());
+  let ende_json_path = cwd.join("ende.json");
+  assert!(ende_json_path.exists());
 
-  let deno_json_content = deno_json_path.read_to_string();
-  assert!(!deno_json_content.contains("@std/assert"));
+  let ende_json_content = ende_json_path.read_to_string();
+  assert!(!ende_json_content.contains("@std/assert"));
 
   assert!(cwd.join("main.ts").exists());
   assert!(!cwd.join("main_test.ts").exists());

@@ -67,7 +67,7 @@ use url::Url;
 
 use super::TempDir;
 use crate::PathRef;
-use crate::deno_exe_path;
+use crate::ende_exe_path;
 use crate::eprintln;
 use crate::jsr_registry_url;
 use crate::npm_registry_url;
@@ -517,7 +517,7 @@ impl InitializeParamsBuilder {
     self
   }
 
-  pub fn set_deno_enable(&mut self, value: bool) -> &mut Self {
+  pub fn set_ende_enable(&mut self, value: bool) -> &mut Self {
     let options = self.initialization_options_mut();
     options.insert("enable".to_string(), value.into());
     self
@@ -602,9 +602,9 @@ pub struct LspClientBuilder {
   stderr_inherit: bool,
   stderr_null: bool,
   log_debug: bool,
-  deno_exe: PathRef,
+  ende_exe: PathRef,
   root_dir: PathRef,
-  deno_dir: TempDir,
+  ende_dir: TempDir,
   envs: HashMap<OsString, OsString>,
   collect_perf: bool,
   legacy_deno_client: bool,
@@ -616,14 +616,14 @@ impl LspClientBuilder {
     Self::new_with_dir(TempDir::new())
   }
 
-  pub fn new_with_dir(deno_dir: TempDir) -> Self {
+  pub fn new_with_dir(ende_dir: TempDir) -> Self {
     Self {
       stderr_inherit: false,
       stderr_null: false,
       log_debug: false,
-      deno_exe: deno_exe_path(),
-      root_dir: deno_dir.path().clone(),
-      deno_dir,
+      ende_exe: ende_exe_path(),
+      root_dir: ende_dir.path().clone(),
+      ende_dir,
       envs: Default::default(),
       collect_perf: false,
       legacy_deno_client: false,
@@ -637,8 +637,8 @@ impl LspClientBuilder {
     self
   }
 
-  pub fn deno_exe(mut self, exe_path: impl AsRef<Path>) -> Self {
-    self.deno_exe = PathRef::new(exe_path);
+  pub fn ende_exe(mut self, exe_path: impl AsRef<Path>) -> Self {
+    self.ende_exe = PathRef::new(exe_path);
     self
   }
 
@@ -691,14 +691,14 @@ impl LspClientBuilder {
   }
 
   pub fn build_result(&self) -> Result<LspClient> {
-    let deno_dir = self.deno_dir.clone();
-    let mut command = Command::new(&self.deno_exe);
+    let ende_dir = self.ende_dir.clone();
+    let mut command = Command::new(&self.ende_exe);
     let mut args = vec!["lsp".to_string()];
     if self.log_debug {
       args.push("--log-level=debug".to_string());
     }
     command
-      .env("ENDE_DIR", deno_dir.path())
+      .env("ENDE_DIR", ende_dir.path())
       .env("NPM_CONFIG_REGISTRY", npm_registry_url())
       .env("JSR_URL", jsr_registry_url())
       // turn on diagnostic synchronization communication
@@ -771,7 +771,7 @@ impl LspClientBuilder {
       start: Instant::now(),
       root_dir: self.root_dir.clone(),
       writer,
-      deno_dir,
+      ende_dir,
       stderr_lines_rx,
       config: json!("{}"),
       supports_workspace_configuration: false,
@@ -873,7 +873,7 @@ pub struct LspClient {
   request_id: u64,
   start: Instant,
   writer: io::BufWriter<ChildStdin>,
-  deno_dir: TempDir,
+  ende_dir: TempDir,
   root_dir: PathRef,
   stderr_lines_rx: Option<mpsc::Receiver<String>>,
   config: serde_json::Value,
@@ -899,8 +899,8 @@ impl Drop for LspClient {
 }
 
 impl LspClient {
-  pub fn deno_dir(&self) -> &TempDir {
-    &self.deno_dir
+  pub fn ende_dir(&self) -> &TempDir {
+    &self.ende_dir
   }
 
   /// The settings section this client sends: `ende`, or `deno` for a legacy

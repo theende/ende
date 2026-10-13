@@ -35,10 +35,10 @@ use ende_core::url;
 use ende_core::url::Url;
 use ende_lib::args::CaData;
 use ende_lib::args::get_root_cert_store;
-use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::ENDE_VERSION_INFO;
 use ende_npm::resolution::NpmVersionResolver;
 use ende_npm_installer::graph::NpmCachingStrategy;
-use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_resolver::ende_json::CompilerOptionsKey;
 use ende_resolver::loader::MemoryFilesRc;
 use ende_runtime::ende_tls::RootCertStoreProvider;
 use ende_runtime::ende_tls::rustls::RootCertStore;
@@ -113,7 +113,7 @@ use crate::http_util::HttpClientProvider;
 use crate::lsp::compiler_options::LspCompilerOptionsResolver;
 use crate::lsp::completions::CompletionItemData;
 use crate::lsp::config::ConfigWatchedFileType;
-use crate::lsp::diagnostics::DenoDiagnostic;
+use crate::lsp::diagnostics::EndeDiagnostic;
 use crate::lsp::diagnostics::generate_import_map_diagnostics;
 use crate::lsp::diagnostics::generate_module_diagnostics;
 use crate::lsp::lint::LspLinterResolver;
@@ -684,7 +684,7 @@ impl Inner {
     let cache = LspCache::default();
     let http_client_provider = Arc::new(HttpClientProvider::new(None, None));
     let module_registry = ModuleRegistry::new(
-      cache.deno_dir().registries_folder_path(),
+      cache.ende_dir().registries_folder_path(),
       http_client_provider.clone(),
     );
     let jsr_search_api =
@@ -879,7 +879,7 @@ impl Inner {
       }
     });
     self.cache = LspCache::new(global_cache_url);
-    let deno_dir = self.cache.deno_dir();
+    let ende_dir = self.cache.ende_dir();
     let workspace_settings = self.config.workspace_settings();
     let maybe_root_path = self
       .config
@@ -902,7 +902,7 @@ impl Inner {
         .clone(),
     ));
     self.module_registry = ModuleRegistry::new(
-      deno_dir.registries_folder_path(),
+      ende_dir.registries_folder_path(),
       self.http_client_provider.clone(),
     );
     let workspace_settings = self.config.workspace_settings();
@@ -1003,7 +1003,7 @@ impl Inner {
 
     let version = format!(
       "{} ({}, {})",
-      DENO_VERSION_INFO.deno,
+      ENDE_VERSION_INFO.ende,
       env!("PROFILE"),
       env!("TARGET")
     );
@@ -1155,8 +1155,8 @@ impl Inner {
       }
     }
     for root_ancestor in root_ancestors {
-      for deno_json in ende_config::deno_json::CONFIG_FILE_NAMES {
-        let path = root_ancestor.join(deno_json);
+      for ende_json in ende_config::ende_json::CONFIG_FILE_NAMES {
+        let path = root_ancestor.join(ende_json);
         if path.exists() {
           workspace_files.insert(path);
         }
@@ -1305,13 +1305,13 @@ impl Inner {
         &self.workspace_files,
         &file_fetcher,
         &self.http_client_provider,
-        self.cache.deno_dir(),
+        self.cache.ende_dir(),
         reason,
       )
       .await;
     self
       .client
-      .send_did_refresh_deno_configuration_tree_notification(
+      .send_did_refresh_ende_configuration_tree_notification(
         self.config.tree.to_did_refresh_params(),
       );
   }
@@ -1770,7 +1770,7 @@ impl Inner {
       let path = specifier.path();
       !path.contains("/node_modules/")
         && (path.rsplit_once('/').is_some_and(|(_, name)| {
-          ende_config::deno_json::is_config_file_name(name)
+          ende_config::ende_json::is_config_file_name(name)
         }) || path.ends_with("/package.json")
           || path.ends_with("/tsconfig.json"))
         || path.ends_with("/node_modules/.package-lock.json")
@@ -1781,24 +1781,24 @@ impl Inner {
         || self.compiler_options_resolver.is_watched_file(specifier)
     });
     if has_config_changes {
-      let mut deno_config_changes = IndexSet::with_capacity(changes.len());
-      let mut changed_deno_json = false;
-      deno_config_changes.extend(changes.iter().filter_map(|(s, e)| {
+      let mut ende_config_changes = IndexSet::with_capacity(changes.len());
+      let mut changed_ende_json = false;
+      ende_config_changes.extend(changes.iter().filter_map(|(s, e)| {
         self.config.tree.watched_file_type(s).and_then(|t| {
           let configuration_type = match t.1 {
-            ConfigWatchedFileType::DenoJson => {
-              changed_deno_json = true;
-              lsp_custom::DenoConfigurationType::DenoJson
+            ConfigWatchedFileType::EndeJson => {
+              changed_ende_json = true;
+              lsp_custom::EndeConfigurationType::EndeJson
             }
             ConfigWatchedFileType::PackageJson => {
-              lsp_custom::DenoConfigurationType::PackageJson
+              lsp_custom::EndeConfigurationType::PackageJson
             }
             _ => return None,
           };
-          Some(lsp_custom::DenoConfigurationChangeEvent {
+          Some(lsp_custom::EndeConfigurationChangeEvent {
             scope_uri: url_to_uri(t.0).ok()?,
             file_uri: e.uri.clone(),
-            typ: lsp_custom::DenoConfigurationChangeType::from_file_change_type(
+            typ: lsp_custom::EndeConfigurationChangeType::from_file_change_type(
               e.typ,
             ),
             configuration_type,
@@ -1832,31 +1832,31 @@ impl Inner {
         self.client.refresh_diagnostics();
       }
       self.send_testing_update();
-      deno_config_changes.extend(changes.iter().filter_map(|(s, e)| {
+      ende_config_changes.extend(changes.iter().filter_map(|(s, e)| {
         self.config.tree.watched_file_type(s).and_then(|t| {
           let configuration_type = match t.1 {
-            ConfigWatchedFileType::DenoJson => {
-              lsp_custom::DenoConfigurationType::DenoJson
+            ConfigWatchedFileType::EndeJson => {
+              lsp_custom::EndeConfigurationType::EndeJson
             }
             ConfigWatchedFileType::PackageJson => {
-              lsp_custom::DenoConfigurationType::PackageJson
+              lsp_custom::EndeConfigurationType::PackageJson
             }
             _ => return None,
           };
-          Some(lsp_custom::DenoConfigurationChangeEvent {
+          Some(lsp_custom::EndeConfigurationChangeEvent {
             scope_uri: url_to_uri(t.0).ok()?,
             file_uri: e.uri.clone(),
-            typ: lsp_custom::DenoConfigurationChangeType::from_file_change_type(
+            typ: lsp_custom::EndeConfigurationChangeType::from_file_change_type(
               e.typ,
             ),
             configuration_type,
           })
         })
       }));
-      if !deno_config_changes.is_empty() {
-        self.client.send_did_change_deno_configuration_notification(
-          lsp_custom::DidChangeDenoConfigurationNotificationParams {
-            changes: deno_config_changes.into_iter().collect(),
+      if !ende_config_changes.is_empty() {
+        self.client.send_did_change_ende_configuration_notification(
+          lsp_custom::DidChangeEndeConfigurationNotificationParams {
+            changes: ende_config_changes.into_iter().collect(),
           },
         );
       }
@@ -1965,7 +1965,7 @@ impl Inner {
         clippy::nonminimal_bool,
         reason = "clippy's suggestion is more confusing"
       )]
-      if !config_data.is_some_and(|d| d.maybe_deno_json().is_some()) {
+      if !config_data.is_some_and(|d| d.maybe_ende_json().is_some()) {
         fmt_options.use_tabs = Some(!params.options.insert_spaces);
         fmt_options.indent_width = Some(params.options.tab_size as u8);
       }
@@ -2236,11 +2236,11 @@ impl Inner {
             .source
             .as_deref()
             .and_then(DiagnosticSource::from_lsp_source)
-            == Some(DiagnosticSource::Deno)
-            && diagnostics::DenoDiagnostic::is_fixable(diagnostic)
+            == Some(DiagnosticSource::Ende)
+            && diagnostics::EndeDiagnostic::is_fixable(diagnostic)
         })
         .filter_map(|diagnostic| {
-          DenoDiagnostic::get_code_action(document.uri(), &url, diagnostic)
+          EndeDiagnostic::get_code_action(document.uri(), &url, diagnostic)
             .inspect_err(|err| {
               lsp_warn!(
                 "Error getting Ende code action: {:#}\nDiagnostic: {:#?}",
@@ -2275,9 +2275,9 @@ impl Inner {
     let Some(module) = self.get_primary_module(&document)? else {
       return Ok(None);
     };
-    let mut deno_actions = Vec::new();
+    let mut ende_actions = Vec::new();
     let mut deno_lint_actions = Vec::new();
-    let mut deno_test_actions = Vec::new();
+    let mut ende_test_actions = Vec::new();
     let mut includes_no_cache = false;
     if params.context.only.as_ref().is_none_or(|only| {
       only.iter().any(|kind| {
@@ -2303,7 +2303,7 @@ impl Inner {
           }
         })?;
       if let Some(response) = response {
-        deno_actions.push(CodeAction {
+        ende_actions.push(CodeAction {
           title: "Copy inferred type".to_string(),
           kind: Some(INFERRED_TYPE_CODE_ACTION_KIND.clone()),
           command: Some(Command {
@@ -2349,7 +2349,7 @@ impl Inner {
         })
       })
     {
-      deno_test_actions.extend(collect_test_code_actions(
+      ende_test_actions.extend(collect_test_code_actions(
         document.uri(),
         parsed_source,
         params.range,
@@ -2372,8 +2372,8 @@ impl Inner {
         .as_deref()
         .and_then(DiagnosticSource::from_lsp_source)
       {
-        Some(DiagnosticSource::Deno) => {
-          if !diagnostics::DenoDiagnostic::is_fixable(diagnostic) {
+        Some(DiagnosticSource::Ende) => {
+          if !diagnostics::EndeDiagnostic::is_fixable(diagnostic) {
             continue;
           }
           if diagnostic.code
@@ -2385,13 +2385,13 @@ impl Inner {
           {
             includes_no_cache = true;
           }
-          match DenoDiagnostic::get_code_action(
+          match EndeDiagnostic::get_code_action(
             document.uri(),
             &module.specifier,
             diagnostic,
           ) {
             Ok(action) => {
-              deno_actions.push(action);
+              ende_actions.push(action);
             }
             Err(err) => {
               lsp_warn!(
@@ -2458,7 +2458,7 @@ impl Inner {
           })
           .collect::<HashSet<_>>();
         if uncached_deps.len() > 1 {
-          deno_actions.push(CodeAction {
+          ende_actions.push(CodeAction {
             title: "Cache all dependencies of this module.".to_string(),
             kind: Some(CodeActionKind::QUICKFIX),
             diagnostics: Some(no_cache_diagnostics.as_ref().clone()),
@@ -2479,7 +2479,7 @@ impl Inner {
         params.range,
         &params.context,
         file_diagnostics,
-        !deno_actions.is_empty(),
+        !ende_actions.is_empty(),
         self,
         self.snapshot(),
         token,
@@ -2500,7 +2500,7 @@ impl Inner {
 
     let code_action_disabled_capable =
       self.config.code_action_disabled_capable();
-    let actions = deno_actions.into_iter().map(CodeActionOrCommand::CodeAction).chain(deno_test_actions.into_iter().map(CodeActionOrCommand::CodeAction)).chain(ts_actions).chain(deno_lint_actions.into_iter().map(CodeActionOrCommand::CodeAction)).filter(|a| code_action_disabled_capable
+    let actions = ende_actions.into_iter().map(CodeActionOrCommand::CodeAction).chain(ende_test_actions.into_iter().map(CodeActionOrCommand::CodeAction)).chain(ts_actions).chain(deno_lint_actions.into_iter().map(CodeActionOrCommand::CodeAction)).filter(|a| code_action_disabled_capable
         || matches!(a, CodeActionOrCommand::CodeAction(ca) if ca.disabled.is_none())).collect::<Vec<_>>();
     let response = if actions.is_empty() {
       None
@@ -3000,8 +3000,8 @@ impl Inner {
       && matches!(open_doc.language_id, LanguageId::Json | LanguageId::JsonC)
     {
       let url = uri_to_url(uri);
-      if completions::is_deno_config_url(&url) {
-        let response = completions::get_deno_json_import_completions(
+      if completions::is_ende_config_url(&url) {
+        let response = completions::get_ende_json_import_completions(
           &url,
           &open_doc.text,
           &open_doc.line_index,
@@ -4385,30 +4385,30 @@ impl Inner {
       let Ok(scope_uri) = url_to_uri(scope_url) else {
         continue;
       };
-      if let Some(config_file) = config_data.maybe_deno_json()
+      if let Some(config_file) = config_data.maybe_ende_json()
         && let Ok(file_uri) = url_to_uri(&config_file.specifier)
       {
-        config_events.push(lsp_custom::DenoConfigurationChangeEvent {
+        config_events.push(lsp_custom::EndeConfigurationChangeEvent {
           scope_uri: scope_uri.clone(),
           file_uri,
-          typ: lsp_custom::DenoConfigurationChangeType::Added,
-          configuration_type: lsp_custom::DenoConfigurationType::DenoJson,
+          typ: lsp_custom::EndeConfigurationChangeType::Added,
+          configuration_type: lsp_custom::EndeConfigurationType::EndeJson,
         });
       }
       if let Some(package_json) = config_data.maybe_pkg_json()
         && let Ok(file_uri) = url_to_uri(&package_json.specifier())
       {
-        config_events.push(lsp_custom::DenoConfigurationChangeEvent {
+        config_events.push(lsp_custom::EndeConfigurationChangeEvent {
           scope_uri,
           file_uri,
-          typ: lsp_custom::DenoConfigurationChangeType::Added,
-          configuration_type: lsp_custom::DenoConfigurationType::PackageJson,
+          typ: lsp_custom::EndeConfigurationChangeType::Added,
+          configuration_type: lsp_custom::EndeConfigurationType::PackageJson,
         });
       }
     }
     if !config_events.is_empty() {
-      self.client.send_did_change_deno_configuration_notification(
-        lsp_custom::DidChangeDenoConfigurationNotificationParams {
+      self.client.send_did_change_ende_configuration_notification(
+        lsp_custom::DidChangeEndeConfigurationNotificationParams {
           changes: config_events,
         },
       );
@@ -4482,7 +4482,7 @@ impl Inner {
       .unwrap_or_else(|| self.initial_cwd.clone());
     let mut cli_factory = CliFactory::from_flags(Arc::new(Flags {
       internal: InternalFlags {
-        cache_path: Some(self.cache.deno_dir().root.clone()),
+        cache_path: Some(self.cache.ende_dir().root.clone()),
         lockfile_skip_write: true,
         ..Default::default()
       },

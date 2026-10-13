@@ -94,7 +94,7 @@ const lazyProcessMod = core.createLazyLoader("node:process");
 const lazyBufferMod = core.createLazyLoader("node:buffer");
 const lazyTimersMod = core.createLazyLoader("node:timers");
 const { loadWebGPU } = core.loadExtScript("ext:ende_webgpu/00_init.js");
-import { unstableIds } from "ext:runtime/90_deno_ns.js";
+import { unstableIds } from "ext:runtime/90_ende_ns.js";
 
 const loadImage = core.createLazyLoader("ext:ende_image/01_image.js");
 const loadCanvas = core.createLazyLoader("ext:ende_canvas/01_canvas.js");

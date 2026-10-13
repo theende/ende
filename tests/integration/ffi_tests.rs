@@ -3,8 +3,8 @@
 use std::process::Command;
 
 use pretty_assertions::assert_eq;
-use test_util::deno_cmd;
-use test_util::deno_config_path;
+use test_util::ende_cmd;
+use test_util::ende_config_path;
 use test_util::ffi_tests_path;
 use test_util::println;
 
@@ -29,11 +29,11 @@ fn build() {
 fn ffi_basic() {
   build();
 
-  let output = deno_cmd()
+  let output = ende_cmd()
     .current_dir(ffi_tests_path())
     .arg("run")
     .arg("--config")
-    .arg(deno_config_path())
+    .arg(ende_config_path())
     .arg("--no-lock")
     .arg("--allow-ffi")
     .arg("--allow-read")
@@ -142,11 +142,11 @@ fn ffi_basic() {
 fn ffi_nonblocking_buffer_gc() {
   build();
 
-  let output = deno_cmd()
+  let output = ende_cmd()
     .current_dir(ffi_tests_path())
     .arg("run")
     .arg("--config")
-    .arg(deno_config_path())
+    .arg(ende_config_path())
     .arg("--no-lock")
     .arg("--allow-ffi")
     .arg("--allow-read")
@@ -173,11 +173,11 @@ fn ffi_nonblocking_buffer_gc() {
 fn ffi_symbol_types() {
   build();
 
-  let output = deno_cmd()
+  let output = ende_cmd()
     .current_dir(ffi_tests_path())
     .arg("check")
     .arg("--config")
-    .arg(deno_config_path())
+    .arg(ende_config_path())
     .arg("--no-lock")
     .arg("--unstable-ffi")
     .arg("--quiet")
@@ -200,11 +200,11 @@ fn ffi_symbol_types() {
 fn ffi_thread_safe_callback() {
   build();
 
-  let output = deno_cmd()
+  let output = ende_cmd()
     .current_dir(ffi_tests_path())
     .arg("run")
     .arg("--config")
-    .arg(deno_config_path())
+    .arg(ende_config_path())
     .arg("--no-lock")
     .arg("--allow-ffi")
     .arg("--allow-read")
@@ -238,11 +238,11 @@ fn ffi_thread_safe_callback() {
 fn ffi_event_loop_integration() {
   build();
 
-  let output = deno_cmd()
+  let output = ende_cmd()
     .current_dir(ffi_tests_path())
     .arg("run")
     .arg("--config")
-    .arg(deno_config_path())
+    .arg(ende_config_path())
     .arg("--no-lock")
     .arg("--allow-ffi")
     .arg("--allow-read")
@@ -294,11 +294,11 @@ fn ffi_event_loop_integration() {
 fn ffi_callback_errors() {
   build();
 
-  let output = deno_cmd()
+  let output = ende_cmd()
     .current_dir(ffi_tests_path())
     .arg("run")
     .arg("--config")
-    .arg(deno_config_path())
+    .arg(ende_config_path())
     .arg("--no-lock")
     .arg("--allow-ffi")
     .arg("--allow-read")

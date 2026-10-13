@@ -25,7 +25,7 @@ use ende_runtime::worker::MainWorker;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
-use crate::args::DenoSubcommand;
+use crate::args::EndeSubcommand;
 use crate::args::Flags;
 use crate::args::LintFlags;
 use crate::args::PermissionFlags;
@@ -131,7 +131,7 @@ async fn create_plugin_runner_inner(
   rx_req: mpsc::Receiver<PluginHostRequest>,
 ) -> Result<PluginHost, AnyError> {
   let flags = Flags {
-    subcommand: DenoSubcommand::Lint(LintFlags::default()),
+    subcommand: EndeSubcommand::Lint(LintFlags::default()),
     // Lint plugins have unconditional access to env vars and file reading.
     permissions: PermissionFlags {
       allow_env: Some(vec![]),
@@ -145,7 +145,7 @@ async fn create_plugin_runner_inner(
   let factory = CliFactory::from_flags(flags.clone());
   let cli_options = factory.cli_options()?;
   let main_module =
-    resolve_url_or_path("./$deno$lint.mts", cli_options.initial_cwd()).unwrap();
+    resolve_url_or_path("./$ende$lint.mts", cli_options.initial_cwd()).unwrap();
   let permissions = factory.root_permissions_container()?.clone();
   // let npm_resolver = factory.npm_resolver().await?.clone();
   // let resolver = factory.resolver().await?.clone();

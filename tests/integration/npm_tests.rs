@@ -36,9 +36,9 @@ fn parallel_downloading() {
 fn cached_only_after_first_run() {
   let _server = http_server();
 
-  let deno_dir = util::new_deno_dir();
+  let deno_dir = util::new_ende_dir();
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -56,7 +56,7 @@ fn cached_only_after_first_run() {
   assert_contains!(stdout, "[Function: chalk] createChalk");
   assert!(output.status.success());
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -78,7 +78,7 @@ fn cached_only_after_first_run() {
   assert!(stdout.is_empty());
   assert!(!output.status.success());
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -103,9 +103,9 @@ fn cached_only_after_first_run() {
 fn reload_flag() {
   let _server = http_server();
 
-  let deno_dir = util::new_deno_dir();
+  let deno_dir = util::new_ende_dir();
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -123,7 +123,7 @@ fn reload_flag() {
   assert_contains!(stdout, "[Function: chalk] createChalk");
   assert!(output.status.success());
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -142,7 +142,7 @@ fn reload_flag() {
   assert_contains!(stdout, "[Function: chalk] createChalk");
   assert!(output.status.success());
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -161,7 +161,7 @@ fn reload_flag() {
   assert_contains!(stdout, "[Function: chalk] createChalk");
   assert!(output.status.success());
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -180,7 +180,7 @@ fn reload_flag() {
   assert_contains!(stdout, "[Function: chalk] createChalk");
   assert!(output.status.success());
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -204,9 +204,9 @@ fn reload_flag() {
 fn no_npm_after_first_run() {
   let _server = http_server();
 
-  let deno_dir = util::new_deno_dir();
+  let deno_dir = util::new_ende_dir();
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -228,7 +228,7 @@ fn no_npm_after_first_run() {
   assert!(stdout.is_empty());
   assert!(!output.status.success());
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -246,7 +246,7 @@ fn no_npm_after_first_run() {
   assert_contains!(stdout, "[Function: chalk] createChalk");
   assert!(output.status.success());
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -273,9 +273,9 @@ fn no_npm_after_first_run() {
 fn deno_run_cjs_module() {
   let _server = http_server();
 
-  let deno_dir = util::new_deno_dir();
+  let deno_dir = util::new_ende_dir();
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(deno_dir.path())
     .arg("run")
     .arg("--allow-read")
@@ -310,9 +310,9 @@ fn deno_run_bin_lockfile() {
 fn node_modules_dir_cache() {
   let _server = http_server();
 
-  let deno_dir = util::new_deno_dir();
+  let deno_dir = util::new_ende_dir();
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(deno_dir.path())
     .arg("cache")
     .arg("--node-modules-dir=auto")
@@ -347,7 +347,7 @@ fn node_modules_dir_cache() {
 
   // run the output, and it shouldn't bother recreating the directory
   // because it already has everything cached locally in the node_modules folder
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(deno_dir.path())
     .arg("run")
     .arg("--node-modules-dir=auto")
@@ -405,7 +405,7 @@ fn ensure_registry_files_local() {
 fn lock_file_missing_top_level_package() {
   let _server = http_server();
 
-  let deno_dir = util::new_deno_dir();
+  let deno_dir = util::new_ende_dir();
   let temp_dir = util::TempDir::new();
 
   // write empty config file
@@ -592,7 +592,7 @@ fn lock_file_missing_top_level_package() {
   "#;
   temp_dir.write("main.ts", main_contents);
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(temp_dir.path())
     .arg("run")
     .arg("--quiet")
@@ -625,7 +625,7 @@ fn lock_file_lock_write() {
   // https://github.com/denoland/deno/issues/16666
   let _server = http_server();
 
-  let deno_dir = util::new_deno_dir();
+  let deno_dir = util::new_ende_dir();
   let temp_dir = util::TempDir::new();
 
   temp_dir.write("ende.json", "{}");
@@ -806,7 +806,7 @@ fn lock_file_lock_write() {
 "#;
   temp_dir.write("ende.lock", lock_file_content);
 
-  let deno = util::deno_cmd_with_deno_dir(&deno_dir)
+  let deno = util::ende_cmd_with_ende_dir(&deno_dir)
     .current_dir(temp_dir.path())
     .arg("cache")
     .arg("--quiet")
@@ -924,7 +924,7 @@ fn reload_info_not_found_cache_but_exists_remote() {
   // This tests that when a local machine doesn't have a version
   // specified in a dependency that exists in the npm registry
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
-  let deno_dir = test_context.deno_dir();
+  let deno_dir = test_context.ende_dir();
   let temp_dir = test_context.temp_dir();
   temp_dir.write(
     "main.ts",

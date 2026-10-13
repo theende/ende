@@ -1,0 +1,15 @@
+{
+  // `ende-coverage-ignore*` directives work like the `deno-coverage-ignore*`
+  // ones, which are still accepted.
+  "tempDir": true,
+  "steps": [
+    {
+      "args": "test --coverage=cov test.ts",
+      "output": "[WILDCARD]"
+    },
+    {
+      "args": "coverage --detailed cov",
+      "output": "cov.out"
+    }
+  ]
+}

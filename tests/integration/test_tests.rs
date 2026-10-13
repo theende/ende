@@ -140,7 +140,7 @@ fn workspace_dot_runs_test_module_once() {
 }
 
 #[test]
-fn nested_deno_test_registration_errors() {
+fn nested_ende_test_registration_errors() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
   temp_dir.write(

@@ -23,7 +23,7 @@ use ende_core::serde_json::json;
 use ende_core::url::Url;
 use ende_lib::util::hash::FastInsecureHasher;
 use ende_lib::worker::create_isolate_create_params;
-use ende_resolver::deno_json::JsxImportSourceConfigResolver;
+use ende_resolver::ende_json::JsxImportSourceConfigResolver;
 use node_resolver::ResolutionMode;
 
 use super::ResolveArgs;
@@ -424,7 +424,7 @@ impl ende_core::ExtCodeCache for TscExtCodeCache {
     esm: bool,
   ) -> ende_core::SourceCodeCacheInfo {
     use ende_runtime::code_cache::CodeCacheType;
-    let code_hash = FastInsecureHasher::new_deno_versioned()
+    let code_hash = FastInsecureHasher::new_ende_versioned()
       .write_hashable(code)
       .finish();
     let data = self

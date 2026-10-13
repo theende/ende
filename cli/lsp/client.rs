@@ -91,28 +91,28 @@ impl Client {
     });
   }
 
-  pub fn send_did_refresh_deno_configuration_tree_notification(
+  pub fn send_did_refresh_ende_configuration_tree_notification(
     &self,
-    params: lsp_custom::DidRefreshDenoConfigurationTreeNotificationParams,
+    params: lsp_custom::DidRefreshEndeConfigurationTreeNotificationParams,
   ) {
     // do on a task in case the caller currently is in the lsp lock
     let client = self.0.clone();
     spawn(async move {
       client
-        .send_did_refresh_deno_configuration_tree_notification(params)
+        .send_did_refresh_ende_configuration_tree_notification(params)
         .await;
     });
   }
 
-  pub fn send_did_change_deno_configuration_notification(
+  pub fn send_did_change_ende_configuration_notification(
     &self,
-    params: lsp_custom::DidChangeDenoConfigurationNotificationParams,
+    params: lsp_custom::DidChangeEndeConfigurationNotificationParams,
   ) {
     // do on a task in case the caller currently is in the lsp lock
     let client = self.0.clone();
     spawn(async move {
       client
-        .send_did_change_deno_configuration_notification(params)
+        .send_did_change_ende_configuration_notification(params)
         .await;
     });
   }
@@ -202,13 +202,13 @@ trait ClientTrait: Send + Sync {
   async fn send_diagnostic_batch_start_notification(&self);
   async fn send_diagnostic_batch_end_notification(&self);
   async fn send_test_notification(&self, params: TestingNotification);
-  async fn send_did_refresh_deno_configuration_tree_notification(
+  async fn send_did_refresh_ende_configuration_tree_notification(
     &self,
-    params: lsp_custom::DidRefreshDenoConfigurationTreeNotificationParams,
+    params: lsp_custom::DidRefreshEndeConfigurationTreeNotificationParams,
   );
-  async fn send_did_change_deno_configuration_notification(
+  async fn send_did_change_ende_configuration_notification(
     &self,
-    params: lsp_custom::DidChangeDenoConfigurationNotificationParams,
+    params: lsp_custom::DidChangeEndeConfigurationNotificationParams,
   );
   async fn send_did_upgrade_check_notification(
     &self,
@@ -308,43 +308,43 @@ impl ClientTrait for TowerClient {
     }
   }
 
-  async fn send_did_refresh_deno_configuration_tree_notification(
+  async fn send_did_refresh_ende_configuration_tree_notification(
     &self,
-    params: lsp_custom::DidRefreshDenoConfigurationTreeNotificationParams,
+    params: lsp_custom::DidRefreshEndeConfigurationTreeNotificationParams,
   ) {
     if legacy_client::is_legacy() {
       self
         .0
         .send_notification::<
-          lsp_custom::DidRefreshDenoConfigurationTreeNotification<true>,
+          lsp_custom::DidRefreshEndeConfigurationTreeNotification<true>,
         >(params.into_legacy())
         .await
     } else {
       self
         .0
         .send_notification::<
-          lsp_custom::DidRefreshDenoConfigurationTreeNotification<false>,
+          lsp_custom::DidRefreshEndeConfigurationTreeNotification<false>,
         >(params)
         .await
     }
   }
 
-  async fn send_did_change_deno_configuration_notification(
+  async fn send_did_change_ende_configuration_notification(
     &self,
-    params: lsp_custom::DidChangeDenoConfigurationNotificationParams,
+    params: lsp_custom::DidChangeEndeConfigurationNotificationParams,
   ) {
     if legacy_client::is_legacy() {
       self
         .0
         .send_notification::<
-          lsp_custom::DidChangeDenoConfigurationNotification<true>,
+          lsp_custom::DidChangeEndeConfigurationNotification<true>,
         >(params.into_legacy())
         .await
     } else {
       self
         .0
         .send_notification::<
-          lsp_custom::DidChangeDenoConfigurationNotification<false>,
+          lsp_custom::DidChangeEndeConfigurationNotification<false>,
         >(params)
         .await
     }

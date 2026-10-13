@@ -8,7 +8,7 @@ use std::sync::Arc;
 use deno_error::JsErrorBox;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
-use ende_config::deno_json::NodeModulesLinkerMode;
+use ende_config::ende_json::NodeModulesLinkerMode;
 use ende_npm::NpmSystemInfo;
 use ende_npm::registry::NpmPackageInfo;
 use ende_npm::registry::NpmRegistryPackageInfoLoadError;

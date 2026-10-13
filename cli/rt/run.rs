@@ -32,7 +32,7 @@ use ende_lib::args::CaData;
 use ende_lib::args::RootCertStoreLoadError;
 use ende_lib::args::get_root_cert_store;
 use ende_lib::args::npm_pkg_req_ref_to_binary_command;
-use ende_lib::loader::as_deno_resolver_requested_module_type;
+use ende_lib::loader::as_ende_resolver_requested_module_type;
 use ende_lib::loader::loaded_module_source_to_module_source_code;
 use ende_lib::loader::module_type_from_media_and_requested_type;
 use ende_lib::npm::NpmRegistryReadPermissionChecker;
@@ -51,7 +51,7 @@ use ende_lib::worker::StorageKeyResolver;
 use ende_npm::resolution::NpmResolutionSnapshot;
 use ende_npmrc::ResolvedNpmRc;
 use ende_package_json::PackageJsonDepValue;
-use ende_resolver::DenoResolveErrorKind;
+use ende_resolver::EndeResolveErrorKind;
 use ende_resolver::cjs::CjsTracker;
 use ende_resolver::cjs::IsCjsResolutionMode;
 use ende_resolver::loader::NpmModuleLoader;
@@ -96,32 +96,32 @@ use node_resolver::cache::NodeResolutionSys;
 use node_resolver::errors::PackageJsonLoadError;
 use sys_traits::EnvCurrentDir;
 
-use crate::binary::DenoCompileModuleSource;
+use crate::binary::EndeCompileModuleSource;
 use crate::binary::StandaloneData;
 use crate::binary::StandaloneModules;
 use crate::binary::transpile_runtime_module;
-use crate::code_cache::DenoCompileCodeCache;
-use crate::file_system::DenoRtSys;
+use crate::code_cache::EndeCompileCodeCache;
+use crate::file_system::EndeRtSys;
 use crate::file_system::FileBackedVfs;
 use crate::node::CjsCodeAnalyzer;
-use crate::node::DenoRtCjsTracker;
-use crate::node::DenoRtNodeCodeTranslator;
-use crate::node::DenoRtNodeResolver;
-use crate::node::DenoRtNpmModuleLoader;
-use crate::node::DenoRtNpmReqResolver;
+use crate::node::EndeRtCjsTracker;
+use crate::node::EndeRtNodeCodeTranslator;
+use crate::node::EndeRtNodeResolver;
+use crate::node::EndeRtNpmModuleLoader;
+use crate::node::EndeRtNpmReqResolver;
 
 struct SharedModuleLoaderState {
   blob_store: Arc<BlobStore>,
-  cjs_tracker: Arc<DenoRtCjsTracker>,
-  code_cache: Option<Arc<DenoCompileCodeCache>>,
+  cjs_tracker: Arc<EndeRtCjsTracker>,
+  code_cache: Option<Arc<EndeCompileCodeCache>>,
   modules: Arc<StandaloneModules>,
-  node_code_translator: Arc<DenoRtNodeCodeTranslator>,
-  node_resolver: Arc<DenoRtNodeResolver>,
-  npm_module_loader: Arc<DenoRtNpmModuleLoader>,
-  npm_registry_permission_checker: NpmRegistryReadPermissionChecker<DenoRtSys>,
-  npm_req_resolver: Arc<DenoRtNpmReqResolver>,
+  node_code_translator: Arc<EndeRtNodeCodeTranslator>,
+  node_resolver: Arc<EndeRtNodeResolver>,
+  npm_module_loader: Arc<EndeRtNpmModuleLoader>,
+  npm_registry_permission_checker: NpmRegistryReadPermissionChecker<EndeRtSys>,
+  npm_req_resolver: Arc<EndeRtNpmReqResolver>,
   vfs: Arc<FileBackedVfs>,
-  workspace_resolver: WorkspaceResolver<DenoRtSys>,
+  workspace_resolver: WorkspaceResolver<EndeRtSys>,
 }
 
 impl SharedModuleLoaderState {
@@ -137,7 +137,7 @@ impl SharedModuleLoaderState {
       return None;
     }
     // deno version is already included in the root cache key
-    let hash = FastInsecureHasher::new_without_deno_version()
+    let hash = FastInsecureHasher::new_without_ende_version()
       .write_hashable(source)
       .finish();
     let data = code_cache.get_sync(
@@ -157,7 +157,7 @@ struct EmbeddedModuleLoader {
   shared: Arc<SharedModuleLoaderState>,
   hook_registry: LoaderHookRegistry,
   permissions: PermissionsContainer,
-  sys: DenoRtSys,
+  sys: EndeRtSys,
   /// For blob/object-URL module workers, the captured root blob and its
   /// specifier. Used so the worker's root module load resolves from the
   /// synchronously-captured blob even if `URL.revokeObjectURL` has since
@@ -290,7 +290,7 @@ impl EmbeddedModuleLoader {
         .map_err(|e| JsErrorBox::from_err(e.clone()))?
       {
         PackageJsonDepValue::File(_) => Err(JsErrorBox::from_err(
-          DenoResolveErrorKind::UnsupportedPackageJsonFileSpecifier.into_box(),
+          EndeResolveErrorKind::UnsupportedPackageJsonFileSpecifier.into_box(),
         )),
         PackageJsonDepValue::Req(req) => Ok(
           self
@@ -460,7 +460,7 @@ impl EmbeddedModuleLoader {
             .load(
               Cow::Borrowed(&original_specifier),
               maybe_referrer.as_ref(),
-              &as_deno_resolver_requested_module_type(
+              &as_ende_resolver_requested_module_type(
                 &options.requested_module_type,
               ),
               Some(&source_provider),
@@ -500,7 +500,7 @@ impl EmbeddedModuleLoader {
       Ok(Some(module)) => {
         match options.requested_module_type {
           RequestedModuleType::Text | RequestedModuleType::Bytes => {
-            let module_source = DenoCompileModuleSource::Bytes(module.data);
+            let module_source = EndeCompileModuleSource::Bytes(module.data);
             return ende_core::ModuleLoadResponse::Sync(Ok(
               ende_core::ModuleSource::new_with_redirect(
                 match options.requested_module_type {
@@ -551,10 +551,10 @@ impl EmbeddedModuleLoader {
           ende_core::ModuleLoadResponse::Async(
             async move {
               let source = match module_source {
-                DenoCompileModuleSource::String(string) => {
+                EndeCompileModuleSource::String(string) => {
                   Cow::Borrowed(string)
                 }
-                DenoCompileModuleSource::Bytes(module_code_bytes) => {
+                EndeCompileModuleSource::Bytes(module_code_bytes) => {
                   match module_code_bytes {
                     Cow::Owned(bytes) => {
                       Cow::Owned(from_utf8_lossy_owned(bytes))
@@ -1008,7 +1008,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
     // `SharedModuleLoaderState::get_code_cache` hashes for the same specifier,
     // and `&[u8]`/`&str` do not hash alike. Keep the two in sync or a module
     // reached through both paths silently misses the cache on every run.
-    let hash = FastInsecureHasher::new_without_deno_version()
+    let hash = FastInsecureHasher::new_without_ende_version()
       .write_hashable(source.as_bytes())
       .finish();
     let data = code_cache.get_sync(
@@ -1179,7 +1179,7 @@ impl NodeRequireLoader for EmbeddedModuleLoader {
 
 struct StandaloneModuleLoaderFactory {
   shared: Arc<SharedModuleLoaderState>,
-  sys: DenoRtSys,
+  sys: EndeRtSys,
 }
 
 impl StandaloneModuleLoaderFactory {
@@ -1234,7 +1234,7 @@ impl ModuleLoaderFactory for StandaloneModuleLoaderFactory {
 }
 
 struct StandaloneRootCertStoreProvider {
-  sys: DenoRtSys,
+  sys: EndeRtSys,
   ca_stores: Option<Vec<String>>,
   ca_data: Option<CaData>,
   cell: OnceLock<Result<RootCertStore, RootCertStoreLoadError>>,
@@ -1350,7 +1350,7 @@ pub struct RunOptions {
 /// forked child processes (e.g. child_process.fork()).
 pub async fn run(
   fs: Arc<dyn FileSystem>,
-  sys: DenoRtSys,
+  sys: EndeRtSys,
   data: StandaloneData,
 ) -> Result<i32, AnyError> {
   run_with_options(fs, sys, data, RunOptions::default()).await
@@ -1358,7 +1358,7 @@ pub async fn run(
 
 pub async fn run_with_options(
   fs: Arc<dyn FileSystem>,
-  sys: DenoRtSys,
+  sys: EndeRtSys,
   data: StandaloneData,
   options: RunOptions,
 ) -> Result<i32, AnyError> {
@@ -1476,7 +1476,7 @@ pub async fn run_with_options(
         ));
       let npm_resolution =
         Arc::new(NpmResolutionCell::new(NpmResolutionSnapshot::new(snapshot)));
-      let npm_resolver = NpmResolver::<DenoRtSys>::new::<DenoRtSys>(
+      let npm_resolver = NpmResolver::<EndeRtSys>::new::<EndeRtSys>(
         NpmResolverCreateOptions::Managed(ManagedNpmResolverCreateOptions {
           npm_resolution,
           npm_cache_dir,
@@ -1484,7 +1484,7 @@ pub async fn run_with_options(
           maybe_node_modules_path,
           npm_system_info: Default::default(),
           npmrc,
-          linker_mode: ende_config::deno_json::NodeModulesLinkerMode::default(),
+          linker_mode: ende_config::ende_json::NodeModulesLinkerMode::default(),
         }),
       );
       (in_npm_pkg_checker, npm_resolver)
@@ -1496,7 +1496,7 @@ pub async fn run_with_options(
         root_node_modules_dir.map(|p| workspace_root_path.join(p));
       let in_npm_pkg_checker =
         DenoInNpmPackageChecker::new(CreateInNpmPkgCheckerOptions::Byonm);
-      let npm_resolver = NpmResolver::<DenoRtSys>::new::<DenoRtSys>(
+      let npm_resolver = NpmResolver::<EndeRtSys>::new::<EndeRtSys>(
         NpmResolverCreateOptions::Byonm(ByonmNpmResolverCreateOptions {
           sys: node_resolution_sys.clone(),
           pkg_json_resolver: pkg_json_resolver.clone(),
@@ -1523,7 +1523,7 @@ pub async fn run_with_options(
           },
         ));
       let npm_resolution = Arc::new(NpmResolutionCell::default());
-      let npm_resolver = NpmResolver::<DenoRtSys>::new::<DenoRtSys>(
+      let npm_resolver = NpmResolver::<EndeRtSys>::new::<EndeRtSys>(
         NpmResolverCreateOptions::Managed(ManagedNpmResolverCreateOptions {
           npm_resolution,
           sys: node_resolution_sys.clone(),
@@ -1531,7 +1531,7 @@ pub async fn run_with_options(
           maybe_node_modules_path: None,
           npm_system_info: Default::default(),
           npmrc: create_default_npmrc(),
-          linker_mode: ende_config::deno_json::NodeModulesLinkerMode::default(),
+          linker_mode: ende_config::ende_json::NodeModulesLinkerMode::default(),
         }),
       );
       (in_npm_pkg_checker, npm_resolver)
@@ -1642,7 +1642,7 @@ pub async fn run_with_options(
     )
   };
   let code_cache = match metadata.code_cache_key {
-    Some(code_cache_key) => Some(Arc::new(DenoCompileCodeCache::new(
+    Some(code_cache_key) => Some(Arc::new(EndeCompileCodeCache::new(
       root_path.with_file_name(format!(
         "{}.cache",
         root_path.file_name().unwrap().to_string_lossy()
@@ -1797,7 +1797,7 @@ pub async fn run_with_options(
   };
   let worker_factory = LibMainWorkerFactory::new(
     blob_store,
-    code_cache.map(|c| c.for_deno_core()),
+    code_cache.map(|c| c.for_ende_core()),
     sys.maybe_native_addon_loader(),
     feature_checker,
     fs,
@@ -1979,7 +1979,7 @@ fn resolve_child_entrypoint(
   module_path: &str,
   entrypoint: &Url,
   vfs: &FileBackedVfs,
-  sys: &DenoRtSys,
+  sys: &EndeRtSys,
 ) -> Url {
   // Falling back to the entrypoint silently would re-run the parent's
   // entrypoint, i.e. the very symptom of #26304. Warn so the failure is

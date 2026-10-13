@@ -8,7 +8,7 @@ use ende_bundle_runtime::BundleOptions as RtBundleOptions;
 use ende_bundle_runtime::BundleProvider;
 use ende_core::error::AnyError;
 
-use crate::args::DenoSubcommand;
+use crate::args::EndeSubcommand;
 use crate::args::Flags;
 
 pub struct CliBundleProvider {
@@ -128,7 +128,7 @@ impl BundleProvider for CliBundleProvider {
     let write_output = options.write
       && (options.output_dir.is_some() || options.output_path.is_some());
     let bundle_flags: crate::args::BundleFlags = options.into();
-    flags_clone.subcommand = DenoSubcommand::Bundle(bundle_flags.clone());
+    flags_clone.subcommand = EndeSubcommand::Bundle(bundle_flags.clone());
     let (tx, rx) = tokio::sync::oneshot::channel();
     std::thread::spawn(move || {
       ende_runtime::tokio_util::create_and_run_current_thread(async move {

@@ -190,17 +190,17 @@ fn load_single_config(
   }
 
   let start_dir = &cli_options.start_dir;
-  let deno_json = start_dir.member_deno_json();
+  let ende_json = start_dir.member_ende_json();
   let pkg_json = start_dir.member_pkg_json();
 
   // Prefer the manifest that actually carries a `version` field. When both
   // deno.json and package.json are present (common when a JSR/npm dual-published
   // package uses deno.json purely for toolchain config), this lets users bump
   // package.json's version even though deno.json is also present.
-  if let Some(deno_json) = deno_json {
-    let path = deno_path_util::url_to_file_path(&deno_json.specifier)
+  if let Some(ende_json) = ende_json {
+    let path = deno_path_util::url_to_file_path(&ende_json.specifier)
       .context("Failed to convert ende.json URL to path")?;
-    if deno_json.json.version.is_some() {
+    if ende_json.json.version.is_some() {
       return ConfigUpdater::new(path);
     }
     if let Some(pkg_json) = pkg_json
@@ -1046,11 +1046,11 @@ fn rewrite_import_map(
       root_dir.join(p)
     };
     files.push(path);
-  } else if let Some(root_deno_json) = workspace.root_deno_json() {
-    let root_path = deno_path_util::url_to_file_path(&root_deno_json.specifier)
+  } else if let Some(root_ende_json) = workspace.root_ende_json() {
+    let root_path = deno_path_util::url_to_file_path(&root_ende_json.specifier)
       .context("Failed to convert root ende.json URL to path")?;
     files.push(root_path.clone());
-    if let Some(target) = root_deno_json.json.import_map.as_ref() {
+    if let Some(target) = root_ende_json.json.import_map.as_ref() {
       let parent = root_path.parent().unwrap_or(&root_dir);
       let mapped = parent.join(target);
       if mapped != root_path {

@@ -10,7 +10,7 @@ use sys_traits::EnvVar;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum DenoDirResolutionError {
+pub enum EndeDirResolutionError {
   #[error(
     "Could not resolve global Ende cache directory. Please make sure that either the ENDE_DIR environment variable is set or the cache directory is available."
   )]
@@ -25,12 +25,12 @@ pub enum DenoDirResolutionError {
 }
 
 #[sys_traits::auto_impl]
-pub trait ResolveDenoDirSys:
+pub trait ResolveEndeDirSys:
   EnvCacheDir + EnvHomeDir + EnvVar + EnvCurrentDir
 {
 }
 
-pub struct ResolveDenoDirOptions<'a> {
+pub struct ResolveEndeDirOptions<'a> {
   /// Optionally provide this as an optimization if
   /// you already have this value in order to potentially
   /// skip the cwd sys call.
@@ -38,10 +38,10 @@ pub struct ResolveDenoDirOptions<'a> {
   pub maybe_custom_root: Option<&'a Path>,
 }
 
-pub fn resolve_deno_dir<'a, Sys: ResolveDenoDirSys>(
+pub fn resolve_ende_dir<'a, Sys: ResolveEndeDirSys>(
   sys: &Sys,
-  options: ResolveDenoDirOptions<'a>,
-) -> Result<Cow<'a, Path>, DenoDirResolutionError> {
+  options: ResolveEndeDirOptions<'a>,
+) -> Result<Cow<'a, Path>, EndeDirResolutionError> {
   let maybe_custom_root = options
     .maybe_custom_root
     .map(Cow::Borrowed)
@@ -59,7 +59,7 @@ pub fn resolve_deno_dir<'a, Sys: ResolveDenoDirSys>(
     // fallback path
     Cow::Owned(home_dir.join(".ende"))
   } else {
-    return Err(DenoDirResolutionError::NoCacheOrHomeDir);
+    return Err(EndeDirResolutionError::NoCacheOrHomeDir);
   };
   let root = if root.is_absolute() {
     root
@@ -75,7 +75,7 @@ pub fn resolve_deno_dir<'a, Sys: ResolveDenoDirSys>(
         )]
         sys
           .env_current_dir()
-          .map_err(|source| DenoDirResolutionError::FailedCwd { source })?,
+          .map_err(|source| EndeDirResolutionError::FailedCwd { source })?,
       ),
     };
 
@@ -125,9 +125,9 @@ mod test {
   }
 
   fn resolve(sys: &FakeSys) -> PathBuf {
-    resolve_deno_dir(
+    resolve_ende_dir(
       sys,
-      ResolveDenoDirOptions {
+      ResolveEndeDirOptions {
         maybe_initial_cwd: None,
         maybe_custom_root: None,
       },

@@ -48,7 +48,7 @@ pub fn setup_op_state(
 // but not added to "ext:core/ops" virtual module.
 /// Collects ops from extensions & applies middleware
 pub fn init_ops(
-  deno_core_ops: &'static [OpDecl],
+  ende_core_ops: &'static [OpDecl],
   extensions: &mut [Extension],
 ) -> (Vec<OpDeclStorage>, Vec<OpMethodDecl>) {
   // In debug build verify there that inter-Extension dependencies
@@ -92,9 +92,9 @@ pub fn init_ops(
 
   // Collect ops from all extensions and apply a macroware to each of them.
   if has_middleware {
-    ops.push(OpDeclStorage::Owned(rewrite(deno_core_ops)));
+    ops.push(OpDeclStorage::Owned(rewrite(ende_core_ops)));
   } else {
-    ops.push(OpDeclStorage::Static(deno_core_ops));
+    ops.push(OpDeclStorage::Static(ende_core_ops));
   }
 
   for ext in extensions.iter_mut() {

@@ -64,7 +64,7 @@ const {
 } = core.loadExtScript("ext:ende_fetch/23_response.js");
 const abortSignal = core.loadExtScript("ext:ende_web/03_abort_signal.js");
 // Make sure both telemetry modules are loaded before destructuring their
-// `internals` slots. 99_main.js / 90_deno_ns.js used to load `telemetry.ts`
+// `internals` slots. 99_main.js / 90_ende_ns.js used to load `telemetry.ts`
 // unconditionally at snapshot time, but now defer it to actual telemetry
 // use. Fetch is the one always-on caller that depends on `__telemetry` and
 // `__telemetryUtil`, so it loads both modules on first use.

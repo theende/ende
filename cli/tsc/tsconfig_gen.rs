@@ -48,8 +48,8 @@ pub struct GeneratedTsConfig {
 )]
 pub fn generate_tsconfig(
   project_root: &Path,
-  deno_compiler_options: Option<&Value>,
-  deno_imports: Option<&Value>,
+  ende_compiler_options: Option<&Value>,
+  ende_imports: Option<&Value>,
   files: &[String],
   http_modules: &BTreeMap<Url, String>,
   member_paths: &Map<String, Value>,
@@ -59,7 +59,7 @@ pub fn generate_tsconfig(
   // Write Ende type definitions to .ende/types/ende/ (private typeRoot).
   let types_dir = project_root.join(".ende/types/ende");
   std::fs::create_dir_all(&types_dir)?;
-  write_deno_types(&types_dir.join("index.d.ts"), has_node_types)?;
+  write_ende_types(&types_dir.join("index.d.ts"), has_node_types)?;
 
   // Write a package.json for the @types/ende package so the typeRoots lookup
   // resolves the directory as a package.
@@ -76,8 +76,8 @@ pub fn generate_tsconfig(
   // Build tsconfig
   let tsconfig = build_tsconfig(
     project_root,
-    deno_compiler_options,
-    deno_imports,
+    ende_compiler_options,
+    ende_imports,
     files,
     http_modules,
     member_paths,
@@ -86,9 +86,9 @@ pub fn generate_tsconfig(
   );
 
   // Write to .ende/tsconfig.json
-  let deno_dir = project_root.join(".ende");
-  std::fs::create_dir_all(&deno_dir)?;
-  let tsconfig_path = deno_dir.join("tsconfig.json");
+  let ende_dir = project_root.join(".ende");
+  std::fs::create_dir_all(&ende_dir)?;
+  let tsconfig_path = ende_dir.join("tsconfig.json");
   let content = serde_json::to_string_pretty(&tsconfig)
     .expect("failed to serialize tsconfig");
   std::fs::write(&tsconfig_path, &content)?;
@@ -237,7 +237,7 @@ const NODE_OWNED_GLOBAL_TYPES: &[&str] = &[
 ];
 
 /// Write the Deno type declarations to a `.d.ts` file.
-fn write_deno_types(
+fn write_ende_types(
   path: &Path,
   has_node_types: bool,
 ) -> Result<(), std::io::Error> {
@@ -339,7 +339,7 @@ fn strip_top_level_type_decls(text: &str, names: &[&str]) -> String {
 /// Rebase a project-root-relative path onto `.ende/`, where the generated
 /// tsconfig lives one level down: `.` -> `..`, `./src` -> `../src`,
 /// `src` -> `../src`, `../x` -> `../../x`. Absolute paths are left untouched.
-fn rebase_onto_deno_dir(path: &str) -> String {
+fn rebase_onto_ende_dir(path: &str) -> String {
   if path == "." {
     return "..".to_string();
   }
@@ -359,8 +359,8 @@ fn rebase_onto_deno_dir(path: &str) -> String {
 )]
 fn build_tsconfig(
   project_root: &Path,
-  deno_compiler_options: Option<&Value>,
-  deno_imports: Option<&Value>,
+  ende_compiler_options: Option<&Value>,
+  ende_imports: Option<&Value>,
   check_files: &[String],
   http_modules: &BTreeMap<Url, String>,
   member_paths: &Map<String, Value>,
@@ -382,17 +382,17 @@ fn build_tsconfig(
 
   // Merge user's deno.json compilerOptions (filtered to stock-tsc-compatible
   // options only)
-  if let Some(user_opts) = deno_compiler_options {
-    merge_deno_options(&mut compiler_options, user_opts);
+  if let Some(user_opts) = ende_compiler_options {
+    merge_ende_options(&mut compiler_options, user_opts);
   }
 
   // Generate "paths" for npm: and jsr: specifiers only
-  let mut specifier_paths = generate_npm_paths(project_root, deno_imports);
-  let jsr_paths = generate_jsr_paths(project_root, deno_imports);
+  let mut specifier_paths = generate_npm_paths(project_root, ende_imports);
+  let jsr_paths = generate_jsr_paths(project_root, ende_imports);
   specifier_paths.extend(jsr_paths);
-  let local_paths = generate_local_alias_paths(deno_imports);
+  let local_paths = generate_local_alias_paths(ende_imports);
   specifier_paths.extend(local_paths);
-  let http_alias_paths = generate_http_alias_paths(deno_imports, http_modules);
+  let http_alias_paths = generate_http_alias_paths(ende_imports, http_modules);
   specifier_paths.extend(http_alias_paths);
   let http_paths = generate_http_paths(http_modules);
   specifier_paths.extend(http_paths);
@@ -407,7 +407,7 @@ fn build_tsconfig(
   // priority over generated specifier mappings. The user's values are relative
   // to the project root, but the generated tsconfig lives in `.ende/`, so each
   // value is rebased one level up (like every generated mapping above).
-  if let Some(user_paths) = deno_compiler_options
+  if let Some(user_paths) = ende_compiler_options
     .and_then(|co| co.get("paths"))
     .and_then(|p| p.as_object())
   {
@@ -417,7 +417,7 @@ fn build_tsconfig(
           arr
             .iter()
             .map(|v| match v.as_str() {
-              Some(s) => Value::String(rebase_onto_deno_dir(s)),
+              Some(s) => Value::String(rebase_onto_ende_dir(s)),
               None => v.clone(),
             })
             .collect(),
@@ -430,18 +430,18 @@ fn build_tsconfig(
 
   // Rebase the user's `baseUrl` onto `.ende/` too (`.` -> `..`, `./src` ->
   // `../src`), for the same reason.
-  if let Some(base_url) = deno_compiler_options
+  if let Some(base_url) = ende_compiler_options
     .and_then(|co| co.get("baseUrl"))
     .and_then(|b| b.as_str())
   {
     compiler_options
-      .insert("baseUrl".to_string(), json!(rebase_onto_deno_dir(base_url)));
+      .insert("baseUrl".to_string(), json!(rebase_onto_ende_dir(base_url)));
   }
 
   // Merge the user's bare-package `compilerOptions.types` with the deno/node
   // types we inject, rather than dropping them (see `merge_user_types` for why
   // subpath entries like `lume/types.ts` are handled via `include` instead).
-  if let Some(user_types) = deno_compiler_options
+  if let Some(user_types) = ende_compiler_options
     .and_then(|co| co.get("types"))
     .and_then(|t| t.as_array())
     && let Some(Value::Array(types)) = compiler_options.get_mut("types")
@@ -455,7 +455,7 @@ fn build_tsconfig(
 
   // The `_deno_generated` sentinel lets Deno's own resolver identify this
   // tsconfig and exclude it from extends chains it processes — see
-  // libs/resolver/deno_json.rs. Stock tsc/tsgo ignore unknown top-level
+  // libs/resolver/ende_json.rs. Stock tsc/tsgo ignore unknown top-level
   // properties.
   if check_files.is_empty() {
     // No specific files — check entire project. Mirror the project's own
@@ -501,11 +501,11 @@ fn build_tsconfig(
 /// `lume/jsx-runtime` -> `https://.../jsx-runtime.ts` — resolves. Without this
 /// only the raw URL is mapped, not the alias the source actually uses.
 fn generate_http_alias_paths(
-  deno_imports: Option<&Value>,
+  ende_imports: Option<&Value>,
   http_modules: &BTreeMap<Url, String>,
 ) -> Map<String, Value> {
   let mut paths = Map::new();
-  let Some(imports) = deno_imports.and_then(|v| v.as_object()) else {
+  let Some(imports) = ende_imports.and_then(|v| v.as_object()) else {
     return paths;
   };
   for (alias, target) in imports {
@@ -525,10 +525,10 @@ fn generate_http_alias_paths(
 }
 
 fn generate_local_alias_paths(
-  deno_imports: Option<&Value>,
+  ende_imports: Option<&Value>,
 ) -> Map<String, Value> {
   let mut paths = Map::new();
-  let Some(imports) = deno_imports.and_then(|v| v.as_object()) else {
+  let Some(imports) = ende_imports.and_then(|v| v.as_object()) else {
     return paths;
   };
   for (alias, target) in imports {
@@ -552,11 +552,11 @@ fn generate_local_alias_paths(
 
 fn generate_npm_paths(
   project_root: &Path,
-  deno_imports: Option<&Value>,
+  ende_imports: Option<&Value>,
 ) -> Map<String, Value> {
   let mut paths = Map::new();
 
-  if let Some(imports) = deno_imports.and_then(|v| v.as_object()) {
+  if let Some(imports) = ende_imports.and_then(|v| v.as_object()) {
     for (alias, target) in imports {
       let target_str = match target.as_str() {
         Some(s) if s.starts_with("npm:") => s,
@@ -655,11 +655,11 @@ fn generate_npm_paths(
 /// Only generates `jsr:<scope>/<name>` keys.
 fn generate_jsr_paths(
   project_root: &Path,
-  deno_imports: Option<&Value>,
+  ende_imports: Option<&Value>,
 ) -> Map<String, Value> {
   let mut paths = Map::new();
 
-  if let Some(imports) = deno_imports.and_then(|v| v.as_object()) {
+  if let Some(imports) = ende_imports.and_then(|v| v.as_object()) {
     for (alias, target) in imports {
       let target_str = match target.as_str() {
         Some(s) => s,
@@ -910,7 +910,7 @@ fn base_compiler_options() -> Map<String, Value> {
 
 /// Merge user's deno.json compilerOptions into the base, filtering to only
 /// options that stock tsc understands.
-fn merge_deno_options(base: &mut Map<String, Value>, user_opts: &Value) {
+fn merge_ende_options(base: &mut Map<String, Value>, user_opts: &Value) {
   let Some(user_map) = user_opts.as_object() else {
     return;
   };
@@ -1059,32 +1059,32 @@ interface AlsoKeep {
   }
 
   #[test]
-  fn test_merge_deno_options_passthrough() {
+  fn test_merge_ende_options_passthrough() {
     let mut base = base_compiler_options();
     let user = json!({
       "strict": false,
       "jsx": "react-jsx",
       "jsxImportSource": "preact",
     });
-    merge_deno_options(&mut base, &user);
+    merge_ende_options(&mut base, &user);
     assert_eq!(base.get("strict").unwrap(), &json!(false));
     assert_eq!(base.get("jsx").unwrap(), &json!("react-jsx"));
     assert_eq!(base.get("jsxImportSource").unwrap(), &json!("preact"));
   }
 
   #[test]
-  fn test_merge_deno_options_precompile_jsx() {
+  fn test_merge_ende_options_precompile_jsx() {
     let mut base = base_compiler_options();
     let user = json!({ "jsx": "precompile" });
-    merge_deno_options(&mut base, &user);
+    merge_ende_options(&mut base, &user);
     assert_eq!(base.get("jsx").unwrap(), &json!("react-jsx"));
   }
 
   #[test]
-  fn test_merge_deno_options_filters_deno_libs() {
+  fn test_merge_ende_options_filters_deno_libs() {
     let mut base = base_compiler_options();
     let user = json!({ "lib": ["ende.window", "deno.ns", "dom", "esnext"] });
-    merge_deno_options(&mut base, &user);
+    merge_ende_options(&mut base, &user);
     let lib = base.get("lib").unwrap().as_array().unwrap();
     assert!(lib.contains(&json!("esnext")));
     assert!(lib.contains(&json!("dom")));
@@ -1093,14 +1093,14 @@ interface AlsoKeep {
   }
 
   #[test]
-  fn test_merge_deno_options_ignores_unknown() {
+  fn test_merge_ende_options_ignores_unknown() {
     let mut base = base_compiler_options();
     let user = json!({
       "strict": false,
       "unknownOption": true,
       "target": "es2020",
     });
-    merge_deno_options(&mut base, &user);
+    merge_ende_options(&mut base, &user);
     assert_eq!(base.get("strict").unwrap(), &json!(false));
     // unknownOption and target should not pass through
     assert!(base.get("unknownOption").is_none());
@@ -1260,7 +1260,7 @@ interface AlsoKeep {
   }
 
   #[test]
-  fn test_build_tsconfig_includes_relative_to_deno_dir() {
+  fn test_build_tsconfig_includes_relative_to_ende_dir() {
     let project_root = Path::new("/tmp/project");
     let tsconfig = build_tsconfig(
       project_root,
@@ -1370,12 +1370,12 @@ interface AlsoKeep {
   }
 
   #[test]
-  fn test_rebase_onto_deno_dir() {
-    assert_eq!(rebase_onto_deno_dir("."), "..");
-    assert_eq!(rebase_onto_deno_dir("./src/*"), "../src/*");
-    assert_eq!(rebase_onto_deno_dir("src/*"), "../src/*");
-    assert_eq!(rebase_onto_deno_dir("../shared"), "../../shared");
-    assert_eq!(rebase_onto_deno_dir("/abs/path"), "/abs/path");
+  fn test_rebase_onto_ende_dir() {
+    assert_eq!(rebase_onto_ende_dir("."), "..");
+    assert_eq!(rebase_onto_ende_dir("./src/*"), "../src/*");
+    assert_eq!(rebase_onto_ende_dir("src/*"), "../src/*");
+    assert_eq!(rebase_onto_ende_dir("../shared"), "../../shared");
+    assert_eq!(rebase_onto_ende_dir("/abs/path"), "/abs/path");
   }
 
   #[test]

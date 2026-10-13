@@ -9,8 +9,8 @@ mod incremental;
 mod module_info;
 mod node;
 
-pub type DenoDir = ende_resolver::cache::DenoDir<CliSys>;
-pub type DenoDirProvider = ende_resolver::cache::DenoDirProvider<CliSys>;
+pub type EndeDir = ende_resolver::cache::EndeDir<CliSys>;
+pub type EndeDirProvider = ende_resolver::cache::EndeDirProvider<CliSys>;
 
 pub use cache_db::CacheDBHash;
 pub use caches::Caches;

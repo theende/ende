@@ -73,8 +73,8 @@ pub async fn why(
   // (as JSR does for every dep req).
   let workspace = factory.cli_options()?.workspace();
   let mut root_reqs: HashSet<JsrDepPackageReq> = HashSet::new();
-  for deno_json in workspace.deno_jsons() {
-    root_reqs.extend(deno_json.dependencies(workspace.catalogs()));
+  for ende_json in workspace.ende_jsons() {
+    root_reqs.extend(ende_json.dependencies(workspace.catalogs()));
   }
   for pkg_json in workspace.package_jsons() {
     let deps = pkg_json.resolve_local_package_json_deps();

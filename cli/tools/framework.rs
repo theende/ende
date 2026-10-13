@@ -242,7 +242,7 @@ pub fn detect_framework(
   }
 
   // --- deno.json import-based detection ---
-  if let Some(imports) = read_deno_json_imports(dir)
+  if let Some(imports) = read_ende_json_imports(dir)
     && imports
       .iter()
       .any(|i| i.starts_with("fresh") || i.starts_with("@fresh/core"))
@@ -255,18 +255,18 @@ pub fn detect_framework(
 
 // --- Framework-specific detection ---
 
-fn deno_exe() -> String {
+fn ende_exe() -> String {
   std::env::current_exe()
     .map(|p| p.display().to_string())
     .unwrap_or_else(|_| "ende".into())
 }
 
-fn deno_task_build() -> Vec<String> {
-  vec![deno_exe(), "task".into(), "build".into()]
+fn ende_task_build() -> Vec<String> {
+  vec![ende_exe(), "task".into(), "build".into()]
 }
 
-fn deno_task_dev() -> Vec<String> {
-  vec![deno_exe(), "task".into(), "dev".into()]
+fn ende_task_dev() -> Vec<String> {
+  vec![ende_exe(), "task".into(), "dev".into()]
 }
 
 fn detect_nextjs(dir: &Path) -> Result<FrameworkDetection, AnyError> {
@@ -298,7 +298,7 @@ if (!Ende.env.get("NODE_CHANNEL_FD")) {{
     name: "Next.js",
     entrypoint_code: entrypoint,
     include_paths,
-    build_command: Some(deno_task_build()),
+    build_command: Some(ende_task_build()),
     hmr_command: None, // TODO: add command to enable `deno desktop --hmr` for Next.js
   })
 }
@@ -309,7 +309,7 @@ fn detect_astro(_dir: &Path) -> FrameworkDetection {
     entrypoint_code: "// @ts-nocheck\nimport \"./dist/server/entry.mjs\";\n"
       .into(),
     include_paths: vec!["dist".into()],
-    build_command: Some(deno_task_build()),
+    build_command: Some(ende_task_build()),
     hmr_command: None, // TODO: add command to enable `deno desktop --hmr` for Astro
   }
 }
@@ -319,7 +319,7 @@ fn detect_fresh(dir: &Path) -> FrameworkDetection {
   // in deno.json. We intentionally do NOT use `fresh.gen.ts + deno.json`
   // as a heuristic because Fresh 1 projects also have both of those files.
   let is_fresh2 = dir.join("_fresh/server.js").exists()
-    || read_deno_json_imports(dir)
+    || read_ende_json_imports(dir)
       .map(|imports| imports.iter().any(|i| i.starts_with("@fresh/core")))
       .unwrap_or(false);
   if is_fresh2 {
@@ -342,8 +342,8 @@ Ende.serve(mod.default.fetch);
 "#
       .into(),
       include_paths,
-      build_command: Some(deno_task_build()),
-      hmr_command: Some(deno_task_dev()),
+      build_command: Some(ende_task_build()),
+      hmr_command: Some(ende_task_dev()),
     }
   } else {
     // Fresh 1.x — no build step needed, server-rendered
@@ -369,7 +369,7 @@ fn detect_remix(dir: &Path) -> FrameworkDetection {
     entrypoint_code:
       "// @ts-nocheck\nimport \"./node_modules/.bin/remix-serve\";\n".into(),
     include_paths,
-    build_command: Some(deno_task_build()),
+    build_command: Some(ende_task_build()),
     hmr_command: None, // TODO: add command to enable `deno desktop --hmr` for Remix
   }
 }
@@ -433,8 +433,8 @@ Ende.serve(async (req) => {
 "#
       .into(),
       include_paths: vec!["build/client".into()],
-      build_command: Some(deno_task_build()),
-      hmr_command: Some(deno_task_dev()),
+      build_command: Some(ende_task_build()),
+      hmr_command: Some(ende_task_dev()),
     }
   } else {
     // SSR: serve immutable client assets from `build/client`, then hand all
@@ -465,8 +465,8 @@ Ende.serve(async (req) => {
 "#
       .into(),
       include_paths: vec!["build".into()],
-      build_command: Some(deno_task_build()),
-      hmr_command: Some(deno_task_dev()),
+      build_command: Some(ende_task_build()),
+      hmr_command: Some(ende_task_dev()),
     }
   }
 }
@@ -523,8 +523,8 @@ fn detect_sveltekit(dir: &Path) -> Result<FrameworkDetection, AnyError> {
       entrypoint_code: "// @ts-nocheck\nimport \"./.deno-deploy/server.ts\";\n"
         .into(),
       include_paths: vec![".deno-deploy".into()],
-      build_command: Some(deno_task_build()),
-      hmr_command: Some(deno_task_dev()),
+      build_command: Some(ende_task_build()),
+      hmr_command: Some(ende_task_dev()),
     });
   }
   if dir.join(".output/server/index.ts").exists()
@@ -541,8 +541,8 @@ fn detect_sveltekit(dir: &Path) -> Result<FrameworkDetection, AnyError> {
         "// @ts-nocheck\nimport \"./.output/server/index.{ext}\";\n"
       ),
       include_paths: vec![".output".into()],
-      build_command: Some(deno_task_build()),
-      hmr_command: Some(deno_task_dev()),
+      build_command: Some(ende_task_build()),
+      hmr_command: Some(ende_task_dev()),
     });
   }
   // `@sveltejs/adapter-node` and `svelte-adapter-deno` both emit a `build/`
@@ -558,8 +558,8 @@ fn detect_sveltekit(dir: &Path) -> Result<FrameworkDetection, AnyError> {
       name: "SvelteKit",
       entrypoint_code: "// @ts-nocheck\nimport \"./build/index.js\";\n".into(),
       include_paths: sveltekit_build_includes(dir),
-      build_command: Some(deno_task_build()),
-      hmr_command: Some(deno_task_dev()),
+      build_command: Some(ende_task_build()),
+      hmr_command: Some(ende_task_dev()),
     });
   }
   // No build artifacts yet — fall back to config inspection.
@@ -570,8 +570,8 @@ fn detect_sveltekit(dir: &Path) -> Result<FrameworkDetection, AnyError> {
       entrypoint_code: "// @ts-nocheck\nimport \"./.deno-deploy/server.ts\";\n"
         .into(),
       include_paths: vec![".deno-deploy".into()],
-      build_command: Some(deno_task_build()),
-      hmr_command: Some(deno_task_dev()),
+      build_command: Some(ende_task_build()),
+      hmr_command: Some(ende_task_dev()),
     });
   }
   // `@sveltejs/adapter-node` emits the same `build/index.js` shape as
@@ -587,8 +587,8 @@ fn detect_sveltekit(dir: &Path) -> Result<FrameworkDetection, AnyError> {
       name: "SvelteKit",
       entrypoint_code: "// @ts-nocheck\nimport \"./build/index.js\";\n".into(),
       include_paths: vec!["build/client".into()],
-      build_command: Some(deno_task_build()),
-      hmr_command: Some(deno_task_dev()),
+      build_command: Some(ende_task_build()),
+      hmr_command: Some(ende_task_dev()),
     });
   }
   if config_text.contains("nitro") {
@@ -597,8 +597,8 @@ fn detect_sveltekit(dir: &Path) -> Result<FrameworkDetection, AnyError> {
       entrypoint_code:
         "// @ts-nocheck\nimport \"./.output/server/index.mjs\";\n".into(),
       include_paths: vec![".output".into()],
-      build_command: Some(deno_task_build()),
-      hmr_command: Some(deno_task_dev()),
+      build_command: Some(ende_task_build()),
+      hmr_command: Some(ende_task_dev()),
     });
   }
   // SvelteKit is present but the configured adapter isn't one we can locate a
@@ -647,12 +647,12 @@ fn detect_nitro_framework(
       "// @ts-nocheck\nimport \"./.output/server/index.{ext}\";\n"
     ),
     include_paths: vec![".output".into()],
-    build_command: Some(deno_task_build()),
+    build_command: Some(ende_task_build()),
     // Nuxt (`nuxi dev`), SolidStart and TanStack Start (`vinxi dev`) all run a
     // Vite-based dev server that prints the `Local:   http://…` line
     // `parse_dev_server_url` scans for, so `deno task dev` drives HMR for all
     // three.
-    hmr_command: Some(deno_task_dev()),
+    hmr_command: Some(ende_task_dev()),
   }
 }
 
@@ -667,11 +667,11 @@ fn detect_vite(dir: &Path) -> FrameworkDetection {
       name: "Vite",
       entrypoint_code: format!("// @ts-nocheck\nimport \"./{server_file}\";\n"),
       include_paths: vec!["dist".into()],
-      build_command: Some(deno_task_build()),
+      build_command: Some(ende_task_build()),
       // `vite` (and Vue/React SPA templates built on it) prints the
       // `Local:   http://…` line `parse_dev_server_url` scans for, so
       // `deno task dev` drives HMR.
-      hmr_command: Some(deno_task_dev()),
+      hmr_command: Some(ende_task_dev()),
     };
   }
 
@@ -707,10 +707,10 @@ Ende.serve(async (req) => {
 "#
     .into(),
     include_paths: vec!["dist".into()],
-    build_command: Some(deno_task_build()),
+    build_command: Some(ende_task_build()),
     // See the SSR branch above: the Vite dev server prints the `Local:` URL
     // that `parse_dev_server_url` scans for, so `deno task dev` drives HMR.
-    hmr_command: Some(deno_task_dev()),
+    hmr_command: Some(ende_task_dev()),
   }
 }
 
@@ -793,8 +793,8 @@ fn detect_package_version(dir: &Path, package: &str) -> Option<u32> {
 ///
 /// Uses JSONC-aware parsing so that commented deno.jsonc files are
 /// handled correctly instead of silently failing detection.
-fn read_deno_json_imports(dir: &Path) -> Option<Vec<String>> {
-  let content = ende_config::deno_json::CONFIG_FILE_NAMES
+fn read_ende_json_imports(dir: &Path) -> Option<Vec<String>> {
+  let content = ende_config::ende_json::CONFIG_FILE_NAMES
     .iter()
     .find_map(|name| std::fs::read_to_string(dir.join(name)).ok())?;
   let config: serde_json::Value =
@@ -934,7 +934,7 @@ mod tests {
   }
 
   #[test]
-  fn fresh1_with_deno_json_stays_fresh1() {
+  fn fresh1_with_ende_json_stays_fresh1() {
     // Regression: fresh.gen.ts + ende.json (without @fresh/core import)
     // should be treated as Fresh 1, not Fresh 2.
     let dir = setup_dir();
@@ -1512,7 +1512,7 @@ mod tests {
   // --- ende.json import-based detection ---
 
   #[test]
-  fn detects_fresh_from_deno_json_imports() {
+  fn detects_fresh_from_ende_json_imports() {
     let dir = setup_dir();
     fs::write(
       dir.path().join("ende.json"),
@@ -1524,7 +1524,7 @@ mod tests {
   }
 
   #[test]
-  fn detects_fresh_from_deno_json_fresh_core() {
+  fn detects_fresh_from_ende_json_fresh_core() {
     let dir = setup_dir();
     fs::write(
       dir.path().join("ende.json"),
@@ -1536,7 +1536,7 @@ mod tests {
   }
 
   #[test]
-  fn detects_fresh_from_deno_jsonc() {
+  fn detects_fresh_from_ende_jsonc() {
     let dir = setup_dir();
     fs::write(
       dir.path().join("ende.jsonc"),
@@ -1548,7 +1548,7 @@ mod tests {
   }
 
   #[test]
-  fn detects_fresh_from_commented_deno_jsonc() {
+  fn detects_fresh_from_commented_ende_jsonc() {
     // Regression: ende.jsonc with comments should still be parsed correctly.
     let dir = setup_dir();
     fs::write(
@@ -1591,7 +1591,7 @@ mod tests {
   }
 
   #[test]
-  fn config_file_takes_priority_over_deno_json() {
+  fn config_file_takes_priority_over_ende_json() {
     let dir = setup_dir();
     fs::write(dir.path().join("astro.config.mjs"), "").unwrap();
     fs::write(
@@ -1675,29 +1675,29 @@ mod tests {
   }
 
   #[test]
-  fn read_deno_json_imports_returns_keys() {
+  fn read_ende_json_imports_returns_keys() {
     let dir = setup_dir();
     fs::write(
       dir.path().join("ende.json"),
       r#"{"imports":{"foo":"jsr:@foo/bar","baz":"npm:baz"}}"#,
     )
     .unwrap();
-    let mut imports = read_deno_json_imports(dir.path()).unwrap();
+    let mut imports = read_ende_json_imports(dir.path()).unwrap();
     imports.sort();
     assert_eq!(imports, vec!["baz", "foo"]);
   }
 
   #[test]
-  fn read_deno_json_imports_no_file() {
+  fn read_ende_json_imports_no_file() {
     let dir = setup_dir();
-    assert!(read_deno_json_imports(dir.path()).is_none());
+    assert!(read_ende_json_imports(dir.path()).is_none());
   }
 
   #[test]
-  fn read_deno_json_imports_no_imports_key() {
+  fn read_ende_json_imports_no_imports_key() {
     let dir = setup_dir();
     fs::write(dir.path().join("ende.json"), r#"{"tasks":{}}"#).unwrap();
-    assert!(read_deno_json_imports(dir.path()).is_none());
+    assert!(read_ende_json_imports(dir.path()).is_none());
   }
 
   // --- Favicon discovery ---

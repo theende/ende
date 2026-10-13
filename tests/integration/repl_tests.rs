@@ -206,7 +206,7 @@ fn pty_assign_global_this() {
 }
 
 #[test(flaky)]
-fn pty_assign_deno_keys_and_deno() {
+fn pty_assign_ende_keys_and_ende() {
   util::with_pty(&["repl"], |mut console| {
     console.write_line(
       "Object.keys(Deno).forEach((key)=>{try{Deno[key] = undefined} catch {}})",
@@ -613,21 +613,21 @@ fn lexical_scoped_variable() {
 }
 
 #[test(flaky)]
-fn missing_deno_dir() {
+fn missing_ende_dir() {
   use std::fs::read_dir;
   let temp_dir = TempDir::new();
-  let deno_dir_path = temp_dir.path().join("deno");
+  let ende_dir_path = temp_dir.path().join("deno");
   let (out, err) = util::run_and_collect_output(
     true,
     "repl",
     Some(vec!["1"]),
     Some(vec![
-      ("ENDE_DIR".to_owned(), deno_dir_path.to_string()),
+      ("ENDE_DIR".to_owned(), ende_dir_path.to_string()),
       ("NO_COLOR".to_owned(), "1".to_owned()),
     ]),
     false,
   );
-  assert!(read_dir(deno_dir_path).is_ok());
+  assert!(read_dir(ende_dir_path).is_ok());
   assert_ends_with!(out, "1\n");
   assert!(err.is_empty());
 }
@@ -654,14 +654,14 @@ fn custom_history_path() {
 
 #[test(flaky)]
 fn disable_history_file() {
-  let deno_dir = util::new_deno_dir();
-  let default_history_path = deno_dir.path().join("deno_history.txt");
+  let ende_dir = util::new_ende_dir();
+  let default_history_path = ende_dir.path().join("deno_history.txt");
   let (out, err) = util::run_and_collect_output(
     true,
     "repl",
     Some(vec!["1"]),
     Some(vec![
-      ("ENDE_DIR".to_owned(), deno_dir.path().to_string()),
+      ("ENDE_DIR".to_owned(), ende_dir.path().to_string()),
       ("ENDE_REPL_HISTORY".to_owned(), "".to_owned()),
       ("NO_COLOR".to_owned(), "1".to_owned()),
     ]),
@@ -972,7 +972,7 @@ fn repl_banner_names_ende() {
 }
 
 #[test(flaky)]
-fn repl_deno_test() {
+fn repl_ende_test() {
   util::with_pty(&["repl"], |mut console| {
     console.write_line_raw(
       "\

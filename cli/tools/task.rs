@@ -62,7 +62,7 @@ pub async fn execute_script(
   let factory = CliFactory::from_flags(flags.clone());
   let cli_options = factory.cli_options()?;
   let start_dir = &cli_options.start_dir;
-  if !start_dir.has_deno_or_pkg_json() && !task_flags.eval {
+  if !start_dir.has_ende_or_pkg_json() && !task_flags.eval {
     bail!(
       "ende task couldn't find ende.json(c) or package.json. See https://docs.ende.sh/go/config"
     )
@@ -197,7 +197,7 @@ pub async fn execute_script(
   let node_resolver = factory.node_resolver().await?;
   let progress_bar = factory.text_only_progress_bar();
   let task_cache =
-    crate::tools::task_cache::TaskCache::new(&factory.deno_dir()?.root);
+    crate::tools::task_cache::TaskCache::new(&factory.ende_dir()?.root);
   let mut env_vars = task_runner::real_env_vars();
 
   if flags.tunnel {
@@ -235,7 +235,7 @@ pub async fn execute_script(
   run_future_forwarding_signals(kill_signal.clone(), async {
     if task_flags.eval {
       return task_runner
-        .run_deno_task(
+        .run_ende_task(
           &Url::from_directory_path(cli_options.initial_cwd()).unwrap(),
           None,
           None,
@@ -587,7 +587,7 @@ impl<'a> TaskRunner<'a> {
               match task.task_or_script {
                 TaskOrScript::Task { task: def, .. } => {
                   runner
-                    .run_deno_task(
+                    .run_ende_task(
                       task.task_or_script.folder_url(),
                       task.task_or_script.package_name(),
                       label_name,
@@ -702,7 +702,7 @@ impl<'a> TaskRunner<'a> {
     clippy::too_many_arguments,
     reason = "task execution threads several independent inputs; refactoring into a struct is deferred"
   )]
-  pub async fn run_deno_task(
+  pub async fn run_ende_task(
     &self,
     dir_url: &Url,
     package_name: Option<&str>,
@@ -1134,8 +1134,8 @@ fn matches_package(
   is_workspace_root: bool,
 ) -> bool {
   if !force_use_pkg_json
-    && let Some(deno_json) = &config.deno_json
-    && let Some(name) = &deno_json.json.name
+    && let Some(ende_json) = &config.ende_json
+    && let Some(name) = &ende_json.json.name
     && regex.is_match(name)
   {
     return true;
@@ -1294,9 +1294,9 @@ fn print_available_tasks_workspace(
     let mut tasks_config = member_dir.to_tasks_config()?;
 
     let mut pkg_name = folder
-      .deno_json
+      .ende_json
       .as_ref()
-      .and_then(|deno| deno.json.name.clone())
+      .and_then(|ende| ende.json.name.clone())
       .or(folder.pkg_json.as_ref().and_then(|pkg| pkg.name.clone()));
 
     if force_use_pkg_json {
@@ -1327,7 +1327,7 @@ fn print_available_tasks_workspace(
 
 pub struct AvailableTaskDescription {
   pub is_root: bool,
-  pub is_deno: bool,
+  pub is_ende: bool,
   pub name: String,
   pub task: TaskDefinition,
 }
@@ -1336,7 +1336,7 @@ pub fn get_available_tasks_for_completion(
   flags: Arc<Flags>,
 ) -> Result<Vec<AvailableTaskDescription>, AnyError> {
   let recursive = match &flags.subcommand {
-    crate::args::DenoSubcommand::Task(task_flags) => {
+    crate::args::EndeSubcommand::Task(task_flags) => {
       task_flags.recursive || task_flags.filter.is_some()
     }
     _ => false,
@@ -1377,7 +1377,7 @@ fn get_available_tasks(
   let mut task_descriptions = Vec::with_capacity(tasks_config.tasks_count());
 
   for config in [&tasks_config.member, &tasks_config.root] {
-    if let Some(config) = config.deno_json.as_ref() {
+    if let Some(config) = config.ende_json.as_ref() {
       let is_root = !is_cwd_root_dir
         && config.folder_url
           == *workspace_dir.workspace.root_dir_url().as_ref();
@@ -1388,7 +1388,7 @@ fn get_available_tasks(
         }
         task_descriptions.push(AvailableTaskDescription {
           is_root,
-          is_deno: true,
+          is_ende: true,
           name: name.to_string(),
           task: definition.clone(),
         });
@@ -1406,9 +1406,9 @@ fn get_available_tasks(
 
         task_descriptions.push(AvailableTaskDescription {
           is_root,
-          is_deno: false,
+          is_ende: false,
           name: name.to_string(),
-          task: ende_config::deno_json::TaskDefinition {
+          task: ende_config::ende_json::TaskDefinition {
             command: Some(script.to_string()),
             dependencies: vec![],
             description: None,
@@ -1454,12 +1454,12 @@ fn print_available_tasks(
       "- {}{}",
       colors::cyan(desc.name),
       if desc.is_root {
-        if desc.is_deno {
+        if desc.is_ende {
           format!(" {}", colors::italic_gray("(workspace)"))
         } else {
           format!(" {}", colors::italic_gray("(workspace package.json)"))
         }
-      } else if desc.is_deno {
+      } else if desc.is_ende {
         "".to_string()
       } else {
         format!(" {}", colors::italic_gray("(package.json)"))

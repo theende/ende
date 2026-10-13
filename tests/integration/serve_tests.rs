@@ -11,13 +11,13 @@ use pretty_assertions::assert_eq;
 use regex::Regex;
 use reqwest::RequestBuilder;
 use test_util as util;
-use test_util::DenoChild;
+use test_util::EndeChild;
 use test_util::eprintln;
 use test_util::test;
 use tokio::time::timeout;
 
 struct ServeClient {
-  child: RefCell<DenoChild>,
+  child: RefCell<EndeChild>,
   client: reqwest::Client,
   output_buf: RefCell<Vec<u8>>,
   endpoint: RefCell<Option<String>>,
@@ -68,7 +68,7 @@ impl ServeClientBuilder {
 
   fn new() -> Self {
     Self(
-      util::deno_cmd()
+      util::ende_cmd()
         .env("NO_COLOR", "1")
         .current_dir(util::testdata_path())
         .arg("serve")
@@ -86,7 +86,7 @@ impl ServeClient {
     ServeClientBuilder::new()
   }
 
-  fn with_child(child: DenoChild) -> Self {
+  fn with_child(child: EndeChild) -> Self {
     Self {
       child: RefCell::new(child),
       output_buf: Default::default(),
@@ -178,7 +178,7 @@ impl ServeClient {
 }
 
 #[test]
-async fn deno_serve_port_0() {
+async fn ende_serve_port_0() {
   let client = ServeClient::builder()
     .entry_point("./serve/port_0.ts")
     .build();
@@ -191,7 +191,7 @@ async fn deno_serve_port_0() {
 }
 
 #[test]
-async fn deno_serve_no_args() {
+async fn ende_serve_no_args() {
   let client = ServeClient::builder()
     .entry_point("./serve/no_args.ts")
     .build();
@@ -203,7 +203,7 @@ async fn deno_serve_no_args() {
 }
 
 #[test]
-async fn deno_serve_parallel() {
+async fn ende_serve_parallel() {
   let client = ServeClient::builder()
     .entry_point("./serve/parallel.ts")
     .worker_count(Some(4))
@@ -273,8 +273,8 @@ async fn deno_serve_parallel() {
 }
 
 #[test]
-async fn deno_run_serve_with_tcp_from_env() {
-  let mut child = util::deno_cmd()
+async fn ende_run_serve_with_tcp_from_env() {
+  let mut child = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-net")
@@ -309,14 +309,14 @@ async fn deno_run_serve_with_tcp_from_env() {
 
 #[test]
 #[cfg(unix)]
-async fn deno_run_serve_with_unix_socket_from_env() {
+async fn ende_run_serve_with_unix_socket_from_env() {
   use tokio::io::AsyncReadExt;
   use tokio::io::AsyncWriteExt;
   use tokio::net::UnixStream;
 
   let dir = tempfile::TempDir::new().unwrap();
   let sock = dir.path().join("listen.sock");
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg(format!("--allow-read={}", sock.display()))
@@ -346,14 +346,14 @@ async fn deno_run_serve_with_unix_socket_from_env() {
 
 #[test]
 #[cfg(unix)]
-async fn deno_run_serve_with_duplicate_env_addr() {
+async fn ende_run_serve_with_duplicate_env_addr() {
   use tokio::io::AsyncReadExt;
   use tokio::io::AsyncWriteExt;
   use tokio::net::UnixStream;
 
   let dir = tempfile::TempDir::new().unwrap();
   let sock = dir.path().join("listen.sock");
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-net")

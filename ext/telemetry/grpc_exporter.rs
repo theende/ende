@@ -25,7 +25,7 @@ use crate::hyper_client::HyperClient;
 const DEFAULT_GRPC_ENDPOINT: &str = "http://localhost:4317";
 
 const USER_AGENT: &str =
-  concat!("OTel-OTLP-Exporter-Deno/", env!("CARGO_PKG_VERSION"));
+  concat!("OTel-OTLP-Exporter-Ende/", env!("CARGO_PKG_VERSION"));
 
 const TRACES_PATH: &str =
   "/opentelemetry.proto.collector.trace.v1.TraceService/Export";

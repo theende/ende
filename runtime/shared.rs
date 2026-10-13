@@ -23,10 +23,10 @@ extension!(runtime,
     ende_fs,
     ende_bundle_runtime
   ],
-  esm_entry_point = "ext:runtime/90_deno_ns.js",
+  esm_entry_point = "ext:runtime/90_ende_ns.js",
   esm = [
     dir "js",
-    "90_deno_ns.js",
+    "90_ende_ns.js",
     "97_navigator_user_agent_data.js",
     "98_global_scope_shared.js",
     "98_global_scope_window.js",

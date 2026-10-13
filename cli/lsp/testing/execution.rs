@@ -29,7 +29,7 @@ use super::definitions::TestDefinition;
 use super::definitions::TestModule;
 use super::lsp_custom;
 use super::server::TestServerTests;
-use crate::args::DenoSubcommand;
+use crate::args::EndeSubcommand;
 use crate::args::flags_from_vec;
 use crate::args::parallelism_count;
 use crate::factory::CliFactory;
@@ -282,7 +282,7 @@ impl TestRun {
       .await?;
 
     let (concurrent_jobs, fail_fast) =
-      if let DenoSubcommand::Test(test_flags) = cli_options.sub_command() {
+      if let EndeSubcommand::Test(test_flags) = cli_options.sub_command() {
         (
           parallelism_count(test_flags.parallel).into(),
           test_flags.fail_fast,
@@ -607,7 +607,7 @@ fn collect_test_task_env_files(
     if !seen_scopes.insert(data.scope.clone()) {
       continue;
     }
-    let Some(config_file) = data.maybe_deno_json() else {
+    let Some(config_file) = data.maybe_ende_json() else {
       continue;
     };
     let Ok(Some(tasks)) = config_file.to_tasks_config() else {

@@ -1849,10 +1849,10 @@ Module._resolveFilename = function (
 
   if (
     typeof request === "string" &&
-    (StringPrototypeEndsWith(request, "$deno$eval.cjs") ||
-      StringPrototypeEndsWith(request, "$deno$eval.cts") ||
-      StringPrototypeEndsWith(request, "$deno$stdin.cjs") ||
-      StringPrototypeEndsWith(request, "$deno$stdin.cts"))
+    (StringPrototypeEndsWith(request, "$ende$eval.cjs") ||
+      StringPrototypeEndsWith(request, "$ende$eval.cts") ||
+      StringPrototypeEndsWith(request, "$ende$stdin.cjs") ||
+      StringPrototypeEndsWith(request, "$ende$stdin.cts"))
   ) {
     return request;
   }

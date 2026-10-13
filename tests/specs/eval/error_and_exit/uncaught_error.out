@@ -1,4 +1,4 @@
 error: Uncaught (in promise) Error: boom
 throw new Error('boom')
       ^
-    at file://[WILDCARD]$deno$eval.mts:1:7
+    at file://[WILDCARD]$ende$eval.mts:1:7

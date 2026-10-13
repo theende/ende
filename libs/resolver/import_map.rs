@@ -38,13 +38,13 @@ impl<TSys: sys_traits::FsRead> WorkspaceExternalImportMapLoader<TSys> {
     self
       .maybe_external_import_map
       .get_or_try_init(|| {
-        let Some(deno_json) = self.workspace.root_deno_json() else {
+        let Some(ende_json) = self.workspace.root_ende_json() else {
           return Ok(None);
         };
-        if deno_json.is_an_import_map() {
+        if ende_json.is_an_import_map() {
           return Ok(None);
         }
-        let Some(path) = deno_json.to_import_map_path()? else {
+        let Some(path) = ende_json.to_import_map_path()? else {
           return Ok(None);
         };
         let contents =

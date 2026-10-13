@@ -91,7 +91,7 @@ impl From<log::Level> for WorkerLogLevel {
 /// Common bootstrap options for MainWorker & WebWorker
 #[derive(Clone)]
 pub struct BootstrapOptions {
-  pub deno_version: String,
+  pub ende_version: String,
   /// Sets `Deno.args` in JS runtime.
   pub args: Vec<String>,
   pub cpu_count: usize,
@@ -136,7 +136,7 @@ impl Default for BootstrapOptions {
     let user_agent = format!("Ende/{runtime_version}");
 
     Self {
-      deno_version: runtime_version.to_string(),
+      ende_version: runtime_version.to_string(),
       user_agent,
       cpu_count,
       color_level: colors::get_color_level(),
@@ -229,7 +229,7 @@ impl BootstrapOptions {
     let ser = ende_core::serde_v8::Serializer::new(&scope);
 
     let bootstrap = BootstrapV8(
-      &self.deno_version,
+      &self.ende_version,
       self.location.as_ref().map(|l| l.as_str()),
       self.unstable_features.as_ref(),
       self.inspect,

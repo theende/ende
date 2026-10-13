@@ -13,7 +13,7 @@ use test_util::test_runner::FlakyTestTracker;
 use test_util::test_runner::Parallelism;
 use test_util::test_runner::flaky_test_ci;
 use test_util::tests_path;
-use util::deno_config_path;
+use util::ende_config_path;
 use util::env_vars_for_npm_tests;
 
 fn main() {
@@ -24,7 +24,7 @@ fn main() {
       .hash_dir(tests.join("util"))
       .hash_dir(tests.join("testdata"))
       .hash_dir(tests.join("registry"))
-      .hash_file(test_util::deno_exe_path())
+      .hash_file(test_util::ende_exe_path())
       .hash_file(test_util::test_server_path());
   });
   if matches!(ci_hash, test_util::hash::CiHashStatus::Skip) {
@@ -88,12 +88,12 @@ fn main() {
 }
 
 fn run_test(test: &CollectedTest) -> TestResult {
-  let mut deno = util::deno_cmd()
+  let mut deno = util::ende_cmd()
     .disable_diagnostic_logging()
     .current_dir(util::root_path())
     .arg("test")
     .arg("--config")
-    .arg(deno_config_path())
+    .arg(ende_config_path())
     .arg("--no-lock")
     .arg("--unstable-net")
     .arg("-A");

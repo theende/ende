@@ -285,7 +285,7 @@ pub async fn outdated(
     factory.jsr_version_resolver()?.clone(),
   ));
 
-  if !cli_options.start_dir.has_deno_or_pkg_json() {
+  if !cli_options.start_dir.has_ende_or_pkg_json() {
     bail!(
       "No ende.json or package.json in \"{}\".",
       cli_options.initial_cwd().display(),

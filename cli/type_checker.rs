@@ -16,14 +16,14 @@ use deno_graph::ModuleGraph;
 use deno_graph::ResolutionError;
 use deno_semver::npm::NpmPackageReqReference;
 use deno_terminal::colors;
-use ende_config::deno_json::CompilerOptionTypesDeserializeError;
+use ende_config::ende_json::CompilerOptionTypesDeserializeError;
 use ende_core::url::Url;
 use ende_lib::util::hash::FastInsecureHasher;
-use ende_resolver::deno_json::CompilerOptionsData;
-use ende_resolver::deno_json::CompilerOptionsParseError;
-use ende_resolver::deno_json::CompilerOptionsResolver;
-use ende_resolver::deno_json::JsxImportSourceConfigResolver;
-use ende_resolver::deno_json::ToMaybeJsxImportSourceConfigError;
+use ende_resolver::ende_json::CompilerOptionsData;
+use ende_resolver::ende_json::CompilerOptionsParseError;
+use ende_resolver::ende_json::CompilerOptionsResolver;
+use ende_resolver::ende_json::JsxImportSourceConfigResolver;
+use ende_resolver::ende_json::ToMaybeJsxImportSourceConfigError;
 use ende_resolver::graph::maybe_additional_sloppy_imports_message;
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
@@ -32,7 +32,7 @@ use rustc_hash::FxHashSet;
 
 use crate::args::CliOptions;
 use crate::args::CompilerOptions;
-use crate::args::DenoSubcommand;
+use crate::args::EndeSubcommand;
 use crate::args::TsTypeLib;
 use crate::args::TypeCheckMode;
 use crate::cache::CacheDBHash;
@@ -196,7 +196,7 @@ impl TypeChecker {
 
     let compiler_options = Arc::new(CompilerOptions::new(config_value));
 
-    let hash_data = FastInsecureHasher::new_deno_versioned()
+    let hash_data = FastInsecureHasher::new_ende_versioned()
       .write_hashable(&compiler_options)
       .finish();
 
@@ -279,7 +279,7 @@ impl TypeChecker {
         FailedTypeCheckingError {
           can_skip: !matches!(
             self.cli_options.sub_command(),
-            DenoSubcommand::Check(_)
+            EndeSubcommand::Check(_)
           ),
         }
         .into(),
@@ -308,7 +308,7 @@ impl TypeChecker {
           // we should probably go further and check all the individual npm packages
           let mut package_reqs = resolver.resolution().package_reqs();
           package_reqs.sort_by(|a, b| a.0.cmp(&b.0)); // determinism
-          let mut hasher = FastInsecureHasher::new_without_deno_version();
+          let mut hasher = FastInsecureHasher::new_without_ende_version();
           // ensure the cache gets busted when turning nodeModulesDir on or off
           // as this could cause changes in resolution
           hasher.write_hashable(resolver.root_node_modules_path().is_some());
@@ -419,7 +419,7 @@ impl TypeChecker {
           // this is slightly hacky. It's used as the referrer for resolving
           // npm imports in the key
           referrer: dir
-            .member_or_root_deno_json()
+            .member_or_root_ende_json()
             .map(|d| d.specifier.clone())
             .unwrap_or_else(|| dir.dir_url().as_ref().clone()),
         }
@@ -671,7 +671,7 @@ impl DiagnosticsByFolderRealIterator<'_> {
     // that data here.
     let compiler_options = check_group.compiler_options.clone();
 
-    let compiler_options_hash_data = FastInsecureHasher::new_deno_versioned()
+    let compiler_options_hash_data = FastInsecureHasher::new_ende_versioned()
       .write_hashable(&compiler_options)
       .finish();
     let code_cache = self.code_cache.as_ref().map(|c| {
@@ -925,7 +925,7 @@ impl<'a> GraphWalker<'a> {
     type_check_mode: TypeCheckMode,
   ) -> Self {
     let maybe_hasher = npm_cache_state_hash.map(|npm_cache_state_hash| {
-      let mut hasher = FastInsecureHasher::new_deno_versioned();
+      let mut hasher = FastInsecureHasher::new_ende_versioned();
       hasher.write_hashable(npm_cache_state_hash);
       hasher.write_u8(match type_check_mode {
         TypeCheckMode::All => 0,

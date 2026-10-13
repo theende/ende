@@ -10,8 +10,8 @@ use test_util::test;
 #[test]
 fn xdg_cache_home_dir() {
   let context = TestContext::with_http_server();
-  let deno_dir = context.temp_dir();
-  let xdg_cache_home = deno_dir.path().join("cache");
+  let ende_dir = context.temp_dir();
+  let xdg_cache_home = ende_dir.path().join("cache");
   context
     .new_command()
     .env_remove("HOME")
@@ -103,7 +103,7 @@ fn cache_put_overwrite() {
 }
 
 #[test]
-fn web_cache_is_stored_under_deno_dir() {
+fn web_cache_is_stored_under_ende_dir() {
   let test_context = TestContextBuilder::new().use_temp_cwd().build();
   test_context
     .temp_dir()
@@ -116,7 +116,7 @@ fn web_cache_is_stored_under_deno_dir() {
     .assert_exit_code(0);
 
   let web_cache_dir = test_context
-    .deno_dir()
+    .ende_dir()
     .path()
     .join("location_data")
     .join("web_cache");

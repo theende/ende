@@ -8,7 +8,7 @@ use test_util::eprintln;
 use test_util::http_server;
 use test_util::test;
 use tokio::io::AsyncBufReadExt;
-use util::DenoChild;
+use util::EndeChild;
 use util::assert_not_contains;
 
 /// Logs to stderr every time next_line() is called
@@ -197,7 +197,7 @@ where
   })
 }
 
-fn check_alive_then_kill(mut child: DenoChild) {
+fn check_alive_then_kill(mut child: EndeChild) {
   assert!(child.try_wait().unwrap().is_none());
   child.kill().unwrap();
 }
@@ -246,7 +246,7 @@ async fn lint_watch_test() {
 
   badly_linted_original.copy(&badly_linted);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("lint")
     .arg(&badly_linted)
@@ -301,7 +301,7 @@ async fn lint_watch_without_args_test() {
 
   badly_linted_original.copy(&badly_linted);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("lint")
     .arg("--watch")
@@ -350,7 +350,7 @@ async fn lint_watch_picks_up_new_file_test() {
   let existing = t.path().join("existing.js");
   badly_linted_fixed1.copy(&existing);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("lint")
     .arg("--watch")
@@ -393,7 +393,7 @@ async fn lint_all_files_on_each_change_test() {
   badly_linted_fixed0.copy(&badly_linted_1);
   badly_linted_fixed1.copy(&badly_linted_2);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("lint")
     .arg(t.path())
@@ -430,7 +430,7 @@ async fn fmt_watch_test() {
   let badly_formatted = t.path().join("badly_formatted.js");
   badly_formatted_original.copy(&badly_formatted);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("fmt")
     .arg(&badly_formatted)
@@ -485,7 +485,7 @@ async fn fmt_watch_without_args_test() {
   let badly_formatted = t.path().join("badly_formatted.js");
   badly_formatted_original.copy(&badly_formatted);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("fmt")
     .arg("--watch")
@@ -541,7 +541,7 @@ async fn fmt_watch_picks_up_new_file_test() {
   let existing = t.path().join("existing.js");
   fixed.copy(&existing);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("fmt")
     .arg("--watch")
@@ -583,7 +583,7 @@ async fn fmt_check_all_files_on_each_change_test() {
   badly_formatted_original.copy(&badly_formatted_1);
   badly_formatted_original.copy(&badly_formatted_2);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("fmt")
     .arg(t.path())
@@ -617,7 +617,7 @@ async fn check_watch_test() {
   let file_to_check = t.path().join("main.ts");
   file_to_check.write("const x: number = \"hello\";\n");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("check")
     .arg(&file_to_check)
@@ -661,7 +661,7 @@ console.log(Deno.readTextFileSync(new URL("./data.txt", import.meta.url)));
   message.write(r#"export const message = "before";"#);
   data.write("included before");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("compile")
     .arg("--watch")
@@ -716,7 +716,7 @@ async fn run_watch_no_dynamic() {
   let file_to_watch = t.path().join("file_to_watch.js");
   file_to_watch.write("console.log('Hello world');");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -799,7 +799,7 @@ async fn run_watch_preload_reruns() {
   let file_to_watch = t.path().join("file_to_watch.js");
   file_to_watch.write("console.log('main ran');");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -846,7 +846,7 @@ async fn serve_watch_all() {
   let another_file = t.path().join("another_file.js");
   another_file.write("");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("serve")
     .arg(format!("--watch={another_file}"))
@@ -932,7 +932,7 @@ async fn serve_watch_with_import_map() {
     }",
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("serve")
     .arg("--watch=.")
@@ -969,7 +969,7 @@ async fn serve_watch_parallel_stops_old_workers() {
     };",
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("serve")
     .arg("--parallel")
@@ -1005,7 +1005,7 @@ async fn serve_watch_parallel_stops_old_workers() {
 
 async fn serve_watch_parallel_stops_old_workers_inner(
   t: &TempDir,
-  child: &mut DenoChild,
+  child: &mut EndeChild,
 ) {
   let file_to_watch = t.path().join("server_file_to_watch.js");
   let (_stdout_lines, mut stderr_lines) = child_lines(child);
@@ -1165,7 +1165,7 @@ async fn serve_watch_with_excluded_paths() {
     export default { fetch: () => new Response('ok') };",
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("serve")
     .arg("--watch")
@@ -1214,7 +1214,7 @@ async fn run_watch_npm_specifier() {
   let file_to_watch = t.path().join("file_to_watch.txt");
   file_to_watch.write("Hello world");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .envs(env_vars_for_npm_tests())
     .arg("run")
@@ -1259,7 +1259,7 @@ async fn run_watch_external_watch_files() {
   let external_file_to_watch_str = external_file_to_watch.to_string();
   watch_arg.push_str(&external_file_to_watch_str);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg(watch_arg)
@@ -1305,7 +1305,7 @@ async fn run_watch_load_unload_events() {
     "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -1356,7 +1356,7 @@ async fn run_watch_not_exit() {
   let file_to_watch = t.path().join("file_to_watch.js");
   file_to_watch.write("syntax error ^^");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -1412,7 +1412,7 @@ async fn run_watch_with_import_map_and_relative_paths() {
     "{\"imports\": {}}",
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(temp_directory.path())
     .arg("run")
     .arg("--watch")
@@ -1441,7 +1441,7 @@ async fn run_watch_with_ext_flag() {
   let file_to_watch = t.path().join("file_to_watch");
   file_to_watch.write("interface I{}; console.log(42);");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -1478,7 +1478,7 @@ async fn run_watch_error_messages() {
   file_to_watch
     .write("throw SyntaxError(`outer`, {cause: TypeError(`inner`)})");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -1505,7 +1505,7 @@ async fn run_watch_error_messages() {
 async fn test_watch_basic() {
   let t = TempDir::new();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("test")
     .arg("--watch")
@@ -1670,7 +1670,7 @@ async fn test_watch_external_watch_files() {
   let external_file_str = external_file.to_string();
   watch_arg.push_str(&external_file_str);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("test")
     .arg(watch_arg)
@@ -1697,11 +1697,11 @@ async fn test_watch_external_watch_files() {
 async fn test_watch_doc() {
   let t = TempDir::new();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("test")
     .arg("--config")
-    .arg(util::deno_config_path())
+    .arg(util::ende_config_path())
     .arg("--watch")
     .arg("--doc")
     .arg(t.path())
@@ -1842,11 +1842,11 @@ console.log("Hello world");
 "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("test")
     .arg("--config")
-    .arg(util::deno_config_path())
+    .arg(util::ende_config_path())
     .arg("--watch")
     .arg("--doc")
     .arg(t.path())
@@ -1906,7 +1906,7 @@ async fn test_watch_module_graph_error_referrer() {
   let t = TempDir::new();
   let file_to_watch = t.path().join("file_to_watch.js");
   file_to_watch.write("import './nonexistent.js';");
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -1943,7 +1943,7 @@ async fn test_watch_unload_handler_error_on_drop() {
     });
     "#,
   );
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -1980,7 +1980,7 @@ async fn run_watch_blob_urls_reset() {
     }
     "#;
   file_to_watch.write(file_content);
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2016,7 +2016,7 @@ Deno.chdir("temp");
 "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2100,7 +2100,7 @@ async fn run_watch_unload_on_restart() {
     "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2148,7 +2148,7 @@ async fn run_watch_process_exit_on_restart() {
     "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2247,7 +2247,7 @@ async fn run_watch_exit_keeps_watcher_alive(watch_flag: &str, exit_call: &str) {
     "#
   ));
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg(watch_flag)
@@ -2283,23 +2283,23 @@ async fn run_watch_exit_keeps_watcher_alive(watch_flag: &str, exit_call: &str) {
 /// run without killing the watcher, which keeps watching and restarts the
 /// script on the next file change. See https://github.com/denoland/deno/issues/7590.
 #[test(flaky)]
-async fn run_watch_deno_exit() {
+async fn run_watch_ende_exit() {
   run_watch_exit_keeps_watcher_alive("--watch", "Deno.exit(42)").await;
 }
 
-/// Like [`run_watch_deno_exit`], but using `process.exit()` from `node:process`,
+/// Like [`run_watch_ende_exit`], but using `process.exit()` from `node:process`,
 /// which routes through the same `op_exit` chokepoint.
 #[test(flaky)]
 async fn run_watch_process_exit() {
   run_watch_exit_keeps_watcher_alive("--watch", "process.exit(42)").await;
 }
 
-/// Like [`run_watch_deno_exit`], but for HMR mode (`--watch-hmr`), which runs
+/// Like [`run_watch_ende_exit`], but for HMR mode (`--watch-hmr`), which runs
 /// through `worker.run()` rather than `run_for_watcher`. A script calling
 /// `Deno.exit()` must still keep the watcher alive. See
 /// https://github.com/denoland/deno/issues/7590.
 #[test(flaky)]
-async fn run_watch_hmr_deno_exit() {
+async fn run_watch_hmr_ende_exit() {
   run_watch_exit_keeps_watcher_alive("--watch-hmr", "Deno.exit(42)").await;
 }
 
@@ -2308,7 +2308,7 @@ async fn run_watch_hmr_deno_exit() {
 /// restarts on the next file change. `deno serve --watch` shares the same exit
 /// handling as `deno run --watch`. See https://github.com/denoland/deno/issues/7590.
 #[test(flaky)]
-async fn serve_watch_deno_exit() {
+async fn serve_watch_ende_exit() {
   let t = TempDir::new();
   let main_file_to_watch = t.path().join("main_file_to_watch.js");
   main_file_to_watch.write(
@@ -2323,7 +2323,7 @@ async fn serve_watch_deno_exit() {
     "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("serve")
     .arg("--watch")
@@ -2379,7 +2379,7 @@ async fn run_watch_sigterm_on_restart() {
     "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2434,7 +2434,7 @@ async fn test_watch_sigint_and_sigterm_on_ctrlc() {
     "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2486,7 +2486,7 @@ async fn test_watch_sigint_during_blocking_sync_code() {
     "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2513,7 +2513,7 @@ async fn test_watch_sigint_during_blocking_sync_code() {
 async fn bench_watch_basic() {
   let t = TempDir::new();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("bench")
     .arg("--watch")
@@ -2634,7 +2634,7 @@ async fn run_watch_reload_once() {
     "#;
   file_to_watch.write(file_content);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--allow-import")
@@ -2682,7 +2682,7 @@ async fn test_watch_serve() {
     "#;
   file_to_watch.write(file_content);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2724,7 +2724,7 @@ async fn test_watch_serve_unix_socket() {
   );
   file_to_watch.write(&file_content);
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2776,7 +2776,7 @@ async fn run_watch_dynamic_imports() {
     "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2852,7 +2852,7 @@ async fn run_watch_dynamic_raw_imports() {
   let raw_file = t.path().join("d.md");
   raw_file.write("hello v1\n");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2894,7 +2894,7 @@ async fn run_watch_inspect() {
     "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2939,7 +2939,7 @@ async fn run_watch_with_excluded_paths() {
   let mjs_file_to_exclude = t.path().join("file_to_exclude.mjs");
   mjs_file_to_exclude.write("export const foo = 0;");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -2977,7 +2977,7 @@ async fn run_watch_directory_with_excluded_file() {
   let file_to_exclude = t.path().join("file_to_exclude.txt");
   file_to_exclude.write("original content");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch=.")
@@ -3019,7 +3019,7 @@ async fn run_watch_directory_with_excluded_subdirectory() {
   let sub_file = sub_dir.join("data.txt");
   sub_file.write("data");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch=.")
@@ -3070,7 +3070,7 @@ console.log("Listening...")
     "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch-hmr")
@@ -3160,7 +3160,7 @@ export function foo() {
 "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch-hmr")
@@ -3218,7 +3218,7 @@ export function foo() {
 "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch-hmr")
@@ -3283,7 +3283,7 @@ export function foo() {
 "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch-hmr")
@@ -3337,7 +3337,7 @@ setInterval(() => {
 "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch-hmr")
@@ -3385,7 +3385,7 @@ async fn bundle_watch() {
 "#,
   );
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("bundle")
     .arg("--watch")
@@ -3434,7 +3434,7 @@ console.log(styles);
   styles_css.write("div { color: red; }\n");
   let output = t.path().join("output.js");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("bundle")
     .arg("--watch")
@@ -3507,7 +3507,7 @@ async fn bundle_watch_html_entry() {
 
   let out_dir = t.path().join("dist");
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("bundle")
     .arg("--watch")
@@ -3577,7 +3577,7 @@ console.log("---");
   )
   .unwrap();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -3633,7 +3633,7 @@ console.log("---");
   )
   .unwrap();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -3694,7 +3694,7 @@ console.log("---");
   )
   .unwrap();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -3755,7 +3755,7 @@ console.log("---");
   )
   .unwrap();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -3822,7 +3822,7 @@ console.log("---");
   )
   .unwrap();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -3895,7 +3895,7 @@ console.log("---");
   )
   .unwrap();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -3990,7 +3990,7 @@ console.log("---");
   )
   .unwrap();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
     .arg("--watch")
@@ -4064,7 +4064,7 @@ Deno.test("env test", () => {
   )
   .unwrap();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(t.path())
     .arg("test")
     .arg("--watch")

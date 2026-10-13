@@ -34,13 +34,13 @@ use ende_runtime::ende_fs::OpenOptions;
 use ende_runtime::ende_fs::RealFs;
 use ende_runtime::ende_fs::sync::new_rc;
 use ende_runtime::ende_io;
-use ende_runtime::ende_io::fs::File as DenoFile;
+use ende_runtime::ende_io::fs::File as EndeFile;
 use ende_runtime::ende_io::fs::FsError;
 use ende_runtime::ende_io::fs::FsResult;
 use ende_runtime::ende_io::fs::FsStat;
 use ende_runtime::ende_io::fs::FsStatFs;
-use ende_runtime::ende_napi::DenoRtNativeAddonLoader;
-use ende_runtime::ende_napi::DenoRtNativeAddonLoaderRc;
+use ende_runtime::ende_napi::EndeRtNativeAddonLoader;
+use ende_runtime::ende_napi::EndeRtNativeAddonLoaderRc;
 use ende_runtime::ende_permissions::CheckedPath;
 use ende_runtime::ende_permissions::CheckedPathBuf;
 #[cfg(windows)]
@@ -53,12 +53,12 @@ use sys_traits::boxed::FsReadDirBoxed;
 use url::Url;
 
 #[derive(Debug, Clone)]
-pub struct DenoRtSys {
+pub struct EndeRtSys {
   vfs: Arc<FileBackedVfs>,
   self_extracting: bool,
 }
 
-impl DenoRtSys {
+impl EndeRtSys {
   pub fn new(vfs: Arc<FileBackedVfs>) -> Self {
     Self {
       vfs,
@@ -73,7 +73,7 @@ impl DenoRtSys {
     }
   }
 
-  pub fn maybe_native_addon_loader(&self) -> Option<DenoRtNativeAddonLoaderRc> {
+  pub fn maybe_native_addon_loader(&self) -> Option<EndeRtNativeAddonLoaderRc> {
     if self.self_extracting {
       // native addons are already on disk, no need for VFS extraction
       None
@@ -134,7 +134,7 @@ impl DenoRtSys {
 }
 
 #[async_trait::async_trait(?Send)]
-impl FileSystem for DenoRtSys {
+impl FileSystem for EndeRtSys {
   fn cwd(&self) -> FsResult<PathBuf> {
     RealFs.cwd()
   }
@@ -172,7 +172,7 @@ impl FileSystem for DenoRtSys {
     &self,
     path: &CheckedPath,
     options: OpenOptions,
-  ) -> FsResult<Rc<dyn DenoFile>> {
+  ) -> FsResult<Rc<dyn EndeFile>> {
     if self.is_vfs_path(path) {
       Ok(Rc::new(self.vfs.open_file(path)?))
     } else {
@@ -183,7 +183,7 @@ impl FileSystem for DenoRtSys {
     &'a self,
     path: CheckedPathBuf,
     options: OpenOptions,
-  ) -> FsResult<Rc<dyn DenoFile>> {
+  ) -> FsResult<Rc<dyn EndeFile>> {
     if self.is_vfs_path(&path) {
       Ok(Rc::new(self.vfs.open_file(&path)?))
     } else {
@@ -614,7 +614,7 @@ impl FsReadDir for VfsReadDir {
   }
 }
 
-impl sys_traits::BaseFsHardLink for DenoRtSys {
+impl sys_traits::BaseFsHardLink for EndeRtSys {
   #[inline]
   fn base_fs_hard_link(&self, src: &Path, dst: &Path) -> std::io::Result<()> {
     self
@@ -629,7 +629,7 @@ impl sys_traits::BaseFsHardLink for DenoRtSys {
   }
 }
 
-impl sys_traits::BaseFsRead for DenoRtSys {
+impl sys_traits::BaseFsRead for EndeRtSys {
   #[inline]
   fn base_fs_read(&self, path: &Path) -> std::io::Result<Cow<'static, [u8]>> {
     self
@@ -764,7 +764,7 @@ impl sys_traits::FsDirEntry for FileBackedVfsDirEntry {
   }
 }
 
-impl sys_traits::BaseFsReadDir for DenoRtSys {
+impl sys_traits::BaseFsReadDir for EndeRtSys {
   type ReadDirEntry = BoxedFsDirEntry;
 
   fn base_fs_read_dir(
@@ -788,7 +788,7 @@ impl sys_traits::BaseFsReadDir for DenoRtSys {
   }
 }
 
-impl sys_traits::BaseFsCanonicalize for DenoRtSys {
+impl sys_traits::BaseFsCanonicalize for EndeRtSys {
   #[inline]
   fn base_fs_canonicalize(&self, path: &Path) -> std::io::Result<PathBuf> {
     self
@@ -802,7 +802,7 @@ impl sys_traits::BaseFsCanonicalize for DenoRtSys {
   }
 }
 
-impl sys_traits::BaseFsMetadata for DenoRtSys {
+impl sys_traits::BaseFsMetadata for EndeRtSys {
   type Metadata = BoxedFsMetadataValue;
 
   #[inline]
@@ -835,7 +835,7 @@ impl sys_traits::BaseFsMetadata for DenoRtSys {
   }
 }
 
-impl sys_traits::BaseFsCopy for DenoRtSys {
+impl sys_traits::BaseFsCopy for EndeRtSys {
   #[inline]
   fn base_fs_copy(&self, from: &Path, to: &Path) -> std::io::Result<u64> {
     self
@@ -859,7 +859,7 @@ impl sys_traits::BaseFsCopy for DenoRtSys {
   }
 }
 
-impl sys_traits::BaseFsCloneFile for DenoRtSys {
+impl sys_traits::BaseFsCloneFile for EndeRtSys {
   fn base_fs_clone_file(
     &self,
     _from: &Path,
@@ -870,7 +870,7 @@ impl sys_traits::BaseFsCloneFile for DenoRtSys {
   }
 }
 
-impl sys_traits::BaseFsCreateDir for DenoRtSys {
+impl sys_traits::BaseFsCreateDir for EndeRtSys {
   #[inline]
   fn base_fs_create_dir(
     &self,
@@ -890,7 +890,7 @@ impl sys_traits::BaseFsCreateDir for DenoRtSys {
   }
 }
 
-impl sys_traits::BaseFsRemoveFile for DenoRtSys {
+impl sys_traits::BaseFsRemoveFile for EndeRtSys {
   #[inline]
   fn base_fs_remove_file(&self, path: &Path) -> std::io::Result<()> {
     self
@@ -905,7 +905,7 @@ impl sys_traits::BaseFsRemoveFile for DenoRtSys {
   }
 }
 
-impl sys_traits::BaseFsRename for DenoRtSys {
+impl sys_traits::BaseFsRename for EndeRtSys {
   #[inline]
   fn base_fs_rename(&self, from: &Path, to: &Path) -> std::io::Result<()> {
     self
@@ -1086,7 +1086,7 @@ impl sys_traits::FsFileIsTerminal for FsFileAdapter {
   }
 }
 
-impl sys_traits::BaseFsOpen for DenoRtSys {
+impl sys_traits::BaseFsOpen for EndeRtSys {
   type File = FsFileAdapter;
 
   fn base_fs_open(
@@ -1108,7 +1108,7 @@ impl sys_traits::BaseFsOpen for DenoRtSys {
   }
 }
 
-impl sys_traits::BaseFsSymlinkDir for DenoRtSys {
+impl sys_traits::BaseFsSymlinkDir for EndeRtSys {
   fn base_fs_symlink_dir(&self, src: &Path, dst: &Path) -> std::io::Result<()> {
     self
       .symlink_sync(
@@ -1123,7 +1123,7 @@ impl sys_traits::BaseFsSymlinkDir for DenoRtSys {
   }
 }
 
-impl sys_traits::SystemRandom for DenoRtSys {
+impl sys_traits::SystemRandom for EndeRtSys {
   #[inline]
   fn sys_random(&self, buf: &mut [u8]) -> std::io::Result<()> {
     #[allow(
@@ -1134,7 +1134,7 @@ impl sys_traits::SystemRandom for DenoRtSys {
   }
 }
 
-impl sys_traits::SystemTimeNow for DenoRtSys {
+impl sys_traits::SystemTimeNow for EndeRtSys {
   #[inline]
   fn sys_time_now(&self) -> SystemTime {
     #[allow(
@@ -1145,7 +1145,7 @@ impl sys_traits::SystemTimeNow for DenoRtSys {
   }
 }
 
-impl sys_traits::ThreadSleep for DenoRtSys {
+impl sys_traits::ThreadSleep for EndeRtSys {
   #[inline]
   fn thread_sleep(&self, dur: Duration) {
     #[allow(
@@ -1156,7 +1156,7 @@ impl sys_traits::ThreadSleep for DenoRtSys {
   }
 }
 
-impl sys_traits::EnvCurrentDir for DenoRtSys {
+impl sys_traits::EnvCurrentDir for EndeRtSys {
   #[inline]
   fn env_current_dir(&self) -> std::io::Result<PathBuf> {
     #[allow(
@@ -1167,7 +1167,7 @@ impl sys_traits::EnvCurrentDir for DenoRtSys {
   }
 }
 
-impl sys_traits::EnvHomeDir for DenoRtSys {
+impl sys_traits::EnvHomeDir for EndeRtSys {
   #[inline]
   fn env_home_dir(&self) -> Option<PathBuf> {
     #[allow(
@@ -1178,7 +1178,7 @@ impl sys_traits::EnvHomeDir for DenoRtSys {
   }
 }
 
-impl sys_traits::BaseEnvVar for DenoRtSys {
+impl sys_traits::BaseEnvVar for EndeRtSys {
   fn base_env_var_os(
     &self,
     key: &std::ffi::OsStr,
@@ -1855,7 +1855,7 @@ impl FileBackedVfs {
   }
 }
 
-impl DenoRtNativeAddonLoader for FileBackedVfs {
+impl EndeRtNativeAddonLoader for FileBackedVfs {
   fn load_if_in_vfs(&self, path: &Path) -> Option<Cow<'static, [u8]>> {
     if !self.is_path_within(path) {
       return None;

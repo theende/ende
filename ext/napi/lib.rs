@@ -52,8 +52,8 @@ use ende_core::url::Url;
 // `use ende_napi::*`
 pub use ende_core::v8;
 use ende_permissions::PermissionCheckError;
-pub use endert_helper::DenoRtNativeAddonLoader;
-pub use endert_helper::DenoRtNativeAddonLoaderRc;
+pub use endert_helper::EndeRtNativeAddonLoader;
+pub use endert_helper::EndeRtNativeAddonLoaderRc;
 #[cfg(unix)]
 use libloading::os::unix::*;
 #[cfg(windows)]
@@ -886,7 +886,7 @@ ende_core::extension!(ende_napi,
     op_napi_open
   ],
   options = {
-    deno_rt_native_addon_loader: Option<DenoRtNativeAddonLoaderRc>,
+    deno_rt_native_addon_loader: Option<EndeRtNativeAddonLoaderRc>,
   },
   state = |state, options| {
     state.put(NapiState {
@@ -949,7 +949,7 @@ fn op_napi_open<'scope>(
       napi_state.env_cleanup_hooks.clone(),
       napi_state.ref_tracker.clone(),
       op_state.external_ops_tracker.clone(),
-      op_state.try_borrow::<DenoRtNativeAddonLoaderRc>().cloned(),
+      op_state.try_borrow::<EndeRtNativeAddonLoaderRc>().cloned(),
       path,
     )
   };

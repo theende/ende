@@ -6819,19 +6819,19 @@ mod tests {
       assert_eq!(perms4.sys.query(Some(&sys_desc("hostname"))), PermissionState::Denied);
       assert_eq!(perms4.sys.query(Some(&sys_desc("uid"))), PermissionState::Granted);
       assert_eq!(perms1.run.query(None), PermissionState::Granted);
-      let deno_run_query = RunQueryDescriptor::Path(PathQueryDescriptor::new_known_absolute(Cow::Owned(PathBuf::from("/deno"))).with_requested("deno".to_string()));
+      let ende_run_query = RunQueryDescriptor::Path(PathQueryDescriptor::new_known_absolute(Cow::Owned(PathBuf::from("/deno"))).with_requested("deno".to_string()));
       let node_run_query = RunQueryDescriptor::Path(
         PathQueryDescriptor::new_known_absolute(Cow::Owned(PathBuf::from("/node"))).with_requested("node".to_string())
       );
-      assert_eq!(perms1.run.query(Some(&deno_run_query)), PermissionState::Granted);
+      assert_eq!(perms1.run.query(Some(&ende_run_query)), PermissionState::Granted);
       assert_eq!(perms1.write.query(Some(&write_query("/deno"))), PermissionState::Granted);
       assert_eq!(perms2.run.query(None), PermissionState::Prompt);
-      assert_eq!(perms2.run.query(Some(&deno_run_query)), PermissionState::Granted);
+      assert_eq!(perms2.run.query(Some(&ende_run_query)), PermissionState::Granted);
       assert_eq!(perms2.write.query(Some(&write_query("/deno"))), PermissionState::Denied);
       assert_eq!(perms3.run.query(None), PermissionState::Prompt);
-      assert_eq!(perms3.run.query(Some(&deno_run_query)), PermissionState::Denied);
+      assert_eq!(perms3.run.query(Some(&ende_run_query)), PermissionState::Denied);
       assert_eq!(perms4.run.query(None), PermissionState::GrantedPartial);
-      assert_eq!(perms4.run.query(Some(&deno_run_query)), PermissionState::Denied);
+      assert_eq!(perms4.run.query(Some(&ende_run_query)), PermissionState::Denied);
       assert_eq!(perms4.run.query(Some(&node_run_query)), PermissionState::Granted);
       assert_eq!(perms3.import.query(None), PermissionState::Prompt);
       assert_eq!(perms3.import.query(Some(&ImportDescriptor(NetDescriptor(Host::must_parse("example.com"), Some(443))))), PermissionState::Denied);

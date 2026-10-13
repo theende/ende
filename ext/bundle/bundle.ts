@@ -9,9 +9,21 @@ const { SafeArrayIterator, Uint8Array, ObjectPrototypeIsPrototypeOf } =
 
 const decoder = new TextDecoder();
 
+let warnedDenoPlatform = false;
+
 export async function bundle(
   options: Deno.bundle.Options,
 ): Promise<Deno.bundle.Result> {
+  if (options?.platform === "deno") {
+    if (!warnedDenoPlatform) {
+      warnedDenoPlatform = true;
+      // deno-lint-ignore no-console
+      console.warn(
+        'Warning: The bundle platform "deno" is deprecated. Use "ende" instead.',
+      );
+    }
+    options = { ...options, platform: "ende" };
+  }
   const result = {
     success: false,
     ...await op_bundle(

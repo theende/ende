@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 
-use ende_config::deno_json::ConfigFile;
+use ende_config::ende_json::ConfigFile;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
 use ende_core::serde_json::json;

@@ -9,14 +9,14 @@ use test_util::test;
 
 #[test]
 fn add_basic() {
-  let starting_deno_json = json!({
+  let starting_ende_json = json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./mod.ts",
   });
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("ende.json").write_json(&starting_deno_json);
+  temp_dir.join("ende.json").write_json(&starting_ende_json);
 
   let output = context.new_command().args("add jsr:@endetest/add").run();
   output.assert_exit_code(0);
@@ -33,7 +33,7 @@ fn add_basic() {
 }
 
 #[test]
-fn add_basic_no_deno_json() {
+fn add_basic_no_ende_json() {
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir().path();
 
@@ -52,7 +52,7 @@ fn add_basic_no_deno_json() {
 }
 
 #[test]
-fn add_basic_with_empty_deno_json() {
+fn add_basic_with_empty_ende_json() {
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir();
   temp_dir.write("ende.json", "");
@@ -143,14 +143,14 @@ fn add_exact_alias() {
 
 #[test]
 fn add_multiple() {
-  let starting_deno_json = json!({
+  let starting_ende_json = json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./mod.ts",
   });
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir().path();
-  temp_dir.join("ende.json").write_json(&starting_deno_json);
+  temp_dir.join("ende.json").write_json(&starting_ende_json);
 
   let output = context
     .new_command()

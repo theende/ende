@@ -69,7 +69,7 @@ fn bootstrap_once() -> MainWorker {
   >(
     &main_module,
     WorkerServiceOptions {
-      deno_rt_native_addon_loader: None,
+      ende_rt_native_addon_loader: None,
       module_loader: Rc::new(FsModuleLoader),
       permissions: PermissionsContainer::new(
         permission_desc_parser,

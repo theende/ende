@@ -21,7 +21,7 @@ import {
 } from "./97_ts_host.js";
 import { serverMainLoop } from "./98_lsp.js";
 
-/** @type {DenoCore} */
+/** @type {EndeCore} */
 const core = globalThis.Ende.core;
 const ops = core.ops;
 

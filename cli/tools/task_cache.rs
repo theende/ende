@@ -92,9 +92,9 @@ pub struct TaskCache {
 }
 
 impl TaskCache {
-  pub fn new(deno_dir_root: &Path) -> Self {
+  pub fn new(ende_dir_root: &Path) -> Self {
     Self {
-      dir: deno_dir_root.join("task_cache_v1"),
+      dir: ende_dir_root.join("task_cache_v1"),
     }
   }
 

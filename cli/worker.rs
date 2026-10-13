@@ -207,7 +207,7 @@ impl CliMainWorker {
           return;
         };
         if let Some(url) = activate_default_inspector_server(
-          ende_lib::version::DENO_VERSION_INFO.user_agent,
+          ende_lib::version::ENDE_VERSION_INFO.user_agent,
           main_module.clone(),
           inspector,
           false,
@@ -746,7 +746,7 @@ mod tests {
     >(
       &main_module,
       WorkerServiceOptions {
-        deno_rt_native_addon_loader: None,
+        ende_rt_native_addon_loader: None,
         module_loader: Rc::new(FsModuleLoader),
         permissions: PermissionsContainer::new(
           permission_desc_parser,

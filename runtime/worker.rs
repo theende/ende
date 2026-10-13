@@ -40,7 +40,7 @@ use ende_cron::CronHandlerImpl;
 use ende_fs::FileSystem;
 use ende_io::Stdio;
 use ende_kv::dynamic::MultiBackendDbHandler;
-use ende_napi::DenoRtNativeAddonLoaderRc;
+use ende_napi::EndeRtNativeAddonLoaderRc;
 use ende_node::ExtNodeSys;
 use ende_node::NodeExtInitServices;
 use ende_os::ExitCode;
@@ -220,7 +220,7 @@ pub struct WorkerServiceOptions<
 > {
   pub blob_store: Arc<dyn BlobStoreTrait>,
   pub broadcast_channel: InMemoryBroadcastChannel,
-  pub deno_rt_native_addon_loader: Option<DenoRtNativeAddonLoaderRc>,
+  pub ende_rt_native_addon_loader: Option<EndeRtNativeAddonLoaderRc>,
   pub feature_checker: Arc<FeatureChecker>,
   pub fs: Arc<dyn FileSystem>,
   /// Implementation of `ModuleLoader` which will be
@@ -634,7 +634,7 @@ impl MainWorker {
           options.origin_storage_dir.clone(),
         ),
         ende_crypto::ende_crypto::args(options.seed),
-        ende_ffi::ende_ffi::args(services.deno_rt_native_addon_loader.clone()),
+        ende_ffi::ende_ffi::args(services.ende_rt_native_addon_loader.clone()),
         ende_net::ende_net::args(
           services.root_cert_store_provider.clone(),
           options.unsafely_ignore_certificate_errors.clone(),
@@ -658,7 +658,7 @@ impl MainWorker {
           ende_kv::KvConfig::builder().build(),
         ),
         ende_napi::ende_napi::args(
-          services.deno_rt_native_addon_loader.clone(),
+          services.ende_rt_native_addon_loader.clone(),
         ),
         ende_http::ende_http::args(ende_http::Options {
           no_legacy_abort: options.bootstrap.no_legacy_abort,

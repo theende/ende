@@ -4,7 +4,7 @@
 /// <reference path="./compiler.d.ts" />
 // deno-lint-ignore-file no-undef
 
-/** @type {DenoCore} */
+/** @type {EndeCore} */
 const core = globalThis.Ende.core;
 const ops = core.ops;
 
@@ -24,7 +24,7 @@ function spanned(name, f) {
 }
 
 /** @type {ReadonlySet<string>} */
-const unstableDenoProps = new Set([
+const unstableEndeProps = new Set([
   "AtomicOperation",
   "DatagramConn",
   "Kv",
@@ -204,14 +204,14 @@ function formatMessage(msg, code) {
     }
     case 2339: {
       const property = getProperty();
-      if (property && unstableDenoProps.has(property)) {
+      if (property && unstableEndeProps.has(property)) {
         return `${msg} 'Ende.${property}' is an unstable API. ${unstableMsgSuggestion}`;
       }
       return msg;
     }
     default: {
       const property = getProperty();
-      if (property && unstableDenoProps.has(property)) {
+      if (property && unstableEndeProps.has(property)) {
         const suggestion = getMsgSuggestion();
         if (suggestion) {
           return `${msg} 'Ende.${property}' is an unstable API. Did you mean '${suggestion}'? ${unstableMsgSuggestion}`;
@@ -958,13 +958,13 @@ function getModuleLiteralImportKind(node) {
 function appendRawImportFragment(specifier, rawKind) {
   const fragmentIndex = specifier.indexOf("#");
   if (fragmentIndex === -1) {
-    specifier += `#denoRawImport=${rawKind}.ts`;
+    specifier += `#endeRawImport=${rawKind}.ts`;
   } else if (
     !specifier.substring(fragmentIndex).includes(
-      `denoRawImport=${rawKind}.ts`,
+      `endeRawImport=${rawKind}.ts`,
     )
   ) {
-    specifier += `&denoRawImport=${rawKind}.ts`;
+    specifier += `&endeRawImport=${rawKind}.ts`;
   }
   return specifier;
 }

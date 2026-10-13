@@ -120,7 +120,7 @@ pub fn generate_report(results: &HashMap<String, CollectedResult>) {
 }
 
 fn get_deno_version() -> String {
-  let output = std::process::Command::new(util::deno_exe_path().as_path())
+  let output = std::process::Command::new(util::ende_exe_path().as_path())
     .arg("-v")
     .output()
     .ok()
@@ -163,7 +163,7 @@ fn read_node_version() -> String {
 /// The Node version the runtime under test reports, i.e.
 /// `ende_node::NODE_VERSION` as observed through `process.versions.node`.
 fn get_emulated_node_version() -> String {
-  let output = std::process::Command::new(util::deno_exe_path().as_path())
+  let output = std::process::Command::new(util::ende_exe_path().as_path())
     .arg("eval")
     .arg("--quiet")
     .arg("console.log(process.versions.node)")

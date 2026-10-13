@@ -1,0 +1,18 @@
+{
+  "resource": {
+    "process.runtime.name": "ende",
+    "process.runtime.version": "[version]",
+    "telemetry.sdk.language": "ende-rust",
+    "telemetry.sdk.name": "ende-opentelemetry",
+    "telemetry.sdk.version": "[version]"
+  },
+  "scopes": [
+    "ende",
+    "ende.permission.access"
+  ],
+  "permissionKeys": [
+    "ende.permission.stack",
+    "ende.permission.type",
+    "ende.permission.value"
+  ]
+}

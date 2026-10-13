@@ -12,7 +12,7 @@ use ende_npm_cache::TarballCache;
 use ende_npmrc::ResolvedNpmRc;
 use ende_resolver::workspace::WorkspaceNpmLinkPackagesRc;
 
-use crate::cache::DenoDir;
+use crate::cache::EndeDir;
 use crate::npm::CliNpmCache;
 use crate::npm::CliNpmCacheHttpClient;
 use crate::npm::CliNpmRegistryInfoProvider;
@@ -42,7 +42,7 @@ fn esbuild_platform() -> &'static str {
 }
 
 pub async fn ensure_esbuild(
-  deno_dir: &DenoDir,
+  ende_dir: &EndeDir,
   npmrc: &ResolvedNpmRc,
   api: &Arc<CliNpmRegistryInfoProvider>,
   workspace_link_packages: &WorkspaceNpmLinkPackagesRc,
@@ -50,7 +50,7 @@ pub async fn ensure_esbuild(
   npm_cache: &CliNpmCache,
 ) -> Result<PathBuf, AnyError> {
   let target = esbuild_platform();
-  let mut esbuild_path = deno_dir
+  let mut esbuild_path = ende_dir
     .dl_folder_path()
     .join(format!(
       "esbuild-{}-{}",

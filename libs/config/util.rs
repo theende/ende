@@ -4,7 +4,7 @@ use chrono::DateTime;
 use chrono::Duration;
 use thiserror::Error;
 
-use crate::deno_json::NewestDependencyDate;
+use crate::ende_json::NewestDependencyDate;
 
 pub fn is_skippable_io_error(e: &std::io::Error) -> bool {
   use std::io::ErrorKind::*;

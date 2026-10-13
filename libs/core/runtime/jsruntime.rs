@@ -1074,13 +1074,13 @@ impl JsRuntime {
       // infrastructure to provide JavaScript bindings for ops...
       let _phase = startup_phase_begin();
       if init_mode == InitMode::New {
-        bindings::initialize_deno_core_namespace(scope, context, init_mode);
+        bindings::initialize_ende_core_namespace(scope, context, init_mode);
         bindings::initialize_primordials_and_infra(scope)?;
       }
       // If we're creating a new runtime or there are new ops to register
       // set up JavaScript bindings for them.
       if init_mode.needs_ops_bindings() {
-        bindings::initialize_deno_core_ops_bindings(
+        bindings::initialize_ende_core_ops_bindings(
           scope,
           context,
           &context_state.op_ctxs,
@@ -1694,10 +1694,10 @@ impl JsRuntime {
       let context = realm.context();
       let context_local = v8::Local::new(scope, context);
       let global = context_local.global(scope);
-      let deno_obj: v8::Local<v8::Object> =
+      let ende_obj: v8::Local<v8::Object> =
         bindings::get(scope, global, ENDE, "Ende");
       let core_obj: v8::Local<v8::Object> =
-        bindings::get(scope, deno_obj, CORE, "Ende.core");
+        bindings::get(scope, ende_obj, CORE, "Ende.core");
 
       let event_loop_tick_cb: v8::Local<v8::Function> = bindings::get(
         scope,

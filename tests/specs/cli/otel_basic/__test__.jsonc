@@ -12,6 +12,11 @@
       },
       "output": "basic.out"
     },
+    // Resource attributes, scope and permission audit attributes say "ende".
+    "resource": {
+      "args": "run -A resource_main.ts",
+      "output": "resource.out"
+    },
     "natural_exit": {
       "args": "run -A main.ts natural_exit.ts",
       "output": "natural_exit.out"

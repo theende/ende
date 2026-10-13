@@ -384,7 +384,7 @@ impl VfsEntry {
   }
 }
 
-pub static DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME: &str =
+pub static ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME: &str =
   ".deno_compile_node_modules";
 
 #[derive(Debug)]
@@ -1286,7 +1286,7 @@ impl VfsBuilder {
       }
       match current_dir.entries.iter().next().unwrap() {
         VfsEntry::Dir(dir) => {
-          if dir.name == DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME {
+          if dir.name == ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME {
             // special directory we want to maintain
             break;
           }

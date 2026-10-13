@@ -2279,8 +2279,8 @@ async fn filter_specifiers_by_changed(
   let mut run_everything_paths = cli_options
     .possible_env_file_paths_for_watch()
     .collect::<HashSet<_>>();
-  for deno_json in cli_options.workspace().deno_jsons() {
-    if let Ok(path) = deno_path_util::url_to_file_path(&deno_json.specifier)
+  for ende_json in cli_options.workspace().ende_jsons() {
+    if let Ok(path) = deno_path_util::url_to_file_path(&ende_json.specifier)
       && let Ok(path) = canonicalize_path(&path)
     {
       run_everything_paths.insert(path);

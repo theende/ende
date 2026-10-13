@@ -1598,7 +1598,7 @@ fn args_have_help_text() {
   }
 
   let mut missing = Vec::new();
-  walk(&defs::DENO_ROOT, "ende", &mut missing);
+  walk(&defs::ENDE_ROOT, "ende", &mut missing);
   missing.sort();
   missing.dedup();
   assert!(
@@ -1612,7 +1612,7 @@ fn args_have_help_text() {
 /// "Permission options" section is the only place they are documented.
 #[test]
 fn permission_help_section_is_rendered() {
-  let run = help::render_subcommand_help(&defs::DENO_ROOT, "run").unwrap();
+  let run = help::render_subcommand_help(&defs::ENDE_ROOT, "run").unwrap();
   assert!(run.contains("Permission options:"));
   assert!(run.contains("Allow file system read access"));
   assert!(run.contains("ENDE_TRACE_PERMISSIONS"));
@@ -1620,7 +1620,7 @@ fn permission_help_section_is_rendered() {
   assert!(!run.contains("  -R, --allow-read[=VALUE...]  \n"));
 
   // Commands without permission args don't get the section.
-  let fmt = help::render_subcommand_help(&defs::DENO_ROOT, "fmt").unwrap();
+  let fmt = help::render_subcommand_help(&defs::ENDE_ROOT, "fmt").unwrap();
   assert!(!fmt.contains("Permission options:"));
 }
 
@@ -1630,7 +1630,7 @@ fn permission_help_section_is_rendered() {
 #[test]
 fn graph_only_commands_take_only_import_permissions() {
   for cmd in ["bundle", "cache", "check", "doc", "info"] {
-    let sub = defs::DENO_ROOT.find_subcommand(cmd).unwrap();
+    let sub = defs::ENDE_ROOT.find_subcommand(cmd).unwrap();
     let names: Vec<&str> = sub
       .args
       .iter()
@@ -1669,7 +1669,7 @@ fn graph_only_commands_take_only_import_permissions() {
 #[test]
 fn post_fork_flag_wiring() {
   // #36149: `deno fmt --ext` gained xml/svg.
-  let fmt = defs::DENO_ROOT.find_subcommand("fmt").unwrap();
+  let fmt = defs::ENDE_ROOT.find_subcommand("fmt").unwrap();
   let ext = fmt.all_args().find(|a| a.name == "ext").unwrap();
   let ValueParser::Choices(choices) = ext.value_parser.as_ref().unwrap() else {
     panic!("fmt --ext should validate against a fixed list");
@@ -1678,7 +1678,7 @@ fn post_fork_flag_wiring() {
   assert!(choices.contains(&"svg"));
 
   // #35748: `deno task --members` conflicts with --recursive and --filter.
-  let task = defs::DENO_ROOT.find_subcommand("task").unwrap();
+  let task = defs::ENDE_ROOT.find_subcommand("task").unwrap();
   let members = task.all_args().find(|a| a.name == "members").unwrap();
   assert!(members.conflicts.contains(&"recursive"));
   assert!(members.conflicts.contains(&"filter"));
@@ -1719,7 +1719,7 @@ fn every_subcommand_accepts_unstable_flags() {
   }
 
   let mut missing = Vec::new();
-  for sub in defs::DENO_ROOT.subcommands {
+  for sub in defs::ENDE_ROOT.subcommands {
     // `help` is the one command clap builds without them.
     if sub.name == "help" || sub.name.starts_with("json_reference") {
       continue;
@@ -1734,7 +1734,7 @@ fn every_subcommand_accepts_unstable_flags() {
   );
 
   // They stay hidden from `--help`, as they were under clap.
-  let init = defs::DENO_ROOT.find_subcommand("init").unwrap();
+  let init = defs::ENDE_ROOT.find_subcommand("init").unwrap();
   assert!(
     init
       .all_args()
@@ -1743,7 +1743,7 @@ fn every_subcommand_accepts_unstable_flags() {
       .hidden
   );
   // ...except on `vendor`, which documents the deprecation notice.
-  let vendor = defs::DENO_ROOT.find_subcommand("vendor").unwrap();
+  let vendor = defs::ENDE_ROOT.find_subcommand("vendor").unwrap();
   assert!(
     !vendor
       .all_args()

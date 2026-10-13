@@ -2,69 +2,69 @@
 
 use std::path::PathBuf;
 
-use ende_cache_dir::DenoDirResolutionError;
-use ende_cache_dir::ResolveDenoDirSys;
+use ende_cache_dir::EndeDirResolutionError;
+use ende_cache_dir::ResolveEndeDirSys;
 
 use super::DiskCache;
 use super::DiskCacheSys;
 
 #[derive(Debug, Clone)]
-pub struct DenoDirOptions {
+pub struct EndeDirOptions {
   pub maybe_initial_cwd: Option<PathBuf>,
   pub maybe_custom_root: Option<PathBuf>,
 }
 
 #[sys_traits::auto_impl]
-pub trait DenoDirSys: DiskCacheSys + ResolveDenoDirSys + Clone {}
+pub trait EndeDirSys: DiskCacheSys + ResolveEndeDirSys + Clone {}
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type DenoDirProviderRc<TSys> =
-  ende_maybe_sync::MaybeArc<DenoDirProvider<TSys>>;
+pub type EndeDirProviderRc<TSys> =
+  ende_maybe_sync::MaybeArc<EndeDirProvider<TSys>>;
 
 /// Lazily creates the deno dir which might be useful in scenarios
 /// where functionality wants to continue if the ENDE_DIR can't be created.
-pub struct DenoDirProvider<TSys: DenoDirSys> {
-  options: DenoDirOptions,
+pub struct EndeDirProvider<TSys: EndeDirSys> {
+  options: EndeDirOptions,
   sys: TSys,
-  deno_dir_cell: once_cell::sync::OnceCell<DenoDir<TSys>>,
+  ende_dir_cell: once_cell::sync::OnceCell<EndeDir<TSys>>,
 }
 
-impl<TSys: DenoDirSys> DenoDirProvider<TSys> {
-  pub fn new(sys: TSys, options: DenoDirOptions) -> Self {
+impl<TSys: EndeDirSys> EndeDirProvider<TSys> {
+  pub fn new(sys: TSys, options: EndeDirOptions) -> Self {
     Self {
       options,
       sys,
-      deno_dir_cell: Default::default(),
+      ende_dir_cell: Default::default(),
     }
   }
 
   pub fn get_or_create(
     &self,
-  ) -> Result<&DenoDir<TSys>, DenoDirResolutionError> {
-    self.deno_dir_cell.get_or_try_init(|| {
-      let path = ende_cache_dir::resolve_deno_dir(
+  ) -> Result<&EndeDir<TSys>, EndeDirResolutionError> {
+    self.ende_dir_cell.get_or_try_init(|| {
+      let path = ende_cache_dir::resolve_ende_dir(
         &self.sys,
-        ende_cache_dir::ResolveDenoDirOptions {
+        ende_cache_dir::ResolveEndeDirOptions {
           maybe_custom_root: self.options.maybe_custom_root.as_deref(),
           maybe_initial_cwd: self.options.maybe_initial_cwd.as_deref(),
         },
       )?;
-      Ok(DenoDir::new(self.sys.clone(), path.into_owned()))
+      Ok(EndeDir::new(self.sys.clone(), path.into_owned()))
     })
   }
 }
 
-/// `DenoDir` serves as coordinator for multiple `DiskCache`s containing them
+/// `EndeDir` serves as coordinator for multiple `DiskCache`s containing them
 /// in single directory that can be controlled with `$ENDE_DIR` env variable.
 #[derive(Debug, Clone)]
-pub struct DenoDir<TSys: DiskCacheSys> {
+pub struct EndeDir<TSys: DiskCacheSys> {
   /// Example: /Users/rld/.deno/
   pub root: PathBuf,
   /// Used by TsCompiler to cache compiler output.
   pub gen_cache: DiskCache<TSys>,
 }
 
-impl<TSys: DiskCacheSys> DenoDir<TSys> {
+impl<TSys: DiskCacheSys> EndeDir<TSys> {
   pub fn new(sys: TSys, root: PathBuf) -> Self {
     #[cfg(not(target_arch = "wasm32"))]
     assert!(root.is_absolute());
@@ -152,11 +152,11 @@ impl<TSys: DiskCacheSys> DenoDir<TSys> {
   /// Path used for the REPL history file.
   /// Can be overridden or disabled by setting `ENDE_REPL_HISTORY` environment variable.
   pub fn repl_history_file_path(&self) -> Option<PathBuf> {
-    if let Some(deno_repl_history) = ende_env::var_os("ENDE_REPL_HISTORY") {
-      if deno_repl_history.is_empty() {
+    if let Some(ende_repl_history) = ende_env::var_os("ENDE_REPL_HISTORY") {
+      if ende_repl_history.is_empty() {
         None
       } else {
-        Some(PathBuf::from(deno_repl_history))
+        Some(PathBuf::from(ende_repl_history))
       }
     } else {
       Some(self.root.join("deno_history.txt"))

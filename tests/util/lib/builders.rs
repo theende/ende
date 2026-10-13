@@ -30,8 +30,8 @@ use crate::HttpServerGuard;
 use crate::TempDir;
 use crate::assertions::assert_wildcard_match;
 use crate::assertions::assert_wildcard_match_with_logger;
-use crate::deno_exe_path;
-use crate::denort_exe_path;
+use crate::ende_exe_path;
+use crate::endert_exe_path;
 use crate::env_vars_for_jsr_tests;
 use crate::env_vars_for_npm_tests;
 use crate::eprintln;
@@ -51,23 +51,23 @@ use crate::tests_path;
 
 // Gives the developer a nice error message if they have a deno configuration
 // file that will be auto-discovered by the tests and cause a lot of failures.
-static HAS_DENO_JSON_IN_WORKING_DIR_ERR: once_cell::sync::Lazy<Option<String>> =
+static HAS_ENDE_JSON_IN_WORKING_DIR_ERR: once_cell::sync::Lazy<Option<String>> =
   once_cell::sync::Lazy::new(|| {
     let testdata_path = testdata_path();
     let mut current_dir = testdata_path.as_path();
-    let deno_json_names =
+    let ende_json_names =
       ["ende.json", "ende.jsonc", "deno.json", "deno.jsonc"];
     loop {
-      for name in deno_json_names {
-        let deno_json_path = current_dir.join(name);
-        if deno_json_path.exists() {
+      for name in ende_json_names {
+        let ende_json_path = current_dir.join(name);
+        if ende_json_path.exists() {
           return Some(format!(
             concat!(
               "Found deno configuration file at {}. The test suite relies on ",
               "a config file not existing in any ancestor directory. Please ",
               "delete this file so the tests won't auto-discover it.",
             ),
-            deno_json_path.display(),
+            ende_json_path.display(),
           ));
         }
       }
@@ -225,8 +225,8 @@ impl TestContextBuilder {
 
   pub fn add_compile_env_vars(mut self) -> Self {
     // The `endert` binary is in the same artifact directory as the `deno` binary.
-    let denort_bin = denort_exe_path();
-    self = self.env("DENORT_BIN", denort_bin.to_string());
+    let endert_bin = endert_exe_path();
+    self = self.env("DENORT_BIN", endert_bin.to_string());
     self
   }
 
@@ -238,7 +238,7 @@ impl TestContextBuilder {
   }
 
   pub fn build(&self) -> TestContext {
-    if let Some(err) = &*HAS_DENO_JSON_IN_WORKING_DIR_ERR {
+    if let Some(err) = &*HAS_ENDE_JSON_IN_WORKING_DIR_ERR {
       panic!("{}", err);
     }
 
@@ -253,7 +253,7 @@ impl TestContextBuilder {
     } else {
       temp_dir_path
     };
-    let deno_dir = TempDir::new_in(temp_dir_path.as_path());
+    let ende_dir = TempDir::new_in(temp_dir_path.as_path());
     let temp_dir = TempDir::new_in(temp_dir_path.as_path());
     let temp_dir = if self.use_symlinked_temp_dir {
       assert!(!self.use_canonicalized_temp_dir); // code doesn't handle using both of these
@@ -268,7 +268,7 @@ impl TestContextBuilder {
       test_data_path.copy_to_recursive(&temp_copy_dir);
     }
 
-    let deno_exe = deno_exe_path();
+    let ende_exe = ende_exe_path();
 
     let http_server_guard = if self.use_http_server {
       Some(Rc::new(http_server()))
@@ -288,11 +288,11 @@ impl TestContextBuilder {
 
     TestContext {
       cwd,
-      deno_exe,
+      ende_exe,
       envs: self.envs.clone(),
       diagnostic_logger: self.diagnostic_logger.clone(),
       _http_server_guard: http_server_guard,
-      deno_dir,
+      ende_dir,
       temp_dir,
     }
   }
@@ -300,12 +300,12 @@ impl TestContextBuilder {
 
 #[derive(Clone)]
 pub struct TestContext {
-  deno_exe: PathRef,
+  ende_exe: PathRef,
   diagnostic_logger: DiagnosticLogger,
   envs: HashMap<String, String>,
   cwd: PathRef,
   _http_server_guard: Option<Rc<HttpServerGuard>>,
-  deno_dir: TempDir,
+  ende_dir: TempDir,
   temp_dir: TempDir,
 }
 
@@ -320,8 +320,8 @@ impl TestContext {
     TestContextBuilder::new().use_http_server().build()
   }
 
-  pub fn deno_dir(&self) -> &TempDir {
-    &self.deno_dir
+  pub fn ende_dir(&self) -> &TempDir {
+    &self.ende_dir
   }
 
   pub fn temp_dir(&self) -> &TempDir {
@@ -329,7 +329,7 @@ impl TestContext {
   }
 
   pub fn new_command(&self) -> TestCommandBuilder {
-    TestCommandBuilder::new(self.deno_dir.clone())
+    TestCommandBuilder::new(self.ende_dir.clone())
       .set_diagnostic_logger(self.diagnostic_logger.clone())
       .envs(self.envs.clone())
       .current_dir(&self.cwd)
@@ -337,8 +337,8 @@ impl TestContext {
 
   #[cfg(feature = "lsp")]
   pub fn new_lsp_command(&self) -> LspClientBuilder {
-    let mut builder = LspClientBuilder::new_with_dir(self.deno_dir.clone())
-      .deno_exe(&self.deno_exe)
+    let mut builder = LspClientBuilder::new_with_dir(self.ende_dir.clone())
+      .ende_exe(&self.ende_exe)
       .set_root_dir(self.temp_dir.path().clone());
     for (key, value) in &self.envs {
       builder = builder.env(key, value);
@@ -346,7 +346,7 @@ impl TestContext {
     builder
   }
 
-  pub fn run_deno(&self, args: impl AsRef<str>) {
+  pub fn run_ende(&self, args: impl AsRef<str>) {
     self
       .new_command()
       .name("deno")
@@ -364,8 +364,8 @@ impl TestContext {
       .skip_output_check();
   }
 
-  pub fn deno_exe(&self) -> &PathRef {
-    &self.deno_exe
+  pub fn ende_exe(&self) -> &PathRef {
+    &self.ende_exe
   }
 
   pub fn envs(&self) -> &HashMap<String, String> {
@@ -453,7 +453,7 @@ impl StdioContainer {
 
 #[derive(Clone)]
 pub struct TestCommandBuilder {
-  deno_dir: TempDir,
+  ende_dir: TempDir,
   diagnostic_logger: DiagnosticLogger,
   stdin: Option<StdioContainer>,
   stdout: Option<StdioContainer>,
@@ -472,9 +472,9 @@ pub struct TestCommandBuilder {
 }
 
 impl TestCommandBuilder {
-  pub fn new(deno_dir: TempDir) -> Self {
+  pub fn new(ende_dir: TempDir) -> Self {
     Self {
-      deno_dir,
+      ende_dir,
       diagnostic_logger: Default::default(),
       stdin: None,
       stdout: None,
@@ -689,10 +689,10 @@ impl TestCommandBuilder {
     self.build_command().status()
   }
 
-  pub fn spawn(&self) -> Result<DenoChild, std::io::Error> {
+  pub fn spawn(&self) -> Result<EndeChild, std::io::Error> {
     let child = self.build_command().spawn()?;
-    let mut child = DenoChild {
-      _deno_dir: self.deno_dir.clone(),
+    let mut child = EndeChild {
+      _ende_dir: self.ende_dir.clone(),
       child,
     };
 
@@ -704,7 +704,7 @@ impl TestCommandBuilder {
     Ok(child)
   }
 
-  pub fn spawn_with_piped_output(&self) -> DenoChild {
+  pub fn spawn_with_piped_output(&self) -> EndeChild {
     self.clone().piped_output().spawn().unwrap()
   }
 
@@ -842,7 +842,7 @@ impl TestCommandBuilder {
       asserted_stderr: RefCell::new(false),
       asserted_combined: RefCell::new(false),
       diagnostic_logger: self.diagnostic_logger.clone(),
-      _deno_dir: self.deno_dir.clone(),
+      _ende_dir: self.ende_dir.clone(),
     }
   }
 
@@ -887,7 +887,7 @@ impl TestCommandBuilder {
       &self.command_name
     };
     if command_name == "deno" {
-      deno_exe_path()
+      ende_exe_path()
     } else if command_name.starts_with("./") && self.cwd.is_some() {
       self.cwd.as_ref().unwrap().join(command_name)
     } else {
@@ -963,7 +963,7 @@ impl TestCommandBuilder {
     let mut envs = self.envs.clone();
     // a test that sets the deprecated DENO_DIR is testing the fallback to it
     if !envs.contains_key("ENDE_DIR") && !envs.contains_key("DENO_DIR") {
-      envs.insert("ENDE_DIR".to_string(), self.deno_dir.path().to_string());
+      envs.insert("ENDE_DIR".to_string(), self.ende_dir.path().to_string());
     }
     if !envs.contains_key("NPM_CONFIG_REGISTRY") {
       envs.insert("NPM_CONFIG_REGISTRY".to_string(), npm_registry_unset_url());
@@ -983,7 +983,7 @@ impl TestCommandBuilder {
     if !envs.contains_key("PATH") {
       let path = std::env::var_os("PATH").unwrap_or_default();
       let path = std::env::split_paths(&path);
-      let additional = deno_exe_path().parent().to_path_buf();
+      let additional = ende_exe_path().parent().to_path_buf();
       let path =
         std::env::join_paths(std::iter::once(additional).chain(path)).unwrap();
       envs.insert("PATH".to_string(), path.to_string_lossy().to_string());
@@ -1003,33 +1003,33 @@ impl TestCommandBuilder {
   fn replace_vars(&self, text: &str, cwd: &Path) -> String {
     // todo(dsherret): use monch to extract out the vars
     text
-      .replace("$ENDE_DIR", &self.deno_dir.path().to_string_lossy())
+      .replace("$ENDE_DIR", &self.ende_dir.path().to_string_lossy())
       .replace("$TESTDATA", &testdata_path().to_string_lossy())
       .replace("$TESTS", &tests_path().to_string_lossy())
       .replace("$PWD", &cwd.to_string_lossy())
   }
 }
 
-pub struct DenoChild {
+pub struct EndeChild {
   // keep alive for the duration of the use of this struct
-  _deno_dir: TempDir,
+  _ende_dir: TempDir,
   child: Child,
 }
 
-impl Deref for DenoChild {
+impl Deref for EndeChild {
   type Target = Child;
   fn deref(&self) -> &Child {
     &self.child
   }
 }
 
-impl DerefMut for DenoChild {
+impl DerefMut for EndeChild {
   fn deref_mut(&mut self) -> &mut Child {
     &mut self.child
   }
 }
 
-impl DenoChild {
+impl EndeChild {
   pub fn wait_with_output_and_timeout(
     self,
     timeout: Duration,
@@ -1062,9 +1062,9 @@ impl DenoChild {
   }
 
   pub fn wait_to_test_result(self, test_name: &str) -> TestResult {
-    let mut deno = self;
+    let mut ende = self;
     let now = Instant::now();
-    let stdout = deno.stdout.take().unwrap();
+    let stdout = ende.stdout.take().unwrap();
     let no_capture = *file_test_runner::NO_CAPTURE;
     let final_output = Arc::new(Mutex::new(Vec::<String>::new()));
     let stdout = spawn_thread({
@@ -1090,7 +1090,7 @@ impl DenoChild {
     });
 
     let now = Instant::now();
-    let stderr = deno.stderr.take().unwrap();
+    let stderr = ende.stderr.take().unwrap();
     let stderr = spawn_thread({
       let final_output = final_output.clone();
       let test_name = test_name.to_string();
@@ -1125,10 +1125,10 @@ impl DenoChild {
     };
 
     // keep stdin alive instead of dropping it in wait_with_output
-    let _stdin = deno.stdin.take();
+    let _stdin = ende.stdin.take();
 
     let status = {
-      match deno.wait_with_output_and_timeout(PER_TEST_TIMEOUT) {
+      match ende.wait_with_output_and_timeout(PER_TEST_TIMEOUT) {
         Ok(output) => output.status,
         Err(err) => {
           if err.kind() == ErrorKind::TimedOut {
@@ -1182,7 +1182,7 @@ pub struct TestCommandOutput {
   asserted_exit_code: RefCell<bool>,
   diagnostic_logger: DiagnosticLogger,
   // keep alive for the duration of the output reference
-  _deno_dir: TempDir,
+  _ende_dir: TempDir,
 }
 
 impl Drop for TestCommandOutput {

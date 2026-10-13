@@ -188,12 +188,12 @@ function cron(
         }
 
         span = builtinTracer().startSpan(
-          "deno.cron",
+          "ende.cron",
           { kind: 0 },
           activeContext,
         );
-        span.setAttribute("deno.cron.name", name);
-        span.setAttribute("deno.cron.schedule", schedule);
+        span.setAttribute("ende.cron.name", name);
+        span.setAttribute("ende.cron.schedule", schedule);
       }
       try {
         if (span) {

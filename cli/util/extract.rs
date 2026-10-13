@@ -34,7 +34,7 @@ use crate::util::path::mapped_specifier_for_tsc;
 /// The difference from [`extract_snippet_files`] is that this function wraps
 /// extracted code snippets in an `Ende.test` call.
 pub fn extract_doc_tests(file: File) -> Result<Vec<File>, AnyError> {
-  extract_inner(file, WrapKind::DenoTest)
+  extract_inner(file, WrapKind::EndeTest)
 }
 
 /// Extracts code snippets from a given file and returns a list of the extracted
@@ -48,13 +48,13 @@ pub fn extract_snippet_files(file: File) -> Result<Vec<File>, AnyError> {
 
 #[derive(Clone, Copy)]
 enum WrapKind {
-  DenoTest,
+  EndeTest,
   NoWrap,
 }
 
 struct TestOrSnippet {
   file: File,
-  has_deno_test: bool,
+  has_ende_test: bool,
   shebang: Option<Shebang>,
 }
 
@@ -98,7 +98,7 @@ fn extract_inner(
   extracted_files
     .into_iter()
     .map(|extracted| {
-      let wrap_kind = if extracted.has_deno_test {
+      let wrap_kind = if extracted.has_ende_test {
         WrapKind::NoWrap
       } else {
         wrap_kind
@@ -488,7 +488,7 @@ fn extract_file_from_block(
         ))
         .unwrap()
       });
-  let has_deno_test = tests_regex.is_match(&file_source);
+  let has_ende_test = tests_regex.is_match(&file_source);
   let file = File {
     url: file_specifier,
     mtime: None,
@@ -502,7 +502,7 @@ fn extract_file_from_block(
   };
   Some(TestOrSnippet {
     file,
-    has_deno_test,
+    has_ende_test,
     shebang,
   })
 }
@@ -562,7 +562,7 @@ fn parse_shebang(shebang: &str) -> Shebang {
   };
   // Find the `ende` (or legacy `deno`) executable in the shebang (e.g.
   // `ende`, `/usr/bin/ende`).
-  let Some(deno_index) = tokens.iter().position(|token| {
+  let Some(ende_index) = tokens.iter().position(|token| {
     matches!(
       std::path::Path::new(token)
         .file_stem()
@@ -573,7 +573,7 @@ fn parse_shebang(shebang: &str) -> Shebang {
     return invalid("binary basename needs to be 'ende' or 'deno'");
   };
   let mut args = vec![OsString::from("ende")];
-  args.extend(tokens[deno_index + 1..].iter().cloned().map(OsString::from));
+  args.extend(tokens[ende_index + 1..].iter().cloned().map(OsString::from));
   args.push(OsString::from("./__doctest_shebang__.ts"));
   match flags_from_vec(args) {
     Ok(flags) if has_scoped_deny(&flags.permissions) => invalid(
@@ -857,7 +857,7 @@ fn extract_sym_from_pat(pat: &ast::Pat) -> Vec<Atom> {
 /// transformations:
 ///
 /// 1. Injects `import` statements for expoted items from the base file
-/// 2. If `wrap_kind` is [`WrapKind::DenoTest`], wraps the content of the file
+/// 2. If `wrap_kind` is [`WrapKind::EndeTest`], wraps the content of the file
 ///    in an `Ende.test` call.
 ///
 /// For example, given a file that looks like:
@@ -878,7 +878,7 @@ fn extract_sym_from_pat(pat: &ast::Pat) -> Vec<Atom> {
 /// export const SOME_CONST = "HELLO";
 /// ```
 ///
-/// The generated pseudo test file would look like (if `wrap_in_deno_test` is enabled):
+/// The generated pseudo test file would look like (if `wrap_in_ende_test` is enabled):
 ///
 /// ```ts
 /// import { assertEquals } from "@std/assert/equals";
@@ -1034,7 +1034,7 @@ impl VisitMut for Transform<'_> {
               }
               // We remove `export` keywords so that they can be put inside
               // `Ende.test` block scope.
-              WrapKind::DenoTest => match decl {
+              WrapKind::EndeTest => match decl {
                 ast::ModuleDecl::ExportDecl(export_decl) => {
                   stmts.push(ast::Stmt::Decl(export_decl.decl.clone()));
                 }
@@ -1102,8 +1102,8 @@ impl VisitMut for Transform<'_> {
           ));
         }
         match self.wrap_kind {
-          WrapKind::DenoTest => {
-            transformed_items.push(ast::ModuleItem::Stmt(wrap_in_deno_test(
+          WrapKind::EndeTest => {
+            transformed_items.push(ast::ModuleItem::Stmt(wrap_in_ende_test(
               stmts,
               self.specifier.to_string().into(),
               self.shebang,
@@ -1141,8 +1141,8 @@ impl VisitMut for Transform<'_> {
         }
 
         match self.wrap_kind {
-          WrapKind::DenoTest => {
-            transformed_items.push(ast::ModuleItem::Stmt(wrap_in_deno_test(
+          WrapKind::EndeTest => {
+            transformed_items.push(ast::ModuleItem::Stmt(wrap_in_ende_test(
               script.body.clone(),
               self.specifier.to_string().into(),
               self.shebang,
@@ -1167,7 +1167,7 @@ impl VisitMut for Transform<'_> {
   }
 }
 
-fn wrap_in_deno_test(
+fn wrap_in_ende_test(
   mut stmts: Vec<ast::Stmt>,
   test_name: Atom,
   shebang: Option<&Shebang>,

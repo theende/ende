@@ -77,7 +77,7 @@ impl<'a> TestCodeActionCollector<'a> {
       return;
     }
 
-    let Some((namespace, maybe_modifier)) = deno_test_call(node) else {
+    let Some((namespace, maybe_modifier)) = ende_test_call(node) else {
       return;
     };
 
@@ -263,7 +263,7 @@ pub fn collect_test_code_actions(
 
 /// Returns the namespace (`Deno` or `Ende`) and modifier of a
 /// `Deno.test(...)`/`Ende.test(...)` call.
-fn deno_test_call(
+fn ende_test_call(
   node: &ast::CallExpr,
 ) -> Option<(&str, Option<TestToggleKind>)> {
   let ast::Callee::Expr(callee_expr) = &node.callee else {

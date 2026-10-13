@@ -88,7 +88,7 @@ pub use pipe::pipe;
 /// which extra numeric stdio fd slots it inherited. Both `ende_process` (which
 /// sets it) and `ende_io` (which consumes it at startup) reference this single
 /// constant so the name has one source of truth.
-pub const DENO_EXTRA_STDIO_FDS_ENV_VAR: &str = "ENDE_EXTRA_STDIO_FDS";
+pub const ENDE_EXTRA_STDIO_FDS_ENV_VAR: &str = "ENDE_EXTRA_STDIO_FDS";
 
 /// Abstraction over `AsRawFd` (unix) and `AsRawHandle` (windows)
 pub trait AsRawIoHandle {
@@ -231,7 +231,7 @@ fn inherited_extra_stdio_fd(fd: i32) -> Option<StdFile> {
 
 #[cfg(unix)]
 fn register_inherited_extra_stdio_fds(fd_table: &mut FdTable) {
-  let Ok(fds) = std::env::var(DENO_EXTRA_STDIO_FDS_ENV_VAR) else {
+  let Ok(fds) = std::env::var(ENDE_EXTRA_STDIO_FDS_ENV_VAR) else {
     return;
   };
   // Consume the marker so it does not leak into the child's own environment
@@ -243,7 +243,7 @@ fn register_inherited_extra_stdio_fds(fd_table: &mut FdTable) {
   // environment runs, so there is no concurrent access to race with. This is
   // the same startup env-mutation invariant Deno relies on elsewhere.
   unsafe {
-    std::env::remove_var(DENO_EXTRA_STDIO_FDS_ENV_VAR);
+    std::env::remove_var(ENDE_EXTRA_STDIO_FDS_ENV_VAR);
   }
   for fd in fds.split(',').filter_map(|fd| fd.parse::<i32>().ok()) {
     if fd_table.contains(fd) {

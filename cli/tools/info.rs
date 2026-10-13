@@ -22,14 +22,14 @@ use ende_core::error::AnyError;
 use ende_core::serde_json;
 use ende_core::url;
 use ende_lib::util::checksum;
-use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::ENDE_VERSION_INFO;
 use ende_npm::NpmPackageId;
 use ende_npm::NpmResolutionPackage;
 use ende_npm::resolution::NpmResolutionSnapshot;
 use ende_npm_installer::graph::NpmCachingStrategy;
 use ende_npmrc::ResolvedNpmRc;
 use ende_print::drop_println;
-use ende_resolver::DenoResolveErrorKind;
+use ende_resolver::EndeResolveErrorKind;
 use ende_resolver::display::DisplayTreeNode;
 
 use crate::args::Flags;
@@ -97,7 +97,7 @@ pub async fn info(
         } => match dep_result.as_ref().map_err(|e| e.clone())? {
           ende_package_json::PackageJsonDepValue::File(_) => {
             return Err(
-              DenoResolveErrorKind::UnsupportedPackageJsonFileSpecifier
+              EndeResolveErrorKind::UnsupportedPackageJsonFileSpecifier
                 .into_box()
                 .into(),
             );
@@ -228,14 +228,14 @@ fn print_cache_info(
   json: bool,
   location: Option<&ende_core::url::Url>,
 ) -> Result<(), AnyError> {
-  let deno_version = DENO_VERSION_INFO.deno;
-  let dir = factory.deno_dir()?;
+  let ende_version = ENDE_VERSION_INFO.ende;
+  let dir = factory.ende_dir()?;
   let modules_cache = factory.global_http_cache()?.dir_path();
-  let npm_cache = factory.deno_dir()?.npm_folder_path();
+  let npm_cache = factory.ende_dir()?.npm_folder_path();
   let typescript_cache = &dir.gen_cache.location;
   let registry_cache = dir.registries_folder_path();
   let mut origin_dir = dir.origin_data_folder_path();
-  let deno_dir = dir.root_path_for_display().to_string();
+  let ende_dir = dir.root_path_for_display().to_string();
   let web_cache_dir = ende_lib::worker::get_cache_storage_dir(&origin_dir);
 
   if let Some(location) = &location {
@@ -248,8 +248,8 @@ fn print_cache_info(
   if json {
     let mut json_output = serde_json::json!({
       "version": JSON_SCHEMA_VERSION,
-      "denoVersion": deno_version,
-      "denoDir": deno_dir,
+      "denoVersion": ende_version,
+      "denoDir": ende_dir,
       "modulesCache": modules_cache,
       "npmCache": npm_cache,
       "typescriptCache": typescript_cache,
@@ -264,8 +264,8 @@ fn print_cache_info(
 
     display::write_json_to_stdout(&json_output)
   } else {
-    drop_println!("{} {}", colors::bold("Ende version:"), deno_version);
-    drop_println!("{} {}", colors::bold("ENDE_DIR location:"), deno_dir);
+    drop_println!("{} {}", colors::bold("Ende version:"), ende_version);
+    drop_println!("{} {}", colors::bold("ENDE_DIR location:"), ende_dir);
     drop_println!(
       "{} {}",
       colors::bold("Remote modules cache:"),

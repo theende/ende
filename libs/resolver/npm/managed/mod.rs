@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use deno_path_util::fs::canonicalize_path_maybe_not_exists;
 use deno_semver::Version;
 use deno_semver::package::PackageReq;
-use ende_config::deno_json::NodeModulesLinkerMode;
+use ende_config::ende_json::NodeModulesLinkerMode;
 use ende_npm::NpmPackageCacheFolderId;
 use ende_npm::NpmPackageId;
 use ende_npm::NpmSystemInfo;

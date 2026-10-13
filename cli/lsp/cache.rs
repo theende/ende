@@ -7,11 +7,11 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use deno_path_util::url_to_file_path;
-use ende_cache_dir::ResolveDenoDirOptions;
+use ende_cache_dir::ResolveEndeDirOptions;
 use ende_core::ModuleSpecifier;
 use ende_core::url::Url;
 
-use crate::cache::DenoDir;
+use crate::cache::EndeDir;
 use crate::cache::GlobalHttpCache;
 use crate::cache::HttpCache;
 use crate::cache::LocalLspHttpCache;
@@ -36,7 +36,7 @@ pub fn calculate_fs_version_at_path(path: impl AsRef<Path>) -> Option<String> {
 
 #[derive(Debug, Clone)]
 pub struct LspCache {
-  deno_dir: DenoDir,
+  ende_dir: EndeDir,
   global: Arc<GlobalHttpCache>,
   vendors_by_scope: BTreeMap<Arc<Url>, Option<Arc<LocalLspHttpCache>>>,
 }
@@ -60,19 +60,19 @@ impl LspCache {
         .ok()
     });
     let sys = CliSys::default();
-    let deno_dir_root = ende_cache_dir::resolve_deno_dir(
+    let ende_dir_root = ende_cache_dir::resolve_ende_dir(
       &sys,
-      ResolveDenoDirOptions {
+      ResolveEndeDirOptions {
         maybe_custom_root: global_cache_path.as_deref(),
         maybe_initial_cwd: None,
       },
     )
     .expect("should be infallible with absolute custom root");
-    let deno_dir = DenoDir::new(sys.clone(), deno_dir_root.into_owned());
+    let ende_dir = EndeDir::new(sys.clone(), ende_dir_root.into_owned());
     let global =
-      Arc::new(GlobalHttpCache::new(sys, deno_dir.remote_folder_path()));
+      Arc::new(GlobalHttpCache::new(sys, ende_dir.remote_folder_path()));
     Self {
-      deno_dir,
+      ende_dir,
       global,
       vendors_by_scope: Default::default(),
     }
@@ -94,8 +94,8 @@ impl LspCache {
       .collect();
   }
 
-  pub fn deno_dir(&self) -> &DenoDir {
-    &self.deno_dir
+  pub fn ende_dir(&self) -> &EndeDir {
+    &self.ende_dir
   }
 
   pub fn global(&self) -> &Arc<GlobalHttpCache> {
@@ -153,7 +153,7 @@ impl LspCache {
     let Ok(path) = url_to_file_path(specifier) else {
       return false;
     };
-    if path.starts_with(&self.deno_dir().root) {
+    if path.starts_with(&self.ende_dir().root) {
       return true;
     }
     let Some(vendor) = self
@@ -171,7 +171,7 @@ impl LspCache {
     let Ok(path) = url_to_file_path(specifier) else {
       return false;
     };
-    if path.starts_with(&self.deno_dir().root) {
+    if path.starts_with(&self.ende_dir().root) {
       return true;
     }
     false

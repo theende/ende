@@ -8,7 +8,7 @@ use std::path::Path;
 use color_print::cformat;
 use color_print::cstr;
 use deno_semver::jsr::JsrPackageReqReference;
-use ende_config::deno_json::NodeModulesDirMode;
+use ende_config::ende_json::NodeModulesDirMode;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
@@ -19,7 +19,7 @@ use ende_npm_installer::PackagesAllowedScripts;
 use ende_runtime::WorkerExecutionMode;
 use log::info;
 
-use crate::args::DenoSubcommand;
+use crate::args::EndeSubcommand;
 use crate::args::Flags;
 use crate::args::InitFlags;
 use crate::args::InternalFlags;
@@ -66,7 +66,7 @@ pub async fn init_project(
 
     create_json_file(
       &dir,
-      ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
+      ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "tasks": {
           "dev": "ende run --watch main.ts"
@@ -148,7 +148,7 @@ Ende.test(async function serverFetchStatic() {
 
     create_json_file(
       &dir,
-      ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
+      ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "tasks": {
           "dev": "ende serve --watch -R main.ts",
@@ -189,7 +189,7 @@ Ende.test(function addTest() {
 
     create_json_file(
       &dir,
-      ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
+      ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "name": project_name,
         "version": "0.1.0",
@@ -251,7 +251,7 @@ Ende.test("returns json on /api", async () => {
 
     create_json_file(
       &dir,
-      ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
+      ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "tasks": {
           "dev": "ende run --watch --allow-net main.ts"
@@ -342,7 +342,7 @@ async fn init_npm(
     allow_scripts: PackagesAllowedScripts::All,
     argv: args,
     node_modules_dir: Some(NodeModulesDirMode::Auto),
-    subcommand: DenoSubcommand::Run(RunFlags {
+    subcommand: EndeSubcommand::Run(RunFlags {
       script: script_name,
       ..Default::default()
     }),
@@ -480,7 +480,7 @@ async fn init_jsr(
       ..Default::default()
     },
     argv: args,
-    subcommand: DenoSubcommand::Run(RunFlags {
+    subcommand: EndeSubcommand::Run(RunFlags {
       script: script_name,
       ..Default::default()
     }),

@@ -35,7 +35,7 @@ use ende_core::parking_lot::RwLock;
 use ende_core::resolve_url;
 use ende_core::url::Position;
 use ende_core::url::Url;
-use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_resolver::ende_json::CompilerOptionsKey;
 use ende_runtime::ende_node;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
@@ -1771,7 +1771,7 @@ impl DocumentModules {
             && MediaType::from_specifier(type_specifier).is_declaration()
           {
             dep_info
-              .deno_types_to_code_resolutions
+              .ende_types_to_code_resolutions
               .insert(type_specifier.clone(), code_specifier.clone());
           }
         }
@@ -1820,7 +1820,7 @@ impl DocumentModules {
             )
             .ok()?;
           dep_info
-            .deno_types_to_code_resolutions
+            .ende_types_to_code_resolutions
             .insert(type_specifier, code_specifier);
           Some(())
         })();
@@ -2380,7 +2380,7 @@ fn bytes_to_content(
 
 #[cfg(test)]
 mod tests {
-  use ende_config::deno_json::ConfigFile;
+  use ende_config::ende_json::ConfigFile;
   use ende_core::serde_json;
   use ende_core::serde_json::json;
   use pretty_assertions::assert_eq;

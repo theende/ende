@@ -1,4 +1,4 @@
 error: Uncaught (in promise) Error: rejected
 Promise.reject(new Error('rejected'))
                ^
-    at file://[WILDCARD]$deno$eval.mts:1:16
+    at file://[WILDCARD]$ende$eval.mts:1:16

@@ -166,7 +166,7 @@ fn bump_version_prerelease_increments_pre_tag() {
 }
 
 #[test]
-fn bump_version_preserves_deno_json_structure() {
+fn bump_version_preserves_ende_json_structure() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let cwd = context.temp_dir().path();
 

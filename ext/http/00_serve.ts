@@ -886,7 +886,7 @@ function mapToCallback(context, callback, onError) {
       }
 
       const span = builtinTracer().startSpan(
-        "deno.serve",
+        "ende.serve",
         { kind: 1 },
         activeContext,
       );
@@ -1708,7 +1708,7 @@ function registerDeclarativeServer(exports) {
 
           internals.log(
             "info",
-            `%cdeno serve%c: Listening on %c${target}%c${nThreads}`,
+            `%cende serve%c: Listening on %c${target}%c${nThreads}`,
             "color: green",
             "color: inherit",
             "color: yellow",

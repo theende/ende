@@ -23,7 +23,7 @@ use deno_ast::MediaType;
 use deno_error::JsErrorBox;
 use deno_graph::source::Resolver;
 use deno_path_util::url_to_file_path;
-use ende_config::deno_json::CompilerOptions;
+use ende_config::ende_json::CompilerOptions;
 use ende_core::JsRuntime;
 use ende_core::ModuleSpecifier;
 use ende_core::OpState;
@@ -48,7 +48,7 @@ use ende_core::url::Url;
 use ende_core::v8;
 use ende_lib::util::result::InfallibleResultExt;
 use ende_lib::worker::create_isolate_create_params;
-use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_resolver::ende_json::CompilerOptionsKey;
 use ende_runtime::ende_inspector_server::InspectPublishUid;
 use ende_runtime::ende_inspector_server::InspectorServer;
 use ende_runtime::ende_node::SUPPORTED_BUILTIN_NODE_MODULES;
@@ -2296,7 +2296,7 @@ fn virtual_document_file_path(
   Some(
     snapshot
       .cache
-      .deno_dir()
+      .ende_dir()
       .root
       .join("lsp")
       .join("virtual_documents")
@@ -3638,12 +3638,12 @@ fn parse_code_actions(
                 &mut text_edit.new_text,
                 &specifier_rewrite.new_specifier,
               );
-              if let Some(deno_types_specifier) =
-                &specifier_rewrite.new_deno_types_specifier
+              if let Some(ende_types_specifier) =
+                &specifier_rewrite.new_ende_types_specifier
               {
                 text_edit.new_text = format!(
                   "// @ts-types=\"{}\"\n{}",
-                  deno_types_specifier, &text_edit.new_text
+                  ende_types_specifier, &text_edit.new_text
                 );
               }
             }
@@ -4053,11 +4053,11 @@ impl CompletionEntryDetails {
           new_text,
           &specifier_rewrite.new_specifier,
         );
-        if let Some(deno_types_specifier) =
-          &specifier_rewrite.new_deno_types_specifier
+        if let Some(ende_types_specifier) =
+          &specifier_rewrite.new_ende_types_specifier
         {
           *new_text =
-            format!("// @ts-types=\"{}\"\n{}", deno_types_specifier, new_text);
+            format!("// @ts-types=\"{}\"\n{}", ende_types_specifier, new_text);
         }
       }
     }
@@ -4204,7 +4204,7 @@ impl CompletionInfo {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CompletionSpecifierRewrite {
   new_specifier: String,
-  new_deno_types_specifier: Option<String>,
+  new_ende_types_specifier: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -4527,27 +4527,27 @@ impl CompletionEntry {
         resolution_lookup
       {
         let mut new_specifier = new_specifier.clone();
-        let mut new_deno_types_specifier = None;
+        let mut new_ende_types_specifier = None;
         if let Some(code_specifier) = language_server
           .resolver
           .get_scoped_resolver(module.scope.as_deref())
-          .deno_types_to_code_resolution(&import_data.normalized)
+          .ende_types_to_code_resolution(&import_data.normalized)
           .and_then(|s| {
             import_mapper
               .check_specifier(&s, &module.specifier)
               .or_else(|| relative_specifier(&module.specifier, &s))
           })
         {
-          new_deno_types_specifier =
+          new_ende_types_specifier =
             Some(std::mem::replace(&mut new_specifier, code_specifier));
         }
         display_source.clone_from(&new_specifier);
         if new_specifier != import_data.raw.module_specifier
-          || new_deno_types_specifier.is_some()
+          || new_ende_types_specifier.is_some()
         {
           specifier_rewrite = Some(CompletionSpecifierRewrite {
             new_specifier,
-            new_deno_types_specifier,
+            new_ende_types_specifier,
           });
         }
       }
@@ -6313,7 +6313,7 @@ impl UserPreferences {
       quote_preference: if config
         .tree
         .workspace_dir_for_specifier(specifier)
-        .is_some_and(|ctx| ctx.member_or_root_deno_json().is_some())
+        .is_some_and(|ctx| ctx.member_or_root_ende_json().is_some())
       {
         base_preferences.quote_preference
       } else {
@@ -6763,7 +6763,7 @@ mod tests {
   }
 
   async fn setup(
-    deno_json_content: Value,
+    ende_json_content: Value,
     sources: &[(&str, &str, i32, LanguageId)],
   ) -> (TempDir, TsJsServer, Arc<StateSnapshot>) {
     let temp_dir = TempDir::new();
@@ -6772,8 +6772,8 @@ mod tests {
     config
       .tree
       .inject_config_file(
-        ende_config::deno_json::ConfigFile::new(
-          &deno_json_content.to_string(),
+        ende_config::ende_json::ConfigFile::new(
+          &ende_json_content.to_string(),
           temp_dir.url().join("ende.json").unwrap(),
         )
         .unwrap(),

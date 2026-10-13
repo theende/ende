@@ -70,7 +70,7 @@ use ipc::IpcRefTracker;
 
 pub const UNSTABLE_FEATURE_NAME: &str = "process";
 #[cfg(unix)]
-use ende_io::DENO_EXTRA_STDIO_FDS_ENV_VAR;
+use ende_io::ENDE_EXTRA_STDIO_FDS_ENV_VAR;
 
 #[cfg(unix)]
 fn clear_nonblocking(fd: i32) -> std::io::Result<()> {
@@ -951,9 +951,9 @@ fn create_command(
         }
         value.push_str(&fd.to_string());
       }
-      command.env(DENO_EXTRA_STDIO_FDS_ENV_VAR, value);
+      command.env(ENDE_EXTRA_STDIO_FDS_ENV_VAR, value);
     } else {
-      command.env_remove(DENO_EXTRA_STDIO_FDS_ENV_VAR);
+      command.env_remove(ENDE_EXTRA_STDIO_FDS_ENV_VAR);
     }
 
     Ok((command, ipc_rid, extra_pipe_fds, fds_to_close))

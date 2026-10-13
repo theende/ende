@@ -32,9 +32,9 @@ const CODE_CACHE_DB_FILE_NAME: &str = "v8_code_cache_v2";
 // localStorage cache based on the origin of the location URL.
 #[test]
 fn webstorage_location_shares_origin() {
-  let deno_dir = util::new_deno_dir();
+  let ende_dir = util::new_ende_dir();
 
-  let output = util::deno_cmd_with_deno_dir(&deno_dir)
+  let output = util::ende_cmd_with_ende_dir(&ende_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--location")
@@ -48,7 +48,7 @@ fn webstorage_location_shares_origin() {
   assert!(output.status.success());
   assert_eq!(output.stdout, b"Storage { length: 0 }\n");
 
-  let output = util::deno_cmd_with_deno_dir(&deno_dir)
+  let output = util::ende_cmd_with_ende_dir(&ende_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--location")
@@ -135,17 +135,17 @@ fn webstorage_main_module() {
 #[test]
 fn _083_legacy_external_source_map() {
   let _g = util::http_server();
-  let deno_dir = TempDir::new();
+  let ende_dir = TempDir::new();
   let module_url = url::Url::parse(
     "http://localhost:4545/run/083_legacy_external_source_map.ts",
   )
   .unwrap();
   // Write a faulty old external source map.
-  let faulty_map_path = deno_dir.path().join("gen/http/localhost_port_4545/9576bd5febd0587c5c4d88d57cb3ac8ebf2600c529142abe3baa9a751d20c334.js.map");
+  let faulty_map_path = ende_dir.path().join("gen/http/localhost_port_4545/9576bd5febd0587c5c4d88d57cb3ac8ebf2600c529142abe3baa9a751d20c334.js.map");
   faulty_map_path.parent().create_dir_all();
   faulty_map_path.write(r#"{\"version\":3,\"file\":\"\",\"sourceRoot\":\"\",\"sources\":[\"http://localhost:4545/083_legacy_external_source_map.ts\"],\"names\":[],\"mappings\":\";AAAA,MAAM,IAAI,KAAK,CAAC,KAAK,CAAC,CAAC\"}"#);
-  let output = Command::new(util::deno_exe_path())
-    .env("ENDE_DIR", deno_dir.path())
+  let output = Command::new(util::ende_exe_path())
+    .env("ENDE_DIR", ende_dir.path())
     .current_dir(util::testdata_path())
     .arg("run")
     .arg(module_url.to_string())
@@ -609,7 +609,7 @@ fn lock_redirects() {
 }
 
 #[test]
-fn lock_deno_json_package_json_deps() {
+fn lock_ende_json_package_json_deps() {
   let context = TestContextBuilder::new()
     .use_temp_cwd()
     .use_http_server()
@@ -617,11 +617,11 @@ fn lock_deno_json_package_json_deps() {
     .add_jsr_env_vars()
     .build();
   let temp_dir = context.temp_dir().path();
-  let deno_json = temp_dir.join("ende.json");
+  let ende_json = temp_dir.join("ende.json");
   let package_json = temp_dir.join("package.json");
 
   // add a jsr and npm dependency
-  deno_json.write_json(&json!({
+  ende_json.write_json(&json!({
     "nodeModulesDir": "auto",
     "imports": {
       "esm-basic": "npm:@denotest/esm-basic",
@@ -665,7 +665,7 @@ fn lock_deno_json_package_json_deps() {
 
   // now remove the npm dependency from the ende.json and move
   // it to a package.json that uses an alias
-  deno_json.write_json(&json!({
+  ende_json.write_json(&json!({
     "nodeModulesDir": "auto",
     "imports": {
       "module_graph": "jsr:@endetest/module-graph@1.4",
@@ -744,7 +744,7 @@ fn lock_deno_json_package_json_deps() {
   }));
 
   // now remove the deps from the ende.json
-  deno_json.write_json(&json!({
+  ende_json.write_json(&json!({
     "nodeModulesDir": "auto"
   }));
   main_ts.write("");
@@ -760,7 +760,7 @@ fn lock_deno_json_package_json_deps() {
 }
 
 #[test]
-fn lock_deno_json_package_json_deps_workspace() {
+fn lock_ende_json_package_json_deps_workspace() {
   let context = TestContextBuilder::new()
     .use_temp_cwd()
     .use_http_server()
@@ -770,8 +770,8 @@ fn lock_deno_json_package_json_deps_workspace() {
   let temp_dir = context.temp_dir().path();
 
   // ende.json
-  let deno_json = temp_dir.join("ende.json");
-  deno_json.write_json(&json!({
+  let ende_json = temp_dir.join("ende.json");
+  ende_json.write_json(&json!({
     "nodeModulesDir": "auto"
   }));
 
@@ -939,7 +939,7 @@ fn type_directives_js_main() {
 
 #[test]
 fn no_validate_asm() {
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("run/no_validate_asm.js")
@@ -955,7 +955,7 @@ fn no_validate_asm() {
 
 #[test]
 fn exec_path() {
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-read")
@@ -968,7 +968,7 @@ fn exec_path() {
   assert!(output.status.success());
   let stdout_str = std::str::from_utf8(&output.stdout).unwrap().trim();
   let actual = PathRef::new(std::path::Path::new(stdout_str)).canonicalize();
-  let expected = util::deno_exe_path().canonicalize();
+  let expected = util::ende_exe_path().canonicalize();
   assert_eq!(expected, actual);
 }
 
@@ -981,7 +981,7 @@ interface Lollipop {
 console.log("executing typescript");
 "#;
 
-  let mut p = util::deno_cmd()
+  let mut p = util::ende_cmd()
     .arg("run")
     .arg("--check")
     .arg("-")
@@ -1005,7 +1005,7 @@ i = "hello"
 console.log("executing javascript");
 "#;
 
-  let mut p = util::deno_cmd()
+  let mut p = util::ende_cmd()
     .args("run --ext js --check -")
     .stdin(std::process::Stdio::piped())
     .stdout_piped()
@@ -1029,7 +1029,7 @@ enum WinProcConstraints {
 }
 
 #[cfg(windows)]
-fn run_deno_script_constrained(
+fn run_ende_script_constrained(
   script_path: test_util::PathRef,
   constraints: WinProcConstraints,
 ) -> Result<(), i64> {
@@ -1039,16 +1039,16 @@ fn run_deno_script_constrained(
     WinProcConstraints::NoStdOut => "2",
     WinProcConstraints::NoStdErr => "4",
   };
-  let deno_exe_path = util::deno_exe_path().to_string();
-  let deno_script_path = script_path.to_string();
-  let args = vec![&deno_exe_path[..], &deno_script_path[..], constraints];
+  let ende_exe_path = util::ende_exe_path().to_string();
+  let ende_script_path = script_path.to_string();
+  let args = vec![&ende_exe_path[..], &ende_script_path[..], constraints];
   util::run_powershell_script_file(file_path, args)
 }
 
 #[cfg(windows)]
 #[test]
 fn should_not_panic_on_no_stdin() {
-  let output = run_deno_script_constrained(
+  let output = run_ende_script_constrained(
     util::testdata_path().join("echo.ts"),
     WinProcConstraints::NoStdIn,
   );
@@ -1058,7 +1058,7 @@ fn should_not_panic_on_no_stdin() {
 #[cfg(windows)]
 #[test]
 fn should_not_panic_on_no_stdout() {
-  let output = run_deno_script_constrained(
+  let output = run_ende_script_constrained(
     util::testdata_path().join("echo.ts"),
     WinProcConstraints::NoStdOut,
   );
@@ -1068,7 +1068,7 @@ fn should_not_panic_on_no_stdout() {
 #[cfg(windows)]
 #[test]
 fn should_not_panic_on_no_stderr() {
-  let output = run_deno_script_constrained(
+  let output = run_ende_script_constrained(
     util::testdata_path().join("echo.ts"),
     WinProcConstraints::NoStdErr,
   );
@@ -1078,7 +1078,7 @@ fn should_not_panic_on_no_stderr() {
 #[cfg(not(windows))]
 #[test]
 fn should_not_panic_on_undefined_home_environment_variable() {
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("echo.ts")
@@ -1091,8 +1091,8 @@ fn should_not_panic_on_undefined_home_environment_variable() {
 }
 
 #[test]
-fn should_not_panic_on_undefined_deno_dir_environment_variable() {
-  let output = util::deno_cmd()
+fn should_not_panic_on_undefined_ende_dir_environment_variable() {
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("echo.ts")
@@ -1106,8 +1106,8 @@ fn should_not_panic_on_undefined_deno_dir_environment_variable() {
 
 #[cfg(not(windows))]
 #[test]
-fn should_not_panic_on_undefined_deno_dir_and_home_environment_variables() {
-  let output = util::deno_cmd()
+fn should_not_panic_on_undefined_ende_dir_and_home_environment_variables() {
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("echo.ts")
@@ -1121,9 +1121,9 @@ fn should_not_panic_on_undefined_deno_dir_and_home_environment_variables() {
 }
 
 #[test]
-fn deno_log() {
+fn ende_log() {
   // Without ENDE_LOG the stderr is empty.
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("run/001_hello.js")
@@ -1136,7 +1136,7 @@ fn deno_log() {
   assert!(output.stderr.is_empty());
 
   // With ENDE_LOG the stderr is not empty.
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("run/001_hello.js")
@@ -1180,7 +1180,7 @@ mod permissions {
   #[test]
   fn with_allow() {
     for permission in &util::PERMISSION_VARIANTS {
-      let status = util::deno_cmd()
+      let status = util::ende_cmd()
         .current_dir(util::testdata_path())
         .arg("run")
         .arg(format!("--allow-{permission}"))
@@ -1212,7 +1212,7 @@ mod permissions {
   fn rw_inside_project_dir() {
     const PERMISSION_VARIANTS: [&str; 2] = ["read", "write"];
     for permission in &PERMISSION_VARIANTS {
-      let status = util::deno_cmd()
+      let status = util::ende_cmd()
         .current_dir(util::testdata_path())
         .arg("run")
         .arg(format!(
@@ -1255,7 +1255,7 @@ mod permissions {
   fn rw_inside_test_dir() {
     const PERMISSION_VARIANTS: [&str; 2] = ["read", "write"];
     for permission in &PERMISSION_VARIANTS {
-      let status = util::deno_cmd()
+      let status = util::ende_cmd()
         .current_dir(util::testdata_path())
         .arg("run")
         .arg(format!(
@@ -1303,7 +1303,7 @@ mod permissions {
     let test_dir = util::testdata_path();
     let js_dir = util::root_path().join("js");
     for permission in &PERMISSION_VARIANTS {
-      let status = util::deno_cmd()
+      let status = util::ende_cmd()
         .current_dir(util::testdata_path())
         .arg("run")
         .arg(format!("--allow-{permission}={test_dir},{js_dir}"))
@@ -1322,7 +1322,7 @@ mod permissions {
   fn rw_relative() {
     const PERMISSION_VARIANTS: [&str; 2] = ["read", "write"];
     for permission in &PERMISSION_VARIANTS {
-      let status = util::deno_cmd()
+      let status = util::ende_cmd()
         .current_dir(util::testdata_path())
         .arg("run")
         .arg(format!("--allow-{permission}=."))
@@ -1341,7 +1341,7 @@ mod permissions {
   fn rw_no_prefix() {
     const PERMISSION_VARIANTS: [&str; 2] = ["read", "write"];
     for permission in &PERMISSION_VARIANTS {
-      let status = util::deno_cmd()
+      let status = util::ende_cmd()
         .current_dir(util::testdata_path())
         .arg("run")
         .arg(format!("--allow-{permission}=tls/../"))
@@ -1855,7 +1855,7 @@ fn issue12740() {
   let mod1_path = mod_dir.path().join("mod1.ts");
   let mod2_path = mod_dir.path().join("mod2.ts");
   mod1_path.write("");
-  let status = util::deno_cmd()
+  let status = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg(&mod1_path)
@@ -1868,7 +1868,7 @@ fn issue12740() {
   assert!(status.success());
   mod1_path.write("export { foo } from \"./mod2.ts\";");
   mod2_path.write("(");
-  let status = util::deno_cmd()
+  let status = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg(&mod1_path)
@@ -1890,7 +1890,7 @@ fn issue12807() {
   // With a fresh `ENDE_DIR`, run a module with a dependency and a type error.
   mod1_path.write("import './mod2.ts'; Deno.exit('0');");
   mod2_path.write("console.log('Hello, world!');");
-  let status = util::deno_cmd()
+  let status = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--check")
@@ -1904,7 +1904,7 @@ fn issue12807() {
   assert!(!status.success());
   // Fix the type error and run again.
   std::fs::write(&mod1_path, "import './mod2.ts'; Deno.exit(0);").unwrap();
-  let status = util::deno_cmd()
+  let status = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--check")
@@ -1959,8 +1959,8 @@ fn node_modules_dir_no_npm_specifiers_no_dir_created() {
 #[test]
 fn check_local_then_remote() {
   let _http_guard = util::http_server();
-  let deno_dir = util::new_deno_dir();
-  let output = util::deno_cmd_with_deno_dir(&deno_dir)
+  let ende_dir = util::new_ende_dir();
+  let output = util::ende_cmd_with_ende_dir(&ende_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-import")
@@ -1971,7 +1971,7 @@ fn check_local_then_remote() {
     .wait_with_output()
     .unwrap();
   assert!(output.status.success());
-  let output = util::deno_cmd_with_deno_dir(&deno_dir)
+  let output = util::ende_cmd_with_ende_dir(&ende_dir)
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--allow-import")
@@ -2005,8 +2005,8 @@ fn permission_request_with_no_prompt() {
 }
 
 #[test]
-fn deno_no_prompt_environment_variable() {
-  let output = util::deno_cmd()
+fn ende_no_prompt_environment_variable() {
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("run/no_prompt.ts")
@@ -2039,11 +2039,11 @@ fn running_declaration_files() {
 #[test]
 fn cache_test() {
   let _g = util::http_server();
-  let deno_dir = TempDir::new();
+  let ende_dir = TempDir::new();
   let module_url =
     url::Url::parse("http://localhost:4545/run/006_url_imports.ts").unwrap();
-  let output = Command::new(util::deno_exe_path())
-    .env("ENDE_DIR", deno_dir.path())
+  let output = Command::new(util::ende_exe_path())
+    .env("ENDE_DIR", ende_dir.path())
     .current_dir(util::testdata_path())
     .arg("cache")
     .arg("--allow-import=localhost:4545")
@@ -2055,9 +2055,9 @@ fn cache_test() {
     .expect("Failed to spawn script");
   assert!(output.status.success());
 
-  let prg = util::deno_exe_path();
+  let prg = util::ende_exe_path();
   let output = Command::new(prg)
-    .env("ENDE_DIR", deno_dir.path())
+    .env("ENDE_DIR", ende_dir.path())
     .env("HTTP_PROXY", "http://nil")
     .env("NO_COLOR", "1")
     .current_dir(util::testdata_path())
@@ -2082,11 +2082,11 @@ fn cache_test() {
 
 #[test]
 fn cache_invalidation_test() {
-  let deno_dir = TempDir::new();
-  let fixture_path = deno_dir.path().join("fixture.ts");
+  let ende_dir = TempDir::new();
+  let fixture_path = ende_dir.path().join("fixture.ts");
   fixture_path.write("console.log(\"42\");");
-  let output = Command::new(util::deno_exe_path())
-    .env("ENDE_DIR", deno_dir.path())
+  let output = Command::new(util::ende_exe_path())
+    .env("ENDE_DIR", ende_dir.path())
     .current_dir(util::testdata_path())
     .arg("run")
     .arg(&fixture_path)
@@ -2096,8 +2096,8 @@ fn cache_invalidation_test() {
   let actual = std::str::from_utf8(&output.stdout).unwrap();
   assert_eq!(actual, "42\n");
   fixture_path.write("console.log(\"43\");");
-  let output = Command::new(util::deno_exe_path())
-    .env("ENDE_DIR", deno_dir.path())
+  let output = Command::new(util::ende_exe_path())
+    .env("ENDE_DIR", ende_dir.path())
     .current_dir(util::testdata_path())
     .arg("run")
     .arg(fixture_path)
@@ -2110,11 +2110,11 @@ fn cache_invalidation_test() {
 
 #[test]
 fn cache_invalidation_test_no_check() {
-  let deno_dir = TempDir::new();
-  let fixture_path = deno_dir.path().join("fixture.ts");
+  let ende_dir = TempDir::new();
+  let fixture_path = ende_dir.path().join("fixture.ts");
   fixture_path.write("console.log(\"42\");");
-  let output = Command::new(util::deno_exe_path())
-    .env("ENDE_DIR", deno_dir.path())
+  let output = Command::new(util::ende_exe_path())
+    .env("ENDE_DIR", ende_dir.path())
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--no-check")
@@ -2125,8 +2125,8 @@ fn cache_invalidation_test_no_check() {
   let actual = std::str::from_utf8(&output.stdout).unwrap();
   assert_eq!(actual, "42\n");
   fixture_path.write("console.log(\"43\");");
-  let output = Command::new(util::deno_exe_path())
-    .env("ENDE_DIR", deno_dir.path())
+  let output = Command::new(util::ende_exe_path())
+    .env("ENDE_DIR", ende_dir.path())
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--no-check")
@@ -2164,7 +2164,7 @@ fn ts_dependency_recompilation() {
   )
   .unwrap();
 
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .env("NO_COLOR", "1")
     .arg("run")
@@ -2187,7 +2187,7 @@ fn ts_dependency_recompilation() {
   )
   .expect("error writing file");
 
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .env("NO_COLOR", "1")
     .arg("run")
@@ -2209,7 +2209,7 @@ fn ts_dependency_recompilation() {
 fn basic_auth_tokens() {
   let _g = util::http_server();
 
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::root_path())
     .arg("run")
     .arg("--allow-import")
@@ -2233,7 +2233,7 @@ fn basic_auth_tokens() {
       .contains("Module not found \"http://127.0.0.1:4554/run/001_hello.js\".")
   );
 
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::root_path())
     .arg("run")
     .arg("--allow-import")
@@ -2325,7 +2325,7 @@ fn test_resolve_dns() {
 
     // Pass: `--allow-net`
     {
-      let output = util::deno_cmd()
+      let output = util::ende_cmd()
         .current_dir(util::testdata_path())
         .env("NO_COLOR", "1")
         .arg("run")
@@ -2352,7 +2352,7 @@ fn test_resolve_dns() {
 
     // Pass: `--allow-net=127.0.0.1:4553`
     {
-      let output = util::deno_cmd()
+      let output = util::ende_cmd()
         .current_dir(util::testdata_path())
         .env("NO_COLOR", "1")
         .arg("run")
@@ -2381,7 +2381,7 @@ fn test_resolve_dns() {
 
     // Permission error: `--allow-net=deno.land`
     {
-      let output = util::deno_cmd()
+      let output = util::ende_cmd()
         .current_dir(util::testdata_path())
         .env("NO_COLOR", "1")
         .arg("run")
@@ -2403,7 +2403,7 @@ fn test_resolve_dns() {
 
     // Permission error: no permission specified
     {
-      let output = util::deno_cmd()
+      let output = util::ende_cmd()
         .current_dir(util::testdata_path())
         .env("NO_COLOR", "1")
         .arg("run")
@@ -2428,7 +2428,7 @@ fn test_resolve_dns() {
 
 #[test]
 async fn http2_request_url() {
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--quiet")
@@ -2470,7 +2470,7 @@ async fn http2_request_url() {
 #[cfg(not(windows))]
 #[test]
 fn set_raw_should_not_panic_on_no_tty() {
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .arg("eval")
     .arg("Deno.stdin.setRaw(true)")
     // stdin set to piped so it certainly does not refer to TTY
@@ -2489,7 +2489,7 @@ fn set_raw_should_not_panic_on_no_tty() {
 #[cfg(not(windows))]
 #[test]
 fn fsfile_set_raw_should_not_panic_on_no_tty() {
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .arg("eval")
     .arg("Deno.openSync(\"/dev/stdin\").setRaw(true)")
     // stdin set to piped so it certainly does not refer to TTY
@@ -2515,7 +2515,7 @@ fn fsfile_set_raw_should_not_panic_on_no_tty() {
 #[cfg(target_os = "macos")]
 #[test]
 fn pipe_write_no_double_callback_after_tty_write() {
-  let deno_exe = util::deno_exe_path();
+  let ende_exe = util::ende_exe_path();
   let testdata = util::testdata_path();
   let script = testdata.join("node/pipe_write_no_double_callback.mjs");
   let output = Command::new("expect")
@@ -2528,7 +2528,7 @@ fn pipe_write_no_double_callback_after_tty_write() {
         "lassign [wait] pid spawnid os_error_flag value\n",
         "exit $value\n",
       ),
-      deno_exe.to_string().replace("{", "\\{").replace("}", "\\}"),
+      ende_exe.to_string().replace("{", "\\{").replace("}", "\\}"),
       script.to_string().replace("{", "\\{").replace("}", "\\}"),
     ))
     .output()
@@ -2564,7 +2564,7 @@ clearTimeout(handle);
 console.log("finish");
 "#;
 
-  let mut p = util::deno_cmd()
+  let mut p = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("-")
@@ -2588,7 +2588,7 @@ fn stdout_early_read_drop() {
   // drop the reader to create a broken pipe
   drop(reader);
 
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("eval")
     .arg("console.log(3.14)")
@@ -2610,7 +2610,7 @@ fn broken_stdout_repl() {
   // drop the reader to create a broken pipe
   drop(reader);
 
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("repl")
     .stdout(writer)
@@ -2638,7 +2638,7 @@ fn broken_stdout_no_panic_banner() {
   let (reader, writer) = os_pipe::pipe().unwrap();
   drop(reader);
 
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("info")
     .stdout(writer)
@@ -2692,7 +2692,7 @@ async fn websocketstream_ping() {
     Ok::<_, std::convert::Infallible>(response)
   });
 
-  let child = util::deno_cmd()
+  let child = util::ende_cmd()
     .arg("test")
     .arg("--unstable-net")
     .arg("--allow-net")
@@ -2738,7 +2738,7 @@ async fn websocket_server_multi_field_connection_header() {
   let script = util::testdata_path()
     .join("run/websocket_server_multi_field_connection_header_test.ts");
   let root_ca = util::testdata_path().join("tls/RootCA.pem");
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .arg("run")
     .arg("--allow-net")
     .arg("--cert")
@@ -2789,7 +2789,7 @@ async fn websocket_server_idletimeout() {
   let script =
     util::testdata_path().join("run/websocket_server_idletimeout.ts");
   let root_ca = util::testdata_path().join("tls/RootCA.pem");
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .arg("run")
     .arg("--allow-net")
     .arg("--cert")
@@ -2974,16 +2974,16 @@ pub fn vendor_dir_config_file() {
 console.log(returnsHi());"#,
   );
 
-  let deno_run_cmd = test_context
+  let ende_run_cmd = test_context
     .new_command()
     .args("run --allow-import --quiet main.ts");
-  deno_run_cmd.run().assert_matches_text("Hi\n");
+  ende_run_cmd.run().assert_matches_text("Hi\n");
 
   assert!(vendor_dir.exists());
   rm_vendor_dir();
   temp_dir.write("ende.json", r#"{ "vendor": false }"#);
 
-  deno_run_cmd.run().assert_matches_text("Hi\n");
+  ende_run_cmd.run().assert_matches_text("Hi\n");
   assert!(!vendor_dir.exists());
   test_context
     .new_command()
@@ -3007,7 +3007,7 @@ console.log(returnsHi());"#,
 
   // this is fine with a lockfile because users are supposed to be able
   // to modify the vendor folder
-  deno_run_cmd.run().assert_matches_text("bye bye bye\n");
+  ende_run_cmd.run().assert_matches_text("bye bye bye\n");
 
   // try updating by deleting the lockfile
   let lockfile = temp_dir.path().join("ende.lock");
@@ -3016,7 +3016,7 @@ console.log(returnsHi());"#,
 
   // should still run and the lockfile should be recreated
   // (though with the checksum from the vendor folder)
-  deno_run_cmd.run().assert_matches_text("bye bye bye\n");
+  ende_run_cmd.run().assert_matches_text("bye bye bye\n");
   assert!(lockfile.exists());
 
   // ensure we can add and execute files in directories that have a hash in them
@@ -3050,7 +3050,7 @@ console.log(returnsHi());"#,
     r#"import { returnsHi } from './vendor/http_localhost_port_4545/subdir/mod1.ts';
 console.log(returnsHi());"#,
   );
-  deno_run_cmd
+  ende_run_cmd
     .run()
     .assert_matches_text("error: Importing from the vendor directory is not permitted. Use a remote specifier instead or disable vendoring.
     at [WILDCARD]/main.ts:1:27
@@ -3059,7 +3059,7 @@ console.log(returnsHi());"#,
 }
 
 #[test]
-fn deno_json_imports_expand() {
+fn ende_json_imports_expand() {
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
   let dir = test_context.temp_dir();
   dir.write(
@@ -3089,7 +3089,7 @@ console.log(hello());
 }
 
 #[test]
-fn deno_json_imports_expand_doesnt_overwrite_existing_entries() {
+fn ende_json_imports_expand_doesnt_overwrite_existing_entries() {
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
   let dir = test_context.temp_dir();
   dir.write(
@@ -3122,7 +3122,7 @@ console.log(add(3, 4));
 #[test]
 fn code_cache_test() {
   let test_context = TestContextBuilder::new().use_temp_cwd().build();
-  let deno_dir = test_context.deno_dir();
+  let ende_dir = test_context.ende_dir();
   let temp_dir = test_context.temp_dir();
   temp_dir.write("main.js", "console.log('Hello World - A');");
 
@@ -3140,7 +3140,7 @@ fn code_cache_test() {
     assert_not_contains!(output.stderr(), "V8 code cache hit");
 
     // Check that the code cache database exists.
-    let code_cache_path = deno_dir.path().join(CODE_CACHE_DB_FILE_NAME);
+    let code_cache_path = ende_dir.path().join(CODE_CACHE_DB_FILE_NAME);
     assert!(code_cache_path.exists());
   }
 
@@ -3227,7 +3227,7 @@ console.log(require("./big.cjs").marker);
 #[test]
 fn code_cache_npm_test() {
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
-  let deno_dir = test_context.deno_dir();
+  let ende_dir = test_context.ende_dir();
   let temp_dir = test_context.temp_dir();
   temp_dir.write(
     "main.js",
@@ -3249,7 +3249,7 @@ fn code_cache_npm_test() {
     assert_not_contains!(output.stderr(), "V8 code cache hit");
 
     // Check that the code cache database exists.
-    let code_cache_path = deno_dir.path().join(CODE_CACHE_DB_FILE_NAME);
+    let code_cache_path = ende_dir.path().join(CODE_CACHE_DB_FILE_NAME);
     assert!(code_cache_path.exists());
   }
 
@@ -3272,7 +3272,7 @@ fn code_cache_npm_test() {
 #[test]
 fn code_cache_npm_with_require_test() {
   let test_context = TestContextBuilder::for_npm().use_temp_cwd().build();
-  let deno_dir = test_context.deno_dir();
+  let ende_dir = test_context.ende_dir();
   let temp_dir = test_context.temp_dir();
   temp_dir.write(
     "main.js",
@@ -3296,7 +3296,7 @@ fn code_cache_npm_with_require_test() {
     assert_not_contains!(output.stderr(), "V8 code cache hit");
 
     // Check that the code cache database exists.
-    let code_cache_path = deno_dir.path().join(CODE_CACHE_DB_FILE_NAME);
+    let code_cache_path = ende_dir.path().join(CODE_CACHE_DB_FILE_NAME);
     assert!(code_cache_path.exists());
   }
 
@@ -3369,7 +3369,7 @@ fn code_cache_npm_cjs_wrapper_module_many_exports() {
 
 #[test]
 fn node_process_stdin_pause() {
-  util::deno_cmd()
+  util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run/node_process_stdin_pause.js")
     .spawn()
@@ -3422,7 +3422,7 @@ fn stdin_readable_cancel_with_pty() {
 async fn listen_tls_alpn() {
   let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--quiet")
@@ -3477,7 +3477,7 @@ async fn listen_tls_alpn() {
 async fn listen_tls_alpn_fail() {
   let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
-  let mut child = util::deno_cmd()
+  let mut child = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("run")
     .arg("--quiet")
@@ -3533,7 +3533,7 @@ async fn listen_tls_alpn_fail() {
 #[test]
 fn emit_failed_readonly_file_system() {
   let context = TestContextBuilder::default().use_temp_cwd().build();
-  context.deno_dir().path().canonicalize().make_dir_readonly();
+  context.ende_dir().path().canonicalize().make_dir_readonly();
   let temp_dir = context.temp_dir().path().canonicalize();
   temp_dir.join("main.ts").write("import './other.ts';");
   temp_dir.join("other.ts").write("console.log('hi');");
@@ -3549,26 +3549,26 @@ fn emit_failed_readonly_file_system() {
 #[cfg(windows)]
 #[test]
 fn handle_invalid_path_error() {
-  let deno_cmd = util::deno_cmd_with_deno_dir(&util::new_deno_dir());
-  let output = deno_cmd.arg("run").arg("file://asdf").output().unwrap();
+  let ende_cmd = util::ende_cmd_with_ende_dir(&util::new_ende_dir());
+  let output = ende_cmd.arg("run").arg("file://asdf").output().unwrap();
   assert_contains!(
     String::from_utf8_lossy(&output.stderr),
     "Invalid file path."
   );
 
-  let deno_cmd = util::deno_cmd_with_deno_dir(&util::new_deno_dir());
-  let output = deno_cmd.arg("run").arg("/a/b").output().unwrap();
+  let ende_cmd = util::ende_cmd_with_ende_dir(&util::new_ende_dir());
+  let output = ende_cmd.arg("run").arg("/a/b").output().unwrap();
   assert_contains!(String::from_utf8_lossy(&output.stderr), "Module not found");
 
-  let deno_cmd = util::deno_cmd_with_deno_dir(&util::new_deno_dir());
-  let output = deno_cmd.arg("run").arg("//a/b").output().unwrap();
+  let ende_cmd = util::ende_cmd_with_ende_dir(&util::new_ende_dir());
+  let output = ende_cmd.arg("run").arg("//a/b").output().unwrap();
   assert_contains!(
     String::from_utf8_lossy(&output.stderr),
     "Invalid file path."
   );
 
-  let deno_cmd = util::deno_cmd_with_deno_dir(&util::new_deno_dir());
-  let output = deno_cmd.arg("run").arg("///a/b").output().unwrap();
+  let ende_cmd = util::ende_cmd_with_ende_dir(&util::new_ende_dir());
+  let output = ende_cmd.arg("run").arg("///a/b").output().unwrap();
   assert_contains!(String::from_utf8_lossy(&output.stderr), "Module not found");
 }
 
@@ -3690,7 +3690,7 @@ fn process_stdout_destroy_undestroy_pty() {
 
 #[test]
 fn process_stderr_tty_write_exit() {
-  let deno_exe = util::deno_exe_path();
+  let ende_exe = util::ende_exe_path();
   let testdata = util::testdata_path();
   let temp_dir = TempDir::new();
   let marker_path = temp_dir.path().join("stdio-write-callback.txt");
@@ -3705,7 +3705,7 @@ fn process_stderr_tty_write_exit() {
   ];
   let env_vars = std::env::vars().collect();
   let output = util::pty::run_in_pty(
-    deno_exe.as_path(),
+    ende_exe.as_path(),
     &args,
     testdata.as_path(),
     Some(env_vars),

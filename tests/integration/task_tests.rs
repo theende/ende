@@ -8,7 +8,7 @@ use util::TestContextBuilder;
 use util::test;
 
 #[test(flaky)]
-fn deno_task_ansi_escape_codes() {
+fn ende_task_ansi_escape_codes() {
   let context = TestContextBuilder::default().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
   temp_dir.write("ende.json", r#"{
@@ -32,7 +32,7 @@ fn deno_task_ansi_escape_codes() {
 }
 
 #[test(flaky)]
-fn deno_task_control_chars() {
+fn ende_task_control_chars() {
   let context = TestContextBuilder::default().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
   temp_dir.write(

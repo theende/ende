@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use ende_lib::standalone::virtual_fs::BuiltVfs;
-use ende_lib::standalone::virtual_fs::DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME;
+use ende_lib::standalone::virtual_fs::ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME;
 use ende_lib::standalone::virtual_fs::OffsetWithLength;
 use ende_lib::standalone::virtual_fs::VfsEntry;
 use ende_lib::standalone::virtual_fs::VirtualDirectory;
@@ -310,7 +310,7 @@ fn vfs_as_display_tree(
     vfs_dir: &'a VirtualDirectory,
     seen_offsets: &mut HashSet<u64>,
   ) -> EntryOutput<'a> {
-    if vfs_dir.name == DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME {
+    if vfs_dir.name == ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME {
       return EntryOutput::Subset(show_global_node_modules_dir(
         vfs_dir,
         seen_offsets,
@@ -338,7 +338,7 @@ fn vfs_as_display_tree(
       } else {
         EntryOutput::Subset(children)
       }
-    } else if vfs_dir.name == DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME {
+    } else if vfs_dir.name == ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME {
       EntryOutput::Subset(show_global_node_modules_dir(vfs_dir, seen_offsets))
     } else {
       EntryOutput::Subset(include_all_entries(

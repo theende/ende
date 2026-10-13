@@ -189,7 +189,7 @@ pub async fn run_task(
     if !opts.custom_commands.contains_key(name) {
       opts
         .custom_commands
-        .insert(name.to_string(), Rc::new(DenoCommand::default()));
+        .insert(name.to_string(), Rc::new(EndeCommand::default()));
     }
   }
   let state = deno_task_shell::ShellState::new(
@@ -357,9 +357,9 @@ impl ShellCommand for NpmCommand {
   }
 }
 
-pub struct DenoCommand(ExecutableCommand);
+pub struct EndeCommand(ExecutableCommand);
 
-impl Default for DenoCommand {
+impl Default for EndeCommand {
   fn default() -> Self {
     Self(ExecutableCommand::new(
       "ende".to_string(),
@@ -370,7 +370,7 @@ impl Default for DenoCommand {
   }
 }
 
-impl ShellCommand for DenoCommand {
+impl ShellCommand for EndeCommand {
   fn execute(
     &self,
     context: ShellCommandContext,

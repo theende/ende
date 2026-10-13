@@ -100,7 +100,7 @@ const denoCorePackageDirs = [
   "libs/core_testing",
   "libs/core",
   "libs/core/examples/snapshot",
-  "libs/dcore",
+  "libs/ecore",
   "libs/ops",
   "libs/ops/compile_test_runner",
   "libs/serde_v8",
@@ -1760,7 +1760,7 @@ const benchJob = job(
         },
         {
           name: "Run benchmarks",
-          run: "cargo bench -p bench_tests --bench deno_bench --locked",
+          run: "cargo bench -p bench_tests --bench ende_bench --locked",
         },
         {
           name: "Post benchmarks",

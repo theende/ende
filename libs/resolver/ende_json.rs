@@ -16,7 +16,7 @@ use deno_path_util::url_from_file_path;
 use deno_path_util::url_to_file_path;
 use deno_terminal::colors;
 use deno_unsync::sync::AtomicFlag;
-use ende_config::deno_json::CompilerOptions;
+use ende_config::ende_json::CompilerOptions;
 use ende_config::glob::FilePatterns;
 use ende_config::glob::PathOrPattern;
 use ende_config::glob::PathOrPatternSet;
@@ -319,7 +319,7 @@ pub enum CompilerOptionsType {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum CompilerOptionsSourceKind {
-  DenoJson,
+  EndeJson,
   TsConfig,
 }
 
@@ -358,25 +358,25 @@ pub fn get_base_compiler_options_for_emit(
       "inlineSources": true,
       "isolatedModules": true,
       "lib": match (lib, source_kind) {
-        (TsTypeLib::DenoWindow, CompilerOptionsSourceKind::DenoJson) => vec!["ende.window", "ende.unstable", "node"],
-        (TsTypeLib::DenoWindow, CompilerOptionsSourceKind::TsConfig) => vec!["ende.window", "ende.unstable", "dom", "node"],
-        (TsTypeLib::DenoWorker, CompilerOptionsSourceKind::DenoJson) => vec!["ende.worker", "ende.unstable", "node"],
-        (TsTypeLib::DenoWorker, CompilerOptionsSourceKind::TsConfig) => vec!["ende.worker", "ende.unstable", "dom", "node"],
-        (TsTypeLib::DenoDesktop, CompilerOptionsSourceKind::DenoJson) => vec!["ende.desktop", "ende.unstable", "node"],
-        (TsTypeLib::DenoDesktop, CompilerOptionsSourceKind::TsConfig) => vec!["ende.desktop", "ende.unstable", "dom", "node"],
+        (TsTypeLib::EndeWindow, CompilerOptionsSourceKind::EndeJson) => vec!["ende.window", "ende.unstable", "node"],
+        (TsTypeLib::EndeWindow, CompilerOptionsSourceKind::TsConfig) => vec!["ende.window", "ende.unstable", "dom", "node"],
+        (TsTypeLib::EndeWorker, CompilerOptionsSourceKind::EndeJson) => vec!["ende.worker", "ende.unstable", "node"],
+        (TsTypeLib::EndeWorker, CompilerOptionsSourceKind::TsConfig) => vec!["ende.worker", "ende.unstable", "dom", "node"],
+        (TsTypeLib::EndeDesktop, CompilerOptionsSourceKind::EndeJson) => vec!["ende.desktop", "ende.unstable", "node"],
+        (TsTypeLib::EndeDesktop, CompilerOptionsSourceKind::TsConfig) => vec!["ende.desktop", "ende.unstable", "dom", "node"],
       },
       "module": "NodeNext",
       "moduleDetection": "force",
       "noEmit": true,
       "noImplicitOverride": match source_kind {
-        CompilerOptionsSourceKind::DenoJson => true,
+        CompilerOptionsSourceKind::EndeJson => true,
         CompilerOptionsSourceKind::TsConfig => false,
       },
       "resolveJsonModule": true,
       "sourceMap": false,
       "skipLibCheck": false,
       "strict": match source_kind {
-        CompilerOptionsSourceKind::DenoJson => true,
+        CompilerOptionsSourceKind::EndeJson => true,
         CompilerOptionsSourceKind::TsConfig => false,
       },
       "target": "esnext",
@@ -522,11 +522,11 @@ type LoggedWarningsRc = ende_maybe_sync::MaybeArc<LoggedWarnings>;
 
 #[derive(Default, Debug)]
 struct MemoizedValues {
-  deno_window_check_compiler_options:
+  ende_window_check_compiler_options:
     OnceCell<Result<CompilerOptionsRc, CompilerOptionsParseError>>,
-  deno_worker_check_compiler_options:
+  ende_worker_check_compiler_options:
     OnceCell<Result<CompilerOptionsRc, CompilerOptionsParseError>>,
-  deno_desktop_check_compiler_options:
+  ende_desktop_check_compiler_options:
     OnceCell<Result<CompilerOptionsRc, CompilerOptionsParseError>>,
   emit_compiler_options:
     OnceCell<Result<CompilerOptionsRc, CompilerOptionsParseError>>,
@@ -627,14 +627,14 @@ impl CompilerOptionsData {
     let cell = match typ {
       CompilerOptionsType::Bundle => unreachable!(),
       CompilerOptionsType::Check {
-        lib: TsTypeLib::DenoWindow,
-      } => &self.memoized.deno_window_check_compiler_options,
+        lib: TsTypeLib::EndeWindow,
+      } => &self.memoized.ende_window_check_compiler_options,
       CompilerOptionsType::Check {
-        lib: TsTypeLib::DenoWorker,
-      } => &self.memoized.deno_worker_check_compiler_options,
+        lib: TsTypeLib::EndeWorker,
+      } => &self.memoized.ende_worker_check_compiler_options,
       CompilerOptionsType::Check {
-        lib: TsTypeLib::DenoDesktop,
-      } => &self.memoized.deno_desktop_check_compiler_options,
+        lib: TsTypeLib::EndeDesktop,
+      } => &self.memoized.ende_desktop_check_compiler_options,
       CompilerOptionsType::Emit => &self.memoized.emit_compiler_options,
     };
     let result = cell.get_or_init(|| {
@@ -1467,7 +1467,7 @@ impl Default for CompilerOptionsResolver {
       workspace_configs: FolderScopedWithUnscopedMap::new(
         CompilerOptionsData::new(
           Vec::new(),
-          CompilerOptionsSourceKind::DenoJson,
+          CompilerOptionsSourceKind::EndeJson,
           None,
           Default::default(),
           Default::default(),
@@ -1495,7 +1495,7 @@ impl CompilerOptionsResolver {
         workspace_configs: FolderScopedWithUnscopedMap::new(
           CompilerOptionsData::new(
             Vec::new(),
-            CompilerOptionsSourceKind::DenoJson,
+            CompilerOptionsSourceKind::EndeJson,
             None,
             Default::default(),
             overrides.clone(),
@@ -1515,13 +1515,13 @@ impl CompilerOptionsResolver {
     let mut workspace_configs =
       FolderScopedWithUnscopedMap::new(CompilerOptionsData::new(
         root_dir.to_configured_compiler_options_sources(),
-        CompilerOptionsSourceKind::DenoJson,
+        CompilerOptionsSourceKind::EndeJson,
         Some(root_dir.dir_url().clone()),
         logged_warnings.clone(),
         overrides.clone(),
       ));
     for dir in workspace.resolve_member_dirs() {
-      if dir.has_deno_or_pkg_json() {
+      if dir.has_ende_or_pkg_json() {
         ts_config_collector.add_root(dir.dir_path().join("tsconfig.json"));
       }
       if dir.dir_url() != root_dir.dir_url() {
@@ -1529,7 +1529,7 @@ impl CompilerOptionsResolver {
           dir.dir_url().clone(),
           CompilerOptionsData::new(
             dir.to_configured_compiler_options_sources(),
-            CompilerOptionsSourceKind::DenoJson,
+            CompilerOptionsSourceKind::EndeJson,
             Some(dir.dir_url().clone()),
             logged_warnings.clone(),
             overrides.clone(),
@@ -1641,20 +1641,20 @@ impl CompilerOptionsResolver {
     let mut workspace_configs =
       FolderScopedWithUnscopedMap::new(CompilerOptionsData::new(
         Vec::new(),
-        CompilerOptionsSourceKind::DenoJson,
+        CompilerOptionsSourceKind::EndeJson,
         None,
         logged_warnings.clone(),
         Default::default(),
       ));
     for (scope, dir) in dirs_by_scope {
-      if dir.has_deno_or_pkg_json() {
+      if dir.has_ende_or_pkg_json() {
         ts_config_collector.add_root(dir.dir_path().join("tsconfig.json"));
       }
       workspace_configs.insert(
         scope.clone(),
         CompilerOptionsData::new(
           dir.to_configured_compiler_options_sources(),
-          CompilerOptionsSourceKind::DenoJson,
+          CompilerOptionsSourceKind::EndeJson,
           Some(scope.clone()),
           logged_warnings.clone(),
           Default::default(),
@@ -1793,10 +1793,10 @@ impl JsxImportSourceConfigResolver {
 
 #[cfg(feature = "deno_ast")]
 fn compiler_options_to_transpile_and_emit_options(
-  config: ende_config::deno_json::CompilerOptions,
+  config: ende_config::ende_json::CompilerOptions,
   overrides: &CompilerOptionsOverrides,
 ) -> Result<TranspileAndEmitOptions, serde_json::Error> {
-  let options: ende_config::deno_json::EmitConfigOptions =
+  let options: ende_config::ende_json::EmitConfigOptions =
     serde_json::from_value(config.0)?;
   let imports_not_used_as_values =
     match options.imports_not_used_as_values.as_str() {

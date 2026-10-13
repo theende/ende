@@ -18,18 +18,18 @@ use crate::args::UnstableConfig;
 
 pub const MAGIC_BYTES: &[u8; 8] = b"d3n0l4nd";
 
-pub trait DenoRtDeserializable<'a>: Sized {
+pub trait EndeRtDeserializable<'a>: Sized {
   fn deserialize(input: &'a [u8]) -> std::io::Result<(&'a [u8], Self)>;
 }
 
-impl<'a> DenoRtDeserializable<'a> for Cow<'a, [u8]> {
+impl<'a> EndeRtDeserializable<'a> for Cow<'a, [u8]> {
   fn deserialize(input: &'a [u8]) -> std::io::Result<(&'a [u8], Self)> {
     let (input, data) = read_bytes_with_u32_len(input)?;
     Ok((input, Cow::Borrowed(data)))
   }
 }
 
-pub trait DenoRtSerializable<'a> {
+pub trait EndeRtSerializable<'a> {
   fn serialize(
     &'a self,
     builder: &mut capacity_builder::BytesBuilder<'a, Vec<u8>>,
@@ -134,7 +134,7 @@ impl<'a> capacity_builder::BytesAppendable<'a> for SpecifierId {
   }
 }
 
-impl<'a> DenoRtSerializable<'a> for SpecifierId {
+impl<'a> EndeRtSerializable<'a> for SpecifierId {
   fn serialize(
     &'a self,
     builder: &mut capacity_builder::BytesBuilder<'a, Vec<u8>>,
@@ -143,7 +143,7 @@ impl<'a> DenoRtSerializable<'a> for SpecifierId {
   }
 }
 
-impl<'a> DenoRtDeserializable<'a> for SpecifierId {
+impl<'a> EndeRtDeserializable<'a> for SpecifierId {
   fn deserialize(input: &'a [u8]) -> std::io::Result<(&'a [u8], Self)> {
     let (input, id) = read_u32(input)?;
     Ok((input, Self(id)))
@@ -171,7 +171,7 @@ pub struct RemoteModuleEntry<'a> {
   pub maybe_cjs_export_analysis: Option<Cow<'a, [u8]>>,
 }
 
-impl<'a> DenoRtSerializable<'a> for RemoteModuleEntry<'a> {
+impl<'a> EndeRtSerializable<'a> for RemoteModuleEntry<'a> {
   fn serialize(
     &'a self,
     builder: &mut capacity_builder::BytesBuilder<'a, Vec<u8>>,
@@ -209,7 +209,7 @@ impl<'a> DenoRtSerializable<'a> for RemoteModuleEntry<'a> {
   }
 }
 
-impl<'a> DenoRtDeserializable<'a> for RemoteModuleEntry<'a> {
+impl<'a> EndeRtDeserializable<'a> for RemoteModuleEntry<'a> {
   fn deserialize(input: &'a [u8]) -> std::io::Result<(&'a [u8], Self)> {
     #[allow(clippy::type_complexity, reason = "private code")]
     fn deserialize_data_if_has_flag(
@@ -278,7 +278,7 @@ fn serialize_media_type(media_type: MediaType) -> u8 {
   }
 }
 
-impl<'a> DenoRtDeserializable<'a> for MediaType {
+impl<'a> EndeRtDeserializable<'a> for MediaType {
   fn deserialize(input: &'a [u8]) -> std::io::Result<(&'a [u8], Self)> {
     let (input, value) = read_u8(input)?;
     let value = match value {
@@ -358,7 +358,7 @@ impl<TData> SpecifierDataStore<TData> {
 
 impl<'a, TData> SpecifierDataStore<TData>
 where
-  TData: DenoRtSerializable<'a> + 'a,
+  TData: EndeRtSerializable<'a> + 'a,
 {
   pub fn serialize(
     &'a self,
@@ -372,9 +372,9 @@ where
   }
 }
 
-impl<'a, TData> DenoRtDeserializable<'a> for SpecifierDataStore<TData>
+impl<'a, TData> EndeRtDeserializable<'a> for SpecifierDataStore<TData>
 where
-  TData: DenoRtDeserializable<'a>,
+  TData: EndeRtDeserializable<'a>,
 {
   fn deserialize(input: &'a [u8]) -> std::io::Result<(&'a [u8], Self)> {
     let (input, len) = read_u32_as_usize(input)?;

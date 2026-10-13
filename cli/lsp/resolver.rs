@@ -30,12 +30,12 @@ use ende_npm_installer::initializer::NpmResolverManagedSnapshotOption;
 use ende_npm_installer::lifecycle_scripts::NullLifecycleScriptsExecutor;
 use ende_npm_installer::package_json::NpmInstallDepsProvider;
 use ende_npm_installer::resolution::NpmResolutionInstaller;
-use ende_resolver::DenoResolverOptions;
+use ende_resolver::EndeResolverOptions;
 use ende_resolver::NodeAndNpmResolvers;
 use ende_resolver::cjs::IsCjsResolutionMode;
-use ende_resolver::deno_json::CompilerOptionsModuleResolution;
-use ende_resolver::deno_json::CompilerOptionsResolver;
-use ende_resolver::deno_json::JsxImportSourceConfig;
+use ende_resolver::ende_json::CompilerOptionsModuleResolution;
+use ende_resolver::ende_json::CompilerOptionsResolver;
+use ende_resolver::ende_json::JsxImportSourceConfig;
 use ende_resolver::factory::npm_overrides_from_workspace;
 use ende_resolver::graph::FoundPackageJsonDepFlag;
 use ende_resolver::npm::CreateInNpmPkgCheckerOptions;
@@ -282,7 +282,7 @@ impl LspScopedResolver {
                 npm_resolution: factory.services.npm_resolution.clone(),
                 npm_system_info: NpmSystemInfo::default(),
                 linker_mode:
-                  ende_config::deno_json::NodeModulesLinkerMode::default(),
+                  ende_config::ende_json::NodeModulesLinkerMode::default(),
               }
             })
           }
@@ -514,13 +514,13 @@ impl LspScopedResolver {
     self.npm_installer_reqs.lock().clone()
   }
 
-  pub fn deno_types_to_code_resolution(
+  pub fn ende_types_to_code_resolution(
     &self,
     specifier: &ModuleSpecifier,
   ) -> Option<ModuleSpecifier> {
     let dep_info = self.dep_info.lock();
     dep_info
-      .deno_types_to_code_resolutions
+      .ende_types_to_code_resolutions
       .get(specifier)
       .cloned()
   }
@@ -764,7 +764,7 @@ impl LspResolver {
 
 #[derive(Debug, Default, Clone)]
 pub struct ScopeDepInfo {
-  pub deno_types_to_code_resolutions: HashMap<ModuleSpecifier, ModuleSpecifier>,
+  pub ende_types_to_code_resolutions: HashMap<ModuleSpecifier, ModuleSpecifier>,
   pub has_node_specifier: bool,
 }
 
@@ -1050,7 +1050,7 @@ impl<'a> ResolverFactory<'a> {
         .unwrap_or_else(|| Arc::new(create_default_npmrc(&sys)));
       let npm_cache_dir = Arc::new(NpmCacheDir::new(
         &sys,
-        cache.deno_dir().npm_folder_path(),
+        cache.ende_dir().npm_folder_path(),
         npmrc.get_all_known_registries_urls(),
       ));
       let npm_cache = Arc::new(CliNpmCache::new(
@@ -1144,7 +1144,7 @@ impl<'a> ResolverFactory<'a> {
           clean_on_install: false,
           maybe_lockfile,
           maybe_node_modules_path: maybe_node_modules_path.clone(),
-          linker_mode: ende_config::deno_json::NodeModulesLinkerMode::default(),
+          linker_mode: ende_config::ende_json::NodeModulesLinkerMode::default(),
           lifecycle_scripts: Arc::new(LifecycleScriptsConfig::default()),
           system_info: NpmSystemInfo::default(),
           workspace_link_packages: link_packages,
@@ -1165,7 +1165,7 @@ impl<'a> ResolverFactory<'a> {
         npmrc,
         npm_resolution: self.services.npm_resolution.clone(),
         npm_system_info: NpmSystemInfo::default(),
-        linker_mode: ende_config::deno_json::NodeModulesLinkerMode::default(),
+        linker_mode: ende_config::ende_json::NodeModulesLinkerMode::default(),
       })
     };
     self.set_npm_resolver(CliNpmResolver::<CliSys>::new(options));
@@ -1186,8 +1186,8 @@ impl<'a> ResolverFactory<'a> {
   pub fn cli_resolver(&self) -> &Arc<CliResolver> {
     self.services.cli_resolver.get_or_init(|| {
       let npm_req_resolver = self.npm_pkg_req_resolver().cloned();
-      let deno_resolver =
-        Arc::new(ende_resolver::RawDenoResolver::new(DenoResolverOptions {
+      let ende_resolver =
+        Arc::new(ende_resolver::RawEndeResolver::new(EndeResolverOptions {
           in_npm_pkg_checker: self.in_npm_pkg_checker().clone(),
           node_and_req_resolver: match (
             self.node_resolver(),
@@ -1212,7 +1212,7 @@ impl<'a> ResolverFactory<'a> {
             .and_then(|d| d.vendor_dir.as_ref()),
         }));
       Arc::new(CliResolver::new(
-        deno_resolver,
+        ende_resolver,
         CliSys::default(),
         self.services.found_pkg_json_dep_flag.clone(),
         Some(Arc::new(on_resolve_diagnostic)),
@@ -1361,7 +1361,7 @@ impl<'a> ResolverFactory<'a> {
             conditions: Default::default(),
             typescript_version: Some(
               deno_semver::Version::parse_standard(
-                ende_lib::version::DENO_VERSION_INFO.typescript,
+                ende_lib::version::ENDE_VERSION_INFO.typescript,
               )
               .unwrap(),
             ),

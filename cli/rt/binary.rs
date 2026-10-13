@@ -23,7 +23,7 @@ use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
 use ende_core::url::Url;
-use ende_lib::standalone::binary::DenoRtDeserializable;
+use ende_lib::standalone::binary::EndeRtDeserializable;
 use ende_lib::standalone::binary::MAGIC_BYTES;
 use ende_lib::standalone::binary::Metadata;
 use ende_lib::standalone::binary::RemoteModuleEntry;
@@ -620,7 +620,7 @@ impl StandaloneModules {
   pub fn read<'a>(
     &'a self,
     specifier: &'a Url,
-  ) -> Result<Option<DenoCompileModuleData<'a>>, JsErrorBox> {
+  ) -> Result<Option<EndeCompileModuleData<'a>>, JsErrorBox> {
     if specifier.scheme() == "file" {
       let path = deno_path_util::url_to_file_path(specifier)
         .map_err(JsErrorBox::from_err)?;
@@ -679,7 +679,7 @@ impl StandaloneModules {
         }
         Err(err) => return Err(JsErrorBox::from_err(err)),
       };
-      Ok(Some(DenoCompileModuleData {
+      Ok(Some(EndeCompileModuleData {
         media_type: MediaType::from_specifier(specifier),
         specifier,
         is_valid_utf8,
@@ -770,7 +770,7 @@ fn runtime_transpile_options(
       return fallback;
     };
     let cfg_path = 'outer: loop {
-      for name in ende_config::deno_json::CONFIG_FILE_NAMES {
+      for name in ende_config::ende_json::CONFIG_FILE_NAMES {
         let candidate = dir.join(name);
         if candidate.exists() {
           break 'outer Some(candidate);
@@ -871,7 +871,7 @@ fn transpile_options_from_compiler_options(
   }
 }
 
-pub struct DenoCompileModuleData<'a> {
+pub struct EndeCompileModuleData<'a> {
   pub specifier: &'a Url,
   pub media_type: MediaType,
   pub is_valid_utf8: bool,
@@ -881,21 +881,21 @@ pub struct DenoCompileModuleData<'a> {
   pub cjs_export_analysis: Option<Cow<'static, [u8]>>,
 }
 
-impl<'a> DenoCompileModuleData<'a> {
-  pub fn into_parts(self) -> (&'a Url, ModuleType, DenoCompileModuleSource) {
+impl<'a> EndeCompileModuleData<'a> {
+  pub fn into_parts(self) -> (&'a Url, ModuleType, EndeCompileModuleSource) {
     fn into_string_unsafe(
       is_valid_utf8: bool,
       data: Cow<'static, [u8]>,
-    ) -> DenoCompileModuleSource {
+    ) -> EndeCompileModuleSource {
       match data {
         Cow::Borrowed(d) if is_valid_utf8 => {
-          DenoCompileModuleSource::String(
+          EndeCompileModuleSource::String(
             // SAFETY: we know this is a valid utf8 string
             unsafe { std::str::from_utf8_unchecked(d) },
           )
         }
-        Cow::Borrowed(_) => DenoCompileModuleSource::Bytes(data),
-        Cow::Owned(d) => DenoCompileModuleSource::Bytes(Cow::Owned(d)),
+        Cow::Borrowed(_) => EndeCompileModuleSource::Bytes(data),
+        Cow::Owned(d) => EndeCompileModuleSource::Bytes(Cow::Owned(d)),
       }
     }
 
@@ -920,7 +920,7 @@ impl<'a> DenoCompileModuleData<'a> {
         into_string_unsafe(self.is_valid_utf8, data),
       ),
       MediaType::Wasm => {
-        (ModuleType::Wasm, DenoCompileModuleSource::Bytes(data))
+        (ModuleType::Wasm, EndeCompileModuleSource::Bytes(data))
       }
       // just assume javascript if we made it here
       MediaType::Css
@@ -931,7 +931,7 @@ impl<'a> DenoCompileModuleData<'a> {
       | MediaType::SourceMap
       | MediaType::Sql
       | MediaType::Unknown => {
-        (ModuleType::JavaScript, DenoCompileModuleSource::Bytes(data))
+        (ModuleType::JavaScript, EndeCompileModuleSource::Bytes(data))
       }
     };
     (self.specifier, media_type, source)
@@ -939,12 +939,12 @@ impl<'a> DenoCompileModuleData<'a> {
 }
 
 #[derive(Debug)]
-pub enum DenoCompileModuleSource {
+pub enum EndeCompileModuleSource {
   String(&'static str),
   Bytes(Cow<'static, [u8]>),
 }
 
-impl DenoCompileModuleSource {
+impl EndeCompileModuleSource {
   pub fn into_for_v8(self) -> ModuleSourceCode {
     match self {
       // todo(https://github.com/denoland/deno_core/pull/943): store whether
@@ -957,8 +957,8 @@ impl DenoCompileModuleSource {
 
   pub fn into_bytes_for_v8(self) -> ModuleCodeBytes {
     match self {
-      DenoCompileModuleSource::String(text) => text.as_bytes().into(),
-      DenoCompileModuleSource::Bytes(b) => module_source_into_bytes(b),
+      EndeCompileModuleSource::String(text) => text.as_bytes().into(),
+      EndeCompileModuleSource::Bytes(b) => module_source_into_bytes(b),
     }
   }
 }
@@ -1025,7 +1025,7 @@ impl RemoteModulesStore {
   pub fn read<'a>(
     &'a self,
     original_specifier: &'a Url,
-  ) -> Result<Option<DenoCompileModuleData<'a>>, TooManyRedirectsError> {
+  ) -> Result<Option<EndeCompileModuleData<'a>>, TooManyRedirectsError> {
     #[allow(clippy::ptr_arg, reason = "Cow on data is relevant here")]
     fn handle_cow_ref(data: &Cow<'static, [u8]>) -> Cow<'static, [u8]> {
       match data {
@@ -1056,7 +1056,7 @@ impl RemoteModulesStore {
           let Some(entry) = self.remote_modules.get(specifier) else {
             return Ok(None);
           };
-          return Ok(Some(DenoCompileModuleData {
+          return Ok(Some(EndeCompileModuleData {
             specifier: if count == 0 {
               original_specifier
             } else {

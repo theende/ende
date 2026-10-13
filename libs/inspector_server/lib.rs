@@ -1109,7 +1109,7 @@ mod tests {
   async fn inspector_routes_validate_host_and_preserve_forwarded_authority() {
     let server = InspectorServer::new(
       "127.0.0.1:0".parse().unwrap(),
-      "deno",
+      "ende",
       InspectPublishUid::default(),
     )
     .unwrap();

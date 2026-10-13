@@ -33,9 +33,9 @@ use crate::cache::EmitCacheRc;
 use crate::cache::EmitCacheSys;
 use crate::cache::ParsedSourceCacheRc;
 use crate::cjs::CjsTrackerRc;
-use crate::deno_json::CompilerOptionsParseError;
-use crate::deno_json::CompilerOptionsResolverRc;
-use crate::deno_json::TranspileAndEmitOptions;
+use crate::ende_json::CompilerOptionsParseError;
+use crate::ende_json::CompilerOptionsResolverRc;
+use crate::ende_json::TranspileAndEmitOptions;
 
 #[allow(
   clippy::disallowed_types,
@@ -281,7 +281,7 @@ impl<TInNpmPackageChecker: InNpmPackageChecker, TSys: EmitterSys>
     }
   }
 
-  pub fn emit_source_for_deno_compile(
+  pub fn emit_source_for_ende_compile(
     &self,
     specifier: &Url,
     media_type: MediaType,

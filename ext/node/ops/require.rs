@@ -437,10 +437,10 @@ pub fn op_require_real_path<TSys: ExtNodeSys + 'static>(
     deno_path_util::strip_unc_prefix(match sys.fs_canonicalize(&path) {
       Ok(path) => path,
       Err(err) => {
-        if path.ends_with("$deno$eval.cjs")
-          || path.ends_with("$deno$eval.cts")
-          || path.ends_with("$deno$stdin.cjs")
-          || path.ends_with("$deno$stdin.cts")
+        if path.ends_with("$ende$eval.cjs")
+          || path.ends_with("$ende$eval.cts")
+          || path.ends_with("$ende$stdin.cjs")
+          || path.ends_with("$ende$stdin.cts")
         {
           path.to_path_buf()
         } else {

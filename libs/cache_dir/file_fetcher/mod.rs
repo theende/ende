@@ -89,7 +89,7 @@ pub enum FileOrRedirect {
 }
 
 impl FileOrRedirect {
-  fn from_deno_cache_entry(
+  fn from_ende_cache_entry(
     url: &Url,
     cache_entry: CacheEntry,
   ) -> Result<Self, RedirectResolutionError> {
@@ -746,7 +746,7 @@ impl<TBlobStore: BlobStore, TSys: FileFetcherSys, THttpClient: HttpClient>
 
     match self.http_cache.get(&cache_key, maybe_checksum) {
       Ok(Some(entry)) => {
-        Ok(Some(FileOrRedirect::from_deno_cache_entry(url, entry)?))
+        Ok(Some(FileOrRedirect::from_ende_cache_entry(url, entry)?))
       }
       Ok(None) => Ok(None),
       Err(CacheReadFileError::Io(source)) => Err(
@@ -931,7 +931,7 @@ impl<TBlobStore: BlobStore, TSys: FileFetcherSys, THttpClient: HttpClient>
       }
       SendRequestResponse::NotModified => {
         let (cache_entry, _) = maybe_etag_cache_entry.unwrap();
-        FileOrRedirect::from_deno_cache_entry(url, cache_entry).map_err(|err| {
+        FileOrRedirect::from_ende_cache_entry(url, cache_entry).map_err(|err| {
           FetchNoFollowErrorKind::RedirectResolution(err).into_box()
         })
       }

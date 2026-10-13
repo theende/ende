@@ -1,4 +1,4 @@
-# ende_cache
+# ende_broadcast_channel
 
 This crate has been deprecated, use
 [ende_web](https://crates.io/crates/deno_web) instead.

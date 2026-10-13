@@ -106,7 +106,7 @@ pub async fn kernel(
   // --- Spawn the REPL on a background OS thread ---------------------
   let repl_worker_factory = Arc::clone(&worker_factory);
   let repl_main_module = resolve_url_or_path(
-    "./$deno$jupyter_repl.mts",
+    "./$ende$jupyter_repl.mts",
     cli_options_arc.initial_cwd(),
   )
   .unwrap();
@@ -189,7 +189,7 @@ pub async fn kernel(
 
   // --- Create the ZMQ kernel worker on the main thread ---------------
   let kernel_main_module = resolve_url_or_path(
-    "./$deno$jupyter_kernel.mts",
+    "./$ende$jupyter_kernel.mts",
     cli_options.initial_cwd(),
   )
   .unwrap();

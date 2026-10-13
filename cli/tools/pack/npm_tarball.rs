@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use ende_config::deno_json::ConfigFile;
+use ende_config::ende_json::ConfigFile;
 use ende_core::error::AnyError;
 use flate2::Compression;
 use flate2::write::GzEncoder;

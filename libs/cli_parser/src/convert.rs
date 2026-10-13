@@ -5,7 +5,7 @@
 //!
 //! Each subcommand has a dedicated conversion function that extracts
 //! the relevant parsed arguments and builds the corresponding
-//! `DenoSubcommand` variant plus any shared `Flags` fields.
+//! `EndeSubcommand` variant plus any shared `Flags` fields.
 
 use std::net::IpAddr;
 use std::net::SocketAddr;
@@ -124,7 +124,7 @@ pub fn flags_from_vec(args: Vec<String>) -> Result<Flags, CliError> {
       a
     })
     .collect();
-  let parsed = crate::parse::parse(&crate::defs::DENO_ROOT, &args)?;
+  let parsed = crate::parse::parse(&crate::defs::ENDE_ROOT, &args)?;
 
   // If --version was set at the root level (not as a subcommand flag like
   // `upgrade --version <value>`), return DisplayVersion.
@@ -136,7 +136,7 @@ pub fn flags_from_vec(args: Vec<String>) -> Result<Flags, CliError> {
 
   // If --help was set, generate help text
   if parsed.contains("help") {
-    let root = &crate::defs::DENO_ROOT;
+    let root = &crate::defs::ENDE_ROOT;
     let cmd = if let Some(ref sub) = parsed.subcommand {
       root.find_subcommand(sub).unwrap_or(root)
     } else {
@@ -145,7 +145,7 @@ pub fn flags_from_vec(args: Vec<String>) -> Result<Flags, CliError> {
     let help_text = crate::help::render_help(cmd);
     let mut flags = Flags::default();
     global_args_parse(&parsed, &mut flags);
-    flags.subcommand = DenoSubcommand::Help(HelpFlags { help: help_text });
+    flags.subcommand = EndeSubcommand::Help(HelpFlags { help: help_text });
     return Ok(flags);
   }
 
@@ -350,7 +350,7 @@ fn default_parse(
           })
           .filter_map(|a| {
             // Try to find the long flag name
-            let root = &crate::defs::DENO_ROOT;
+            let root = &crate::defs::ENDE_ROOT;
             let cmd = root.find_subcommand("run").unwrap_or(root);
             cmd
               .all_args()
@@ -369,7 +369,7 @@ fn default_parse(
         );
         // Only claim `<subcommand> <flag>` exists when that subcommand
         // actually accepts the flag (see issue #27336).
-        let accepts_flag = crate::defs::DENO_ROOT
+        let accepts_flag = crate::defs::ENDE_ROOT
           .find_subcommand(script)
           .is_some_and(|sub| {
             sub
@@ -403,7 +403,7 @@ fn default_parse(
       ));
     }
     flags.watch = watch;
-    flags.subcommand = DenoSubcommand::Run(RunFlags {
+    flags.subcommand = EndeSubcommand::Run(RunFlags {
       script: script.to_string(),
       bare: true,
       coverage_dir,
@@ -1310,7 +1310,7 @@ fn validate_permission_args(
     // Only check if this is not the REPL default (where allow_all is auto-set)
     if !matches!(
       flags.subcommand,
-      DenoSubcommand::Repl(ReplFlags {
+      EndeSubcommand::Repl(ReplFlags {
         is_default_command: true,
         ..
       })
@@ -1431,7 +1431,7 @@ fn run_parse(
       ));
     }
     flags.watch = watch;
-    flags.subcommand = DenoSubcommand::Run(RunFlags {
+    flags.subcommand = EndeSubcommand::Run(RunFlags {
       script: script.to_string(),
       bare: false,
       coverage_dir,
@@ -1439,7 +1439,7 @@ fn run_parse(
     });
   } else if !flags.v8_flags.is_empty() {
     // `deno run --v8-flags=--help` with no script
-    flags.subcommand = DenoSubcommand::Run(RunFlags {
+    flags.subcommand = EndeSubcommand::Run(RunFlags {
       script: "_".to_string(),
       bare: false,
       coverage_dir: None,
@@ -1447,7 +1447,7 @@ fn run_parse(
     });
   } else {
     // `deno run` with no script - show available tasks
-    flags.subcommand = DenoSubcommand::Run(RunFlags {
+    flags.subcommand = EndeSubcommand::Run(RunFlags {
       script: String::new(),
       bare: false,
       coverage_dir: None,
@@ -1485,7 +1485,7 @@ fn serve_parse(
   let parallel = result.get_bool("parallel");
 
   flags.watch = watch_arg_parse_with_paths(result);
-  flags.subcommand = DenoSubcommand::Serve(ServeFlags {
+  flags.subcommand = EndeSubcommand::Serve(ServeFlags {
     script,
     port,
     host,
@@ -1509,7 +1509,7 @@ fn eval_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
     .map(|s| s.to_string())
     .unwrap_or_default();
 
-  flags.subcommand = DenoSubcommand::Eval(EvalFlags { print, code });
+  flags.subcommand = EndeSubcommand::Eval(EvalFlags { print, code });
   Ok(())
 }
 
@@ -1559,7 +1559,7 @@ fn fmt_parse(result: &ParseResult, flags: &mut Flags) {
   let unstable_sql = result.get_bool("unstable-sql");
 
   flags.watch = watch_arg_parse_with_paths(result);
-  flags.subcommand = DenoSubcommand::Fmt(FmtFlags {
+  flags.subcommand = EndeSubcommand::Fmt(FmtFlags {
     check: result.get_bool("check"),
     fail_fast: result.get_bool("fail-fast"),
     files: FileFlags { include, ignore },
@@ -1605,7 +1605,7 @@ fn lint_parse(result: &ParseResult, flags: &mut Flags) {
   let compact = result.get_bool("compact");
 
   flags.watch = watch_arg_parse_with_paths(result);
-  flags.subcommand = DenoSubcommand::Lint(LintFlags {
+  flags.subcommand = EndeSubcommand::Lint(LintFlags {
     files: FileFlags {
       include: files,
       ignore,
@@ -1717,7 +1717,7 @@ fn test_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
   };
 
   flags.watch = watch_arg_parse_with_paths(result);
-  flags.subcommand = DenoSubcommand::Test(TestFlags {
+  flags.subcommand = EndeSubcommand::Test(TestFlags {
     no_run,
     doc,
     coverage_dir,
@@ -1837,7 +1837,7 @@ fn upgrade_parse(
       }
     };
 
-  flags.subcommand = DenoSubcommand::Upgrade(UpgradeFlags {
+  flags.subcommand = EndeSubcommand::Upgrade(UpgradeFlags {
     dry_run,
     force,
     release_candidate,
@@ -1863,7 +1863,7 @@ fn cache_parse(result: &ParseResult, flags: &mut Flags) {
     .get_many("files")
     .map(|v| v.iter().map(|s| s.to_string()).collect())
     .unwrap_or_default();
-  flags.subcommand = DenoSubcommand::Cache(CacheFlags { files });
+  flags.subcommand = EndeSubcommand::Cache(CacheFlags { files });
 }
 
 fn check_parse(result: &ParseResult, flags: &mut Flags) {
@@ -1884,7 +1884,7 @@ fn check_parse(result: &ParseResult, flags: &mut Flags) {
   }
 
   flags.watch = watch_arg_parse(result);
-  flags.subcommand = DenoSubcommand::Check(CheckFlags {
+  flags.subcommand = EndeSubcommand::Check(CheckFlags {
     files,
     doc: result.get_bool("doc"),
     doc_only: result.get_bool("doc-only"),
@@ -1909,7 +1909,7 @@ fn info_parse(result: &ParseResult, flags: &mut Flags) {
   allow_and_deny_import_parse(result, flags);
 
   let json = result.get_bool("json");
-  flags.subcommand = DenoSubcommand::Info(InfoFlags {
+  flags.subcommand = EndeSubcommand::Info(InfoFlags {
     file: result.get_one("file").map(|s| s.to_string()),
     json,
   });
@@ -1984,7 +1984,7 @@ fn doc_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
     None
   };
 
-  flags.subcommand = DenoSubcommand::Doc(DocFlags {
+  flags.subcommand = EndeSubcommand::Doc(DocFlags {
     source_files,
     json,
     lint,
@@ -2035,7 +2035,7 @@ fn task_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
     None => None,
   };
 
-  flags.subcommand = DenoSubcommand::Task(TaskFlags {
+  flags.subcommand = EndeSubcommand::Task(TaskFlags {
     cwd: result.get_one("cwd").map(|s| s.to_string()),
     task: task_name,
     is_run: false,
@@ -2074,7 +2074,7 @@ fn bench_parse(
   let no_run = result.get_bool("no-run");
 
   flags.watch = watch_arg_parse_with_paths(result);
-  flags.subcommand = DenoSubcommand::Bench(BenchFlags {
+  flags.subcommand = EndeSubcommand::Bench(BenchFlags {
     files: FileFlags { include, ignore },
     filter,
     json,
@@ -2118,7 +2118,7 @@ fn compile_parse(
   let args = result.trailing.clone();
 
   flags.watch = watch_arg_parse(result);
-  flags.subcommand = DenoSubcommand::Compile(CompileFlags {
+  flags.subcommand = EndeSubcommand::Compile(CompileFlags {
     source_file,
     output,
     args,
@@ -2186,7 +2186,7 @@ fn coverage_parse(
 
   let output = result.get_one("output").map(|s| s.to_string());
 
-  flags.subcommand = DenoSubcommand::Coverage(CoverageFlags {
+  flags.subcommand = EndeSubcommand::Coverage(CoverageFlags {
     files: FileFlags {
       include: files,
       ignore,
@@ -2235,7 +2235,7 @@ fn repl_parse(
     flags.permissions.allow_all = true;
   }
 
-  flags.subcommand = DenoSubcommand::Repl(repl_flags);
+  flags.subcommand = EndeSubcommand::Repl(repl_flags);
   Ok(())
 }
 
@@ -2259,7 +2259,7 @@ fn install_parse(
     let args = result.trailing.clone();
 
     flags.subcommand =
-      DenoSubcommand::Install(InstallFlags::Global(InstallFlagsGlobal {
+      EndeSubcommand::Install(InstallFlags::Global(InstallFlagsGlobal {
         name,
         module_urls,
         args,
@@ -2315,7 +2315,7 @@ fn install_parse(
       .get_many("cmd")
       .map(|v| v.iter().map(|s| s.to_string()).collect())
       .unwrap_or_default();
-    flags.subcommand = DenoSubcommand::Install(InstallFlags::Local(
+    flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
       InstallFlagsLocal::Entrypoints(InstallEntrypointsFlags {
         entrypoints,
         lockfile_only,
@@ -2344,7 +2344,7 @@ fn install_parse(
         // Default to npm when neither --npm nor --jsr is provided.
         Some(DefaultRegistry::Npm)
       };
-      flags.subcommand = DenoSubcommand::Install(InstallFlags::Local(
+      flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
         InstallFlagsLocal::Add(AddFlags {
           packages: packages.iter().map(|s| s.to_string()).collect(),
           dev,
@@ -2359,7 +2359,7 @@ fn install_parse(
         npm_target,
       ));
     } else {
-      flags.subcommand = DenoSubcommand::Install(InstallFlags::Local(
+      flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
         InstallFlagsLocal::TopLevel(InstallTopLevelFlags {
           lockfile_only,
           production,
@@ -2369,7 +2369,7 @@ fn install_parse(
       ));
     }
   } else {
-    flags.subcommand = DenoSubcommand::Install(InstallFlags::Local(
+    flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
       InstallFlagsLocal::TopLevel(InstallTopLevelFlags {
         lockfile_only,
         production,
@@ -2401,7 +2401,7 @@ fn uninstall_parse(result: &ParseResult, flags: &mut Flags) {
     })
   };
 
-  flags.subcommand = DenoSubcommand::Uninstall(UninstallFlags { kind });
+  flags.subcommand = EndeSubcommand::Uninstall(UninstallFlags { kind });
 }
 
 fn completions_parse(result: &ParseResult, flags: &mut Flags) {
@@ -2415,11 +2415,11 @@ fn completions_parse(result: &ParseResult, flags: &mut Flags) {
     && matches!(shell.as_str(), "bash" | "fish" | "zsh")
   {
     flags.subcommand =
-      DenoSubcommand::Completions(CompletionsFlags::Dynamic { shell });
+      EndeSubcommand::Completions(CompletionsFlags::Dynamic { shell });
     return;
   }
-  let buf = crate::completions::generate(&shell, &crate::defs::DENO_ROOT);
-  flags.subcommand = DenoSubcommand::Completions(CompletionsFlags::Static(
+  let buf = crate::completions::generate(&shell, &crate::defs::ENDE_ROOT);
+  flags.subcommand = EndeSubcommand::Completions(CompletionsFlags::Static(
     buf.into_boxed_slice(),
   ));
 }
@@ -2482,7 +2482,7 @@ fn init_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
     ));
   }
 
-  flags.subcommand = DenoSubcommand::Init(InitFlags {
+  flags.subcommand = EndeSubcommand::Init(InitFlags {
     package,
     package_args,
     dir,
@@ -2510,7 +2510,7 @@ fn create_parse(
 
   let package = normalize_create_package_name(package, use_npm, use_jsr)?;
 
-  flags.subcommand = DenoSubcommand::Init(InitFlags {
+  flags.subcommand = EndeSubcommand::Init(InitFlags {
     package: Some(package),
     package_args,
     dir: None,
@@ -2575,7 +2575,7 @@ fn jupyter_parse(result: &ParseResult, flags: &mut Flags) {
   let name = result.get_one("name").map(|s| s.to_string());
   let force = result.get_bool("force");
 
-  flags.subcommand = DenoSubcommand::Jupyter(JupyterFlags {
+  flags.subcommand = EndeSubcommand::Jupyter(JupyterFlags {
     install,
     kernel,
     conn_file,
@@ -2591,7 +2591,7 @@ fn publish_parse(result: &ParseResult, flags: &mut Flags) {
   check_arg_parse(result, flags);
   config_args_parse(result, flags);
 
-  flags.subcommand = DenoSubcommand::Publish(PublishFlags {
+  flags.subcommand = EndeSubcommand::Publish(PublishFlags {
     token: result.get_one("token").map(|s| s.to_string()),
     dry_run: result.get_bool("dry-run"),
     allow_slow_types: result.get_bool("allow-slow-types"),
@@ -2620,7 +2620,7 @@ fn add_parse(result: &ParseResult, flags: &mut Flags) {
     Some(DefaultRegistry::Npm)
   };
 
-  flags.subcommand = DenoSubcommand::Add(AddFlags {
+  flags.subcommand = EndeSubcommand::Add(AddFlags {
     packages,
     dev,
     optional: result.get_bool("save-optional"),
@@ -2645,7 +2645,7 @@ fn pack_parse(result: &ParseResult, flags: &mut Flags) {
     .get_many("ignore")
     .map(|v| v.iter().map(|s| s.to_string()).collect())
     .unwrap_or_default();
-  flags.subcommand = DenoSubcommand::Pack(PackFlags {
+  flags.subcommand = EndeSubcommand::Pack(PackFlags {
     files: FileFlags { include, ignore },
     output: result.get_one("output").map(|s| s.to_string()),
     dry_run: result.get_bool("dry-run"),
@@ -2701,7 +2701,7 @@ fn desktop_parse(
     .map(|v| v.iter().map(|s| s.to_string()).collect())
     .unwrap_or_default();
 
-  flags.subcommand = DenoSubcommand::Desktop(DesktopFlags {
+  flags.subcommand = EndeSubcommand::Desktop(DesktopFlags {
     source_file,
     output: result.get_one("output").map(|s| s.to_string()),
     args,
@@ -2731,7 +2731,7 @@ fn desktop_parse(
 fn ci_parse(result: &ParseResult, flags: &mut Flags) {
   env_file_arg_parse(result, flags);
   flags.frozen_lockfile = Some(true);
-  flags.subcommand = DenoSubcommand::Ci(CiFlags {
+  flags.subcommand = EndeSubcommand::Ci(CiFlags {
     production: result.get_bool("prod"),
     skip_types: result.get_bool("skip-types"),
   });
@@ -2766,7 +2766,7 @@ fn bump_version_parse(
   } else {
     None
   };
-  flags.subcommand = DenoSubcommand::BumpVersion(VersionFlags {
+  flags.subcommand = EndeSubcommand::BumpVersion(VersionFlags {
     increment,
     workspace,
     start: result.get_one("start").map(|s| s.to_string()),
@@ -2789,7 +2789,7 @@ fn transpile_parse(result: &ParseResult, flags: &mut Flags) {
     Some("separate") => SourceMapMode::Separate,
     _ => SourceMapMode::None,
   };
-  flags.subcommand = DenoSubcommand::Transpile(TranspileFlags {
+  flags.subcommand = EndeSubcommand::Transpile(TranspileFlags {
     files,
     output: result.get_one("output").map(|s| s.to_string()),
     output_dir: result.get_one("outdir").map(|s| s.to_string()),
@@ -2802,7 +2802,7 @@ fn why_parse(result: &ParseResult, flags: &mut Flags) {
   lock_args_parse(result, flags);
   env_file_arg_parse(result, flags);
   let package = result.get_one("package").map(|s| s.to_string());
-  flags.subcommand = DenoSubcommand::Why(WhyFlags {
+  flags.subcommand = EndeSubcommand::Why(WhyFlags {
     package: package.unwrap_or_default(),
   });
 }
@@ -2821,13 +2821,13 @@ fn remove_parse(result: &ParseResult, flags: &mut Flags) {
   // same subcommand the uninstaller uses.
   if result.get_bool("global") {
     let root = result.get_one("root").map(|s| s.to_string());
-    flags.subcommand = DenoSubcommand::Uninstall(UninstallFlags {
+    flags.subcommand = EndeSubcommand::Uninstall(UninstallFlags {
       kind: UninstallKind::Global(UninstallFlagsGlobal { packages, root }),
     });
     return;
   }
 
-  flags.subcommand = DenoSubcommand::Remove(RemoveFlags {
+  flags.subcommand = EndeSubcommand::Remove(RemoveFlags {
     packages,
     lockfile_only: result.get_bool("lockfile-only"),
     package_json: result.get_bool("package-json"),
@@ -2855,7 +2855,7 @@ fn outdated_parse(result: &ParseResult, flags: &mut Flags, is_update: bool) {
     OutdatedKind::PrintOutdated { compatible }
   };
 
-  flags.subcommand = DenoSubcommand::Outdated(OutdatedFlags {
+  flags.subcommand = EndeSubcommand::Outdated(OutdatedFlags {
     filters,
     recursive,
     kind,
@@ -2877,7 +2877,7 @@ fn clean_parse(result: &ParseResult, flags: &mut Flags) {
   }
   let dry_run = result.get_bool("dry-run");
 
-  flags.subcommand = DenoSubcommand::Clean(CleanFlags {
+  flags.subcommand = EndeSubcommand::Clean(CleanFlags {
     except_paths,
     dry_run,
   });
@@ -2888,7 +2888,7 @@ fn list_parse(result: &ParseResult, flags: &mut Flags) {
     .get_many("filters")
     .map(|v| v.iter().map(|s| s.to_string()).collect())
     .unwrap_or_default();
-  flags.subcommand = DenoSubcommand::List(ListFlags {
+  flags.subcommand = EndeSubcommand::List(ListFlags {
     recursive: result.get_bool("recursive"),
     depth: result
       .get_one("depth")
@@ -2902,7 +2902,7 @@ fn list_parse(result: &ParseResult, flags: &mut Flags) {
 
 fn link_parse(result: &ParseResult, flags: &mut Flags) {
   lock_args_parse(result, flags);
-  flags.subcommand = DenoSubcommand::Link(LinkFlags {
+  flags.subcommand = EndeSubcommand::Link(LinkFlags {
     paths: result
       .get_many("paths")
       .map(|v| v.iter().map(|s| s.to_string()).collect())
@@ -2913,7 +2913,7 @@ fn link_parse(result: &ParseResult, flags: &mut Flags) {
 
 fn unlink_parse(result: &ParseResult, flags: &mut Flags) {
   lock_args_parse(result, flags);
-  flags.subcommand = DenoSubcommand::Unlink(UnlinkFlags {
+  flags.subcommand = EndeSubcommand::Unlink(UnlinkFlags {
     names_or_paths: result
       .get_many("names_or_paths")
       .map(|v| v.iter().map(|s| s.to_string()).collect())
@@ -2923,7 +2923,7 @@ fn unlink_parse(result: &ParseResult, flags: &mut Flags) {
 }
 
 fn approve_scripts_parse(result: &ParseResult, flags: &mut Flags) {
-  flags.subcommand = DenoSubcommand::ApproveScripts(ApproveScriptsFlags {
+  flags.subcommand = EndeSubcommand::ApproveScripts(ApproveScriptsFlags {
     packages: result
       .get_many("packages")
       .map(|v| v.iter().map(|s| s.to_string()).collect())
@@ -2933,22 +2933,22 @@ fn approve_scripts_parse(result: &ParseResult, flags: &mut Flags) {
 }
 
 fn types_parse(flags: &mut Flags) {
-  flags.subcommand = DenoSubcommand::Types;
+  flags.subcommand = EndeSubcommand::Types;
 }
 
 fn lsp_parse(flags: &mut Flags) {
-  flags.subcommand = DenoSubcommand::Lsp;
+  flags.subcommand = EndeSubcommand::Lsp;
 }
 
 fn vendor_parse(flags: &mut Flags) {
-  flags.subcommand = DenoSubcommand::Vendor;
+  flags.subcommand = EndeSubcommand::Vendor;
 }
 
 fn deploy_parse(flags: &mut Flags, sandbox: bool) {
   // deploy/sandbox are passthrough - all args go into argv. Note that argv is
   // filled in by the shared trailing-arg handling in `flags_from_vec`, so this
   // must not copy `result.trailing` itself or every arg would be duplicated.
-  flags.subcommand = DenoSubcommand::Deploy(DeployFlags { sandbox });
+  flags.subcommand = EndeSubcommand::Deploy(DeployFlags { sandbox });
 }
 
 // ============================================================
@@ -3183,7 +3183,18 @@ fn bundle_parse(result: &ParseResult, flags: &mut Flags) {
   let platform_str = result.get_one("platform").unwrap_or("ende");
   let platform = match platform_str {
     "browser" => BundlePlatform::Browser,
-    _ => BundlePlatform::Deno,
+    _ => {
+      if platform_str == "deno" {
+        // use eprintln instead of log::warn because logging hasn't been initialized yet
+        #[allow(clippy::print_stderr, reason = "can't use log crate yet")]
+        {
+          eprintln!(
+            "Warning: The bundle platform \"deno\" is deprecated. Use \"ende\" instead."
+          );
+        }
+      }
+      BundlePlatform::Ende
+    }
   };
   // `--sourcemap` takes an optional value that must be attached with `=`, so a
   // bare `--sourcemap` means "linked" and never swallows the next argument.
@@ -3201,7 +3212,7 @@ fn bundle_parse(result: &ParseResult, flags: &mut Flags) {
     .map(|v| v.to_vec())
     .unwrap_or_default();
 
-  flags.subcommand = DenoSubcommand::Bundle(BundleFlags {
+  flags.subcommand = EndeSubcommand::Bundle(BundleFlags {
     entrypoints,
     output_path,
     output_dir,
@@ -3244,7 +3255,7 @@ fn audit_parse(
     .map(|v| v.to_vec())
     .unwrap_or_default();
 
-  flags.subcommand = DenoSubcommand::Audit(AuditFlags {
+  flags.subcommand = EndeSubcommand::Audit(AuditFlags {
     severity,
     dev: true,
     prod: true,
@@ -3265,10 +3276,10 @@ fn x_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
       goto_script(result, flags)?
     } else {
       let name = match alias {
-        "dx" => DenoXShimName::Dx,
-        "denox" => DenoXShimName::Denox,
-        "dnx" => DenoXShimName::Dnx,
-        other => DenoXShimName::Other(other.to_string()),
+        "dx" => EndeXShimName::Dx,
+        "denox" => EndeXShimName::Denox,
+        "dnx" => EndeXShimName::Dnx,
+        other => EndeXShimName::Other(other.to_string()),
       };
       XFlagsKind::InstallAlias(name)
     }
@@ -3304,18 +3315,18 @@ fn x_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
   if !flags.permissions.has_permission() && flags.permission_set.is_none() {
     flags.permissions.allow_all = true;
   }
-  flags.subcommand = DenoSubcommand::X(XFlags { kind });
+  flags.subcommand = EndeSubcommand::X(XFlags { kind });
   Ok(())
 }
 
 fn json_reference_parse(flags: &mut Flags) {
   // Build a JSON representation of all commands from our static definitions.
   // This replaces the clap-based json_reference_parse.
-  let root = &crate::defs::DENO_ROOT;
+  let root = &crate::defs::ENDE_ROOT;
   let json_str = serialize_command_def(root, true);
   let json = ende_core::serde_json::from_str(&json_str)
     .unwrap_or_else(|_| ende_core::serde_json::Value::Null);
-  flags.subcommand = DenoSubcommand::JSONReference(JSONReferenceFlags { json });
+  flags.subcommand = EndeSubcommand::JSONReference(JSONReferenceFlags { json });
 }
 
 fn serialize_command_def(cmd: &crate::CommandDef, top_level: bool) -> String {
@@ -3444,11 +3455,11 @@ fn json_escape_option(s: Option<&str>) -> String {
 }
 
 fn help_subcommand_parse(result: &ParseResult, flags: &mut Flags) {
-  let root = &crate::defs::DENO_ROOT;
+  let root = &crate::defs::ENDE_ROOT;
   let sub_name = result.get_one("subcommand");
   let cmd = sub_name
     .and_then(|name| root.find_subcommand(name))
     .unwrap_or(root);
   let help_text = crate::help::render_help(cmd);
-  flags.subcommand = DenoSubcommand::Help(HelpFlags { help: help_text });
+  flags.subcommand = EndeSubcommand::Help(HelpFlags { help: help_text });
 }

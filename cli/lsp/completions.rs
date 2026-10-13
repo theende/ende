@@ -957,14 +957,14 @@ fn get_remote_completions(
 
 /// Returns true if the given file URL points to a config file (`ende.json`,
 /// `ende.jsonc` or the deprecated `deno.json`/`deno.jsonc`).
-pub fn is_deno_config_url(url: &ModuleSpecifier) -> bool {
+pub fn is_ende_config_url(url: &ModuleSpecifier) -> bool {
   if url.scheme() != "file" {
     return false;
   }
   let Some(name) = url.path_segments().and_then(|mut s| s.next_back()) else {
     return false;
   };
-  ende_config::deno_json::is_config_file_name(name)
+  ende_config::ende_json::is_config_file_name(name)
 }
 
 /// Walk a `jsonc_parser` AST looking for the innermost string literal whose
@@ -1043,7 +1043,7 @@ fn jsonc_string_to_narrow_lsp_range(
 /// `imports` (or `scopes.<scope>.<key>`) entry inside a Deno configuration
 /// file. Returns `None` if the position isn't inside such a value, so the
 /// caller can fall through to other completion providers.
-pub async fn get_deno_json_import_completions(
+pub async fn get_ende_json_import_completions(
   referrer: &ModuleSpecifier,
   text: &str,
   line_index: &LineIndex,
@@ -1052,7 +1052,7 @@ pub async fn get_deno_json_import_completions(
 ) -> Option<lsp::CompletionResponse> {
   let jsr_search_api = cx.jsr_search_api;
   let npm_search_api = cx.npm_search_api;
-  if !is_deno_config_url(referrer) {
+  if !is_ende_config_url(referrer) {
     return None;
   }
   let offset_u32: u32 = line_index.offset(*position).ok()?.into();
@@ -1130,7 +1130,7 @@ mod tests {
   use std::collections::HashMap;
 
   use ende_core::resolve_url;
-  use ende_resolver::deno_json::CompilerOptionsKey;
+  use ende_resolver::ende_json::CompilerOptionsKey;
   use pretty_assertions::assert_eq;
   use test_util::TempDir;
 

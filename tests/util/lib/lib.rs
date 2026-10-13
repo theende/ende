@@ -31,7 +31,7 @@ mod semaphore;
 pub mod test_runner;
 mod wildcard;
 
-pub use builders::DenoChild;
+pub use builders::EndeChild;
 pub use builders::TestCommandBuilder;
 pub use builders::TestCommandOutput;
 pub use builders::TestContext;
@@ -183,7 +183,7 @@ pub fn napi_tests_path() -> PathRef {
   root_path().join("tests").join("napi")
 }
 
-pub fn deno_config_path() -> PathRef {
+pub fn ende_config_path() -> PathRef {
   root_path().join("tests").join("config").join("ende.json")
 }
 
@@ -256,7 +256,7 @@ pub fn target_dir() -> PathRef {
   PathRef::new(target_dir)
 }
 
-pub fn deno_exe_path() -> PathRef {
+pub fn ende_exe_path() -> PathRef {
   // Allow overriding the deno executable path via environment variable
   if let Ok(path) = std::env::var("ENDE_TEST_UTIL_ENDE_EXE") {
     return PathRef::new(PathBuf::from(path));
@@ -269,7 +269,7 @@ pub fn deno_exe_path() -> PathRef {
   PathRef::new(p)
 }
 
-pub fn denort_exe_path() -> PathRef {
+pub fn endert_exe_path() -> PathRef {
   let mut p = target_dir().join("endert").to_path_buf();
   if cfg!(windows) {
     p.set_extension("exe");
@@ -517,24 +517,24 @@ pub fn run_and_collect_output_with_args(
   envs: Option<Vec<(String, String)>>,
   need_http_server: bool,
 ) -> (String, String) {
-  let mut deno_process_builder = deno_cmd()
+  let mut ende_process_builder = ende_cmd()
     .args_vec(args)
     .current_dir(testdata_path())
     .stdin(Stdio::piped())
     .piped_output();
   if let Some(envs) = envs {
-    deno_process_builder = deno_process_builder.envs(envs);
+    ende_process_builder = ende_process_builder.envs(envs);
   }
   let _http_guard = if need_http_server {
     Some(http_server())
   } else {
     None
   };
-  let mut deno = deno_process_builder
+  let mut ende = ende_process_builder
     .spawn()
     .expect("failed to spawn script");
   if let Some(lines) = input {
-    let stdin = deno.stdin.as_mut().expect("failed to get stdin");
+    let stdin = ende.stdin.as_mut().expect("failed to get stdin");
     stdin
       .write_all(lines.join("\n").as_bytes())
       .expect("failed to write to stdin");
@@ -543,7 +543,7 @@ pub fn run_and_collect_output_with_args(
     stdout,
     stderr,
     status,
-  } = deno.wait_with_output().expect("failed to wait on child");
+  } = ende.wait_with_output().expect("failed to wait on child");
   let stdout = String::from_utf8(stdout).unwrap();
   let stderr = String::from_utf8(stderr).unwrap();
   if expect_success != status.success() {
@@ -554,18 +554,18 @@ pub fn run_and_collect_output_with_args(
   (stdout, stderr)
 }
 
-pub fn new_deno_dir() -> TempDir {
+pub fn new_ende_dir() -> TempDir {
   TempDir::new()
 }
 
-pub fn deno_cmd() -> TestCommandBuilder {
-  let deno_dir = new_deno_dir();
-  deno_cmd_with_deno_dir(&deno_dir)
+pub fn ende_cmd() -> TestCommandBuilder {
+  let ende_dir = new_ende_dir();
+  ende_cmd_with_ende_dir(&ende_dir)
 }
 
-pub fn deno_cmd_with_deno_dir(deno_dir: &TempDir) -> TestCommandBuilder {
-  TestCommandBuilder::new(deno_dir.clone())
-    .env("ENDE_DIR", deno_dir.path())
+pub fn ende_cmd_with_ende_dir(ende_dir: &TempDir) -> TestCommandBuilder {
+  TestCommandBuilder::new(ende_dir.clone())
+    .env("ENDE_DIR", ende_dir.path())
     .env("NPM_CONFIG_REGISTRY", npm_registry_unset_url())
     .env("JSR_NPM_URL", npm_jsr_registry_unset_url())
     .env("NODEJS_ORG_MIRROR", nodejs_org_mirror_unset_url())
@@ -576,11 +576,11 @@ pub fn run_powershell_script_file(
   script_file_path: &str,
   args: Vec<&str>,
 ) -> std::result::Result<(), i64> {
-  let deno_dir = new_deno_dir();
+  let ende_dir = new_ende_dir();
   let mut command = Command::new("powershell.exe");
 
   command
-    .env("ENDE_DIR", deno_dir.path())
+    .env("ENDE_DIR", ende_dir.path())
     .current_dir(testdata_path())
     .arg("-file")
     .arg(script_file_path);
@@ -662,9 +662,9 @@ impl CheckOutputIntegrationTest<'_> {
   }
 }
 
-pub fn with_pty(deno_args: &[&str], action: impl FnMut(Pty)) {
+pub fn with_pty(ende_args: &[&str], action: impl FnMut(Pty)) {
   let context = TestContextBuilder::default().use_temp_cwd().build();
-  context.new_command().args_vec(deno_args).with_pty(action);
+  context.new_command().args_vec(ende_args).with_pty(action);
 }
 
 pub(crate) mod colors {

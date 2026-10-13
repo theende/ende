@@ -15,7 +15,7 @@ use deno_ast::ModuleSpecifier;
 use deno_ast::ParsedSource;
 use deno_graph::ModuleGraph;
 use deno_lint::diagnostic::LintDiagnostic;
-use ende_config::deno_json::LintRulesConfig;
+use ende_config::ende_json::LintRulesConfig;
 use ende_config::glob::FileCollector;
 use ende_config::glob::FilePatterns;
 use ende_config::workspace::WorkspaceDirectory;
@@ -31,7 +31,7 @@ use ende_core::unsync::future::LocalFutureExt;
 use ende_core::unsync::future::SharedLocal;
 use ende_lib::util::hash::FastInsecureHasher;
 use ende_print::drop_println;
-use ende_resolver::deno_json::CompilerOptionsResolver;
+use ende_resolver::ende_json::CompilerOptionsResolver;
 use log::debug;
 use reporters::LintReporter;
 use reporters::create_reporter;
@@ -76,7 +76,7 @@ pub use rules::collect_no_slow_type_diagnostics;
 
 const JSON_SCHEMA_VERSION: u8 = 1;
 
-static STDIN_FILE_NAME: &str = "$deno$stdin.mts";
+static STDIN_FILE_NAME: &str = "$ende$stdin.mts";
 
 pub async fn lint(
   flags: Arc<Flags>,
@@ -310,7 +310,7 @@ impl WorkspaceLinter {
     // TODO(bartlomieju): for now we don't support incremental caching if plugins are being used.
     // https://github.com/denoland/deno/issues/28025
     if lint_rules.supports_incremental_cache() && plugin_specifiers.is_empty() {
-      let mut hasher = FastInsecureHasher::new_deno_versioned();
+      let mut hasher = FastInsecureHasher::new_ende_versioned();
       hasher.write_hashable(lint_rules.incremental_cache_state());
       if !plugin_specifiers.is_empty() {
         hasher.write_hashable(&plugin_specifiers);

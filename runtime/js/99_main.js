@@ -108,10 +108,10 @@ const lazyFetchMod = () =>
     (_fetchMod = core.loadExtScript("ext:ende_fetch/26_fetch.js"));
 const messagePort = core.loadExtScript("ext:ende_web/13_message_port.js");
 import {
-  denoNs,
-  denoNsUnstableById,
+  endeNs,
+  endeNsUnstableById,
   unstableIds,
-} from "ext:runtime/90_deno_ns.js";
+} from "ext:runtime/90_ende_ns.js";
 const { errors } = core.loadExtScript("ext:runtime/01_errors.js");
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const {
@@ -543,7 +543,7 @@ core.registerErrorBuilder(
 );
 
 function runtimeStart(
-  denoVersion,
+  endeVersion,
   v8Version,
   tsVersion,
   target,
@@ -555,7 +555,7 @@ function runtimeStart(
   core.setReportExceptionCallback(event.reportException);
   op_set_format_exception_callback(formatException);
   version.setVersions(
-    denoVersion,
+    endeVersion,
     v8Version,
     tsVersion,
   );
@@ -795,12 +795,12 @@ const noopTestEach = () => () => {};
 noopTest.each = noopTestEach;
 noopTest.only.each = noopTestEach;
 noopTest.ignore.each = noopTestEach;
-// Build finalDenoNs without spreading denoNs: spread invokes every getter,
+// Build finalEndeNs without spreading endeNs: spread invokes every getter,
 // including the lazy ones (Deno.serve / Deno.run / etc.) that intentionally
 // avoid loading 06_streams / 22_body / 40_process at snapshot time. Use
 // ObjectDefineProperties + getOwnPropertyDescriptors to preserve the lazy
 // descriptors.
-const finalDenoNs = ObjectDefineProperties(
+const finalEndeNs = ObjectDefineProperties(
   {
     internal: internalSymbol,
     [internalSymbol]: internals,
@@ -817,10 +817,10 @@ const finalDenoNs = ObjectDefineProperties(
       },
     },
   },
-  getSafeOwnPropertyDescriptors(denoNs),
+  getSafeOwnPropertyDescriptors(endeNs),
 );
 
-ObjectDefineProperties(finalDenoNs, {
+ObjectDefineProperties(finalEndeNs, {
   pid: core.propGetterOnly(opPid),
   // `ppid` should not be memoized.
   // https://github.com/denoland/deno/issues/23004
@@ -951,7 +951,7 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
     captureHexMethods();
 
     const {
-      0: denoVersion,
+      0: endeVersion,
       1: location_,
       2: unstableFeatures,
       5: hasNodeModulesDir,
@@ -970,7 +970,7 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
       19: disableOffscreenCanvas,
     } = runtimeOptions;
 
-    denoNs.build.standalone = standalone;
+    endeNs.build.standalone = standalone;
 
     let serveIsMain_ = serveIsMain;
     let serveWorkerCountOrIndex_ = serveWorkerCountOrIndex;
@@ -1122,7 +1122,7 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
     event.defineEventHandler(globalThis, "unload");
 
     runtimeStart(
-      denoVersion,
+      endeVersion,
       v8Version,
       tsVersion,
       target,
@@ -1132,7 +1132,7 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
     // above any properties that are defined elsewhere using `Object.defineProperty`
     // are lost.
     let jupyterNs = undefined;
-    ObjectDefineProperty(finalDenoNs, "jupyter", {
+    ObjectDefineProperty(finalEndeNs, "jupyter", {
       __proto__: null,
       get() {
         if (jupyterNs) {
@@ -1149,10 +1149,10 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
 
     for (let i = 0; i <= unstableFeatures.length; i++) {
       const id = unstableFeatures[i];
-      const unstable = denoNsUnstableById[id];
+      const unstable = endeNsUnstableById[id];
       if (unstable) {
         ObjectDefineProperties(
-          finalDenoNs,
+          finalEndeNs,
           getSafeOwnPropertyDescriptors(unstable),
         );
       }
@@ -1162,7 +1162,7 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
       disableProtoAccessor();
     }
 
-    installEndeNamespace(finalDenoNs);
+    installEndeNamespace(finalEndeNs);
 
     const nodeBootstrapArgs = {
       usesLocalNodeModulesDir: hasNodeModulesDir,
@@ -1175,8 +1175,8 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
       // without reading Deno.* (the no-deno-api-in-polyfills lint counts
       // Deno.* references in node polyfills; passing them in keeps process.ts
       // at zero new violations).
-      denoArgs: finalDenoNs.args,
-      denoVersion: finalDenoNs.version,
+      denoArgs: finalEndeNs.args,
+      denoVersion: finalEndeNs.version,
     };
     if (nodeBootstrap) {
       nodeBootstrap(nodeBootstrapArgs);
@@ -1221,7 +1221,7 @@ function bootstrapWorkerRuntime(
     captureHexMethods();
 
     const {
-      0: denoVersion,
+      0: endeVersion,
       1: location_,
       2: unstableFeatures,
       4: enableTestingFeaturesFlag,
@@ -1235,7 +1235,7 @@ function bootstrapWorkerRuntime(
       19: disableOffscreenCanvas,
     } = runtimeOptions;
 
-    denoNs.build.standalone = standalone;
+    endeNs.build.standalone = standalone;
 
     closeOnIdle = runtimeOptions[14];
 
@@ -1292,7 +1292,7 @@ function bootstrapWorkerRuntime(
     });
 
     runtimeStart(
-      denoVersion,
+      endeVersion,
       v8Version,
       tsVersion,
       target,
@@ -1306,24 +1306,24 @@ function bootstrapWorkerRuntime(
 
     for (let i = 0; i <= unstableFeatures.length; i++) {
       const id = unstableFeatures[i];
-      const unstable = denoNsUnstableById[id];
+      const unstable = endeNsUnstableById[id];
       if (unstable) {
         ObjectDefineProperties(
-          finalDenoNs,
+          finalEndeNs,
           getSafeOwnPropertyDescriptors(unstable),
         );
       }
     }
 
     // Not available in workers
-    const moduleSpecifier = finalDenoNs.mainModule;
-    delete finalDenoNs.mainModule;
+    const moduleSpecifier = finalEndeNs.mainModule;
+    delete finalEndeNs.mainModule;
 
     if (!ArrayPrototypeIncludes(unstableFeatures, unstableIds.unsafeProto)) {
       disableProtoAccessor();
     }
 
-    installEndeNamespace(finalDenoNs);
+    installEndeNamespace(finalEndeNs);
 
     const workerMetadata = maybeWorkerMetadata
       ? messagePort.deserializeJsMessageData(maybeWorkerMetadata)
@@ -1341,8 +1341,8 @@ function bootstrapWorkerRuntime(
       moduleSpecifier: workerType === "node" ? moduleSpecifier : null,
       // Stashed so process.ts's self-trigger can call __bootstrapNodeProcess
       // without reading Deno.* (see the main-thread branch above).
-      denoArgs: finalDenoNs.args,
-      denoVersion: finalDenoNs.version,
+      denoArgs: finalEndeNs.args,
+      denoVersion: finalEndeNs.version,
     };
     if (nodeBootstrap) {
       nodeBootstrap(nodeBootstrapArgs);

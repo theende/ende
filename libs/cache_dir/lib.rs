@@ -4,7 +4,7 @@
 
 mod cache;
 mod common;
-mod deno_dir;
+mod ende_dir;
 #[cfg(feature = "file_fetcher")]
 pub mod file_fetcher;
 mod global;
@@ -28,10 +28,10 @@ pub use cache::NOT_FOUND_CACHE_HEADER;
 pub use cache::SerializedCachedUrlMetadata;
 pub use cache::url_to_filename;
 pub use common::HeadersMap;
-pub use deno_dir::DenoDirResolutionError;
-pub use deno_dir::ResolveDenoDirOptions;
-pub use deno_dir::ResolveDenoDirSys;
-pub use deno_dir::resolve_deno_dir;
+pub use ende_dir::EndeDirResolutionError;
+pub use ende_dir::ResolveEndeDirOptions;
+pub use ende_dir::ResolveEndeDirSys;
+pub use ende_dir::resolve_ende_dir;
 pub use global::GlobalHttpCache;
 pub use global::GlobalHttpCacheRc;
 pub use global::GlobalHttpCacheSys;

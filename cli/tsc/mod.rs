@@ -25,7 +25,7 @@ use ende_core::serde::Serializer;
 use ende_core::url::Url;
 use ende_lib::util::checksum;
 use ende_lib::util::hash::FastInsecureHasher;
-use ende_resolver::deno_json::JsxImportSourceConfigResolver;
+use ende_resolver::ende_json::JsxImportSourceConfigResolver;
 use ende_resolver::npm::ResolvePkgFolderFromDenoReqError;
 use ende_resolver::npm::managed::ResolvePkgFolderFromDenoModuleError;
 use indexmap::IndexMap;
@@ -455,7 +455,7 @@ fn get_maybe_hash(
 }
 
 fn get_hash(source: &str, hash_data: u64) -> String {
-  FastInsecureHasher::new_without_deno_version()
+  FastInsecureHasher::new_without_ende_version()
     .write_str(source)
     .write_u64(hash_data)
     .finish()
@@ -659,7 +659,7 @@ pub enum RawImportKind {
 }
 
 /// We store the raw import kind in the fragment of the Url
-/// like `#denoRawImport=text`. This is necessary because
+/// like `#endeRawImport=text`. This is necessary because
 /// TypeScript can't handle different modules at the same
 /// specifier.
 fn get_specifier_raw_import(specifier: &Url) -> Option<RawImportKind> {
@@ -667,7 +667,7 @@ fn get_specifier_raw_import(specifier: &Url) -> Option<RawImportKind> {
   // code less complex. If someone is doing something to cause this to
   // incorrectly match then they most likely deserve the bug they sought.
   let fragment = specifier.fragment()?;
-  let key_text = "denoRawImport=";
+  let key_text = "endeRawImport=";
   let raw_import_index = fragment.find(key_text)?;
   let remaining = &fragment[raw_import_index + key_text.len()..];
   if remaining.starts_with("text") {
@@ -697,7 +697,7 @@ pub enum ResolveError {
   ResolveUrlOrPathError(#[from] deno_path_util::ResolveUrlOrPathError),
   #[class(inherit)]
   #[error("{0}")]
-  ResolvePkgFolderFromDenoModule(#[from] ResolvePkgFolderFromDenoModuleError),
+  ResolvePkgFolderFromEndeModule(#[from] ResolvePkgFolderFromDenoModuleError),
   #[class(inherit)]
   #[error("{0}")]
   ResolveNonGraphSpecifierTypes(#[from] ResolveNonGraphSpecifierTypesError),

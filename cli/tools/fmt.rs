@@ -21,7 +21,7 @@ use std::sync::atomic::Ordering;
 
 use async_trait::async_trait;
 use deno_ast::ParsedSource;
-use ende_config::deno_json::NewLineKind;
+use ende_config::ende_json::NewLineKind;
 use ende_config::glob::FileCollector;
 use ende_config::glob::FilePatterns;
 use ende_core::anyhow::Context;
@@ -213,7 +213,7 @@ fn maybe_show_format_confirmation(
 ) -> Result<(), AnyError> {
   if fmt_flags.check
     || !fmt_flags.files.include.is_empty()
-    || cli_options.workspace().deno_jsons().next().is_some()
+    || cli_options.workspace().ende_jsons().next().is_some()
     || cli_options.workspace().package_jsons().next().is_some()
   {
     return Ok(());
@@ -1286,7 +1286,7 @@ fn get_typescript_config_builder(
   options: &FmtOptionsConfig,
 ) -> dprint_plugin_typescript::configuration::ConfigurationBuilder {
   use dprint_plugin_typescript::configuration as dprint_config;
-  use ende_config::deno_json::*;
+  use ende_config::ende_json::*;
 
   let mut builder =
     dprint_plugin_typescript::configuration::ConfigurationBuilder::new();
@@ -1550,7 +1550,7 @@ fn get_resolved_json_config(
   options: &FmtOptionsConfig,
 ) -> dprint_plugin_json::configuration::Configuration {
   use dprint_plugin_json::configuration::TrailingCommaKind;
-  use ende_config::deno_json::JsonTrailingCommaKind;
+  use ende_config::ende_json::JsonTrailingCommaKind;
 
   let mut builder =
     dprint_plugin_json::configuration::ConfigurationBuilder::new();
@@ -1768,7 +1768,7 @@ fn is_supported_ext_fmt(path: &Path) -> bool {
 
 #[cfg(test)]
 mod test {
-  use ende_config::deno_json::JsonTrailingCommaKind;
+  use ende_config::ende_json::JsonTrailingCommaKind;
   use test_util::assert_starts_with;
 
   use super::*;

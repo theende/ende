@@ -28,11 +28,11 @@ use node_resolver::errors::NodeJsErrorCode;
 use node_resolver::errors::NodeJsErrorCoded;
 use url::Url;
 
-use crate::DenoResolveError;
-use crate::DenoResolverSys;
-use crate::RawDenoResolverRc;
+use crate::EndeResolveError;
+use crate::EndeResolverSys;
+use crate::RawEndeResolverRc;
 use crate::cjs::CjsTracker;
-use crate::deno_json::JsxImportSourceConfigResolver;
+use crate::ende_json::JsxImportSourceConfigResolver;
 use crate::npm;
 use crate::npm::managed::ManagedResolvePkgFolderFromDenoReqError;
 use crate::workspace::MappedResolutionDiagnostic;
@@ -65,7 +65,7 @@ pub struct ResolveWithGraphError(pub Box<ResolveWithGraphErrorKind>);
 impl ResolveWithGraphError {
   pub fn maybe_specifier(&self) -> Option<Cow<'_, UrlOrPath>> {
     match self.as_kind() {
-      ResolveWithGraphErrorKind::ManagedResolvePkgFolderFromDenoReq(_) => None,
+      ResolveWithGraphErrorKind::ManagedResolvePkgFolderFromEndeReq(_) => None,
       ResolveWithGraphErrorKind::CouldNotResolveNpmReqRef(err) => {
         err.source.maybe_specifier()
       }
@@ -91,7 +91,7 @@ impl ResolveWithGraphError {
       ResolveWithGraphErrorKind::PathToUrl(err) => {
         Some(Cow::Owned(UrlOrPath::Path(err.0.clone())))
       }
-      ResolveWithGraphErrorKind::ResolvePkgFolderFromDenoModule(_) => None,
+      ResolveWithGraphErrorKind::ResolvePkgFolderFromEndeModule(_) => None,
     }
   }
 
@@ -99,8 +99,8 @@ impl ResolveWithGraphError {
     use deno_graph::source::ResolveError;
 
     match self.into_kind() {
-      ResolveWithGraphErrorKind::Resolve(deno_resolve_error) => {
-        deno_resolve_error.into_deno_graph_error()
+      ResolveWithGraphErrorKind::Resolve(ende_resolve_error) => {
+        ende_resolve_error.into_deno_graph_error()
       }
       err => ResolveError::from_err(err),
     }
@@ -111,7 +111,7 @@ impl ResolveWithGraphError {
 pub enum ResolveWithGraphErrorKind {
   #[error(transparent)]
   #[class(inherit)]
-  ManagedResolvePkgFolderFromDenoReq(
+  ManagedResolvePkgFolderFromEndeReq(
     #[from] ManagedResolvePkgFolderFromDenoReqError,
   ),
   #[error(transparent)]
@@ -119,7 +119,7 @@ pub enum ResolveWithGraphErrorKind {
   CouldNotResolveNpmReqRef(#[from] CouldNotResolveNpmReqRefError),
   #[error(transparent)]
   #[class(inherit)]
-  ResolvePkgFolderFromDenoModule(
+  ResolvePkgFolderFromEndeModule(
     #[from] npm::managed::ResolvePkgFolderFromDenoModuleError,
   ),
   #[error(transparent)]
@@ -130,7 +130,7 @@ pub enum ResolveWithGraphErrorKind {
   Resolution(#[from] deno_graph::ResolutionError),
   #[error(transparent)]
   #[class(inherit)]
-  Resolve(#[from] DenoResolveError),
+  Resolve(#[from] EndeResolveError),
   #[error(transparent)]
   #[class(inherit)]
   PathToUrl(#[from] deno_path_util::PathToUrlError),
@@ -179,7 +179,7 @@ pub enum NpmTypesResolutionMode {
   FallbackToExecution,
 }
 
-pub type DefaultDenoResolverRc<TSys> = DenoResolverRc<
+pub type DefaultEndeResolverRc<TSys> = EndeResolverRc<
   npm::DenoInNpmPackageChecker,
   DenoIsBuiltInNodeModuleChecker,
   npm::NpmResolver<TSys>,
@@ -187,13 +187,13 @@ pub type DefaultDenoResolverRc<TSys> = DenoResolverRc<
 >;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type DenoResolverRc<
+pub type EndeResolverRc<
   TInNpmPackageChecker,
   TIsBuiltInNodeModuleChecker,
   TNpmPackageFolderResolver,
   TSys,
 > = ende_maybe_sync::MaybeArc<
-  DenoResolver<
+  EndeResolver<
     TInNpmPackageChecker,
     TIsBuiltInNodeModuleChecker,
     TNpmPackageFolderResolver,
@@ -203,13 +203,13 @@ pub type DenoResolverRc<
 
 /// The resolver used in the CLI for resolving and interfacing
 /// with deno_graph.
-pub struct DenoResolver<
+pub struct EndeResolver<
   TInNpmPackageChecker: InNpmPackageChecker,
   TIsBuiltInNodeModuleChecker: IsBuiltInNodeModuleChecker,
   TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TSys: DenoResolverSys,
+  TSys: EndeResolverSys,
 > {
-  resolver: RawDenoResolverRc<
+  resolver: RawEndeResolverRc<
     TInNpmPackageChecker,
     TIsBuiltInNodeModuleChecker,
     TNpmPackageFolderResolver,
@@ -225,9 +225,9 @@ impl<
   TInNpmPackageChecker: InNpmPackageChecker,
   TIsBuiltInNodeModuleChecker: IsBuiltInNodeModuleChecker,
   TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TSys: DenoResolverSys,
+  TSys: EndeResolverSys,
 > std::fmt::Debug
-  for DenoResolver<
+  for EndeResolver<
     TInNpmPackageChecker,
     TIsBuiltInNodeModuleChecker,
     TNpmPackageFolderResolver,
@@ -235,7 +235,7 @@ impl<
   >
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("DenoResolver").finish()
+    f.debug_struct("EndeResolver").finish()
   }
 }
 
@@ -243,9 +243,9 @@ impl<
   TInNpmPackageChecker: InNpmPackageChecker,
   TIsBuiltInNodeModuleChecker: IsBuiltInNodeModuleChecker,
   TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TSys: DenoResolverSys,
+  TSys: EndeResolverSys,
 >
-  DenoResolver<
+  EndeResolver<
     TInNpmPackageChecker,
     TIsBuiltInNodeModuleChecker,
     TNpmPackageFolderResolver,
@@ -253,7 +253,7 @@ impl<
   >
 {
   pub fn new(
-    resolver: RawDenoResolverRc<
+    resolver: RawEndeResolverRc<
       TInNpmPackageChecker,
       TIsBuiltInNodeModuleChecker,
       TNpmPackageFolderResolver,
@@ -453,7 +453,7 @@ impl<
     referrer_range_start: deno_graph::Position,
     resolution_mode: node_resolver::ResolutionMode,
     resolution_kind: node_resolver::NodeResolutionKind,
-  ) -> Result<Url, DenoResolveError> {
+  ) -> Result<Url, EndeResolveError> {
     let resolution = self.resolver.resolve(
       raw_specifier,
       referrer,
@@ -517,10 +517,10 @@ pub struct DenoGraphResolverAdapter<
   TInNpmPackageChecker: InNpmPackageChecker,
   TIsBuiltInNodeModuleChecker: IsBuiltInNodeModuleChecker,
   TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TSys: DenoResolverSys,
+  TSys: EndeResolverSys,
 > {
   cjs_tracker: &'a CjsTracker<TInNpmPackageChecker, TSys>,
-  resolver: &'a DenoResolver<
+  resolver: &'a EndeResolver<
     TInNpmPackageChecker,
     TIsBuiltInNodeModuleChecker,
     TNpmPackageFolderResolver,
@@ -535,7 +535,7 @@ impl<
   TInNpmPackageChecker: InNpmPackageChecker,
   TIsBuiltInNodeModuleChecker: IsBuiltInNodeModuleChecker,
   TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TSys: DenoResolverSys,
+  TSys: EndeResolverSys,
 > std::fmt::Debug
   for DenoGraphResolverAdapter<
     '_,
@@ -554,7 +554,7 @@ impl<
   TInNpmPackageChecker: InNpmPackageChecker,
   TIsBuiltInNodeModuleChecker: IsBuiltInNodeModuleChecker,
   TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TSys: DenoResolverSys,
+  TSys: EndeResolverSys,
 > deno_graph::source::Resolver
   for DenoGraphResolverAdapter<
     '_,
@@ -686,7 +686,7 @@ impl std::fmt::Display for EnhancedGraphError {
     f.write_str(&self.message)?;
     if let Some(range) = self.original.maybe_range()
       && self.mode == EnhanceGraphErrorMode::ShowRange
-      && !range.specifier.as_str().contains("/$deno$eval")
+      && !range.specifier.as_str().contains("/$ende$eval")
     {
       write!(f, "\n    at {}", format_range_with_colors(range))?;
     }

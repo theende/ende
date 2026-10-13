@@ -111,7 +111,7 @@ pub struct FetchNoFollowOptions<'a> {
 }
 
 impl<'a> FetchNoFollowOptions<'a> {
-  fn into_deno_cache_dir_options(
+  fn into_ende_cache_dir_options(
     self,
   ) -> ende_cache_dir::file_fetcher::FetchNoFollowOptions<'a> {
     ende_cache_dir::file_fetcher::FetchNoFollowOptions {
@@ -315,7 +315,7 @@ impl<
       .file_fetcher
       .ensure_cached_no_follow(
         &specifier,
-        options.into_deno_cache_dir_options(),
+        options.into_ende_cache_dir_options(),
       )
       .await
       .map_err(|err| FetchNoFollowErrorKind::FetchNoFollow(err).into_box())
@@ -335,7 +335,7 @@ impl<
       .file_fetcher
       .fetch_no_follow(
         &checked_specifier,
-        options.into_deno_cache_dir_options(),
+        options.into_ende_cache_dir_options(),
       )
       .await
       .map_err(|err| FetchNoFollowErrorKind::FetchNoFollow(err).into_box())?;
@@ -943,7 +943,7 @@ mod test {
       sys.clone(),
       cwd.join("project"),
       WorkspaceFactoryOptions {
-        maybe_custom_deno_dir_root: Some(cwd.join("deno_dir")),
+        maybe_custom_ende_dir_root: Some(cwd.join("deno_dir")),
         config_discovery: ConfigDiscoveryOption::Disabled,
         ..Default::default()
       },

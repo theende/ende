@@ -26,7 +26,7 @@ use crate::cache::ParsedSourceCacheRc;
 use crate::cjs::CjsTrackerRc;
 use crate::emit::EmitParsedSourceHelperError;
 use crate::emit::EmitterRc;
-use crate::factory::DenoNodeCodeTranslatorRc;
+use crate::factory::EndeNodeCodeTranslatorRc;
 use crate::graph::EnhanceGraphErrorMode;
 use crate::graph::EnhancedGraphError;
 use crate::graph::enhance_graph_error;
@@ -131,7 +131,7 @@ pub trait ModuleLoaderSys:
   super::NpmModuleLoaderSys
   + crate::emit::EmitterSys
   + node_resolver::analyze::NodeCodeTranslatorSys
-  + crate::cjs::analyzer::DenoCjsCodeAnalyzerSys
+  + crate::cjs::analyzer::EndeCjsCodeAnalyzerSys
   + crate::npm::NpmResolverSys
 {
 }
@@ -166,7 +166,7 @@ impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
     cjs_tracker: CjsTrackerRc<DenoInNpmPackageChecker, TSys>,
     emitter: EmitterRc<DenoInNpmPackageChecker, TSys>,
     in_npm_pkg_checker: DenoInNpmPackageChecker,
-    node_code_translator: DenoNodeCodeTranslatorRc<TSys>,
+    node_code_translator: EndeNodeCodeTranslatorRc<TSys>,
     npm_module_loader: DenoNpmModuleLoaderRc<TSys>,
     parsed_source_cache: ParsedSourceCacheRc,
     sys: TSys,
@@ -338,7 +338,7 @@ impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
 struct PreparedModuleLoader<TSys: ModuleLoaderSys> {
   cjs_tracker: CjsTrackerRc<DenoInNpmPackageChecker, TSys>,
   emitter: EmitterRc<DenoInNpmPackageChecker, TSys>,
-  node_code_translator: DenoNodeCodeTranslatorRc<TSys>,
+  node_code_translator: EndeNodeCodeTranslatorRc<TSys>,
   parsed_source_cache: ParsedSourceCacheRc,
   sys: TSys,
 }

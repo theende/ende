@@ -109,7 +109,7 @@ pub type DenoNpmModuleLoaderRc<TSys> =
   ende_maybe_sync::MaybeArc<DenoNpmModuleLoader<TSys>>;
 
 pub type DenoNpmModuleLoader<TSys> = NpmModuleLoader<
-  crate::cjs::analyzer::DenoCjsCodeAnalyzer<TSys>,
+  crate::cjs::analyzer::EndeCjsCodeAnalyzer<TSys>,
   crate::npm::DenoInNpmPackageChecker,
   node_resolver::DenoIsBuiltInNodeModuleChecker,
   crate::npm::NpmResolver<TSys>,

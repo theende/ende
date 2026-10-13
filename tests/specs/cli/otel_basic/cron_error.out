@@ -7,19 +7,19 @@
       "traceState": "",
       "parentSpanId": "",
       "flags": 257,
-      "name": "deno.cron",
+      "name": "ende.cron",
       "kind": 1,
       "startTimeUnixNano": "[WILDCARD]",
       "endTimeUnixNano": "[WILDCARD]",
       "attributes": [
         {
-          "key": "deno.cron.name",
+          "key": "ende.cron.name",
           "value": {
             "stringValue": "test-cron-error"
           }
         },
         {
-          "key": "deno.cron.schedule",
+          "key": "ende.cron.schedule",
           "value": {
             "stringValue": "*/20 * * * *"
           }

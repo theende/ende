@@ -1145,7 +1145,7 @@ impl TsFixActionCollector {
 
   pub fn into_code_actions(
     self,
-    has_deno_code_actions: bool,
+    has_ende_code_actions: bool,
   ) -> impl Iterator<Item = lsp::CodeAction> {
     // Finalize `CodeAction::is_preferred` before returning.
     let is_preferred_list = self
@@ -1159,7 +1159,7 @@ impl TsFixActionCollector {
           PREFERRED_FIXES.get(fix_action.fix_name.as_str())?;
         // This is to make sure 'Remove import' isn't preferred over 'Cache
         // dependencies'.
-        if has_deno_code_actions {
+        if has_ende_code_actions {
           return Some(false);
         }
         for (_, other_fix_action) in &self.entries {

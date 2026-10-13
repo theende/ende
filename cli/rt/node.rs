@@ -17,48 +17,48 @@ use node_resolver::analyze::EsmAnalysisMode;
 use node_resolver::analyze::NodeCodeTranslator;
 
 use crate::binary::StandaloneModules;
-use crate::file_system::DenoRtSys;
+use crate::file_system::EndeRtSys;
 
-pub type DenoRtCjsTracker =
-  ende_resolver::cjs::CjsTracker<DenoInNpmPackageChecker, DenoRtSys>;
-pub type DenoRtNpmResolver = ende_resolver::npm::NpmResolver<DenoRtSys>;
-pub type DenoRtNpmModuleLoader = NpmModuleLoader<
+pub type EndeRtCjsTracker =
+  ende_resolver::cjs::CjsTracker<DenoInNpmPackageChecker, EndeRtSys>;
+pub type EndeRtNpmResolver = ende_resolver::npm::NpmResolver<EndeRtSys>;
+pub type EndeRtNpmModuleLoader = NpmModuleLoader<
   CjsCodeAnalyzer,
   DenoInNpmPackageChecker,
   DenoIsBuiltInNodeModuleChecker,
-  DenoRtNpmResolver,
-  DenoRtSys,
+  EndeRtNpmResolver,
+  EndeRtSys,
 >;
-pub type DenoRtNodeCodeTranslator = NodeCodeTranslator<
+pub type EndeRtNodeCodeTranslator = NodeCodeTranslator<
   CjsCodeAnalyzer,
   DenoInNpmPackageChecker,
   DenoIsBuiltInNodeModuleChecker,
-  DenoRtNpmResolver,
-  DenoRtSys,
+  EndeRtNpmResolver,
+  EndeRtSys,
 >;
-pub type DenoRtNodeResolver = ende_runtime::ende_node::NodeResolver<
+pub type EndeRtNodeResolver = ende_runtime::ende_node::NodeResolver<
   DenoInNpmPackageChecker,
-  DenoRtNpmResolver,
-  DenoRtSys,
+  EndeRtNpmResolver,
+  EndeRtSys,
 >;
-pub type DenoRtNpmReqResolver = NpmReqResolver<
+pub type EndeRtNpmReqResolver = NpmReqResolver<
   DenoInNpmPackageChecker,
   DenoIsBuiltInNodeModuleChecker,
-  DenoRtNpmResolver,
-  DenoRtSys,
+  EndeRtNpmResolver,
+  EndeRtSys,
 >;
 
 pub struct CjsCodeAnalyzer {
-  cjs_tracker: Arc<DenoRtCjsTracker>,
+  cjs_tracker: Arc<EndeRtCjsTracker>,
   modules: Arc<StandaloneModules>,
-  sys: DenoRtSys,
+  sys: EndeRtSys,
 }
 
 impl CjsCodeAnalyzer {
   pub fn new(
-    cjs_tracker: Arc<DenoRtCjsTracker>,
+    cjs_tracker: Arc<EndeRtCjsTracker>,
     modules: Arc<StandaloneModules>,
-    sys: DenoRtSys,
+    sys: EndeRtSys,
   ) -> Self {
     Self {
       cjs_tracker,
@@ -150,13 +150,13 @@ impl CjsCodeAnalyzer {
 /// files read from the host filesystem (HMR / dev mode) which have no
 /// pre-computed analysis embedded in the VFS.
 ///
-/// Mirrors what `DenoCjsCodeAnalyzer` does at compile time, minus the
+/// Mirrors what `EndeCjsCodeAnalyzer` does at compile time, minus the
 /// re-export resolution (the loader walks reexports separately). The
 /// `compute_is_script` + `is_cjs_with_known_is_script` two-step is the
 /// same one the compile-time analyzer uses; without it, ESM files that
 /// happen to look CJS-ish would be mis-classified.
 fn analyze_cjs_live<'a>(
-  cjs_tracker: &DenoRtCjsTracker,
+  cjs_tracker: &EndeRtCjsTracker,
   specifier: &Url,
   media_type: MediaType,
   source: Cow<'a, str>,

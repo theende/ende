@@ -19,7 +19,7 @@ use ende_config::glob::FilePatterns;
 use ende_config::glob::PathOrPatternSet;
 use ende_core::anyhow::Context;
 use ende_core::error::AnyError;
-use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::ENDE_VERSION_INFO;
 use ende_npm::NpmSystemInfo;
 pub use ende_runtime::ende_inspector_server::InspectPublishUid;
 use ende_telemetry::OtelConfig;
@@ -106,13 +106,13 @@ fn npm_system_info_from_env() -> NpmSystemInfo {
 /// The npm platform/arch a subcommand should resolve packages for. `compile`
 /// and `desktop` follow their `--target`; `install` follows `--os`/`--arch`;
 /// everything else uses the current system.
-pub fn npm_system_info(subcommand: &DenoSubcommand) -> NpmSystemInfo {
+pub fn npm_system_info(subcommand: &EndeSubcommand) -> NpmSystemInfo {
   match subcommand {
-    DenoSubcommand::Compile(CompileFlags {
+    EndeSubcommand::Compile(CompileFlags {
       target: Some(target),
       ..
     })
-    | DenoSubcommand::Desktop(DesktopFlags {
+    | EndeSubcommand::Desktop(DesktopFlags {
       target: Some(target),
       ..
     }) => {
@@ -152,7 +152,7 @@ pub fn npm_system_info(subcommand: &DenoSubcommand) -> NpmSystemInfo {
         }
       }
     }
-    DenoSubcommand::Install(InstallFlags::Local(
+    EndeSubcommand::Install(InstallFlags::Local(
       _,
       NpmInstallTargetFlags { os, arch },
     )) => {
@@ -546,7 +546,7 @@ impl FlagsExt for Flags {
       }
     }
 
-    use DenoSubcommand::*;
+    use EndeSubcommand::*;
     match &self.subcommand {
       Fmt(FmtFlags { files, .. }) => {
         Some(resolve_multiple_files(&files.include, current_dir))
@@ -676,7 +676,7 @@ fn bare_run_fast_path(args: &[OsString]) -> Option<Flags> {
       .map(|a| a.to_string_lossy().into_owned())
       .collect::<Vec<_>>();
     let mut flags = Flags {
-      subcommand: DenoSubcommand::Run(RunFlags {
+      subcommand: EndeSubcommand::Run(RunFlags {
         script: script.to_string(),
         bare: false,
         coverage_dir: None,
@@ -750,7 +750,7 @@ pub fn flags_from_vec_with_initial_cwd(
       // Set (and, for compile/desktop, canonicalize) the initial cwd — the
       // parser crate has no filesystem access, so this stays on the CLI side.
       flags.initial_cwd = match &flags.subcommand {
-        DenoSubcommand::Compile(_) | DenoSubcommand::Desktop(_) => {
+        EndeSubcommand::Compile(_) | EndeSubcommand::Desktop(_) => {
           initial_cwd.map(|cwd| canonicalize_path(&cwd).ok().unwrap_or(cwd))
         }
         _ => initial_cwd,
@@ -766,18 +766,18 @@ pub fn flags_from_vec_with_initial_cwd(
 /// matching what clap's `render_long_version` / `render_version` used to emit.
 pub fn render_version(long: bool) -> String {
   if long {
-    debug_assert_eq!(DENO_VERSION_INFO.typescript, ende_snapshots::TS_VERSION);
+    debug_assert_eq!(ENDE_VERSION_INFO.typescript, ende_snapshots::TS_VERSION);
     format!(
       "ende {} ({}, {}, {})\nv8 {}\ntypescript {}\n",
-      DENO_VERSION_INFO.deno,
-      DENO_VERSION_INFO.release_channel.name(),
+      ENDE_VERSION_INFO.ende,
+      ENDE_VERSION_INFO.release_channel.name(),
       env!("PROFILE"),
       env!("TARGET"),
       ende_core::v8::VERSION_STRING,
-      DENO_VERSION_INFO.typescript,
+      ENDE_VERSION_INFO.typescript,
     )
   } else {
-    format!("ende {}\n", DENO_VERSION_INFO.deno)
+    format!("ende {}\n", ENDE_VERSION_INFO.ende)
   }
 }
 
@@ -809,7 +809,7 @@ pub fn handle_shell_completion(_cwd: &Path) -> Result<(), AnyError> {
   let shell = std::env::var("COMPLETE").unwrap_or_default();
   let words = shell_completion_words();
   ende_cli_parser::completions::try_complete(
-    &ende_cli_parser::defs::DENO_ROOT,
+    &ende_cli_parser::defs::ENDE_ROOT,
     &words,
     &shell,
     &dynamic_task_completer,
@@ -893,12 +893,12 @@ fn task_flags_for_completion() -> Option<Flags> {
       ende_cli_parser::convert::flags_from_vec(w)
     })
     .ok()?;
-  matches!(flags.subcommand, DenoSubcommand::Task(_)).then_some(flags)
+  matches!(flags.subcommand, EndeSubcommand::Task(_)).then_some(flags)
 }
 
 #[cfg(test)]
 mod tests {
-  use ende_cli_parser::defs::DENO_ROOT;
+  use ende_cli_parser::defs::ENDE_ROOT;
   use pretty_assertions::assert_eq;
 
   use super::*;
@@ -968,7 +968,7 @@ mod tests {
     let flags = r.unwrap();
     assert_eq!(
       flags.subcommand,
-      DenoSubcommand::Install(InstallFlags::Local(
+      EndeSubcommand::Install(InstallFlags::Local(
         InstallFlagsLocal::TopLevel(InstallTopLevelFlags {
           lockfile_only: false,
           production: false,
@@ -995,7 +995,7 @@ mod tests {
     let flags = r.unwrap();
     assert_eq!(
       flags.subcommand,
-      DenoSubcommand::Install(InstallFlags::Local(
+      EndeSubcommand::Install(InstallFlags::Local(
         InstallFlagsLocal::TopLevel(InstallTopLevelFlags {
           lockfile_only: false,
           production: false,
@@ -1111,7 +1111,7 @@ mod tests {
   /// the same text for every subcommand.
   #[test]
   fn equal_help_output() {
-    for command in DENO_ROOT.subcommands {
+    for command in ENDE_ROOT.subcommands {
       // `help` has no help of its own, and passthrough commands (deploy,
       // sandbox) forward `--help` to the external tool they proxy rather than
       // rendering their own.
@@ -1121,7 +1121,7 @@ mod tests {
 
       let render =
         |args: Vec<OsString>| match flags_from_vec(args).unwrap().subcommand {
-          DenoSubcommand::Help(help) => help.help.to_string(),
+          EndeSubcommand::Help(help) => help.help.to_string(),
           _ => unreachable!("{} did not render help", command.name),
         };
 
@@ -1146,7 +1146,7 @@ mod tests {
   /// visibility, and every alias is equally spawnable, so all are required.
   #[test]
   fn subcommands_recognized_by_node_shim() {
-    for command in DENO_ROOT.subcommands {
+    for command in ENDE_ROOT.subcommands {
       let name = command.name;
       assert!(
         node_shim::is_deno_subcommand(name),
@@ -1184,6 +1184,6 @@ mod tests {
         check(sub);
       }
     }
-    check(&DENO_ROOT);
+    check(&ENDE_ROOT);
   }
 }

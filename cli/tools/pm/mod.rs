@@ -57,7 +57,7 @@ pub use why::why;
 
 #[derive(Debug, Copy, Clone, Hash)]
 pub(crate) enum ConfigKind {
-  DenoJson,
+  EndeJson,
   PackageJson,
 }
 
@@ -202,7 +202,7 @@ impl ConfigUpdater {
     }
 
     match self.kind {
-      ConfigKind::DenoJson => {
+      ConfigKind::EndeJson => {
         let imports = self.root_object.object_value_or_set("imports");
         let value =
           format!("{}@{}", selected.package_name, selected.version_req);
@@ -299,7 +299,7 @@ impl ConfigUpdater {
 
   fn remove(&mut self, package: &str) -> bool {
     let removed = match self.kind {
-      ConfigKind::DenoJson => {
+      ConfigKind::EndeJson => {
         match self
           .root_object
           .object_value("imports")
@@ -378,11 +378,11 @@ fn remove_prop_and_maybe_parent_prop(prop: CstObjectProp) {
   }
 }
 
-fn create_deno_json(
+fn create_ende_json(
   flags: &Arc<Flags>,
   options: &CliOptions,
 ) -> Result<CliFactory, AnyError> {
-  let name = ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME;
+  let name = ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME;
   std::fs::write(options.initial_cwd().join(name), "{}\n")
     .with_context(|| format!("Failed to create {name} file"))?;
   log::info!("Created {name} configuration file.");
@@ -491,43 +491,48 @@ fn load_configs(
     )?),
     None => None,
   };
-  let deno_config = match start_dir.member_deno_json() {
-    Some(deno_json) => Some(ConfigUpdater::new(
-      ConfigKind::DenoJson,
-      url_to_file_path(&deno_json.specifier)?,
+  let ende_json_config = match start_dir.member_ende_json() {
+    Some(ende_json) => Some(ConfigUpdater::new(
+      ConfigKind::EndeJson,
+      url_to_file_path(&ende_json.specifier)?,
     )?),
     None => None,
   };
 
-  let (cli_factory, deno_config) = match deno_config {
+  let (cli_factory, ende_json_config) = match ende_json_config {
     Some(config) => (cli_factory, Some(config)),
     None if npm_config.is_some() && !has_jsr_specifiers() => {
       (cli_factory, None)
     }
     _ => {
-      let factory = create_deno_json(flags, options)?;
+      let factory = create_ende_json(flags, options)?;
       let options = factory.cli_options()?.clone();
-      let Some(deno_json) = options.start_dir.member_or_root_deno_json() else {
+      let Some(ende_json) = options.start_dir.member_or_root_ende_json() else {
         bail!(
           "Failed to discover the newly created {} at \"{}\". This can happen when the current directory is inside a node_modules directory.",
-          ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
+          ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME,
           options
             .initial_cwd()
-            .join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME)
+            .join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME)
             .display(),
         );
       };
       (
         factory,
         Some(ConfigUpdater::new(
-          ConfigKind::DenoJson,
-          url_to_file_path(&deno_json.specifier)?,
+          ConfigKind::EndeJson,
+          url_to_file_path(&ende_json.specifier)?,
         )?),
       )
     }
   };
-  assert!(deno_config.is_some() || npm_config.is_some());
-  Ok((cli_factory, force_package_json, npm_config, deno_config))
+  assert!(ende_json_config.is_some() || npm_config.is_some());
+  Ok((
+    cli_factory,
+    force_package_json,
+    npm_config,
+    ende_json_config,
+  ))
 }
 
 fn path_distance(a: &Path, b: &Path) -> usize {
@@ -544,7 +549,7 @@ pub async fn add(
   cmd_name: AddCommandName,
 ) -> Result<(), AnyError> {
   let save_exact = add_flags.save_exact;
-  let (cli_factory, force_package_json, mut npm_config, mut deno_config) =
+  let (cli_factory, force_package_json, mut npm_config, mut ende_json_config) =
     load_configs(
       &flags,
       || add_flags.packages.iter().any(|s| s.starts_with("jsr:")),
@@ -552,7 +557,7 @@ pub async fn add(
       true,
     )?;
 
-  if let Some(deno) = &deno_config
+  if let Some(deno) = &ende_json_config
     && deno.obj().get("importMap").is_some()
   {
     bail!(
@@ -571,11 +576,12 @@ pub async fn add(
   // only prefer to add npm deps to `package.json` if there isn't a closer deno.json.
   // example: if deno.json is in the CWD and package.json is in the parent, we should add
   // npm deps to deno.json, since it's closer
-  let prefer_npm_config = match (npm_config.as_ref(), deno_config.as_ref()) {
+  let prefer_npm_config = match (npm_config.as_ref(), ende_json_config.as_ref())
+  {
     (Some(npm), Some(deno)) => {
       let npm_distance = path_distance(&npm.path, &start_dir);
-      let deno_distance = path_distance(&deno.path, &start_dir);
-      npm_distance <= deno_distance
+      let ende_distance = path_distance(&deno.path, &start_dir);
+      npm_distance <= ende_distance
     }
     (Some(_), None) => true,
     (None, _) => false,
@@ -796,9 +802,12 @@ pub async fn add(
       if let Some(npm) = &mut npm_config {
         npm.add(selected_package, kind);
       } else {
-        deno_config.as_mut().unwrap().add(selected_package, kind);
+        ende_json_config
+          .as_mut()
+          .unwrap()
+          .add(selected_package, kind);
       }
-    } else if let Some(deno) = &mut deno_config {
+    } else if let Some(deno) = &mut ende_json_config {
       deno.add(selected_package, kind);
     } else {
       npm_config.as_mut().unwrap().add(selected_package, kind);
@@ -809,7 +818,7 @@ pub async fn add(
     if let Some(npm) = npm_config {
       npm.commit()?;
     }
-    if let Some(deno) = deno_config {
+    if let Some(deno) = ende_json_config {
       deno.commit()?;
     }
   }
@@ -1190,13 +1199,13 @@ pub async fn remove(
   flags: Arc<Flags>,
   remove_flags: RemoveFlags,
 ) -> Result<(), AnyError> {
-  let (_, force_package_json, npm_config, deno_config) =
+  let (_, force_package_json, npm_config, ende_json_config) =
     load_configs(&flags, || false, remove_flags.package_json, true)?;
 
   let mut configs = if force_package_json {
     [npm_config, None]
   } else {
-    [npm_config, deno_config]
+    [npm_config, ende_json_config]
   };
 
   let mut removed_packages = vec![];
@@ -1301,7 +1310,7 @@ pub(crate) async fn create_dep_manager_and_resolvers(
                    _req: &deno_semver::package::PackageReq,
                    _: deps::DepKind| true;
 
-  let deps = if cli_options.start_dir.has_deno_or_pkg_json() {
+  let deps = if cli_options.start_dir.has_ende_or_pkg_json() {
     deps::DepManager::from_workspace_dir(
       &cli_options.start_dir,
       filter_fn,
@@ -1404,7 +1413,7 @@ fn path_to_link_string(path: &Path) -> String {
 
 /// Read the `"name"` field from the config file in the given directory.
 fn read_link_target_name(dir: &Path) -> Option<String> {
-  for filename in ende_config::deno_json::CONFIG_FILE_NAMES {
+  for filename in ende_config::ende_json::CONFIG_FILE_NAMES {
     let path = dir.join(filename);
     let Ok(text) = std::fs::read_to_string(&path) else {
       continue;
@@ -1433,7 +1442,7 @@ fn resolve_link_path(cwd: &Path, raw: &str) -> PathBuf {
   deno_path_util::normalize_path(std::borrow::Cow::Owned(abs)).into_owned()
 }
 
-fn load_deno_config_for_link(
+fn load_ende_config_for_link(
   flags: &Arc<Flags>,
   create_if_missing: bool,
 ) -> Result<(CliFactory, ConfigUpdater), AnyError> {
@@ -1441,12 +1450,12 @@ fn load_deno_config_for_link(
     // For `link`, force creation of deno.json if missing; the `"links"` field
     // lives there. We achieve this by claiming jsr specifiers are present,
     // which makes `load_configs` materialise a deno.json when one isn't found.
-    let (cli_factory, _force_package_json, _npm_config, deno_config) =
+    let (cli_factory, _force_package_json, _npm_config, ende_json_config) =
       load_configs(flags, || true, false, false)?;
-    let deno_config = deno_config.ok_or_else(|| {
+    let ende_json_config = ende_json_config.ok_or_else(|| {
       ende_core::anyhow::anyhow!("Could not load or create ende.json")
     })?;
-    return Ok((cli_factory, deno_config));
+    return Ok((cli_factory, ende_json_config));
   }
 
   // For `unlink`, never create a deno.json: if there isn't one, there's
@@ -1454,29 +1463,30 @@ fn load_deno_config_for_link(
   // leave an empty deno.json behind.
   let cli_factory = CliFactory::from_flags(flags.clone());
   let options = cli_factory.cli_options()?;
-  let deno_config = match options.start_dir.member_deno_json() {
-    Some(deno_json) => ConfigUpdater::new(
-      ConfigKind::DenoJson,
-      url_to_file_path(&deno_json.specifier)?,
+  let ende_json_config = match options.start_dir.member_ende_json() {
+    Some(ende_json) => ConfigUpdater::new(
+      ConfigKind::EndeJson,
+      url_to_file_path(&ende_json.specifier)?,
     )?,
     None => bail!("No ende.json found; there are no linked packages to unlink"),
   };
-  Ok((cli_factory, deno_config))
+  Ok((cli_factory, ende_json_config))
 }
 
 pub async fn link(
   flags: Arc<Flags>,
   link_flags: LinkFlags,
 ) -> Result<(), AnyError> {
-  let (cli_factory, mut deno_config) = load_deno_config_for_link(&flags, true)?;
+  let (cli_factory, mut ende_json_config) =
+    load_ende_config_for_link(&flags, true)?;
   let cwd = cli_factory.cli_options()?.initial_cwd().to_path_buf();
-  let config_dir = deno_config
+  let config_dir = ende_json_config
     .path
     .parent()
     .ok_or_else(|| {
       ende_core::anyhow::anyhow!(
         "Could not determine directory of '{}'",
-        deno_config.path.display()
+        ende_json_config.path.display()
       )
     })?
     .to_path_buf();
@@ -1491,7 +1501,7 @@ pub async fn link(
     if !abs.is_dir() {
       bail!("Cannot link '{}': not a directory", raw_path);
     }
-    let has_config = ende_config::deno_json::CONFIG_FILE_NAMES
+    let has_config = ende_config::ende_json::CONFIG_FILE_NAMES
       .iter()
       .any(|name| abs.join(name).exists());
     if !has_config {
@@ -1515,7 +1525,7 @@ pub async fn link(
   // Listing the path in "links" is all that's needed: a linked package is
   // importable by its bare "name" just like a workspace member, so there's no
   // `imports` entry to wire up.
-  let links_arr = deno_config.root_object.array_value_or_set("links");
+  let links_arr = ende_json_config.root_object.array_value_or_set("links");
   let existing: Vec<String> = links_arr
     .elements()
     .iter()
@@ -1539,8 +1549,8 @@ pub async fn link(
   }
 
   if changed {
-    deno_config.modified = true;
-    deno_config.commit()?;
+    ende_json_config.modified = true;
+    ende_json_config.commit()?;
     npm_install_after_modification(
       flags,
       None,
@@ -1559,27 +1569,28 @@ pub async fn unlink(
   flags: Arc<Flags>,
   unlink_flags: UnlinkFlags,
 ) -> Result<(), AnyError> {
-  let (cli_factory, mut deno_config) =
-    load_deno_config_for_link(&flags, false)?;
+  let (cli_factory, mut ende_json_config) =
+    load_ende_config_for_link(&flags, false)?;
   // Resolve path arguments relative to the cwd, matching how `link()` resolves
   // them, so `deno unlink ../pkg` finds an entry created by `deno link ../pkg`
   // from the same directory regardless of where the deno.json lives.
   let cwd = cli_factory.cli_options()?.initial_cwd().to_path_buf();
-  let config_dir = deno_config
+  let config_dir = ende_json_config
     .path
     .parent()
     .ok_or_else(|| {
       ende_core::anyhow::anyhow!(
         "Could not determine directory of '{}'",
-        deno_config.path.display()
+        ende_json_config.path.display()
       )
     })?
     .to_path_buf();
 
-  let Some(links_arr) = deno_config.root_object.array_value("links") else {
+  let Some(links_arr) = ende_json_config.root_object.array_value("links")
+  else {
     bail!(
       "No \"links\" entries found in '{}'",
-      deno_config.display_path()
+      ende_json_config.display_path()
     );
   };
 
@@ -1634,7 +1645,7 @@ pub async fn unlink(
 
   // If the "links" array is now empty, remove the property entirely.
   if links_arr.elements().is_empty()
-    && let Some(prop) = deno_config.root_object.get("links")
+    && let Some(prop) = ende_json_config.root_object.get("links")
   {
     prop.remove();
   }
@@ -1643,8 +1654,8 @@ pub async fn unlink(
     log::info!("Unlink {}", crate::colors::green(name));
   }
 
-  deno_config.modified = true;
-  deno_config.commit()?;
+  ende_json_config.modified = true;
+  ende_json_config.commit()?;
 
   npm_install_after_modification(
     flags,

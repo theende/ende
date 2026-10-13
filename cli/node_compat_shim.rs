@@ -51,9 +51,9 @@ fn env_disabled() -> bool {
 /// off the cold-start path of commands like `fmt`/`lint`/`check`/`lsp` that
 /// never spawn one.
 pub fn subcommand_may_spawn_node(
-  subcommand: &crate::args::DenoSubcommand,
+  subcommand: &crate::args::EndeSubcommand,
 ) -> bool {
-  use crate::args::DenoSubcommand::*;
+  use crate::args::EndeSubcommand::*;
   matches!(
     subcommand,
     Run(_) | Task(_) | Test(_) | Bench(_) | Eval(_) | Repl(_) | Serve(_)

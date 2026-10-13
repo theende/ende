@@ -7,10 +7,24 @@ use deno_ast::TextLines;
 use deno_ast::swc::common::comments::CommentKind;
 use ende_core::url::Url;
 
-static COVERAGE_IGNORE_START_DIRECTIVE: &str = "deno-coverage-ignore-start";
-static COVERAGE_IGNORE_STOP_DIRECTIVE: &str = "deno-coverage-ignore-stop";
-static COVERAGE_IGNORE_NEXT_DIRECTIVE: &str = "deno-coverage-ignore";
-static COVERAGE_IGNORE_FILE_DIRECTIVE: &str = "deno-coverage-ignore-file";
+static COVERAGE_IGNORE_START_DIRECTIVE: &str = "coverage-ignore-start";
+static COVERAGE_IGNORE_STOP_DIRECTIVE: &str = "coverage-ignore-stop";
+static COVERAGE_IGNORE_NEXT_DIRECTIVE: &str = "coverage-ignore";
+static COVERAGE_IGNORE_FILE_DIRECTIVE: &str = "coverage-ignore-file";
+
+/// Directives are written `ende-<directive>`; the `deno-<directive>` forms are
+/// also accepted.
+static DIRECTIVE_PREFIXES: [&str; 2] = ["ende", "deno"];
+
+/// The prefix (`ende` or `deno`) if `word` is `<prefix>-<directive>`.
+fn directive_prefix(word: &str, directive: &str) -> Option<&'static str> {
+  DIRECTIVE_PREFIXES.into_iter().find(|prefix| {
+    word
+      .strip_prefix(prefix)
+      .and_then(|rest| rest.strip_prefix('-'))
+      == Some(directive)
+  })
+}
 
 pub struct RangeIgnoreDirective {
   pub start_line_index: usize,
@@ -63,7 +77,8 @@ pub fn parse_range_ignore_directives(
 ) -> Vec<RangeIgnoreDirective> {
   let mut depth: usize = 0;
   let mut directives = Vec::<RangeIgnoreDirective>::new();
-  let mut current_range: Option<std::ops::Range<usize>> = None;
+  // The range of the outermost unterminated start comment, and its prefix.
+  let mut current_range: Option<(std::ops::Range<usize>, &str)> = None;
 
   for comment in comments {
     if comment.kind != CommentKind::Line {
@@ -72,18 +87,25 @@ pub fn parse_range_ignore_directives(
 
     let comment_text = comment.text.trim();
 
-    if let Some(prefix) = comment_text.split_whitespace().next() {
-      if prefix == COVERAGE_IGNORE_START_DIRECTIVE {
+    if let Some(word) = comment_text.split_whitespace().next() {
+      let start_prefix =
+        directive_prefix(word, COVERAGE_IGNORE_START_DIRECTIVE);
+      let stop_prefix = directive_prefix(word, COVERAGE_IGNORE_STOP_DIRECTIVE);
+      if let Some(prefix) = start_prefix {
         if log::log_enabled!(log::Level::Warn) && depth > 0 {
-          let unterminated_loc = text_lines
-            .line_and_column_display(current_range.as_ref().unwrap().start);
+          let (unterminated_range, unterminated_prefix) =
+            current_range.as_ref().unwrap();
+          let unterminated_loc =
+            text_lines.line_and_column_display(unterminated_range.start);
           let loc = text_lines.line_and_column_display(comment.range.start);
           log::warn!(
-            "WARNING: Nested {} comment at {}:{}:{}. A previous {} comment at {}:{}:{} is unterminated.",
+            "WARNING: Nested {}-{} comment at {}:{}:{}. A previous {}-{} comment at {}:{}:{} is unterminated.",
+            prefix,
             COVERAGE_IGNORE_START_DIRECTIVE,
             script_module_specifier,
             loc.line_number,
             loc.column_number,
+            unterminated_prefix,
             COVERAGE_IGNORE_START_DIRECTIVE,
             script_module_specifier,
             unterminated_loc.line_number,
@@ -92,13 +114,13 @@ pub fn parse_range_ignore_directives(
         }
         depth += 1;
         if current_range.is_none() {
-          current_range = Some(comment.range.clone());
+          current_range = Some((comment.range.clone(), prefix));
         }
-      } else if depth > 0 && prefix == COVERAGE_IGNORE_STOP_DIRECTIVE {
+      } else if depth > 0 && stop_prefix.is_some() {
         depth -= 1;
         if depth == 0 {
           let start_line_index =
-            text_lines.line_index(current_range.take().unwrap().start);
+            text_lines.line_index(current_range.take().unwrap().0.start);
           let stop_line_index = text_lines.line_index(comment.range.end);
           directives.push(RangeIgnoreDirective {
             start_line_index,
@@ -106,14 +128,16 @@ pub fn parse_range_ignore_directives(
           });
           current_range = None;
         }
-      } else if log::log_enabled!(log::Level::Warn)
+      } else if let Some(prefix) = stop_prefix
+        && log::log_enabled!(log::Level::Warn)
         && depth == 0
-        && prefix == COVERAGE_IGNORE_STOP_DIRECTIVE
       {
         let loc = text_lines.line_and_column_display(comment.range.start);
         log::warn!(
-          "WARNING: {} comment with no corresponding {} comment at {}:{}:{} will be ignored.",
+          "WARNING: {}-{} comment with no corresponding {}-{} comment at {}:{}:{} will be ignored.",
+          prefix,
           COVERAGE_IGNORE_STOP_DIRECTIVE,
+          prefix,
           COVERAGE_IGNORE_START_DIRECTIVE,
           script_module_specifier,
           loc.line_number,
@@ -125,12 +149,13 @@ pub fn parse_range_ignore_directives(
 
   // If the coverage ignore start directive has no corresponding close directive
   // then log a warning and ignore the directive.
-  if let Some(range) = current_range.take()
+  if let Some((range, prefix)) = current_range.take()
     && log::log_enabled!(log::Level::Warn)
   {
     let loc = text_lines.line_and_column_display(range.start);
     log::warn!(
-      "WARNING: Unterminated {} comment at {}:{}:{} will be ignored.",
+      "WARNING: Unterminated {}-{} comment at {}:{}:{} will be ignored.",
+      prefix,
       COVERAGE_IGNORE_START_DIRECTIVE,
       script_module_specifier,
       loc.line_number,
@@ -197,13 +222,11 @@ fn is_ignore_comment(
 
   let comment_text = comment.text.trim();
 
-  if let Some(prefix) = comment_text.split_whitespace().next()
-    && prefix == ignore_diagnostic_directive
-  {
-    return true;
-  }
-
-  false
+  comment_text
+    .split_whitespace()
+    .next()
+    .and_then(|word| directive_prefix(word, ignore_diagnostic_directive))
+    .is_some()
 }
 
 #[cfg(test)]
@@ -298,6 +321,30 @@ mod tests {
       assert_eq!(range_directives[0].start_line_index, 1);
       assert_eq!(range_directives[0].stop_line_index, 9);
     }
+
+    #[test]
+    fn test_parse_range_ignore_comments_ende() {
+      let source_code = r#"
+        // ende-coverage-ignore-start
+        function foo(): any {}
+        // ende-coverage-ignore-stop
+
+        // ende-coverage-ignore-start
+        foo();
+        // deno-coverage-ignore-stop
+      "#;
+      let (comments, text_lines) = parse_with_text_lines(source_code);
+      let range_directives = parse_range_ignore_directives(
+        &Url::from_str(TEST_FILE_NAME).unwrap(),
+        &comments.comments,
+        &text_lines,
+      );
+      assert_eq!(range_directives.len(), 2);
+      assert_eq!(range_directives[0].start_line_index, 1);
+      assert_eq!(range_directives[0].stop_line_index, 3);
+      assert_eq!(range_directives[1].start_line_index, 5);
+      assert_eq!(range_directives[1].stop_line_index, 7);
+    }
   }
 
   mod coverage_ignore_next {
@@ -321,6 +368,21 @@ mod tests {
       assert!(line_directives.contains(&1));
       assert!(line_directives.contains(&5));
     }
+
+    #[test]
+    fn test_parse_next_ignore_comments_ende() {
+      let source_code = r#"
+        // ende-coverage-ignore
+        function foo(): any {}
+        // ende-coverage-ignore-start
+        // ende-coverage-ignore-next
+      "#;
+      let (comments, text_lines) = parse_with_text_lines(source_code);
+      let line_directives =
+        parse_next_ignore_directives(&comments.comments, &text_lines);
+      assert_eq!(line_directives.len(), 1);
+      assert!(line_directives.contains(&1));
+    }
   }
 
   mod coverage_ignore_file {
@@ -329,6 +391,12 @@ mod tests {
     #[test]
     fn test_parse_global_ignore_directives() {
       let comments = parse("// deno-coverage-ignore-file");
+      assert!(has_file_ignore_directive(&comments));
+    }
+
+    #[test]
+    fn test_parse_global_ignore_directives_ende() {
+      let comments = parse("// ende-coverage-ignore-file -- reason");
       assert!(has_file_ignore_directive(&comments));
     }
 

@@ -17,9 +17,9 @@ use util::test;
 #[test]
 fn fast_check_cache() {
   let test_context = TestContextBuilder::for_jsr().use_temp_cwd().build();
-  let deno_dir = test_context.deno_dir();
+  let ende_dir = test_context.ende_dir();
   let temp_dir = test_context.temp_dir();
-  let type_check_cache_path = deno_dir.path().join("check_cache_v2");
+  let type_check_cache_path = ende_dir.path().join("check_cache_v2");
 
   temp_dir.write(
     "main.ts",
@@ -202,7 +202,7 @@ fn remove_version_from_meta_json(registry_json: &mut Value, version: &str) {
 }
 
 fn remove_version_for_package(
-  deno_dir: &util::TempDir,
+  ende_dir: &util::TempDir,
   package: &str,
   version: &str,
 ) {
@@ -211,7 +211,7 @@ fn remove_version_for_package(
       .unwrap();
   let cache = ende_cache_dir::GlobalHttpCache::new(
     sys_traits::impls::RealSys,
-    deno_dir.path().join("remote").to_path_buf(),
+    ende_dir.path().join("remote").to_path_buf(),
   );
   let entry = cache
     .get(&cache.cache_item_key(&specifier).unwrap(), None)
@@ -234,14 +234,14 @@ fn reload_info_not_found_cache_but_exists_remote() {
   // This tests that when a local machine doesn't have a version
   // specified in a dependency that exists in the npm registry
   let test_context = TestContextBuilder::for_jsr().use_temp_cwd().build();
-  let deno_dir = test_context.deno_dir();
+  let ende_dir = test_context.ende_dir();
   let temp_dir = test_context.temp_dir();
   temp_dir.write(
     "main.ts",
     "import { add } from 'jsr:@endetest/add@1'; console.log(add(1, 2));",
   );
 
-  // cache successfully to the deno_dir
+  // cache successfully to the ende_dir
   let output = test_context.new_command().args("cache main.ts").run();
   output.assert_matches_text(concat!(
     "Download http://127.0.0.1:4250/@endetest/add/meta.json\n",
@@ -250,7 +250,7 @@ fn reload_info_not_found_cache_but_exists_remote() {
   ));
 
   // modify the package information in the cache to remove the latest version
-  remove_version_for_package(deno_dir, "@endetest/add", "1.0.0");
+  remove_version_for_package(ende_dir, "@endetest/add", "1.0.0");
 
   // should error when `--cache-only` is used now because the version is not in the cache
   let output = test_context
@@ -280,14 +280,14 @@ fn install_cache_busts_if_version_not_found() {
   // Tests that if you try to deno install a package, if we can't find the version in the cached
   // meta.json, we bust the cache to .
   let test_context = TestContextBuilder::for_jsr().use_temp_cwd().build();
-  let deno_dir = test_context.deno_dir();
+  let ende_dir = test_context.ende_dir();
   let temp_dir = test_context.temp_dir();
   temp_dir.write(
     "ende.json",
     r#"{ "imports": { "@endetest/has-pre-release": "jsr:@endetest/has-pre-release@2.0.0-beta.1" } }"#,
   );
 
-  // cache successfully to the deno_dir
+  // cache successfully to the ende_dir
   let output = test_context.new_command().args("install").run();
   output.assert_matches_text(concat!(
     "Download http://127.0.0.1:4250/@endetest/has-pre-release/meta.json\n",
@@ -297,7 +297,7 @@ fn install_cache_busts_if_version_not_found() {
 
   // modify the package information in the cache to remove the latest version
   remove_version_for_package(
-    deno_dir,
+    ende_dir,
     "@endetest/has-pre-release",
     "2.0.0-beta.2",
   );

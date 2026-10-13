@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use deno_terminal::colors;
-use ende_config::deno_json::DesktopConfig;
+use ende_config::ende_json::DesktopConfig;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
@@ -15,8 +15,8 @@ use sha2::Digest;
 
 use crate::args::CliOptions;
 use crate::args::CompileFlags;
-use crate::args::DenoSubcommand;
 use crate::args::DesktopFlags;
+use crate::args::EndeSubcommand;
 use crate::args::Flags;
 use crate::args::TypeCheckMode;
 use crate::factory::CliFactory;
@@ -56,7 +56,7 @@ pub async fn desktop(
   let cli_options = factory.cli_options()?;
   let desktop_config = cli_options.start_dir.to_desktop_config()?.clone();
   let laufey_resolver = Arc::new(LaufeyBackendResolver::new(&factory)?);
-  let deno_dir_root = factory.deno_dir()?.root.clone();
+  let ende_dir_root = factory.ende_dir()?.root.clone();
 
   apply_desktop_config_to_flags(&mut desktop_flags, desktop_config);
 
@@ -77,7 +77,7 @@ pub async fn desktop(
         desktop_flags,
         cli_options,
         &laufey_resolver,
-        &deno_dir_root,
+        &ende_dir_root,
       ))
       .await?;
     }
@@ -88,7 +88,7 @@ pub async fn desktop(
       desktop_flags,
       cli_options,
       &laufey_resolver,
-      &deno_dir_root,
+      &ende_dir_root,
     ))
     .await
   }
@@ -118,7 +118,7 @@ fn apply_desktop_config_to_flags(
     if let Some(icons) = app_config.icons
       && desktop_flags.icon.is_none()
     {
-      use ende_config::deno_json::DesktopIconValue;
+      use ende_config::ende_json::DesktopIconValue;
       let platform_icon = if cfg!(target_os = "macos") {
         icons.macos
       } else if cfg!(target_os = "windows") {
@@ -178,7 +178,7 @@ async fn compile_desktop(
   mut desktop_flags: DesktopFlags,
   cli_options: &Arc<CliOptions>,
   laufey_resolver: &LaufeyBackendResolver,
-  deno_dir_root: &Path,
+  ende_dir_root: &Path,
 ) -> Result<(), AnyError> {
   // If the user asked for a `.dmg` (macOS) installer via `--output`, strip
   // the extension for the intermediate compile/bundle step and remember the
@@ -367,14 +367,16 @@ async fn compile_desktop(
       // NamedTempFile below cleans up on drop, but a Ctrl-C delivers SIGINT
       // to the whole process group (see `run_desktop_hmr`) and the parent
       // exits without running destructors — so the dev loop would otherwise
-      // accumulate `.deno_desktop_entry-*.ts` files in the project root.
-      const ENTRY_PREFIX: &str = ".deno_desktop_entry-";
+      // accumulate `.ende_desktop_entry-*.ts` files in the project root.
+      const ENTRY_PREFIX: &str = ".ende_desktop_entry-";
+      // Name used by versions before the rename to Ende.
+      const LEGACY_ENTRY_PREFIX: &str = ".deno_desktop_entry-";
       if let Ok(entries) = std::fs::read_dir(cwd) {
         for entry in entries.flatten() {
-          if entry
-            .file_name()
-            .to_string_lossy()
-            .starts_with(ENTRY_PREFIX)
+          let file_name = entry.file_name();
+          let file_name = file_name.to_string_lossy();
+          if file_name.starts_with(ENTRY_PREFIX)
+            || file_name.starts_with(LEGACY_ENTRY_PREFIX)
           {
             let _ = std::fs::remove_file(entry.path());
           }
@@ -474,7 +476,7 @@ async fn compile_desktop(
   // the cwd litters the project with `<name>.dylib`, its compile temp file
   // (`<name>.dylib.tmp-*`) and the runtime auto-update sidecars
   // (`.update-ok`, `.backup`). Redirect it into a stable per-project dir under
-  // `deno_dir` so the cwd stays clean. The path is keyed by the project dir so
+  // `ende_dir` so the cwd stays clean. The path is keyed by the project dir so
   // it's stable across relaunches (the auto-update / rollback sentinels rely on
   // a consistent dylib path).
   let hmr_output_override = if desktop_flags.hmr || inspector_requested {
@@ -494,7 +496,7 @@ async fn compile_desktop(
     let key = faster_hex::hex_string(&sha2::Sha256::digest(
       detection_cwd.to_string_lossy().as_bytes(),
     ));
-    let dir = deno_dir_root.join("desktop").join(&key[..16]);
+    let dir = ende_dir_root.join("desktop").join(&key[..16]);
     std::fs::create_dir_all(&dir).with_context(|| {
       format!("failed to create desktop dev dir {}", dir.display())
     })?;
@@ -527,7 +529,7 @@ async fn compile_desktop(
   };
 
   let mut temp_flags = flags.clone();
-  temp_flags.subcommand = DenoSubcommand::Compile(compile_flags.clone());
+  temp_flags.subcommand = EndeSubcommand::Compile(compile_flags.clone());
   temp_flags.internal.is_desktop = true;
 
   let output_path = super::compile::compile_binary(
@@ -970,7 +972,7 @@ fn make_self_extracting_macos(
   let bundle_id =
     read_plist_string(&contents.join("Info.plist"), "CFBundleIdentifier")
       .unwrap_or_else(|| {
-        format!("com.deno.desktop.{}", app_name.to_lowercase())
+        format!("sh.ende.desktop.{}", app_name.to_lowercase())
       });
   validate_bundle_identifier(&bundle_id)?;
 
@@ -1069,7 +1071,7 @@ fn make_self_extracting_dir(
     .map(|s| s.to_string_lossy().into_owned())
     .unwrap_or_else(|| "App".to_string());
   validate_launcher_name(&app_name, "app name")?;
-  let id = format!("com.deno.desktop.{}", app_name.to_lowercase());
+  let id = format!("sh.ende.desktop.{}", app_name.to_lowercase());
 
   let parent = bundle_path.parent().unwrap_or_else(|| Path::new("."));
   let staging = tempfile::Builder::new()
@@ -1383,7 +1385,7 @@ async fn run_desktop_hmr(
   // for DevTools to attach to.
   let user_inspect = flags.inspect.or(flags.inspect_brk).or(flags.inspect_wait);
   let mux_handle = if let Some(user_addr) = user_inspect {
-    let deno_internal: SocketAddr = format!(
+    let ende_internal: SocketAddr = format!(
       "127.0.0.1:{}",
       crate::tools::desktop_devtools::allocate_random_port()?
     )
@@ -1403,7 +1405,7 @@ async fn run_desktop_hmr(
     let handle = crate::tools::desktop_devtools::spawn_mux(
       crate::tools::desktop_devtools::MuxConfig {
         listen: user_addr,
-        deno_internal,
+        ende_internal,
         cef_internal,
         inspect_brk: flags.inspect_brk.is_some(),
         wait_for_debugger,
@@ -1418,14 +1420,14 @@ async fn run_desktop_hmr(
     );
     log::debug!(
       "[desktop] internal upstream ports: deno={} cef={}",
-      deno_internal,
+      ende_internal,
       cef_internal,
     );
 
     cmd
       .env(
         "ENDE_DESKTOP_INSPECT_INTERNAL_PORT",
-        deno_internal.to_string(),
+        ende_internal.to_string(),
       )
       // Exposed so rt_desktop's `openDevtools()` can launch a browser
       // pointed at the unified DevTools frontend instead of CEF's
@@ -1501,7 +1503,9 @@ async fn run_desktop_hmr(
 /// Marker file written into every generated desktop app directory/bundle so a
 /// later build can recognize its own previous output and clear it, while never
 /// touching unrelated user data that happens to share the inferred app name.
-const APP_DIR_MARKER: &str = ".deno-desktop-app";
+const APP_DIR_MARKER: &str = ".ende-desktop-app";
+/// The marker written by versions before the rename to Ende; still recognized.
+const LEGACY_APP_DIR_MARKER: &str = ".deno-desktop-app";
 
 /// Used for `deno desktop --hmr` when a framework runs its own HMR server.
 /// The compiled app has nothing to serve in this case.
@@ -1534,12 +1538,12 @@ fn reserve_app_dir(app_dir: &Path) -> Result<(), AnyError> {
 
   // A bundle we generated carries the marker (at the directory root for
   // Linux/Windows, or under `Contents/Resources` for a macOS `.app`).
-  let is_ours = app_dir.join(APP_DIR_MARKER).exists()
-    || app_dir
-      .join("Contents")
-      .join("Resources")
-      .join(APP_DIR_MARKER)
-      .exists();
+  let resources_dir = app_dir.join("Contents").join("Resources");
+  let is_ours = [APP_DIR_MARKER, LEGACY_APP_DIR_MARKER]
+    .iter()
+    .any(|marker| {
+      app_dir.join(marker).exists() || resources_dir.join(marker).exists()
+    });
   let is_empty = std::fs::read_dir(app_dir)
     .map(|mut entries| entries.next().is_none())
     .unwrap_or(false);
@@ -1869,7 +1873,7 @@ async fn package_linux_app_dir(
   let desktop_id = desktop_flags
     .identifier
     .clone()
-    .unwrap_or_else(|| format!("com.deno.desktop.{}", app_name.to_lowercase()));
+    .unwrap_or_else(|| format!("sh.ende.desktop.{}", app_name.to_lowercase()));
   if let Err(e) = validate_bundle_identifier(&desktop_id) {
     log::warn!(
       "skipping .desktop file: {e} (desktop file IDs follow the same reverse-DNS rules as macOS bundle IDs)"
@@ -1909,14 +1913,14 @@ const LAUFEY_DEV_DIR_ENV: &str = "LAUFEY_DEV_DIR";
 /// `LAUFEY_DEV_DIR` is not set.
 struct LaufeyBackendResolver {
   http_client_provider: Arc<HttpClientProvider>,
-  /// `<deno_dir>/laufey/<version>/`
+  /// `<ende_dir>/laufey/<version>/`
   cache_root: PathBuf,
 }
 
 impl LaufeyBackendResolver {
   fn new(factory: &CliFactory) -> Result<Self, AnyError> {
     let cache_root =
-      factory.deno_dir()?.root.join("laufey").join(LAUFEY_VERSION);
+      factory.ende_dir()?.root.join("laufey").join(LAUFEY_VERSION);
     Ok(Self {
       http_client_provider: factory.http_client_provider().clone(),
       cache_root,
@@ -1928,7 +1932,7 @@ impl LaufeyBackendResolver {
   }
 
   /// Download + verify + extract a backend archive if it isn't already in
-  /// `<deno_dir>/laufey/<version>/<backend>/<target>/`.
+  /// `<ende_dir>/laufey/<version>/<backend>/<target>/`.
   async fn ensure_downloaded(
     &self,
     backend: &str,
@@ -3266,7 +3270,7 @@ async fn package_macos_app_bundle(
     }
     None => {
       let slug = app_name.to_lowercase().replace(' ', "-");
-      format!("com.deno.desktop.{slug}")
+      format!("sh.ende.desktop.{slug}")
     }
   };
 
@@ -3781,7 +3785,7 @@ const LINUX_PACKAGE_VERSION: &str = "1.0.0";
 /// Metadata shared by the `.deb` and `.rpm` builders, derived from the staged
 /// app dir name and the desktop flags. Avoids new config fields — the package
 /// name comes from the app dir, the identifier from `--identifier` (or the same
-/// synthetic `com.deno.desktop.<slug>` default the `.desktop` writer uses).
+/// synthetic `sh.ende.desktop.<slug>` default the `.desktop` writer uses).
 struct LinuxPackageMeta {
   /// Sanitized lowercase package name (Debian rules: `[a-z0-9][a-z0-9+.-]+`).
   /// Used as the package name, the `/usr/bin` symlink, and the icon/`.desktop`
@@ -3825,7 +3829,7 @@ fn config_package_version(
 ) -> Option<String> {
   cli_options
     .workspace()
-    .root_deno_json()
+    .root_ende_json()
     .and_then(|c| c.json.version.clone())
     .filter(|v| !v.is_empty())
 }
@@ -3837,7 +3841,7 @@ fn config_package_license(
 ) -> Option<String> {
   cli_options
     .workspace()
-    .root_deno_json()
+    .root_ende_json()
     .and_then(|c| c.json.license.as_ref())
     .and_then(|v| v.as_str().map(str::to_string))
     .filter(|v| !v.is_empty())
@@ -3856,10 +3860,10 @@ fn linux_package_meta(
   let identifier = desktop_flags
     .identifier
     .clone()
-    .unwrap_or_else(|| format!("com.deno.desktop.{package}"));
+    .unwrap_or_else(|| format!("sh.ende.desktop.{package}"));
   Ok(LinuxPackageMeta {
     summary: format!("{app_name} desktop application"),
-    maintainer: format!("{app_name} <noreply@deno.com>"),
+    maintainer: format!("{app_name} <noreply@ende.sh>"),
     version: linux_package_version(config_version)?,
     package,
     app_name,
@@ -4315,7 +4319,7 @@ fn create_linux_rpm(
   // /usr/share/applications/<pkg>.desktop — staged to a temp file because the
   // rpm builder reads file content from disk.
   let staging = tempfile::Builder::new()
-    .prefix(".deno-desktop-rpm-")
+    .prefix(".ende-desktop-rpm-")
     .tempdir()?;
   let desktop_path = staging.path().join("app.desktop");
   std::fs::write(&desktop_path, system_desktop_entry(&meta))?;
@@ -4620,7 +4624,7 @@ fn create_windows_msi(
   let identifier = desktop_flags
     .identifier
     .clone()
-    .unwrap_or_else(|| format!("com.deno.desktop.{}", app_name.to_lowercase()));
+    .unwrap_or_else(|| format!("sh.ende.desktop.{}", app_name.to_lowercase()));
   let manufacturer = "Ende";
   let arch = msi_arch_for_target(target)?;
 
@@ -5850,7 +5854,7 @@ mod tests {
   fn macos_info_plist_includes_principal_class_and_tcc_usage_strings() {
     let plist = render_macos_info_plist(
       "Deno Demo",
-      "com.deno.demo",
+      "sh.ende.demo",
       "laufey_webview",
       true,
       None,
@@ -6039,11 +6043,11 @@ def456  other.zip
   #[test]
   fn bundle_id_accepts_canonical() {
     for ok in &[
-      "com.deno.app",
-      "com.deno.my-app",
-      "com.deno.app.v2",
+      "sh.ende.app",
+      "sh.ende.my-app",
+      "sh.ende.app.v2",
       "A.B",
-      "com.deno.app.helper",
+      "sh.ende.app.helper",
     ] {
       assert!(
         validate_bundle_identifier(ok).is_ok(),
@@ -6057,14 +6061,14 @@ def456  other.zip
     let cases = &[
       ("", "empty"),
       ("noseparator", "no dot"),
-      ("com.deno.", "trailing empty segment"),
-      (".com.deno", "leading empty segment"),
-      ("com..deno", "doubled dot"),
-      ("com.deno.app/foo", "slash"),
-      ("com.deno.app foo", "space"),
-      ("com.deno.app$bar", "shell metachar"),
-      ("com.deno.app;rm", "semicolon"),
-      ("com.deno.app\nx", "newline"),
+      ("sh.ende.", "trailing empty segment"),
+      (".sh.ende", "leading empty segment"),
+      ("sh..ende", "doubled dot"),
+      ("sh.ende.app/foo", "slash"),
+      ("sh.ende.app foo", "space"),
+      ("sh.ende.app$bar", "shell metachar"),
+      ("sh.ende.app;rm", "semicolon"),
+      ("sh.ende.app\nx", "newline"),
     ];
     for (bad, why) in cases {
       assert!(
@@ -6076,10 +6080,10 @@ def456  other.zip
 
   #[test]
   fn bundle_id_rejects_too_long() {
-    let long = format!("com.deno.{}", "x".repeat(200));
+    let long = format!("sh.ende.{}", "x".repeat(200));
     assert!(validate_bundle_identifier(&long).is_err());
     // Right at the boundary.
-    let just_too_long = format!("com.deno.{}", "x".repeat(155));
+    let just_too_long = format!("sh.ende.{}", "x".repeat(155));
     assert!(
       validate_bundle_identifier(&just_too_long).is_err(),
       "ids longer than 155 chars must be rejected (Apple receipt limit)"
@@ -6154,7 +6158,7 @@ def456  other.zip
   }
 
   #[test]
-  fn dylib_parts_strips_libdenort_prefix() {
+  fn dylib_parts_strips_libendert_prefix() {
     // .so on Linux carries the `lib` prefix in the file stem; the
     // resulting bundle name shouldn't include it (the user typed
     // `--output myapp`, not `libmyapp`).
@@ -7338,6 +7342,18 @@ def456  other.zip
   }
 
   #[test]
+  fn linux_package_meta_defaults_to_ende_identifier() {
+    let meta = linux_package_meta(
+      Path::new("/tmp/My App"),
+      &DesktopFlags::default(),
+      None,
+    )
+    .unwrap();
+    assert_eq!(meta.identifier, "sh.ende.desktop.my-app");
+    assert_eq!(meta.maintainer, "My App <noreply@ende.sh>");
+  }
+
+  #[test]
   fn package_arch_mappings() {
     assert_eq!(
       debian_arch_for_target(Some("x86_64-unknown-linux-gnu")).unwrap(),
@@ -8278,6 +8294,17 @@ def456  other.zip
   }
 
   #[test]
+  fn reserve_app_dir_clears_build_with_legacy_marker() {
+    // Output from versions before the rename carries the old marker.
+    let tmp = tempfile::tempdir().unwrap();
+    let app_dir = tmp.path().join("app");
+    std::fs::create_dir(&app_dir).unwrap();
+    std::fs::write(app_dir.join(".deno-desktop-app"), b"").unwrap();
+    reserve_app_dir(&app_dir).unwrap();
+    assert!(!app_dir.exists());
+  }
+
+  #[test]
   fn reserve_app_dir_clears_previous_macos_bundle() {
     // A `.app` bundle's marker lives under Contents/Resources/.
     let tmp = tempfile::tempdir().unwrap();
@@ -8319,7 +8346,7 @@ def456  other.zip
   // --- desktop.backend config merge (CLI flag > deno.json > webview) ---
 
   #[test]
-  fn backend_from_deno_json_when_flag_absent() {
+  fn backend_from_ende_json_when_flag_absent() {
     let mut flags = DesktopFlags {
       source_file: "main.ts".to_string(),
       backend: None,
@@ -8334,7 +8361,7 @@ def456  other.zip
   }
 
   #[test]
-  fn cli_flag_overrides_deno_json_backend() {
+  fn cli_flag_overrides_ende_json_backend() {
     let mut flags = DesktopFlags {
       source_file: "main.ts".to_string(),
       backend: Some("webview".to_string()),

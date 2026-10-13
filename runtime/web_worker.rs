@@ -45,7 +45,7 @@ use ende_cron::CronHandlerImpl;
 use ende_fs::FileSystem;
 use ende_io::Stdio;
 use ende_kv::dynamic::MultiBackendDbHandler;
-use ende_napi::DenoRtNativeAddonLoaderRc;
+use ende_napi::EndeRtNativeAddonLoaderRc;
 use ende_node::ExtNodeSys;
 use ende_node::NodeExtInitServices;
 use ende_permissions::PermissionsContainer;
@@ -371,7 +371,7 @@ pub struct WebWorkerServiceOptions<
 > {
   pub blob_store: Arc<dyn BlobStoreTrait>,
   pub broadcast_channel: InMemoryBroadcastChannel,
-  pub deno_rt_native_addon_loader: Option<DenoRtNativeAddonLoaderRc>,
+  pub ende_rt_native_addon_loader: Option<EndeRtNativeAddonLoaderRc>,
   pub compiled_wasm_module_store: Option<CompiledWasmModuleStore>,
   pub feature_checker: Arc<FeatureChecker>,
   pub fs: Arc<dyn FileSystem>,
@@ -567,7 +567,7 @@ impl WebWorker {
       ende_websocket::ende_websocket::init(),
       ende_webstorage::ende_webstorage::init(None).disable(),
       ende_crypto::ende_crypto::init(options.seed),
-      ende_ffi::ende_ffi::init(services.deno_rt_native_addon_loader.clone()),
+      ende_ffi::ende_ffi::init(services.ende_rt_native_addon_loader.clone()),
       ende_net::ende_net::init(
         services.root_cert_store_provider.clone(),
         options.unsafely_ignore_certificate_errors.clone(),
@@ -590,7 +590,7 @@ impl WebWorker {
         ende_kv::KvConfig::builder().build(),
       ),
       ende_cron::ende_cron::init(Box::new(CronHandlerImpl::create_from_env())),
-      ende_napi::ende_napi::init(services.deno_rt_native_addon_loader.clone()),
+      ende_napi::ende_napi::init(services.ende_rt_native_addon_loader.clone()),
       ende_http::ende_http::init(ende_http::Options {
         no_legacy_abort: options.bootstrap.no_legacy_abort,
         ..Default::default()

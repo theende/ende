@@ -947,7 +947,7 @@ function getInnerResponse(response) {
  * @param {Response} response
  * @returns {InnerResponse}
  */
-function toInnerResponseForDenoServe(response) {
+function toInnerResponseForEndeServe(response) {
   webidl.assertBranded(response, ResponsePrototype);
   responseHeaderList(response);
   return response[_response];
@@ -1021,7 +1021,7 @@ return {
   SERVE_FAST_HEADER_DEFAULT_TEXT,
   SERVE_FAST_HEADER_NONE,
   toInnerResponse,
-  toInnerResponseForDenoServe,
+  toInnerResponseForEndeServe,
   wireHeaderList,
 };
 })();

@@ -12,11 +12,11 @@ use std::sync::Arc;
 
 use deno_ast::MediaType;
 use deno_path_util::url_to_file_path;
-use ende_config::deno_json::DenoJsonCache;
-use ende_config::deno_json::FmtConfig;
-use ende_config::deno_json::FmtOptionsConfig;
-use ende_config::deno_json::NodeModulesDirMode;
-use ende_config::deno_json::TestConfig;
+use ende_config::ende_json::EndeJsonCache;
+use ende_config::ende_json::FmtConfig;
+use ende_config::ende_json::FmtOptionsConfig;
+use ende_config::ende_json::NodeModulesDirMode;
+use ende_config::ende_json::TestConfig;
 use ende_config::glob::FilePatterns;
 use ende_config::glob::PathOrPatternSet;
 use ende_config::workspace::UrlRc;
@@ -69,7 +69,7 @@ use super::urls::uri_to_url;
 use super::urls::url_to_uri;
 use crate::args::CliLockfile;
 use crate::args::ConfigFile;
-use crate::cache::DenoDir;
+use crate::cache::EndeDir;
 use crate::file_fetcher::CliFileFetcher;
 use crate::http_util::HttpClientProvider;
 use crate::lsp::logging::lsp_warn;
@@ -169,7 +169,7 @@ impl Default for CodeLensSettings {
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct DenoCompletionSettings {
+pub struct EndeCompletionSettings {
   #[serde(default)]
   pub imports: ImportCompletionSettings,
 }
@@ -596,7 +596,7 @@ pub struct WorkspaceSettings {
   pub force_push_based_diagnostics: bool,
 
   #[serde(default)]
-  pub suggest: DenoCompletionSettings,
+  pub suggest: EndeCompletionSettings,
 
   /// Testing settings for the workspace.
   #[serde(default)]
@@ -677,16 +677,16 @@ impl WorkspaceSettings {
       }
     }
     let section = legacy_client::settings_section();
-    let deno_inlay_hints =
+    let ende_inlay_hints =
       deno.as_object().and_then(|o| o.get("inlayHints").cloned());
-    let deno_suggest = deno.as_object().and_then(|o| o.get("suggest").cloned());
+    let ende_suggest = deno.as_object().and_then(|o| o.get("suggest").cloned());
     let mut settings: Self =
       parse_or_default(deno, &format!("settings under \"{section}\""));
     settings.javascript =
       parse_or_default(javascript, "settings under \"javascript\"");
     settings.typescript =
       parse_or_default(typescript, "settings under \"typescript\"");
-    if let Some(inlay_hints) = deno_inlay_hints {
+    if let Some(inlay_hints) = ende_inlay_hints {
       let inlay_hints: InlayHintsSettings = parse_or_default(
         inlay_hints,
         &format!("settings under \"{section}.inlayHints\""),
@@ -797,7 +797,7 @@ impl WorkspaceSettings {
           inlay_hints.enum_member_values.enabled;
       }
     }
-    if let Some(suggest) = deno_suggest {
+    if let Some(suggest) = ende_suggest {
       let suggest: CompletionSettings = parse_or_default(
         suggest,
         &format!("settings under \"{section}.suggest\""),
@@ -940,7 +940,7 @@ impl Settings {
   }
 
   pub fn enable_settings_hash(&self) -> u64 {
-    let mut hasher = FastInsecureHasher::new_without_deno_version();
+    let mut hasher = FastInsecureHasher::new_without_ende_version();
     let unscoped = self.get_unscoped();
     hasher.write_hashable(unscoped.enable);
     hasher.write_hashable(&unscoped.enable_paths);
@@ -1146,7 +1146,7 @@ impl Config {
     self
       .settings
       .specifier_enabled(specifier)
-      .unwrap_or_else(|| data.and_then(|d| d.maybe_deno_json()).is_some())
+      .unwrap_or_else(|| data.and_then(|d| d.maybe_ende_json()).is_some())
   }
 
   pub fn specifier_enabled_for_test(
@@ -1267,7 +1267,7 @@ impl Config {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConfigWatchedFileType {
-  DenoJson,
+  EndeJson,
   Lockfile,
   NpmRc,
   PackageJson,
@@ -1307,7 +1307,7 @@ impl WorkspaceConfigData {
       WorkspaceFactoryOptions {
         additional_config_file_names: &[],
         config_discovery: ConfigDiscoveryOption::DiscoverCwd,
-        maybe_custom_deno_dir_root: None,
+        maybe_custom_ende_dir_root: None,
         is_package_manager_subcommand: false,
         frozen_lockfile: None,
         lock_arg: None,
@@ -1459,7 +1459,7 @@ impl ConfigData {
     file_fetcher: &Arc<CliFileFetcher>,
     http_client_provider: &Arc<HttpClientProvider>,
     // sync requirement is because the lsp requires sync
-    deno_json_cache: &(dyn DenoJsonCache + Sync),
+    ende_json_cache: &(dyn EndeJsonCache + Sync),
     pkg_json_cache: &(dyn PackageJsonCache + Sync),
     workspace_cache: &(dyn WorkspaceCache + Sync),
     ws_data_cache: &mut HashMap<UrlRc, WorkspaceConfigData>,
@@ -1482,7 +1482,7 @@ impl ConfigData {
           },
           &WorkspaceDiscoverOptions {
             additional_config_file_names: &[],
-            deno_json_cache: Some(deno_json_cache),
+            ende_json_cache: Some(ende_json_cache),
             pkg_json_cache: Some(pkg_json_cache),
             workspace_cache: Some(workspace_cache),
             discover_pkg_json: !has_flag_env_var(
@@ -1525,10 +1525,10 @@ impl ConfigData {
         )
         .await;
         // check if any of these need to be added to the workspace
-        let files = ende_config::deno_json::CONFIG_FILE_NAMES
+        let files = ende_config::ende_json::CONFIG_FILE_NAMES
           .iter()
           .map(|name| {
-            (scope.join(name).unwrap(), ConfigWatchedFileType::DenoJson)
+            (scope.join(name).unwrap(), ConfigWatchedFileType::EndeJson)
           })
           .chain([(
             scope.join("package.json").unwrap(),
@@ -1589,15 +1589,15 @@ impl ConfigData {
       Some(Arc::new(specifier))
     })();
 
-    if let Some(deno_json) = member_dir.member_deno_json() {
+    if let Some(ende_json) = member_dir.member_ende_json() {
       lsp_log!(
         "  Resolved Ende configuration file: \"{}\"",
-        deno_json.specifier
+        ende_json.specifier
       );
 
       add_watched_file(
-        deno_json.specifier.clone(),
-        ConfigWatchedFileType::DenoJson,
+        ende_json.specifier.clone(),
+        ConfigWatchedFileType::EndeJson,
       );
     }
 
@@ -1687,12 +1687,12 @@ impl ConfigData {
       );
     }
     let is_config_import_map = member_dir
-      .member_deno_json()
+      .member_ende_json()
       .map(|c| c.is_an_import_map() || c.json.import_map.is_some())
       .or_else(|| {
         member_dir
           .workspace
-          .root_deno_json()
+          .root_ende_json()
           .map(|c| c.is_an_import_map() || c.json.import_map.is_some())
       })
       .unwrap_or(false);
@@ -1772,10 +1772,10 @@ impl ConfigData {
     }
   }
 
-  pub fn maybe_deno_json(
+  pub fn maybe_ende_json(
     &self,
-  ) -> Option<&Arc<ende_config::deno_json::ConfigFile>> {
-    self.member_dir.member_or_root_deno_json()
+  ) -> Option<&Arc<ende_config::ende_json::ConfigFile>> {
+    self.member_dir.member_or_root_ende_json()
   }
 
   pub fn maybe_pkg_json(&self) -> Option<&Arc<ende_package_json::PackageJson>> {
@@ -1833,7 +1833,7 @@ impl ConfigTree {
     self
       .scopes
       .values()
-      .filter_map(|d| d.maybe_deno_json())
+      .filter_map(|d| d.maybe_ende_json())
       .collect()
   }
 
@@ -1874,7 +1874,7 @@ impl ConfigTree {
 
   pub fn to_did_refresh_params(
     &self,
-  ) -> lsp_custom::DidRefreshDenoConfigurationTreeNotificationParams {
+  ) -> lsp_custom::DidRefreshEndeConfigurationTreeNotificationParams {
     let data = self
       .scopes
       .values()
@@ -1883,15 +1883,15 @@ impl ConfigTree {
           Some(data.member_dir.workspace.root_dir_url())
             .filter(|s| *s != data.member_dir.dir_url())
             .and_then(|s| url_to_uri(s).ok());
-        Some(lsp_custom::DenoConfigurationData {
+        Some(lsp_custom::EndeConfigurationData {
           scope_uri: url_to_uri(&data.scope).ok()?,
-          deno_json: data.maybe_deno_json().and_then(|c| {
+          ende_json: data.maybe_ende_json().and_then(|c| {
             if workspace_root_scope_uri.is_some()
               && Some(&c.specifier)
                 == data
                   .member_dir
                   .workspace
-                  .root_deno_json()
+                  .root_ende_json()
                   .map(|c| &c.specifier)
             {
               return None;
@@ -1909,13 +1909,13 @@ impl ConfigTree {
         })
       })
       .collect();
-    let deno_dir_npm_folder_uri = self
+    let ende_dir_npm_folder_uri = self
       .global_npm_cache_url
       .as_ref()
       .and_then(|s| url_to_uri(s).ok());
-    lsp_custom::DidRefreshDenoConfigurationTreeNotificationParams {
+    lsp_custom::DidRefreshEndeConfigurationTreeNotificationParams {
       data,
-      deno_dir_npm_folder_uri,
+      ende_dir_npm_folder_uri,
     }
   }
 
@@ -1932,14 +1932,14 @@ impl ConfigTree {
     workspace_files: &IndexSet<PathBuf>,
     file_fetcher: &Arc<CliFileFetcher>,
     http_client_provider: &Arc<HttpClientProvider>,
-    deno_dir: &DenoDir,
+    ende_dir: &EndeDir,
     reason: &str,
   ) {
     lsp_log!("Refreshing configuration tree ({reason})...");
     // since we're resolving a workspace multiple times in different
     // folders, we want to cache all the lookups and config files across
     // ConfigData::load calls
-    let deno_json_cache = DenoJsonMemCache::default();
+    let ende_json_cache = EndeJsonMemCache::default();
     let pkg_json_cache = PackageJsonMemCache::default();
     let workspace_cache = WorkspaceMemCache::default();
     // Shared per-workspace-root data (lockfile, .npmrc, node_modules dir),
@@ -1975,7 +1975,7 @@ impl ConfigTree {
                 settings,
                 file_fetcher,
                 http_client_provider,
-                &deno_json_cache,
+                &ende_json_cache,
                 &pkg_json_cache,
                 &workspace_cache,
                 &mut ws_data_cache,
@@ -1993,7 +1993,7 @@ impl ConfigTree {
       };
       let file_name = file_url.path().rsplit_once('/').map(|(_, name)| name);
       if !file_name.is_some_and(|name| {
-        ende_config::deno_json::is_config_file_name(name)
+        ende_config::ende_json::is_config_file_name(name)
           || name == "package.json"
       }) {
         continue;
@@ -2011,7 +2011,7 @@ impl ConfigTree {
           settings,
           file_fetcher,
           http_client_provider,
-          &deno_json_cache,
+          &ende_json_cache,
           &pkg_json_cache,
           &workspace_cache,
           &mut ws_data_cache,
@@ -2029,7 +2029,7 @@ impl ConfigTree {
           settings,
           file_fetcher,
           http_client_provider,
-          &deno_json_cache,
+          &ende_json_cache,
           &pkg_json_cache,
           &workspace_cache,
           &mut ws_data_cache,
@@ -2041,7 +2041,7 @@ impl ConfigTree {
 
     self.scopes = Arc::new(scopes);
     self.global_npm_cache_url =
-      Url::from_directory_path(deno_dir.npm_folder_path())
+      Url::from_directory_path(ende_dir.npm_folder_path())
         .ok()
         .map(Arc::new);
   }
@@ -2078,7 +2078,7 @@ impl ConfigTree {
       )
       .await,
     );
-    assert!(data.maybe_deno_json().is_some());
+    assert!(data.maybe_ende_json().is_some());
     self.scopes = Arc::new([(scope, data)].into_iter().collect());
   }
 }
@@ -2110,9 +2110,9 @@ fn resolve_node_modules_dir_mode(
 
 // todo(dsherret): switch to RefCell once the lsp no longer requires Sync
 #[derive(Default)]
-struct DenoJsonMemCache(Mutex<HashMap<PathBuf, Arc<ConfigFile>>>);
+struct EndeJsonMemCache(Mutex<HashMap<PathBuf, Arc<ConfigFile>>>);
 
-impl ende_config::deno_json::DenoJsonCache for DenoJsonMemCache {
+impl ende_config::ende_json::EndeJsonCache for EndeJsonMemCache {
   fn get(&self, path: &Path) -> Option<Arc<ConfigFile>> {
     self.0.lock().get(path).cloned()
   }
@@ -2262,7 +2262,7 @@ mod tests {
         lint: true,
         document_preload_limit: 1_000,
         force_push_based_diagnostics: false,
-        suggest: DenoCompletionSettings {
+        suggest: EndeCompletionSettings {
           imports: ImportCompletionSettings {
             auto_discover: true,
             hosts: HashMap::new(),

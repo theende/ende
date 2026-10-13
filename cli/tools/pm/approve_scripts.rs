@@ -12,8 +12,8 @@ use deno_semver::package::PackageKind;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
 use deno_terminal::colors;
-use ende_config::deno_json::AllowScriptsConfig;
-use ende_config::deno_json::AllowScriptsValueConfig;
+use ende_config::ende_json::AllowScriptsConfig;
+use ende_config::ende_json::AllowScriptsValueConfig;
 use ende_core::anyhow;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::bail;
@@ -28,7 +28,7 @@ use crate::factory::CliFactory;
 use crate::npm::CliNpmResolver;
 use crate::tools::pm::ConfigKind;
 use crate::tools::pm::ConfigUpdater;
-use crate::tools::pm::create_deno_json;
+use crate::tools::pm::create_ende_json;
 use crate::tools::pm::interactive_picker;
 use crate::util::console::escape_terminal_control_chars;
 
@@ -44,20 +44,20 @@ pub async fn approve_scripts(
 ) -> Result<(), AnyError> {
   let mut factory = CliFactory::from_flags(flags.clone());
   let mut options = factory.cli_options()?;
-  if options.start_dir.member_or_root_deno_json().is_none() {
-    factory = create_deno_json(&flags, options)?;
+  if options.start_dir.member_or_root_ende_json().is_none() {
+    factory = create_ende_json(&flags, options)?;
     options = factory.cli_options()?;
   }
-  let deno_json = options.workspace().root_deno_json().ok_or_else(|| {
+  let ende_json = options.workspace().root_ende_json().ok_or_else(|| {
     anyhow::anyhow!("An ende.json file could not be found or created")
   })?;
 
-  let deno_json_path = url_to_file_path(&deno_json.specifier)?;
+  let ende_json_path = url_to_file_path(&ende_json.specifier)?;
 
   let mut config_updater =
-    ConfigUpdater::new(ConfigKind::DenoJson, deno_json_path.clone())?;
+    ConfigUpdater::new(ConfigKind::EndeJson, ende_json_path.clone())?;
 
-  let allow_scripts_config = deno_json.to_allow_scripts_config()?;
+  let allow_scripts_config = ende_json.to_allow_scripts_config()?;
 
   let (mut allow_list, mut deny_list) = match allow_scripts_config.allow {
     AllowScriptsValueConfig::All => {

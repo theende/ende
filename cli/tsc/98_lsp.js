@@ -21,7 +21,7 @@ import {
   SOURCE_REF_COUNTS,
 } from "./97_ts_host.js";
 
-/** @type {DenoCore} */
+/** @type {EndeCore} */
 const core = globalThis.Ende.core;
 const ops = core.ops;
 

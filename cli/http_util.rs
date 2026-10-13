@@ -14,7 +14,7 @@ use ende_core::futures::StreamExt;
 use ende_core::serde;
 use ende_core::serde_json;
 use ende_core::url::Url;
-use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::ENDE_VERSION_INFO;
 use ende_runtime::ende_fetch;
 use ende_runtime::ende_fetch::CreateHttpClientOptions;
 use ende_runtime::ende_fetch::ResBody;
@@ -95,7 +95,7 @@ impl HttpClientProvider {
   pub fn get_or_create(&self) -> Result<HttpClient, JsErrorBox> {
     let client = self.client.get_or_try_init(|| {
       create_http_client(
-        DENO_VERSION_INFO.user_agent,
+        ENDE_VERSION_INFO.user_agent,
         CreateHttpClientOptions {
           root_cert_store: match &self.root_cert_store_provider {
             Some(provider) => Some(provider.get_or_try_init()?.clone()),
@@ -154,7 +154,7 @@ impl HttpClientProvider {
     }
     let tls_key = TlsKey(certs, keys.remove(0));
     let client = create_http_client(
-      DENO_VERSION_INFO.user_agent,
+      ENDE_VERSION_INFO.user_agent,
       CreateHttpClientOptions {
         root_cert_store: match &self.root_cert_store_provider {
           Some(provider) => Some(provider.get_or_try_init()?.clone()),
@@ -723,7 +723,7 @@ mod test {
 
     let client = HttpClient::new(
       create_http_client(
-        DENO_VERSION_INFO.user_agent,
+        ENDE_VERSION_INFO.user_agent,
         CreateHttpClientOptions {
           ca_certs: vec![
             std::fs::read(test_util::testdata_path().join("tls/RootCA.pem"))
@@ -767,7 +767,7 @@ mod test {
 
       let client = HttpClient::new(
         create_http_client(
-          DENO_VERSION_INFO.user_agent,
+          ENDE_VERSION_INFO.user_agent,
           CreateHttpClientOptions::default(),
         )
         .unwrap(),
@@ -810,7 +810,7 @@ mod test {
 
     let client = HttpClient::new(
       create_http_client(
-        DENO_VERSION_INFO.user_agent,
+        ENDE_VERSION_INFO.user_agent,
         CreateHttpClientOptions {
           root_cert_store: Some(root_cert_store),
           ..Default::default()
@@ -831,7 +831,7 @@ mod test {
         .unwrap();
     let client = HttpClient::new(
       create_http_client(
-        DENO_VERSION_INFO.user_agent,
+        ENDE_VERSION_INFO.user_agent,
         CreateHttpClientOptions {
           ca_certs: vec![
             std::fs::read(
@@ -866,7 +866,7 @@ mod test {
     let url = Url::parse("https://localhost:5545/etag_script.ts").unwrap();
     let client = HttpClient::new(
       create_http_client(
-        DENO_VERSION_INFO.user_agent,
+        ENDE_VERSION_INFO.user_agent,
         CreateHttpClientOptions {
           ca_certs: vec![
             std::fs::read(
@@ -909,7 +909,7 @@ mod test {
         .unwrap();
     let client = HttpClient::new(
       create_http_client(
-        DENO_VERSION_INFO.user_agent,
+        ENDE_VERSION_INFO.user_agent,
         CreateHttpClientOptions {
           ca_certs: vec![
             std::fs::read(

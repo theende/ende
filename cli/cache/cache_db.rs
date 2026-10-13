@@ -29,7 +29,7 @@ impl CacheDBHash {
     Self::new(
       // always write in the deno version just in case
       // the clearing on deno version change doesn't work
-      FastInsecureHasher::new_deno_versioned()
+      FastInsecureHasher::new_ende_versioned()
         .write_hashable(hashable)
         .finish(),
     )

@@ -57,7 +57,7 @@ load order (`00_*.js`, `01_*.js`, …).
 The `ende_core` foundation and the crates the CLI composes for resolution and
 packaging:
 
-- **Core/V8 bridge:** `core`, `core_testing`, `ops`, `serde_v8`, `dcore`.
+- **Core/V8 bridge:** `core`, `core_testing`, `ops`, `serde_v8`, `ecore`.
 - **Resolution & packaging:** `resolver`, `node_resolver`, `npm`, `npm_cache`,
   `npm_installer`, `npmrc`, `package_json`, `lockfile`, `config`, `cli_parser`,
   `cache_dir`.

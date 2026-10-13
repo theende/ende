@@ -945,7 +945,7 @@ pub enum ArgError {
   #[error(
     "Invalid ende_core:: prefix for type. Try adding `use ende_core::{1}` at the top of the file and specifying `{2}` in this position."
   )]
-  InvalidDenoCorePrefix(Span, String, String),
+  InvalidEndeCorePrefix(Span, String, String),
   #[error("Expected a reference. Use '#[cppgc] &{1}' instead.")]
   ExpectedCppGcReference(Span, String),
   #[error("Invalid #[cppgc] type")]
@@ -972,7 +972,7 @@ impl From<ArgError> for syn::Error {
       ArgError::MissingAttribute(span, _) => span,
       ArgError::AttributeError(err) => return combine_err(err.into(), msg),
       ArgError::NotAllowedInThisPosition(span) => span,
-      ArgError::InvalidDenoCorePrefix(span, _, _) => span,
+      ArgError::InvalidEndeCorePrefix(span, _, _) => span,
       ArgError::ExpectedCppGcReference(span, _) => span,
       ArgError::InvalidCppGcType(span) => span,
       ArgError::InvalidAttributePosition(span, _, _) => span,
@@ -1542,7 +1542,7 @@ fn parse_type_path(
           let next = stringify_token(next);
           let any = any.map(|any| format!("::{}", any.into_token_stream())).unwrap_or_default();
           let instead = format!("{next}{any}");
-          Err(ArgError::InvalidDenoCorePrefix(tp.span(), next, instead))
+          Err(ArgError::InvalidEndeCorePrefix(tp.span(), next, instead))
         }
         _ => Ok(CUnknown(Type::Path(tp.clone()), matches!(attrs.primary, Some(AttributeModifier::Scoped)))),
       )?
@@ -2322,10 +2322,10 @@ mod tests {
     fn f(s1: &JsRuntimeState, s2: &mut JsRuntimeState) {}
   );
   expect_fail!(
-    op_extra_deno_core_v8,
+    op_extra_ende_core_v8,
     ArgError(
       "a".into(),
-      InvalidDenoCorePrefix(
+      InvalidEndeCorePrefix(
         Span::call_site(),
         "v8".into(),
         "v8::Function".into()
@@ -2334,10 +2334,10 @@ mod tests {
     fn f(a: &ende_core::v8::Function) {}
   );
   expect_fail!(
-    op_extra_deno_core_opstate,
+    op_extra_ende_core_opstate,
     ArgError(
       "a".into(),
-      InvalidDenoCorePrefix(
+      InvalidEndeCorePrefix(
         Span::call_site(),
         "OpState".into(),
         "OpState".into()

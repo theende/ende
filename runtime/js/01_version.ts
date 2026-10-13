@@ -13,11 +13,11 @@ const version = {
 };
 
 function setVersions(
-  denoVersion,
+  endeVersion,
   v8Version,
   tsVersion,
 ) {
-  version.ende = denoVersion;
+  version.ende = endeVersion;
   version.v8 = v8Version;
   version.typescript = tsVersion;
 

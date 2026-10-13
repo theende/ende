@@ -122,7 +122,7 @@ fn main() {
     hasher
       .hash_dir(tests.join("node_compat"))
       .hash_dir(tests.join("util"))
-      .hash_file(test_util::deno_exe_path())
+      .hash_file(test_util::ende_exe_path())
       .hash_file(test_util::test_server_path());
   });
   if matches!(ci_hash, test_util::hash::CiHashStatus::Skip) {
@@ -695,7 +695,7 @@ impl TestSetup {
   }
 
   fn run_piped(&self) -> (bool, String, Option<i32>) {
-    let mut cmd = util::deno_cmd().disable_diagnostic_logging();
+    let mut cmd = util::ende_cmd().disable_diagnostic_logging();
     cmd = cmd.current_dir(&self.test_suite_path);
     for arg in &self.args {
       cmd = cmd.arg(arg);
@@ -723,7 +723,7 @@ impl TestSetup {
   }
 
   fn run_pty(&self) -> (bool, String, Option<i32>) {
-    let deno_exe = util::deno_exe_path();
+    let deno_exe = util::ende_exe_path();
     let args: Vec<&str> = self.args.iter().map(|s| s.as_str()).collect();
 
     // PTY needs the full environment (inherit + our overrides)

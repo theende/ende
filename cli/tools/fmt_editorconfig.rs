@@ -13,8 +13,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use ende_config::deno_json::FmtOptionsConfig;
-use ende_config::deno_json::NewLineKind;
+use ende_config::ende_json::FmtOptionsConfig;
+use ende_config::ende_json::NewLineKind;
 use regex::Regex;
 
 /// Properties resolved from `.editorconfig` files for a particular file.

@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 use ende_core::error::AnyError;
 use ende_core::url::Url;
-use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::ENDE_VERSION_INFO;
 use ende_print::drop_print;
 use ende_print::drop_println;
 
@@ -646,7 +646,7 @@ impl HtmlCoverageReporter {
 
   /// Creates footer part of the contents for html report.
   pub fn create_html_footer(&self, now: &str) -> String {
-    let version = DENO_VERSION_INFO.deno;
+    let version = ENDE_VERSION_INFO.ende;
     format!(
       "
       <div class='footer quiet pad2 space-top1 center small'>

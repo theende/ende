@@ -13,7 +13,7 @@ pub struct LockingProcess {
   /// Full path to the process image, when it could be resolved.
   pub exe: Option<PathBuf>,
   /// Whether the process image looks like a `deno` executable.
-  pub is_deno: bool,
+  pub is_ende: bool,
 }
 
 /// Returns the processes that currently hold open handles to any of `paths`.
@@ -121,12 +121,12 @@ pub fn processes_locking_files(paths: &[PathBuf]) -> Vec<LockingProcess> {
         let pid = info.Process.dwProcessId;
         let name = wide_to_string(&info.strAppName);
         let exe = process_image_path(pid);
-        let is_deno = exe.as_deref().is_some_and(is_deno_exe);
+        let is_ende = exe.as_deref().is_some_and(is_ende_exe);
         result.push(LockingProcess {
           pid,
           name,
           exe,
-          is_deno,
+          is_ende,
         });
       }
     }
@@ -143,7 +143,7 @@ fn wide_to_string(buf: &[u16]) -> String {
 }
 
 #[cfg(windows)]
-fn is_deno_exe(path: &std::path::Path) -> bool {
+fn is_ende_exe(path: &std::path::Path) -> bool {
   path
     .file_stem()
     .and_then(|stem| stem.to_str())

@@ -149,7 +149,7 @@ const EXEC_TIME_BENCHMARKS: &[(&str, &[&str], Option<i32>)] = &[
 const RESULT_KEYS: &[&str] =
   &["mean", "stddev", "user", "system", "min", "max"];
 fn run_exec_time(
-  deno_exe: &Path,
+  ende_exe: &Path,
   target_dir: &PathRef,
 ) -> Result<HashMap<String, HashMap<String, f64>>> {
   let hyperfine_exe = test_util::prebuilt_tool_path("hyperfine").to_string();
@@ -178,7 +178,7 @@ fn run_exec_time(
     };
     command.push(format!(
       "{} {} {}",
-      deno_exe.to_str().unwrap(),
+      ende_exe.to_str().unwrap(),
       args.join(" "),
       ret_code_test
     ));
@@ -250,7 +250,7 @@ fn get_binary_sizes(target_dir: &Path) -> Result<HashMap<String, i64>> {
 
   sizes.insert(
     "deno".to_string(),
-    test_util::deno_exe_path().as_path().metadata()?.len() as i64,
+    test_util::ende_exe_path().as_path().metadata()?.len() as i64,
   );
 
   // add up size for everything in target/release/deps/libswc*
@@ -292,12 +292,12 @@ fn get_binary_sizes(target_dir: &Path) -> Result<HashMap<String, i64>> {
   Ok(sizes)
 }
 
-fn run_max_mem_benchmark(deno_exe: &Path) -> Result<HashMap<String, i64>> {
+fn run_max_mem_benchmark(ende_exe: &Path) -> Result<HashMap<String, i64>> {
   let mut results = HashMap::<String, i64>::new();
 
   for (name, args, return_code) in EXEC_TIME_BENCHMARKS {
     let proc = Command::new("time")
-      .args(["-v", deno_exe.to_str().unwrap()])
+      .args(["-v", ende_exe.to_str().unwrap()])
       .args(args.iter())
       .stdout(Stdio::null())
       .stderr(Stdio::piped())
@@ -386,10 +386,10 @@ async fn main() -> Result<()> {
   println!("Starting Deno benchmark");
 
   let target_dir = test_util::target_dir();
-  let deno_exe = if let Ok(p) = std::env::var("DENO_BENCH_EXE") {
+  let ende_exe = if let Ok(p) = std::env::var("DENO_BENCH_EXE") {
     PathBuf::from(p)
   } else {
-    test_util::deno_exe_path().to_path_buf()
+    test_util::ende_exe_path().to_path_buf()
   };
   env::set_current_dir(test_util::root_path())?;
 
@@ -410,7 +410,7 @@ async fn main() -> Result<()> {
   };
 
   if benchmarks.contains(&"exec_time") {
-    let exec_times = run_exec_time(&deno_exe, &target_dir)?;
+    let exec_times = run_exec_time(&ende_exe, &target_dir)?;
     new_data.benchmark = exec_times;
   }
 
@@ -425,7 +425,7 @@ async fn main() -> Result<()> {
   }
 
   if benchmarks.contains(&"lsp") {
-    let lsp_exec_times = lsp::benchmarks(&deno_exe);
+    let lsp_exec_times = lsp::benchmarks(&ende_exe);
     new_data.lsp_exec_time = lsp_exec_times;
   }
 
@@ -444,7 +444,7 @@ async fn main() -> Result<()> {
           "-f",
           "-o",
           file.path().to_str().unwrap(),
-          deno_exe.to_str().unwrap(),
+          ende_exe.to_str().unwrap(),
         ])
         .args(args.iter())
         .stdout(Stdio::null())
@@ -476,7 +476,7 @@ async fn main() -> Result<()> {
   }
 
   if benchmarks.contains(&"mem_usage") {
-    let max_memory = run_max_mem_benchmark(&deno_exe)?;
+    let max_memory = run_max_mem_benchmark(&ende_exe)?;
     new_data.max_memory = max_memory;
   }
 

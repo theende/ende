@@ -15,9 +15,9 @@ use ende_runtime::ende_process::NpmProcessStateProviderRc;
 pub use permission_checker::NpmRegistryReadPermissionChecker;
 pub use permission_checker::NpmRegistryReadPermissionCheckerMode;
 
-use crate::sys::DenoLibSys;
+use crate::sys::EndeLibSys;
 
-pub fn create_npm_process_state_provider<TSys: DenoLibSys>(
+pub fn create_npm_process_state_provider<TSys: EndeLibSys>(
   npm_resolver: &NpmResolver<TSys>,
 ) -> NpmProcessStateProviderRc {
   match npm_resolver {
@@ -31,11 +31,11 @@ pub fn create_npm_process_state_provider<TSys: DenoLibSys>(
 }
 
 #[derive(Debug)]
-pub struct ManagedNpmProcessStateProvider<TSys: DenoLibSys>(
+pub struct ManagedNpmProcessStateProvider<TSys: EndeLibSys>(
   pub ManagedNpmResolverRc<TSys>,
 );
 
-impl<TSys: DenoLibSys> NpmProcessStateProvider
+impl<TSys: EndeLibSys> NpmProcessStateProvider
   for ManagedNpmProcessStateProvider<TSys>
 {
   fn get_npm_process_state(&self) -> String {
@@ -53,11 +53,11 @@ impl<TSys: DenoLibSys> NpmProcessStateProvider
 }
 
 #[derive(Debug)]
-pub struct ByonmNpmProcessStateProvider<TSys: DenoLibSys>(
+pub struct ByonmNpmProcessStateProvider<TSys: EndeLibSys>(
   pub Arc<ByonmNpmResolver<TSys>>,
 );
 
-impl<TSys: DenoLibSys> NpmProcessStateProvider
+impl<TSys: EndeLibSys> NpmProcessStateProvider
   for ByonmNpmProcessStateProvider<TSys>
 {
   fn get_npm_process_state(&self) -> String {

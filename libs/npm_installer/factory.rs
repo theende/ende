@@ -312,10 +312,10 @@ impl<
             PackagesAllowedScripts::Some(package_reqs.clone())
           }
           PackagesAllowedScripts::None => match allow_scripts.allow {
-            ende_config::deno_json::AllowScriptsValueConfig::All => {
+            ende_config::ende_json::AllowScriptsValueConfig::All => {
               PackagesAllowedScripts::All
             }
-            ende_config::deno_json::AllowScriptsValueConfig::Limited(deps) => {
+            ende_config::ende_json::AllowScriptsValueConfig::Limited(deps) => {
               let reqs = jsr_deps_to_reqs(deps);
               if reqs.is_empty() {
                 PackagesAllowedScripts::None

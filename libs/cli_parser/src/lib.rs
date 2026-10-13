@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 // `flags` holds the canonical flag type definitions (`Flags`,
-// `DenoSubcommand`, etc.), shared by this crate and re-exported by the Deno CLI.
+// `EndeSubcommand`, etc.), shared by this crate and re-exported by the Deno CLI.
 pub mod flags;
 
 // The zero-cost argument parser. `types` defines the static `CommandDef` /

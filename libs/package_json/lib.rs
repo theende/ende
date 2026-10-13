@@ -799,7 +799,7 @@ impl PackageJson {
   /// about external package manager versions.
   pub fn check_engines(
     &self,
-    deno_version: &str,
+    ende_version: &str,
     node_version: &str,
   ) -> Vec<EngineMismatch> {
     let Some(engines) = self.engines.as_ref() else {
@@ -809,7 +809,7 @@ impl PackageJson {
     for (engine, version_req) in engines {
       let actual = match engine.as_str() {
         "node" => node_version,
-        "ende" => deno_version,
+        "ende" => ende_version,
         _ => continue,
       };
       let parsed_req = match VersionReq::parse_from_npm(version_req) {

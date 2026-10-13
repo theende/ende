@@ -2,7 +2,7 @@
 
 use ende_core::error::AnyError;
 use ende_core::serde_json;
-use ende_resolver::cjs::analyzer::DenoCjsAnalysis;
+use ende_resolver::cjs::analyzer::EndeCjsAnalysis;
 use ende_resolver::cjs::analyzer::NodeAnalysisCache;
 use ende_resolver::cjs::analyzer::NodeAnalysisCacheSourceHash;
 use ende_runtime::ende_webstorage::rusqlite::params;
@@ -65,7 +65,7 @@ impl NodeAnalysisCache for SqliteNodeAnalysisCache {
     &self,
     specifier: &deno_ast::ModuleSpecifier,
     source_hash: NodeAnalysisCacheSourceHash,
-  ) -> Option<DenoCjsAnalysis> {
+  ) -> Option<EndeCjsAnalysis> {
     Self::ensure_ok(
       self
         .inner
@@ -77,7 +77,7 @@ impl NodeAnalysisCache for SqliteNodeAnalysisCache {
     &self,
     specifier: &deno_ast::ModuleSpecifier,
     source_hash: NodeAnalysisCacheSourceHash,
-    analysis: &DenoCjsAnalysis,
+    analysis: &EndeCjsAnalysis,
   ) {
     Self::ensure_ok(self.inner.set_cjs_analysis(
       specifier.as_str(),
@@ -101,7 +101,7 @@ impl NodeAnalysisCacheInner {
     &self,
     specifier: &str,
     expected_source_hash: CacheDBHash,
-  ) -> Result<Option<DenoCjsAnalysis>, AnyError> {
+  ) -> Result<Option<EndeCjsAnalysis>, AnyError> {
     let query = "
       SELECT
         data
@@ -126,7 +126,7 @@ impl NodeAnalysisCacheInner {
     &self,
     specifier: &str,
     source_hash: CacheDBHash,
-    cjs_analysis: &DenoCjsAnalysis,
+    cjs_analysis: &EndeCjsAnalysis,
   ) -> Result<(), AnyError> {
     let sql = "
       INSERT OR REPLACE INTO
@@ -162,7 +162,7 @@ mod test {
         .unwrap()
         .is_none()
     );
-    let cjs_analysis = DenoCjsAnalysis::Cjs(ModuleExportsAndReExports {
+    let cjs_analysis = EndeCjsAnalysis::Cjs(ModuleExportsAndReExports {
       exports: vec!["export1".to_string()],
       reexports: vec!["re-export1".to_string()],
       member_reexports: vec![],

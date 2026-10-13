@@ -16,9 +16,9 @@ use ende_bundle_runtime::BundleOptions;
 pub use ende_bundle_runtime::BundlePlatform;
 pub use ende_bundle_runtime::PackageHandling;
 pub use ende_bundle_runtime::SourceMapType;
-pub use ende_config::deno_json::NewestDependencyDate;
-pub use ende_config::deno_json::NodeModulesDirMode;
-pub use ende_config::deno_json::NodeModulesLinkerMode;
+pub use ende_config::ende_json::NewestDependencyDate;
+pub use ende_config::ende_json::NodeModulesDirMode;
+pub use ende_config::ende_json::NodeModulesLinkerMode;
 pub use ende_core::url::Url;
 pub use ende_lib::args::CaData;
 pub use ende_lib::args::UnstableConfig;
@@ -248,7 +248,7 @@ pub struct DesktopFlags {
   /// Reverse-DNS bundle / application identifier (e.g. `com.acme.foo`).
   /// Used for the macOS `CFBundleIdentifier`, the Linux `.desktop` file
   /// identifier, and (eventually) the Windows AppUserModelID. When unset
-  /// a synthetic `com.deno.desktop.<app-slug>` is generated.
+  /// a synthetic `sh.ende.desktop.<app-slug>` is generated.
   pub identifier: Option<String>,
   /// Custom URL schemes (deep links) to register with the OS, e.g. `["acme"]`
   /// for `acme://...` links. Sourced from `desktop.app.deepLinks` in
@@ -537,7 +537,7 @@ impl RunFlags {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub enum DenoXShimName {
+pub enum EndeXShimName {
   #[default]
   Dx,
   Denox,
@@ -545,7 +545,7 @@ pub enum DenoXShimName {
   Other(String),
 }
 
-impl DenoXShimName {
+impl EndeXShimName {
   pub fn name(&self) -> &str {
     match self {
       Self::Dx => "dx",
@@ -558,7 +558,7 @@ impl DenoXShimName {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum XFlagsKind {
-  InstallAlias(DenoXShimName),
+  InstallAlias(EndeXShimName),
   Command(XCommandFlags),
   Print,
 }
@@ -775,7 +775,7 @@ impl From<BundleOptions> for BundleFlags {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum DenoSubcommand {
+pub enum EndeSubcommand {
   Add(AddFlags),
   Audit(AuditFlags),
   ApproveScripts(ApproveScriptsFlags),
@@ -848,7 +848,7 @@ pub struct ApproveScriptsFlags {
   pub packages: Vec<String>,
 }
 
-impl DenoSubcommand {
+impl EndeSubcommand {
   pub fn is_run(&self) -> bool {
     matches!(self, Self::Run(_))
   }
@@ -867,9 +867,9 @@ impl DenoSubcommand {
   }
 }
 
-impl Default for DenoSubcommand {
-  fn default() -> DenoSubcommand {
-    DenoSubcommand::Repl(ReplFlags {
+impl Default for EndeSubcommand {
+  fn default() -> EndeSubcommand {
+    EndeSubcommand::Repl(ReplFlags {
       eval_files: None,
       eval: None,
       is_default_command: true,
@@ -936,7 +936,7 @@ pub struct Flags {
   /// Vector of CLI arguments - these are user script arguments, all Deno
   /// specific flags are removed.
   pub argv: Vec<String>,
-  pub subcommand: DenoSubcommand,
+  pub subcommand: EndeSubcommand,
 
   pub frozen_lockfile: Option<bool>,
   pub ca_stores: Option<Vec<String>>,

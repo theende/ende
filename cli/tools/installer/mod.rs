@@ -6,7 +6,7 @@ use dashmap::DashSet;
 use ende_core::error::AnyError;
 use ende_core::parking_lot::Mutex;
 use ende_core::url::Url;
-use ende_lib::version::DENO_VERSION;
+use ende_lib::version::ENDE_VERSION;
 use ende_lib::version::NODE_VERSION;
 use ende_npm_installer::lifecycle_scripts::LifecycleScriptsWarning;
 use ende_package_json::EngineMismatchKind;
@@ -404,7 +404,7 @@ pub fn print_install_report(
 /// to verify them.
 fn warn_on_engines_mismatch(workspace: &WorkspaceResolver<CliSys>) {
   for pkg_json in workspace.package_jsons() {
-    let mismatches = pkg_json.check_engines(DENO_VERSION, NODE_VERSION);
+    let mismatches = pkg_json.check_engines(ENDE_VERSION, NODE_VERSION);
     if mismatches.is_empty() {
       continue;
     }

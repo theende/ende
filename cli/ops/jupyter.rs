@@ -368,13 +368,13 @@ pub fn op_jupyter_send_input_reply(
 #[op2]
 #[string]
 pub fn op_jupyter_deno_version(_state: &mut OpState) -> String {
-  ende_lib::version::DENO_VERSION_INFO.deno.to_string()
+  ende_lib::version::ENDE_VERSION_INFO.ende.to_string()
 }
 
 #[op2]
 #[string]
 pub fn op_jupyter_typescript_version(_state: &mut OpState) -> String {
-  ende_lib::version::DENO_VERSION_INFO.typescript.to_string()
+  ende_lib::version::ENDE_VERSION_INFO.typescript.to_string()
 }
 
 // ------------------------------------------------------------------

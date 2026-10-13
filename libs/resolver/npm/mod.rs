@@ -94,8 +94,8 @@ impl InNpmPackageChecker for DenoInNpmPackageChecker {
 }
 
 /// Whether `specifier` names one of the synthetic modules Deno uses for code
-/// that has no file on disk, such as `deno eval` (`$deno$eval.mts`) or piped
-/// stdin (`$deno$stdin.mts`).
+/// that has no file on disk, such as `deno eval` (`$ende$eval.mts`) or piped
+/// stdin (`$ende$stdin.mts`).
 ///
 /// These are resolved against the cwd so that imports and the closest
 /// `package.json` resolve as if the code were a file sitting there, which means
@@ -113,7 +113,7 @@ pub fn is_synthetic_module(specifier: &Url) -> bool {
     Some(index) => &path[index + 1..],
     None => path,
   };
-  file_name.starts_with("$deno$")
+  file_name.starts_with("$ende$")
 }
 
 #[derive(Debug, Error, JsError)]

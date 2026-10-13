@@ -12,7 +12,7 @@ use ende_config::workspace::WorkspaceDirLintConfig;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
 use ende_core::url::Url;
-use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_resolver::ende_json::CompilerOptionsKey;
 use ende_runtime::tokio_util::create_basic_runtime;
 use once_cell::sync::Lazy;
 use tower_lsp::lsp_types as lsp;

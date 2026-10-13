@@ -269,7 +269,7 @@ fn new_log_record() -> LogRecord {
     Lazy::new(|| {
       opentelemetry_sdk::logs::SdkLoggerProvider::builder()
         .build()
-        .logger("deno")
+        .logger("ende")
     });
   LOG_RECORD_FACTORY.create_log_record()
 }
@@ -343,7 +343,7 @@ impl<T> Stream for BatchMessageChannelReceiver<T> {
   }
 }
 
-enum DenoPeriodicReaderMessage {
+enum EndePeriodicReaderMessage {
   Register(std::sync::Weak<opentelemetry_sdk::metrics::Pipeline>),
   Export,
   ForceFlush(oneshot::Sender<OTelSdkResult>),
@@ -351,38 +351,38 @@ enum DenoPeriodicReaderMessage {
 }
 
 #[derive(Debug)]
-struct DenoPeriodicReader {
-  tx: tokio::sync::mpsc::Sender<DenoPeriodicReaderMessage>,
+struct EndePeriodicReader {
+  tx: tokio::sync::mpsc::Sender<EndePeriodicReaderMessage>,
   temporality: Temporality,
 }
 
-impl MetricReader for DenoPeriodicReader {
+impl MetricReader for EndePeriodicReader {
   fn register_pipeline(
     &self,
     pipeline: std::sync::Weak<opentelemetry_sdk::metrics::Pipeline>,
   ) {
     let _ = self
       .tx
-      .try_send(DenoPeriodicReaderMessage::Register(pipeline));
+      .try_send(EndePeriodicReaderMessage::Register(pipeline));
   }
 
   fn collect(
     &self,
     _rm: &mut opentelemetry_sdk::metrics::data::ResourceMetrics,
   ) -> OTelSdkResult {
-    unreachable!("collect should not be called on DenoPeriodicReader");
+    unreachable!("collect should not be called on EndePeriodicReader");
   }
 
   fn force_flush(&self) -> OTelSdkResult {
     let (tx, rx) = oneshot::channel();
-    let _ = self.tx.try_send(DenoPeriodicReaderMessage::ForceFlush(tx));
+    let _ = self.tx.try_send(EndePeriodicReaderMessage::ForceFlush(tx));
     ende_core::futures::executor::block_on(rx).unwrap()?;
     Ok(())
   }
 
   fn shutdown_with_timeout(&self, _timeout: Duration) -> OTelSdkResult {
     let (tx, rx) = oneshot::channel();
-    let _ = self.tx.try_send(DenoPeriodicReaderMessage::Shutdown(tx));
+    let _ = self.tx.try_send(EndePeriodicReaderMessage::Shutdown(tx));
     ende_core::futures::executor::block_on(rx).unwrap()?;
     Ok(())
   }
@@ -398,7 +398,7 @@ impl MetricReader for DenoPeriodicReader {
 const METRIC_EXPORT_INTERVAL_NAME: &str = "OTEL_METRIC_EXPORT_INTERVAL";
 const DEFAULT_INTERVAL: Duration = Duration::from_secs(60);
 
-impl DenoPeriodicReader {
+impl EndePeriodicReader {
   fn new<E: PushMetricExporter + 'static>(
     sys: &impl TelemetrySys,
     exporter: E,
@@ -458,7 +458,7 @@ impl DenoPeriodicReader {
 
       loop {
         let message = tokio::select! {
-          _ = ticker.tick() => DenoPeriodicReaderMessage::Export,
+          _ = ticker.tick() => EndePeriodicReaderMessage::Export,
           message = rx.recv() => if let Some(message) = message {
             message
           } else {
@@ -467,45 +467,45 @@ impl DenoPeriodicReader {
         };
 
         match message {
-          DenoPeriodicReaderMessage::Register(new_pipeline) => {
+          EndePeriodicReaderMessage::Register(new_pipeline) => {
             inner.register_pipeline(new_pipeline);
           }
-          DenoPeriodicReaderMessage::Export => {
+          EndePeriodicReaderMessage::Export => {
             otel_debug!(
-                name: "DenoPeriodicReader.ExportTriggered",
+                name: "EndePeriodicReader.ExportTriggered",
                 message = "Export message received.",
             );
             if let Err(err) = collect_and_export(true).await {
               otel_error!(
-                name: "DenoPeriodicReader.ExportFailed",
+                name: "EndePeriodicReader.ExportFailed",
                 message = "Failed to export metrics",
                 reason = format!("{}", err));
             }
           }
-          DenoPeriodicReaderMessage::ForceFlush(sender) => {
+          EndePeriodicReaderMessage::ForceFlush(sender) => {
             otel_debug!(
-                name: "DenoPeriodicReader.ForceFlushCalled",
+                name: "EndePeriodicReader.ForceFlushCalled",
                 message = "Flush message received.",
             );
             let res = collect_and_export(false).await;
             if let Err(send_error) = sender.send(res) {
               otel_debug!(
-                  name: "DenoPeriodicReader.Flush.SendResultError",
+                  name: "EndePeriodicReader.Flush.SendResultError",
                   message = "Failed to send flush result.",
                   reason = format!("{:?}", send_error),
               );
             }
           }
-          DenoPeriodicReaderMessage::Shutdown(sender) => {
+          EndePeriodicReaderMessage::Shutdown(sender) => {
             otel_debug!(
-                name: "DenoPeriodicReader.ShutdownCalled",
+                name: "EndePeriodicReader.ShutdownCalled",
                 message = "Shutdown message received",
             );
             let res = collect_and_export(false).await;
             let _ = exporter.shutdown();
             if let Err(send_error) = sender.send(res) {
               otel_debug!(
-                  name: "DenoPeriodicReader.Shutdown.SendResultError",
+                  name: "EndePeriodicReader.Shutdown.SendResultError",
                   message = "Failed to send shutdown result",
                   reason = format!("{:?}", send_error),
               );
@@ -520,7 +520,7 @@ impl DenoPeriodicReader {
       .unbounded_send(worker.boxed())
       .expect("failed to send task to shared OpenTelemetry runtime");
 
-    DenoPeriodicReader { tx, temporality }
+    EndePeriodicReader { tx, temporality }
   }
 }
 
@@ -958,7 +958,7 @@ mod hyper_client {
 pub struct OtelGlobals {
   pub span_processor: BatchSpanProcessor<OtelSharedRuntime>,
   pub log_processor: BatchLogProcessor<OtelSharedRuntime>,
-  pub id_generator: DenoIdGenerator,
+  pub id_generator: EndeIdGenerator,
   pub meter_provider: SdkMeterProvider,
   pub builtin_instrumentation_scope: InstrumentationScope,
   pub span_event_count_limit: usize,
@@ -1281,13 +1281,13 @@ pub fn init(
     base_resource.get(&Key::new(TELEMETRY_SDK_VERSION)).unwrap();
 
   // Add the runtime name and version to the resource attributes. Also override
-  // the `telemetry.sdk` attributes to include the Deno runtime.
+  // the `telemetry.sdk` attributes to include the Ende runtime.
   let resource = Resource::builder()
     .with_attributes([
       KeyValue::new(PROCESS_RUNTIME_NAME, rt_config.runtime_name),
       KeyValue::new(PROCESS_RUNTIME_VERSION, rt_config.runtime_version.clone()),
-      KeyValue::new(TELEMETRY_SDK_LANGUAGE, format!("deno-{sdk_language}")),
-      KeyValue::new(TELEMETRY_SDK_NAME, format!("deno-{sdk_name}")),
+      KeyValue::new(TELEMETRY_SDK_LANGUAGE, format!("ende-{sdk_language}")),
+      KeyValue::new(TELEMETRY_SDK_NAME, format!("ende-{sdk_name}")),
       KeyValue::new(
         TELEMETRY_SDK_VERSION,
         format!("{}-{}", rt_config.runtime_version, sdk_version),
@@ -1324,7 +1324,7 @@ pub fn init(
 
     let metric_exporter =
       console_exporter::ConsoleMetricExporter::new(temporality);
-    let metric_reader = DenoPeriodicReader::new(sys, metric_exporter);
+    let metric_reader = EndePeriodicReader::new(sys, metric_exporter);
     let meter_provider = SdkMeterProvider::builder()
       .with_reader(metric_reader)
       .with_resource(resource.clone())
@@ -1346,7 +1346,7 @@ pub fn init(
 
     let metric_exporter =
       grpc_exporter::GrpcMetricExporter::new(client.clone(), temporality);
-    let metric_reader = DenoPeriodicReader::new(sys, metric_exporter);
+    let metric_reader = EndePeriodicReader::new(sys, metric_exporter);
     let meter_provider = SdkMeterProvider::builder()
       .with_reader(metric_reader)
       .with_resource(resource.clone())
@@ -1373,7 +1373,7 @@ pub fn init(
       .with_http_client(client.clone())
       .with_protocol(protocol)
       .build_metrics_exporter(temporality)?;
-    let metric_reader = DenoPeriodicReader::new(sys, metric_exporter);
+    let metric_reader = EndePeriodicReader::new(sys, metric_exporter);
     let meter_provider = SdkMeterProvider::builder()
       .with_reader(metric_reader)
       .with_resource(resource.clone())
@@ -1391,14 +1391,14 @@ pub fn init(
   };
 
   let builtin_instrumentation_scope =
-    opentelemetry::InstrumentationScope::builder("deno")
+    opentelemetry::InstrumentationScope::builder("ende")
       .with_version(rt_config.runtime_version.clone())
       .build();
 
   let id_generator = if let Some(prefix) = config.deterministic_prefix {
-    DenoIdGenerator::deterministic(prefix)
+    EndeIdGenerator::deterministic(prefix)
   } else {
-    DenoIdGenerator::random()
+    EndeIdGenerator::random()
   };
 
   let span_event_count_limit = span_event_count_limit_from_env(sys);
@@ -1517,7 +1517,7 @@ pub fn handle_log(record: &log::Record) {
 }
 
 #[derive(Debug)]
-pub enum DenoIdGenerator {
+pub enum EndeIdGenerator {
   Random(RandomIdGenerator),
   Deterministic {
     next_trace_id: AtomicU64,
@@ -1525,7 +1525,7 @@ pub enum DenoIdGenerator {
   },
 }
 
-impl IdGenerator for DenoIdGenerator {
+impl IdGenerator for EndeIdGenerator {
   fn new_trace_id(&self) -> TraceId {
     match self {
       Self::Random(generator) => generator.new_trace_id(),
@@ -1554,7 +1554,7 @@ impl IdGenerator for DenoIdGenerator {
   }
 }
 
-impl DenoIdGenerator {
+impl EndeIdGenerator {
   fn random() -> Self {
     Self::Random(RandomIdGenerator::default())
   }

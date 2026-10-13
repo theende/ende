@@ -2853,7 +2853,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn deno_jsonc_as_import_map() {
+  async fn ende_jsonc_as_import_map() {
     let loader = FileLoader {
       base_dir: "./testdata/deno_jsonc_as_import_map".to_string(),
     };
@@ -2924,8 +2924,8 @@ mod tests {
     );
 
     // JSONC can be obtained by calling `get_import_map`
-    let deno_jsonc = eszip.get_import_map("file:///deno.jsonc").unwrap();
-    let source = deno_jsonc.source().await.unwrap();
+    let ende_jsonc = eszip.get_import_map("file:///deno.jsonc").unwrap();
+    let source = ende_jsonc.source().await.unwrap();
     assert_matches_file!(
       source,
       "./testdata/deno_jsonc_as_import_map/deno.jsonc"

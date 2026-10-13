@@ -142,7 +142,7 @@ defineLazyInternal("kExtraStdio", "ext:ende_process/40_process.js");
 // the out buffer for `cpuUsage` and `memoryUsage`
 const usageBuffer = new Float64Array(4);
 
-const denoNs = {
+const endeNs = {
   Process: undefined,
   run: undefined,
   isatty: tty.isatty,
@@ -274,7 +274,7 @@ const denoNs = {
   },
 };
 
-core.defineGlobalProperties(denoNs, {
+core.defineGlobalProperties(endeNs, {
   Process: core.propWritableLazyLoaded(
     (process) => process.Process,
     lazyProcess,
@@ -306,21 +306,21 @@ core.defineGlobalProperties(denoNs, {
   ),
 });
 
-const denoNsUnstableById = { __proto__: null };
+const endeNsUnstableById = { __proto__: null };
 
-denoNsUnstableById[unstableIds.bundle] = {
+endeNsUnstableById[unstableIds.bundle] = {
   bundle,
 };
 
-// denoNsUnstableById[unstableIds.broadcastChannel] = { __proto__: null }
+// endeNsUnstableById[unstableIds.broadcastChannel] = { __proto__: null }
 
-denoNsUnstableById[unstableIds.cron] = {
+endeNsUnstableById[unstableIds.cron] = {
   get cron() {
     return lazyCron().cron;
   },
 };
 
-denoNsUnstableById[unstableIds.kv] = {
+endeNsUnstableById[unstableIds.kv] = {
   get openKv() {
     return lazyKv().openKv;
   },
@@ -338,14 +338,14 @@ denoNsUnstableById[unstableIds.kv] = {
   },
 };
 
-denoNsUnstableById[unstableIds.net] = {
+endeNsUnstableById[unstableIds.net] = {
   listenDatagram: net.createListenDatagram(
     op_net_listen_udp,
     op_net_listen_unixpacket,
   ),
 };
 
-core.defineGlobalProperties(denoNsUnstableById[unstableIds.net], {
+core.defineGlobalProperties(endeNsUnstableById[unstableIds.net], {
   connectQuic: core.propWritableLazyLoaded((q) => q.connectQuic, loadQuic),
   QuicEndpoint: core.propWritableLazyLoaded((q) => q.QuicEndpoint, loadQuic),
   QuicBidirectionalStream: core.propWritableLazyLoaded(
@@ -369,20 +369,20 @@ core.defineGlobalProperties(denoNsUnstableById[unstableIds.net], {
   ),
 });
 
-// denoNsUnstableById[unstableIds.unsafeProto] = { __proto__: null }
+// endeNsUnstableById[unstableIds.unsafeProto] = { __proto__: null }
 
-denoNsUnstableById[unstableIds.webgpu] = {
+endeNsUnstableById[unstableIds.webgpu] = {
   get UnsafeWindowSurface() {
     return lazySurface().UnsafeWindowSurface;
   },
 };
-core.defineGlobalProperties(denoNsUnstableById[unstableIds.webgpu], {
+core.defineGlobalProperties(endeNsUnstableById[unstableIds.webgpu], {
   webgpu: core.propWritableLazyLoaded(
-    (webgpu) => webgpu.denoNsWebGPU,
+    (webgpu) => webgpu.endeNsWebGPU,
     loadWebGPU,
   ),
 });
 
-// denoNsUnstableById[unstableIds.workerOptions] = { __proto__: null }
+// endeNsUnstableById[unstableIds.workerOptions] = { __proto__: null }
 
-export { denoNs, denoNsUnstableById, unstableIds };
+export { endeNs, endeNsUnstableById, unstableIds };

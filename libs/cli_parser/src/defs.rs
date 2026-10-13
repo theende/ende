@@ -3427,7 +3427,7 @@ pub static UNLINK_SUBCOMMAND: CommandDef = CommandDef {
   keep_double_dash: false,
 };
 
-pub static DENO_ROOT: CommandDef = CommandDef {
+pub static ENDE_ROOT: CommandDef = CommandDef {
   name: "ende",
   about: "A modern JavaScript and TypeScript runtime",
   aliases: &[],

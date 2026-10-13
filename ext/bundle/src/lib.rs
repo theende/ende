@@ -97,7 +97,7 @@ pub struct BundleOptions {
 pub enum BundlePlatform {
   Browser,
   #[default]
-  Deno,
+  Ende,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Copy, Default, serde::Deserialize)]

@@ -665,7 +665,7 @@ fn get_candidates(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::defs::DENO_ROOT;
+  use crate::defs::ENDE_ROOT;
 
   fn no_positional(_: &CommandDef, _: &str) -> Vec<Candidate> {
     Vec::new()
@@ -679,8 +679,8 @@ mod tests {
     pc: &PositionalCompleter,
   ) -> Vec<Candidate> {
     let current = words.get(index).copied().unwrap_or("");
-    let (active, _) = find_active_command(&DENO_ROOT, words);
-    get_candidates(active, &DENO_ROOT, current, words, index, pc)
+    let (active, _) = find_active_command(&ENDE_ROOT, words);
+    get_candidates(active, &ENDE_ROOT, current, words, index, pc)
   }
 
   fn values(c: &[Candidate]) -> Vec<&str> {
@@ -750,7 +750,7 @@ mod tests {
 
   #[test]
   fn generate_bash_uses_real_newlines() {
-    let s = String::from_utf8(generate("bash", &DENO_ROOT)).unwrap();
+    let s = String::from_utf8(generate("bash", &ENDE_ROOT)).unwrap();
     assert!(
       s.contains("\"ende,run\")\n                cmd=\"ende__run\""),
       "{s}"
@@ -768,7 +768,7 @@ mod tests {
     // short form, so `deno <TAB>` made zsh bail out with
     // `_arguments:comparguments:327: invalid argument: (-h --help)h[]`.
     let s =
-      String::from_utf8(generate("zsh", &crate::defs::DENO_ROOT)).unwrap();
+      String::from_utf8(generate("zsh", &crate::defs::ENDE_ROOT)).unwrap();
     assert!(s.contains("'(-h --help)'{-h,--help}'"), "{s}");
     assert!(!s.contains("'(-h --help)'{h,--help}'"), "{s}");
     for line in s.lines() {
@@ -783,7 +783,7 @@ mod tests {
   #[test]
   fn generate_zsh_descriptions_are_single_line_and_escaped() {
     let s =
-      String::from_utf8(generate("zsh", &crate::defs::DENO_ROOT)).unwrap();
+      String::from_utf8(generate("zsh", &crate::defs::ENDE_ROOT)).unwrap();
     // A spec line must be exactly one line, so no description may leak a
     // newline out of its `_arguments` entry.
     for line in s.lines() {

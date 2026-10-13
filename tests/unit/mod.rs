@@ -24,7 +24,7 @@ fn main() {
       .hash_dir(tests.join("testdata"))
       // lint_plugin_prefer_primordials_test imports tools/lint_plugins
       .hash_dir(test_util::root_path().join("tools/lint_plugins"))
-      .hash_file(test_util::deno_exe_path())
+      .hash_file(test_util::ende_exe_path())
       .hash_file(test_util::test_server_path());
   });
   if matches!(ci_hash, test_util::hash::CiHashStatus::Skip) {
@@ -68,22 +68,22 @@ fn main() {
 }
 
 fn run_test(test: &CollectedTest) -> TestResult {
-  let mut deno = if test.name.ends_with("::bundle_test") {
+  let mut ende = if test.name.ends_with("::bundle_test") {
     TestContextBuilder::new()
       .add_npm_env_vars()
       .use_http_server()
       .build()
       .new_command()
   } else {
-    util::deno_cmd()
+    util::ende_cmd()
   };
 
-  deno = deno
+  ende = ende
     .disable_diagnostic_logging()
     .current_dir(util::root_path())
     .arg("test")
     .arg("--config")
-    .arg(util::deno_config_path())
+    .arg(util::ende_config_path())
     .arg("--no-lock")
     // TODO(bartlomieju): would be better if we could apply this unstable
     // flag to particular files, but there's many of them that rely on unstable
@@ -94,31 +94,31 @@ fn run_test(test: &CollectedTest) -> TestResult {
     .arg("--no-prompt");
 
   if test.name.ends_with("::bundle_test") {
-    deno = deno.arg("--unstable-bundle");
+    ende = ende.arg("--unstable-bundle");
   }
 
   if test.name.ends_with("::cron_test") {
-    deno = deno.arg("--unstable-cron");
+    ende = ende.arg("--unstable-cron");
   }
 
   if test.name.contains("::kv_") {
-    deno = deno.arg("--unstable-kv");
+    ende = ende.arg("--unstable-kv");
   }
 
   if test.name.ends_with("::webgpu_test") {
-    deno = deno.arg("--unstable-webgpu");
+    ende = ende.arg("--unstable-webgpu");
   }
 
   if test.name.ends_with("::worker_permissions_test")
     || test.name.ends_with("::worker_test")
     || test.name.ends_with("::umask_test")
   {
-    deno = deno.arg("--unstable-worker-options");
+    ende = ende.arg("--unstable-worker-options");
   }
 
   // Some tests require the root CA cert file to be loaded.
   if test.name.ends_with("::websocket_test") {
-    deno = deno.arg(format!(
+    ende = ende.arg(format!(
       "--cert={}",
       util::testdata_path()
         .join("tls")
@@ -129,17 +129,17 @@ fn run_test(test: &CollectedTest) -> TestResult {
 
   if test.name.ends_with("::tls_sni_test") {
     // TODO(lucacasonato): fix the SNI in the certs so that this is not needed
-    deno = deno.arg("--unsafely-ignore-certificate-errors");
+    ende = ende.arg("--unsafely-ignore-certificate-errors");
   }
 
-  let mut deno = deno.arg("-A").arg(test.path.clone());
+  let mut ende = ende.arg("-A").arg(test.path.clone());
 
   // update the snapshots if when `UPDATE=1`
   if std::env::var_os("UPDATE") == Some("1".into()) {
-    deno = deno.arg("--").arg("--update");
+    ende = ende.arg("--").arg("--update");
   }
 
-  deno
+  ende
     .piped_output()
     .spawn()
     .expect("failed to spawn script")

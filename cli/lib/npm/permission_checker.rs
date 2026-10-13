@@ -11,7 +11,7 @@ use ende_runtime::ende_permissions::OpenAccessKind;
 use ende_runtime::ende_permissions::PermissionsContainer;
 use parking_lot::Mutex;
 
-use crate::sys::DenoLibSys;
+use crate::sys::EndeLibSys;
 
 #[derive(Debug)]
 pub enum NpmRegistryReadPermissionCheckerMode {
@@ -21,7 +21,7 @@ pub enum NpmRegistryReadPermissionCheckerMode {
 }
 
 #[derive(Debug)]
-pub struct NpmRegistryReadPermissionChecker<TSys: DenoLibSys> {
+pub struct NpmRegistryReadPermissionChecker<TSys: EndeLibSys> {
   sys: TSys,
   cache: Mutex<HashMap<PathBuf, PathBuf>>,
   mode: NpmRegistryReadPermissionCheckerMode,
@@ -37,7 +37,7 @@ struct EnsureRegistryReadPermissionError {
   source: std::io::Error,
 }
 
-impl<TSys: DenoLibSys> NpmRegistryReadPermissionChecker<TSys> {
+impl<TSys: EndeLibSys> NpmRegistryReadPermissionChecker<TSys> {
   pub fn new(sys: TSys, mode: NpmRegistryReadPermissionCheckerMode) -> Self {
     Self {
       sys,

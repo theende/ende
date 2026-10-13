@@ -42,7 +42,7 @@ use ende_lib::standalone::binary::SerializedWorkspaceResolverImportMap;
 use ende_lib::standalone::binary::SpecifierDataStore;
 use ende_lib::standalone::binary::SpecifierId;
 use ende_lib::standalone::virtual_fs::BuiltVfs;
-use ende_lib::standalone::virtual_fs::DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME;
+use ende_lib::standalone::virtual_fs::ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME;
 use ende_lib::standalone::virtual_fs::OffsetWithLength;
 use ende_lib::standalone::virtual_fs::VfsBuilder;
 use ende_lib::standalone::virtual_fs::VfsEntry;
@@ -52,7 +52,7 @@ use ende_lib::standalone::virtual_fs::WindowsSystemRootablePath;
 use ende_lib::util::hash::FastInsecureHasher;
 use ende_lib::util::text_encoding::is_valid_utf8;
 use ende_lib::util::v8::construct_v8_flags;
-use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::ENDE_VERSION_INFO;
 use ende_npm::NpmSystemInfo;
 use ende_npm::resolution::SerializedNpmResolutionSnapshot;
 use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
@@ -72,7 +72,7 @@ use crate::args::CompileFlags;
 use crate::args::JavaScriptEngine;
 use crate::args::get_default_v8_flags;
 use crate::args::resolve_compile_target;
-use crate::cache::DenoDir;
+use crate::cache::EndeDir;
 use crate::file_fetcher::CliFileFetcher;
 use crate::http_util::HttpClientProvider;
 use crate::module_loader::CliEmitter;
@@ -364,11 +364,11 @@ pub struct WriteBinOptions<'a> {
   pub compile_flags: &'a CompileFlags,
 }
 
-pub struct DenoCompileBinaryWriter<'a> {
+pub struct EndeCompileBinaryWriter<'a> {
   cjs_module_export_analyzer: &'a CliCjsModuleExportAnalyzer,
   cjs_tracker: &'a CliCjsTracker,
   cli_options: &'a CliOptions,
-  deno_dir: &'a DenoDir,
+  ende_dir: &'a EndeDir,
   emitter: &'a CliEmitter,
   file_fetcher: &'a CliFileFetcher,
   http_client_provider: &'a HttpClientProvider,
@@ -378,13 +378,13 @@ pub struct DenoCompileBinaryWriter<'a> {
   is_desktop: bool,
 }
 
-impl<'a> DenoCompileBinaryWriter<'a> {
+impl<'a> EndeCompileBinaryWriter<'a> {
   #[allow(clippy::too_many_arguments, reason = "construction")]
   pub fn new(
     cjs_module_export_analyzer: &'a CliCjsModuleExportAnalyzer,
     cjs_tracker: &'a CliCjsTracker,
     cli_options: &'a CliOptions,
-    deno_dir: &'a DenoDir,
+    ende_dir: &'a EndeDir,
     emitter: &'a CliEmitter,
     file_fetcher: &'a CliFileFetcher,
     http_client_provider: &'a HttpClientProvider,
@@ -397,7 +397,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
       cjs_module_export_analyzer,
       cjs_tracker,
       cli_options,
-      deno_dir,
+      ende_dir,
       emitter,
       file_fetcher,
       http_client_provider,
@@ -479,16 +479,16 @@ impl<'a> DenoCompileBinaryWriter<'a> {
     let binary_name =
       runtime_archive_name("endert", &compile_flags.engine, &target);
 
-    let binary_path_suffix = match DENO_VERSION_INFO.release_channel {
+    let binary_path_suffix = match ENDE_VERSION_INFO.release_channel {
       ReleaseChannel::Canary => {
-        format!("canary/{}/{}", DENO_VERSION_INFO.git_hash, binary_name)
+        format!("canary/{}/{}", ENDE_VERSION_INFO.git_hash, binary_name)
       }
       _ => {
-        format!("release/v{}/{}", DENO_VERSION_INFO.deno, binary_name)
+        format!("release/v{}/{}", ENDE_VERSION_INFO.ende, binary_name)
       }
     };
 
-    let download_directory = self.deno_dir.dl_folder_path();
+    let download_directory = self.ende_dir.dl_folder_path();
     let binary_path = download_directory.join(&binary_path_suffix);
     log::debug!("Resolved endert: {}", binary_path.display());
 
@@ -554,16 +554,16 @@ impl<'a> DenoCompileBinaryWriter<'a> {
     let binary_name =
       runtime_archive_name("libendert", &compile_flags.engine, &target);
 
-    let binary_path_suffix = match DENO_VERSION_INFO.release_channel {
+    let binary_path_suffix = match ENDE_VERSION_INFO.release_channel {
       ReleaseChannel::Canary => {
-        format!("canary/{}/{}", DENO_VERSION_INFO.git_hash, binary_name)
+        format!("canary/{}/{}", ENDE_VERSION_INFO.git_hash, binary_name)
       }
       _ => {
-        format!("release/v{}/{}", DENO_VERSION_INFO.deno, binary_name)
+        format!("release/v{}/{}", ENDE_VERSION_INFO.ende, binary_name)
       }
     };
 
-    let download_directory = self.deno_dir.dl_folder_path();
+    let download_directory = self.ende_dir.dl_folder_path();
     let binary_path = download_directory.join(&binary_path_suffix);
     log::debug!("Resolved libendert: {}", binary_path.display());
 
@@ -793,7 +793,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
               _ => ModuleKind::Esm,
             };
             let (source, source_map) =
-              self.emitter.emit_source_for_deno_compile(
+              self.emitter.emit_source_for_ende_compile(
                 &m.specifier,
                 m.media_type,
                 module_kind,
@@ -1023,7 +1023,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
     };
 
     let code_cache_key = if self.cli_options.code_cache_enabled() {
-      let mut hasher = FastInsecureHasher::new_deno_versioned();
+      let mut hasher = FastInsecureHasher::new_ende_versioned();
       for module in graph.modules() {
         if let Some(source) = module.source() {
           hasher
@@ -1150,7 +1150,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
               root_dir_url.specifier_key(i.base_url()).into_owned()
             } else {
               // just make a remote url local
-              ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME.to_string()
+              ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME.to_string()
             },
             json: i.to_json(),
           }
@@ -1200,7 +1200,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
       otel_config: self.cli_options.otel_config(),
       vfs_case_sensitivity: vfs.case_sensitivity,
       self_extracting: if compile_flags.self_extracting {
-        let mut hasher = FastInsecureHasher::new_deno_versioned();
+        let mut hasher = FastInsecureHasher::new_ende_versioned();
         for file in &vfs.files {
           hasher.write_u64(file.len() as u64);
           hasher.write(file);
@@ -1224,7 +1224,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
       app_version: self
         .cli_options
         .workspace()
-        .root_deno_json()
+        .root_ende_json()
         .and_then(|c| c.json.version.clone()),
       error_reporting_url: self
         .cli_options
@@ -1543,7 +1543,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
           return vfs.build();
         };
 
-        root_dir.name = DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME.to_string();
+        root_dir.name = ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME.to_string();
         let mut new_entries = Vec::with_capacity(root_dir.entries.len());
         for entry in root_dir.entries.take_inner() {
           match &entry {
@@ -1573,7 +1573,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
         let index = parent_dir
           .entries
           .binary_search(
-            DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME,
+            ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME,
             case_sensitivity,
           )
           .unwrap();
@@ -1582,7 +1582,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
         // go up from the ancestors removing empty directories...
         // this is not as optimized as it could be
         let mut last_name =
-          Cow::Borrowed(DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME);
+          Cow::Borrowed(ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME);
         for ancestor in
           parent.ancestors().map(Some).chain(std::iter::once(None))
         {
@@ -1776,8 +1776,8 @@ fn serialize_npm_snapshot(
   bytes
 }
 
-fn get_denort_path(deno_exe: PathBuf) -> Option<OsString> {
-  let mut endert = deno_exe;
+fn get_endert_path(ende_exe: PathBuf) -> Option<OsString> {
+  let mut endert = ende_exe;
   endert.set_file_name(if cfg!(windows) {
     "endert.exe"
   } else {
@@ -1805,7 +1805,7 @@ fn get_dev_binary_path() -> Option<OsString> {
         .components()
         .any(|component| component == Component::Normal("target".as_ref()))
       {
-        get_denort_path(exec_path)
+        get_endert_path(exec_path)
       } else {
         None
       }
@@ -1813,8 +1813,8 @@ fn get_dev_binary_path() -> Option<OsString> {
   })
 }
 
-fn get_libdenort_path(deno_exe: PathBuf) -> Option<OsString> {
-  let mut libendert = deno_exe;
+fn get_libendert_path(ende_exe: PathBuf) -> Option<OsString> {
+  let mut libendert = ende_exe;
   if cfg!(target_os = "macos") {
     libendert.set_file_name("libendert.dylib");
   } else if cfg!(windows) {
@@ -1836,9 +1836,9 @@ fn get_dev_desktop_binary_path() -> Option<OsString> {
         let target_dir = exec_path.parent().and_then(|p| p.parent());
         target_dir
           .and_then(|d| {
-            get_libdenort_path(d.join("release").join("libendert.dylib"))
+            get_libendert_path(d.join("release").join("libendert.dylib"))
           })
-          .or_else(|| get_libdenort_path(exec_path.clone()))
+          .or_else(|| get_libendert_path(exec_path.clone()))
       } else {
         None
       }
@@ -1936,7 +1936,7 @@ mod tests {
   }
 
   #[test]
-  fn default_app_name_strips_only_deno_added_extensions() {
+  fn default_app_name_strips_only_ende_added_extensions() {
     assert_eq!(default_app_name("speedgraph.exe", false), "speedgraph");
     assert_eq!(default_app_name("speedgraph.so", false), "speedgraph.so");
 

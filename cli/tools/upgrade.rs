@@ -147,11 +147,11 @@ impl VersionProvider for RealVersionProvider {
   }
 
   fn current_version(&self) -> Cow<'_, str> {
-    Cow::Borrowed(version::DENO_VERSION_INFO.version_or_git_hash())
+    Cow::Borrowed(version::ENDE_VERSION_INFO.version_or_git_hash())
   }
 
   fn get_current_exe_release_channel(&self) -> ReleaseChannel {
-    version::DENO_VERSION_INFO.release_channel
+    version::ENDE_VERSION_INFO.release_channel
   }
 }
 
@@ -370,7 +370,7 @@ pub fn check_for_upgrades(
         log::info!(
           "{} {} → {} {}",
           colors::green("A new release of Ende is available:"),
-          colors::cyan(version::DENO_VERSION_INFO.deno),
+          colors::cyan(version::ENDE_VERSION_INFO.ende),
           colors::cyan(&upgrade_version),
           colors::italic_gray("Run `ende upgrade` to install it.")
         );
@@ -393,7 +393,7 @@ pub fn check_for_upgrades(
         log::info!(
           "{} {} → {} {}",
           colors::green("A new LTS release of Ende is available:"),
-          colors::cyan(version::DENO_VERSION_INFO.deno),
+          colors::cyan(version::ENDE_VERSION_INFO.ende),
           colors::cyan(&upgrade_version),
           colors::italic_gray("Run `ende upgrade lts` to install it.")
         );
@@ -402,7 +402,7 @@ pub fn check_for_upgrades(
         log::info!(
           "{} {} → {} {}",
           colors::green("A new alpha release of Ende is available:"),
-          colors::cyan(version::DENO_VERSION_INFO.deno),
+          colors::cyan(version::ENDE_VERSION_INFO.ende),
           colors::cyan(&upgrade_version),
           colors::italic_gray("Run `ende upgrade alpha` to install it.")
         );
@@ -411,7 +411,7 @@ pub fn check_for_upgrades(
         log::info!(
           "{} {} → {} {}",
           colors::green("A new beta release of Ende is available:"),
-          colors::cyan(version::DENO_VERSION_INFO.deno),
+          colors::cyan(version::ENDE_VERSION_INFO.ende),
           colors::cyan(&upgrade_version),
           colors::italic_gray("Run `ende upgrade beta` to install it.")
         );
@@ -806,7 +806,7 @@ fn upgrade_from_pr(
   };
 
   #[cfg(windows)]
-  kill_running_deno_lsp_processes();
+  kill_running_ende_lsp_processes();
 
   let output_result = if *output_exe_path == current_exe_path {
     replace_exe(&new_exe_path, &output_exe_path)
@@ -964,7 +964,7 @@ fn upgrade_from_branch(
   };
 
   #[cfg(windows)]
-  kill_running_deno_lsp_processes();
+  kill_running_ende_lsp_processes();
 
   let output_result = if *output_exe_path == current_exe_path {
     replace_exe(&new_exe_path, &output_exe_path)
@@ -1015,7 +1015,7 @@ pub async fn upgrade(
   let requested_version =
     RequestedVersion::from_upgrade_flags(upgrade_flags.clone())?;
 
-  log::info!("Current Ende version: v{}", version::DENO_VERSION_INFO.deno);
+  log::info!("Current Ende version: v{}", version::ENDE_VERSION_INFO.ende);
 
   let maybe_selected_version_to_upgrade = match &requested_version {
     RequestedVersion::Latest(channel) => {
@@ -1046,7 +1046,7 @@ pub async fn upgrade(
     http_client_provider.get_or_create()?,
   );
 
-  let dl_dir = factory.deno_dir()?.dl_folder_path();
+  let dl_dir = factory.ende_dir()?.dl_folder_path();
   let cache_path = get_binary_cache_path(
     &dl_dir,
     &selected_version_to_upgrade.version_or_hash,
@@ -1063,7 +1063,7 @@ pub async fn upgrade(
     try_delta_upgrade(
       &client,
       &current_exe_path,
-      version::DENO_VERSION_INFO.deno,
+      version::ENDE_VERSION_INFO.ende,
       &selected_version_to_upgrade.version_or_hash,
     )
     .await
@@ -1158,7 +1158,7 @@ pub async fn upgrade(
     log::info!("Upgraded successfully (dry run)");
     if requested_version.release_channel() == ReleaseChannel::Stable {
       print_release_notes(
-        version::DENO_VERSION_INFO.deno,
+        version::ENDE_VERSION_INFO.ende,
         &selected_version_to_upgrade.version_or_hash,
         &client,
       )
@@ -1172,7 +1172,7 @@ pub async fn upgrade(
     full_path_output_flag.as_ref().unwrap_or(&current_exe_path);
 
   #[cfg(windows)]
-  kill_running_deno_lsp_processes();
+  kill_running_ende_lsp_processes();
 
   let output_result = if *output_exe_path == current_exe_path {
     replace_exe(&new_exe_path, output_exe_path)
@@ -1192,7 +1192,7 @@ pub async fn upgrade(
   );
   if requested_version.release_channel() == ReleaseChannel::Stable {
     print_release_notes(
-      version::DENO_VERSION_INFO.deno,
+      version::ENDE_VERSION_INFO.ende,
       &selected_version_to_upgrade.version_or_hash,
       &client,
     )
@@ -1309,16 +1309,16 @@ fn select_specific_version_for_upgrade(
     | ReleaseChannel::Lts
     | ReleaseChannel::Alpha
     | ReleaseChannel::Beta => {
-      version::DENO_VERSION_INFO.release_channel == release_channel
-        && version::DENO_VERSION_INFO.deno == version
+      version::ENDE_VERSION_INFO.release_channel == release_channel
+        && version::ENDE_VERSION_INFO.ende == version
     }
-    ReleaseChannel::Canary => version::DENO_VERSION_INFO.git_hash == version,
+    ReleaseChannel::Canary => version::ENDE_VERSION_INFO.git_hash == version,
   };
 
   if !force && current_is_passed {
     log::info!(
       "Version {} is already installed",
-      version::DENO_VERSION_INFO.deno
+      version::ENDE_VERSION_INFO.ende
     );
     return Ok(None);
   }
@@ -1362,16 +1362,16 @@ async fn find_latest_version_to_upgrade(
   };
 
   let current_version = match release_channel {
-    ReleaseChannel::Canary => version::DENO_VERSION_INFO.git_hash,
+    ReleaseChannel::Canary => version::ENDE_VERSION_INFO.git_hash,
     ReleaseChannel::Stable
     | ReleaseChannel::Lts
     | ReleaseChannel::Rc
     | ReleaseChannel::Alpha
-    | ReleaseChannel::Beta => version::DENO_VERSION_INFO.deno,
+    | ReleaseChannel::Beta => version::ENDE_VERSION_INFO.ende,
   };
   let should_upgrade = force
     || current_version != latest_version_found.version_or_hash
-    || version::DENO_VERSION_INFO.release_channel != release_channel;
+    || version::ENDE_VERSION_INFO.release_channel != release_channel;
 
   log::info!("");
   if should_upgrade {
@@ -1972,7 +1972,7 @@ fn check_windows_access_denied_error(
 }
 
 #[cfg(windows)]
-fn kill_running_deno_lsp_processes() {
+fn kill_running_ende_lsp_processes() {
   // limit this to `deno lsp` invocations to avoid killing important programs someone might be running
   let is_debug = log::log_enabled!(log::Level::Debug);
   let get_pipe = || {

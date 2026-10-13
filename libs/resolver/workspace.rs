@@ -24,8 +24,8 @@ use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::package::PackageName;
 use deno_semver::package::PackageReq;
 use deno_terminal::colors;
-use ende_config::deno_json::ConfigFileError;
-use ende_config::deno_json::ConfigFileRc;
+use ende_config::ende_json::ConfigFileError;
+use ende_config::ende_json::ConfigFileRc;
 use ende_config::workspace::ResolverWorkspaceJsrPackage;
 use ende_config::workspace::Workspace;
 use ende_maybe_sync::MaybeDashMap;
@@ -53,9 +53,9 @@ use thiserror::Error;
 use url::Url;
 
 use crate::collections::FolderScopedMap;
-use crate::deno_json::CompilerOptionsModuleResolution;
-use crate::deno_json::CompilerOptionsPaths;
-use crate::deno_json::CompilerOptionsResolverRc;
+use crate::ende_json::CompilerOptionsModuleResolution;
+use crate::ende_json::CompilerOptionsPaths;
+use crate::ende_json::CompilerOptionsResolverRc;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 type UrlRc = ende_maybe_sync::MaybeArc<Url>;
@@ -1001,8 +1001,8 @@ impl<TSys: FsMetadata + FsRead> WorkspaceResolver<TSys> {
         })
       }
 
-      let root_deno_json = workspace.root_deno_json();
-      let deno_jsons = workspace.resolver_deno_jsons().collect::<Vec<_>>();
+      let root_ende_json = workspace.root_ende_json();
+      let ende_jsons = workspace.resolver_ende_jsons().collect::<Vec<_>>();
 
       // The base of the synthetic import map: either an explicitly specified map
       // (the `--import-map` flag or the root's external `importMap` file) or the
@@ -1016,8 +1016,8 @@ impl<TSys: FsMetadata + FsRead> WorkspaceResolver<TSys> {
           }
         }
         None => {
-          if !deno_jsons.iter().any(|p| p.is_package())
-            && !deno_jsons.iter().any(|c| {
+          if !ende_jsons.iter().any(|p| p.is_package())
+            && !ende_jsons.iter().any(|c| {
               c.json.import_map.is_some()
                 || c.json.scopes.is_some()
                 || c.json.imports.is_some()
@@ -1033,31 +1033,31 @@ impl<TSys: FsMetadata + FsRead> WorkspaceResolver<TSys> {
             return Ok(None);
           }
 
-          let (base_url, value) = match root_deno_json.as_ref() {
-            Some(deno_json) => deno_json
+          let (base_url, value) = match root_ende_json.as_ref() {
+            Some(ende_json) => ende_json
               .to_import_map_value(sys)
               .map_err(|source| WorkspaceResolverCreateError::ImportMapFetch {
-                referrer: deno_json.specifier.clone(),
+                referrer: ende_json.specifier.clone(),
                 source: Box::new(source),
               })?
               .map(|(specifier, value)| (specifier.into_owned(), value))
               .unwrap_or_else(|| {
                 (
-                  deno_json.specifier.clone(),
+                  ende_json.specifier.clone(),
                   serde_json::Value::Object(Default::default()),
                 )
               }),
             None => (
               workspace
                 .root_dir_url()
-                .join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME)
+                .join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME)
                 .unwrap(),
               serde_json::Value::Object(Default::default()),
             ),
           };
           // catalog expansion only applies to inline imports, not to
           // external import map files
-          let value = if root_deno_json
+          let value = if root_ende_json
             .as_ref()
             .is_some_and(|d| d.is_an_import_map())
           {
@@ -1072,10 +1072,10 @@ impl<TSys: FsMetadata + FsRead> WorkspaceResolver<TSys> {
         }
       };
 
-      let child_import_map_configs = deno_jsons
+      let child_import_map_configs = ende_jsons
         .iter()
         .filter(|f| {
-          Some(&f.specifier) != root_deno_json.as_ref().map(|c| &c.specifier)
+          Some(&f.specifier) != root_ende_json.as_ref().map(|c| &c.specifier)
         })
         .map(|config| {
           child_import_map_config(sys, config, workspace.catalogs())
@@ -1887,7 +1887,7 @@ impl WorkspaceNpmLinkPackagesRc {
       // npm link. Some packages ship a package.json only for other runtimes
       // (e.g. Bun), so counting it as an npm link would wrongly require a
       // node_modules directory.
-      if folder.deno_json.is_some() {
+      if folder.ende_json.is_some() {
         continue;
       }
       let Some(pkg_json) = folder.pkg_json.as_ref() else {
@@ -2047,7 +2047,7 @@ mod test {
   use url::Url;
 
   use super::*;
-  use crate::deno_json::CompilerOptionsResolver;
+  use crate::ende_json::CompilerOptionsResolver;
   use crate::factory::ConfigDiscoveryOption;
   use crate::npm::CreateInNpmPkgCheckerOptions;
   use crate::npm::DenoInNpmPackageChecker;
@@ -2123,7 +2123,7 @@ mod test {
   #[allow(clippy::disallowed_types, reason = "ok in tests")]
   fn setup_node_resolver<TSys: NpmResolverSys>(
     sys: &TSys,
-  ) -> crate::deno_json::TsConfigNodeResolver<TSys, TestNpmPackageFolderResolver>
+  ) -> crate::ende_json::TsConfigNodeResolver<TSys, TestNpmPackageFolderResolver>
   {
     let package_json_resolver =
       new_rc(PackageJsonResolver::new(sys.clone(), None));
@@ -2460,7 +2460,7 @@ mod test {
   }
 
   #[test]
-  fn resolve_workspace_pkg_json_workspace_deno_json_import_map() {
+  fn resolve_workspace_pkg_json_workspace_ende_json_import_map() {
     let sys = InMemorySys::default();
     sys.fs_insert_json(
       root_dir().join("package.json"),

@@ -1,7 +1,7 @@
 benchmark filtering:
 
 ```
-cargo bench --bench deno_bench -- bundle
+cargo bench --bench ende_bench -- bundle
 ```
 
 benchmark plots:

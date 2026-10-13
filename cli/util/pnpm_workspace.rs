@@ -152,7 +152,7 @@ fn find_pnpm_workspace(start: &Path) -> Option<PathBuf> {
 #[derive(Clone, Copy)]
 enum ConfigKind {
   PackageJson,
-  DenoConfig,
+  EndeConfig,
 }
 
 impl ConfigKind {
@@ -161,7 +161,7 @@ impl ConfigKind {
   fn workspace_key(self) -> &'static str {
     match self {
       ConfigKind::PackageJson => "workspaces",
-      ConfigKind::DenoConfig => "workspace",
+      ConfigKind::EndeConfig => "workspace",
     }
   }
 }
@@ -171,15 +171,15 @@ fn pick_target_config(dir: &Path) -> (PathBuf, ConfigKind) {
   if package_json.is_file() {
     return (package_json, ConfigKind::PackageJson);
   }
-  for name in ende_config::deno_json::CONFIG_FILE_NAMES {
+  for name in ende_config::ende_json::CONFIG_FILE_NAMES {
     let path = dir.join(name);
     if path.is_file() {
-      return (path, ConfigKind::DenoConfig);
+      return (path, ConfigKind::EndeConfig);
     }
   }
   (
-    dir.join(ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME),
-    ConfigKind::DenoConfig,
+    dir.join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME),
+    ConfigKind::EndeConfig,
   )
 }
 
@@ -425,7 +425,7 @@ mod tests {
   }
 
   #[test]
-  fn writes_workspace_into_empty_deno_json() {
+  fn writes_workspace_into_empty_ende_json() {
     let parsed = PnpmWorkspace {
       packages: vec!["packages/*".to_string()],
       ..Default::default()
@@ -457,7 +457,7 @@ mod tests {
       ..Default::default()
     };
     assert!(
-      apply_to_config(&path, ConfigKind::DenoConfig, &parsed)
+      apply_to_config(&path, ConfigKind::EndeConfig, &parsed)
         .unwrap()
         .is_none()
     );
@@ -476,7 +476,7 @@ mod tests {
       catalog,
       ..Default::default()
     };
-    let out = apply_to_config(&path, ConfigKind::DenoConfig, &parsed)
+    let out = apply_to_config(&path, ConfigKind::EndeConfig, &parsed)
       .unwrap()
       .unwrap();
     assert!(out.contains("\"catalog\""));
@@ -525,7 +525,7 @@ mod tests {
     let dir = tempfile::tempdir().unwrap();
     // no config: a new ende.json
     let (path, kind) = pick_target_config(dir.path());
-    assert!(matches!(kind, ConfigKind::DenoConfig));
+    assert!(matches!(kind, ConfigKind::EndeConfig));
     assert_eq!(path, dir.path().join("ende.json"));
     // an existing deprecated deno.jsonc is edited in place
     std::fs::write(dir.path().join("deno.jsonc"), "{}\n").unwrap();

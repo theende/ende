@@ -10,7 +10,7 @@
 //!   DevTools ◄──► │   HTTP: /json/{version,list,protocol}    │
 //!   (single ws)   │         /debugger-attached (gate)        │
 //!                 │   WS:   /unified  (primary entry)        │
-//!                 │         /deno, /cef (direct bypass)      │
+//!                 │         /ende, /cef (direct bypass)      │
 //!                 │   HTTP: /devtools/* (frontend proxy)     │
 //!                 └──────┬─────────────────────────┬─────────┘
 //!                        │                         │
@@ -25,7 +25,7 @@
 //! synthetic `Target.attachedToTarget` event with a stable `sessionId`
 //! the mux invents. Frame routing:
 //!
-//! - Client → mux frames with `sessionId == deno_session_id` have the
+//! - Client → mux frames with `sessionId == ende_session_id` have the
 //!   field stripped and are forwarded to Deno.
 //! - Deno → client frames get the `sessionId` re-injected.
 //! - `Target.attachToTarget`/`detachFromTarget` for the Deno child are
@@ -55,7 +55,7 @@
 //!
 //! ## Direct / frontend endpoints
 //!
-//! `/deno` and `/cef` are direct passthrough WebSockets for debugging
+//! `/ende` and `/cef` are direct passthrough WebSockets for debugging
 //! each isolate in isolation when the unified session misbehaves.
 //! `/devtools/*` proxies CEF's bundled DevTools frontend assets
 //! through the mux port so `openDevtools()` can pop a CEF window
@@ -101,7 +101,7 @@ pub struct MuxConfig {
   /// User-visible listen address (from `--inspect`).
   pub listen: SocketAddr,
   /// Internal listen address for Deno's native inspector.
-  pub deno_internal: SocketAddr,
+  pub ende_internal: SocketAddr,
   /// Internal listen address for the CEF renderer debug port.
   pub cef_internal: SocketAddr,
   /// `true` when `--inspect-brk` was passed — the mux will inject
@@ -195,7 +195,7 @@ enum TargetKind {
   /// Deno appears as an attached child target via `Target.*`.
   Unified,
   /// Direct passthrough to the Deno inspector.
-  Deno,
+  Ende,
   /// Direct passthrough to the CEF renderer's debug port.
   Cef,
 }
@@ -204,7 +204,7 @@ impl TargetKind {
   fn path(self) -> &'static str {
     match self {
       TargetKind::Unified => "/unified",
-      TargetKind::Deno => "/deno",
+      TargetKind::Ende => "/ende",
       TargetKind::Cef => "/cef",
     }
   }
@@ -212,7 +212,7 @@ impl TargetKind {
   fn title(self) -> &'static str {
     match self {
       TargetKind::Unified => "Ende Desktop (unified)",
-      TargetKind::Deno => "Ende Runtime",
+      TargetKind::Ende => "Ende Runtime",
       TargetKind::Cef => "CEF Renderer",
     }
   }
@@ -220,7 +220,7 @@ impl TargetKind {
 
 /// Synthetic CDP target id for the Deno isolate inside the unified
 /// session. Stable per process; DevTools uses it in `Target.attachToTarget`.
-const DENO_CHILD_TARGET_ID: &str = "deno-runtime-isolate";
+const ENDE_CHILD_TARGET_ID: &str = "deno-runtime-isolate";
 
 struct MuxState {
   config: MuxConfig,
@@ -228,11 +228,11 @@ struct MuxState {
   // Stable UUIDs per target so repeated /json/list calls return the
   // same IDs. DevTools caches these.
   unified_id: Uuid,
-  deno_id: Uuid,
+  ende_id: Uuid,
   cef_id: Uuid,
   // Stable session id we hand DevTools when it attaches to the Deno
   // child target inside the unified session.
-  deno_session_id: String,
+  ende_session_id: String,
   // Set to `true` when a DevTools client has connected to any session.
   // The child process polls `/debugger-attached` to gate navigation
   // when `--inspect-wait` or `--inspect-brk` is active.
@@ -245,9 +245,9 @@ impl MuxState {
       config,
       listen,
       unified_id: Uuid::new_v4(),
-      deno_id: Uuid::new_v4(),
+      ende_id: Uuid::new_v4(),
       cef_id: Uuid::new_v4(),
-      deno_session_id: Uuid::new_v4().to_string(),
+      ende_session_id: Uuid::new_v4().to_string(),
       debugger_attached: Arc::new(std::sync::atomic::AtomicBool::new(false)),
     }
   }
@@ -255,8 +255,8 @@ impl MuxState {
   fn target_for_path(&self, path: &str) -> Option<TargetKind> {
     if path == TargetKind::Unified.path() {
       Some(TargetKind::Unified)
-    } else if path == TargetKind::Deno.path() {
-      Some(TargetKind::Deno)
+    } else if path == TargetKind::Ende.path() {
+      Some(TargetKind::Ende)
     } else if path == TargetKind::Cef.path() {
       Some(TargetKind::Cef)
     } else {
@@ -495,7 +495,7 @@ fn json_list(
     .map(String::from)
     .unwrap_or_else(|| state.listen.to_string());
   let unified_url = format!("ws://{authority}{}", TargetKind::Unified.path());
-  let deno_url = format!("ws://{authority}{}", TargetKind::Deno.path());
+  let ende_url = format!("ws://{authority}{}", TargetKind::Ende.path());
   let cef_url = format!("ws://{authority}{}", TargetKind::Cef.path());
 
   // Primary entry: the unified session. DevTools opens one window
@@ -506,7 +506,7 @@ fn json_list(
     "type": "page",
     "title": TargetKind::Unified.title(),
     "description": "Unified DevTools (CEF page + Ende runtime)",
-    "url": "deno-desktop://unified",
+    "url": "ende-desktop://unified",
     "faviconUrl": "https://deno.land/favicon.ico",
     "devtoolsFrontendUrl": format!(
       "devtools://devtools/bundled/inspector.html?ws={}",
@@ -517,18 +517,18 @@ fn json_list(
   // Fallback entries: direct passthrough to each isolate. Useful when
   // the unified session misbehaves and you want to debug each side in
   // isolation.
-  let deno_entry = json!({
-    "id": state.deno_id.to_string(),
+  let ende_entry = json!({
+    "id": state.ende_id.to_string(),
     "type": "node",
-    "title": TargetKind::Deno.title(),
+    "title": TargetKind::Ende.title(),
     "description": "Ende runtime V8 isolate (direct)",
-    "url": format!("deno://{}", state.config.deno_internal),
+    "url": format!("deno://{}", state.config.ende_internal),
     "faviconUrl": "https://deno.land/favicon.ico",
     "devtoolsFrontendUrl": format!(
       "devtools://devtools/bundled/js_app.html?ws={}&experiments=true&v8only=true",
-      strip_scheme(&deno_url),
+      strip_scheme(&ende_url),
     ),
-    "webSocketDebuggerUrl": deno_url,
+    "webSocketDebuggerUrl": ende_url,
   });
   let cef_entry = json!({
     "id": state.cef_id.to_string(),
@@ -544,7 +544,7 @@ fn json_list(
     "webSocketDebuggerUrl": cef_url,
   });
 
-  json_response(Value::Array(vec![unified_entry, deno_entry, cef_entry]))
+  json_response(Value::Array(vec![unified_entry, ende_entry, cef_entry]))
 }
 
 /// Return an empty protocol descriptor. DevTools tolerates this and
@@ -616,7 +616,7 @@ fn handle_upgrade(
           log::debug!("[devtools-mux] unified session ended: {err:?}");
         }
       }
-      TargetKind::Deno => {
+      TargetKind::Ende => {
         // Deno has its own `--inspect-brk` mechanism that blocks the
         // isolate until a client attaches — nothing to inject here.
         mark_debugger_attached(&state);
@@ -670,7 +670,7 @@ async fn connect_upstream(
   kind: TargetKind,
 ) -> Result<WebSocket<TokioIo<hyper::upgrade::Upgraded>>, AnyError> {
   let upstream_host = match kind {
-    TargetKind::Deno => state.config.deno_internal,
+    TargetKind::Ende => state.config.ende_internal,
     TargetKind::Cef => state.config.cef_internal,
     TargetKind::Unified => {
       bail!("connect_upstream cannot be called with the Unified target")
@@ -985,18 +985,18 @@ async fn run_unified_session(
   client.set_auto_close(false);
   client.set_auto_pong(false);
 
-  let (cef, deno) = tokio::try_join!(
+  let (cef, ende) = tokio::try_join!(
     connect_upstream(&state, TargetKind::Cef),
-    connect_upstream(&state, TargetKind::Deno),
+    connect_upstream(&state, TargetKind::Ende),
   )?;
   let mut cef = cef;
-  let mut deno = deno;
+  let mut ende = ende;
   cef.set_auto_close(false);
   cef.set_auto_pong(false);
-  deno.set_auto_close(false);
-  deno.set_auto_pong(false);
+  ende.set_auto_close(false);
+  ende.set_auto_pong(false);
 
-  let session_id = state.deno_session_id.clone();
+  let session_id = state.ende_session_id.clone();
 
   // When --inspect-brk is active, inject Debugger.enable + Debugger.pause
   // into the CEF session BEFORE the child is allowed to navigate. The
@@ -1011,17 +1011,17 @@ async fn run_unified_session(
 
   let (mut client_rx, mut client_tx) = client.split(tokio::io::split);
   let (mut cef_rx, mut cef_tx) = cef.split(tokio::io::split);
-  let (mut deno_rx, mut deno_tx) = deno.split(tokio::io::split);
+  let (mut ende_rx, mut ende_tx) = ende.split(tokio::io::split);
 
   let (client_send, mut client_recv) = mpsc::unbounded_channel::<OwnedFrame>();
   let (cef_send, mut cef_recv) = mpsc::unbounded_channel::<OwnedFrame>();
-  let (deno_send, mut deno_recv) = mpsc::unbounded_channel::<OwnedFrame>();
+  let (ende_send, mut ende_recv) = mpsc::unbounded_channel::<OwnedFrame>();
 
   // Deno is announced lazily, the first time DevTools asks about
   // targets — firing too early causes the event to be dropped before
   // the frontend's auto-attach manager has subscribed. See
   // `route_client_text` for the trigger.
-  let deno_announced = Arc::new(std::sync::atomic::AtomicBool::new(false));
+  let ende_announced = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
   // Writer tasks: pump owned frames from a channel into the WS half.
   let client_writer = tokio::spawn(async move {
@@ -1048,10 +1048,10 @@ async fn run_unified_session(
       }
     }
   });
-  let deno_writer = tokio::spawn(async move {
-    while let Some(owned) = deno_recv.recv().await {
+  let ende_writer = tokio::spawn(async move {
+    while let Some(owned) = ende_recv.recv().await {
       let close = owned.opcode == OpCode::Close;
-      if let Err(err) = deno_tx.write_frame(owned.into_frame()).await {
+      if let Err(err) = ende_tx.write_frame(owned.into_frame()).await {
         log::debug!("[devtools-mux] unified deno write: {err:?}");
         return;
       }
@@ -1065,9 +1065,9 @@ async fn run_unified_session(
   let mut client_reader = {
     let client_send = client_send.clone();
     let cef_send = cef_send.clone();
-    let deno_send = deno_send.clone();
+    let ende_send = ende_send.clone();
     let session_id = session_id.clone();
-    let deno_announced = deno_announced.clone();
+    let ende_announced = ende_announced.clone();
     tokio::spawn(async move {
       let mut noop = |_: Frame<'_>| async { Ok::<(), WebSocketError>(()) };
       loop {
@@ -1087,8 +1087,8 @@ async fn run_unified_session(
               &session_id,
               &client_send,
               &cef_send,
-              &deno_send,
-              &deno_announced,
+              &ende_send,
+              &ende_announced,
             );
           }
           OpCode::Close => {
@@ -1096,7 +1096,7 @@ async fn run_unified_session(
               opcode,
               payload: payload.clone(),
             });
-            let _ = deno_send.send(OwnedFrame { opcode, payload });
+            let _ = ende_send.send(OwnedFrame { opcode, payload });
             return;
           }
           _ => {
@@ -1144,13 +1144,13 @@ async fn run_unified_session(
   // Reader: Deno → client. Inject sessionId so DevTools routes frames
   // to the synthetic child target, and relabel the execution context
   // to "Deno" instead of V8's "main realm".
-  let mut deno_reader = {
+  let mut ende_reader = {
     let client_send = client_send.clone();
     let session_id = session_id.clone();
     tokio::spawn(async move {
       let mut noop = |_: Frame<'_>| async { Ok::<(), WebSocketError>(()) };
       loop {
-        let frame = match deno_rx.read_frame(&mut noop).await {
+        let frame = match ende_rx.read_frame(&mut noop).await {
           Ok(f) => f,
           Err(err) => {
             log::debug!("[devtools-mux] unified deno read: {err:?}");
@@ -1178,28 +1178,28 @@ async fn run_unified_session(
   // Drop the originals so writers exit once readers finish.
   drop(client_send);
   drop(cef_send);
-  drop(deno_send);
+  drop(ende_send);
 
   // Wait for any reader to exit, then tear down everything else.
   tokio::select! {
     _ = &mut client_reader => {},
     _ = &mut cef_reader => {},
-    _ = &mut deno_reader => {},
+    _ = &mut ende_reader => {},
   }
 
   client_reader.abort();
   cef_reader.abort();
-  deno_reader.abort();
+  ende_reader.abort();
   client_writer.abort();
   cef_writer.abort();
-  deno_writer.abort();
+  ende_writer.abort();
 
   Ok(())
 }
 
 /// CDP-aware routing for a text frame coming from the DevTools client.
 ///
-/// - `sessionId == deno_session_id` → strip and send to Deno.
+/// - `sessionId == ende_session_id` → strip and send to Deno.
 /// - `Target.setAutoAttach` / `Target.setDiscoverTargets(true)` →
 ///   forward to CEF AND lazily emit our synthetic
 ///   `Target.attachedToTarget` for Deno (once). We piggyback on these
@@ -1216,8 +1216,8 @@ fn route_client_text(
   session_id: &str,
   client_send: &mpsc::UnboundedSender<OwnedFrame>,
   cef_send: &mpsc::UnboundedSender<OwnedFrame>,
-  deno_send: &mpsc::UnboundedSender<OwnedFrame>,
-  deno_announced: &Arc<std::sync::atomic::AtomicBool>,
+  ende_send: &mpsc::UnboundedSender<OwnedFrame>,
+  ende_announced: &Arc<std::sync::atomic::AtomicBool>,
 ) {
   let mut value: Value = match serde_json::from_slice(payload) {
     Ok(v) => v,
@@ -1233,7 +1233,7 @@ fn route_client_text(
       obj.remove("sessionId");
     }
     let bytes = serde_json::to_vec(&value).unwrap_or_else(|_| payload.to_vec());
-    let _ = deno_send.send(OwnedFrame::text(bytes));
+    let _ = ende_send.send(OwnedFrame::text(bytes));
     return;
   }
 
@@ -1247,7 +1247,7 @@ fn route_client_text(
   if matches!(
     method.as_deref(),
     Some("Target.setAutoAttach") | Some("Target.setDiscoverTargets")
-  ) && !deno_announced.swap(true, std::sync::atomic::Ordering::SeqCst)
+  ) && !ende_announced.swap(true, std::sync::atomic::Ordering::SeqCst)
   {
     let event = attached_to_target_event(session_id);
     let _ =
@@ -1259,7 +1259,7 @@ fn route_client_text(
       .get("params")
       .and_then(|p| p.get("targetId"))
       .and_then(|v| v.as_str());
-    if target_id == Some(DENO_CHILD_TARGET_ID) {
+    if target_id == Some(ENDE_CHILD_TARGET_ID) {
       if let Some(rid) = id {
         let reply = json!({
           "id": rid,
@@ -1287,7 +1287,7 @@ fn route_client_text(
         "method": "Target.detachedFromTarget",
         "params": {
           "sessionId": session_id,
-          "targetId": DENO_CHILD_TARGET_ID,
+          "targetId": ENDE_CHILD_TARGET_ID,
         },
       });
       let _ =
@@ -1350,7 +1350,7 @@ fn attached_to_target_event(session_id: &str) -> Value {
     "params": {
       "sessionId": session_id,
       "targetInfo": {
-        "targetId": DENO_CHILD_TARGET_ID,
+        "targetId": ENDE_CHILD_TARGET_ID,
         "type": "worker",
         "title": "Ende Runtime",
         "url": "deno://runtime",
@@ -1382,7 +1382,7 @@ mod tests {
   fn test_config() -> MuxConfig {
     MuxConfig {
       listen: "127.0.0.1:9229".parse().unwrap(),
-      deno_internal: "127.0.0.1:9230".parse().unwrap(),
+      ende_internal: "127.0.0.1:9230".parse().unwrap(),
       cef_internal: "127.0.0.1:9231".parse().unwrap(),
       inspect_brk: false,
       wait_for_debugger: false,
@@ -1393,7 +1393,7 @@ mod tests {
   fn target_path_round_trip() {
     let state = MuxState::new(test_config(), "127.0.0.1:9229".parse().unwrap());
     assert_eq!(state.target_for_path("/unified"), Some(TargetKind::Unified));
-    assert_eq!(state.target_for_path("/deno"), Some(TargetKind::Deno));
+    assert_eq!(state.target_for_path("/ende"), Some(TargetKind::Ende));
     assert_eq!(state.target_for_path("/cef"), Some(TargetKind::Cef));
     assert_eq!(state.target_for_path("/bogus"), None);
   }
@@ -1448,10 +1448,10 @@ mod tests {
   // ── sessionId dispatch ────────────────────────────────────────────
 
   #[test]
-  fn route_client_text_strips_session_and_forwards_to_deno() {
+  fn route_client_text_strips_session_and_forwards_to_ende() {
     let (client_tx, _client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, _cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
-    let (deno_tx, mut deno_rx) = mpsc::unbounded_channel::<OwnedFrame>();
+    let (ende_tx, mut ende_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let announced = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
     let session_id = "test-session-123";
@@ -1463,11 +1463,11 @@ mod tests {
     let payload = serde_json::to_vec(&msg).unwrap();
 
     route_client_text(
-      &payload, session_id, &client_tx, &cef_tx, &deno_tx, &announced,
+      &payload, session_id, &client_tx, &cef_tx, &ende_tx, &announced,
     );
 
     // Should arrive at Deno with sessionId stripped.
-    let frame = deno_rx.try_recv().expect("expected frame on deno channel");
+    let frame = ende_rx.try_recv().expect("expected frame on deno channel");
     let value: Value = serde_json::from_slice(&frame.payload).unwrap();
     assert_eq!(value.get("id").unwrap(), 1);
     assert_eq!(value.get("method").unwrap(), "Debugger.enable");
@@ -1481,7 +1481,7 @@ mod tests {
   fn route_client_text_forwards_non_session_to_cef() {
     let (client_tx, _client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, mut cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
-    let (deno_tx, _deno_rx) = mpsc::unbounded_channel::<OwnedFrame>();
+    let (ende_tx, _ende_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let announced = Arc::new(std::sync::atomic::AtomicBool::new(true));
 
     let msg = json!({"id": 5, "method": "DOM.getDocument"});
@@ -1492,7 +1492,7 @@ mod tests {
       "some-session",
       &client_tx,
       &cef_tx,
-      &deno_tx,
+      &ende_tx,
       &announced,
     );
 
@@ -1502,22 +1502,22 @@ mod tests {
   }
 
   #[test]
-  fn route_client_text_attach_to_deno_target_replies_locally() {
+  fn route_client_text_attach_to_ende_target_replies_locally() {
     let (client_tx, mut client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, mut cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
-    let (deno_tx, _deno_rx) = mpsc::unbounded_channel::<OwnedFrame>();
+    let (ende_tx, _ende_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let announced = Arc::new(std::sync::atomic::AtomicBool::new(true));
 
     let session_id = "deno-sess";
     let msg = json!({
       "id": 10,
       "method": "Target.attachToTarget",
-      "params": { "targetId": DENO_CHILD_TARGET_ID },
+      "params": { "targetId": ENDE_CHILD_TARGET_ID },
     });
     let payload = serde_json::to_vec(&msg).unwrap();
 
     route_client_text(
-      &payload, session_id, &client_tx, &cef_tx, &deno_tx, &announced,
+      &payload, session_id, &client_tx, &cef_tx, &ende_tx, &announced,
     );
 
     // Should reply to client with the synthetic sessionId.
@@ -1531,10 +1531,10 @@ mod tests {
   }
 
   #[test]
-  fn route_client_text_lazily_announces_deno() {
+  fn route_client_text_lazily_announces_ende() {
     let (client_tx, mut client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, _cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
-    let (deno_tx, _deno_rx) = mpsc::unbounded_channel::<OwnedFrame>();
+    let (ende_tx, _ende_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let announced = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
     let msg = json!({
@@ -1545,7 +1545,7 @@ mod tests {
     let payload = serde_json::to_vec(&msg).unwrap();
 
     route_client_text(
-      &payload, "sess", &client_tx, &cef_tx, &deno_tx, &announced,
+      &payload, "sess", &client_tx, &cef_tx, &ende_tx, &announced,
     );
 
     // Should have emitted Target.attachedToTarget event.
@@ -1557,7 +1557,7 @@ mod tests {
 
     // Calling again should NOT emit a second event.
     route_client_text(
-      &payload, "sess", &client_tx, &cef_tx, &deno_tx, &announced,
+      &payload, "sess", &client_tx, &cef_tx, &ende_tx, &announced,
     );
     // Only the forwarded-to-cef frame, no second announce.
     assert!(client_rx.try_recv().is_err());
@@ -1570,7 +1570,7 @@ mod tests {
     // other, depending on which panel initialised first.
     let (client_tx, mut client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, _cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
-    let (deno_tx, _deno_rx) = mpsc::unbounded_channel::<OwnedFrame>();
+    let (ende_tx, _ende_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let announced = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
     let msg = json!({
@@ -1581,7 +1581,7 @@ mod tests {
     let payload = serde_json::to_vec(&msg).unwrap();
 
     route_client_text(
-      &payload, "sess", &client_tx, &cef_tx, &deno_tx, &announced,
+      &payload, "sess", &client_tx, &cef_tx, &ende_tx, &announced,
     );
 
     let frame = client_rx
@@ -1599,7 +1599,7 @@ mod tests {
     // synthetic Deno target is answered locally.
     let (client_tx, mut client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, mut cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
-    let (deno_tx, _deno_rx) = mpsc::unbounded_channel::<OwnedFrame>();
+    let (ende_tx, _ende_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let announced = Arc::new(std::sync::atomic::AtomicBool::new(true));
 
     let msg = json!({
@@ -1614,7 +1614,7 @@ mod tests {
       "deno-sess",
       &client_tx,
       &cef_tx,
-      &deno_tx,
+      &ende_tx,
       &announced,
     );
 
@@ -1723,7 +1723,7 @@ mod tests {
       list[1]["webSocketDebuggerUrl"]
         .as_str()
         .unwrap()
-        .ends_with("/deno")
+        .ends_with("/ende")
     );
 
     // CEF direct target.
@@ -1815,10 +1815,10 @@ mod tests {
   // ── Target.detachFromTarget dispatch ──────────────────────────────
 
   #[test]
-  fn route_client_text_detach_from_deno_session_synthesizes_reply_and_event() {
+  fn route_client_text_detach_from_ende_session_synthesizes_reply_and_event() {
     let (client_tx, mut client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, mut cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
-    let (deno_tx, _deno_rx) = mpsc::unbounded_channel::<OwnedFrame>();
+    let (ende_tx, _ende_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let announced = Arc::new(std::sync::atomic::AtomicBool::new(true));
 
     let session_id = "deno-sess-xyz";
@@ -1830,7 +1830,7 @@ mod tests {
     let payload = serde_json::to_vec(&msg).unwrap();
 
     route_client_text(
-      &payload, session_id, &client_tx, &cef_tx, &deno_tx, &announced,
+      &payload, session_id, &client_tx, &cef_tx, &ende_tx, &announced,
     );
 
     // First frame: the id=42 reply.
@@ -1844,7 +1844,7 @@ mod tests {
     let event_val: Value = serde_json::from_slice(&event.payload).unwrap();
     assert_eq!(event_val["method"], "Target.detachedFromTarget");
     assert_eq!(event_val["params"]["sessionId"], session_id);
-    assert_eq!(event_val["params"]["targetId"], DENO_CHILD_TARGET_ID);
+    assert_eq!(event_val["params"]["targetId"], ENDE_CHILD_TARGET_ID);
 
     // Must NOT be forwarded to CEF — CEF has no knowledge of our
     // synthetic Deno session.
@@ -1857,7 +1857,7 @@ mod tests {
     // must flow through to CEF unchanged.
     let (client_tx, mut client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, mut cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
-    let (deno_tx, _deno_rx) = mpsc::unbounded_channel::<OwnedFrame>();
+    let (ende_tx, _ende_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let announced = Arc::new(std::sync::atomic::AtomicBool::new(true));
 
     let msg = json!({
@@ -1872,7 +1872,7 @@ mod tests {
       "deno-sess",
       &client_tx,
       &cef_tx,
-      &deno_tx,
+      &ende_tx,
       &announced,
     );
 
@@ -1888,12 +1888,12 @@ mod tests {
   fn route_client_text_invalid_json_forwards_to_cef() {
     let (client_tx, mut client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, mut cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
-    let (deno_tx, _deno_rx) = mpsc::unbounded_channel::<OwnedFrame>();
+    let (ende_tx, _ende_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let announced = Arc::new(std::sync::atomic::AtomicBool::new(true));
 
     let payload = b"not-json".to_vec();
     route_client_text(
-      &payload, "sess", &client_tx, &cef_tx, &deno_tx, &announced,
+      &payload, "sess", &client_tx, &cef_tx, &ende_tx, &announced,
     );
 
     let frame = cef_rx.try_recv().expect("expected frame on cef");
@@ -2077,13 +2077,13 @@ mod tests {
 
   async fn spawn_test_mux(
     cef: &MockUpstream,
-    deno: &MockUpstream,
+    ende: &MockUpstream,
     inspect_brk: bool,
   ) -> MuxHandle {
     let listen_port = allocate_random_port().unwrap();
     spawn_mux(MuxConfig {
       listen: format!("127.0.0.1:{listen_port}").parse().unwrap(),
-      deno_internal: deno.listen,
+      ende_internal: ende.listen,
       cef_internal: cef.listen,
       inspect_brk,
       wait_for_debugger: inspect_brk,
@@ -2155,8 +2155,8 @@ mod tests {
   #[tokio::test]
   async fn integration_http_endpoints() {
     let cef = spawn_mock_upstream().await;
-    let deno = spawn_mock_upstream().await;
-    let mux = spawn_test_mux(&cef, &deno, false).await;
+    let ende = spawn_mock_upstream().await;
+    let mux = spawn_test_mux(&cef, &ende, false).await;
 
     // /json/list — the mux advertises three targets; the HTTP path
     // does not need upstream WS to be live.
@@ -2220,8 +2220,8 @@ mod tests {
   #[tokio::test]
   async fn integration_forwarded_same_origin_websocket_is_allowed() {
     let cef = spawn_mock_upstream().await;
-    let deno = spawn_mock_upstream().await;
-    let mux = spawn_test_mux(&cef, &deno, false).await;
+    let ende = spawn_mock_upstream().await;
+    let mux = spawn_test_mux(&cef, &ende, false).await;
 
     let stream = TcpStream::connect(mux.listen).await.unwrap();
     let request = hyper::Request::builder()
@@ -2244,8 +2244,8 @@ mod tests {
   #[tokio::test]
   async fn integration_unified_session_routes_and_rewrites() {
     let cef = spawn_mock_upstream().await;
-    let deno = spawn_mock_upstream().await;
-    let mux = spawn_test_mux(&cef, &deno, false).await;
+    let ende = spawn_mock_upstream().await;
+    let mux = spawn_test_mux(&cef, &ende, false).await;
 
     let ws_url = format!("ws://{}/unified", mux.listen);
     let mut client = test_connect_ws(&ws_url).await;
@@ -2305,18 +2305,18 @@ mod tests {
       }),
     )
     .await;
-    let deno_received = {
-      let mut rx = deno.from_mux.lock().await;
+    let ende_received = {
+      let mut rx = ende.from_mux.lock().await;
       tokio::time::timeout(Duration::from_secs(2), rx.recv())
         .await
         .unwrap()
         .unwrap()
     };
-    let deno_val: Value =
-      serde_json::from_slice(&deno_received.payload).unwrap();
-    assert_eq!(deno_val["id"], 2);
-    assert_eq!(deno_val["method"], "Debugger.enable");
-    assert!(deno_val["sessionId"].is_null());
+    let ende_val: Value =
+      serde_json::from_slice(&ende_received.payload).unwrap();
+    assert_eq!(ende_val["id"], 2);
+    assert_eq!(ende_val["method"], "Debugger.enable");
+    assert!(ende_val["sessionId"].is_null());
 
     // 3) Upstream CEF emits Runtime.executionContextCreated. The mux
     //    rewrites context.name to "Renderer" and forwards to client
@@ -2338,7 +2338,7 @@ mod tests {
 
     // 4) Upstream Deno emits the same. Mux rewrites to "Deno" AND
     //    injects the synthetic sessionId.
-    deno
+    ende
       .to_mux
       .send(OwnedFrame::text(
         serde_json::to_vec(&json!({
@@ -2348,10 +2348,10 @@ mod tests {
         .unwrap(),
       ))
       .unwrap();
-    let from_deno = read_text_value(&mut client).await;
-    assert_eq!(from_deno["method"], "Runtime.executionContextCreated");
-    assert_eq!(from_deno["params"]["context"]["name"], "Ende");
-    assert_eq!(from_deno["sessionId"], session_id);
+    let from_ende = read_text_value(&mut client).await;
+    assert_eq!(from_ende["method"], "Runtime.executionContextCreated");
+    assert_eq!(from_ende["params"]["context"]["name"], "Ende");
+    assert_eq!(from_ende["sessionId"], session_id);
 
     drop(client);
     drop(mux);
@@ -2365,8 +2365,8 @@ mod tests {
     // child process navigates CEF before the pause is in flight and
     // the renderer races past the first JS statement.
     let cef = spawn_mock_upstream().await;
-    let deno = spawn_mock_upstream().await;
-    let mux = spawn_test_mux(&cef, &deno, true).await;
+    let ende = spawn_mock_upstream().await;
+    let mux = spawn_test_mux(&cef, &ende, true).await;
 
     let ws_url = format!("ws://{}/unified", mux.listen);
     let client_connect =

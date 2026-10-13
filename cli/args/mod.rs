@@ -18,17 +18,17 @@ use deno_semver::StackString;
 use deno_semver::npm::NpmPackageReqReference;
 use deno_terminal::colors;
 use ende_cache_dir::file_fetcher::CacheSetting;
-pub use ende_config::deno_json::BenchConfig;
-pub use ende_config::deno_json::CompilerOptions;
-pub use ende_config::deno_json::ConfigFile;
-pub use ende_config::deno_json::CoverageThresholds;
-use ende_config::deno_json::FmtConfig;
-pub use ende_config::deno_json::FmtOptionsConfig;
-pub use ende_config::deno_json::LintRulesConfig;
-use ende_config::deno_json::PermissionConfigValue;
-use ende_config::deno_json::PermissionsObjectWithBase;
-pub use ende_config::deno_json::ProseWrap;
-use ende_config::deno_json::TestConfig;
+pub use ende_config::ende_json::BenchConfig;
+pub use ende_config::ende_json::CompilerOptions;
+pub use ende_config::ende_json::ConfigFile;
+pub use ende_config::ende_json::CoverageThresholds;
+use ende_config::ende_json::FmtConfig;
+pub use ende_config::ende_json::FmtOptionsConfig;
+pub use ende_config::ende_json::LintRulesConfig;
+use ende_config::ende_json::PermissionConfigValue;
+use ende_config::ende_json::PermissionsObjectWithBase;
+pub use ende_config::ende_json::ProseWrap;
+use ende_config::ende_json::TestConfig;
 pub use ende_config::glob::FilePatterns;
 pub use ende_config::workspace::TsTypeLib;
 use ende_config::workspace::Workspace;
@@ -42,7 +42,7 @@ use ende_core::error::AnyError;
 use ende_lib::args::has_flag_env_var;
 use ende_lib::args::npm_pkg_req_ref_to_binary_command;
 use ende_lib::args::npm_process_state;
-use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::ENDE_VERSION_INFO;
 use ende_lib::worker::StorageKeyResolver;
 use ende_npm::NpmSystemInfo;
 use ende_npm_installer::LifecycleScriptsConfig;
@@ -613,35 +613,35 @@ impl CliOptions {
 
   pub fn graph_kind(&self) -> GraphKind {
     match self.sub_command() {
-      DenoSubcommand::Add(_) => GraphKind::All,
-      DenoSubcommand::Cache(_) => GraphKind::All,
-      DenoSubcommand::Check(_) => GraphKind::TypesOnly,
-      DenoSubcommand::Ci(_) => GraphKind::All,
-      DenoSubcommand::Install(InstallFlags::Local(
+      EndeSubcommand::Add(_) => GraphKind::All,
+      EndeSubcommand::Cache(_) => GraphKind::All,
+      EndeSubcommand::Check(_) => GraphKind::TypesOnly,
+      EndeSubcommand::Ci(_) => GraphKind::All,
+      EndeSubcommand::Install(InstallFlags::Local(
         InstallFlagsLocal::Entrypoints(flags),
         _,
       )) if flags.production => GraphKind::CodeOnly,
-      DenoSubcommand::Install(InstallFlags::Local(_, _)) => GraphKind::All,
+      EndeSubcommand::Install(InstallFlags::Local(_, _)) => GraphKind::All,
       // These edit the dependency requirements and then re-resolve them into
       // the lockfile. A code-only graph never walks `import type` edges, so
       // the packages reached only that way would be left out of the lockfile
       // they rewrite.
-      DenoSubcommand::Outdated(_) => GraphKind::All,
-      DenoSubcommand::Remove(_) => GraphKind::All,
+      EndeSubcommand::Outdated(_) => GraphKind::All,
+      EndeSubcommand::Remove(_) => GraphKind::All,
       _ => graph_kind(self.type_check_mode()),
     }
   }
 
   pub fn ts_type_lib_window(&self) -> TsTypeLib {
     if self.flags.internal.is_desktop {
-      TsTypeLib::DenoDesktop
+      TsTypeLib::EndeDesktop
     } else {
-      TsTypeLib::DenoWindow
+      TsTypeLib::EndeWindow
     }
   }
 
   pub fn ts_type_lib_worker(&self) -> TsTypeLib {
-    TsTypeLib::DenoWorker
+    TsTypeLib::EndeWorker
   }
 
   pub fn cache_setting(&self) -> CacheSetting {
@@ -669,7 +669,7 @@ impl CliOptions {
   ) -> Result<Option<ModuleSpecifier>, ImportMapSpecifierResolveError> {
     resolve_import_map_specifier(
       self.flags.import_map_path.as_deref(),
-      self.workspace().root_deno_json().map(|c| c.as_ref()),
+      self.workspace().root_ende_json().map(|c| c.as_ref()),
       &self.initial_cwd,
     )
   }
@@ -682,7 +682,7 @@ impl CliOptions {
   }
 
   pub fn serve_port(&self) -> Option<u16> {
-    if let DenoSubcommand::Serve(flags) = self.sub_command() {
+    if let EndeSubcommand::Serve(flags) = self.sub_command() {
       Some(flags.port)
     } else {
       None
@@ -690,7 +690,7 @@ impl CliOptions {
   }
 
   pub fn serve_host(&self) -> Option<String> {
-    if let DenoSubcommand::Serve(flags) = self.sub_command() {
+    if let EndeSubcommand::Serve(flags) = self.sub_command() {
       Some(flags.host.clone())
     } else {
       None
@@ -824,33 +824,33 @@ impl CliOptions {
       .main_module_cell
       .get_or_init(|| {
         Ok(match &self.flags.subcommand {
-          DenoSubcommand::Compile(compile_flags) => {
+          EndeSubcommand::Compile(compile_flags) => {
             resolve_url_or_path_normalized(
               &compile_flags.source_file,
               self.initial_cwd(),
             )?
           }
-          DenoSubcommand::Desktop(desktop_flags) => {
+          EndeSubcommand::Desktop(desktop_flags) => {
             resolve_url_or_path_normalized(
               &desktop_flags.source_file,
               self.initial_cwd(),
             )?
           }
-          DenoSubcommand::Eval(_) => {
+          EndeSubcommand::Eval(_) => {
             let specifier = format!(
-              "./$deno$eval.{}",
+              "./$ende$eval.{}",
               self.flags.ext.as_deref().unwrap_or("mts")
             );
             deno_path_util::resolve_path(&specifier, self.initial_cwd())?
           }
-          DenoSubcommand::Repl(_) => deno_path_util::resolve_path(
-            "./$deno$repl.mts",
+          EndeSubcommand::Repl(_) => deno_path_util::resolve_path(
+            "./$ende$repl.mts",
             self.initial_cwd(),
           )?,
-          DenoSubcommand::Run(run_flags) => {
+          EndeSubcommand::Run(run_flags) => {
             if run_flags.is_stdin() {
               let specifier = format!(
-                "./$deno$stdin.{}",
+                "./$ende$stdin.{}",
                 self.flags.ext.as_deref().unwrap_or("mts")
               );
               deno_path_util::resolve_path(&specifier, self.initial_cwd())?
@@ -882,7 +882,7 @@ impl CliOptions {
               )?
             }
           }
-          DenoSubcommand::Serve(run_flags) => self
+          EndeSubcommand::Serve(run_flags) => self
             .resolve_main_module_with_resolver_if_bare(
               &run_flags.script,
               resolver,
@@ -931,8 +931,8 @@ impl CliOptions {
   pub fn resolve_storage_key_resolver(&self) -> StorageKeyResolver {
     if let Some(location) = &self.flags.location {
       StorageKeyResolver::from_flag(location)
-    } else if let Some(deno_json) = self.start_dir.member_or_root_deno_json() {
-      StorageKeyResolver::from_config_file_url(&deno_json.specifier)
+    } else if let Some(ende_json) = self.start_dir.member_or_root_ende_json() {
+      StorageKeyResolver::from_config_file_url(&ende_json.specifier)
     } else {
       StorageKeyResolver::new_use_main_module()
     }
@@ -953,7 +953,7 @@ impl CliOptions {
     &self,
   ) -> Result<
     Option<NodeModulesDirMode>,
-    ende_config::deno_json::NodeModulesDirParseError,
+    ende_config::ende_json::NodeModulesDirParseError,
   > {
     if let Some(flag) = self.flags.node_modules_dir {
       return Ok(Some(flag));
@@ -976,7 +976,7 @@ impl CliOptions {
 
     Some((
       host,
-      DENO_VERSION_INFO.user_agent,
+      ENDE_VERSION_INFO.user_agent,
       self.flags.inspect_publish_uid.unwrap_or_default(),
     ))
   }
@@ -1110,12 +1110,12 @@ impl CliOptions {
 
   pub fn coverage_dir(&self) -> Option<PathBuf> {
     match &self.flags.subcommand {
-      DenoSubcommand::Test(test) => test
+      EndeSubcommand::Test(test) => test
         .coverage_dir
         .as_ref()
         .map(|dir| self.initial_cwd.join(dir))
         .or_else(|| ende_env::var_os("ENDE_COVERAGE_DIR").map(PathBuf::from)),
-      DenoSubcommand::Run(flags) => flags
+      EndeSubcommand::Run(flags) => flags
         .coverage_dir
         .as_ref()
         .map(|dir| self.initial_cwd.join(dir))
@@ -1214,7 +1214,7 @@ impl CliOptions {
       config_permissions,
     )?;
     self.augment_import_permissions(&mut permissions_options);
-    if let DenoSubcommand::Serve(serve_flags) = &self.flags.subcommand {
+    if let EndeSubcommand::Serve(serve_flags) = &self.flags.subcommand {
       augment_permissions_with_serve_flags(
         &mut permissions_options,
         serve_flags,
@@ -1263,11 +1263,11 @@ impl CliOptions {
     let config_permissions = if let Some(name) = &self.flags.permission_set {
       if name.is_empty() {
         let maybe_subcommand_permissions = match &self.flags.subcommand {
-          DenoSubcommand::Bench(_) => dir.to_bench_permissions_config()?,
-          DenoSubcommand::Compile(_) | DenoSubcommand::Desktop(_) => {
+          EndeSubcommand::Bench(_) => dir.to_bench_permissions_config()?,
+          EndeSubcommand::Compile(_) | EndeSubcommand::Desktop(_) => {
             dir.to_compile_permissions_config()?
           }
-          DenoSubcommand::Test(_) => dir.to_test_permissions_config()?,
+          EndeSubcommand::Test(_) => dir.to_test_permissions_config()?,
           _ => None,
         };
         match maybe_subcommand_permissions {
@@ -1282,15 +1282,15 @@ impl CliOptions {
     } else {
       if !self.flags.has_permission() {
         let set_config_permission_name = match &self.flags.subcommand {
-          DenoSubcommand::Bench(_) => dir
+          EndeSubcommand::Bench(_) => dir
             .to_bench_permissions_config()?
             .filter(|permissions| !permissions.permissions.is_empty())
             .map(|permissions| ("Bench", &permissions.base)),
-          DenoSubcommand::Compile(_) | DenoSubcommand::Desktop(_) => dir
+          EndeSubcommand::Compile(_) | EndeSubcommand::Desktop(_) => dir
             .to_compile_permissions_config()?
             .filter(|permissions| !permissions.permissions.is_empty())
             .map(|permissions| ("Compile", &permissions.base)),
-          DenoSubcommand::Test(_) => dir
+          EndeSubcommand::Test(_) => dir
             .to_test_permissions_config()?
             .filter(|permissions| !permissions.permissions.is_empty())
             .map(|permissions| ("Test", &permissions.base)),
@@ -1369,26 +1369,26 @@ impl CliOptions {
       .ok()
       .map(|url| vec![Cow::Borrowed(url)])
       .or_else(|| match &self.flags.subcommand {
-        DenoSubcommand::Cache(cache_flags) => {
+        EndeSubcommand::Cache(cache_flags) => {
           Some(files_to_urls(&cache_flags.files))
         }
-        DenoSubcommand::Check(check_flags) => {
+        EndeSubcommand::Check(check_flags) => {
           Some(files_to_urls(&check_flags.files))
         }
-        DenoSubcommand::Install(InstallFlags::Global(flags)) => flags
+        EndeSubcommand::Install(InstallFlags::Global(flags)) => flags
           .module_urls
           .first()
           .and_then(|url| file_to_url(url))
           .map(|url| vec![url]),
-        DenoSubcommand::Install(InstallFlags::Local(
+        EndeSubcommand::Install(InstallFlags::Local(
           InstallFlagsLocal::Entrypoints(flags),
           _,
         )) => Some(files_to_urls(&flags.entrypoints)),
-        DenoSubcommand::Doc(DocFlags {
+        EndeSubcommand::Doc(DocFlags {
           source_files: DocSourceFileFlag::Paths(paths),
           ..
         }) => Some(files_to_urls(paths)),
-        DenoSubcommand::Info(InfoFlags {
+        EndeSubcommand::Info(InfoFlags {
           file: Some(file), ..
         }) => file_to_url(file).map(|url| vec![url]),
         _ => None,
@@ -1404,7 +1404,7 @@ impl CliOptions {
     self.flags.seed
   }
 
-  pub fn sub_command(&self) -> &DenoSubcommand {
+  pub fn sub_command(&self) -> &EndeSubcommand {
     &self.flags.subcommand
   }
 
@@ -1414,7 +1414,7 @@ impl CliOptions {
 
   pub fn take_binary_npm_command_name(&self) -> Option<String> {
     match self.sub_command() {
-      DenoSubcommand::Run(flags) => {
+      EndeSubcommand::Run(flags) => {
         const NPM_CMD_NAME_ENV_VAR_NAME: &str = "ENDE_INTERNAL_NPM_CMD_NAME";
         match std::env::var(NPM_CMD_NAME_ENV_VAR_NAME) {
           Ok(var) => {
@@ -1562,9 +1562,9 @@ impl CliOptions {
     }
 
     for (_, folder) in self.workspace().config_folders() {
-      if let Some(deno_json) = &folder.deno_json
-        && deno_json.specifier.scheme() == "file"
-        && let Ok(path) = deno_json.specifier.to_file_path()
+      if let Some(ende_json) = &folder.ende_json
+        && ende_json.specifier.scheme() == "file"
+        && let Ok(path) = ende_json.specifier.to_file_path()
       {
         full_paths.push(path);
       }
@@ -1584,9 +1584,9 @@ impl CliOptions {
       root_dir: self.workspace().root_dir_path(),
       explicit_install: matches!(
         self.sub_command(),
-        DenoSubcommand::Install(_)
-          | DenoSubcommand::Cache(_)
-          | DenoSubcommand::Add(_)
+        EndeSubcommand::Install(_)
+          | EndeSubcommand::Cache(_)
+          | EndeSubcommand::Add(_)
       ),
     }
   }
@@ -1599,7 +1599,7 @@ impl CliOptions {
   pub fn default_npm_caching_strategy(&self) -> NpmCachingStrategy {
     if matches!(
       self.sub_command(),
-      DenoSubcommand::Install(InstallFlags::Local(
+      EndeSubcommand::Install(InstallFlags::Local(
         InstallFlagsLocal::TopLevel(_)
           | InstallFlagsLocal::Add(_)
           | InstallFlagsLocal::Entrypoints(InstallEntrypointsFlags {
@@ -1607,9 +1607,9 @@ impl CliOptions {
             ..
           }),
         _,
-      )) | DenoSubcommand::Add(_)
-        | DenoSubcommand::List(_)
-        | DenoSubcommand::Outdated(_)
+      )) | EndeSubcommand::Add(_)
+        | EndeSubcommand::List(_)
+        | EndeSubcommand::Outdated(_)
     ) {
       NpmCachingStrategy::Manual
     } else if self.unstable_npm_lazy_caching() {
@@ -1981,9 +1981,9 @@ fn augment_permissions_with_serve_flags(
 
 #[cfg(test)]
 mod test {
-  use ende_config::deno_json::AllowDenyIgnorePermissionConfig;
-  use ende_config::deno_json::AllowDenyPermissionConfig;
-  use ende_config::deno_json::PermissionsObject;
+  use ende_config::ende_json::AllowDenyIgnorePermissionConfig;
+  use ende_config::ende_json::AllowDenyPermissionConfig;
+  use ende_config::ende_json::PermissionsObject;
   use pretty_assertions::assert_eq;
 
   use super::*;

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use ende_core::anyhow::anyhow;
 use ende_core::error::AnyError;
 use ende_core::futures::future::Shared;
-use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_resolver::ende_json::CompilerOptionsKey;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use lsp_types::Uri;
@@ -329,7 +329,7 @@ impl TsServer {
     range: lsp::Range,
     context: &lsp::CodeActionContext,
     file_diagnostics: Shared<impl Future<Output = Arc<Vec<lsp::Diagnostic>>>>,
-    has_deno_code_actions: bool,
+    has_ende_code_actions: bool,
     language_server: &language_server::Inner,
     snapshot: Arc<StateSnapshot>,
     token: &CancellationToken,
@@ -419,7 +419,7 @@ impl TsServer {
         }
 
         let mut actions = collector
-          .into_code_actions(has_deno_code_actions)
+          .into_code_actions(has_ende_code_actions)
           .map(lsp::CodeActionOrCommand::CodeAction)
           .collect::<Vec<_>>();
 

@@ -29,9 +29,9 @@ const {
 
 // Capture `Deno.inspect` and `Deno.noColor` early so that user code mangling
 // the `Deno` global doesn't affect snapshot serialization.
-const DenoNs = globalThis.Ende;
-const inspect = DenoNs.inspect;
-const noColor = DenoNs.noColor;
+const EndeNs = globalThis.Ende;
+const inspect = EndeNs.inspect;
+const noColor = EndeNs.noColor;
 
 class AssertionError extends Error {
   name = "AssertionError";

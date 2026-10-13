@@ -150,7 +150,7 @@ impl TaskArgs {
   }
 }
 
-unsafe extern "C" fn deno_ffi_callback(
+unsafe extern "C" fn ende_ffi_callback(
   cif: &libffi::low::ffi_cif,
   result: &mut c_void,
   args: *const *const c_void,
@@ -639,7 +639,7 @@ pub fn op_ffi_unsafe_callback_create<'scope>(
   );
 
   // SAFETY: CallbackInfo is leaked, is not null and stays valid as long as the callback exists.
-  let closure = libffi::middle::Closure::new(cif, deno_ffi_callback, unsafe {
+  let closure = libffi::middle::Closure::new(cif, ende_ffi_callback, unsafe {
     info.as_ref().unwrap()
   });
   let ptr = *closure.code_ptr() as *mut c_void;

@@ -271,9 +271,9 @@ pub fn main() {
       .hash_dir(tests.join("util"))
       .hash_dir(tests.join("testdata"))
       .hash_dir(tests.join("registry"))
-      .hash_file(test_util::deno_exe_path())
+      .hash_file(test_util::ende_exe_path())
       .hash_file(test_util::test_server_path())
-      .hash_file(test_util::denort_exe_path());
+      .hash_file(test_util::endert_exe_path());
   });
   if matches!(ci_hash, test_util::hash::CiHashStatus::Skip) {
     return;

@@ -630,13 +630,13 @@ fn install_npm_global_config_dir() {
   assert!(config_dir.exists(), "config dir should exist");
 
   // ende.json should exist with nodeModulesDir
-  let deno_json = config_dir.join("ende.json");
-  assert!(deno_json.exists(), "ende.json should exist");
-  let deno_json_content = deno_json.read_to_string();
-  assert_contains!(deno_json_content, "nodeModulesDir");
-  assert_contains!(deno_json_content, "manual");
+  let ende_json = config_dir.join("ende.json");
+  assert!(ende_json.exists(), "ende.json should exist");
+  let ende_json_content = ende_json.read_to_string();
+  assert_contains!(ende_json_content, "nodeModulesDir");
+  assert_contains!(ende_json_content, "manual");
   // should have workspace field to stop workspace discovery
-  assert_contains!(deno_json_content, "workspace");
+  assert_contains!(ende_json_content, "workspace");
 
   // shim should use --config pointing to the config dir
   let mut shim_path = bin_dir.join("cli-esm");
@@ -686,10 +686,10 @@ fn install_npm_global_allow_scripts() {
   assert!(config_dir.exists(), "config dir should exist");
 
   // ende.json should have nodeModulesDir
-  let deno_json = config_dir.join("ende.json");
-  assert!(deno_json.exists(), "ende.json should exist");
-  let deno_json_content = deno_json.read_to_string();
-  assert_contains!(deno_json_content, "nodeModulesDir");
+  let ende_json = config_dir.join("ende.json");
+  assert!(ende_json.exists(), "ende.json should exist");
+  let ende_json_content = ende_json.read_to_string();
+  assert_contains!(ende_json_content, "nodeModulesDir");
 
   // node_modules should exist (populated by cache_top_level_deps)
   let node_modules = config_dir.join("node_modules");

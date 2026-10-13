@@ -49,7 +49,7 @@ use ende_core::futures::stream::FuturesOrdered;
 use ende_core::parking_lot::Mutex;
 use ende_core::resolve_url;
 use ende_core::serde_json;
-use ende_lib::loader::as_deno_resolver_requested_module_type;
+use ende_lib::loader::as_ende_resolver_requested_module_type;
 use ende_lib::loader::loaded_module_source_to_module_source_code;
 use ende_lib::loader::module_type_from_media_and_requested_type;
 use ende_lib::npm::NpmRegistryReadPermissionChecker;
@@ -94,7 +94,7 @@ use tokio_util::compat::TokioAsyncReadCompatExt;
 
 use crate::args::CliLockfile;
 use crate::args::CliOptions;
-use crate::args::DenoSubcommand;
+use crate::args::EndeSubcommand;
 use crate::args::TsTypeLib;
 use crate::args::jsr_url;
 use crate::cache::CodeCache;
@@ -119,7 +119,7 @@ use crate::util::text_encoding::source_map_from_code;
 
 pub type CliEmitter =
   ende_resolver::emit::Emitter<DenoInNpmPackageChecker, CliSys>;
-pub type CliDenoResolverModuleLoader =
+pub type CliEndeResolverModuleLoader =
   ende_resolver::loader::ModuleLoader<CliSys>;
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
@@ -366,7 +366,7 @@ struct SharedCliModuleLoaderState {
     Arc<NpmRegistryReadPermissionChecker<CliSys>>,
   npm_resolver: CliNpmResolver,
   parsed_source_cache: Arc<ParsedSourceCache>,
-  module_loader: Arc<CliDenoResolverModuleLoader>,
+  module_loader: Arc<CliEndeResolverModuleLoader>,
   resolver: Arc<CliResolver>,
   sys: CliSys,
   in_flight_loads_tracker: InFlightModuleLoadsTracker,
@@ -431,7 +431,7 @@ impl CliModuleLoaderFactory {
     >,
     npm_resolver: CliNpmResolver,
     parsed_source_cache: Arc<ParsedSourceCache>,
-    module_loader: Arc<CliDenoResolverModuleLoader>,
+    module_loader: Arc<CliEndeResolverModuleLoader>,
     resolver: Arc<CliResolver>,
     sys: CliSys,
     maybe_eszip_loader: Option<Arc<EszipModuleLoader>>,
@@ -446,7 +446,7 @@ impl CliModuleLoaderFactory {
         is_inspecting: options.is_inspecting(),
         is_repl: matches!(
           options.sub_command(),
-          DenoSubcommand::Repl(_) | DenoSubcommand::Jupyter(_)
+          EndeSubcommand::Repl(_) | EndeSubcommand::Jupyter(_)
         ),
         cjs_tracker,
         code_cache,
@@ -824,7 +824,7 @@ impl<TGraphContainer: ModuleGraphContainer>
 
     let code_cache = if code_source.module_type == ModuleType::JavaScript {
       self.shared.code_cache.as_ref().map(|cache| {
-        let code_hash = FastInsecureHasher::new_deno_versioned()
+        let code_hash = FastInsecureHasher::new_ende_versioned()
           .write_hashable(&code)
           .finish();
         let data = cache
@@ -867,13 +867,13 @@ impl<TGraphContainer: ModuleGraphContainer>
     }
 
     let graph = self.graph_container.graph();
-    let deno_resolver_requested_module_type =
-      as_deno_resolver_requested_module_type(requested_module_type);
+    let ende_resolver_requested_module_type =
+      as_ende_resolver_requested_module_type(requested_module_type);
     let Some(prepared_module) =
       self.shared.module_loader.try_load_prepared_module_sync(
         &graph,
         specifier,
-        &deno_resolver_requested_module_type,
+        &ende_resolver_requested_module_type,
       )?
     else {
       return Ok(None);
@@ -922,8 +922,8 @@ impl<TGraphContainer: ModuleGraphContainer>
     };
 
     let graph = self.graph_container.graph();
-    let deno_resolver_requested_module_type =
-      as_deno_resolver_requested_module_type(requested_module_type);
+    let ende_resolver_requested_module_type =
+      as_ende_resolver_requested_module_type(requested_module_type);
     let cjs_analysis_source_provider = PermissionedCjsAnalysisSourceProvider {
       permissions: self.permissions.deep_clone_without_prompt(),
       npm_registry_permission_checker: &self
@@ -938,7 +938,7 @@ impl<TGraphContainer: ModuleGraphContainer>
         &graph,
         &specifier,
         maybe_referrer,
-        &deno_resolver_requested_module_type,
+        &ende_resolver_requested_module_type,
         Some(&cjs_analysis_source_provider),
       )
       .await?
@@ -1152,7 +1152,7 @@ impl<TGraphContainer: ModuleGraphContainer>
     let referrer = if referrer.is_empty() && self.shared.is_repl {
       // FIXME(bartlomieju): this is a hacky way to provide compatibility with REPL
       // and `Ende.core.evalContext` API. Ideally we should always have a referrer filled
-      "./$deno$repl.mts"
+      "./$ende$repl.mts"
     } else {
       referrer
     };
@@ -1197,7 +1197,7 @@ impl<TGraphContainer: ModuleGraphContainer>
     }
 
     // `deno eval` and piped stdin have no file on disk — their source is held
-    // in memory under a synthetic `$deno$` specifier that is already fully
+    // in memory under a synthetic `$ende$` specifier that is already fully
     // resolved. Neither the import map nor node resolution has anything to
     // contribute, and node resolution actively breaks it when the cwd is inside
     // an npm package, because it checks the file system for a file that is
@@ -1796,7 +1796,7 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
     // `ModuleSourceCode`, so the two never share an entry. That's fine: this
     // path only ever sees residual `ext:`/`node:` specifiers, which never go
     // through `load()`.
-    let source_hash = FastInsecureHasher::new_deno_versioned()
+    let source_hash = FastInsecureHasher::new_ende_versioned()
       .write_hashable(source)
       .finish();
     let data = cache

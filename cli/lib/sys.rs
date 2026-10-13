@@ -14,7 +14,7 @@ use sys_traits::SystemRandom;
 use sys_traits::ThreadSleep;
 
 #[sys_traits::auto_impl]
-pub trait DenoLibSys:
+pub trait EndeLibSys:
   EnvVar
   + FsCanonicalize
   + FsCreateDirAll

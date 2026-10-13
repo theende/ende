@@ -71,7 +71,7 @@ pub fn discover_npmrc_from_workspace<TSys: EnvVar + EnvHomeDir + FsRead>(
   discover_npmrc(
     sys,
     root_folder.pkg_json.as_ref().map(|p| p.path.clone()),
-    match &root_folder.deno_json {
+    match &root_folder.ende_json {
       Some(cf) if cf.specifier.scheme() == "file" => {
         Some(deno_path_util::url_to_file_path(&cf.specifier)?)
       }

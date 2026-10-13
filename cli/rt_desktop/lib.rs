@@ -370,7 +370,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
       let (endpoint, frontend) = match (renderer, deno) {
         (true, true) => ("/unified", "inspector.html"),
         (true, false) => ("/cef", "inspector.html"),
-        (false, true) => ("/deno", "js_app.html"),
+        (false, true) => ("/ende", "js_app.html"),
         (false, false) => unreachable!(),
       };
       let url = format!("http://{mux}/devtools/{frontend}?ws={mux}{endpoint}");
@@ -1446,7 +1446,7 @@ const RUNTIME_THREAD_STACK_SIZE: usize = 8 * 1024 * 1024;
 /// calling (loader) thread parked until it finishes.
 fn run_on_runtime_thread<F: FnOnce() + Send + 'static>(f: F) {
   let thread = std::thread::Builder::new()
-    .name("deno-desktop-runtime".to_string())
+    .name("ende-desktop-runtime".to_string())
     .stack_size(RUNTIME_THREAD_STACK_SIZE)
     .spawn(f)
     .expect("failed to spawn desktop runtime thread");
@@ -1509,9 +1509,9 @@ fn run_headless_worker() {
       {
         let _ = std::env::set_current_dir(&data.root_path);
       }
-      endert::file_system::DenoRtSys::new_self_extracting(data.vfs.clone())
+      endert::file_system::EndeRtSys::new_self_extracting(data.vfs.clone())
     } else {
-      endert::file_system::DenoRtSys::new(data.vfs.clone())
+      endert::file_system::EndeRtSys::new(data.vfs.clone())
     };
 
     let options = endert::run::RunOptions {
@@ -1710,9 +1710,9 @@ async fn run_desktop(
   // `laufey::main!` before the tokio runtime is built — chdir is
   // process-wide and isn't safe to do once async tasks are running.
   let sys = if data.metadata.self_extracting.is_some() {
-    endert::file_system::DenoRtSys::new_self_extracting(data.vfs.clone())
+    endert::file_system::EndeRtSys::new_self_extracting(data.vfs.clone())
   } else {
-    endert::file_system::DenoRtSys::new(data.vfs.clone())
+    endert::file_system::EndeRtSys::new(data.vfs.clone())
   };
 
   ende_runtime::ende_telemetry::init(
@@ -1752,7 +1752,7 @@ async fn run_desktop(
   if let Some(addr) = inspect_internal_port {
     ende_runtime::ende_inspector_server::create_inspector_server(
       addr,
-      "deno-desktop",
+      "ende-desktop",
       // Don't print the ws:// URL ourselves — DevTools attaches via the
       // parent mux's user-visible port.
       ende_runtime::ende_inspector_server::InspectPublishUid {

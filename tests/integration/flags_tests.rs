@@ -6,7 +6,7 @@ use util::assert_contains;
 
 #[test]
 fn help_output() {
-  let output = util::deno_cmd()
+  let output = util::ende_cmd()
     .current_dir(util::testdata_path())
     .arg("--help")
     .run();
@@ -60,7 +60,7 @@ fn help_output_says_ende() {
     &["run", "--help"][..],
     &["vendor", "--help"][..],
   ] {
-    let output = util::deno_cmd()
+    let output = util::ende_cmd()
       .current_dir(util::testdata_path())
       .args_vec(args)
       .run();

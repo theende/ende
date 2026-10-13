@@ -50,7 +50,7 @@ pub fn loaded_module_source_to_module_source_code(
   }
 }
 
-pub fn as_deno_resolver_requested_module_type(
+pub fn as_ende_resolver_requested_module_type(
   value: &RequestedModuleType,
 ) -> ende_resolver::loader::RequestedModuleType<'_> {
   match value {

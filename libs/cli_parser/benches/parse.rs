@@ -9,7 +9,7 @@ use criterion::Criterion;
 use criterion::criterion_group;
 use criterion::criterion_main;
 use ende_cli_parser::convert::flags_from_vec;
-use ende_cli_parser::defs::DENO_ROOT;
+use ende_cli_parser::defs::ENDE_ROOT;
 use ende_cli_parser::parse;
 
 fn svec(args: &[&str]) -> Vec<String> {
@@ -66,7 +66,7 @@ fn benches(c: &mut Criterion) {
   let mut g = c.benchmark_group("parse_only");
   for (name, input) in [("bare_run", &bare), ("run_with_flags", &with_flags)] {
     g.bench_function(name, |b| {
-      b.iter(|| black_box(parse(&DENO_ROOT, black_box(input))));
+      b.iter(|| black_box(parse(&ENDE_ROOT, black_box(input))));
     });
   }
   g.finish();

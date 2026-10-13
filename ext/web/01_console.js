@@ -382,7 +382,7 @@ const intrinsics = {
 // ---------------------------------------------------------------------------
 // inspect entry points
 
-const denoInspectDefaultOptions = {
+const endeInspectDefaultOptions = {
   indentationLvl: 0,
   currentDepth: 0,
   stylize: stylizeNoColor,
@@ -416,7 +416,7 @@ function getDefaultInspectOptions() {
   return {
     budget: {},
     seen: [],
-    ...denoInspectDefaultOptions,
+    ...endeInspectDefaultOptions,
   };
 }
 

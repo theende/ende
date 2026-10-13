@@ -8,7 +8,7 @@ use ende_core::error::AnyError;
 use ende_core::futures::StreamExt;
 use ende_core::serde_json;
 use ende_core::unsync::spawn_blocking;
-use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::ENDE_VERSION_INFO;
 use ende_runtime::WorkerExecutionMode;
 use rustyline::error::ReadlineError;
 
@@ -207,7 +207,7 @@ pub async fn run(
   };
 
   let history_file_path = factory
-    .deno_dir()
+    .ende_dir()
     .ok()
     .and_then(|dir| dir.repl_history_file_path());
   let editor = ReplEditor::new(helper, history_file_path)?;
@@ -253,7 +253,7 @@ pub async fn run(
   if !cli_options.is_quiet() {
     let mut handle = io::stdout().lock();
 
-    writeln!(handle, "Ende {}", DENO_VERSION_INFO.deno)?;
+    writeln!(handle, "Ende {}", ENDE_VERSION_INFO.ende)?;
     writeln!(handle, "exit using ctrl+d, ctrl+c, or close()")?;
 
     if repl_flags.is_default_command {

@@ -134,7 +134,7 @@ impl CiHashPending {
 /// let ci_hash = test_util::hash::check_ci_hash("specs", |hasher| {
 ///     hasher
 ///         .hash_dir(tests.join("specs"))
-///         .hash_file(deno_exe_path());
+///         .hash_file(ende_exe_path());
 /// });
 /// if matches!(ci_hash, CiHashStatus::Skip) {
 ///     return;

@@ -207,7 +207,7 @@ fn collect_step_code_lenses(
   if let Some(var) = maybe_step_var {
     vars.insert(var);
   }
-  let mut collector = DenoTestStepCollector {
+  let mut collector = EndeTestStepCollector {
     code_lenses,
     specifier,
     parsed_source,
@@ -222,14 +222,14 @@ fn collect_step_code_lenses(
   }
 }
 
-struct DenoTestCollector {
+struct EndeTestCollector {
   code_lenses: Vec<lsp::CodeLens>,
   parsed_source: ParsedSource,
   specifier: ModuleSpecifier,
   test_vars: HashSet<String>,
 }
 
-impl DenoTestCollector {
+impl EndeTestCollector {
   pub fn new(specifier: ModuleSpecifier, parsed_source: ParsedSource) -> Self {
     Self {
       code_lenses: Vec::new(),
@@ -273,7 +273,7 @@ impl DenoTestCollector {
   }
 }
 
-impl Visit for DenoTestCollector {
+impl Visit for EndeTestCollector {
   fn visit_call_expr(&mut self, node: &ast::CallExpr) {
     let ast::Callee::Expr(callee_expr) = &node.callee else {
       return;
@@ -371,7 +371,7 @@ impl Visit for DenoTestCollector {
 /// `TestStepCollector`, but instead of building a test hierarchy it pushes a
 /// "Run Test"/"Debug" code lens for each step (filtering by the enclosing
 /// top-level test `root_name`).
-struct DenoTestStepCollector<'a> {
+struct EndeTestStepCollector<'a> {
   code_lenses: &'a mut Vec<lsp::CodeLens>,
   specifier: &'a ModuleSpecifier,
   parsed_source: &'a ParsedSource,
@@ -381,7 +381,7 @@ struct DenoTestStepCollector<'a> {
   is_describe: bool,
 }
 
-impl Visit for DenoTestStepCollector<'_> {
+impl Visit for EndeTestStepCollector<'_> {
   fn visit_call_expr(&mut self, node: &ast::CallExpr) {
     let ast::Callee::Expr(callee_expr) = &node.callee else {
       return;
@@ -651,7 +651,7 @@ pub fn collect_test(
 ) -> Result<Vec<lsp::CodeLens>, AnyError> {
   // TODO(nayeemrmn): Do cancellation checks while collecting tests.
   let mut collector =
-    DenoTestCollector::new(specifier.clone(), parsed_source.clone());
+    EndeTestCollector::new(specifier.clone(), parsed_source.clone());
   parsed_source.program().visit_with(&mut collector);
   Ok(collector.take())
 }
@@ -751,7 +751,7 @@ mod tests {
   use super::*;
 
   #[test]
-  fn test_deno_test_collector_ende_namespace() {
+  fn test_ende_test_collector_ende_namespace() {
     // `Ende` is the namespace and `Deno` an alias of it, so tests declared
     // through either name get the same code lenses.
     fn collect(source: &str) -> Vec<lsp::CodeLens> {
@@ -766,7 +766,7 @@ mod tests {
       })
       .unwrap();
       let mut collector =
-        DenoTestCollector::new(specifier, parsed_module.clone());
+        EndeTestCollector::new(specifier, parsed_module.clone());
       parsed_module.program().visit_with(&mut collector);
       collector.take()
     }
@@ -778,13 +778,13 @@ mod tests {
       const t = Deno.test;
       t("d", () => {});
     "#;
-    let deno_lenses = collect(source);
-    assert_eq!(deno_lenses.len(), 8);
-    assert_eq!(collect(&source.replace("Deno", "Ende")), deno_lenses);
+    let ende_lenses = collect(source);
+    assert_eq!(ende_lenses.len(), 8);
+    assert_eq!(collect(&source.replace("Deno", "Ende")), ende_lenses);
   }
 
   #[test]
-  fn test_deno_test_collector() {
+  fn test_ende_test_collector() {
     let specifier = resolve_url("https://deno.land/x/mod.ts").unwrap();
     let source = r#"
       Deno.test({
@@ -820,7 +820,7 @@ mod tests {
     })
     .unwrap();
     let mut collector =
-      DenoTestCollector::new(specifier, parsed_module.clone());
+      EndeTestCollector::new(specifier, parsed_module.clone());
     parsed_module.program().visit_with(&mut collector);
     assert_eq!(
       collector.take(),
@@ -1338,13 +1338,13 @@ mod tests {
     })
     .unwrap();
     let mut collector =
-      DenoTestCollector::new(specifier, parsed_module.clone());
+      EndeTestCollector::new(specifier, parsed_module.clone());
     parsed_module.program().visit_with(&mut collector);
     collector.take()
   }
 
   #[test]
-  fn test_deno_test_collector_steps() {
+  fn test_ende_test_collector_steps() {
     // Each `t.step(...)` gets "Run Test"/"Debug" code lenses that filter by the
     // enclosing top-level test name, so debugging a step runs its parent test
     // under the inspector. Regression test for
@@ -1393,7 +1393,7 @@ mod tests {
   }
 
   #[test]
-  fn test_deno_test_collector_steps_destructured() {
+  fn test_ende_test_collector_steps_destructured() {
     // Destructured `step` from the test context is also detected.
     let source = r#"
       Deno.test("test a", async ({ step }) => {
@@ -1422,7 +1422,7 @@ mod tests {
   }
 
   #[test]
-  fn test_deno_test_collector_bdd_steps() {
+  fn test_ende_test_collector_bdd_steps() {
     // BDD `it(...)` inside `describe(...)` gets step code lenses filtering by
     // the enclosing `describe` name.
     let source = r#"

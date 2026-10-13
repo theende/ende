@@ -175,7 +175,7 @@ impl NpmInstallDepsProvider {
     for (folder_url, folder) in workspace.config_folders() {
       let is_root = folder_url == workspace.root_dir_url();
       // deal with the deno.json first because it takes precedence during resolution
-      if let Some(deno_json) = &folder.deno_json {
+      if let Some(deno_json) = &folder.ende_json {
         // don't bother with externally referenced import maps as users
         // should inline their import map to get this behaviour
         if let Some(serde_json::Value::Object(obj)) = &deno_json.json.imports {

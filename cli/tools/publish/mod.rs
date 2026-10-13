@@ -14,7 +14,7 @@ use deno_ast::ModuleSpecifier;
 use deno_ast::SourceTextInfo;
 use deno_semver::Version;
 use deno_terminal::colors;
-use ende_config::deno_json::ConfigFile;
+use ende_config::ende_json::ConfigFile;
 use ende_config::workspace::JsrPackageConfig;
 use ende_config::workspace::Workspace;
 use ende_core::anyhow::Context;
@@ -85,19 +85,19 @@ pub async fn publish(
   let directory_path = cli_options.initial_cwd();
   let mut publish_configs = cli_options.start_dir.jsr_packages_for_publish();
   if publish_configs.is_empty() {
-    match cli_options.start_dir.member_deno_json() {
-      Some(deno_json) => {
-        debug_assert!(!deno_json.is_package() || !deno_json.should_publish());
-        if deno_json.json.name.is_none() {
-          bail!("Missing 'name' field in '{}'.", deno_json.specifier);
+    match cli_options.start_dir.member_ende_json() {
+      Some(ende_json) => {
+        debug_assert!(!ende_json.is_package() || !ende_json.should_publish());
+        if ende_json.json.name.is_none() {
+          bail!("Missing 'name' field in '{}'.", ende_json.specifier);
         }
-        if !deno_json.should_publish() {
+        if !ende_json.should_publish() {
           bail!(
             "Package 'publish' field is false in '{}'.",
-            deno_json.specifier
+            ende_json.specifier
           );
         }
-        error_missing_exports_field(deno_json)?;
+        error_missing_exports_field(ende_json)?;
       }
       None => {
         bail!(
@@ -516,13 +516,13 @@ impl PublishPreparer {
     graph: Arc<deno_graph::ModuleGraph>,
     diagnostics_collector: &PublishDiagnosticsCollector,
   ) -> Result<Rc<PreparedPublishPackage>, AnyError> {
-    let deno_json = &package.config_file;
-    let config_path = deno_json.specifier.to_file_path().unwrap();
+    let ende_json = &package.config_file;
+    let config_path = ende_json.specifier.to_file_path().unwrap();
     let root_dir = config_path.parent().unwrap().to_path_buf();
-    let version = deno_json.json.version.clone().ok_or_else(|| {
+    let version = ende_json.json.version.clone().ok_or_else(|| {
       ende_core::anyhow::anyhow!(
         "{} is missing 'version' field",
-        deno_json.specifier
+        ende_json.specifier
       )
     })?;
     let (scope, name_no_scope) = registry::parse_package_name(&package.name)?;
@@ -533,7 +533,7 @@ impl PublishPreparer {
       let module_content_provider = self.module_content_provider.clone();
       let cli_options = self.cli_options.clone();
       let config_path = config_path.clone();
-      let config_url = deno_json.specifier.clone();
+      let config_url = ende_json.specifier.clone();
       let has_license_field = package.license.is_some();
       let current_package_name = package.name.clone();
       move || {
@@ -604,7 +604,7 @@ impl PublishPreparer {
       package: name_no_scope.to_string(),
       version: version.to_string(),
       tarball,
-      exports: match &deno_json.json.exports {
+      exports: match &ende_json.json.exports {
         Some(Value::Object(exports)) => exports
           .into_iter()
           .map(|(k, v)| (k.to_string(), v.as_str().unwrap().to_string()))
@@ -1570,13 +1570,13 @@ fn has_license_file<'a>(
   })
 }
 
-fn error_missing_exports_field(deno_json: &ConfigFile) -> Result<(), AnyError> {
+fn error_missing_exports_field(ende_json: &ConfigFile) -> Result<(), AnyError> {
   static SUGGESTED_ENTRYPOINTS: [&str; 4] =
     ["mod.ts", "mod.js", "index.ts", "index.js"];
   let mut suggested_entrypoint = None;
 
   for entrypoint in SUGGESTED_ENTRYPOINTS {
-    if deno_json.dir_path().join(entrypoint).exists() {
+    if ende_json.dir_path().join(entrypoint).exists() {
       suggested_entrypoint = Some(entrypoint);
       break;
     }
@@ -1588,14 +1588,14 @@ fn error_missing_exports_field(deno_json: &ConfigFile) -> Result<(), AnyError> {
   "version": "{}",
   "exports": "{}"
 }}"#,
-    deno_json.json.name.as_deref().unwrap_or("@scope/name"),
-    deno_json.json.name.as_deref().unwrap_or("0.0.0"),
+    ende_json.json.name.as_deref().unwrap_or("@scope/name"),
+    ende_json.json.name.as_deref().unwrap_or("0.0.0"),
     suggested_entrypoint.unwrap_or("<path_to_entrypoint>")
   );
 
   bail!(
     "You did not specify an entrypoint in {}. Add `exports` mapping in the configuration file, eg:\n{}",
-    deno_json.specifier,
+    ende_json.specifier,
     exports_content
   );
 }

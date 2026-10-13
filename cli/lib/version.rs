@@ -8,14 +8,14 @@ use crate::shared::ReleaseChannel;
 
 pub fn otel_runtime_config() -> OtelRuntimeConfig {
   OtelRuntimeConfig {
-    runtime_name: Cow::Borrowed("deno"),
-    runtime_version: Cow::Borrowed(crate::version::DENO_VERSION_INFO.deno),
+    runtime_name: Cow::Borrowed("ende"),
+    runtime_version: Cow::Borrowed(crate::version::ENDE_VERSION_INFO.ende),
   }
 }
 
 const GIT_COMMIT_HASH: &str = env!("GIT_COMMIT_HASH");
 const TYPESCRIPT: &str = "6.0.3";
-pub const DENO_VERSION: &str = env!("ENDE_VERSION");
+pub const ENDE_VERSION: &str = env!("ENDE_VERSION");
 
 /// The Node.js version that Deno reports through `process.version` /
 /// `process.versions.node`, used to enforce package.json `engines.node`
@@ -30,7 +30,7 @@ const IS_CANARY: bool = option_env!("ENDE_CANARY").is_some();
 // TODO(bartlomieju): this is temporary, to allow Homebrew to cut RC releases as well
 const IS_RC: bool = option_env!("ENDE_RC").is_some();
 
-pub static DENO_VERSION_INFO: std::sync::LazyLock<DenoVersionInfo> =
+pub static ENDE_VERSION_INFO: std::sync::LazyLock<EndeVersionInfo> =
   std::sync::LazyLock::new(|| {
     #[cfg(not(all(
       debug_assertions,
@@ -48,7 +48,7 @@ pub static DENO_VERSION_INFO: std::sync::LazyLock<DenoVersionInfo> =
         } else if IS_RC {
           ReleaseChannel::Rc
         } else {
-          release_channel_from_version_string(DENO_VERSION)
+          release_channel_from_version_string(ENDE_VERSION)
         }
       });
 
@@ -58,11 +58,11 @@ pub static DENO_VERSION_INFO: std::sync::LazyLock<DenoVersionInfo> =
     } else if IS_RC {
       ReleaseChannel::Rc
     } else {
-      release_channel_from_version_string(DENO_VERSION)
+      release_channel_from_version_string(ENDE_VERSION)
     };
 
-    DenoVersionInfo {
-      deno: if release_channel == ReleaseChannel::Canary {
+    EndeVersionInfo {
+      ende: if release_channel == ReleaseChannel::Canary {
         concat!(env!("ENDE_VERSION"), "+", env!("GIT_COMMIT_HASH_SHORT"))
       } else {
         env!("ENDE_VERSION")
@@ -88,12 +88,12 @@ pub static DENO_VERSION_INFO: std::sync::LazyLock<DenoVersionInfo> =
     }
   });
 
-pub struct DenoVersionInfo {
+pub struct EndeVersionInfo {
   /// Human-readable version of the current Deno binary.
   ///
   /// For stable release, a semver, eg. `v1.46.2`.
   /// For canary release, a semver + 7-char git hash, eg. `v1.46.3+asdfqwq`.
-  pub deno: &'static str,
+  pub ende: &'static str,
 
   pub release_channel: ReleaseChannel,
 
@@ -106,14 +106,14 @@ pub struct DenoVersionInfo {
   pub typescript: &'static str,
 }
 
-impl DenoVersionInfo {
+impl EndeVersionInfo {
   /// For stable release, a semver like, eg. `v1.46.2`.
   /// For canary release a full git hash, eg. `9bdab6fb6b93eb43b1930f40987fa4997287f9c8`.
   pub fn version_or_git_hash(&self) -> &'static str {
     if self.release_channel == ReleaseChannel::Canary {
       self.git_hash
     } else {
-      DENO_VERSION
+      ENDE_VERSION
     }
   }
 }

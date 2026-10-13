@@ -14,7 +14,7 @@ use ende_core::error::AnyError;
 use ende_core::url::Url;
 use ende_resolver::cache::LazyGraphSourceParser;
 use ende_resolver::cache::ParsedSourceCache;
-use ende_resolver::deno_json::CompilerOptionsResolver;
+use ende_resolver::ende_json::CompilerOptionsResolver;
 use ende_resolver::workspace::ResolutionKind;
 use lazy_regex::Lazy;
 
@@ -665,7 +665,7 @@ mod test {
       sys.clone(),
       cwd.to_path_buf(),
       WorkspaceFactoryOptions {
-        maybe_custom_deno_dir_root: Some(cwd.join("deno_dir")),
+        maybe_custom_ende_dir_root: Some(cwd.join("deno_dir")),
         ..Default::default()
       },
     ));

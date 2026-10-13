@@ -35,7 +35,7 @@ use ende_core::anyhow::Context;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
-use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::ENDE_VERSION_INFO;
 use ende_npm_installer::graph::NpmCachingStrategy;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
@@ -356,16 +356,16 @@ pub async fn doc(
   };
 
   if let Some(html_options) = &doc_flags.html {
-    let deno_ns = if doc_flags.source_files != DocSourceFileFlag::Builtin {
-      let deno_ns = generate_doc_nodes_for_builtin_types(
+    let ende_ns = if doc_flags.source_files != DocSourceFileFlag::Builtin {
+      let ende_ns = generate_doc_nodes_for_builtin_types(
         doc_flags.clone(),
         &capturing_parser,
         &analyzer,
       )
       .await?;
-      let (_, deno_ns) = deno_ns.into_iter().next().unwrap();
+      let (_, ende_ns) = ende_ns.into_iter().next().unwrap();
 
-      Some(deno_ns)
+      Some(ende_ns)
     } else {
       None
     };
@@ -373,7 +373,7 @@ pub async fn doc(
     let mut main_entrypoint = None;
 
     let rewrite_map = if let Some(config_file) =
-      cli_options.start_dir.member_or_root_deno_json()
+      cli_options.start_dir.member_or_root_ende_json()
     {
       let config = config_file.to_exports_config()?;
 
@@ -405,7 +405,7 @@ pub async fn doc(
       cli_options.initial_cwd(),
       documents_by_url,
       html_options,
-      deno_ns,
+      ende_ns,
       rewrite_map,
       main_entrypoint,
     )
@@ -433,7 +433,7 @@ pub async fn doc(
 }
 
 struct DocResolver {
-  deno_ns: std::collections::HashMap<Vec<String>, Option<Arc<ShortPath>>>,
+  ende_ns: std::collections::HashMap<Vec<String>, Option<Arc<ShortPath>>>,
   strip_trailing_html: bool,
 }
 
@@ -467,10 +467,10 @@ impl deno_doc::html::HrefResolver for DocResolver {
       }
       _ => symbol,
     };
-    if self.deno_ns.contains_key(symbol) {
+    if self.ende_ns.contains_key(symbol) {
       Some(format!(
         "https://deno.land/api@v{}?s={}",
-        DENO_VERSION_INFO.deno,
+        ENDE_VERSION_INFO.ende,
         symbol.join(".")
       ))
     } else {
@@ -595,7 +595,7 @@ fn generate_docs_directory(
     main_entrypoint,
     rewrite_map,
     href_resolver: Arc::new(DocResolver {
-      deno_ns: Default::default(),
+      ende_ns: Default::default(),
       strip_trailing_html: html_options.strip_trailing_html,
     }),
     usage_composer: Some(Arc::new(DocComposer)),
@@ -626,7 +626,7 @@ fn generate_docs_directory(
           ModuleSpecifier::parse("file:///lib.ende.d.ts").unwrap(),
         ),
         href_resolver: Arc::new(DocResolver {
-          deno_ns: Default::default(),
+          ende_ns: Default::default(),
           strip_trailing_html: false,
         }),
         usage_composer: Some(Arc::new(DocComposer)),
@@ -651,7 +651,7 @@ fn generate_docs_directory(
       None,
     )?;
 
-    let deno_ns = deno_doc::html::compute_namespaced_symbols(
+    let ende_ns = deno_doc::html::compute_namespaced_symbols(
       &ctx,
       Box::new(
         ctx
@@ -665,7 +665,7 @@ fn generate_docs_directory(
     );
 
     options.href_resolver = Arc::new(DocResolver {
-      deno_ns,
+      ende_ns,
       strip_trailing_html: html_options.strip_trailing_html,
     });
   }

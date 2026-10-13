@@ -14,11 +14,12 @@ declare namespace Ende {
    */
   export namespace bundle {
     /**
-     * The target platform of the bundle.
+     * The target platform of the bundle. `"deno"` is a deprecated alias of
+     * `"ende"`.
      * @category Bundler
      * @experimental
      */
-    export type Platform = "browser" | "deno";
+    export type Platform = "browser" | "ende" | "deno";
 
     /**
      * The output format of the bundle.

@@ -49,7 +49,7 @@ const { setExitHandler } = core.loadExtScript("ext:ende_os/30_os.js");
 
 // Capture `Deno` global so that users deleting or mangling it, won't
 // have impact on our sanitizers.
-const DenoNs = globalThis.Ende;
+const EndeNs = globalThis.Ende;
 
 /**
  * @typedef {{
@@ -200,10 +200,10 @@ function assertExit(fn, isTest, sanitizeExit) {
     try {
       const innerResult = await fn(...new SafeArrayIterator(params));
       if (sanitizeExit) {
-        const exitCode = DenoNs.exitCode;
+        const exitCode = EndeNs.exitCode;
         if (exitCode !== 0) {
           // Reset the code to allow other tests to run...
-          DenoNs.exitCode = 0;
+          EndeNs.exitCode = 0;
           // ...and fail the current test.
           throw new Error(
             `${

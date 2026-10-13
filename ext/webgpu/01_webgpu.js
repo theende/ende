@@ -897,7 +897,7 @@ function deviceStopCapture(device) {
   op_webgpu_device_stop_capture(device);
 }
 
-const denoNsWebGPU = {
+const endeNsWebGPU = {
   deviceStartCapture,
   deviceStopCapture,
 };
@@ -915,7 +915,7 @@ function initGPU() {
 }
 
 export {
-  denoNsWebGPU,
+  endeNsWebGPU,
   GPU,
   gpu,
   GPUAdapter,

@@ -7,7 +7,7 @@ use deno_ast::ModuleSpecifier;
 use deno_path_util::resolve_url_or_path;
 use deno_semver::npm::NpmPackageReqReference;
 use ende_cache_dir::file_fetcher::File;
-use ende_config::deno_json::NodeModulesDirMode;
+use ende_config::ende_json::NodeModulesDirMode;
 use ende_core::anyhow::Context;
 use ende_core::error::AnyError;
 use ende_core::futures::FutureExt;
@@ -186,7 +186,7 @@ pub async fn run_script(
   let factory = CliFactory::from_flags(flags.clone());
   let cli_options = factory.cli_options()?;
   crate::boot_phase("after cli_options");
-  let deno_dir = factory.deno_dir()?;
+  let ende_dir = factory.ende_dir()?;
   let http_client = factory.http_client_provider();
   let workspace_resolver = factory.workspace_resolver().await?;
   crate::boot_phase("after workspace_resolver");
@@ -197,7 +197,7 @@ pub async fn run_script(
   #[cfg(feature = "upgrade")]
   super::upgrade::check_for_upgrades(
     http_client.clone(),
-    deno_dir.upgrade_check_file_path(),
+    ende_dir.upgrade_check_file_path(),
   );
 
   let main_module_resolver = crate::args::WorkspaceMainModuleResolver::new(

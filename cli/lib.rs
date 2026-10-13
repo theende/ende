@@ -68,7 +68,7 @@ const UNSUPPORTED_DIR_IMPORT: &str =
 use self::util::draw_thread::DrawThread;
 use self::util::env::resolve_cwd;
 use crate::args::CompletionsFlags;
-use crate::args::DenoSubcommand;
+use crate::args::EndeSubcommand;
 use crate::args::Flags;
 use crate::args::FlagsExt;
 // Re-exported for the flag-parsing benchmark in `cli/benches/flags.rs`.
@@ -127,28 +127,28 @@ async fn run_subcommand(
   roots: LibWorkerFactoryRoots,
 ) -> Result<i32, AnyError> {
   let handle = match flags.subcommand.clone() {
-    DenoSubcommand::Add(add_flags) => spawn_subcommand(async {
+    EndeSubcommand::Add(add_flags) => spawn_subcommand(async {
       tools::pm::add(Arc::new(flags), add_flags, tools::pm::AddCommandName::Add)
         .await
     }),
-    DenoSubcommand::Audit(audit_flags) => spawn_subcommand(async {
+    EndeSubcommand::Audit(audit_flags) => spawn_subcommand(async {
       tools::pm::audit(Arc::new(flags), audit_flags).await
     }),
-    DenoSubcommand::ApproveScripts(approve_scripts_flags) => {
+    EndeSubcommand::ApproveScripts(approve_scripts_flags) => {
       spawn_subcommand(async move {
         tools::pm::approve_scripts(Arc::new(flags), approve_scripts_flags).await
       })
     }
-    DenoSubcommand::Remove(remove_flags) => spawn_subcommand(async {
+    EndeSubcommand::Remove(remove_flags) => spawn_subcommand(async {
       tools::pm::remove(Arc::new(flags), remove_flags).await
     }),
-    DenoSubcommand::Link(link_flags) => spawn_subcommand(async {
+    EndeSubcommand::Link(link_flags) => spawn_subcommand(async {
       tools::pm::link(Arc::new(flags), link_flags).await
     }),
-    DenoSubcommand::Unlink(unlink_flags) => spawn_subcommand(async {
+    EndeSubcommand::Unlink(unlink_flags) => spawn_subcommand(async {
       tools::pm::unlink(Arc::new(flags), unlink_flags).await
     }),
-    DenoSubcommand::Bench(bench_flags) => spawn_subcommand(async {
+    EndeSubcommand::Bench(bench_flags) => spawn_subcommand(async {
       let flags = Arc::new(flags);
       if flags.watch.is_some() {
         tools::bench::run_benchmarks_with_watch(flags, bench_flags)
@@ -158,23 +158,23 @@ async fn run_subcommand(
         tools::bench::run_benchmarks(flags, bench_flags).await
       }
     }),
-    DenoSubcommand::Bundle(bundle_flags) => spawn_subcommand(async {
+    EndeSubcommand::Bundle(bundle_flags) => spawn_subcommand(async {
       log::warn!(
         "⚠️  {} is experimental and subject to changes",
         colors::cyan("ende bundle")
       );
       tools::bundle::bundle(Arc::new(flags), bundle_flags).await
     }),
-    DenoSubcommand::Deploy(deploy_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Deploy(deploy_flags) => spawn_subcommand(async move {
       tools::deploy::deploy(flags, deploy_flags).await
     }),
-    DenoSubcommand::Doc(doc_flags) => spawn_subcommand(async {
+    EndeSubcommand::Doc(doc_flags) => spawn_subcommand(async {
       tools::doc::doc(Arc::new(flags), doc_flags).await
     }),
-    DenoSubcommand::Eval(eval_flags) => spawn_subcommand(async {
+    EndeSubcommand::Eval(eval_flags) => spawn_subcommand(async {
       tools::run::eval_command(Arc::new(flags), eval_flags).await
     }),
-    DenoSubcommand::Cache(cache_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Cache(cache_flags) => spawn_subcommand(async move {
       tools::installer::install_from_entrypoints(
         Arc::new(flags),
         self::args::InstallEntrypointsFlags {
@@ -186,19 +186,19 @@ async fn run_subcommand(
       )
       .await
     }),
-    DenoSubcommand::Check(check_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Check(check_flags) => spawn_subcommand(async move {
       tools::check::check(Arc::new(flags), check_flags).await
     }),
-    DenoSubcommand::Clean(clean_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Clean(clean_flags) => spawn_subcommand(async move {
       tools::clean::clean(Arc::new(flags), clean_flags).await
     }),
-    DenoSubcommand::Compile(compile_flags) => spawn_subcommand(async {
+    EndeSubcommand::Compile(compile_flags) => spawn_subcommand(async {
       tools::compile::compile(flags, compile_flags).await
     }),
-    DenoSubcommand::Desktop(desktop_flags) => spawn_subcommand(async {
+    EndeSubcommand::Desktop(desktop_flags) => spawn_subcommand(async {
       Box::pin(tools::desktop::desktop(flags, desktop_flags)).await
     }),
-    DenoSubcommand::Coverage(coverage_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Coverage(coverage_flags) => spawn_subcommand(async move {
       let reporter =
         crate::tools::coverage::reporter::create(coverage_flags.r#type.clone());
       tools::coverage::cover_files(
@@ -212,10 +212,10 @@ async fn run_subcommand(
         &[&*reporter],
       )
     }),
-    DenoSubcommand::Fmt(fmt_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Fmt(fmt_flags) => spawn_subcommand(async move {
       tools::fmt::format(Arc::new(flags), fmt_flags).await
     }),
-    DenoSubcommand::Transpile(transpile_flags) => {
+    EndeSubcommand::Transpile(transpile_flags) => {
       spawn_subcommand(async move {
         log::warn!(
           "⚠️  {} is experimental and subject to changes",
@@ -224,33 +224,33 @@ async fn run_subcommand(
         tools::transpile::transpile(Arc::new(flags), transpile_flags).await
       })
     }
-    DenoSubcommand::Init(init_flags) => spawn_subcommand(async {
+    EndeSubcommand::Init(init_flags) => spawn_subcommand(async {
       tools::init::init_project(flags, init_flags).await
     }),
-    DenoSubcommand::Info(info_flags) => spawn_subcommand(async {
+    EndeSubcommand::Info(info_flags) => spawn_subcommand(async {
       tools::info::info(Arc::new(flags), info_flags).await
     }),
-    DenoSubcommand::List(list_flags) => spawn_subcommand(async {
+    EndeSubcommand::List(list_flags) => spawn_subcommand(async {
       tools::pm::list(Arc::new(flags), list_flags).await
     }),
-    DenoSubcommand::Install(install_flags) => spawn_subcommand(async {
+    EndeSubcommand::Install(install_flags) => spawn_subcommand(async {
       tools::installer::install_command(Arc::new(flags), install_flags).await
     }),
-    DenoSubcommand::Ci(ci_flags) => spawn_subcommand(async {
+    EndeSubcommand::Ci(ci_flags) => spawn_subcommand(async {
       tools::installer::ci_command(Arc::new(flags), ci_flags).await
     }),
-    DenoSubcommand::JSONReference(json_reference) => {
+    EndeSubcommand::JSONReference(json_reference) => {
       spawn_subcommand(async move {
         display::write_json_to_stdout(&json_reference.json)
       })
     }
-    DenoSubcommand::Jupyter(jupyter_flags) => spawn_subcommand(async {
+    EndeSubcommand::Jupyter(jupyter_flags) => spawn_subcommand(async {
       tools::jupyter::kernel(Arc::new(flags), jupyter_flags).await
     }),
-    DenoSubcommand::Uninstall(uninstall_flags) => spawn_subcommand(async {
+    EndeSubcommand::Uninstall(uninstall_flags) => spawn_subcommand(async {
       tools::installer::uninstall(Arc::new(flags), uninstall_flags).await
     }),
-    DenoSubcommand::Lsp => spawn_subcommand(async move {
+    EndeSubcommand::Lsp => spawn_subcommand(async move {
       if std::io::stderr().is_terminal() {
         log::warn!(
           "{} command is intended to be run by text editors and IDEs and shouldn't be run manually.
@@ -263,7 +263,7 @@ async fn run_subcommand(
       }
       lsp::start().await
     }),
-    DenoSubcommand::Lint(lint_flags) => spawn_subcommand(async {
+    EndeSubcommand::Lint(lint_flags) => spawn_subcommand(async {
       if lint_flags.rules {
         tools::lint::print_rules_list(
           lint_flags.json,
@@ -274,18 +274,18 @@ async fn run_subcommand(
         tools::lint::lint(Arc::new(flags), lint_flags).await
       }
     }),
-    DenoSubcommand::Outdated(update_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Outdated(update_flags) => spawn_subcommand(async move {
       tools::pm::outdated(Arc::new(flags), update_flags).await
     }),
-    DenoSubcommand::Repl(repl_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Repl(repl_flags) => spawn_subcommand(async move {
       tools::repl::run(Arc::new(flags), repl_flags).await
     }),
-    DenoSubcommand::X(x_flags) => {
+    EndeSubcommand::X(x_flags) => {
       spawn_subcommand(
         async move { tools::x::run(Arc::new(flags), x_flags).await },
       )
     }
-    DenoSubcommand::Run(run_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Run(run_flags) => spawn_subcommand(async move {
       if run_flags.print_task_list {
         let task_flags = TaskFlags {
           cwd: None,
@@ -300,7 +300,7 @@ async fn run_subcommand(
           if_present: false,
         };
         let mut flags = flags;
-        flags.subcommand = DenoSubcommand::Task(task_flags.clone());
+        flags.subcommand = EndeSubcommand::Task(task_flags.clone());
         writeln!(
           &mut std::io::stdout(),
           "Please specify a {} or a {}.\n",
@@ -352,7 +352,7 @@ async fn run_subcommand(
               let mut flags = flags.deref().clone();
               let watch = flags.watch.clone();
               flags.node_modules_dir =
-                Some(ende_config::deno_json::NodeModulesDirMode::None);
+                Some(ende_config::ende_json::NodeModulesDirMode::None);
               // use the current lockfile, but don't write it out
               if flags.frozen_lockfile.is_none() {
                 flags.internal.lockfile_skip_write = true;
@@ -370,7 +370,7 @@ async fn run_subcommand(
             let script_err_msg = script_err.to_string();
             if should_fallback_on_run_error(script_err_msg.as_str()) {
               if run_flags.bare {
-                let command_names = ende_cli_parser::defs::DENO_ROOT
+                let command_names = ende_cli_parser::defs::ENDE_ROOT
                   .subcommands
                   .iter()
                   .map(|command| command.name)
@@ -412,7 +412,7 @@ async fn run_subcommand(
                   concurrency: None,
                   if_present: false,
                 };
-                new_flags.subcommand = DenoSubcommand::Task(task_flags.clone());
+                new_flags.subcommand = EndeSubcommand::Task(task_flags.clone());
                 let result = tools::task::execute_script(
                   Arc::new(new_flags),
                   task_flags.clone(),
@@ -433,7 +433,7 @@ async fn run_subcommand(
         }
       }
     }),
-    DenoSubcommand::Serve(serve_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Serve(serve_flags) => spawn_subcommand(async move {
       tools::serve::serve(
         Arc::new(flags),
         serve_flags,
@@ -442,10 +442,10 @@ async fn run_subcommand(
       )
       .await
     }),
-    DenoSubcommand::Task(task_flags) => spawn_subcommand(async {
+    EndeSubcommand::Task(task_flags) => spawn_subcommand(async {
       tools::task::execute_script(Arc::new(flags), task_flags).await
     }),
-    DenoSubcommand::Test(test_flags) => {
+    EndeSubcommand::Test(test_flags) => {
       spawn_subcommand(async {
         if let Some(ref coverage_dir) = test_flags.coverage_dir {
           if !test_flags.coverage_raw_data_only || test_flags.clean {
@@ -473,7 +473,7 @@ async fn run_subcommand(
         }
       })
     }
-    DenoSubcommand::Completions(completions_flags) => {
+    EndeSubcommand::Completions(completions_flags) => {
       spawn_subcommand(async move {
         match completions_flags {
           CompletionsFlags::Static(buf) => {
@@ -487,24 +487,24 @@ async fn run_subcommand(
         }
       })
     }
-    DenoSubcommand::Types => spawn_subcommand(async move {
+    EndeSubcommand::Types => spawn_subcommand(async move {
       let types = tsc::get_types_declaration_file_text();
       ende_print::drop_write_stdout(types.as_bytes());
       Ok::<_, AnyError>(())
     }),
     #[cfg(feature = "upgrade")]
-    DenoSubcommand::Upgrade(upgrade_flags) => spawn_subcommand(async {
+    EndeSubcommand::Upgrade(upgrade_flags) => spawn_subcommand(async {
       tools::upgrade::upgrade(Arc::new(flags), upgrade_flags).await
     }),
     #[cfg(not(feature = "upgrade"))]
-    DenoSubcommand::Upgrade(_) => exit_with_message(
+    EndeSubcommand::Upgrade(_) => exit_with_message(
       "This ende was built without the \"upgrade\" feature. Please upgrade using the installation method originally used to install Ende.",
       1,
     ),
-    DenoSubcommand::Why(why_flags) => spawn_subcommand(async {
+    EndeSubcommand::Why(why_flags) => spawn_subcommand(async {
       tools::pm::why(Arc::new(flags), why_flags).await
     }),
-    DenoSubcommand::BumpVersion(version_flags) => spawn_subcommand(async {
+    EndeSubcommand::BumpVersion(version_flags) => spawn_subcommand(async {
       log::warn!(
         "{}",
         colors::yellow(
@@ -513,17 +513,17 @@ async fn run_subcommand(
       );
       tools::bump_version::bump_version_command(Arc::new(flags), version_flags)
     }),
-    DenoSubcommand::Vendor => exit_with_message(
+    EndeSubcommand::Vendor => exit_with_message(
       "⚠️  `ende vendor` was removed in 2.0.\n\nSee the 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
       1,
     ),
-    DenoSubcommand::Publish(publish_flags) => spawn_subcommand(async {
+    EndeSubcommand::Publish(publish_flags) => spawn_subcommand(async {
       tools::publish::publish(Arc::new(flags), publish_flags).await
     }),
-    DenoSubcommand::Pack(pack_flags) => spawn_subcommand(async {
+    EndeSubcommand::Pack(pack_flags) => spawn_subcommand(async {
       tools::pack::pack(flags.into(), pack_flags).await
     }),
-    DenoSubcommand::Help(help_flags) => spawn_subcommand(async move {
+    EndeSubcommand::Help(help_flags) => spawn_subcommand(async move {
       use std::io::Write;
 
       let mut stream = anstream::AutoStream::new(
@@ -615,7 +615,7 @@ fn setup_panic_hook() {
       eprintln!("PID limit. Try increasing the limit (e.g. --pids-limit=40).");
       eprintln!();
       eprintln!("Platform: {} {}", env::consts::OS, env::consts::ARCH);
-      eprintln!("Version: {}", ende_lib::version::DENO_VERSION_INFO.deno);
+      eprintln!("Version: {}", ende_lib::version::ENDE_VERSION_INFO.ende);
       eprintln!("Args: {:?}", env::args().collect::<Vec<_>>());
       eprintln!();
       ende_runtime::exit(1);
@@ -644,16 +644,16 @@ fn setup_panic_hook() {
     );
     eprintln!();
     eprintln!("Platform: {} {}", env::consts::OS, env::consts::ARCH);
-    eprintln!("Version: {}", ende_lib::version::DENO_VERSION_INFO.deno);
+    eprintln!("Version: {}", ende_lib::version::ENDE_VERSION_INFO.ende);
     eprintln!("Args: {:?}", env::args().collect::<Vec<_>>());
     eprintln!();
 
-    let info = &ende_lib::version::DENO_VERSION_INFO;
+    let info = &ende_lib::version::ENDE_VERSION_INFO;
     let version =
       if info.release_channel == ende_lib::shared::ReleaseChannel::Canary {
-        format!("{}+{}", ende_lib::version::DENO_VERSION, info.git_hash)
+        format!("{}+{}", ende_lib::version::ENDE_VERSION, info.git_hash)
       } else {
-        info.deno.to_string()
+        info.ende.to_string()
       };
 
     // Panic traces are not supported for custom/development builds.
@@ -664,13 +664,13 @@ fn setup_panic_hook() {
         target_os = "linux",
         any(target_arch = "x86_64", target_arch = "aarch64")
       ))]
-      let trace = deno_panic::trace_frame_pointer();
+      let trace = ende_panic::trace_frame_pointer();
       #[cfg(not(all(
         feature = "panic-trace-frame-pointer",
         target_os = "linux",
         any(target_arch = "x86_64", target_arch = "aarch64")
       )))]
-      let trace = deno_panic::trace();
+      let trace = ende_panic::trace();
       Some(trace.to_string())
     };
     #[cfg(not(feature = "panic-trace"))]
@@ -1022,15 +1022,15 @@ async fn resolve_flags_and_init(
   // for subcommands that execute user code, so unrelated commands (`fmt`,
   // `lint`, `check`, `lsp`, ...) don't pay for the `node` PATH scan on startup.
   if node_compat_shim::subcommand_may_spawn_node(&flags.subcommand) {
-    match ende_cache_dir::resolve_deno_dir(
+    match ende_cache_dir::resolve_ende_dir(
       &sys,
-      ende_cache_dir::ResolveDenoDirOptions {
+      ende_cache_dir::ResolveEndeDirOptions {
         maybe_initial_cwd: initial_cwd.as_deref(),
         maybe_custom_root: None,
       },
     ) {
-      Ok(deno_dir_root) => {
-        if let Err(err) = node_compat_shim::ensure_node_on_path(&deno_dir_root)
+      Ok(ende_dir_root) => {
+        if let Err(err) = node_compat_shim::ensure_node_on_path(&ende_dir_root)
         {
           log::debug!("node compat shim setup failed (best-effort): {err}");
         }
@@ -1046,7 +1046,7 @@ async fn resolve_flags_and_init(
   }
 
   // Tunnel sets up env vars and OTEL, so connect before everything else.
-  if flags.tunnel && !matches!(flags.subcommand, DenoSubcommand::Deploy(_)) {
+  if flags.tunnel && !matches!(flags.subcommand, EndeSubcommand::Deploy(_)) {
     if let Err(err) = initialize_tunnel(&flags).await {
       exit_for_error(
         err.context("Failed to start with tunnel"),
@@ -1105,14 +1105,14 @@ async fn resolve_flags_and_init(
       AuditSink::Otel(|permission, value, stack| {
         let stack = stack.unwrap_or_default().join("\n");
         let kvs = HashMap::from([
-          ("deno.permission.type", permission),
-          ("deno.permission.value", value),
-          ("deno.permission.stack", stack.as_str()),
+          ("ende.permission.type", permission),
+          ("ende.permission.value", value),
+          ("ende.permission.stack", stack.as_str()),
         ]);
         ende_telemetry::handle_log(
           &log::Record::builder()
             .level(log::Level::Info)
-            .target("deno.permission.access")
+            .target("ende.permission.access")
             .args(format_args!("{permission}: {value}"))
             .key_values(&kvs)
             .build(),
@@ -1135,7 +1135,7 @@ async fn resolve_flags_and_init(
 
 fn init_v8(flags: &Flags) {
   let default_v8_flags = match flags.subcommand {
-    DenoSubcommand::Lsp => vec![
+    EndeSubcommand::Lsp => vec![
       "--stack-size=1024".to_string(),
       // Using same default as VSCode:
       // https://github.com/microsoft/vscode/blob/48d4ba271686e8072fc6674137415bc80d936bc7/extensions/typescript-language-features/src/configuration/configuration.ts#L213-L214
@@ -1430,24 +1430,24 @@ async fn initialize_tunnel(
     ende_runtime::ende_os::sys_info::hostname(),
   );
   match &flags.subcommand {
-    DenoSubcommand::Run(run_flags) => {
+    EndeSubcommand::Run(run_flags) => {
       metadata.insert("subcommand".into(), "run".into());
       metadata.insert("entrypoint".into(), run_flags.script.clone());
     }
-    DenoSubcommand::Serve(serve_flags) => {
+    EndeSubcommand::Serve(serve_flags) => {
       metadata.insert("subcommand".into(), "serve".into());
       metadata.insert("entrypoint".into(), serve_flags.script.clone());
     }
-    DenoSubcommand::Task(task_flags) => {
+    EndeSubcommand::Task(task_flags) => {
       metadata.insert("subcommand".into(), "task".into());
       if let Some(task) = &task_flags.task {
         metadata.insert("task".into(), task.clone());
       }
     }
-    DenoSubcommand::Repl(_) => {
+    EndeSubcommand::Repl(_) => {
       metadata.insert("subcommand".into(), "repl".into());
     }
-    DenoSubcommand::Eval(_) => {
+    EndeSubcommand::Eval(_) => {
       metadata.insert("subcommand".into(), "eval".into());
     }
     _ => {}

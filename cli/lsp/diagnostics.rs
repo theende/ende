@@ -28,7 +28,7 @@ use ende_core::serde_json;
 use ende_core::serde_json::json;
 use ende_core::url::Url;
 use ende_lib::args::CaData;
-use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_resolver::ende_json::CompilerOptionsKey;
 use ende_resolver::graph::enhanced_resolution_error_message;
 use ende_resolver::workspace::sloppy_imports_resolve;
 use ende_runtime::ende_node;
@@ -81,7 +81,7 @@ pub struct DiagnosticsUpdateMessage {
 
 #[derive(Debug, Hash, PartialEq, Eq, Copy, Clone)]
 pub enum DiagnosticSource {
-  Deno,
+  Ende,
   Doc,
   Lint,
   Ts,
@@ -90,7 +90,7 @@ pub enum DiagnosticSource {
 impl DiagnosticSource {
   pub fn as_lsp_source(&self) -> &'static str {
     match self {
-      Self::Deno => "ende",
+      Self::Ende => "ende",
       Self::Doc => "ende-doc",
       Self::Lint => "ende-lint",
       Self::Ts => "ende-ts",
@@ -101,7 +101,7 @@ impl DiagnosticSource {
   /// `deno*` sources of diagnostics published by older servers.
   pub fn from_lsp_source(source: &str) -> Option<Self> {
     match source {
-      "ende" | "deno" => Some(Self::Deno),
+      "ende" | "deno" => Some(Self::Ende),
       "ende-doc" | "deno-doc" => Some(Self::Doc),
       "ende-lint" | "deno-lint" => Some(Self::Lint),
       "ende-ts" | "deno-ts" => Some(Self::Ts),
@@ -734,10 +734,10 @@ struct DiagnosticDataImportMapRemap {
 }
 
 /// An enum which represents diagnostic errors which originate from Deno itself.
-pub enum DenoDiagnostic {
+pub enum EndeDiagnostic {
   /// A `x-deno-warning` is associated with the specifier and should be displayed
   /// as a warning to the user.
-  DenoWarn(String),
+  EndeWarn(String),
   /// The import map file has invalid JSON or invalid import map entries.
   ImportMapDiagnostic(String),
   /// An informational diagnostic that indicates an existing specifier can be
@@ -768,10 +768,10 @@ pub enum DenoDiagnostic {
   BareNodeSpecifier(String),
 }
 
-impl DenoDiagnostic {
+impl EndeDiagnostic {
   fn code(&self) -> &str {
     match self {
-      Self::DenoWarn(_) => "deno-warn",
+      Self::EndeWarn(_) => "deno-warn",
       Self::ImportMapDiagnostic(_) => "import-map-diagnostic",
       Self::ImportMapRemap { .. } => "import-map-remap",
       Self::InvalidAttributeType(_) => "invalid-attribute-type",
@@ -1017,7 +1017,7 @@ impl DenoDiagnostic {
     }
 
     let (severity, message, data) = match self {
-      Self::DenoWarn(message) => (lsp::DiagnosticSeverity::WARNING, message.to_string(), None),
+      Self::EndeWarn(message) => (lsp::DiagnosticSeverity::WARNING, message.to_string(), None),
       Self::ImportMapDiagnostic(message) => (lsp::DiagnosticSeverity::ERROR, message.to_string(), None),
       Self::ImportMapRemap { from, to } => (lsp::DiagnosticSeverity::HINT, format!("The import specifier can be remapped to \"{to}\" which will resolve it via the active import map."), Some(json!({ "from": from, "to": to }))),
       Self::InvalidAttributeType(assert_type) => (lsp::DiagnosticSeverity::ERROR, format!("The module is a JSON module and expected an attribute type of \"json\". Instead got \"{assert_type}\"."), None),
@@ -1052,7 +1052,7 @@ impl DenoDiagnostic {
       range: *range,
       severity: Some(severity),
       code: Some(lsp::NumberOrString::String(self.code().to_string())),
-      source: Some(DiagnosticSource::Deno.as_lsp_source().to_string()),
+      source: Some(DiagnosticSource::Ende.as_lsp_source().to_string()),
       message,
       data,
       ..Default::default()
@@ -1107,13 +1107,13 @@ fn import_map_resolves_dependency_key(
 }
 
 fn maybe_ambient_import_specifier(
-  diagnostic: &DenoDiagnostic,
+  diagnostic: &EndeDiagnostic,
 ) -> Option<String> {
   match diagnostic {
-    DenoDiagnostic::NoCache(url) | DenoDiagnostic::NoLocal(url) => {
+    EndeDiagnostic::NoCache(url) | EndeDiagnostic::NoLocal(url) => {
       Some(url.to_string())
     }
-    DenoDiagnostic::ResolutionError(err, _) => {
+    EndeDiagnostic::ResolutionError(err, _) => {
       maybe_ambient_specifier_resolution_err(err)
     }
     _ => None,
@@ -1170,7 +1170,7 @@ fn diagnose_resolution(
   maybe_assert_type: Option<&str>,
   referrer_module: &DocumentModule,
   import_map: Option<&ImportMap>,
-) -> (Vec<DenoDiagnostic>, Vec<DenoDiagnostic>) {
+) -> (Vec<EndeDiagnostic>, Vec<EndeDiagnostic>) {
   let mut diagnostics = vec![];
   let mut deferred_diagnostics = vec![];
   match resolution {
@@ -1183,7 +1183,7 @@ fn diagnose_resolution(
         scoped_resolver.as_maybe_managed_npm_resolver();
       for (_, headers) in scoped_resolver.redirect_chain_headers(specifier) {
         if let Some(message) = headers.get("x-deno-warning") {
-          diagnostics.push(DenoDiagnostic::DenoWarn(message.clone()));
+          diagnostics.push(EndeDiagnostic::EndeWarn(message.clone()));
         }
       }
       match snapshot.document_modules.module_for_specifier(
@@ -1195,7 +1195,7 @@ fn diagnose_resolution(
           if let Some(headers) = &module.headers
             && let Some(message) = headers.get("x-deno-warning")
           {
-            diagnostics.push(DenoDiagnostic::DenoWarn(message.clone()));
+            diagnostics.push(EndeDiagnostic::EndeWarn(message.clone()));
           }
           if module.media_type == MediaType::Json {
             match maybe_assert_type {
@@ -1207,10 +1207,10 @@ fn diagnose_resolution(
               None if is_dynamic => (),
               // The module has an incorrect assertion type, diagnostic
               Some(assert_type) => diagnostics.push(
-                DenoDiagnostic::InvalidAttributeType(assert_type.to_string()),
+                EndeDiagnostic::InvalidAttributeType(assert_type.to_string()),
               ),
               // The module is missing an attribute type, diagnostic
-              None => diagnostics.push(DenoDiagnostic::NoAttributeType),
+              None => diagnostics.push(EndeDiagnostic::NoAttributeType),
             }
           }
         }
@@ -1219,7 +1219,7 @@ fn diagnose_resolution(
             Ok(pkg_ref) => {
               let req = pkg_ref.into_inner().req;
               diagnostics
-                .push(DenoDiagnostic::NotInstalledJsr(req, specifier.clone()));
+                .push(EndeDiagnostic::NotInstalledJsr(req, specifier.clone()));
             }
             _ => {
               match NpmPackageReqReference::from_specifier(specifier) {
@@ -1228,7 +1228,7 @@ fn diagnose_resolution(
                     // show diagnostics for npm package references that aren't cached
                     let req = pkg_ref.req();
                     if !npm_resolver.is_pkg_req_folder_cached(req) {
-                      diagnostics.push(DenoDiagnostic::NotInstalledNpm(
+                      diagnostics.push(EndeDiagnostic::NotInstalledNpm(
                         req.clone(),
                         specifier.clone(),
                       ));
@@ -1248,7 +1248,7 @@ fn diagnose_resolution(
                           .is_none()
                       }) {
                         diagnostics
-                          .push(DenoDiagnostic::NoExportNpm(pkg_ref.clone()));
+                          .push(EndeDiagnostic::NoExportNpm(pkg_ref.clone()));
                       }
                     }
                   }
@@ -1258,7 +1258,7 @@ fn diagnose_resolution(
                     specifier.as_str().strip_prefix("node:")
                   {
                     if !ende_node::is_builtin_node_module(module_name) {
-                      diagnostics.push(DenoDiagnostic::UnknownNodeSpecifier(
+                      diagnostics.push(EndeDiagnostic::UnknownNodeSpecifier(
                         specifier.clone(),
                       ));
                     } else if module_name == dependency_key {
@@ -1273,7 +1273,7 @@ fn diagnose_resolution(
                       }
                       // show diagnostics for bare node specifiers that aren't mapped by import map
                       if !is_mapped {
-                        diagnostics.push(DenoDiagnostic::BareNodeSpecifier(
+                        diagnostics.push(EndeDiagnostic::BareNodeSpecifier(
                           module_name.to_string(),
                         ));
                       }
@@ -1284,11 +1284,11 @@ fn diagnose_resolution(
                     // about that.
                     // these may be invalid, however, if this is an ambient module with
                     // no real source (as in the case of a virtual module).
-                    let deno_diagnostic = match specifier.scheme() {
-                      "file" => DenoDiagnostic::NoLocal(specifier.clone()),
-                      _ => DenoDiagnostic::NoCache(specifier.clone()),
+                    let ende_diagnostic = match specifier.scheme() {
+                      "file" => EndeDiagnostic::NoLocal(specifier.clone()),
+                      _ => EndeDiagnostic::NoCache(specifier.clone()),
                     };
-                    deferred_diagnostics.push(deno_diagnostic);
+                    deferred_diagnostics.push(ende_diagnostic);
                   }
                 }
               }
@@ -1316,12 +1316,12 @@ fn diagnose_resolution(
         })
         .unwrap_or_default();
       if maybe_ambient_specifier_resolution_err(err).is_none() {
-        diagnostics.push(DenoDiagnostic::ResolutionError(
+        diagnostics.push(EndeDiagnostic::ResolutionError(
           *err.clone(),
           bare_importable_pkg_names,
         ))
       } else {
-        deferred_diagnostics.push(DenoDiagnostic::ResolutionError(
+        deferred_diagnostics.push(EndeDiagnostic::ResolutionError(
           *err.clone(),
           bare_importable_pkg_names,
         ));
@@ -1394,7 +1394,7 @@ fn diagnose_dts_entrypoint_unresolved_import(
         range: import.specifier_range.clone(),
       };
       diagnostics.push(
-        DenoDiagnostic::ResolutionError(
+        EndeDiagnostic::ResolutionError(
           resolution_error,
           bare_importable_pkg_names.clone(),
         )
@@ -1476,7 +1476,7 @@ fn diagnose_dependency(
       )
     {
       diagnostics.push(
-        DenoDiagnostic::ImportMapRemap {
+        EndeDiagnostic::ImportMapRemap {
           from: dependency_key.to_string(),
           to,
         }
@@ -1494,7 +1494,7 @@ fn diagnose_dependency(
   // a different specifier and therefore needs a separate call to
   // `diagnose_resolution()`. It would be much cleaner if that were modelled as
   // a separate dependency: https://github.com/denoland/deno_graph/issues/247.
-  let is_types_deno_types = !dependency.maybe_type.is_none()
+  let is_types_ende_types = !dependency.maybe_type.is_none()
     && !dependency.imports.iter().any(|i| {
       dependency
         .maybe_type
@@ -1506,7 +1506,7 @@ fn diagnose_dependency(
   // it's likely resolving into the node_modules folder, which might be
   // erroring correctly due to resolution only being for bundlers. Let this
   // fail at runtime if necessary, but don't bother erroring in the editor
-  || !is_types_deno_types && matches!(dependency.maybe_type, Resolution::Ok(_))
+  || !is_types_ende_types && matches!(dependency.maybe_type, Resolution::Ok(_))
     && matches!(dependency.maybe_code, Resolution::Err(_))
   {
     &dependency.maybe_type
@@ -1540,7 +1540,7 @@ fn diagnose_dependency(
       .flatten(),
   );
 
-  if is_types_deno_types {
+  if is_types_ende_types {
     let range = match &dependency.maybe_type {
       Resolution::Ok(resolved) => {
         language_server::to_lsp_range(&resolved.range)
@@ -1599,7 +1599,7 @@ fn json_error_range(err: &serde_json::Error) -> lsp::Range {
 fn import_map_parse_diagnostic_to_lsp(
   diagnostic: &ImportMapDiagnostic,
 ) -> lsp::Diagnostic {
-  DenoDiagnostic::ImportMapDiagnostic(diagnostic.to_string())
+  EndeDiagnostic::ImportMapDiagnostic(diagnostic.to_string())
     .to_lsp_diagnostic(&lsp::Range::default())
 }
 
@@ -1621,7 +1621,7 @@ fn diagnose_import_map_entry_value(
       if http_cache.contains(value) {
         return;
       }
-      DenoDiagnostic::NoCache(value.clone())
+      EndeDiagnostic::NoCache(value.clone())
     }
     "jsr" => {
       let Ok(pkg_ref) = JsrPackageReqReference::from_specifier(value) else {
@@ -1632,7 +1632,7 @@ fn diagnose_import_map_entry_value(
         return;
       }
       let req = pkg_ref.into_inner().req;
-      DenoDiagnostic::NotInstalledJsr(req, value.clone())
+      EndeDiagnostic::NotInstalledJsr(req, value.clone())
     }
     "npm" => {
       let Ok(pkg_ref) = NpmPackageReqReference::from_specifier(value) else {
@@ -1646,7 +1646,7 @@ fn diagnose_import_map_entry_value(
       {
         return;
       }
-      DenoDiagnostic::NotInstalledNpm(req, value.clone())
+      EndeDiagnostic::NotInstalledNpm(req, value.clone())
     }
     _ => return,
   };
@@ -1701,13 +1701,13 @@ pub(crate) fn generate_import_map_diagnostics(
     }
     Err(err) => match err.as_kind() {
       ImportMapErrorKind::JsonParse(err) => vec![
-        DenoDiagnostic::ImportMapDiagnostic(format!(
+        EndeDiagnostic::ImportMapDiagnostic(format!(
           "Unable to parse import map JSON: {err}"
         ))
         .to_lsp_diagnostic(&json_error_range(err)),
       ],
       _ => vec![
-        DenoDiagnostic::ImportMapDiagnostic(err.to_string())
+        EndeDiagnostic::ImportMapDiagnostic(err.to_string())
           .to_lsp_diagnostic(&lsp::Range::default()),
       ],
     },
@@ -2043,7 +2043,7 @@ fn collect_scope_no_slow_types_diagnostics(
       snapshot.config.workspace_settings_for_specifier(scope);
     let mut factory = CliFactory::from_flags(Arc::new(Flags {
       internal: InternalFlags {
-        cache_path: Some(snapshot.cache.deno_dir().root.clone()),
+        cache_path: Some(snapshot.cache.ende_dir().root.clone()),
         lockfile_skip_write: true,
         ..Default::default()
       },
@@ -2138,7 +2138,7 @@ fn module_is_package_export(
     .config
     .tree
     .data_for_specifier(&module.specifier)
-    .and_then(|d| d.maybe_deno_json())
+    .and_then(|d| d.maybe_ende_json())
   else {
     return false;
   };
@@ -2162,7 +2162,7 @@ mod tests {
   use std::str::FromStr;
   use std::sync::Arc;
 
-  use ende_config::deno_json::ConfigFile;
+  use ende_config::ende_json::ConfigFile;
   use pretty_assertions::assert_eq;
   use test_util::TempDir;
 
@@ -2241,7 +2241,7 @@ mod tests {
     )
   }
 
-  fn generate_all_deno_diagnostics(
+  fn generate_all_ende_diagnostics(
     snapshot: &StateSnapshot,
   ) -> Vec<(Uri, Vec<lsp::Diagnostic>)> {
     snapshot
@@ -2397,7 +2397,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_deno_diagnostics_with_import_map() {
+  async fn test_ende_diagnostics_with_import_map() {
     let (temp_dir, snapshot) = setup(
       &[
         (
@@ -2432,7 +2432,7 @@ mod tests {
       )),
     )
     .await;
-    let actual = generate_all_deno_diagnostics(&snapshot);
+    let actual = generate_all_ende_diagnostics(&snapshot);
     assert_eq!(
       json!(actual),
       json!([
@@ -2471,7 +2471,7 @@ mod tests {
   fn test_get_code_action_import_map_remap() {
     let uri = Uri::from_str("file:///a/file.ts").unwrap();
     let specifier = ModuleSpecifier::parse("file:///a/file.ts").unwrap();
-    let result = DenoDiagnostic::get_code_action(&uri, &specifier, &lsp::Diagnostic {
+    let result = EndeDiagnostic::get_code_action(&uri, &specifier, &lsp::Diagnostic {
       range: lsp::Range {
         start: lsp::Position { line: 0, character: 23 },
         end: lsp::Position { line: 0, character: 50 },
@@ -2554,7 +2554,7 @@ mod tests {
       None,
     )
     .await;
-    let actual = generate_all_deno_diagnostics(&snapshot);
+    let actual = generate_all_ende_diagnostics(&snapshot);
     assert_eq!(
       json!(actual),
       json!([
@@ -2611,7 +2611,7 @@ mod tests {
       None,
     )
     .await;
-    let actual = generate_all_deno_diagnostics(&snapshot);
+    let actual = generate_all_ende_diagnostics(&snapshot);
     assert_eq!(
       json!(actual),
       json!([

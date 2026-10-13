@@ -45,7 +45,7 @@ fn compile_basic() {
     assert!(output.status.success());
   }
 
-  // now ensure this works when the deno_dir is readonly
+  // now ensure this works when the ende_dir is readonly
   let readonly_dir = dir.path().join("readonly");
   readonly_dir.make_dir_readonly();
   let readonly_sub_dir = readonly_dir.join("sub");
@@ -893,7 +893,7 @@ fn run_npm_bin_compile_test(opts: RunNpmBinCompileOptions) {
   output.skip_output_check();
 
   // delete the npm folder in the ENDE_DIR to ensure it's not using it
-  context.deno_dir().remove_dir_all("./npm");
+  context.ende_dir().remove_dir_all("./npm");
 
   // run
   let binary_path = if cfg!(windows) {

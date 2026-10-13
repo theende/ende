@@ -234,8 +234,8 @@ harness = false
 # This section defines the metadata that appears in the ende.exe PE header.
 OriginalFilename = "ende.exe"
 LegalCopyright = "© Deno contributors & Deno Land Inc. MIT licensed."
-ProductName = "Deno"
-FileDescription = "Deno: A secure runtime for JavaScript and TypeScript"
+ProductName = "Ende"
+FileDescription = "Ende: A secure runtime for JavaScript and TypeScript"
 
 [package.metadata.cargo-shear]
 ignored = ["locked-tripwire"]

@@ -16,7 +16,7 @@ use ende_core::Resource;
 use ende_core::op2;
 use ende_core::v8;
 use ende_permissions::PermissionsContainer;
-use endert_helper::DenoRtNativeAddonLoaderRc;
+use endert_helper::EndeRtNativeAddonLoaderRc;
 use serde::Deserialize;
 
 use crate::ir::out_buffer_as_ptr;
@@ -52,7 +52,7 @@ pub enum DlfcnError {
   Permission(#[from] ende_permissions::PermissionCheckError),
   #[class(inherit)]
   #[error(transparent)]
-  DenoRtLoad(#[from] endert_helper::LoadError),
+  EndeRtLoad(#[from] endert_helper::LoadError),
   #[class(inherit)]
   #[error(transparent)]
   Other(#[from] JsErrorBox),
@@ -148,17 +148,17 @@ pub fn op_ffi_load<'scope>(
   #[string] path: &str,
   #[serde] symbols: HashMap<String, ForeignSymbol>,
 ) -> Result<v8::Local<'scope, v8::Value>, DlfcnError> {
-  let (path, denort_helper) = {
+  let (path, endert_helper) = {
     let mut state = state.borrow_mut();
     let permissions = state.borrow_mut::<PermissionsContainer>();
     (
       permissions
         .check_ffi_partial_with_path(Cow::Borrowed(Path::new(path)))?,
-      state.try_borrow::<DenoRtNativeAddonLoaderRc>().cloned(),
+      state.try_borrow::<EndeRtNativeAddonLoaderRc>().cloned(),
     )
   };
 
-  let real_path = match denort_helper {
+  let real_path = match endert_helper {
     Some(loader) => loader.load_and_resolve_path(&path)?,
     None => Cow::Borrowed(path.as_ref()),
   };

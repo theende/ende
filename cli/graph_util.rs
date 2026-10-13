@@ -27,22 +27,22 @@ use deno_path_util::url_to_file_path;
 use deno_semver::SmallStackString;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::npm::NpmPackageReqReference;
-use ende_config::deno_json;
-use ende_config::deno_json::CompilerOptionTypesDeserializeError;
-use ende_config::deno_json::NodeModulesDirMode;
+use ende_config::ende_json;
+use ende_config::ende_json::CompilerOptionTypesDeserializeError;
+use ende_config::ende_json::NodeModulesDirMode;
 use ende_config::workspace::JsrPackageConfig;
 use ende_core::ModuleSpecifier;
 use ende_core::error::AnyError;
 use ende_core::parking_lot::Mutex;
 use ende_core::serde_json;
-use ende_lib::util::result::downcast_ref_deno_resolve_error;
+use ende_lib::util::result::downcast_ref_ende_resolve_error;
 use ende_npm_installer::PackageCaching;
 use ende_npm_installer::format_unmet_peer_dep_warning;
 use ende_npm_installer::graph::NpmCachingStrategy;
 use ende_resolver::cache::ParsedSourceCache;
-use ende_resolver::deno_json::CompilerOptionsResolver;
-use ende_resolver::deno_json::JsxImportSourceConfigResolver;
-use ende_resolver::deno_json::ToMaybeJsxImportSourceConfigError;
+use ende_resolver::ende_json::CompilerOptionsResolver;
+use ende_resolver::ende_json::JsxImportSourceConfigResolver;
+use ende_resolver::ende_json::ToMaybeJsxImportSourceConfigError;
 use ende_resolver::file_fetcher::GraphLoaderReporterRc;
 use ende_resolver::graph::EnhanceGraphErrorMode;
 use ende_resolver::graph::EnhancedGraphError;
@@ -58,7 +58,7 @@ use sys_traits::FsMetadata;
 
 use crate::args::CliLockfile;
 use crate::args::CliOptions;
-use crate::args::DenoSubcommand;
+use crate::args::EndeSubcommand;
 use crate::args::config_to_deno_graph_workspace_member;
 use crate::args::graph_kind;
 use crate::args::jsr_url;
@@ -362,7 +362,7 @@ pub fn resolution_error_for_tsc_diagnostic(
               })
             }
           }
-        } else if let Some(err) = downcast_ref_deno_resolve_error(error) {
+        } else if let Some(err) = downcast_ref_ende_resolve_error(error) {
           let use_module_not_found_error = match err.maybe_node_code()? {
             NodeJsErrorCode::ERR_INVALID_MODULE_SPECIFIER
             | NodeJsErrorCode::ERR_INVALID_PACKAGE_CONFIG
@@ -740,7 +740,7 @@ pub enum BuildGraphWithNpmResolutionError {
   ToMaybeJsxImportSourceConfig(#[from] ToMaybeJsxImportSourceConfigError),
   #[class(inherit)]
   #[error(transparent)]
-  NodeModulesDirParse(#[from] deno_json::NodeModulesDirParseError),
+  NodeModulesDirParse(#[from] ende_json::NodeModulesDirParseError),
   #[class(inherit)]
   #[error(transparent)]
   Other(#[from] JsErrorBox),
@@ -1205,7 +1205,7 @@ impl ModuleGraphBuilder {
 
   fn analyze_npm_sources(&self) -> bool {
     // only analyze npm packages with deno_graph for deno doc
-    matches!(self.cli_options.sub_command(), DenoSubcommand::Doc(_))
+    matches!(self.cli_options.sub_command(), EndeSubcommand::Doc(_))
   }
 
   /// Check if `roots` and their deps are available. Returns `Ok(())` if

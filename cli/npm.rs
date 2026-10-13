@@ -19,7 +19,7 @@ use ende_core::error::AnyError;
 use ende_core::futures::StreamExt;
 use ende_core::serde_json;
 use ende_core::url::Url;
-use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::ENDE_VERSION_INFO;
 use ende_npm::NpmResolutionPackage;
 use ende_npm::registry::NpmPackageInfo;
 use ende_npm::registry::NpmPackageVersionInfosIterator;
@@ -440,8 +440,8 @@ pub static NPM_CONFIG_USER_AGENT_ENV_VAR: &str = "npm_config_user_agent";
 pub fn get_npm_config_user_agent() -> String {
   format!(
     "ende/{} npm/? ende/{} {} {}",
-    DENO_VERSION_INFO.deno,
-    DENO_VERSION_INFO.deno,
+    ENDE_VERSION_INFO.ende,
+    ENDE_VERSION_INFO.ende,
     std::env::consts::OS,
     std::env::consts::ARCH
   )

@@ -328,32 +328,32 @@ where
 ///   callConsole,
 /// };
 /// ```
-pub(crate) fn initialize_deno_core_namespace<'s, 'i>(
+pub(crate) fn initialize_ende_core_namespace<'s, 'i>(
   scope: &mut v8::PinScope<'s, 'i>,
   context: v8::Local<'s, v8::Context>,
   init_mode: InitMode,
 ) {
   let global = context.global(scope);
-  let deno_str = ENDE.v8_string(scope).unwrap();
+  let ende_str = ENDE.v8_string(scope).unwrap();
 
-  let maybe_deno_obj_val = global.get(scope, deno_str.into());
+  let maybe_ende_obj_val = global.get(scope, ende_str.into());
 
   // If `Ende.core` is already set up, let's exit early.
-  if let Some(deno_obj_val) = maybe_deno_obj_val
-    && !deno_obj_val.is_undefined()
+  if let Some(ende_obj_val) = maybe_ende_obj_val
+    && !ende_obj_val.is_undefined()
   {
     return;
   }
 
-  let deno_obj = v8::Object::new(scope);
-  let deno_core_key = CORE.v8_string(scope).unwrap();
+  let ende_obj = v8::Object::new(scope);
+  let ende_core_key = CORE.v8_string(scope).unwrap();
   // Set up `Ende.core.ops` object
-  let deno_core_ops_obj = v8::Object::new(scope);
-  let deno_core_ops_key = OPS.v8_string(scope).unwrap();
+  let ende_core_ops_obj = v8::Object::new(scope);
+  let ende_core_ops_key = OPS.v8_string(scope).unwrap();
 
-  let deno_core_obj = v8::Object::new(scope);
-  deno_core_obj
-    .set(scope, deno_core_ops_key.into(), deno_core_ops_obj.into())
+  let ende_core_obj = v8::Object::new(scope);
+  ende_core_obj
+    .set(scope, ende_core_ops_key.into(), ende_core_ops_obj.into())
     .unwrap();
 
   // If we're initializing fresh context set up the console
@@ -366,7 +366,7 @@ pub(crate) fn initialize_deno_core_namespace<'s, 'i>(
       .build(scope)
       .unwrap();
     let call_console_key = CALL_CONSOLE.v8_string(scope).unwrap();
-    deno_core_obj.set(scope, call_console_key.into(), call_console_fn.into());
+    ende_core_obj.set(scope, call_console_key.into(), call_console_fn.into());
 
     // Bind v8 console object to Ende.core.console
     let extra_binding_obj = context.get_extras_binding_object(scope);
@@ -377,17 +377,17 @@ pub(crate) fn initialize_deno_core_namespace<'s, 'i>(
       "ExtrasBindingObject.console",
     );
     let console_key = CONSOLE.v8_string(scope).unwrap();
-    deno_core_obj.set(scope, console_key.into(), console_obj.into());
+    ende_core_obj.set(scope, console_key.into(), console_obj.into());
   }
 
-  deno_obj.set(scope, deno_core_key.into(), deno_core_obj.into());
-  global.set(scope, deno_str.into(), deno_obj.into());
+  ende_obj.set(scope, ende_core_key.into(), ende_core_obj.into());
+  global.set(scope, ende_str.into(), ende_obj.into());
   // `Deno` is a permanent alias of the `Ende` namespace: the very same object.
   // Embedder code (and code that runs before the runtime replaces the
   // namespace, e.g. the warmup-phase checks in node polyfills) may still look
   // it up by its old name.
   let deno_alias_str = DENO.v8_string(scope).unwrap();
-  global.set(scope, deno_alias_str.into(), deno_obj.into());
+  global.set(scope, deno_alias_str.into(), ende_obj.into());
 }
 
 /// Execute `00_primordials.js` and `00_infra.js` that are required for ops
@@ -424,7 +424,7 @@ fn name_key<'s, 'i>(
 }
 
 /// Set up JavaScript bindings for ops.
-pub(crate) fn initialize_deno_core_ops_bindings<'s, 'i>(
+pub(crate) fn initialize_ende_core_ops_bindings<'s, 'i>(
   scope: &mut v8::PinScope<'s, 'i>,
   context: v8::Local<'s, v8::Context>,
   op_ctxs: &[OpCtx],
@@ -438,14 +438,14 @@ pub(crate) fn initialize_deno_core_ops_bindings<'s, 'i>(
   // Set up JavaScript bindings for the defined op - this will insert proper
   // `v8::Function` into `Ende.core.ops` object. For async ops, there a bit
   // more machinery involved, see comment below.
-  let deno_obj = get(scope, global, ENDE, "Ende");
-  let deno_core_obj = get(scope, deno_obj, CORE, "Ende.core");
-  let deno_core_ops_obj: v8::Local<v8::Object> =
-    get(scope, deno_core_obj, OPS, "Ende.core.ops");
+  let ende_obj = get(scope, global, ENDE, "Ende");
+  let ende_core_obj = get(scope, ende_obj, CORE, "Ende.core");
+  let ende_core_ops_obj: v8::Local<v8::Object> =
+    get(scope, ende_core_obj, OPS, "Ende.core.ops");
 
   let set_up_async_stub_fn: v8::Local<v8::Function> = get(
     scope,
-    deno_core_obj,
+    ende_core_obj,
     SET_UP_ASYNC_STUB,
     "Ende.core.setUpAsyncStub",
   );
@@ -572,7 +572,7 @@ pub(crate) fn initialize_deno_core_ops_bindings<'s, 'i>(
       }
     }
 
-    deno_core_ops_obj.set(scope, key.into(), op_fn.into());
+    ende_core_ops_obj.set(scope, key.into(), op_fn.into());
 
     let id = (decl.type_name)().to_string();
     fn_template_store.insert(id, v8::Global::new(scope, tmpl));
@@ -598,7 +598,7 @@ pub(crate) fn initialize_deno_core_ops_bindings<'s, 'i>(
       op_fn = result.try_into().unwrap()
     }
 
-    deno_core_ops_obj.set(scope, key.into(), op_fn.into());
+    ende_core_ops_obj.set(scope, key.into(), op_fn.into());
   }
 }
 
@@ -622,7 +622,7 @@ pub(crate) fn upgrade_snapshotted_ops_with_fast_calls<'s, 'i>(
   // `Ende.core` is scrubbed from the public `Deno` after bootstrap and the
   // deferred caller can no longer read them from the global (see
   // `snapshotted_fast_op_refs` / `ensure_fast_ops_upgraded`).
-  deno_core_ops_obj: v8::Local<'s, v8::Object>,
+  ende_core_ops_obj: v8::Local<'s, v8::Object>,
   // The captured-bootstrap clone of `Ende.core.ops` (`capturedCore.ops` in
   // 01_core.js) that residual ext modules read ops through. The flat-op `.set`s
   // below replace slots on the ops object, which the shallow clone doesn't see;
@@ -651,7 +651,7 @@ pub(crate) fn upgrade_snapshotted_ops_with_fast_calls<'s, 'i>(
     // Resolve the class function from `Ende.core.ops`; we need it both as the
     // anchor for prototype methods and to receive static methods.
     let class_key = decl.name.1.v8_string(scope).unwrap();
-    let class_fn_val = deno_core_ops_obj.get(scope, class_key.into());
+    let class_fn_val = ende_core_ops_obj.get(scope, class_key.into());
     let class_fn =
       class_fn_val.and_then(|v| v8::Local::<v8::Function>::try_from(v).ok());
     let prototype = class_fn.and_then(|f| {
@@ -715,7 +715,7 @@ pub(crate) fn upgrade_snapshotted_ops_with_fast_calls<'s, 'i>(
       op_fn = result.try_into().unwrap();
     }
 
-    deno_core_ops_obj.set(scope, key.into(), op_fn.into());
+    ende_core_ops_obj.set(scope, key.into(), op_fn.into());
     if let Some(clone_ops_obj) = clone_ops_obj {
       clone_ops_obj.set(scope, key.into(), op_fn.into());
     }
@@ -737,17 +737,17 @@ pub(crate) fn snapshotted_fast_op_refs<'s, 'i>(
   context: v8::Local<'s, v8::Context>,
 ) -> (v8::Local<'s, v8::Object>, v8::Local<'s, v8::Function>) {
   let global = context.global(scope);
-  let deno_obj = get(scope, global, ENDE, "Ende");
-  let deno_core_obj = get(scope, deno_obj, CORE, "Ende.core");
-  let deno_core_ops_obj: v8::Local<v8::Object> =
-    get(scope, deno_core_obj, OPS, "Ende.core.ops");
+  let ende_obj = get(scope, global, ENDE, "Ende");
+  let ende_core_obj = get(scope, ende_obj, CORE, "Ende.core");
+  let ende_core_ops_obj: v8::Local<v8::Object> =
+    get(scope, ende_core_obj, OPS, "Ende.core.ops");
   let set_up_async_stub_fn: v8::Local<v8::Function> = get(
     scope,
-    deno_core_obj,
+    ende_core_obj,
     SET_UP_ASYNC_STUB,
     "Ende.core.setUpAsyncStub",
   );
-  (deno_core_ops_obj, set_up_async_stub_fn)
+  (ende_core_ops_obj, set_up_async_stub_fn)
 }
 
 pub(crate) fn ensure_fast_ops_upgraded(scope: &mut v8::PinScope) {
@@ -762,7 +762,7 @@ pub(crate) fn ensure_fast_ops_upgraded(scope: &mut v8::PinScope) {
   let Some((ops_global, stub_global)) = refs else {
     return;
   };
-  let deno_core_ops_obj = v8::Local::new(scope, &ops_global);
+  let ende_core_ops_obj = v8::Local::new(scope, &ops_global);
   let set_up_async_stub_fn = v8::Local::new(scope, &stub_global);
 
   // Residual ext modules read ops through the captured-bootstrap clone of
@@ -783,7 +783,7 @@ pub(crate) fn ensure_fast_ops_upgraded(scope: &mut v8::PinScope) {
 
   upgrade_snapshotted_ops_with_fast_calls(
     scope,
-    deno_core_ops_obj,
+    ende_core_ops_obj,
     clone_ops_obj,
     set_up_async_stub_fn,
     &context_state.op_ctxs,
@@ -1753,11 +1753,11 @@ fn call_console(
   let receiver = args.this();
   let inspector_console_method =
     v8::Local::<v8::Function>::try_from(args.get(0)).unwrap();
-  let deno_console_method =
+  let ende_console_method =
     v8::Local::<v8::Function>::try_from(args.get(1)).unwrap();
 
   inspector_console_method.call(scope, receiver.into(), &call_args);
-  deno_console_method.call(scope, receiver.into(), &call_args);
+  ende_console_method.call(scope, receiver.into(), &call_args);
 }
 
 fn cast_closure<F>(f: F) -> F
@@ -1846,9 +1846,9 @@ pub fn create_exports_for_ops_virtual_module<'s, 'i>(
 ) -> Vec<(FastStaticString, v8::Local<'s, v8::Value>)> {
   let mut exports = Vec::with_capacity(op_ctxs.len());
 
-  let deno_obj = get(scope, global, ENDE, "Ende");
-  let deno_core_obj = get(scope, deno_obj, CORE, "Ende.core");
-  let ops_obj = get(scope, deno_core_obj, OPS, "Ende.core.ops");
+  let ende_obj = get(scope, global, ENDE, "Ende");
+  let ende_core_obj = get(scope, ende_obj, CORE, "Ende.core");
+  let ops_obj = get(scope, ende_core_obj, OPS, "Ende.core.ops");
 
   let mut index = 0;
 

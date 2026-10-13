@@ -9,7 +9,7 @@ use deno_graph::ModuleGraph;
 use deno_lint::diagnostic::LintDiagnostic;
 use deno_lint::rules::LintRule;
 use deno_lint::tags;
-use ende_config::deno_json::LintRulesConfig;
+use ende_config::ende_json::LintRulesConfig;
 use ende_config::workspace::WorkspaceDirectory;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
@@ -212,13 +212,13 @@ fn get_default_tags(
   tags.push("recommended".to_string());
   if let Some(member_dir) = maybe_workspace_dir {
     if member_dir
-      .member_or_root_deno_json()
+      .member_or_root_ende_json()
       .map(|c| c.is_package())
       .unwrap_or(false)
     {
       tags.push("jsr".to_string());
     }
-    if member_dir.member_or_root_deno_json().is_some()
+    if member_dir.member_or_root_ende_json().is_some()
       || member_dir.member_or_root_pkg_json().is_some()
     {
       tags.push("workspace".to_string());

@@ -33,7 +33,7 @@ use ende_runtime::ende_core::error::CoreError;
 use ende_runtime::ende_core::v8;
 use ende_runtime::ende_fs;
 use ende_runtime::ende_inspector_server::MainInspectorSessionChannel;
-use ende_runtime::ende_napi::DenoRtNativeAddonLoaderRc;
+use ende_runtime::ende_napi::EndeRtNativeAddonLoaderRc;
 use ende_runtime::ende_node::NodeExtInitServices;
 use ende_runtime::ende_node::NodeRequireLoader;
 use ende_runtime::ende_node::NodeResolver;
@@ -57,7 +57,7 @@ use node_resolver::errors::ResolvePkgJsonBinExportError;
 use url::Url;
 
 use crate::args::has_trace_permissions_enabled;
-use crate::sys::DenoLibSys;
+use crate::sys::EndeLibSys;
 use crate::util::checksum;
 
 pub struct CreateModuleLoaderResult {
@@ -159,7 +159,7 @@ fn get_cache_storage_dir_for_key(
 /// Instead probe for the total memory on the system and use it instead
 /// as a default. In case the platform is Linux and `ENDE_USE_CGROUPS` is set,
 /// parse cgroup config to get the cgroup-constrained memory limit.
-pub fn create_isolate_create_params<TSys: DenoLibSys>(
+pub fn create_isolate_create_params<TSys: EndeLibSys>(
   #[allow(
     unused_variables,
     reason = "used only in Linux to get cgroup-constrained memory limit"
@@ -189,7 +189,7 @@ mod linux {
   use ende_runtime::ende_node::ops::process::cgroup::parse_self_cgroup;
 
   /// Get memory limit with cgroup (either v1 or v2) taken into account.
-  pub(super) fn get_memory_limit<TSys: crate::sys::DenoLibSys>(
+  pub(super) fn get_memory_limit<TSys: crate::sys::EndeLibSys>(
     sys: &TSys,
   ) -> Option<u64> {
     let system_total_memory = ende_runtime::ende_os::sys_info::mem_info()
@@ -308,12 +308,12 @@ pub struct LibWorkerFactoryRoots {
   pub shared_array_buffer_store: SharedArrayBufferStore,
 }
 
-struct LibWorkerFactorySharedState<TSys: DenoLibSys> {
+struct LibWorkerFactorySharedState<TSys: EndeLibSys> {
   blob_store: Arc<dyn BlobStoreTrait>,
   broadcast_channel: InMemoryBroadcastChannel,
   code_cache: Option<Arc<dyn ende_runtime::code_cache::CodeCache>>,
   compiled_wasm_module_store: CompiledWasmModuleStore,
-  deno_rt_native_addon_loader: Option<DenoRtNativeAddonLoaderRc>,
+  ende_rt_native_addon_loader: Option<EndeRtNativeAddonLoaderRc>,
   feature_checker: Arc<FeatureChecker>,
   fs: Arc<dyn ende_fs::FileSystem>,
   maybe_coverage_dir: Option<PathBuf>,
@@ -332,7 +332,7 @@ struct LibWorkerFactorySharedState<TSys: DenoLibSys> {
   bundle_provider: Option<Arc<dyn BundleProvider>>,
 }
 
-impl<TSys: DenoLibSys> LibWorkerFactorySharedState<TSys> {
+impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
   fn resolve_unstable_features(
     &self,
     feature_checker: &FeatureChecker,
@@ -397,7 +397,7 @@ impl<TSys: DenoLibSys> LibWorkerFactorySharedState<TSys> {
         shared.resolve_unstable_features(feature_checker.as_ref());
 
       let services = WebWorkerServiceOptions {
-        deno_rt_native_addon_loader: shared.deno_rt_native_addon_loader.clone(),
+        ende_rt_native_addon_loader: shared.ende_rt_native_addon_loader.clone(),
         root_cert_store_provider: Some(shared.root_cert_store_provider.clone()),
         module_loader,
         fs: shared.fs.clone(),
@@ -474,7 +474,7 @@ impl<TSys: DenoLibSys> LibWorkerFactorySharedState<TSys> {
         main_module: args.main_module.clone(),
         worker_id: args.worker_id,
         bootstrap: BootstrapOptions {
-          deno_version: crate::version::DENO_VERSION_INFO.deno.to_string(),
+          ende_version: crate::version::ENDE_VERSION_INFO.ende.to_string(),
           args: shared.options.argv.clone(),
           cpu_count: std::thread::available_parallelism()
             .map(|p| p.get())
@@ -485,7 +485,7 @@ impl<TSys: DenoLibSys> LibWorkerFactorySharedState<TSys> {
           location: Some(args.main_module),
           color_level: colors::get_color_level(),
           unstable_features,
-          user_agent: crate::version::DENO_VERSION_INFO.user_agent.to_string(),
+          user_agent: crate::version::ENDE_VERSION_INFO.user_agent.to_string(),
           inspect: shared.options.is_inspecting,
           is_standalone: shared.options.is_standalone,
           auto_serve: shared.options.auto_serve,
@@ -577,16 +577,16 @@ impl<TSys: DenoLibSys> LibWorkerFactorySharedState<TSys> {
   }
 }
 
-pub struct LibMainWorkerFactory<TSys: DenoLibSys> {
+pub struct LibMainWorkerFactory<TSys: EndeLibSys> {
   shared: Arc<LibWorkerFactorySharedState<TSys>>,
 }
 
-impl<TSys: DenoLibSys> LibMainWorkerFactory<TSys> {
+impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
   #[allow(clippy::too_many_arguments, reason = "construction")]
   pub fn new(
     blob_store: Arc<dyn BlobStoreTrait>,
     code_cache: Option<Arc<dyn ende_runtime::code_cache::CodeCache>>,
-    deno_rt_native_addon_loader: Option<DenoRtNativeAddonLoaderRc>,
+    ende_rt_native_addon_loader: Option<EndeRtNativeAddonLoaderRc>,
     feature_checker: Arc<FeatureChecker>,
     fs: Arc<dyn ende_fs::FileSystem>,
     maybe_coverage_dir: Option<PathBuf>,
@@ -610,7 +610,7 @@ impl<TSys: DenoLibSys> LibMainWorkerFactory<TSys> {
         broadcast_channel: Default::default(),
         code_cache,
         compiled_wasm_module_store: roots.compiled_wasm_module_store,
-        deno_rt_native_addon_loader,
+        ende_rt_native_addon_loader,
         feature_checker,
         fs,
         maybe_coverage_dir,
@@ -697,7 +697,7 @@ impl<TSys: DenoLibSys> LibMainWorkerFactory<TSys> {
     });
 
     let services = WorkerServiceOptions {
-      deno_rt_native_addon_loader: shared.deno_rt_native_addon_loader.clone(),
+      ende_rt_native_addon_loader: shared.ende_rt_native_addon_loader.clone(),
       root_cert_store_provider: Some(shared.root_cert_store_provider.clone()),
       module_loader,
       fs: shared.fs.clone(),
@@ -724,7 +724,7 @@ impl<TSys: DenoLibSys> LibMainWorkerFactory<TSys> {
 
     let options = WorkerOptions {
       bootstrap: BootstrapOptions {
-        deno_version: crate::version::DENO_VERSION_INFO.deno.to_string(),
+        ende_version: crate::version::ENDE_VERSION_INFO.ende.to_string(),
         args: shared.options.argv.clone(),
         cpu_count: std::thread::available_parallelism()
           .map(|p| p.get())
@@ -735,7 +735,7 @@ impl<TSys: DenoLibSys> LibMainWorkerFactory<TSys> {
         location: shared.options.location.clone(),
         color_level: colors::get_color_level(),
         unstable_features,
-        user_agent: crate::version::DENO_VERSION_INFO.user_agent.to_string(),
+        user_agent: crate::version::ENDE_VERSION_INFO.user_agent.to_string(),
         inspect: shared.options.is_inspecting,
         is_standalone: shared.options.is_standalone,
         auto_serve: shared.options.auto_serve,

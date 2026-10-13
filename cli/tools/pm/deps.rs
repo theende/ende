@@ -17,8 +17,8 @@ use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
 use deno_semver::package::PackageReqReference;
-use ende_config::deno_json::ConfigFile;
-use ende_config::deno_json::ConfigFileRc;
+use ende_config::ende_json::ConfigFile;
+use ende_config::ende_json::ConfigFileRc;
 use ende_config::workspace::Workspace;
 use ende_config::workspace::WorkspaceDirectory;
 use ende_core::anyhow::Context;
@@ -62,7 +62,7 @@ pub enum ImportMapKind {
 
 #[derive(Clone)]
 pub enum DepLocation {
-  DenoJson(ConfigFileRc, KeyPath, ImportMapKind),
+  EndeJson(ConfigFileRc, KeyPath, ImportMapKind),
   PackageJson(PackageJsonRc, KeyPath),
   /// A `catalog`/`catalogs` entry defined in the workspace root config
   /// (deno.json or package.json). Unlike the other locations the value is a
@@ -78,13 +78,13 @@ pub enum DepLocation {
 }
 
 impl DepLocation {
-  pub fn is_deno_json(&self) -> bool {
-    matches!(self, DepLocation::DenoJson(..))
+  pub fn is_ende_json(&self) -> bool {
+    matches!(self, DepLocation::EndeJson(..))
   }
 
   pub fn file_path(&self) -> Cow<'_, std::path::Path> {
     match self {
-      DepLocation::DenoJson(arc, _, kind) => match kind {
+      DepLocation::EndeJson(arc, _, kind) => match kind {
         ImportMapKind::Inline => {
           Cow::Owned(arc.specifier.to_file_path().unwrap())
         }
@@ -96,7 +96,7 @@ impl DepLocation {
   }
   fn config_kind(&self) -> super::ConfigKind {
     match self {
-      DepLocation::DenoJson(_, _, _) => super::ConfigKind::DenoJson,
+      DepLocation::EndeJson(_, _, _) => super::ConfigKind::EndeJson,
       DepLocation::PackageJson(_, _) => super::ConfigKind::PackageJson,
       DepLocation::Catalog { kind, .. } => *kind,
     }
@@ -123,8 +123,8 @@ impl std::fmt::Debug for DebugAdapter<&PackageJsonRc> {
 impl std::fmt::Debug for DepLocation {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      DepLocation::DenoJson(arc, key_path, kind) => {
-        let mut debug = f.debug_tuple("DenoJson");
+      DepLocation::EndeJson(arc, key_path, kind) => {
+        let mut debug = f.debug_tuple("EndeJson");
         debug
           .field(&DebugAdapter(arc))
           .field(key_path)
@@ -238,7 +238,7 @@ impl Dep {
       DepLocation::PackageJson(_, key_path) => {
         matches!(key_path.parts.first(), Some(KeyPart::DevDependencies))
       }
-      DepLocation::DenoJson(..) | DepLocation::Catalog { .. } => false,
+      DepLocation::EndeJson(..) | DepLocation::Catalog { .. } => false,
     }
   }
 }
@@ -273,36 +273,36 @@ fn import_map_entries(
 }
 
 fn to_import_map_value_from_imports(
-  deno_json: &ConfigFile,
+  ende_json: &ConfigFile,
 ) -> serde_json::Value {
   let mut value = serde_json::Map::with_capacity(2);
-  if let Some(imports) = &deno_json.json.imports {
+  if let Some(imports) = &ende_json.json.imports {
     value.insert("imports".to_string(), imports.clone());
   }
-  if let Some(scopes) = &deno_json.json.scopes {
+  if let Some(scopes) = &ende_json.json.scopes {
     value.insert("scopes".to_string(), scopes.clone());
   }
   serde_json::Value::Object(value)
 }
 
-fn deno_json_import_map(
-  deno_json: &ConfigFile,
+fn ende_json_import_map(
+  ende_json: &ConfigFile,
 ) -> Result<Option<(ImportMapWithDiagnostics, ImportMapKind)>, AnyError> {
-  let (value, kind) = if deno_json.json.imports.is_some()
-    || deno_json.json.scopes.is_some()
+  let (value, kind) = if ende_json.json.imports.is_some()
+    || ende_json.json.scopes.is_some()
   {
     (
-      to_import_map_value_from_imports(deno_json),
+      to_import_map_value_from_imports(ende_json),
       ImportMapKind::Inline,
     )
   } else {
-    match deno_json.to_import_map_path()? {
+    match ende_json.to_import_map_path()? {
       Some(path) => {
         let err_context = || {
           format!(
             "loading import map at '{}' (from \"importMap\" field in '{}')",
             path.display(),
-            deno_json.specifier
+            ende_json.specifier
           )
         };
         let text = std::fs::read_to_string(&path).with_context(err_context)?;
@@ -313,7 +313,7 @@ fn deno_json_import_map(
     }
   };
 
-  import_map::parse_from_value(deno_json.specifier.clone(), value)
+  import_map::parse_from_value(ende_json.specifier.clone(), value)
     .map_err(Into::into)
     .map(|import_map| Some((import_map, kind)))
 }
@@ -324,16 +324,16 @@ enum PackageJsonDepKind {
   Dev,
 }
 
-fn add_deps_from_deno_json(
-  deno_json: &Arc<ConfigFile>,
+fn add_deps_from_ende_json(
+  ende_json: &Arc<ConfigFile>,
   mut filter: impl DepFilter,
   deps: &mut Vec<Dep>,
 ) {
-  let (import_map, import_map_kind) = match deno_json_import_map(deno_json) {
+  let (import_map, import_map_kind) = match ende_json_import_map(ende_json) {
     Ok(Some((import_map, import_map_kind))) => (import_map, import_map_kind),
     Ok(None) => return,
     Err(e) => {
-      log::warn!("failed to parse imports from {}: {e}", &deno_json.specifier);
+      log::warn!("failed to parse imports from {}: {e}", &ende_json.specifier);
       return;
     }
   };
@@ -358,8 +358,8 @@ fn add_deps_from_deno_json(
     }
     let id = DepId(deps.len());
     deps.push(Dep {
-      location: DepLocation::DenoJson(
-        deno_json.clone(),
+      location: DepLocation::EndeJson(
+        ende_json.clone(),
         key_path,
         import_map_kind.clone(),
       ),
@@ -465,13 +465,13 @@ fn add_deps_from_catalogs(
       // package.json may declare catalogs nested under `workspaces`.
       true,
     )
-  } else if let Some(dj) = workspace.root_deno_json() {
+  } else if let Some(dj) = workspace.root_ende_json() {
     let Ok(path) = dj.specifier.to_file_path() else {
       return;
     };
     (
       path,
-      super::ConfigKind::DenoJson,
+      super::ConfigKind::EndeJson,
       dj.catalog(),
       dj.catalogs(),
       false,
@@ -559,8 +559,8 @@ fn deps_from_workspace(
   dep_filter: impl DepFilter,
 ) -> Result<Vec<Dep>, AnyError> {
   let mut deps = Vec::with_capacity(256);
-  for deno_json in workspace.deno_jsons() {
-    add_deps_from_deno_json(deno_json, dep_filter, &mut deps);
+  for ende_json in workspace.ende_jsons() {
+    add_deps_from_ende_json(ende_json, dep_filter, &mut deps);
   }
   for package_json in workspace.package_jsons() {
     add_deps_from_package_json(package_json, dep_filter, &mut deps);
@@ -690,13 +690,13 @@ impl DepManager {
     args: DepManagerArgs,
   ) -> Result<Self, AnyError> {
     let mut deps = Vec::with_capacity(256);
-    if let Some(deno_json) = workspace_dir.member_deno_json() {
-      if deno_json.specifier.scheme() != "file" {
+    if let Some(ende_json) = workspace_dir.member_ende_json() {
+      if ende_json.specifier.scheme() != "file" {
         bail!("remote ende.json files are not supported");
       }
-      let path = deno_json.specifier.to_file_path().unwrap();
+      let path = ende_json.specifier.to_file_path().unwrap();
       if path.parent().unwrap() == workspace_dir.dir_path() {
-        add_deps_from_deno_json(deno_json, dep_filter, &mut deps);
+        add_deps_from_ende_json(ende_json, dep_filter, &mut deps);
       }
     }
     if let Some(package_json) = workspace_dir.member_pkg_json() {
@@ -756,7 +756,7 @@ impl DepManager {
     let mut roots = Vec::new();
     let mut info_futures = FuturesUnordered::new();
     for dep in &self.deps {
-      if dep.location.is_deno_json() {
+      if dep.location.is_ende_json() {
         match dep.kind {
           DepKind::Npm => roots.push(
             ModuleSpecifier::parse(&format!("npm:/{}/", dep.req)).unwrap(),
@@ -828,7 +828,7 @@ impl DepManager {
         &roots,
         crate::module_loader::PrepareModuleLoadOptions {
           is_dynamic: false,
-          lib: ende_config::workspace::TsTypeLib::DenoWindow,
+          lib: ende_config::workspace::TsTypeLib::EndeWindow,
           permissions: self.permissions_container.clone(),
           file_permission_api_name: None,
           ext_overwrite: None,
@@ -1094,7 +1094,7 @@ impl DepManager {
           let dep = &mut self.deps[dep_id.0];
           dep.req.version_req = version_req.clone();
           match &dep.location {
-            DepLocation::DenoJson(arc, key_path, _) => {
+            DepLocation::EndeJson(arc, key_path, _) => {
               let updater =
                 get_or_create_updater(&mut config_updaters, &dep.location)?;
 

@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use deno_graph::packages::JsrPackageInfo;
 use deno_path_util::ResolveUrlOrPathError;
-use ende_config::deno_json::NewestDependencyDate;
-use ende_config::deno_json::NodeModulesDirMode;
+use ende_config::ende_json::NewestDependencyDate;
+use ende_config::ende_json::NodeModulesDirMode;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
 use ende_core::url::Url;

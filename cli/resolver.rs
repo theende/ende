@@ -16,7 +16,7 @@ pub type CliNpmReqResolver<TSys = CliSys> = ende_resolver::npm::NpmReqResolver<
   CliNpmResolver<TSys>,
   TSys,
 >;
-pub type CliResolver = ende_resolver::graph::DenoResolver<
+pub type CliResolver = ende_resolver::graph::EndeResolver<
   DenoInNpmPackageChecker,
   DenoIsBuiltInNodeModuleChecker,
   CliNpmResolver,
