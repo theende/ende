@@ -1,12 +1,12 @@
 # Architecture overview
 
-Deno is built as a stack of layers. Each layer depends only on the ones below
+Ende is built as a stack of layers. Each layer depends only on the ones below
 it, which keeps the system testable and lets the lower layers be reused outside
-of the `deno` binary. From the top down:
+of the `ende` binary. From the top down:
 
 ```
 +-----------------------------------------------------------+
-|  cli/            the `deno` binary: subcommands, tooling   |
+|  cli/            the `ende` binary: subcommands, tooling   |
 +-----------------------------------------------------------+
 |  runtime/        ende_runtime: assembles the JS runtime    |
 +-----------------------------------------------------------+
@@ -20,7 +20,7 @@ of the `deno` binary. From the top down:
 
 ## The CLI layer (`cli/`)
 
-The `deno` crate in `cli/` is everything a user touches directly. It owns flag
+The `ende` crate in `cli/` is everything a user touches directly. It owns flag
 parsing, the subcommands (`run`, `test`, `fmt`, `lint`, `compile`, `bundle`,
 `install`, `publish`, and so on), package-management tooling, the LSP, and the
 module loader that ties module resolution to the runtime.
@@ -43,7 +43,7 @@ into it.
 
 The `ende_runtime` crate assembles a working JavaScript runtime out of
 `ende_core` plus a curated set of extensions. It is the piece embedders use when
-they want "Deno the runtime" without "Deno the CLI".
+they want "Ende the runtime" without "Ende the CLI".
 
 Key files:
 
@@ -65,7 +65,7 @@ lives. Examples:
   `ext/webidl`, `ext/websocket`, `ext/webgpu`, `ext/canvas`.
 - System access: `ext/fs`, `ext/net`, `ext/io`, `ext/os`, `ext/process`,
   `ext/signals`, `ext/tls`.
-- Deno-specific: `ext/kv`, `ext/cron`, `ext/cache`, `ext/ffi`, `ext/napi`,
+- Ende-specific: `ext/kv`, `ext/cron`, `ext/cache`, `ext/ffi`, `ext/napi`,
   `ext/bundle`.
 - Node compatibility: `ext/node` (the bulk of the `node:*` builtins, both Rust
   ops and JavaScript polyfills), plus `ext/node_crypto` and `ext/node_sqlite`.
@@ -75,7 +75,7 @@ The typical shape of an extension is:
 1. Rust `#[op2]` functions that do the privileged work and take a permission
    check where needed.
 2. A `00_*.js` / `01_*.js` set of JavaScript modules that build the public API
-   and call the ops through `Deno.core.ops`.
+   and call the ops through `Ende.core.ops`.
 3. Registration of the extension in `runtime/worker.rs` (and the CLI's snapshot)
    so it is part of the assembled runtime.
 

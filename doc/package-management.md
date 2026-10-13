@@ -1,9 +1,9 @@
-# Package management: `deno add` / `deno install`
+# Package management: `ende add` / `ende install`
 
-This is the map for how Deno adds dependencies to a project: how the CLI flags
+This is the map for how Ende adds dependencies to a project: how the CLI flags
 are parsed, how the configuration file is rewritten, and how packages are
 actually installed into `node_modules` and the lockfile. Read this before
-touching `deno add`, `deno install <pkg>`, or the flags that control where a
+touching `ende add`, `ende install <pkg>`, or the flags that control where a
 dependency is written (`--dev`, `--save-optional`, `--no-save`, `--save-exact`,
 `--package-json`).
 
@@ -41,16 +41,16 @@ requested package to a concrete version
 (`find_package_and_select_version_for_req`) and then decides which config file
 to touch.
 
-Two config files can be in play: `deno.json` (writes to `imports`) and
+Two config files can be in play: `ende.json` (writes to `imports`) and
 `package.json` (writes to a dependency section). `load_configs()` discovers
-them, and — importantly — will _create_ one if none exists, because Deno needs a
+them, and — importantly — will _create_ one if none exists, because Ende needs a
 config to manage `node_modules`. `prefer_npm_config` / `--package-json` /
 `preferPackageJson` decide which one an npm package lands in when both exist.
 
 The actual rewrite is `ConfigUpdater::add(selected, kind)`. `kind` is a
 `DependencyKind` enum (`Normal` / `Dev` / `Optional`):
 
-- `deno.json`: `kind` is ignored — everything goes under `imports`.
+- `ende.json`: `kind` is ignored — everything goes under `imports`.
 - `package.json`: `kind` selects the section (`dependencies`, `devDependencies`,
   `optionalDependencies`). `add()` also removes the package from the other two
   sections so it is never declared twice, and `new_dependency_section_index()`
@@ -68,7 +68,7 @@ up the edited config from disk) and calls `cache_deps::cache_top_level_deps()`.
 `cache_top_level_deps()` (in `cli/tools/pm/cache_deps.rs`) is the shared install
 routine used by `add`, `remove`, `install`, `outdated`, `audit`, `x`, etc. Its
 model is: derive the set of graph roots from the project's **import map**
-(deno.json imports) and its **package.json dependencies**, build the module
+(ende.json imports) and its **package.json dependencies**, build the module
 graph with npm resolution, then `cache_packages()` materializes everything into
 `node_modules`.
 
@@ -79,7 +79,7 @@ limitation of the external `ende_package_json` crate: `PackageJsonDeps` /
 `resolve_local_package_json_deps()` expose only those two maps — there is no
 `optional_dependencies` in the resolved deps used by the installer. So a package
 written to `optionalDependencies` will **not** be materialized by the normal
-install path, even on a plain `deno install`.
+install path, even on a plain `ende install`.
 
 To keep `--save-optional` at parity with `--save-dev` (which _does_ install on
 add), `add()` installs optional packages directly instead of relying on the
@@ -117,7 +117,7 @@ section now runs when there is either an import map _or_ additional roots, so
   result (not the download noise) uses `"output": "[WILDCARD]"` for the `add`
   step and asserts the file contents in a following `eval` step.
 - Parser unit tests: `add_or_install_subcommand` in both `cli/args/flags.rs`
-  (run via `cargo test -p deno --lib add_or_install`) and
+  (run via `cargo test -p ende --lib add_or_install`) and
   `libs/cli_parser/src/tests_full.rs`
   (`cargo test -p ende_cli_parser
   add_or_install`).

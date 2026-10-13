@@ -335,7 +335,7 @@ fn import_map_lookup_inner(
   None
 }
 
-/// Rewrites imports in quick fixes and code changes to be Deno specific.
+/// Rewrites imports in quick fixes and code changes to be Ende specific.
 pub struct TsResponseImportMapper<'a> {
   document_modules: &'a DocumentModules,
   scope: Option<Arc<ModuleSpecifier>>,
@@ -890,7 +890,7 @@ pub fn fix_ts_import_changes_for_file_rename(
 }
 
 /// Fix tsc import code actions so that the module specifier is correct for
-/// resolution by Deno (includes the extension).
+/// resolution by Ende (includes the extension).
 fn fix_ts_import_action<'a>(
   action: &'a tsc::CodeFixAction,
   module: &DocumentModule,
@@ -1020,11 +1020,11 @@ impl TsFixActionCollector {
     if fix_action.commands.is_some() {
       // In theory, tsc can return actions that require "commands" to be applied
       // back into TypeScript.  Currently there is only one command, `install
-      // package` but Deno doesn't support that.  The problem is that the
+      // package` but Ende doesn't support that.  The problem is that the
       // `.applyCodeActionCommand()` returns a promise, and with the current way
       // we wrap tsc, we can't handle the asynchronous response, so it is
       // actually easier to return errors if we ever encounter one of these,
-      // which we really wouldn't expect from the Deno lsp.
+      // which we really wouldn't expect from the Ende lsp.
       return Err(
         JsErrorBox::new(
           "UnsupportedFix",

@@ -24,8 +24,8 @@ pub struct CommandDef {
   pub passthrough: bool,
   /// If true, a `--` separator before the forwarded args is kept in the
   /// forwarded argv (clap's `.last(true)` / external-subcommand behavior, e.g.
-  /// `deno run x.ts -- -a` forwards `["--", "-a"]`). If false, the `--` is
-  /// stripped (clap's plain `trailing_var_arg`, e.g. `deno eval`/`serve`).
+  /// `ende run x.ts -- -a` forwards `["--", "-a"]`). If false, the `--` is
+  /// stripped (clap's plain `trailing_var_arg`, e.g. `ende eval`/`serve`).
   pub keep_double_dash: bool,
 }
 

@@ -5,7 +5,7 @@
 import { createSymcache } from "jsr:@deno/panic@0.1.0";
 import path from "node:path";
 
-// Generate symcache for the current Deno executable.
+// Generate symcache for the current Ende executable.
 
 let debugFile = Deno.execPath();
 
@@ -20,7 +20,7 @@ if (Deno.build.os === "windows") {
 
 const outfile = Deno.args[0];
 if (!outfile) {
-  console.error("Usage: ./target/release/deno -A create_symcache.ts <outfile>");
+  console.error("Usage: ./target/release/ende -A create_symcache.ts <outfile>");
   Deno.exit(1);
 }
 

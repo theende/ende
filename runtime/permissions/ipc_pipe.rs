@@ -16,7 +16,7 @@ type Inner = std::fs::File;
 impl IpcPipe {
   /// Connect to a local IPC endpoint.
   /// - Unix: `addr` like `/tmp/deno.sock`
-  /// - Windows: `addr` like `\\.\pipe\deno-permission-broker`
+  /// - Windows: `addr` like `\\.\pipe\ende-permission-broker`
   pub fn connect(addr: impl AsRef<OsStr>) -> io::Result<Self> {
     Self::connect_impl(addr.as_ref())
   }

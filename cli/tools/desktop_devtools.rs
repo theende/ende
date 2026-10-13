@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! CDP multiplexer for `deno desktop --inspect`.
+//! CDP multiplexer for `ende desktop --inspect`.
 //!
 //! Architecture:
 //!
@@ -14,24 +14,24 @@
 //!                 │   HTTP: /devtools/* (frontend proxy)     │
 //!                 └──────┬─────────────────────────┬─────────┘
 //!                        │                         │
-//!              Deno inspector                CEF renderer
+//!              Ende inspector                CEF renderer
 //!              (internal port)               (internal port)
 //! ```
 //!
 //! ## Unified session
 //!
 //! `/unified` is the primary session. CEF is the default (un-sessioned)
-//! target; the Deno runtime appears as an attached child via a
+//! target; the Ende runtime appears as an attached child via a
 //! synthetic `Target.attachedToTarget` event with a stable `sessionId`
 //! the mux invents. Frame routing:
 //!
 //! - Client → mux frames with `sessionId == ende_session_id` have the
-//!   field stripped and are forwarded to Deno.
-//! - Deno → client frames get the `sessionId` re-injected.
-//! - `Target.attachToTarget`/`detachFromTarget` for the Deno child are
+//!   field stripped and are forwarded to Ende.
+//! - Ende → client frames get the `sessionId` re-injected.
+//! - `Target.attachToTarget`/`detachFromTarget` for the Ende child are
 //!   answered locally — CEF never learns of the synthetic session.
 //! - `Runtime.executionContextCreated` gets its `context.name`
-//!   rewritten ("Renderer" on the CEF leg, "Deno" on the Deno leg) so
+//!   rewritten ("Renderer" on the CEF leg, "Ende" on the Ende leg) so
 //!   the Console dropdown shows meaningful labels instead of V8's
 //!   defaults.
 //! - The synthetic `Target.attachedToTarget` event is emitted lazily,
@@ -40,7 +40,7 @@
 //!   not-yet-ready auto-attach manager.
 //!
 //! DevTools sees both isolates in one window: the Console dropdown
-//! shows "Renderer" / "Deno", and the Sources panel Threads sidebar
+//! shows "Renderer" / "Ende", and the Sources panel Threads sidebar
 //! lists both.
 //!
 //! ## `--inspect-brk` / `--inspect-wait`
@@ -51,7 +51,7 @@
 //! `Debugger.enable` + `Debugger.pause` injection against CEF has
 //! acked both responses. This guarantees the renderer pauses on the
 //! first JS statement of the loaded page instead of racing past it.
-//! Deno's own `--inspect-brk` handles the Deno isolate separately.
+//! Ende's own `--inspect-brk` handles the Ende isolate separately.
 //!
 //! ## Direct / frontend endpoints
 //!
@@ -100,7 +100,7 @@ use uuid::Uuid;
 pub struct MuxConfig {
   /// User-visible listen address (from `--inspect`).
   pub listen: SocketAddr,
-  /// Internal listen address for Deno's native inspector.
+  /// Internal listen address for Ende's native inspector.
   pub ende_internal: SocketAddr,
   /// Internal listen address for the CEF renderer debug port.
   pub cef_internal: SocketAddr,
@@ -192,9 +192,9 @@ pub async fn spawn_mux(config: MuxConfig) -> Result<MuxHandle, AnyError> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum TargetKind {
   /// Single CDP session fronting both isolates. CEF is the primary;
-  /// Deno appears as an attached child target via `Target.*`.
+  /// Ende appears as an attached child target via `Target.*`.
   Unified,
-  /// Direct passthrough to the Deno inspector.
+  /// Direct passthrough to the Ende inspector.
   Ende,
   /// Direct passthrough to the CEF renderer's debug port.
   Cef,
@@ -218,9 +218,9 @@ impl TargetKind {
   }
 }
 
-/// Synthetic CDP target id for the Deno isolate inside the unified
+/// Synthetic CDP target id for the Ende isolate inside the unified
 /// session. Stable per process; DevTools uses it in `Target.attachToTarget`.
-const ENDE_CHILD_TARGET_ID: &str = "deno-runtime-isolate";
+const ENDE_CHILD_TARGET_ID: &str = "ende-runtime-isolate";
 
 struct MuxState {
   config: MuxConfig,
@@ -230,7 +230,7 @@ struct MuxState {
   unified_id: Uuid,
   ende_id: Uuid,
   cef_id: Uuid,
-  // Stable session id we hand DevTools when it attaches to the Deno
+  // Stable session id we hand DevTools when it attaches to the Ende
   // child target inside the unified session.
   ende_session_id: String,
   // Set to `true` when a DevTools client has connected to any session.
@@ -522,7 +522,7 @@ fn json_list(
     "type": "node",
     "title": TargetKind::Ende.title(),
     "description": "Ende runtime V8 isolate (direct)",
-    "url": format!("deno://{}", state.config.ende_internal),
+    "url": format!("ende://{}", state.config.ende_internal),
     "faviconUrl": "https://deno.land/favicon.ico",
     "devtoolsFrontendUrl": format!(
       "devtools://devtools/bundled/js_app.html?ws={}&experiments=true&v8only=true",
@@ -617,7 +617,7 @@ fn handle_upgrade(
         }
       }
       TargetKind::Ende => {
-        // Deno has its own `--inspect-brk` mechanism that blocks the
+        // Ende has its own `--inspect-brk` mechanism that blocks the
         // isolate until a client attaches — nothing to inject here.
         mark_debugger_attached(&state);
         match connect_upstream(&state, kind).await {
@@ -662,7 +662,7 @@ fn handle_upgrade(
 
 /// Open a WebSocket to the right upstream target, performing target
 /// discovery as needed. For CEF we hit `/json/list` to find the live
-/// `webSocketDebuggerUrl`; for Deno we call the inspector server's
+/// `webSocketDebuggerUrl`; for Ende we call the inspector server's
 /// same endpoint. The upstream is retried briefly since the renderer
 /// may not have finished booting.
 async fn connect_upstream(
@@ -698,7 +698,7 @@ async fn connect_upstream(
 }
 
 /// GET `http://<host>/json/list` and pick the first entry's
-/// `webSocketDebuggerUrl`. Both Deno's inspector server and CEF's
+/// `webSocketDebuggerUrl`. Both Ende's inspector server and CEF's
 /// remote-debugging endpoint implement this.
 async fn fetch_upstream_ws_url(host: SocketAddr) -> Result<String, AnyError> {
   let stream = TcpStream::connect(host).await?;
@@ -872,10 +872,10 @@ async fn proxy_frames(
 // ─── Unified session (v2) ──────────────────────────────────────────
 //
 // One DevTools window, two isolates. CEF is the primary session;
-// Deno appears as an "attached" child target via the standard
+// Ende appears as an "attached" child target via the standard
 // `Target.attachedToTarget` event with a synthetic `sessionId`.
 // Frames flow through CDP-aware routers that strip/inject `sessionId`
-// on the Deno leg and pass everything else through to CEF.
+// on the Ende leg and pass everything else through to CEF.
 
 /// Owned representation of a WebSocket frame, suitable for sending
 /// through an mpsc channel. `fastwebsockets::Frame` borrows from the
@@ -1017,7 +1017,7 @@ async fn run_unified_session(
   let (cef_send, mut cef_recv) = mpsc::unbounded_channel::<OwnedFrame>();
   let (ende_send, mut ende_recv) = mpsc::unbounded_channel::<OwnedFrame>();
 
-  // Deno is announced lazily, the first time DevTools asks about
+  // Ende is announced lazily, the first time DevTools asks about
   // targets — firing too early causes the event to be dropped before
   // the frontend's auto-attach manager has subscribed. See
   // `route_client_text` for the trigger.
@@ -1052,7 +1052,7 @@ async fn run_unified_session(
     while let Some(owned) = ende_recv.recv().await {
       let close = owned.opcode == OpCode::Close;
       if let Err(err) = ende_tx.write_frame(owned.into_frame()).await {
-        log::debug!("[devtools-mux] unified deno write: {err:?}");
+        log::debug!("[devtools-mux] unified ende write: {err:?}");
         return;
       }
       if close {
@@ -1061,7 +1061,7 @@ async fn run_unified_session(
     }
   });
 
-  // Reader: client → CEF/Deno (with CDP-aware routing).
+  // Reader: client → CEF/Ende (with CDP-aware routing).
   let mut client_reader = {
     let client_send = client_send.clone();
     let cef_send = cef_send.clone();
@@ -1141,9 +1141,9 @@ async fn run_unified_session(
     })
   };
 
-  // Reader: Deno → client. Inject sessionId so DevTools routes frames
+  // Reader: Ende → client. Inject sessionId so DevTools routes frames
   // to the synthetic child target, and relabel the execution context
-  // to "Deno" instead of V8's "main realm".
+  // to "Ende" instead of V8's "main realm".
   let mut ende_reader = {
     let client_send = client_send.clone();
     let session_id = session_id.clone();
@@ -1153,7 +1153,7 @@ async fn run_unified_session(
         let frame = match ende_rx.read_frame(&mut noop).await {
           Ok(f) => f,
           Err(err) => {
-            log::debug!("[devtools-mux] unified deno read: {err:?}");
+            log::debug!("[devtools-mux] unified ende read: {err:?}");
             return;
           }
         };
@@ -1199,16 +1199,16 @@ async fn run_unified_session(
 
 /// CDP-aware routing for a text frame coming from the DevTools client.
 ///
-/// - `sessionId == ende_session_id` → strip and send to Deno.
+/// - `sessionId == ende_session_id` → strip and send to Ende.
 /// - `Target.setAutoAttach` / `Target.setDiscoverTargets(true)` →
 ///   forward to CEF AND lazily emit our synthetic
-///   `Target.attachedToTarget` for Deno (once). We piggyback on these
+///   `Target.attachedToTarget` for Ende (once). We piggyback on these
 ///   calls because they are the frontend's signal that it's ready to
 ///   process target events; firing earlier causes the event to be
 ///   silently dropped.
-/// - `Target.attachToTarget(deno-id)` → reply locally with the
+/// - `Target.attachToTarget(ende-id)` → reply locally with the
 ///   synthetic sessionId; never reaches CEF (which doesn't know it).
-/// - `Target.detachFromTarget(deno-session)` → reply locally and
+/// - `Target.detachFromTarget(ende-session)` → reply locally and
 ///   synthesize the corresponding `Target.detachedFromTarget` event.
 /// - everything else → forward to CEF.
 fn route_client_text(
@@ -1243,7 +1243,7 @@ fn route_client_text(
     .and_then(|v| v.as_str())
     .map(str::to_owned);
 
-  // The frontend is now listening for target events — announce Deno.
+  // The frontend is now listening for target events — announce Ende.
   if matches!(
     method.as_deref(),
     Some("Target.setAutoAttach") | Some("Target.setDiscoverTargets")
@@ -1303,7 +1303,7 @@ fn route_client_text(
 /// DevTools client:
 ///
 /// - Optionally inject `sessionId = session_id` so DevTools attributes
-///   the frame to the synthetic Deno child target.
+///   the frame to the synthetic Ende child target.
 /// - Rename `Runtime.executionContextCreated.params.context.name` to
 ///   `context_name` so the Console "execution context" dropdown shows
 ///   a meaningful label instead of V8's defaults (`"top"`, `"main
@@ -1337,13 +1337,13 @@ fn rewrite_text_from_upstream(
   serde_json::to_vec(&value).unwrap_or_else(|_| payload.to_vec())
 }
 
-/// Build a `Target.attachedToTarget` event advertising the Deno
+/// Build a `Target.attachedToTarget` event advertising the Ende
 /// runtime isolate as a child of the unified session.
 fn attached_to_target_event(session_id: &str) -> Value {
   // `inspector.html` only renders attached child targets in the Sources
   // panel "Threads" sidebar when their type matches a known
   // worker-style kind (`worker`, `shared_worker`, `service_worker`).
-  // We pick `worker` so the Deno runtime isolate shows up alongside
+  // We pick `worker` so the Ende runtime isolate shows up alongside
   // the CEF renderer's main thread.
   json!({
     "method": "Target.attachedToTarget",
@@ -1353,7 +1353,7 @@ fn attached_to_target_event(session_id: &str) -> Value {
         "targetId": ENDE_CHILD_TARGET_ID,
         "type": "worker",
         "title": "Ende Runtime",
-        "url": "deno://runtime",
+        "url": "ende://runtime",
         "attached": true,
         "canAccessOpener": false,
       },
@@ -1466,8 +1466,8 @@ mod tests {
       &payload, session_id, &client_tx, &cef_tx, &ende_tx, &announced,
     );
 
-    // Should arrive at Deno with sessionId stripped.
-    let frame = ende_rx.try_recv().expect("expected frame on deno channel");
+    // Should arrive at Ende with sessionId stripped.
+    let frame = ende_rx.try_recv().expect("expected frame on ende channel");
     let value: Value = serde_json::from_slice(&frame.payload).unwrap();
     assert_eq!(value.get("id").unwrap(), 1);
     assert_eq!(value.get("method").unwrap(), "Debugger.enable");
@@ -1596,7 +1596,7 @@ mod tests {
   fn route_client_text_attach_to_cef_target_forwards_to_cef() {
     // `Target.attachToTarget` for any target ID that isn't ours (e.g.
     // a real CEF subframe or worker) must pass through — only the
-    // synthetic Deno target is answered locally.
+    // synthetic Ende target is answered locally.
     let (client_tx, mut client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, mut cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (ende_tx, _ende_rx) = mpsc::unbounded_channel::<OwnedFrame>();
@@ -1716,7 +1716,7 @@ mod tests {
         .ends_with("/unified")
     );
 
-    // Deno direct target.
+    // Ende direct target.
     assert_eq!(list[1]["type"], "node");
     assert_eq!(list[1]["title"], "Ende Runtime");
     assert!(
@@ -1757,7 +1757,7 @@ mod tests {
       assert!(entry["faviconUrl"].is_string());
     }
 
-    // Deno direct entry uses `js_app.html` (DevTools' node variant)
+    // Ende direct entry uses `js_app.html` (DevTools' node variant)
     // while CEF and unified use the full `inspector.html`.
     assert!(
       list[1]["devtoolsFrontendUrl"]
@@ -1847,13 +1847,13 @@ mod tests {
     assert_eq!(event_val["params"]["targetId"], ENDE_CHILD_TARGET_ID);
 
     // Must NOT be forwarded to CEF — CEF has no knowledge of our
-    // synthetic Deno session.
+    // synthetic Ende session.
     assert!(cef_rx.try_recv().is_err());
   }
 
   #[test]
   fn route_client_text_detach_from_unknown_session_forwards_to_cef() {
-    // A detach for a session CEF owns (not our synthetic Deno one)
+    // A detach for a session CEF owns (not our synthetic Ende one)
     // must flow through to CEF unchanged.
     let (client_tx, mut client_rx) = mpsc::unbounded_channel::<OwnedFrame>();
     let (cef_tx, mut cef_rx) = mpsc::unbounded_channel::<OwnedFrame>();
@@ -2336,7 +2336,7 @@ mod tests {
     assert_eq!(from_cef["params"]["context"]["name"], "Renderer");
     assert!(from_cef["sessionId"].is_null());
 
-    // 4) Upstream Deno emits the same. Mux rewrites to "Deno" AND
+    // 4) The Ende isolate emits the same. Mux rewrites to "Ende" AND
     //    injects the synthetic sessionId.
     ende
       .to_mux

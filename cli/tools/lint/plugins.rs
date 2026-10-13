@@ -156,9 +156,9 @@ async fn create_plugin_runner_inner(
       // TODO(bartlomieju): add "lint" execution mode
       WorkerExecutionMode::Run,
       main_module.clone(),
-      // `deno lint` doesn't support preloading modules
+      // `ende lint` doesn't support preloading modules
       vec![],
-      // `deno lint` doesn't support require modules
+      // `ende lint` doesn't support require modules
       vec![],
       permissions,
       vec![crate::ops::lint::ende_lint_ext::init(logger.clone())],
@@ -170,7 +170,7 @@ async fn create_plugin_runner_inner(
   let mut worker = worker.into_main_worker();
   let runtime = &mut worker.js_runtime;
 
-  let obj = runtime.execute_script("lint.js", "Deno[Deno.internal]")?;
+  let obj = runtime.execute_script("lint.js", "Ende[Ende.internal]")?;
 
   log::debug!("Lint plugins loaded, capturing default exports");
   let (install_plugins_fn, run_plugins_for_file_fn) = {

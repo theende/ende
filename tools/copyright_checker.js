@@ -70,9 +70,15 @@ export async function checkCopyright() {
     `Copyright 2018-${copyrightYear} the Deno authors. MIT license.`;
   const TOML_COPYRIGHT_LINE = "# " + COPYRIGHT_LINE;
   const C_STYLE_COPYRIGHT_LINE = "// " + COPYRIGHT_LINE;
+  // Files added since the fork carry an Ende header instead.
+  const ENDE_COPYRIGHT_LINE =
+    /^(\/\/|#) Copyright 20\d\d(-20\d\d)? the Ende authors\. MIT license\./;
 
   for (const file of sourceFilesSet) {
     const fileText = await readFirstPartOfFile(file);
+    if (ENDE_COPYRIGHT_LINE.test(fileText)) {
+      continue;
+    }
     if (file.endsWith("Cargo.toml")) {
       if (
         !fileText.startsWith(TOML_COPYRIGHT_LINE)
@@ -89,12 +95,14 @@ export async function checkCopyright() {
       // Attempt to trim acceptable lines
       while (
         ACCEPTABLE_LINES.test(trimmedText) &&
-        !trimmedText.startsWith(C_STYLE_COPYRIGHT_LINE)
+        !trimmedText.startsWith(C_STYLE_COPYRIGHT_LINE) &&
+        !ENDE_COPYRIGHT_LINE.test(trimmedText)
       ) {
         trimmedText = trimmedText.split("\n").slice(1).join("\n");
       }
       if (
-        !trimmedText.startsWith(C_STYLE_COPYRIGHT_LINE)
+        !trimmedText.startsWith(C_STYLE_COPYRIGHT_LINE) &&
+        !ENDE_COPYRIGHT_LINE.test(trimmedText)
       ) {
         errors.push(
           `${ERROR_MSG}${file} (incorrect line is '${

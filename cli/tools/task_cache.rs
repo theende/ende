@@ -1,8 +1,8 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! Input-based caching for `deno task`.
+//! Input-based caching for `ende task`.
 //!
-//! When a task declares `files`, Deno computes a fingerprint over the
+//! When a task declares `files`, Ende computes a fingerprint over the
 //! contents of those files, the command string (including any arguments
 //! appended on the CLI), the values of any environment variables listed in
 //! `env`, and the fingerprints of the task's dependencies. If a previous run
@@ -274,12 +274,12 @@ impl TaskCache {
     // Hash the identity (package + task name + cwd) so we don't have to worry
     // about path-unsafe characters and so workspace members with identical
     // task names don't collide. The directory name is deliberately *not*
-    // version-sensitive: a Deno upgrade should reuse (and overwrite) the same
+    // version-sensitive: an Ende upgrade should reuse (and overwrite) the same
     // entry, not orphan it under a new name and leak the old one. Version
     // sensitivity lives in the fingerprint contents instead, so an upgrade
     // simply produces a miss and the entry is rewritten in place.
     let mut hasher = Sha256::new();
-    hasher.update(b"deno-task-cache-identity-v1");
+    hasher.update(b"ende-task-cache-identity-v1");
     hasher.update(key.package_name.unwrap_or("").as_bytes());
     hasher.update([0]);
     hasher.update(key.task_name.as_bytes());
@@ -302,7 +302,7 @@ pub struct TaskCacheKey<'a> {
   pub task_name: &'a str,
   pub cwd: &'a Path,
   pub command: &'a str,
-  /// Arguments appended to the command on the CLI (`deno task build <argv>`).
+  /// Arguments appended to the command on the CLI (`ende task build <argv>`).
   /// These change what actually runs, so they must be part of the
   /// fingerprint.
   pub argv: &'a [String],
@@ -421,8 +421,8 @@ fn compute_static_hash(
   key: &TaskCacheKey<'_>,
   dep_fingerprints: &[String],
 ) -> String {
-  let mut hasher = FingerprintHasher::new("deno-task-cache-static-v1");
-  // Fold in the target OS, architecture, and Deno version: a task's output can
+  let mut hasher = FingerprintHasher::new("ende-task-cache-static-v1");
+  // Fold in the target OS, architecture, and Ende version: a task's output can
   // legitimately differ across platforms or releases even when its inputs are
   // byte-for-byte identical, so a cache shared across them (e.g. a synced
   // ENDE_DIR) must not hit across them.
@@ -473,7 +473,7 @@ fn compute_content_hash(
   key: &TaskCacheKey<'_>,
   inputs: &[InputFile],
 ) -> String {
-  let mut hasher = FingerprintHasher::new("deno-task-cache-content-v1");
+  let mut hasher = FingerprintHasher::new("ende-task-cache-content-v1");
   for input in inputs {
     let rel = input
       .abs_path
@@ -495,7 +495,7 @@ fn compute_content_hash(
 
 /// Combine the static and content hashes into the task's overall fingerprint.
 fn combine_fingerprint(static_hash: &str, content_hash: &str) -> String {
-  let mut hasher = FingerprintHasher::new("deno-task-cache-combined-v1");
+  let mut hasher = FingerprintHasher::new("ende-task-cache-combined-v1");
   hasher.write_str(static_hash);
   hasher.write_str(content_hash);
   hasher.finish_hex()

@@ -65,7 +65,7 @@ pub enum DepLocation {
   EndeJson(ConfigFileRc, KeyPath, ImportMapKind),
   PackageJson(PackageJsonRc, KeyPath),
   /// A `catalog`/`catalogs` entry defined in the workspace root config
-  /// (deno.json or package.json). Unlike the other locations the value is a
+  /// (ende.json or package.json). Unlike the other locations the value is a
   /// bare version requirement (e.g. `^1.0.0`) rather than a full specifier.
   /// `key_paths` lists candidate paths to the entry; the first one that
   /// resolves is updated (package.json may declare catalogs at the top level
@@ -230,7 +230,7 @@ impl Dep {
   }
 
   /// Whether this dependency is a development dependency. Only `package.json`
-  /// `devDependencies` are considered dev; `deno.json` imports and `catalog`
+  /// `devDependencies` are considered dev; `ende.json` imports and `catalog`
   /// entries have no such distinction and are always treated as regular
   /// dependencies.
   pub fn is_dev(&self) -> bool {
@@ -450,7 +450,7 @@ fn add_deps_from_catalogs(
   deps: &mut Vec<Dep>,
 ) {
   // Mirror `Workspace`'s own resolution: a root package.json catalog takes
-  // precedence over deno.json, and if it's present deno.json catalogs are
+  // precedence over ende.json, and if it's present ende.json catalogs are
   // ignored entirely.
   let pkg_json = workspace
     .root_pkg_json()
@@ -981,7 +981,7 @@ impl DepManager {
                 let lower_bound = &semver_compatible.as_ref()?.version;
                 // Only consider pre-release versions when the currently
                 // resolved version is itself a pre-release. Otherwise
-                // `deno outdated --latest` reports a pre-release (e.g.
+                // `ende outdated --latest` reports a pre-release (e.g.
                 // 2.0.3-alpha.0) as the latest version even though JSR
                 // designates the newest stable release as latest. This mirrors
                 // npm packages, which resolve latest from the `latest`
@@ -1202,7 +1202,7 @@ impl DepManager {
   /// writes the lockfile to disk. The next install will re-resolve the
   /// missing entries to the latest version that matches each dependency's
   /// existing version requirement, bumping the lockfile within ranges
-  /// without modifying `deno.json`/`package.json`.
+  /// without modifying `ende.json`/`package.json`.
   pub fn invalidate_lockfile_for_update(
     &self,
     dep_ids: impl IntoIterator<Item = DepId>,

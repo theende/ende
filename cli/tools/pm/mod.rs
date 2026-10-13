@@ -62,7 +62,7 @@ pub(crate) enum ConfigKind {
 }
 
 /// Which `package.json` section a dependency should be written to. Only
-/// meaningful for `package.json`; `deno.json` always uses `imports`.
+/// meaningful for `package.json`; `ende.json` always uses `imports`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum DependencyKind {
   Normal,
@@ -460,7 +460,7 @@ fn load_configs(
 
   // The `--package-json` flag or the `preferPackageJson` config setting both
   // force dependencies to be managed via package.json. `link`/`unlink` opt out
-  // of the config setting because the `"links"` field lives in deno.json.
+  // of the config setting because the `"links"` field lives in ende.json.
   let force_package_json = force_package_json
     || (honor_prefer_package_json && start_dir.workspace.prefer_package_json());
 
@@ -557,8 +557,8 @@ pub async fn add(
       true,
     )?;
 
-  if let Some(deno) = &ende_json_config
-    && deno.obj().get("importMap").is_some()
+  if let Some(ende_json) = &ende_json_config
+    && ende_json.obj().get("importMap").is_some()
   {
     bail!(
       concat!(
@@ -567,20 +567,20 @@ pub async fn add(
         "    at {}",
       ),
       cmd_name,
-      deno.display_path(),
+      ende_json.display_path(),
     );
   }
 
   let start_dir = cli_factory.cli_options()?.start_dir.dir_path();
 
-  // only prefer to add npm deps to `package.json` if there isn't a closer deno.json.
-  // example: if deno.json is in the CWD and package.json is in the parent, we should add
-  // npm deps to deno.json, since it's closer
+  // only prefer to add npm deps to `package.json` if there isn't a closer ende.json.
+  // example: if ende.json is in the CWD and package.json is in the parent, we should add
+  // npm deps to ende.json, since it's closer
   let prefer_npm_config = match (npm_config.as_ref(), ende_json_config.as_ref())
   {
-    (Some(npm), Some(deno)) => {
+    (Some(npm), Some(ende_json)) => {
       let npm_distance = path_distance(&npm.path, &start_dir);
-      let ende_distance = path_distance(&deno.path, &start_dir);
+      let ende_distance = path_distance(&ende_json.path, &start_dir);
       npm_distance <= ende_distance
     }
     (Some(_), None) => true,
@@ -764,7 +764,7 @@ pub async fn add(
   //
   // * `--no-save`: the package is installed into `node_modules` (and the
   //   lockfile) but not declared as a dependency at all.
-  // * `--save-optional`: Deno's installer does not materialize
+  // * `--save-optional`: Ende's installer does not materialize
   //   `optionalDependencies` from `package.json`, so install the package
   //   directly to keep parity with `--save-dev` (which does install on add).
   let install_directly = add_flags.no_save || kind == DependencyKind::Optional;
@@ -807,8 +807,8 @@ pub async fn add(
           .unwrap()
           .add(selected_package, kind);
       }
-    } else if let Some(deno) = &mut ende_json_config {
-      deno.add(selected_package, kind);
+    } else if let Some(ende_json) = &mut ende_json_config {
+      ende_json.add(selected_package, kind);
     } else {
       npm_config.as_mut().unwrap().add(selected_package, kind);
     }
@@ -818,8 +818,8 @@ pub async fn add(
     if let Some(npm) = npm_config {
       npm.commit()?;
     }
-    if let Some(deno) = ende_json_config {
-      deno.commit()?;
+    if let Some(ende_json) = ende_json_config {
+      ende_json.commit()?;
     }
   }
 
@@ -1150,7 +1150,7 @@ impl AddRmPackageReq {
     // The reference parsers use the strict specifier version grammar, which
     // only accepts `^`, `~`, exact versions and tags. On the command line we
     // also accept the full npm range grammar (`>=4`, `>=4 <5`, `^4 || 5`,
-    // `1 - 2`, etc) by falling back to loose parsing. `deno add` resolves the
+    // `1 - 2`, etc) by falling back to loose parsing. `ende add` resolves the
     // requirement to a concrete version before writing it, so what ends up in
     // the config (and in `npm:`/`jsr:` specifiers in code) still uses the
     // strict grammar.
@@ -1363,7 +1363,7 @@ async fn npm_install_after_modification(
 
 /// If the user-supplied `spec` looks like a path to a local JSR package
 /// directory (relative or absolute, currently exists, and contains a
-/// `deno.json`(c)), return a message suggesting `deno link` instead.
+/// `ende.json`(c)), return a message suggesting `ende link` instead.
 fn link_hint_for_spec(cwd: &Path, spec: &str) -> Option<String> {
   // Skip anything with a registry prefix.
   if spec.contains(':') {
@@ -1387,10 +1387,10 @@ fn link_hint_for_spec(cwd: &Path, spec: &str) -> Option<String> {
   if !abs.is_dir() {
     return None;
   }
-  // Only hint when the directory is actually linkable. `deno link` requires
-  // the target's deno.json(c) to exist *and* declare a "name", so check the
-  // same condition here. Otherwise the hint dead-ends: `deno add ./pkg` ->
-  // "Did you mean `deno link ./pkg`?" -> `deno link ./pkg` -> "its deno.json
+  // Only hint when the directory is actually linkable. `ende link` requires
+  // the target's ende.json(c) to exist *and* declare a "name", so check the
+  // same condition here. Otherwise the hint dead-ends: `ende add ./pkg` ->
+  // "Did you mean `ende link ./pkg`?" -> `ende link ./pkg` -> "its ende.json
   // has no name field".
   read_link_target_name(&abs)?;
   Some(format!(
@@ -1447,9 +1447,9 @@ fn load_ende_config_for_link(
   create_if_missing: bool,
 ) -> Result<(CliFactory, ConfigUpdater), AnyError> {
   if create_if_missing {
-    // For `link`, force creation of deno.json if missing; the `"links"` field
+    // For `link`, force creation of ende.json if missing; the `"links"` field
     // lives there. We achieve this by claiming jsr specifiers are present,
-    // which makes `load_configs` materialise a deno.json when one isn't found.
+    // which makes `load_configs` materialise an ende.json when one isn't found.
     let (cli_factory, _force_package_json, _npm_config, ende_json_config) =
       load_configs(flags, || true, false, false)?;
     let ende_json_config = ende_json_config.ok_or_else(|| {
@@ -1458,9 +1458,9 @@ fn load_ende_config_for_link(
     return Ok((cli_factory, ende_json_config));
   }
 
-  // For `unlink`, never create a deno.json: if there isn't one, there's
+  // For `unlink`, never create an ende.json: if there isn't one, there's
   // nothing to unlink. Load only an existing config so a failed unlink can't
-  // leave an empty deno.json behind.
+  // leave an empty ende.json behind.
   let cli_factory = CliFactory::from_flags(flags.clone());
   let options = cli_factory.cli_options()?;
   let ende_json_config = match options.start_dir.member_ende_json() {
@@ -1572,8 +1572,8 @@ pub async fn unlink(
   let (cli_factory, mut ende_json_config) =
     load_ende_config_for_link(&flags, false)?;
   // Resolve path arguments relative to the cwd, matching how `link()` resolves
-  // them, so `deno unlink ../pkg` finds an entry created by `deno link ../pkg`
-  // from the same directory regardless of where the deno.json lives.
+  // them, so `ende unlink ../pkg` finds an entry created by `ende link ../pkg`
+  // from the same directory regardless of where the ende.json lives.
   let cwd = cli_factory.cli_options()?.initial_cwd().to_path_buf();
   let config_dir = ende_json_config
     .path

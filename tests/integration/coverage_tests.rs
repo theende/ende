@@ -99,7 +99,7 @@ fn error_if_invalid_cache() {
   output.assert_exit_code(0);
   output.skip_output_check();
 
-  // Modify the file between deno test and deno coverage, thus invalidating the cache
+  // Modify the file between ende test and ende coverage, thus invalidating the cache
   mod_after_path.copy(&mod_temp_path);
 
   let output = context

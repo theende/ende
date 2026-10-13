@@ -53,7 +53,7 @@ pub struct StandaloneData {
 }
 
 /// This function will try to run this binary as a standalone binary
-/// produced by `deno compile`. It determines if this is a standalone
+/// produced by `ende compile`. It determines if this is a standalone
 /// binary by skipping over the trailer width at the end of the file,
 /// then checking for the magic trailer string `d3n0l4nd`. If found,
 /// the bundle is executed. If not, this function exits with `Ok(None)`.
@@ -90,7 +90,7 @@ pub fn extract_standalone_with_finder(
       .map(|p| p.to_string_lossy())
       // should never happen
       .unwrap_or_else(|| Cow::Borrowed("binary"));
-    std::env::temp_dir().join(format!("deno-compile-{}", current_exe_name))
+    std::env::temp_dir().join(format!("ende-compile-{}", current_exe_name))
   };
   let root_url = deno_path_util::url_from_directory_path(&root_path)?;
 
@@ -660,7 +660,7 @@ impl StandaloneModules {
           };
           // A file read from disk at runtime (e.g. a plugin discovered by a
           // compiled program) hasn't been transpiled at compile time, so
-          // transpile TypeScript/JSX here, mirroring `deno run`.
+          // transpile TypeScript/JSX here, mirroring `ende run`.
           let media_type = MediaType::from_specifier(specifier);
           if matches!(
             media_type,
@@ -697,14 +697,14 @@ impl StandaloneModules {
 /// Transpile TypeScript/JSX source to JavaScript for modules that are not
 /// embedded in the binary, namely `data:`/`blob:` URLs and local files read
 /// from disk at runtime. Embedded modules are already transpiled at
-/// `deno compile` time, but a compiled program can still dynamically `import()`
+/// `ende compile` time, but a compiled program can still dynamically `import()`
 /// TypeScript that it builds or discovers while running. `deno_ast` is already
 /// linked into the binary via `ext/node`, so transpiling here adds no extra
 /// binary size.
 ///
 /// JSX configuration (`jsx`, `jsxImportSource`, `jsxFactory`, etc.) is
 /// discovered by walking up from the source file to find the user's
-/// `deno.json` / `deno.jsonc` once and caching the result. Without this,
+/// `ende.json` / `ende.jsonc` once and caching the result. Without this,
 /// every `.tsx` from a Preact-based project would be emitted as
 /// `React.createElement(...)` and fail at runtime with `React is not defined`.
 pub(crate) fn transpile_runtime_module(
@@ -746,13 +746,13 @@ pub(crate) fn transpile_runtime_module(
 }
 
 /// Resolved JSX/decorator options for runtime transpiles, discovered lazily
-/// from the user's project `deno.json[c]` and cached for the lifetime of the
+/// from the user's project `ende.json[c]` and cached for the lifetime of the
 /// process.
 static RUNTIME_TRANSPILE_OPTIONS: OnceLock<deno_ast::TranspileOptions> =
   OnceLock::new();
 
-/// Walk up from `specifier`'s parent directory looking for `deno.json` or
-/// `deno.jsonc`, parse `compilerOptions.jsx` + related, and return a matching
+/// Walk up from `specifier`'s parent directory looking for `ende.json` or
+/// `ende.jsonc`, parse `compilerOptions.jsx` + related, and return a matching
 /// `TranspileOptions`. Falls back to defaults (with `ImportsNotUsedAsValues::Remove`)
 /// if no config is found or parsing fails — those are non-fatal here.
 fn runtime_transpile_options(

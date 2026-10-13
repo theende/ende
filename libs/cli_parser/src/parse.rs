@@ -152,7 +152,7 @@ fn parse_args(
       );
       if arg == "--" {
         // `--` still transitions to command-level trailing
-        // so that `deno init --npm vite -- --serve` puts --serve
+        // so that `ende init --npm vite -- --serve` puts --serve
         // into the positional (through normal trailing -> handled below)
         i += 1;
         while i < args.len() {
@@ -169,7 +169,7 @@ fn parse_args(
     // Positional-only mode: a `--` appeared before the first positional of
     // an entrypoint-style command (see the `--` handling below), so consume
     // positional values without interpreting leading hyphens as flags, e.g.
-    // `deno run -- -script.ts`. Once the positionals are complete, the
+    // `ende run -- -script.ts`. Once the positionals are complete, the
     // command's trailing var args receive the rest. Note that a second `--`
     // is forwarded literally here: only the first `--` is special, and it
     // was already consumed to enter this mode.
@@ -298,8 +298,8 @@ fn parse_args(
               i += 1;
               // Strip a leading `--` separator unless this subcommand keeps it
               // in the forwarded argv (clap `.last(true)` / external behavior,
-              // e.g. `deno run x.ts -- -a` forwards `["--", "-a"]`, but
-              // `deno eval code -- a` forwards `["a"]`).
+              // e.g. `ende run x.ts -- -a` forwards `["--", "-a"]`, but
+              // `ende eval code -- a` forwards `["a"]`).
               if !cmd_def.keep_double_dash && i < args.len() && args[i] == "--"
               {
                 i += 1;

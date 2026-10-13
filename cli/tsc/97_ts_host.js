@@ -305,7 +305,7 @@ export const ASSETS_URL_PREFIX = "asset:///";
 const CACHE_URL_PREFIX = "cache:///";
 
 /** Diagnostics that are intentionally ignored when compiling TypeScript in
- * Deno, as they provide misleading or incorrect information. */
+ * Ende, as they provide misleading or incorrect information. */
 const TSC_CONSTANTS = ops.op_tsc_constants();
 const IGNORED_DIAGNOSTICS = TSC_CONSTANTS.ignoredDiagnosticCodes;
 const TYPES_NODE_IGNORABLE_NAMES = new Set(
@@ -353,7 +353,7 @@ export function clearScriptNamesCache() {
 }
 
 /** An object literal of the incremental compiler host, which provides the
- * specific "bindings" to the Deno environment that tsc needs to work.
+ * specific "bindings" to the Ende environment that tsc needs to work.
  *
  * @type {ts.CompilerHost & ts.LanguageServiceHost} */
 const hostImpl = {
@@ -444,7 +444,7 @@ const hostImpl = {
         impliedNodeFormat: isCjs
           ? ts.ModuleKind.CommonJS
           : ts.ModuleKind.ESNext,
-        // no need to parse docs for `deno check`
+        // no need to parse docs for `ende check`
         jsDocParsingMode: ts.JSDocParsingMode.ParseForTypeErrors,
       },
       false,
@@ -723,7 +723,7 @@ const hostImpl = {
   getNearestAncestorDirectoryWithPackageJson() {
     // always return `undefined` in order to short-circuit
     // a codepath in the TypeScript compiler that always
-    // ends up returning `undefined` in Deno anyway
+    // ends up returning `undefined` in Ende anyway
     return undefined;
   },
 };
@@ -756,7 +756,7 @@ for (const [key, value] of Object.entries(hostImpl)) {
   }
 }
 
-// override the npm install @types package diagnostics to be deno specific
+// override the npm install @types package diagnostics to be ende specific
 ts.setLocalizedDiagnosticMessages((() => {
   const nodeMessage = "Cannot find name '{0}'."; // don't offer any suggestions
   const jqueryMessage =
@@ -887,7 +887,7 @@ function isJSDocDynamicImportDiagnostic(diagnostic) {
 ts.deno.setNodeOnlyGlobalNames(
   NODE_ONLY_GLOBALS,
 );
-// List of globals in @types/node that collide with Deno's types.
+// List of globals in @types/node that collide with Ende's types.
 // When the `@types/node` package attempts to assign to these types
 // if the type is already in the global symbol table, then assignment
 // will be a no-op, but if the global type does not exist then the package can

@@ -185,9 +185,9 @@ pub fn make_wait_for_inspector_disconnect_callback() -> Box<dyn Fn()> {
 }
 
 /// This worker is created and used by almost all
-/// subcommands in Deno executable.
+/// subcommands in Ende executable.
 ///
-/// It provides ops available in the `Deno` namespace.
+/// It provides ops available in the `Ende` namespace.
 ///
 /// All `WebWorker`s created during program execution
 /// are descendants of this worker.
@@ -354,7 +354,7 @@ pub(crate) fn request_builder_hook(
     OnceLock::new();
   static CDN_LOOP_VALUE: OnceLock<Option<http::HeaderValue>> = OnceLock::new();
 
-  // Scrub Deno-specific headers to prevent user code from spoofing them.
+  // Scrub Ende-specific headers to prevent user code from spoofing them.
   if let http::header::Entry::Occupied(entry) =
     request.headers_mut().entry(X_DENO_FETCH_TOKEN)
   {
@@ -1033,8 +1033,8 @@ impl MainWorker {
   /// block until it disconnects. Returns immediately when no such session
   /// is attached.
   ///
-  /// This mirrors the wait the `deno run` event loop performs at the end of
-  /// execution and is meant for tools like `deno test` / `deno bench` whose
+  /// This mirrors the wait the `ende run` event loop performs at the end of
+  /// execution and is meant for tools like `ende test` / `ende bench` whose
   /// normal shutdown polls the event loop with a zero-duration timeout and
   /// would otherwise exit while a debugger is still attached.
   pub async fn wait_for_inspector_session_disconnect(

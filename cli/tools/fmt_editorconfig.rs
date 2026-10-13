@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! Minimal [EditorConfig](https://editorconfig.org/) loader used by `deno fmt`.
+//! Minimal [EditorConfig](https://editorconfig.org/) loader used by `ende fmt`.
 //!
 //! Walks up the directory tree from a given file, parses encountered
 //! `.editorconfig` files, and resolves matching properties for that file.
@@ -51,7 +51,7 @@ pub enum EndOfLine {
 
 impl EditorConfigProperties {
   /// Apply the resolved properties to `cfg`, filling in only fields
-  /// that are currently `None`. Deno's own config and CLI flags
+  /// that are currently `None`. Ende's own config and CLI flags
   /// therefore always take precedence.
   pub fn apply_to(&self, cfg: &mut FmtOptionsConfig) {
     if cfg.use_tabs.is_none()

@@ -89,7 +89,7 @@ impl From<TunnelAddr> for IpAddr {
   }
 }
 
-/// Options for TCP connection (used by Deno.connect and node:net)
+/// Options for TCP connection (used by Ende.connect and node:net)
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TcpConnectOptions {
@@ -1274,7 +1274,7 @@ pub fn op_net_get_system_dns_servers(
 ) -> Result<Vec<(String, u16)>, NetError> {
   // Reading the host resolver configuration (the system nameservers, e.g.
   // from /etc/resolv.conf) exposes host network configuration, so gate it
-  // behind the same `sys` permission as Deno.networkInterfaces(). Reachable
+  // behind the same `sys` permission as Ende.networkInterfaces(). Reachable
   // from JS via node:dns.getServers().
   state
     .borrow_mut::<PermissionsContainer>()

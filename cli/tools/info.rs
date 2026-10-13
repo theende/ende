@@ -213,7 +213,7 @@ pub async fn info(
       ende_print::drop_write_stdout(output.as_bytes());
     }
   } else {
-    // If it was just "deno info" print location of caches and exit
+    // If it was just "ende info" print location of caches and exit
     print_cache_info(
       &factory,
       info_flags.json,
@@ -313,7 +313,7 @@ fn add_npm_packages_to_json(
   npmrc: &ResolvedNpmRc,
 ) {
   let Some((npm_resolver, npm_snapshot)) = npm_info else {
-    return; // does not include byonm to deno info's output
+    return; // does not include byonm to ende info's output
   };
 
   // ideally deno_graph could handle this, but for now we just modify the json here
@@ -443,7 +443,7 @@ fn add_npm_packages_to_json(
   }
 }
 
-/// Precached information about npm packages that are used in deno info.
+/// Precached information about npm packages that are used in ende info.
 #[derive(Default)]
 struct NpmInfo {
   package_sizes: HashMap<NpmPackageId, u64>,

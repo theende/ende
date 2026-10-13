@@ -14,15 +14,15 @@ const console = core.loadExtScript("ext:ende_web/01_console.js");
 const ffi = core.loadExtScript("ext:ende_ffi/00_ffi.js");
 const net = core.loadExtScript("ext:ende_net/01_net.js");
 const tls = core.loadExtScript("ext:ende_net/02_tls.js");
-// `Deno.serve` is the eager loader chain into 22_body -> 06_streams (the
+// `Ende.serve` is the eager loader chain into 22_body -> 06_streams (the
 // 208 KB web streams polyfill). Defer until first access so programs that
-// don't use Deno.serve don't pay the parse cost at startup.
+// don't use Ende.serve don't pay the parse cost at startup.
 let _serveImpl;
 function lazyServe() {
   return _serveImpl ??
     (_serveImpl = core.loadExtScript("ext:ende_http/00_serve.ts"));
 }
-// Deno.serveHttp and Deno.upgradeWebSocket each chain through
+// Ende.serveHttp and Ende.upgradeWebSocket each chain through
 // 23_request -> 22_body -> 06_streams (208 KB). Defer both.
 let _httpImpl;
 function lazyHttp() {
@@ -41,7 +41,7 @@ const io = core.loadExtScript("ext:ende_io/12_io.js");
 const fs = core.loadExtScript("ext:ende_fs/30_fs.js");
 const os = core.loadExtScript("ext:ende_os/30_os.js");
 const fsEvents = core.loadExtScript("ext:runtime/40_fs_events.js");
-// Deno.Command / Deno.run / etc.: 40_process.js extends ReadableStream at
+// Ende.Command / Ende.run / etc.: 40_process.js extends ReadableStream at
 // module body, which pulls 06_streams.js (208 KB). Defer.
 let _processImpl;
 function lazyProcess() {
@@ -55,7 +55,7 @@ let _kvImpl;
 function lazyKv() {
   return _kvImpl ?? (_kvImpl = core.loadExtScript("ext:ende_kv/01_db.ts"));
 }
-// `Deno.cron`, `Deno.UnsafeWindowSurface`, `Deno.telemetry` are rarely used
+// `Ende.cron`, `Ende.UnsafeWindowSurface`, `Ende.telemetry` are rarely used
 // and their backing modules (`01_cron.ts`, `02_surface.js`, `telemetry.ts`)
 // are several KB of bytecode + closures each in the snapshot heap. Defer the
 // `loadExtScript()` calls so they don't materialize at snapshot build time:
@@ -82,12 +82,12 @@ const loadWebTransport = core.createLazyLoader(
   "ext:ende_web/webtransport.js",
 );
 
-// Each entry here is a property on `internals` (i.e. `Deno[Deno.internal]`)
+// Each entry here is a property on `internals` (i.e. `Deno[Ende.internal]`)
 // that's defined at module body time by a `lazy_loaded_js` polyfill (e.g.
 // `internals.serveHttpOnListener = ...` at the end of `00_serve.ts`). When
 // the lazy script hasn't loaded yet, the property is `undefined` and any
-// caller that captured it (Deno's own unit tests, user code reaching into
-// `Deno[Deno.internal]`) sees `undefined`. Define a configurable accessor
+// caller that captured it (Ende's own unit tests, user code reaching into
+// `Deno[Ende.internal]`) sees `undefined`. Define a configurable accessor
 // here so the first read triggers the lazy load and the polyfill's own
 // `internals.X = value;` assignment then replaces this accessor with a
 // plain data property via the setter. After the first read it costs the
@@ -123,7 +123,7 @@ defineLazyInternal("serveHttpOnConnection", "ext:ende_http/00_serve.ts");
 // `ext:ende_cron/01_cron.ts` registers `internals.formatToCronSchedule` /
 // `internals.parseScheduleToString` at module body. Now that cron is lazy
 // (see `lazyCron` below), expose these via the same accessor pattern so
-// `cron_test.ts` (which destructures them from `Deno[Deno.internal]`) and
+// `cron_test.ts` (which destructures them from `Deno[Ende.internal]`) and
 // any user code reaching in keep working.
 defineLazyInternal("formatToCronSchedule", "ext:ende_cron/01_cron.ts");
 defineLazyInternal("parseScheduleToString", "ext:ende_cron/01_cron.ts");

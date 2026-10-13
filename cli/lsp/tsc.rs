@@ -4126,7 +4126,7 @@ impl CompletionEntryDetails {
 #[serde(rename_all = "camelCase")]
 pub struct CompletionInfo {
   entries: Vec<CompletionEntry>,
-  // this is only used by Microsoft's telemetrics, which Deno doesn't use and
+  // this is only used by Microsoft's telemetrics, which Ende doesn't use and
   // there are issues with the value not matching the type definitions.
   // flags: Option<CompletionInfoFlags>,
   is_global_completion: bool,
@@ -6309,7 +6309,7 @@ impl UserPreferences {
       provide_prefix_and_suffix_text_for_rename: Some(
         language_settings.preferences.use_aliases_for_renames,
       ),
-      // Only use workspace settings for quote style if there's no `deno.json`.
+      // Only use workspace settings for quote style if there's no `ende.json`.
       quote_preference: if config
         .tree
         .workspace_dir_for_specifier(specifier)

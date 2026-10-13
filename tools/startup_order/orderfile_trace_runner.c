@@ -1,5 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-// Run one traced workload while the Deno-based generator is stopped.
+// Run one traced workload while the JS generator script is stopped.
 //
 // The generator's own V8 threads otherwise perturb concurrent first-touch
 // ordering in the child. A pipe keeps the child before exec until SIGSTOP has
@@ -50,9 +50,9 @@ int main(int argc, char **argv) {
   }
   if (child_pid == 0) {
     close(gate[1]);
-    const char *preload = getenv("DENO_ORDER_RUNNER_PRELOAD");
+    const char *preload = getenv("ENDE_ORDER_RUNNER_PRELOAD");
     if (preload == NULL) {
-      fprintf(stderr, "missing DENO_ORDER_RUNNER_PRELOAD\n");
+      fprintf(stderr, "missing ENDE_ORDER_RUNNER_PRELOAD\n");
       _exit(127);
     }
 #if defined(__APPLE__)
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
       perror("setting tracer preload");
       _exit(127);
     }
-    unsetenv("DENO_ORDER_RUNNER_PRELOAD");
+    unsetenv("ENDE_ORDER_RUNNER_PRELOAD");
     char byte;
     while (read(gate[0], &byte, 1) < 0 && errno == EINTR) {
     }

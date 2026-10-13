@@ -103,7 +103,7 @@ async fn compile_inner(
       // Enable CJS detection for Node-based frameworks.
       flags.unstable_config.detect_cjs = true;
       // These frameworks emit a pre-built/bundled server entrypoint that is
-      // not meant to be type checked by Deno (it references Node types that
+      // not meant to be type checked by Ende (it references Node types that
       // aren't resolvable from the build output); the framework handles its
       // own compilation.
       if matches!(detection.name, "Next.js" | "SvelteKit")
@@ -118,7 +118,7 @@ async fn compile_inner(
       // Write a temporary entrypoint file with a random suffix so we
       // never overwrite an existing project file.
       let entrypoint_path = dir.join(format!(
-        ".deno_compile_entry_{:08x}.ts",
+        ".ende_compile_entry_{:08x}.ts",
         rand::thread_rng().r#gen::<u32>()
       ));
       std::fs::write(&entrypoint_path, detection.entrypoint_code)?;
@@ -129,7 +129,7 @@ async fn compile_inner(
         compile_flags.output = Some(dir_name.to_string_lossy().into_owned());
       }
       // Add framework build output to includes, resolved relative to the
-      // detected app directory so `deno compile ./myapp` picks up
+      // detected app directory so `ende compile ./myapp` picks up
       // `./myapp/.next` rather than `./.next`.
       for inc in detection.include_paths {
         let resolved = dir.join(&inc).display().to_string();
@@ -327,7 +327,7 @@ async fn run_bundle_for_compile(
     all_referenced_paths.extend(worker_rewrite.referenced_abs_paths.clone());
 
     let worker_path = initial_cwd.join(format!(
-      ".deno_compile_worker_{:08x}.mjs",
+      ".ende_compile_worker_{:08x}.mjs",
       rand::thread_rng().r#gen::<u32>()
     ));
     std::fs::write(&worker_path, &worker_rewrite.bytes).with_context(|| {
@@ -354,7 +354,7 @@ async fn run_bundle_for_compile(
   };
 
   let bundle_path = initial_cwd.join(format!(
-    ".deno_compile_bundle_{:08x}.mjs",
+    ".ende_compile_bundle_{:08x}.mjs",
     rand::thread_rng().r#gen::<u32>()
   ));
   std::fs::write(&bundle_path, final_main_src.as_bytes()).with_context(
@@ -394,7 +394,7 @@ async fn bundle_one_for_compile(
 /// then falls back to a basename search across the workspace — pi's
 /// `dist/utils/image-resize.js` does
 /// `new URL("./image-resize-worker.js", import.meta.url)` and the bundle
-/// lives at `dist/.deno_compile_bundle_*.mjs`, so basename matching is
+/// lives at `dist/.ende_compile_bundle_*.mjs`, so basename matching is
 /// what locks it onto `dist/utils/image-resize-worker.js`.
 ///
 /// Returns `(original_url_string, resolved_source_path)` pairs in source
@@ -1042,7 +1042,7 @@ fn validate_output_path(output_path: &Path) -> Result<(), AnyError> {
       );
     }
 
-    // Make sure we don't overwrite any file not created by Deno compiler because
+    // Make sure we don't overwrite any file not created by Ende compiler because
     // this filename is chosen automatically in some cases.
     if !is_standalone_binary(output_path) {
       bail!(
@@ -1055,7 +1055,7 @@ fn validate_output_path(output_path: &Path) -> Result<(), AnyError> {
       );
     }
 
-    // Remove file if it was indeed a deno compiled binary, to avoid corruption
+    // Remove file if it was indeed an ende compiled binary, to avoid corruption
     // (see https://github.com/denoland/deno/issues/10310)
     std::fs::remove_file(output_path)?;
   } else {

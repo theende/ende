@@ -67,7 +67,7 @@ function applyWebIdlInterfaceShape(interface_) {
 // `CryptoKey` is the cppgc-wrapped Rust class imported above; the `type`,
 // `extractable`, `usages` and `algorithm` getters and the underlying state
 // all live in Rust (`ext/crypto/crypto_key.rs`). The JS shim only attaches
-// the `Deno.privateCustomInspect` symbol to the prototype.
+// the `Ende.privateCustomInspect` symbol to the prototype.
 const CryptoKeyPrototype = CryptoKey.prototype;
 ObjectDefineProperty(
   CryptoKeyPrototype,
@@ -212,7 +212,7 @@ makeAsyncForwarder("decapsulateBits", "decapsulateBits", 3);
 makeAsyncForwarder("decapsulateKey", "decapsulateKey", 6);
 
 // `SubtleCrypto`'s prototype keeps a single privateCustomInspect helper so
-// `Deno.inspect(crypto.subtle)` prints `SubtleCrypto {}` rather than the
+// `Ende.inspect(crypto.subtle)` prints `SubtleCrypto {}` rather than the
 // internal cppgc shape.
 ObjectAssign(SubtleCryptoPrototype, {
   [SymbolFor("Deno.privateCustomInspect")](inspect, inspectOptions) {

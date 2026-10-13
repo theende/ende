@@ -6,7 +6,7 @@
   // Companion to `config_permission_set` (issue #35991): the permission set is
   // defined in a cwd `ende.json` and selected with `-P=write`, WITHOUT an
   // explicit `--config`. The re-run subprocess runs the installed bin FILE
-  // (under `deno_x_cache`), so its config auto-discovery anchors on the install
+  // (under `ende_x_cache`), so its config auto-discovery anchors on the install
   // dir, NOT the user's cwd — it would find the internal temp `ende.json` (which
   // has no permission set) and fail. `deno x` must therefore resolve the user's
   // auto-discovered cwd `ende.json` and forward it explicitly (alongside

@@ -467,8 +467,8 @@ static int create_executable_copy(uintptr_t page_size) {
 
 __attribute__((constructor(101)))
 static void initialize_function_tracer(void) {
-  debug_enabled = getenv("DENO_FUNCTION_TRACE_DEBUG") != NULL;
-  const char *output_env = getenv("DENO_FUNCTION_TRACE_OUT");
+  debug_enabled = getenv("ENDE_FUNCTION_TRACE_DEBUG") != NULL;
+  const char *output_env = getenv("ENDE_FUNCTION_TRACE_OUT");
   if (output_env == NULL) {
     return;
   }
@@ -476,7 +476,7 @@ static void initialize_function_tracer(void) {
   char output[4096];
   snprintf(output, sizeof(output), "%s", output_env);
   unsetenv("DYLD_INSERT_LIBRARIES");
-  unsetenv("DENO_FUNCTION_TRACE_OUT");
+  unsetenv("ENDE_FUNCTION_TRACE_OUT");
 
   long reported_page_size = sysconf(_SC_PAGESIZE);
   if (reported_page_size <= 0) {

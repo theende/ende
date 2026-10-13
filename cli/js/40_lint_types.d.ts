@@ -5,11 +5,11 @@ export interface AstContext {
   strTable: Map<number, string>;
   strTableOffset: number;
   rootOffset: number;
-  nodes: Map<number, Deno.lint.Node>;
+  nodes: Map<number, Ende.lint.Node>;
   spansOffset: number;
   propsOffset: number;
   commentsOffset: number;
-  comments: Array<Deno.lint.LineComment | Deno.lint.BlockComment>;
+  comments: Array<Ende.lint.LineComment | Ende.lint.BlockComment>;
   strByType: number[];
   strByProp: number[];
   typeByStr: Map<string, number>;
@@ -18,7 +18,7 @@ export interface AstContext {
 }
 
 export interface LintState {
-  plugins: Deno.lint.Plugin[];
+  plugins: Ende.lint.Plugin[];
   installedPlugins: Set<string>;
   /** format: `<plugin>/<rule>` */
   ignoredRules: Set<string>;

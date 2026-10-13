@@ -60,13 +60,13 @@ const registerBenchIdRetBufU8 = new Uint8Array(registerBenchIdRetBuf.buffer);
 // As long as we're using one isolate per test, we can cache the origin since it won't change
 let cachedOrigin = undefined;
 
-// Main bench function provided by Deno.
+// Main bench function provided by Ende.
 function bench(
   nameOrFnOrOptions,
   optionsOrFn,
   maybeFn,
 ) {
-  // No-op if we're not running in `deno bench` subcommand.
+  // No-op if we're not running in `ende bench` subcommand.
   if (typeof op_register_bench !== "function") {
     return;
   }

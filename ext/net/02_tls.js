@@ -75,7 +75,7 @@ async function connectTls({
     key,
   });
   // TODO(mmastrac): We only expose this feature via symbol for now. This should actually be a feature
-  // in Deno.connectTls, however.
+  // in Ende.connectTls, however.
   const serverName = arguments[0][serverNameSymbol] ?? null;
   const { 0: rid, 1: localAddr, 2: remoteAddr } = await op_net_connect_tls(
     { hostname, port },

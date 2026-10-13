@@ -1,6 +1,6 @@
 # Contributor documentation
 
-This directory holds long-form, mostly-stable context about how the Deno
+This directory holds long-form, mostly-stable context about how the Ende
 codebase is structured. It is meant to be read by contributors before they start
 working in the repository: the architectural "why" and the map of where things
 live, the kind of background that saves a lot of exploration time up front.
@@ -8,7 +8,7 @@ live, the kind of background that saves a lot of exploration time up front.
 ## Contents
 
 - [`architecture.md`](./architecture.md) — the layered design of the runtime:
-  the `deno` CLI crate, the `ende_runtime` crate, the `ext/*` extensions, and
+  the `ende` CLI crate, the `ende_runtime` crate, the `ext/*` extensions, and
   the `ende_core` / `libs/*` foundation. Read this first.
 - [`codebase-map.md`](./codebase-map.md) — a directory-by-directory map plus the
   handful of files worth understanding before anything else.
@@ -17,20 +17,20 @@ live, the kind of background that saves a lot of exploration time up front.
 - [`ci.md`](./ci.md) — how the CI workflow is generated and how it decides which
   jobs to run, including the docs-only fast path that brought this directory
   into existence.
-- [`desktop-architecture.md`](./desktop-architecture.md) — how `deno desktop`
-  wires a native window to a Deno runtime: the load model, the ABI handshake,
+- [`desktop-architecture.md`](./desktop-architecture.md) — how `ende desktop`
+  wires a native window to an Ende runtime: the load model, the ABI handshake,
   the two transports, and the lifecycle edges.
-- [`package-management.md`](./package-management.md) — how `deno add` /
-  `deno install <pkg>` add dependencies: the two flag parsers, the config
+- [`package-management.md`](./package-management.md) — how `ende add` /
+  `ende install <pkg>` add dependencies: the two flag parsers, the config
   writer, the shared install path, and the `--dev` / `--save-optional` /
   `--no-save` flags (including why `optionalDependencies` need special
   handling).
 
 ## Editing these docs
 
-These files are plain Markdown and are formatted by `deno fmt` like the rest of
-the repository. Run `tools/format.js` before committing. Keep prose hard-wrapped
-at 80 columns to match the existing style.
+These files are plain Markdown and are formatted by `./tools/format.js` like the
+rest of the repository. Run `tools/format.js` before committing. Keep prose
+hard-wrapped at 80 columns to match the existing style.
 
 A pull request that touches **only** `doc/` runs the `lint` job and nothing
 else. The build, test, bench and `ende_core` jobs are skipped, because editing

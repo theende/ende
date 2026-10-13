@@ -119,7 +119,7 @@ fn failure_to_test_message(failure: &TestFailure) -> lsp_custom::TestMessage {
       character: v.column_number,
     };
     // Does not have to match the test URI
-    // since one can write `Deno.test(importedFunction)`
+    // since one can write `Ende.test(importedFunction)`
     let uri = uri_parse_unencoded(&v.file_name).ok()?;
     Some(lsp::Location {
       uri,
@@ -168,7 +168,7 @@ pub struct TestRun {
   tests: TestServerTests,
   token: CancellationToken,
   workspace_settings: config::WorkspaceSettings,
-  /// `--env-file` paths inherited from the `test` task in deno.json. Resolved
+  /// `--env-file` paths inherited from the `test` task in ende.json. Resolved
   /// once at run construction so `get_args` doesn't depend on the config tree.
   test_task_env_files: Vec<PathBuf>,
 }
@@ -246,7 +246,7 @@ impl TestRun {
     // subcommand factory runs. The LSP test runner bypasses that, so apply
     // them here against the process environment before constructing the
     // worker factory. Without this, tests that read env vars at module load
-    // wouldn't see values from a deno.json `test` task's `--env-file`.
+    // wouldn't see values from an ende.json `test` task's `--env-file`.
     //
     // We use the stateful `WatchEnvTracker` so that re-runs after edits to
     // the env file or task definition refresh values rather than seeing the
@@ -261,7 +261,7 @@ impl TestRun {
     //     the CLI's `load_env_variables_from_env_files`.
     //   * Concurrent `deno/testRun` requests racing on the shared global env
     //     can interleave; this is the same hazard the CLI has when running
-    //     multiple `deno test` invocations in one process.
+    //     multiple `ende test` invocations in one process.
     if let Some(env_files) = &flags.env_file {
       let cwd = resolve_cwd_or_fallback(flags.initial_cwd.as_deref());
       WatchEnvTracker::snapshot().load_env_variables_from_env_files(
@@ -561,9 +561,9 @@ impl TestRun {
     {
       args.push(Cow::Borrowed("--inspect"));
     }
-    // Inherit `--env-file` paths from the `test` task in deno.json when the
+    // Inherit `--env-file` paths from the `test` task in ende.json when the
     // user hasn't already supplied one via `deno.testing.args`. Without this,
-    // running tests from VSCode wouldn't see env vars that `deno task test`
+    // running tests from VSCode wouldn't see env vars that `ende task test`
     // loads (see https://github.com/denoland/deno/issues/28797).
     let has_env_file_arg = args.iter().any(|a| {
       let a = a.as_ref();
@@ -589,10 +589,10 @@ impl TestRun {
 }
 
 /// Walks each unique scope reached by the queued specifiers and harvests
-/// `--env-file` paths from its deno.json `test` task. Each path is resolved
-/// against the deno.json's directory (matching how `deno task test` reads
+/// `--env-file` paths from its ende.json `test` task. Each path is resolved
+/// against the ende.json's directory (matching how `ende task test` reads
 /// them) so the LSP process's cwd doesn't change the answer. Scopes are
-/// deduplicated so a workspace with one shared deno.json is processed once.
+/// deduplicated so a workspace with one shared ende.json is processed once.
 fn collect_test_task_env_files(
   queue: &HashSet<ModuleSpecifier>,
   config_tree: &config::ConfigTree,
@@ -639,8 +639,8 @@ fn collect_test_task_env_files(
 
 /// Scans a task command string for `--env-file`/`--env` flags and returns the
 /// associated file paths. A bare `--env-file` flag (no value) defaults to
-/// `.env` to match the CLI behavior. In compound task commands, only `deno
-/// test ...` command segments are scanned so env files belonging to unrelated
+/// `.env` to match the CLI behavior. In compound task commands, only `ende
+/// test ...` (or `deno test ...`) command segments are scanned so env files belonging to unrelated
 /// commands are not inherited by the LSP test runner.
 fn extract_env_files_from_command(command: &str) -> Vec<String> {
   let Some(tokens) = shlex::split(command) else {
@@ -920,7 +920,7 @@ impl LspTestReporter {
     }
     // No individual test was registered for this origin at runtime. This happens
     // when the module throws while evaluating, before (or instead of) any test
-    // runs — for example `Deno.test("")` throws "The test name can't be empty".
+    // runs — for example `Ende.test("")` throws "The test name can't be empty".
     // Surface the failure against the module's statically-collected tests (which
     // were already enqueued on the client) so the run still reports the error
     // instead of silently completing. See
@@ -1173,7 +1173,7 @@ mod tests {
 
   #[test]
   fn test_extract_env_files_from_command() {
-    // Plain `deno test --env-file=.env.test -A` (the case from
+    // Plain `ende test --env-file=.env.test -A` (the case from
     // https://github.com/denoland/deno/issues/28797).
     assert_eq!(
       extract_env_files_from_command("deno test --env-file=.env.test -A"),

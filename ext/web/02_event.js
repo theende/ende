@@ -1,9 +1,9 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 // This module follows most of the WHATWG Living Standard for the DOM logic.
-// Many parts of the DOM are not implemented in Deno, but the logic for those
+// Many parts of the DOM are not implemented in Ende, but the logic for those
 // parts still exists.  This means you will observe a lot of strange structures
-// and impossible logic branches based on what Deno currently supports.
+// and impossible logic branches based on what Ende currently supports.
 
 (function () {
 const { core, internals, primordials } = __bootstrap;

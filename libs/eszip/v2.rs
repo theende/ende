@@ -357,7 +357,7 @@ pub struct FromGraphOptions<'a> {
 /// modules of all the packages in this struct are guaranteed to be included in the eszip.
 /// The npm modules that are imported from esm modules (using `npm:` specifiers) are included in
 /// the eszip following the graph order (BFS), for an optimal loading of these modules
-/// by Deno. The rest of the modules that might remain are appended at the end of the eszip.
+/// by Ende. The rest of the modules that might remain are appended at the end of the eszip.
 ///
 /// Npm Packages are formed by modules, and optionally "meta" files. The most basic "meta" file
 /// that any Npm package usually have is a package.json, but there can additionally be other
@@ -1674,7 +1674,7 @@ impl EszipV2 {
     let import_map = self.lookup(specifier)?;
 
     // Import map must be either JSON or JSONC (but JSONC is a special case;
-    // it's allowed when embedded in a Deno's config file)
+    // it's allowed when embedded in an Ende's config file)
     if !matches!(
       import_map.kind,
       ModuleKind::Json | ModuleKind::Jsonc | ModuleKind::OpaqueData

@@ -12,7 +12,7 @@ const WASM_IMPORT_SECTION_ID: u8 = 0x02;
 /// Rewrites the module specifiers found in the import section of a Wasm binary
 /// using the provided `unfurl` callback.
 ///
-/// A WebAssembly module's imports each reference a "module name" which Deno
+/// A WebAssembly module's imports each reference a "module name" which Ende
 /// treats as an ES module specifier (e.g. `import ... from "./other.js"`). When
 /// publishing to JSR these specifiers need to be unfurled the same way they are
 /// in JavaScript and TypeScript source files.

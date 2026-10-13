@@ -73,7 +73,7 @@ fn unzip(
 
 pub struct UnpackArgs<'a> {
   /// The full file name of the file expected to be produced by unpacking the
-  /// archive (e.g. `deno`, `deno.exe`, `libendert.dylib`).
+  /// archive (e.g. `ende`, `ende.exe`, `libendert.dylib`).
   pub exe_name: &'a str,
   pub archive_name: &'a str,
   pub archive_data: &'a [u8],

@@ -150,7 +150,7 @@ pub struct CodeLensSettings {
   /// an impact, the `references` flag needs to be `true`.
   #[serde(default)]
   pub references_all_functions: bool,
-  /// Flag for providing test code lens on `Deno.test` statements.  There is
+  /// Flag for providing test code lens on `Ende.test` statements.  There is
   /// also the `test_args` setting, but this is not used by the server.
   #[serde(default = "is_true")]
   pub test: bool,
@@ -526,19 +526,19 @@ impl InspectSetting {
   }
 }
 
-/// Deno language server specific settings that are applied to a workspace.
+/// Ende language server specific settings that are applied to a workspace.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceSettings {
-  /// A flag that indicates if Deno is enabled for the workspace.
+  /// A flag that indicates if Ende is enabled for the workspace.
   pub enable: Option<bool>,
 
-  /// A list of paths, using the root_uri as a base that should be Deno
+  /// A list of paths, using the root_uri as a base that should be Ende
   /// disabled.
   #[serde(default)]
   pub disable_paths: Vec<String>,
 
-  /// A list of paths, using the root_uri as a base that should be Deno enabled.
+  /// A list of paths, using the root_uri as a base that should be Ende enabled.
   pub enable_paths: Option<Vec<String>>,
 
   /// An option that points to a path string of the path to utilise as the
@@ -892,7 +892,7 @@ impl Settings {
   }
 
   /// Returns `None` if the value should be deferred to the presence of a
-  /// `deno.json` file.
+  /// `ende.json` file.
   pub fn specifier_enabled(&self, specifier: &ModuleSpecifier) -> Option<bool> {
     let Ok(path) = url_to_file_path(specifier) else {
       // Non-file URLs are not disabled by these settings.

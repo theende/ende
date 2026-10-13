@@ -7,7 +7,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "dotenv file parser for Deno"
+description = "dotenv file parser for Ende"
 
 [dependencies]
 deno_path_util.workspace = true

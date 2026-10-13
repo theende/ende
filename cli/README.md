@@ -1,7 +1,5 @@
-# Deno CLI Crate
+# Ende CLI Crate
 
-[![crates](https://img.shields.io/crates/v/deno.svg)](https://crates.io/crates/deno)
+This provides the actual ende executable and the user-facing APIs.
 
-This provides the actual deno executable and the user-facing APIs.
-
-The deno crate uses the ende_core to provide the executable.
+The ende crate uses the ende_core to provide the executable.

@@ -660,7 +660,7 @@ class Performance extends EventTarget {
       1,
       "Failed to execute 'setResourceTimingBufferSize' on 'Performance'",
     );
-    // This is a noop in Deno as we don't have resource timing entries
+    // This is a noop in Ende as we don't have resource timing entries
   }
 
   getEntries() {

@@ -15,7 +15,7 @@ const SUPPORTED_TARGETS = [
   "x86_64-unknown-linux-gnu",
 ];
 
-const DENO_BINARIES = [
+const ENDE_BINARIES = [
   "ende",
   "endert",
 ];
@@ -89,7 +89,7 @@ async function fetchSourceBinary(
 }
 
 async function fetchSourceBinaries(versionOrHash: string) {
-  for (const binary of DENO_BINARIES) {
+  for (const binary of ENDE_BINARIES) {
     for (const target of NON_WINDOWS_TARGETS) {
       $.logStep("Download", binary, gray("target:"), target);
       await fetchSourceBinary(versionOrHash, binary, target);
@@ -238,12 +238,12 @@ async function promoteBinaryToRc(
 }
 
 async function promoteBinariesToRc(commitHash: string) {
-  const totalCanaries = NON_WINDOWS_TARGETS.length * DENO_BINARIES.length;
+  const totalCanaries = NON_WINDOWS_TARGETS.length * ENDE_BINARIES.length;
 
   for (let targetIdx = 0; targetIdx < NON_WINDOWS_TARGETS.length; targetIdx++) {
     const target = NON_WINDOWS_TARGETS[targetIdx];
-    for (let binaryIdx = 0; binaryIdx < DENO_BINARIES.length; binaryIdx++) {
-      const binaryName = DENO_BINARIES[binaryIdx];
+    for (let binaryIdx = 0; binaryIdx < ENDE_BINARIES.length; binaryIdx++) {
+      const binaryName = ENDE_BINARIES[binaryIdx];
       const currentIdx = (targetIdx * 2) + binaryIdx + 1;
       $.logLight(
         `[${currentIdx}/${totalCanaries}]`,
@@ -268,11 +268,11 @@ async function dumpRcVersion() {
   $.logStep("Compute version");
   await unzipArchive(getArchiveName("ende", Deno.build.target), "ende");
   const output = await $`./ende -V`.stdout("piped");
-  const denoVersion = output.stdout.slice(5).split("+")[0];
-  $.logStep("Computed version", denoVersion);
+  const endeVersion = output.stdout.slice(5).split("+")[0];
+  $.logStep("Computed version", endeVersion);
   await Deno.writeTextFile(
     `./release-${CHANNEL}-latest.txt`,
-    `v${denoVersion}`,
+    `v${endeVersion}`,
   );
 }
 

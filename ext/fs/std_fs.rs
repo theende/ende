@@ -958,7 +958,7 @@ fn lstat(path: &Path) -> FsResult<FsStat> {
 
 // Some Windows file system drivers (notably ImDisk-backed memory disks)
 // reject `FILE_FLAG_BACKUP_SEMANTICS` for regular files and return
-// `ERROR_INVALID_FUNCTION` (1). Deno passes that flag so `CreateFile` can
+// `ERROR_INVALID_FUNCTION` (1). Ende passes that flag so `CreateFile` can
 // open directories; on those drivers we transparently retry without it.
 // See https://github.com/denoland/deno/issues/26257.
 #[cfg(windows)]

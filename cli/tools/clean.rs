@@ -89,7 +89,7 @@ pub async fn clean(
 
 /// Warns about cache files that could not be removed because another process is
 /// holding them open. On Windows this resolves the offending process(es) via
-/// the Restart Manager and points the user at a running Deno language server,
+/// the Restart Manager and points the user at a running Ende language server,
 /// which is the most common cause (see issue #33903).
 fn report_locked_files(failed: &[(PathBuf, std::io::Error)]) {
   if failed.is_empty() {

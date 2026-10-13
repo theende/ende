@@ -72,7 +72,7 @@ pub async fn transpile(
     SourceMapMode::Separate => SourceMapOption::Separate,
   };
 
-  // Resolve transpile options from deno.json compilerOptions
+  // Resolve transpile options from ende.json compilerOptions
   let compiler_options_resolver = factory.compiler_options_resolver()?;
 
   // Collect file paths and specifiers
@@ -121,7 +121,7 @@ pub async fn transpile(
       maybe_syntax: None,
     })?;
 
-    // Use transpile options from deno.json, with source map overridden by CLI flag
+    // Use transpile options from ende.json, with source map overridden by CLI flag
     let transpile_and_emit_options = compiler_options_resolver
       .for_specifier(specifier)
       .transpile_options()?;
@@ -158,7 +158,7 @@ pub async fn transpile(
     };
 
     // Always apply the CLI source map mode. The built-in emit defaults
-    // have inlineSourceMap: true (for the runtime), but `deno transpile`
+    // have inlineSourceMap: true (for the runtime), but `ende transpile`
     // should produce clean output by default. Users must pass --source-map
     // explicitly to enable source maps.
     let emit_options = EmitOptions {

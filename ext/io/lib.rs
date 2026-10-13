@@ -84,7 +84,7 @@ pub use pipe::PipeWrite;
 pub use pipe::RawPipeHandle;
 pub use pipe::pipe;
 
-/// Env var used by the Node `child_process` spawn path to tell a Deno child
+/// Env var used by the Node `child_process` spawn path to tell an Ende child
 /// which extra numeric stdio fd slots it inherited. Both `ende_process` (which
 /// sets it) and `ende_io` (which consumes it at startup) reference this single
 /// constant so the name has one source of truth.
@@ -235,13 +235,13 @@ fn register_inherited_extra_stdio_fds(fd_table: &mut FdTable) {
     return;
   };
   // Consume the marker so it does not leak into the child's own environment
-  // (`Deno.env.toObject()`) and get inherited by grandchildren spawned through
+  // (`Ende.env.toObject()`) and get inherited by grandchildren spawned through
   // paths that bypass `create_command` (FFI exec, embedders, native modules),
   // where the stale fd numbers would no longer be valid.
   // SAFETY: this runs synchronously on the main thread during extension init,
   // before any user JS (or worker/FFI/native code) that could read or write the
   // environment runs, so there is no concurrent access to race with. This is
-  // the same startup env-mutation invariant Deno relies on elsewhere.
+  // the same startup env-mutation invariant Ende relies on elsewhere.
   unsafe {
     std::env::remove_var(ENDE_EXTRA_STDIO_FDS_ENV_VAR);
   }
@@ -416,7 +416,7 @@ pub struct Stdio {
 
 /// Holds the effective stdout/stderr handles for child process inheritance.
 ///
-/// When the runtime redirects stdout/stderr (e.g. during `deno test` for
+/// When the runtime redirects stdout/stderr (e.g. during `ende test` for
 /// output capture), child processes spawned with `stdio: "inherit"` need
 /// to inherit the redirected handles, not the original OS stdout/stderr.
 /// This struct is stored in `OpState` during IO extension init and read
@@ -656,7 +656,7 @@ where
     let (action_tx, action_rx) = std::sync::mpsc::channel::<F>();
     let (result_tx, result_rx) = tokio::sync::oneshot::channel();
     let spawn_result = std::thread::Builder::new()
-      .name("deno-flock".to_string())
+      .name("ende-flock".to_string())
       // these threads only sit in a single syscall, so the default 2MB stack is
       // wasteful when many locks are pending at once
       .stack_size(256 * 1024)

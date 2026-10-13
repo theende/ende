@@ -557,7 +557,7 @@ pub enum ProcessError {
   Other(#[from] JsErrorBox),
   #[class(type)]
   #[error("Missing cmd")]
-  MissingCmd, // only for Deno.run
+  MissingCmd, // only for Ende.run
 }
 
 impl ProcessError {
@@ -565,7 +565,7 @@ impl ProcessError {
   /// file as not being in an executable format (`ENOEXEC`). This happens for
   /// e.g. shell scripts without a shebang line. POSIX `execvp`/`posix_spawnp`
   /// fall back to running such files with `/bin/sh`; glibc's `posix_spawnp`
-  /// (used by Rust's `std::process::Command` on Linux) does not, so Deno
+  /// (used by Rust's `std::process::Command` on Linux) does not, so Ende
   /// performs this fallback explicitly to match Node.js/libuv behavior.
   #[cfg(unix)]
   fn is_enoexec(&self) -> bool {
@@ -887,7 +887,7 @@ fn create_command(
         StdioOrFd::Fd(fd) => {
           // Dup the caller's fd onto the target fd slot in the child. The
           // trailing `true` requests that O_NONBLOCK be cleared on the dup'd
-          // fd: Deno opens piped stdio non-blocking for async reads from JS,
+          // fd: Ende opens piped stdio non-blocking for async reads from JS,
           // but a child doing blocking reads on the inherited fd would
           // otherwise fail with EAGAIN.
           fds_to_dup.push((fd, target_fd, true));
@@ -1092,7 +1092,7 @@ struct NodeChild {
 }
 
 /// Spawn a child process, returning the raw child and its PID.
-/// Shared by both the Deno API and Node compat spawn paths.
+/// Shared by both the Ende API and Node compat spawn paths.
 fn spawn_command(command: Command) -> Result<(AsyncChild, u32), ProcessError> {
   #[cfg(windows)]
   let mut command = command;
@@ -1156,7 +1156,7 @@ fn spawn_command(command: Command) -> Result<(AsyncChild, u32), ProcessError> {
   Ok((child, pid))
 }
 
-/// Spawn for the Deno API: wraps child stdio in resource table entries.
+/// Spawn for the Ende API: wraps child stdio in resource table entries.
 fn spawn_child(
   state: &mut OpState,
   command: Command,
@@ -1208,7 +1208,7 @@ fn spawn_child(
     .transpose()?
     .map(|stderr| state.resource_table.add(ChildStderrResource::from(stderr)));
 
-  // Convert extra pipe fds to resource IDs for the Deno API.
+  // Convert extra pipe fds to resource IDs for the Ende API.
   let extra_pipe_rids = extra_pipe_fds
     .into_iter()
     .map(|maybe_fd| {
@@ -1416,8 +1416,8 @@ struct RunEnv {
 ///
 /// `allow_cwd_inherit` controls whether spawning is allowed to proceed when
 /// no explicit cwd was passed and `current_dir()` fails (e.g. the parent's
-/// cwd has been unlinked). Only Node-compat ops opt into this; Deno's own
-/// `Deno.run` / `Deno.Command` keep the existing strict behavior.
+/// cwd has been unlinked). Only Node-compat ops opt into this; Ende's own
+/// `Ende.run` / `Ende.Command` keep the existing strict behavior.
 fn compute_run_env(
   arg_cwd: Option<&str>,
   arg_envs: &[(String, String)],

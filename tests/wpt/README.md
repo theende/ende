@@ -1,6 +1,6 @@
 # Web Platform Tests (WPT)
 
-Deno uses a custom test runner for Web Platform Tests. It can be found at
+Ende uses a custom test runner for Web Platform Tests. It can be found at
 `./tests/wpt/wpt.ts`, relative to the root of this codebase.
 
 ## Setup
@@ -59,8 +59,8 @@ Tests are run in parallel across CPU cores, partitioned by top-level directory.
 ### Flags
 
 - `--all` — Run all tests (required if no filters are specified)
-- `--release` — Use `./target/release/deno` instead of `./target/debug/deno`
-- `--binary=<path>` — Use a specific Deno binary (skips `cargo build`)
+- `--release` — Use `./target/release/ende` instead of `./target/debug/ende`
+- `--binary=<path>` — Use a specific Ende binary (skips `cargo build`)
 - `--quiet` — Only print failing test cases
 - `--json=<file>` — Write test results as JSON
 - `--wptreport=<file>` — Write results in the

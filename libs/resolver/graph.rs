@@ -405,7 +405,7 @@ impl<
   /// snapshot, regardless of whether the referrer's `package.json` declares
   /// it.
   ///
-  /// `deno compile --bundle` follows `new Worker(new URL(...))` and similar
+  /// `ende compile --bundle` follows `new Worker(new URL(...))` and similar
   /// references into modules that can live outside the entrypoint's package
   /// scope (e.g. a worker authored in a sibling source tree, pulled in
   /// alongside a `dist/`-rooted entrypoint). A bare npm import from such a
@@ -744,7 +744,7 @@ pub fn enhance_graph_error(
   }
 }
 
-/// Returns a link to relevant Deno documentation for known module graph
+/// Returns a link to relevant Ende documentation for known module graph
 /// errors so users can quickly find the recommended fix.
 fn maybe_docs_url_for_graph_error(
   error: &ModuleGraphError,
@@ -782,7 +782,7 @@ pub fn enhanced_resolution_error_message(
     get_import_prefix_missing_error(error).map(|specifier| {
       // If the specifier looks like a workspace member or linked package whose
       // declared name is scoped (e.g. importing "foo" when "@scope/foo" is
-      // linked), point at the real name instead of suggesting `deno add`.
+      // linked), point at the real name instead of suggesting `ende add`.
       if let Some(name) =
         maybe_matching_bare_pkg_name(specifier, bare_importable_pkg_names)
       {
@@ -1042,7 +1042,7 @@ fn get_import_prefix_missing_error(error: &ResolutionError) -> Option<&str> {
 
   if let Some(specifier) = maybe_specifier {
     // NOTE(bartlomieju): For now, return None if a specifier contains a dot or a space. This is because
-    // suggesting to `deno add bad-module.ts` makes no sense and is worse than not providing
+    // suggesting to `ende add bad-module.ts` makes no sense and is worse than not providing
     // a suggestion at all. This should be improved further in the future
     if specifier.contains('.') || specifier.contains(' ') {
       return None;

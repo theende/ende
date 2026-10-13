@@ -2423,7 +2423,7 @@ fn safe_array_iterator_remains_done_after_array_grows() {
 }
 
 // An internal module that is lazily loaded at runtime gets its imports
-// resolved by the embedder's loader, which in Deno applies the user's import
+// resolved by the embedder's loader, which in Ende applies the user's import
 // map. Mapping `ext:core/mod.js` used to rewrite internal imports too and
 // break instantiation. Regression test for
 // https://github.com/denoland/deno/issues/36302.
@@ -2620,7 +2620,7 @@ fn test_load_with_code_cache() {
 //
 // JSON modules do not produce a V8 code cache, so even when the loader
 // provides `SourceCodeCacheInfo` for one, `code_cache_ready` must never be
-// invoked for it. The `deno compile` runtime relies on this: it counts every
+// invoked for it. The `ende compile` runtime relies on this: it counts every
 // code cache request and only serializes its cache once a matching number of
 // `code_cache_ready` callbacks fire, so a JSON (or Wasm) module that requested
 // a cache but never produced one would otherwise stall serialization forever.

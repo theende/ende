@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 try {
   if (Deno.build.os === "windows") {
     Deno.removeSync(
-      tmpdir() + "\\deno-compile-using_wasm_code_cache.exe.cache",
+      tmpdir() + "\\ende-compile-using_wasm_code_cache.exe.cache",
     );
   } else {
-    Deno.removeSync(tmpdir() + "/deno-compile-using_wasm_code_cache.cache");
+    Deno.removeSync(tmpdir() + "/ende-compile-using_wasm_code_cache.cache");
   }
 } catch {
   // ignore

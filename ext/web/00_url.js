@@ -420,7 +420,7 @@ class URLSearchParams {
   // Node exposes this as a method on URLSearchParams.prototype so that
   // `Object.getOwnPropertyDescriptor(URLSearchParams.prototype,
   // Symbol.for("nodejs.util.inspect.custom"))` is not undefined. We delegate
-  // to Deno's `privateCustomInspect` to preserve the Map-like formatting
+  // to Ende's `privateCustomInspect` to preserve the Map-like formatting
   // (`URLSearchParams { 'a' => 'b' }`) that node compat tests expect.
   [SymbolFor("nodejs.util.inspect.custom")](_depth, inspectOptions, inspect) {
     webidl.assertBranded(this, URLSearchParamsPrototype, "URLSearchParams");
@@ -822,8 +822,8 @@ class URL {
   }
 
   // See URLSearchParams: Node exposes this as a method so that the descriptor
-  // lookup is not undefined. Deno's own inspector still prefers
-  // Deno.privateCustomInspect, so this is effectively the same code path.
+  // lookup is not undefined. Ende's own inspector still prefers
+  // Ende.privateCustomInspect, so this is effectively the same code path.
   [SymbolFor("nodejs.util.inspect.custom")](_depth, inspectOptions, inspect) {
     return this[SymbolFor("Deno.privateCustomInspect")](
       inspect,

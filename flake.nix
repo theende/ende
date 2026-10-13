@@ -1,6 +1,6 @@
 # This provides a Nix dev shell and Nix build for ende and endert binaries.
 {
-  description = "Deno";
+  description = "Ende";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -24,7 +24,7 @@
         rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
 
         cargoToml = builtins.fromTOML (builtins.readFile ./cli/Cargo.toml);
-        denoVersion = cargoToml.package.version;
+        endeVersion = cargoToml.package.version;
 
         cargoLock = builtins.fromTOML (builtins.readFile ./Cargo.lock);
         rustyV8Version = (builtins.head (builtins.filter (p: p.name == "v8") cargoLock.package)).version;
@@ -63,9 +63,9 @@
           glib
         ];
 
-        buildDenoBin = { pname, binName ? pname }: pkgs.rustPlatform.buildRustPackage {
+        buildEndeBin = { pname, binName ? pname }: pkgs.rustPlatform.buildRustPackage {
           inherit pname;
-          version = denoVersion;
+          version = endeVersion;
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
 
@@ -92,8 +92,8 @@
       in
       {
         packages = {
-          ende = buildDenoBin { pname = "ende"; };
-          endert = buildDenoBin { pname = "endert"; };
+          ende = buildEndeBin { pname = "ende"; };
+          endert = buildEndeBin { pname = "endert"; };
 
           default = self.packages.${system}.ende;
         };

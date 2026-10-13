@@ -38,7 +38,7 @@ pub enum OpScheduling {
   Deferred,
 }
 
-/// `OpDriver` encapsulates the interface for handling operations within Deno's runtime.
+/// `OpDriver` encapsulates the interface for handling operations within Ende's runtime.
 ///
 /// This trait defines methods for submitting ops and polling readiness inside of the
 /// event loop.

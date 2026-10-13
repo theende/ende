@@ -1,6 +1,6 @@
 # ende_io
 
-**This crate provides IO primitives for other Deno extensions, this includes
+**This crate provides IO primitives for other Ende extensions, this includes
 stdio streams and abstraction over File System files.**
 
 ## Usage Example
@@ -22,4 +22,4 @@ Where `ende_io::Stdio` implements `Default`, and can therefore be provided as
 ## Dependencies
 
 - **ende_web**: Provided by the `ende_web` crate
-- **ende_tty**: Provided in `deno/runtime/ops/tty.rs`
+- **ende_tty**: Provided in `runtime/ops/tty.rs`

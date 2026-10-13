@@ -385,7 +385,7 @@ impl VfsEntry {
 }
 
 pub static ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME: &str =
-  ".deno_compile_node_modules";
+  ".ende_compile_node_modules";
 
 #[derive(Debug)]
 pub struct BuiltVfs {
@@ -575,7 +575,7 @@ impl VfsBuilder {
   /// Add a directory that might be the minimum root directory
   /// of the VFS.
   ///
-  /// For example, say the user has a deno.json and specifies an
+  /// For example, say the user has an ende.json and specifies an
   /// import map in a parent directory. The import map won't be
   /// included in the VFS, but its base will meaning we need to
   /// tell the VFS builder to include the base of the import map

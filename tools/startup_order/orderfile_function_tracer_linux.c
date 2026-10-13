@@ -259,7 +259,7 @@ static int copy_executable_regions(void) {
   for (size_t index = 0; index < region_count; index++) {
     struct exec_region *region = &regions[index];
     size_t bytes = region->end - region->start;
-    region->fd = create_memfd("deno-function-trace");
+    region->fd = create_memfd("ende-function-trace");
     if (region->fd < 0 || ftruncate(region->fd, (off_t)bytes) != 0) {
       debug_errno("create executable memfd");
       return -1;
@@ -528,9 +528,9 @@ static int create_trace_output(const char *output) {
 
 __attribute__((constructor(101)))
 static void initialize_function_tracer(void) {
-  debug_enabled = getenv("DENO_FUNCTION_TRACE_DEBUG") != NULL;
-  const char *output_env = getenv("DENO_FUNCTION_TRACE_OUT");
-  const char *starts_env = getenv("DENO_FUNCTION_TRACE_STARTS");
+  debug_enabled = getenv("ENDE_FUNCTION_TRACE_DEBUG") != NULL;
+  const char *output_env = getenv("ENDE_FUNCTION_TRACE_OUT");
+  const char *starts_env = getenv("ENDE_FUNCTION_TRACE_STARTS");
   if (output_env == NULL || starts_env == NULL) {
     return;
   }
@@ -540,8 +540,8 @@ static void initialize_function_tracer(void) {
   snprintf(output, sizeof(output), "%s", output_env);
   snprintf(starts, sizeof(starts), "%s", starts_env);
   unsetenv("LD_PRELOAD");
-  unsetenv("DENO_FUNCTION_TRACE_OUT");
-  unsetenv("DENO_FUNCTION_TRACE_STARTS");
+  unsetenv("ENDE_FUNCTION_TRACE_OUT");
+  unsetenv("ENDE_FUNCTION_TRACE_STARTS");
 
   long reported_page_size = sysconf(_SC_PAGESIZE);
   if (reported_page_size <= 0) {

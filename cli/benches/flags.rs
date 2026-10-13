@@ -2,7 +2,7 @@
 //! Microbenchmark of the CLI flag-parsing entry point (`ende_cli_parser` plus
 //! the CLI-side bare-run fast path), built into the same binary (same profile /
 //! LTO) so the numbers are free of the runtime-startup and build confounders
-//! that a `deno run` wall-clock benchmark has.
+//! that an `ende run` wall-clock benchmark has.
 
 use std::ffi::OsString;
 use std::hint::black_box;

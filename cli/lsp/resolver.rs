@@ -128,7 +128,7 @@ pub struct ImportMapHover {
   pub key: String,
   /// The value the key maps to, as written in the import map.
   pub value: String,
-  /// The location of the import map (e.g. the `deno.json`).
+  /// The location of the import map (e.g. the `ende.json`).
   pub base_url: Url,
 }
 

@@ -411,7 +411,7 @@ enum PollState {
 /// implements `v8::inspector::V8InspectorClientImpl`.
 ///
 /// After creating this structure it's possible to connect multiple sessions
-/// to the inspector, in case of Deno it's either: a "websocket session" that
+/// to the inspector, in case of Ende it's either: a "websocket session" that
 /// provides integration with Chrome Devtools, or an "in-memory session" that
 /// is used for REPL or coverage collection.
 pub struct JsRuntimeInspector {
@@ -870,7 +870,7 @@ impl JsRuntimeInspectorState {
 }
 
 impl JsRuntimeInspector {
-  /// Currently Deno supports only a single context in `JsRuntime`
+  /// Currently Ende supports only a single context in `JsRuntime`
   /// and thus it's id is provided as an associated constant.
   const CONTEXT_GROUP_ID: i32 = 1;
 

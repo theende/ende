@@ -7,7 +7,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "HTTP/1 protocol pieces for Deno"
+description = "HTTP/1 protocol pieces for Ende"
 
 [lib]
 path = "lib.rs"

@@ -530,18 +530,18 @@ fn strip_markdown_blockquote_marker(line: &str) -> &str {
 
 enum Shebang {
   Permissions(Box<PermissionFlags>),
-  /// Message describing why the shebang could not be parsed as a `deno`
+  /// Message describing why the shebang could not be parsed as an `ende`
   /// command. The generated test is made to throw with this message.
   Invalid(String),
 }
 
-/// Parses a shebang line like `#!/usr/bin/env -S deno run --allow-read`.
+/// Parses a shebang line like `#!/usr/bin/env -S ende run --allow-read`.
 ///
-/// The flags are parsed using deno's own CLI argument parser and the resulting
+/// The flags are parsed using ende's own CLI argument parser and the resulting
 /// permissions are forwarded to `Ende.test`.
 ///
 /// Known limitations:
-/// - The `deno` executable is matched by file name, so custom-named binaries
+/// - The `ende` executable is matched by file name, so custom-named binaries
 ///   (e.g. `deno-canary`) are not recognized and yield an invalid shebang.
 /// - A scoped `--deny-*=<path>` cannot be represented in the `Ende.test`
 ///   permissions object yet and yields an invalid shebang to force failure
@@ -1272,7 +1272,7 @@ fn string_lit(value: &str) -> ast::Expr {
 /// - No permissions flags becomes `{ permissions: "none" }`
 ///
 /// The currently unsupported flags are due to the current
-/// `Deno.PermissionOptionsObject` not being able to properly model them.
+/// `Ende.PermissionOptionsObject` not being able to properly model them.
 fn permissions_options_object(permissions: &PermissionFlags) -> ast::Expr {
   let prop = |name: &str, value: ast::Expr| {
     ast::PropOrSpread::Prop(Box::new(ast::Prop::KeyValue(ast::KeyValueProp {
@@ -1928,7 +1928,7 @@ Ende.test("add", ()=>{
           media_type: MediaType::TypeScript,
         }],
       },
-      // commented out `Deno.test` should be ignored
+      // commented out `Ende.test` should be ignored
       Test {
         input: Input {
           source: r#"

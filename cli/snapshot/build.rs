@@ -117,7 +117,7 @@ fn create_cli_snapshot(
 /// module. Captured at the time PR #34450 landed. The heavy node-polyfill
 /// closure (process / stream / net / tty / require / the ~118 polyfill modules)
 /// is deliberately *absent* — it is `lazy_loaded_esm`, deserialized only on
-/// first `node:*` use, so non-node `deno run` / `eval` never pay for it.
+/// first `node:*` use, so non-node `ende run` / `eval` never pay for it.
 ///
 /// Anything reaching the eager graph that is NOT in this list regresses
 /// empty/ESM startup (each leaked module adds snapshot deserialization the
@@ -213,7 +213,7 @@ fn assert_consumed_set_unchanged(consumed: &std::collections::HashSet<&str>) {
   assert!(
     leaked.is_empty(),
     "lazy module(s) newly pulled into the eager snapshot: {leaked:?}.\nEach \
-     adds snapshot deserialization to the common `deno run` / `eval` startup \
+     adds snapshot deserialization to the common `ende run` / `eval` startup \
      path. If a `node:*` / `ext:ende_node/*` module leaked, an eager `esm` \
      entry or a static import from an eager module is dragging the node \
      polyfill closure into startup — fix it in ext/node/lib.rs. If the entry \

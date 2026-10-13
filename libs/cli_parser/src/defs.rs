@@ -1,5 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-//! Static command definitions for the Deno CLI.
+//! Static command definitions for the Ende CLI.
 //!
 //! All definitions are `const` - they live in `.rodata` and cost zero
 //! runtime initialization.
@@ -607,7 +607,7 @@ pub static LOCK_ARGS: &[ArgDef] = &[
 // ============================================================
 
 // Shared between `run` and its alias-like `watch` subcommand
-// (`deno watch` == `deno run --watch-hmr`).
+// (`ende watch` == `ende run --watch-hmr`).
 static RUN_ARGS: &[ArgDef] = &[
   ArgDef::new("script_arg")
     .positional()

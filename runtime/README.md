@@ -1,23 +1,20 @@
 # `ende_runtime` crate
 
-[![crates](https://img.shields.io/crates/v/deno_runtime.svg)](https://crates.io/crates/deno_runtime)
-[![docs](https://docs.rs/deno_runtime/badge.svg)](https://docs.rs/deno_runtime)
-
-This is a slim version of the Deno CLI which removes typescript integration and
+This is a slim version of the Ende CLI which removes typescript integration and
 various tooling (like lint and doc). Basically only JavaScript execution with
-Deno's operating system bindings (ops).
+Ende's operating system bindings (ops).
 
 ## Stability
 
 This crate is built using battle-tested modules that were originally in the
-`deno` crate, however the API of this crate is subject to rapid and breaking
+`ende` crate, however the API of this crate is subject to rapid and breaking
 changes.
 
 ## `MainWorker`
 
 The main API of this crate is `MainWorker`. `MainWorker` is a structure
-encapsulating `ende_core::JsRuntime` with a set of ops used to implement `Deno`
-namespace.
+encapsulating `ende_core::JsRuntime` with a set of ops used to implement the
+`Ende` namespace.
 
 When creating a `MainWorker` implementors must call `MainWorker::bootstrap` to
 prepare JS runtime for use.

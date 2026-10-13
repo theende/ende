@@ -1,6 +1,6 @@
 # ende_cache
 
-This crate implements the Cache API for Deno.
+This crate implements the Cache API for Ende.
 
 The following APIs are implemented:
 

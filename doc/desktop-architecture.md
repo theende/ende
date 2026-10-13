@@ -1,15 +1,15 @@
-# Deno Desktop — internals
+# Ende Desktop — internals
 
-How `deno desktop` actually wires a native window to a Deno runtime. This skips
-the obvious (what a WebView is, what `Deno.serve` does) and documents the
+How `ende desktop` actually wires a native window to an Ende runtime. This skips
+the obvious (what a WebView is, what `Ende.serve` does) and documents the
 non-obvious mechanics: the load model, the ABI handshake, the two transports,
 and the lifecycle edges.
 
-## The inversion: Deno is the library, not the host
+## The inversion: Ende is the library, not the host
 
 The usual embedding has the app `dlopen` a UI lib. Desktop is inverted. The
 **executable is the native backend** (`laufey` for CEF, `laufey_webview` for the
-system WebView); the **Deno runtime is a cdylib** named `libendert`
+system WebView); the **Ende runtime is a cdylib** named `libendert`
 (`crate-type = ["cdylib"]`, `cli/rt_desktop/`). The backend is launched with
 `--runtime <path-to-dylib>`, `dlopen`s it, and calls into it through a C ABI.
 
@@ -19,8 +19,8 @@ Every launcher the packager writes is just that one invocation:
 exec "$DIR/laufey_webview" --runtime "$DIR/libendert.so" "$@"   # desktop.rs:1407
 ```
 
-So the binary that owns `main()`, the event loop, and the window is _not_ Deno —
-Deno is a guest the backend boots and drives.
+So the binary that owns `main()`, the event loop, and the window is _not_ Ende —
+Ende is a guest the backend boots and drives.
 
 ## The ABI handshake
 
@@ -51,7 +51,7 @@ User code + assets are not files next to the dylib; they're a **section inside
 the dylib** named `d3n0l4nd`, read back with
 `libsui::find_section_in_current_image` (`find_section_in_dylib`,
 `lib.rs:1512`). `extract_standalone_with_finder` parses it into the standalone
-metadata + VFS, exactly like `deno compile`, but sourced from the loaded image
+metadata + VFS, exactly like `ende compile`, but sourced from the loaded image
 rather than argv0.
 
 ## Boot ordering (and why it's strict)
@@ -61,9 +61,9 @@ single-threaded, because two process-global operations happen there that are
 unsafe once threads exist:
 
 1. **Port publish before runtime build** (`lib.rs:1222`): allocate a random
-   loopback port, then `set_var("DENO_SERVE_ADDRESS", "tcp:127.0.0.1:<port>")`.
+   loopback port, then `set_var("ENDE_SERVE_ADDRESS", "tcp:127.0.0.1:<port>")`.
    `setenv` is not thread-safe on glibc (Rust 1.81+ marks it `unsafe`), so it
-   must precede the mio IO thread and inspector thread. The user's `Deno.serve`
+   must precede the mio IO thread and inspector thread. The user's `Ende.serve`
    / `export default { fetch }` later binds this pre-set address with no
    coordination needed.
 2. **chdir into the extracted VFS** (`lib.rs:1262`): process-wide, so it must
@@ -71,7 +71,7 @@ unsafe once threads exist:
    Vite `dist/`) resolve build output relative to cwd.
 
 Then `run_desktop` runs two futures concurrently under `tokio::select!`
-(`lib.rs:1848`): `endert::run::run_with_options(…)` (the Deno runtime, with
+(`lib.rs:1848`): `endert::run::run_with_options(…)` (the Ende runtime, with
 `auto_serve: true`, `serve_port`, `op_state_init`) and `laufey::run()` (the
 native event loop). A third spawned task, `navigate_fut`, bridges them.
 
@@ -92,8 +92,8 @@ App content and JS↔native calls travel on completely separate paths.
 **Content — loopback HTTP.** The WebView is a real browser pointed at
 `http://127.0.0.1:<port>/`. Nothing special.
 
-**Bindings — mpsc events + per-call oneshot.** `Deno.desktop`/window APIs and
-webview→Deno function calls do _not_ use HTTP:
+**Bindings — mpsc events + per-call oneshot.** `Ende.desktop`/window APIs and
+webview→Ende function calls do _not_ use HTTP:
 
 - Native → runtime: a single bounded mpsc channel of `DesktopEvent`
   (`ops/desktop.rs:119`), capacity 1024. High-frequency events (mouse move,
@@ -143,12 +143,12 @@ change into `ChangeOutcome` (`hmr.rs:331`), which the desktop side maps to a
   ES-module change (imports / exported bindings / top-level `let` changed). The
   module graph can't be patched and a reload wouldn't help (the stale runtime
   keeps serving), so `restart_desktop_app()` calls `exit(75)` (`lib.rs:1537`).
-  The `deno desktop --hmr` supervisor owns the child, catches code 75, and
+  The `ende desktop --hmr` supervisor owns the child, catches code 75, and
   relaunches — exiting via sentinel rather than re-exec keeps the process group,
   Ctrl-C handling, and temp-entrypoint cleanup with the supervisor
   (`HMR_RESTART_EXIT_CODE`, `lib.rs:1529`).
 
-For framework dev servers (`is_framework_dev`), Deno-level HMR is disabled
+For framework dev servers (`is_framework_dev`), Ende-level HMR is disabled
 entirely — the framework's own websocket HMR runs and cwd is left at the source
 dir so its watcher sees real files.
 
@@ -165,5 +165,5 @@ dir so its watcher sees real files.
   / Win32 / X11 / **Wayland** (`LAUFEY_WINDOW_HANDLE_WAYLAND`, `lib.rs:518`).
   Wayland is detected at runtime, giving native Wayland rather than XWayland.
 - **`--inspect`**: `cli/tools/desktop_devtools.rs` runs a CDP multiplexer in the
-  parent fronting both the Deno inspector and the renderer's debug port behind
+  parent fronting both the Ende inspector and the renderer's debug port behind
   one `/unified` websocket.

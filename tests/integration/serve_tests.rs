@@ -286,7 +286,7 @@ async fn ende_run_serve_with_tcp_from_env() {
   let stderr = BufReader::new(child.stderr.as_mut().unwrap());
   let msg = stderr.lines().next().unwrap().unwrap();
 
-  // Deno.serve() listens on 0.0.0.0 by default. This checks ENDE_SERVE_ADDRESS
+  // Ende.serve() listens on 0.0.0.0 by default. This checks ENDE_SERVE_ADDRESS
   // is not ignored by ensuring it's listening on 127.0.0.1.
   let port_regex = Regex::new(r"http:\/\/127\.0\.0\.1:(\d+)").unwrap();
   let port = port_regex.captures(&msg).unwrap().get(1).unwrap().as_str();

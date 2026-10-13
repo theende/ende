@@ -434,7 +434,7 @@ async fn bench_specifiers(
   Ok(())
 }
 
-/// Checks if the path has a basename and extension Deno supports for benches.
+/// Checks if the path has a basename and extension Ende supports for benches.
 fn is_supported_bench_path(entry: WalkEntry) -> bool {
   if !is_script_ext(entry.path) {
     false

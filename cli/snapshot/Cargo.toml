@@ -8,7 +8,7 @@ edition.workspace = true
 license.workspace = true
 readme = "README.md"
 repository.workspace = true
-description = "v8 snapshot used by the Deno CLI"
+description = "v8 snapshot used by the Ende CLI"
 
 [lib]
 path = "lib.rs"

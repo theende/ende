@@ -301,8 +301,8 @@ fn build_js_error_class_exception<'s, 'i>(
   };
 
   // Restore the exact registered error class (e.g. `RangeError`,
-  // `Deno.errors.NotFound`) by re-parenting the prototype, so that
-  // `err instanceof Deno.errors.NotFound` holds. We never call the class
+  // `Ende.errors.NotFound`) by re-parenting the prototype, so that
+  // `err instanceof Ende.errors.NotFound` holds. We never call the class
   // constructor (that would run JS); we only borrow its `.prototype`.
   let constructors = JsRealm::exception_state_from_scope(scope)
     .js_error_constructors
@@ -478,7 +478,7 @@ pub(crate) fn call_site_evals_key<'s, 'i>(
 }
 
 /// A `JsError` represents an exception coming from V8, with stack frames and
-/// line numbers. The deno_cli crate defines another `JsError` type, which wraps
+/// line numbers. The ende CLI crate defines another `JsError` type, which wraps
 /// the one defined here, that adds source map support and colorful formatting.
 /// When updating this struct, also update errors_are_equal_without_cause() in
 /// fmt_error.rs.
@@ -2343,7 +2343,7 @@ pub enum ErrorElement {
 
 /// Applies formatting to various parts of error stack traces.
 ///
-/// This is to allow the `deno` crate to reuse `format_frame` and
+/// This is to allow the `ende` crate to reuse `format_frame` and
 /// `format_location` but apply ANSI colors for terminal output,
 /// without adding extra dependencies to `ende_core`.
 pub trait ErrorFormat {

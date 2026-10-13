@@ -37,7 +37,7 @@ use crate::graphs::LockfilePackageGraph;
 
 pub struct SetWorkspaceConfigOptions {
   pub config: WorkspaceConfig,
-  /// Maintains deno.json dependencies and workspace config
+  /// Maintains ende.json dependencies and workspace config
   /// regardless of the `config` options provided.
   ///
   /// Ex. the CLI sets this to `true` when someone runs a
@@ -696,7 +696,7 @@ impl Lockfile {
       // When the value is transformed, we don't consider that a lockfile
       // change that should update the lockfile because we want to reduce
       // lockfile churn. For example, say someone with a new version of
-      // Deno does a PR to a repo that has an old lockfile, but they
+      // Ende does a PR to a repo that has an old lockfile, but they
       // don't update any dependencies. In that case, we don't want to
       // have that PR include a lockfile change.
       let value = match version {

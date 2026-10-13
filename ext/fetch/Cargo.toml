@@ -8,7 +8,7 @@ edition.workspace = true
 license.workspace = true
 readme = "README.md"
 repository.workspace = true
-description = "Fetch API implementation for Deno"
+description = "Fetch API implementation for Ende"
 
 [lib]
 path = "lib.rs"

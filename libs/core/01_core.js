@@ -594,7 +594,7 @@
 
   // Some "extensions" rely on "BadResource", "Interrupted", "NotCapable"
   // errors in the JS code (eg. "ende_net") so they are provided in "Ende.core"
-  // but later reexported on "Deno.errors"
+  // but later reexported on "Ende.errors"
   class BadResource extends Error {
     constructor(msg, options) {
       super(msg, options);
@@ -1265,7 +1265,7 @@
     refreshTimer: __timers.refreshTimer,
     refTimer: __timers.refTimer,
     unrefTimer: __timers.unrefTimer,
-    // System timers bypass Deno's test sanitizer resource tracking.
+    // System timers bypass Ende's test sanitizer resource tracking.
     createSystemTimer: (callback, after, isRefed) =>
       __timers.createTimer(callback, after, undefined, false, !!isRefed, true),
     createSystemInterval: (callback, interval, isRefed) =>

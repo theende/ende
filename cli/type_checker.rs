@@ -226,15 +226,15 @@ impl TypeChecker {
     )?;
 
     // Declaration emit type-checks with `TypeCheckMode::All`, which (unlike
-    // `deno check`'s default `Local` mode) doesn't scope semantic diagnostics
+    // `ende check`'s default `Local` mode) doesn't scope semantic diagnostics
     // to the user's own files. That widens the report to every file in the
-    // program, including deno's bundled `asset:///` declarations. Those aren't
+    // program, including ende's bundled `asset:///` declarations. Those aren't
     // self-contained under a user-supplied `compilerOptions.lib`: with
     // `"lib": ["dom", "ende.ns"]`, `lib.ende.ns.d.ts`'s own `import("node:net")`
     // and `NodeJS.Timeout` references have nothing to resolve against, and
     // adding `"node"` instead collides the bundled node types with the web
     // ones. Either way the user gets errors in a file they can't edit.
-    // `deno check` never surfaces these, so neither should declaration emit.
+    // `ende check` never surfaces these, so neither should declaration emit.
     let diagnostics = response.diagnostics.filter(|d| {
       !d.file_name
         .as_deref()

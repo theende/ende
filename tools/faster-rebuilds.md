@@ -1,6 +1,6 @@
 # Faster rebuilds with [`cargo-plonk`](https://crates.io/crates/cargo-plonk)
 
-This document describes how to use `cargo plonk` to speed up Deno rebuilds for
+This document describes how to use `cargo plonk` to speed up Ende rebuilds for
 faster dev cycles.
 
 ```
@@ -14,20 +14,20 @@ crates.
 
 ## Usage
 
-First, compile Deno normally.
+First, compile Ende normally.
 
 ```
-cargo build -p deno [--release]
+cargo build -p ende [--release]
 ```
 
 Run the following command to start watching for changes in `ext/webgpu` crate
-and hot swap `init_ops_and_esm` function into the previously built `deno` bin.
+and hot swap `init_ops_and_esm` function into the previously built `ende` bin.
 
 ```
 cargo plonk run \
   --package ende_webgpu \
   --symbol init_ops_and_esm \
-  --bin deno \
+  --bin ende \
   --watch
 ```
 
@@ -42,7 +42,7 @@ You can use `cargo plonk run` to re-run commands on changes.
 cargo plonk run -v \
   -p ende_webgpu \
   -s init_ops_and_esm \
-  -b deno \
+  -b ende \
   --watch \
   -- eval "await navigator.gpu.requestAdapter()" --unstable
 ```

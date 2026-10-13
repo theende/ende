@@ -12,13 +12,13 @@ const currentVersion = semver.parse(getCliVersion())!;
 const nextVersion = getNextVersion(semver.parse(getCliVersion())!);
 
 $.logStep("Creating gist with instructions...");
-const releaseInstructions = buildDenoReleaseInstructionsDoc();
+const releaseInstructions = buildEndeReleaseInstructionsDoc();
 if (Deno.args.some((a) => a === "--dry-run")) {
   console.log(releaseInstructions);
 } else {
   const octoKit = createOctoKit();
   const result = await octoKit.request("POST /gists", {
-    description: `Deno CLI v${semver.format(nextVersion)} release checklist`,
+    description: `Ende CLI v${semver.format(nextVersion)} release checklist`,
     public: false,
     files: {
       [`release_${semver.format(nextVersion)}.md`]: {
@@ -64,7 +64,7 @@ function isPrerelease() {
   return Deno.args.some((a) => ["--alpha", "--beta", "--rc"].includes(a));
 }
 
-function buildDenoReleaseInstructionsDoc() {
+function buildEndeReleaseInstructionsDoc() {
   function getMinorVersion(version: string) {
     return version.split(".").slice(0, 2).join(".");
   }
@@ -79,7 +79,7 @@ function buildDenoReleaseInstructionsDoc() {
     .replaceAll("$VERSION", semver.format(nextVersion))
     .replaceAll("$MINOR_VERSION", getMinorVersion(semver.format(nextVersion)))
     .replaceAll("$PAST_VERSION", semver.format(currentVersion));
-  return `# Deno CLI ${
+  return `# Ende CLI ${
     semver.format(nextVersion)
   } Release Checklist\n\n${templateText}`;
 }

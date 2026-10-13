@@ -1,3 +1,3 @@
 # ende_resolver
 
-Deno resolution algorithm.
+Ende resolution algorithm.

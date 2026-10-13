@@ -95,8 +95,8 @@ fn get_prelude() -> String {
     String,
     lastEvalResult: undefined,
     lastThrownError: undefined,
-    inspectArgs: Deno[Deno.internal].inspectArgs,
-    noColor: Deno.noColor,
+    inspectArgs: Ende[Ende.internal].inspectArgs,
+    noColor: Ende.noColor,
     get closed() {
       try {
         return typeof globalThis.closed === 'undefined' ? false : globalThis.closed;
@@ -451,7 +451,7 @@ impl ReplSession {
     // resolution microtask drains, the weakly-held promise is collected and
     // the CDP client gets a `-32000 "Promise was collected"` error. Doing
     // the dispatch + drain pair here closes that window for external
-    // debuggers attached via `deno repl --inspect`.
+    // debuggers attached via `ende repl --inspect`.
     // (post_message_with_event_loop above handles the same race for the
     // in-process REPL session.)
     std::future::poll_fn(|cx| {
@@ -757,7 +757,7 @@ impl ReplSession {
   ) -> Result<String, AnyError> {
     // TODO(caspervonb) we should investigate using previews here but to keep things
     // consistent with the previous implementation we just get the preview result from
-    // Deno.inspectArgs.
+    // Ende.inspectArgs.
     let response = self
       .call_function_on_repl_internal_obj(
         r#"function (object) {

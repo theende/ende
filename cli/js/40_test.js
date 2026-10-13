@@ -102,7 +102,7 @@ const testStates = new Map();
 /**
  * Symbol that test functions (or their wrappers) can carry to tell the test
  * runner which source location to report for the test, instead of the call
- * site of `Deno.test()` itself.
+ * site of `Ende.test()` itself.
  *
  * The value must be a string in the format `"fileName:lineNumber:columnNumber"`,
  * where `fileName` may be an absolute file URL or any remote URL.  Parsing
@@ -110,7 +110,7 @@ const testStates = new Map();
  * handled correctly.
  *
  * This is primarily intended for test-helper libraries (e.g. `@std/testing/bdd`)
- * that call `Deno.test()` on behalf of the user: by setting this symbol on the
+ * that call `Ende.test()` on behalf of the user: by setting this symbol on the
  * wrapped function they can report the location in *user* code rather than the
  * location inside the library itself.
  */
@@ -145,14 +145,14 @@ function parseTestLocation(str) {
 }
 
 // Default exit handler installed at the start of every test isolate (see
-// `installTestIsolateExitHandler` below). When user code calls `Deno.exit()`
+// `installTestIsolateExitHandler` below). When user code calls `Ende.exit()`
 // outside of any test function - at module top level, in an `unload` event,
 // or from async work that escaped a test - we don't want to kill the deno
 // process. Instead we record the exit code, notify the reporter, and ask V8
 // to terminate the isolate so the test runner can move on to the next file.
 //
 // `defaultExitHandler` is also what `assertExit` restores when a per-test
-// handler finishes, so that `Deno.exit()` after a test (e.g., in an unload
+// handler finishes, so that `Ende.exit()` after a test (e.g., in an unload
 // listener) is still routed to the isolate-exit path.
 let defaultExitHandler = null;
 
@@ -217,7 +217,7 @@ function assertExit(fn, isTest, sanitizeExit) {
       }
     } finally {
       // Restore the isolate-level default handler so that a subsequent
-      // top-level `Deno.exit()` (e.g., in an `unload` listener) is routed
+      // top-level `Ende.exit()` (e.g., in an `unload` listener) is routed
       // back into the test runner instead of falling through to `op_exit`.
       setExitHandler(defaultExitHandler);
     }
@@ -356,7 +356,7 @@ function encodeCount(value, label) {
 // As long as we're using one isolate per test, we can cache the origin since it won't change
 let cachedOrigin = undefined;
 
-// Module-level sanitizer overrides set via Deno.test.sanitizer()
+// Module-level sanitizer overrides set via Ende.test.sanitizer()
 // These have higher precedence than CLI flags/config but lower than per-test options
 let moduleSanitizeOps = undefined;
 let moduleSanitizeResources = undefined;
@@ -367,7 +367,7 @@ function testInner(
   maybeFn,
   overrides = { __proto__: null },
 ) {
-  // No-op if we're not running in `deno test` subcommand.
+  // No-op if we're not running in `ende test` subcommand.
   if (typeof op_register_test !== "function") {
     return;
   }
@@ -377,9 +377,9 @@ function testInner(
     ignore: false,
     only: false,
     sanitizeOps: moduleSanitizeOps ??
-      Deno[Deno.internal].testSanitizeOps ?? false,
+      Ende[Ende.internal].testSanitizeOps ?? false,
     sanitizeResources: moduleSanitizeResources ??
-      Deno[Deno.internal].testSanitizeResources ?? false,
+      Ende[Ende.internal].testSanitizeResources ?? false,
     sanitizeExit: true,
     permissions: null,
     timeout: undefined,
@@ -508,7 +508,7 @@ function testInner(
   });
 }
 
-// Main test function provided by Deno.
+// Main test function provided by Ende.
 function test(
   nameOrFnOrOptions,
   optionsOrFn,
@@ -530,7 +530,7 @@ test.only = function (
 };
 
 function registerHook(hookType, fn) {
-  // No-op if we're not running in `deno test` subcommand.
+  // No-op if we're not running in `ende test` subcommand.
   if (typeof op_register_test_hook !== "function") {
     return;
   }
@@ -574,7 +574,7 @@ test.sanitizer = function (options) {
 
 // Matches a `printf`-style token (`%s`, `%d`, `%i`, `%f`, `%j`, `%o`, `%O`,
 // `%#`, `%%`) or a `$`-prefixed object path (`$foo`, `$foo.bar`) inside a
-// `Deno.test.each()` name template.
+// `Ende.test.each()` name template.
 const EACH_NAME_TOKEN = new SafeRegExp(
   "%[sdifjoO#%]|\\$[\\w$]+(?:\\.[\\w$]+)*",
   "g",
@@ -608,7 +608,7 @@ function eachResolvePath(row, path) {
   return current;
 }
 
-// Build the name for a single `Deno.test.each()` case by interpolating the
+// Build the name for a single `Ende.test.each()` case by interpolating the
 // template against the case's row and its zero-based index.
 function formatEachName(template, row, index) {
   if (typeof template !== "string") {
@@ -650,7 +650,7 @@ function formatEachName(template, row, index) {
   });
 }
 
-// Create a `Deno.test.each()` (and `.only.each`/`.ignore.each`) implementation
+// Create an `Ende.test.each()` (and `.only.each`/`.ignore.each`) implementation
 // bound to the given test registration `overrides`.
 function createEach(overrides) {
   return function each(cases) {
@@ -761,7 +761,7 @@ function createTestContext(desc) {
     origin: desc.origin,
     /**
      * Asserts that `actual` matches the snapshot stored in the snapshot
-     * file. With `deno test --update-snapshots`, mismatching or missing
+     * file. With `ende test --update-snapshots`, mismatching or missing
      * snapshots are written to the snapshot file instead.
      *
      * @param actual {unknown}

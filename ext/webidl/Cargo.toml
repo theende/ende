@@ -8,7 +8,7 @@ edition.workspace = true
 license.workspace = true
 readme = "README.md"
 repository.workspace = true
-description = "WebIDL implementation for Deno"
+description = "WebIDL implementation for Ende"
 
 [lib]
 path = "lib.rs"

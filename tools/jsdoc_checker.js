@@ -38,7 +38,7 @@ for (const file of project.getSourceFiles()) {
   ) {
     if (
       node.getKind() === ts.SyntaxKind.ModuleDeclaration &&
-      node.getName() === "Deno"
+      node.getName() === "Ende"
     ) {
       continue;
     }

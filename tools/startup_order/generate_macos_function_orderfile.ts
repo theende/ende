@@ -176,34 +176,34 @@ async function writeFixtures(
   ]);
 
   const runEmpty = {
-    name: "deno run empty",
+    name: "ende run empty",
     args: ["run", "--quiet", empty],
     cwd: root,
   };
   const runTimerFree = {
-    name: "deno run timer-free",
+    name: "ende run timer-free",
     args: ["run", "--quiet", timerFree],
     cwd: root,
   };
   const remaining: Workload[] = [
-    { name: "deno run hello", args: ["run", "--quiet", hello], cwd: root },
+    { name: "ende run hello", args: ["run", "--quiet", hello], cwd: root },
     {
-      name: "deno run timer",
+      name: "ende run timer",
       args: ["run", "--quiet", timer],
       cwd: root,
     },
     {
-      name: "deno serve",
+      name: "ende serve",
       args: ["run", "--quiet", "--allow-net", server],
       cwd: root,
     },
-    { name: "deno test", args: ["test", "--quiet", test], cwd: root },
+    { name: "ende test", args: ["test", "--quiet", test], cwd: root },
     {
-      name: "deno node:crypto",
+      name: "ende node:crypto",
       args: ["run", "--quiet", node],
       cwd: root,
     },
-    { name: "deno fmt", args: ["fmt", "--check", format], cwd: root },
+    { name: "ende fmt", args: ["fmt", "--check", format], cwd: root },
   ];
   return profile === "run-first"
     ? [runEmpty, ...remaining]
@@ -292,8 +292,8 @@ async function generate(options: Options) {
   const root = await Deno.makeTempDir({ prefix: "deno-function-order-" });
   const tracer = join(root, "function_tracer.dylib");
   const runner = join(root, "trace_runner");
-  const denoDir = join(root, "deno-dir");
-  await Deno.mkdir(denoDir);
+  const endeDir = join(root, "ende-dir");
+  await Deno.mkdir(endeDir);
   try {
     await runCommand([
       "xcrun",
@@ -336,9 +336,9 @@ async function generate(options: Options) {
           cwd: workload.cwd,
           env: {
             ...Deno.env.toObject(),
-            DENO_ORDER_RUNNER_PRELOAD: tracer,
-            DENO_FUNCTION_TRACE_OUT: tracePath,
-            ENDE_DIR: denoDir,
+            ENDE_ORDER_RUNNER_PRELOAD: tracer,
+            ENDE_FUNCTION_TRACE_OUT: tracePath,
+            ENDE_DIR: endeDir,
             ENDE_NO_UPDATE_CHECK: "1",
             ENDE_NO_PACKAGE_JSON: "1",
             NO_COLOR: "1",

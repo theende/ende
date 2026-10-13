@@ -1054,7 +1054,7 @@ async function readableStreamReadFn(reader, sink, onError) {
       // this hook the error is otherwise swallowed: it is converted to a
       // plain message, pushed into the channel and used only to abort the
       // underlying transport, so e.g. a throwing `TransformStream` feeding a
-      // `Deno.serve` response body would fail with nothing implicating the
+      // `Ende.serve` response body would fail with nothing implicating the
       // faulty callback. See https://github.com/denoland/deno/issues/19867.
       if (onError !== undefined) {
         onError(error);

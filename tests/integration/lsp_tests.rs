@@ -242,7 +242,7 @@ fn unadded_dependency_message_with_import_map() {
 fn lsp_doc_lint_diagnostics() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
-  // A publishable package: `deno doc --lint` checks its export entrypoints for
+  // A publishable package: `ende doc --lint` checks its export entrypoints for
   // missing documentation.
   temp_dir.write(
     "ende.json",
@@ -11654,7 +11654,7 @@ fn lsp_completions_ende_json_imports() {
   // 0   4    9 11                30
   // The closing quote sits at column 30 — a cursor at (2, 30) sits between
   // the trailing `@` and the closing `"`, where TS would offer no help but
-  // Deno can suggest the available jsr versions.
+  // Ende can suggest the available jsr versions.
   client.did_open(json!({
     "textDocument": {
       "uri": ende_json_uri,
@@ -13280,7 +13280,7 @@ fn lsp_diagnostics_none_for_resolving_types() {
   client.initialize_default();
   // The types for this package will succeed, but the code will fail
   // because the package is only made for bundling and not meant to
-  // run in Deno or Node.
+  // run in Ende or Node.
   let diagnostics = client.did_open(json!({
     "textDocument": {
       "uri": context.temp_dir().path().join("file.ts").uri_file(),
@@ -13557,7 +13557,7 @@ fn lsp_jupyter_tsx() {
     .to_string(),
   );
 
-  // TODO(nayeemrmn): `deno install` should work here, it doesn't as of writing.
+  // TODO(nayeemrmn): `ende install` should work here, it doesn't as of writing.
   temp_dir.write("main.tsx", "");
   context.run_ende("check main.tsx");
 
@@ -16071,7 +16071,7 @@ Deno.test({
     .unwrap()
     .as_str()
     .unwrap();
-  // deno test's output capturing flushes with a zero-width space in order to
+  // ende test's output capturing flushes with a zero-width space in order to
   // synchronize the output pipes. Occasionally this zero width space
   // might end up in the output so strip it from the output comparison here.
   assert_eq!(notification_value.replace('\u{200B}', ""), "test a\r\n");
@@ -22611,7 +22611,7 @@ fn lsp_force_push_based_diagnostics_setting() {
 
 // Regression test for https://github.com/denoland/deno/issues/35225: a `.d.ts`
 // opened in the editor is an entrypoint, so its own unresolved bare imports must
-// be reported (as `deno check` does for `.d.ts` entrypoints, see #32794), even
+// be reported (as `ende check` does for `.d.ts` entrypoints, see #32794), even
 // under `skipLibCheck` where tsc would otherwise skip them.
 #[test(timeout = 300)]
 fn lsp_dts_entrypoint_unresolved_import() {

@@ -1,7 +1,7 @@
 # specs
 
-These are integration tests that execute the `deno` binary. They are the
-preferred way of writing tests that use the `deno` binary.
+These are integration tests that execute the `ende` binary. They are the
+preferred way of writing tests that use the `ende` binary.
 
 ## Structure
 
@@ -44,7 +44,7 @@ example looks like:
 }
 ```
 
-This will run `deno run main.js` then assert that the output matches the text in
+This will run `ende run main.js` then assert that the output matches the text in
 `main.out`.
 
 Or another example that runs multiple steps:

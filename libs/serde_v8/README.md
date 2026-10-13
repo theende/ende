@@ -5,7 +5,7 @@ Author: Aaron O'Mullan <aaron.omullan@gmail.com>
 Serde support for encoding/decoding (rusty_)v8 values.
 
 Broadly `serde_v8` aims to provide an expressive but ~maximally efficient
-encoding layer to biject rust & v8/js values. It's a core component of deno's
+encoding layer to biject rust & v8/js values. It's a core component of Ende's
 op-layer and is used to encode/decode all non-buffer values.
 
 **Original issue:**

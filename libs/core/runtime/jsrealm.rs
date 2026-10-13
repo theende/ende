@@ -110,7 +110,7 @@ pub struct ContextState {
   /// functions (~0.9ms). It only benefits ops accessed at runtime (baked
   /// modules captured their slow refs at snapshot eval), so we DEFER it until
   /// the first residual ext-module load — a program that never loads a
-  /// residual module (e.g. `deno run empty.js`) never pays for it.
+  /// residual module (e.g. `ende run empty.js`) never pays for it.
   pub(crate) fast_ops_upgraded: Cell<bool>,
   /// `(Ende.core.ops, Ende.core.setUpAsyncStub)` captured at `new_inner` time,
   /// because `Ende.core` is scrubbed from the public `Deno` after bootstrap and

@@ -93,7 +93,7 @@ pub(crate) struct HttpServerStateInner {
   pool: Vec<(Rc<HttpRecord>, HeaderMap)>,
   /// Registry of upgraded server-side WebSockets owned by this server, so
   /// that `op_http_close` can drive a graceful or forceful shutdown of any
-  /// websockets that are still open when `Deno.serve` is being torn down.
+  /// websockets that are still open when `Ende.serve` is being torn down.
   /// Without this they would leak past `await server.shutdown()` as
   /// `serverWebSocket` resources.
   pub(crate) active_websockets: Rc<ActiveWebSockets>,

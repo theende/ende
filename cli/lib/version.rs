@@ -17,7 +17,7 @@ const GIT_COMMIT_HASH: &str = env!("GIT_COMMIT_HASH");
 const TYPESCRIPT: &str = "6.0.3";
 pub const ENDE_VERSION: &str = env!("ENDE_VERSION");
 
-/// The Node.js version that Deno reports through `process.version` /
+/// The Node.js version that Ende reports through `process.version` /
 /// `process.versions.node`, used to enforce package.json `engines.node`
 /// constraints.
 ///
@@ -72,7 +72,7 @@ pub static ENDE_VERSION_INFO: std::sync::LazyLock<EndeVersionInfo> =
 
       git_hash: GIT_COMMIT_HASH,
 
-      // Keep in sync with `deno` field.
+      // Keep in sync with `ende` field.
       user_agent: if release_channel == ReleaseChannel::Canary {
         concat!(
           "Ende/",
@@ -89,7 +89,7 @@ pub static ENDE_VERSION_INFO: std::sync::LazyLock<EndeVersionInfo> =
   });
 
 pub struct EndeVersionInfo {
-  /// Human-readable version of the current Deno binary.
+  /// Human-readable version of the current Ende binary.
   ///
   /// For stable release, a semver, eg. `v1.46.2`.
   /// For canary release, a semver + 7-char git hash, eg. `v1.46.3+asdfqwq`.

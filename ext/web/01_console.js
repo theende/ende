@@ -253,7 +253,7 @@ function getURLPrototype() {
 
 function getCwd() {
   try {
-    return Deno.cwd();
+    return Ende.cwd();
   } catch {
     return undefined;
   }
@@ -402,7 +402,7 @@ const endeInspectDefaultOptions = {
   maxStringLength: 10_000, // deno: strAbbreviateSize: 10_000
   customInspect: true,
 
-  // deno only
+  // ende only
   quotes: ['"', "'", "`"],
   iterableLimit: 100, // similar to node's maxArrayLength
   trailingComma: false,

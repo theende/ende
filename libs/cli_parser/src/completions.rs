@@ -111,7 +111,7 @@ fn generate_bash(cmd: &CommandDef) -> Vec<u8> {
 ///
 /// Returns an empty string when there is no help text: `'-h[]'` is accepted by
 /// zsh, but an empty description is noise, and only the full spec matters.
-/// Descriptions are truncated to the first line (Deno's help strings are often
+/// Descriptions are truncated to the first line (Ende's help strings are often
 /// multi-line, and a raw newline inside `_arguments` breaks the spec) and `[`,
 /// `]` and `\` are backslash-escaped so the description can't terminate early.
 fn zsh_description(help: &str) -> String {
@@ -360,7 +360,7 @@ pub const COMPLETE_ENV_VAR: &str = "COMPLETE";
 /// (bash/fish/zsh). Unlike [`generate`] (which bakes the full command tree into
 /// a static script), this emits a small shell function that calls back into the
 /// binary with `COMPLETE=<shell>` set, so completions are computed live by
-/// [`try_complete`]. `bin` is the command name (e.g. `deno`); `completer` is
+/// [`try_complete`]. `bin` is the command name (e.g. `ende`); `completer` is
 /// the shell-quoted path to the executable to invoke. The wire protocol
 /// (`_CLAP_COMPLETE_INDEX`, `_CLAP_IFS`, `VAR=COMPLETE`) matches the scripts
 /// clap_complete used to emit, so behavior is unchanged.
@@ -425,7 +425,7 @@ else
 fi
 "#;
 
-// Reproduced from Deno's custom `ZshCompleterUnsorted` (a modified
+// Reproduced from Ende's custom `ZshCompleterUnsorted` (a modified
 // clap_complete zsh script that preserves candidate order via `-o nosort`).
 const ZSH_REGISTRATION: &str = r#"#compdef BIN
 function _clap_dynamic_completer_NAME() {
@@ -468,8 +468,8 @@ compdef _clap_dynamic_completer_NAME BIN"#;
 pub type Candidate = (String, Option<String>);
 
 /// Produces completion candidates for a positional argument the built-in
-/// engine can't resolve on its own (e.g. `deno task <TAB>` -> task names read
-/// from `deno.json`). Called with the active (sub)command and the current
+/// engine can't resolve on its own (e.g. `ende task <TAB>` -> task names read
+/// from `ende.json`). Called with the active (sub)command and the current
 /// partial word. Returning an empty vec falls back to the shell's default
 /// (file) completion. This lives CLI-side so the parser crate needs no
 /// config/workspace dependencies.
@@ -604,7 +604,7 @@ fn get_candidates(
     .any(|w| !w.starts_with('-') && root.find_subcommand(w).is_some());
 
   // Value candidates come first, matching clap's ordering: subcommand names at
-  // the root, or positional values inside a subcommand (e.g. `deno task <TAB>`
+  // the root, or positional values inside a subcommand (e.g. `ende task <TAB>`
   // -> task names via the CLI-provided completer). Skipped when the user is
   // clearly typing a flag (`-...`).
   if !want_flag {
@@ -632,7 +632,7 @@ fn get_candidates(
     candidates.extend(values);
   }
 
-  // Then flags: long flags are always offered (so `deno task <TAB>` also lists
+  // Then flags: long flags are always offered (so `ende task <TAB>` also lists
   // `--config` etc.); short flags only when the user has typed a leading `-`.
   let mut flags: Vec<Candidate> = Vec::new();
   for arg in active_cmd
@@ -765,7 +765,7 @@ mod tests {
   #[test]
   fn generate_zsh_short_flags_keep_their_dash() {
     // Regression test for #36713: the brace expansion dropped the `-` on the
-    // short form, so `deno <TAB>` made zsh bail out with
+    // short form, so `ende <TAB>` made zsh bail out with
     // `_arguments:comparguments:327: invalid argument: (-h --help)h[]`.
     let s =
       String::from_utf8(generate("zsh", &crate::defs::ENDE_ROOT)).unwrap();

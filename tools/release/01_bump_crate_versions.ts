@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno run -A --lock=tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
-import { DenoWorkspace } from "./deno_workspace.ts";
+import { EndeWorkspace } from "./ende_workspace.ts";
 import { $, type Crate, GitLogOutput, semver } from "./deps.ts";
 
 // Crates that the root Cargo.toml declares under a key that differs from the
@@ -9,11 +9,11 @@ import { $, type Crate, GitLogOutput, semver } from "./deps.ts";
 // so it can't see these and errors out. Bump them by hand instead.
 const renamedCrates = new Set(["ende_v8"]);
 
-const workspace = await DenoWorkspace.load();
+const workspace = await EndeWorkspace.load();
 const repo = workspace.repo;
 const cliCrate = workspace.getCliCrate();
-const denoRtCrate = workspace.getDenoRtCrate();
-const denoLibCrate = workspace.getDenoLibCrate();
+const endeRtCrate = workspace.getEndeRtCrate();
+const endeLibCrate = workspace.getEndeLibCrate();
 const originalCliVersion = cliCrate.version;
 
 const prereleaseKind = (["--rc", "--alpha", "--beta"] as const).find((a) =>
@@ -35,12 +35,12 @@ if (prereleaseKind) {
   const version = cliVersion.toString();
 
   await cliCrate.setVersion(version);
-  await denoRtCrate.setVersion(version);
-  denoLibCrate.folderPath.join("version.txt").writeTextSync(version);
+  await endeRtCrate.setVersion(version);
+  endeLibCrate.folderPath.join("version.txt").writeTextSync(version);
   // Force lockfile update
   await workspace.getCliCrate().cargoUpdate("--workspace");
 
-  await assertDenoBinaryVersion(version);
+  await assertEndeBinaryVersion(version);
 
   Deno.exit(0);
 }
@@ -58,8 +58,8 @@ if (Deno.args.some((a) => a === "--patch")) {
   await cliCrate.promptAndIncrement();
 }
 
-await denoRtCrate.setVersion(cliCrate.version);
-denoLibCrate.folderPath.join("version.txt").writeTextSync(cliCrate.version);
+await endeRtCrate.setVersion(cliCrate.version);
+endeLibCrate.folderPath.join("version.txt").writeTextSync(cliCrate.version);
 
 // increment the dependency crate versions
 for (const crate of workspace.getCliDependencyCrates()) {
@@ -72,7 +72,7 @@ for (const crate of workspace.getCliDependencyCrates()) {
 
 // update the lock file
 await workspace.getCliCrate().cargoUpdate("--workspace");
-await assertDenoBinaryVersion(cliCrate.version);
+await assertEndeBinaryVersion(cliCrate.version);
 
 // try to update the Releases.md markdown text
 try {
@@ -211,9 +211,9 @@ async function bumpCiCacheVersion() {
   await $`${generateScript}`;
 }
 
-async function assertDenoBinaryVersion(expectedVersion: string) {
-  $.logStep("Verifying Deno binary version.");
-  const text = (await $`cargo run -p ende -- -v`.text()).replace("deno ", "");
+async function assertEndeBinaryVersion(expectedVersion: string) {
+  $.logStep("Verifying Ende binary version.");
+  const text = (await $`cargo run -p ende -- -v`.text()).replace("ende ", "");
   $.logLight("Version:", text);
   if (text.trim() !== expectedVersion) {
     $.logError("Error: Expected", expectedVersion, "but found", text);

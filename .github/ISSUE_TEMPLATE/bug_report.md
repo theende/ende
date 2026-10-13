@@ -1,9 +1,9 @@
 ---
 name: 🐛 Bug Report
-about: Report an issue found in the Deno CLI.
+about: Report an issue found in the Ende CLI.
 title: ''
 labels: ''
 assignees: ''
 ---
 
-Version: Deno x.x.x
+Version: Ende x.x.x

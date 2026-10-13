@@ -107,7 +107,7 @@ pub async fn ensure_esbuild(
     })?;
     // Install the binary atomically: copy to a temporary file in the same
     // directory and then rename it into place. The rename is atomic, so a
-    // concurrent `deno bundle` process never observes (via the `exists()`
+    // concurrent `ende bundle` process never observes (via the `exists()`
     // check above) and tries to execute a half-written binary, which would
     // otherwise fail with ETXTBSY ("text file busy") on Linux.
     let tmp_path =

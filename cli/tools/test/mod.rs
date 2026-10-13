@@ -454,8 +454,8 @@ impl TestFailure {
     // The first line of user code comes above the test file.
     // The call stack usually contains the top 10 frames, and cuts off after that.
     // We need to explicitly check for the test runner here.
-    // - Checking for a `ext:` is not enough, since other Deno `ext:`s can appear in the call stack.
-    // - This check guarantees that the next frame is inside of the Deno.test(),
+    // - Checking for a `ext:` is not enough, since other Ende `ext:`s can appear in the call stack.
+    // - This check guarantees that the next frame is inside of the Ende.test(),
     //   and not somewhere else.
     const TEST_RUNNER: &str = "ext:cli/40_test.js";
     let runner_frame_index = js_error
@@ -580,13 +580,13 @@ pub enum TestEvent {
   /// Indicates that the user has cancelled the test run with Ctrl+C and
   /// the run should be aborted.
   Sigint,
-  /// Indicates that a test called `Deno.exit()` while the exit sanitizer was
+  /// Indicates that a test called `Ende.exit()` while the exit sanitizer was
   /// disabled (`sanitizeExit: false`). The test run should be aborted, a
   /// message printed, and the process should exit with the given code. This
   /// ensures that buffered output is reliably flushed before exiting, instead
   /// of letting the test silently terminate the process.
   Exit(i32),
-  /// Indicates that the test isolate called `Deno.exit()` outside of any test
+  /// Indicates that the test isolate called `Ende.exit()` outside of any test
   /// function (top-level code, or in the `unload` event). The isolate has
   /// been terminated; the test runner should report the exit code and
   /// continue with any remaining specifiers instead of killing the process.
@@ -775,7 +775,7 @@ async fn configure_main_worker(
         ops::lint::ende_lint_ext_for_test::init(),
         ops::jupyter::deno_jupyter_for_test::init(
           sender,
-          // deno test does not service stdin requests; supplying a sender keeps
+          // ende test does not service stdin requests; supplying a sender keeps
           // the extension uniform with the live kernel build but the rx end is
           // dropped so any `op_jupyter_input` call will resolve to `None`.
           tokio::sync::mpsc::unbounded_channel().0,
@@ -791,7 +791,7 @@ async fn configure_main_worker(
     .await?;
   let coverage_collector = worker.maybe_setup_coverage_collector();
   // Store the isolate handle in OpState so that `op_test_isolate_exit` can
-  // ask V8 to terminate the isolate when user code calls `Deno.exit()`
+  // ask V8 to terminate the isolate when user code calls `Ende.exit()`
   // outside of any test function. Then install the default exit handler -
   // both must be in place before user code (including preload / side
   // modules) gets a chance to run.
@@ -811,14 +811,14 @@ async fn configure_main_worker(
   worker
     .execute_script_static(
       located_script_name!(),
-      "Deno[Deno.internal].installTestIsolateExitHandler();",
+      "Ende[Ende.internal].installTestIsolateExitHandler();",
     )
     .map_err(|e| CoreErrorKind::Js(e).into_box())?;
   if options.trace_leaks {
     worker
       .execute_script_static(
         located_script_name!(),
-        "Deno[Deno.internal].core.setLeakTracingEnabled(true);",
+        "Ende[Ende.internal].core.setLeakTracingEnabled(true);",
       )
       .map_err(|e| CoreErrorKind::Js(e).into_box())?;
   }
@@ -826,7 +826,7 @@ async fn configure_main_worker(
     worker
       .execute_script_static(
         located_script_name!(),
-        "Deno[Deno.internal].testSanitizeOps = true;",
+        "Ende[Ende.internal].testSanitizeOps = true;",
       )
       .map_err(|e| CoreErrorKind::Js(e).into_box())?;
   }
@@ -834,7 +834,7 @@ async fn configure_main_worker(
     worker
       .execute_script_static(
         located_script_name!(),
-        "Deno[Deno.internal].testSanitizeResources = true;",
+        "Ende[Ende.internal].testSanitizeResources = true;",
       )
       .map_err(|e| CoreErrorKind::Js(e).into_box())?;
   }
@@ -845,7 +845,7 @@ async fn configure_main_worker(
     |res: Result<(), CoreError>| match res.map_err(|err| err.into_kind()) {
       Ok(()) => Ok(()),
       Err(CoreErrorKind::Js(err)) => {
-        // If the failure was caused by user code calling `Deno.exit()` at
+        // If the failure was caused by user code calling `Ende.exit()` at
         // top level, the isolate-exit event has already been reported.
         // Swallow the resulting termination error instead of double-reporting
         // it as an uncaught error.
@@ -904,7 +904,7 @@ pub async fn test_specifier(
   .await?;
   let event_tracker = TestEventTracker::new(worker.js_runtime.op_state());
 
-  // If user code already called `Deno.exit()` during top-level evaluation in
+  // If user code already called `Ende.exit()` during top-level evaluation in
   // `configure_main_worker`, the isolate-exit event has already been sent.
   // Skip the rest of the lifecycle - the isolate is terminated and there are
   // no tests to run.
@@ -927,7 +927,7 @@ pub async fn test_specifier(
   )
   .await;
 
-  // If user code called `Deno.exit()` from inside `dispatch_load_event`,
+  // If user code called `Ende.exit()` from inside `dispatch_load_event`,
   // `run_tests_for_worker`, or `dispatch_unload_event`, the V8 isolate was
   // forcibly terminated and the call surfaces as a JS error. The
   // `op_test_isolate_exit` op already queued an `IsolateExit` event with the
@@ -1003,7 +1003,7 @@ async fn test_specifier_inner(
     .map_err(|e| CoreErrorKind::Js(e).into_box())?;
 
   // Run any pending Node-API finalizers before the worker is torn down. This
-  // matches the `deno run`/`deno bench` paths and Node.js, where finalizers
+  // matches the `ende run`/`ende bench` paths and Node.js, where finalizers
   // registered via `napi_wrap`/`napi_add_finalizer` are invoked at teardown
   // even if the wrapped value was never garbage collected during the run.
   worker.run_napi_ref_finalizers();
@@ -1028,9 +1028,9 @@ async fn test_specifier_inner(
 
   // If a debugger session is still attached (e.g. Chrome DevTools holding
   // the connection open for an in-progress Performance recording), wait for
-  // it to disconnect before tearing down the worker. Mirrors `deno run`'s
+  // it to disconnect before tearing down the worker. Mirrors `ende run`'s
   // behavior; otherwise the connection is dropped mid-flight, making it
-  // impossible to profile `deno test` runs. See issue #19289.
+  // impossible to profile `ende test` runs. See issue #19289.
   worker.wait_for_inspector_session_disconnect().await?;
 
   Ok(())
@@ -1115,7 +1115,7 @@ impl TestWatchdog {
     });
     let shared_thread = shared.clone();
     let thread = std::thread::Builder::new()
-      .name("deno-test-watchdog".to_string())
+      .name("ende-test-watchdog".to_string())
       .spawn(move || Self::run(shared_thread, isolate_handle))
       .expect("failed to spawn test watchdog thread");
     Self {
@@ -1262,7 +1262,7 @@ pub async fn run_tests_for_worker(
       .execute_script(
         located_script_name!(),
         format!(
-          "Deno[Deno.internal].flushTestSnapshots?.({})",
+          "Ende[Ende.internal].flushTestSnapshots?.({})",
           allow_stale_removal
         ),
       )
@@ -1599,7 +1599,7 @@ async fn run_tests_for_worker_inner(
         // keepAlive connections. Defined in ext/node/polyfills/01_require.js.
         _ = worker.js_runtime.execute_script(
           located_script_name!(),
-          "Deno[Deno.internal].closeIdleConnections?.()",
+          "Ende[Ende.internal].closeIdleConnections?.()",
         );
 
         // Await activity stabilization. A leak counts as a failure of the
@@ -1945,12 +1945,12 @@ pub async fn report_tests(
         }
         #[allow(
           clippy::disallowed_methods,
-          reason = "a test called Deno.exit() with the exit sanitizer disabled"
+          reason = "a test called Ende.exit() with the exit sanitizer disabled"
         )]
         std::process::exit(exit_code);
       }
       TestEvent::IsolateExit(origin, exit_code) => {
-        // A non-zero exit code from top-level `Deno.exit()` (or from an
+        // A non-zero exit code from top-level `Ende.exit()` (or from an
         // `unload` handler) should fail the test run. A zero exit code is
         // treated as a clean isolate teardown.
         if exit_code != 0 {
@@ -2002,7 +2002,7 @@ fn is_supported_test_path_predicate(entry: WalkEntry) -> bool {
   }
 }
 
-/// Checks if the path has a basename and extension Deno supports for tests.
+/// Checks if the path has a basename and extension Ende supports for tests.
 pub(crate) fn is_supported_test_path(path: &Path) -> bool {
   has_supported_test_path_name(path) && is_script_ext(path)
 }
@@ -2025,7 +2025,7 @@ fn has_supported_test_path_name(path: &Path) -> bool {
   }
 }
 
-/// Checks if the path has an extension Deno supports for tests.
+/// Checks if the path has an extension Ende supports for tests.
 fn is_supported_test_ext(path: &Path) -> bool {
   if let Some(ext) = get_extension(path) {
     matches!(
@@ -2264,7 +2264,7 @@ fn collect_changed_paths(
 ///
 /// A module is kept when it is itself a changed/related file, or when any of its
 /// local dependencies changed. As an escape hatch, a change to a file that can
-/// affect any test but isn't visible in the import graph (an env file, a deno
+/// affect any test but isn't visible in the import graph (an env file, an ende
 /// config file or the lockfile) disables filtering and keeps every module.
 async fn filter_specifiers_by_changed(
   factory: &CliFactory,
@@ -2288,7 +2288,7 @@ async fn filter_specifiers_by_changed(
   }
   // A changed package.json can alter npm dependencies (and thus any test's
   // runtime behavior) in ways the import graph doesn't capture, so treat it
-  // like a deno config change.
+  // like an ende config change.
   for pkg_json in cli_options.workspace().package_jsons() {
     if let Ok(path) = canonicalize_path(&pkg_json.path) {
       run_everything_paths.insert(path);

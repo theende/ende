@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! This module provides feature to upgrade deno executable
+//! This module provides feature to upgrade ende executable
 
 use std::borrow::Cow;
 use std::env;
@@ -578,7 +578,7 @@ fn store_cached_binary(
 }
 
 /// Get the artifact name for the current platform.
-/// CI artifacts are named like `{profile}-{os}-{arch}-deno`.
+/// CI artifacts are named like `{profile}-{os}-{arch}-ende`.
 fn get_pr_artifact_name() -> Result<String, AnyError> {
   let target = env!("TARGET");
 
@@ -1973,7 +1973,7 @@ fn check_windows_access_denied_error(
 
 #[cfg(windows)]
 fn kill_running_ende_lsp_processes() {
-  // limit this to `deno lsp` invocations to avoid killing important programs someone might be running
+  // limit this to `ende lsp` invocations to avoid killing important programs someone might be running
   let is_debug = log::log_enabled!(log::Level::Debug);
   let get_pipe = || {
     if is_debug {

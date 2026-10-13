@@ -17,7 +17,7 @@ const {
 } = primordials;
 
 /**
- * @param {Deno.CreateHttpClientOptions} options
+ * @param {Ende.CreateHttpClientOptions} options
  * @returns {HttpClient}
  */
 function createHttpClient(options) {

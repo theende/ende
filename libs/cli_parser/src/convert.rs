@@ -1,5 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-#![allow(dead_code, reason = "conversion functions used by the deno CLI crate")]
+#![allow(dead_code, reason = "conversion functions used by the ende CLI crate")]
 
 //! Converts a raw `ParseResult` into the typed `Flags` struct.
 //!
@@ -110,10 +110,10 @@ fn parse_socket_addr(s: &str) -> Result<SocketAddr, CliError> {
 // ============================================================
 
 /// Parse command-line arguments and convert directly to `Flags`.
-/// This is the main entry point matching Deno's `flags_from_vec`.
+/// This is the main entry point matching Ende's `flags_from_vec`.
 pub fn flags_from_vec(args: Vec<String>) -> Result<Flags, CliError> {
   // Strip a trailing `\r` from each argument so that a shebang in a script
-  // saved with CRLF line endings (e.g. `#!/usr/bin/env -S deno run -A\r`)
+  // saved with CRLF line endings (e.g. `#!/usr/bin/env -S ende run -A\r`)
   // doesn't poison the final shebang argument with a stray carriage return.
   let args: Vec<String> = args
     .into_iter()
@@ -383,7 +383,7 @@ fn default_parse(
       }
     }
 
-    // Bare run - same as `deno run` but with bare=true
+    // Bare run - same as `ende run` but with bare=true
     runtime_args_parse(result, flags, true, true)?;
     ext_arg_parse(result, flags);
     flags.tunnel = result.get_bool("tunnel");
@@ -1386,9 +1386,9 @@ fn run_parse(
 
   flags.tunnel = result.get_bool("tunnel");
   if result.get_bool("use-env-proxy") {
-    // Node's --use-env-proxy is process-wide. Deno's node polyfills read the
+    // Node's --use-env-proxy is process-wide. Ende's node polyfills read the
     // same env variable as the Node tests when selecting global proxy config.
-    // SAFETY: CLI parsing runs before worker startup and before Deno starts
+    // SAFETY: CLI parsing runs before worker startup and before Ende starts
     // any threads that could concurrently read the process environment.
     unsafe { std::env::set_var("NODE_USE_ENV_PROXY", "1") };
   } else if result.get_bool("no-use-env-proxy") {
@@ -1405,7 +1405,7 @@ fn run_parse(
 
   if let Some(script) = result.get_one("script_arg") {
     let mut watch = watch_arg_parse_with_paths(result);
-    // `deno watch` is an alias for `deno run --watch-hmr`, so enable hot
+    // `ende watch` is an alias for `ende run --watch-hmr`, so enable hot
     // module replacement watching by default when no explicit watch flag
     // was passed.
     if force_hmr {
@@ -1438,7 +1438,7 @@ fn run_parse(
       print_task_list: false,
     });
   } else if !flags.v8_flags.is_empty() {
-    // `deno run --v8-flags=--help` with no script
+    // `ende run --v8-flags=--help` with no script
     flags.subcommand = EndeSubcommand::Run(RunFlags {
       script: "_".to_string(),
       bare: false,
@@ -1446,7 +1446,7 @@ fn run_parse(
       print_task_list: false,
     });
   } else {
-    // `deno run` with no script - show available tasks
+    // `ende run` with no script - show available tasks
     flags.subcommand = EndeSubcommand::Run(RunFlags {
       script: String::new(),
       bare: false,
@@ -1626,7 +1626,7 @@ fn test_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
   runtime_args_parse(result, flags, true, true)?;
   ext_arg_parse(result, flags);
 
-  // deno test always uses --no-prompt
+  // ende test always uses --no-prompt
   flags.permissions.no_prompt = true;
 
   let ignore = result
@@ -1799,7 +1799,7 @@ fn upgrade_parse(
 
   let (version_or_hash_or_channel, pr, branch) =
     if positional.as_deref() == Some("pr") {
-      // "deno upgrade pr <number>" - second positional is the PR number
+      // "ende upgrade pr <number>" - second positional is the PR number
       let pr_str = pr_number_positional
         .as_deref()
         .or_else(|| result.get_one("pr"));
@@ -2230,7 +2230,7 @@ fn repl_parse(
     json,
   };
 
-  // If user runs bare `deno`, allow all permissions.
+  // If user runs bare `ende`, allow all permissions.
   if repl_flags.is_default_command {
     flags.permissions.allow_all = true;
   }
@@ -2616,7 +2616,7 @@ fn add_parse(result: &ParseResult, flags: &mut Flags) {
     Some(DefaultRegistry::Jsr)
   } else {
     // Default to npm when neither --npm nor --jsr is provided, so
-    // `deno add express` works without requiring an `npm:` prefix.
+    // `ende add express` works without requiring an `npm:` prefix.
     Some(DefaultRegistry::Npm)
   };
 
@@ -2670,7 +2670,7 @@ fn desktop_parse(
     .map(|v| v.iter().map(|s| s.to_string()).collect::<Vec<_>>())
     .unwrap_or_default()
     .into_iter();
-  // The entrypoint is optional: bare `deno desktop` defaults to "." so
+  // The entrypoint is optional: bare `ende desktop` defaults to "." so
   // framework detection runs against the current directory.
   let source_file = script.next().unwrap_or_else(|| ".".to_string());
   let args = script.collect();
@@ -2815,7 +2815,7 @@ fn remove_parse(result: &ParseResult, flags: &mut Flags) {
     .map(|v| v.iter().map(|s| s.to_string()).collect())
     .unwrap_or_default();
 
-  // `deno remove --global <name>...` is an alias for `deno uninstall
+  // `ende remove --global <name>...` is an alias for `ende uninstall
   // --global <name>...`: it removes globally installed executables rather
   // than dependencies from the configuration file, so route it through the
   // same subcommand the uninstaller uses.
@@ -3157,7 +3157,7 @@ fn node_inspect_addr(word: &str, flag: &str) -> Option<SocketAddr> {
 fn bundle_parse(result: &ParseResult, flags: &mut Flags) {
   compile_args_without_check_parse(result, flags);
   // `compile_args_without_check_parse` deliberately omits `--check`; apply it
-  // here so `deno bundle --check=all` type-checks (mirrors clap, #30159).
+  // here so `ende bundle --check=all` type-checks (mirrors clap, #30159).
   check_arg_parse(result, flags);
   // `bundle` resolves a module graph but never runs it, so the only
   // permissions it takes are the import ones.

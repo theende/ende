@@ -1,3 +1,3 @@
-# denort_helpers
+# endert_helper
 
-Helpers for the binary produced by `deno compile`.
+Helpers for the binary produced by `ende compile`.

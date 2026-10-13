@@ -122,7 +122,7 @@ pub async fn run_wss2_server(port: u16) {
 
 // A malicious-ish wss2 server used to guard against the HTTP/2 server-push
 // assertion DoS: a client that leaves `ENABLE_PUSH` at h2's default (enabled)
-// can be crashed by a crafted PUSH_PROMISE sequence. Deno's WebSocket client
+// can be crashed by a crafted PUSH_PROMISE sequence. Ende's WebSocket client
 // disables push (`enable_push(false)`), so h2 refuses this server's push
 // attempt with `PeerDisabledServerPush`. The server reports which happened as
 // the first WebSocket text frame ("push-rejected" when the client is safe),
@@ -316,7 +316,7 @@ async fn handle_wss_push_stream(
 
   // Attempt a server push. h2 refuses this with `PeerDisabledServerPush` when
   // the client advertised `SETTINGS_ENABLE_PUSH = 0`, which is exactly what a
-  // patched Deno client does. If the client left push enabled, the push
+  // patched Ende client does. If the client left push enabled, the push
   // succeeds instead - the unsafe configuration this test guards against.
   let push_req = Request::builder()
     .method(Method::GET)

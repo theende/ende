@@ -89,7 +89,7 @@ async function newestCargoOrder(target: string): Promise<string> {
   const name = `startup-order-${target}.order`;
   const candidates: Array<{ path: string; modified: number }> = [];
   for await (const entry of Deno.readDir(buildRoot)) {
-    if (!entry.isDirectory || !entry.name.startsWith("deno-")) continue;
+    if (!entry.isDirectory || !entry.name.startsWith("ende-")) continue;
     const path = join(buildRoot, entry.name, "out", name);
     try {
       const stat = await Deno.stat(path);

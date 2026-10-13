@@ -340,7 +340,7 @@ class WebSocket extends EventTarget {
         fillHeaders(headers, initOrProtocols.headers);
       }
 
-      // NOTE: non standard extension. This handles Deno.HttpClient parameter
+      // NOTE: non standard extension. This handles Ende.HttpClient parameter
       if (initOrProtocols.client !== undefined) {
         if (
           initOrProtocols.client !== null &&

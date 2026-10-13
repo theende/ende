@@ -33,7 +33,7 @@ impl TempNodeModulesDir {
 /// Creates a node_modules directory, normally in a folder with the following
 /// format:
 ///
-///   <tmp-dir>/deno_nm/<date>/<random-value>
+///   <tmp-dir>/ende_nm/<date>/<random-value>
 ///
 /// Old dated folders are automatically deleted. If the dated parent cannot be
 /// used, this falls back to a fresh directory directly beneath `<tmp-dir>`.
@@ -47,7 +47,7 @@ pub fn create_temp_node_modules_dir() -> Result<TempNodeModulesDir, AnyError> {
   {
     log::debug!("Failed fallback temp folder garbage collection: {:#?}", err);
   }
-  let root_temp_folder = temp_folder.join("deno_nm");
+  let root_temp_folder = temp_folder.join("ende_nm");
   let temp_node_modules_parent_dir =
     match create_secure_day_folder(&root_temp_folder, today) {
       Ok(day_folder) => tempfile::TempDir::new_in(&day_folder)?,
@@ -58,14 +58,14 @@ pub fn create_temp_node_modules_dir() -> Result<TempNodeModulesDir, AnyError> {
           err
         );
         let prefix =
-          format!("deno_nm_{}_", folder_name_for_date(today).to_string_lossy());
+          format!("ende_nm_{}_", folder_name_for_date(today).to_string_lossy());
         tempfile::Builder::new()
           .prefix(&prefix)
           .tempdir_in(&temp_folder)
           .context("Failed creating temp node_modules folder")?
       }
     };
-  // write a package.json to make this be considered a "node" project to deno
+  // write a package.json to make this be considered a "node" project to ende
   let package_json_path =
     temp_node_modules_parent_dir.path().join("package.json");
   std::fs::write(&package_json_path, "{}").with_context(|| {
@@ -297,7 +297,7 @@ fn attempt_fallback_temp_dir_garbage_collection(
     let Some(name) = file_name.to_str() else {
       continue;
     };
-    let Some(suffix) = name.strip_prefix("deno_nm_") else {
+    let Some(suffix) = name.strip_prefix("ende_nm_") else {
       continue;
     };
     let Some((date, random)) = suffix.split_once('_') else {
@@ -391,21 +391,21 @@ mod test {
     let reference_date = chrono::NaiveDate::from_ymd_opt(2020, 5, 13).unwrap();
     temp_dir
       .path()
-      .join("deno_nm_2020-05-01_old/node_modules")
+      .join("ende_nm_2020-05-01_old/node_modules")
       .create_dir_all();
     temp_dir
       .path()
-      .join("deno_nm_2020-05-12_previous")
+      .join("ende_nm_2020-05-12_previous")
       .create_dir_all();
     temp_dir
       .path()
-      .join("deno_nm_2020-05-13_current")
+      .join("ende_nm_2020-05-13_current")
       .create_dir_all();
     temp_dir
       .path()
-      .join("deno_nm_2020-05-14_next")
+      .join("ende_nm_2020-05-14_next")
       .create_dir_all();
-    temp_dir.path().join("deno_nm_legacy").create_dir_all();
+    temp_dir.path().join("ende_nm_legacy").create_dir_all();
     temp_dir.path().join("unrelated").create_dir_all();
 
     attempt_fallback_temp_dir_garbage_collection(
@@ -414,11 +414,11 @@ mod test {
     )
     .unwrap();
 
-    assert!(!temp_dir.path().join("deno_nm_2020-05-01_old").exists());
-    assert!(temp_dir.path().join("deno_nm_2020-05-12_previous").exists());
-    assert!(temp_dir.path().join("deno_nm_2020-05-13_current").exists());
-    assert!(temp_dir.path().join("deno_nm_2020-05-14_next").exists());
-    assert!(temp_dir.path().join("deno_nm_legacy").exists());
+    assert!(!temp_dir.path().join("ende_nm_2020-05-01_old").exists());
+    assert!(temp_dir.path().join("ende_nm_2020-05-12_previous").exists());
+    assert!(temp_dir.path().join("ende_nm_2020-05-13_current").exists());
+    assert!(temp_dir.path().join("ende_nm_2020-05-14_next").exists());
+    assert!(temp_dir.path().join("ende_nm_legacy").exists());
     assert!(temp_dir.path().join("unrelated").exists());
   }
 
@@ -452,7 +452,7 @@ mod test {
     use std::os::unix::fs::PermissionsExt;
 
     let temp_dir = TempDir::new();
-    let root = temp_dir.path().join("deno_nm");
+    let root = temp_dir.path().join("ende_nm");
     let reference_date = chrono::NaiveDate::from_ymd_opt(2020, 5, 13).unwrap();
     root.create_dir_all();
     std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o777))
@@ -480,7 +480,7 @@ mod test {
     stale_folder.create_dir_all();
     let sentinel = stale_folder.join("sentinel");
     sentinel.write("");
-    let root = temp_dir.path().join("deno_nm");
+    let root = temp_dir.path().join("ende_nm");
     std::os::unix::fs::symlink(&target, &root).unwrap();
     let reference_date = chrono::NaiveDate::from_ymd_opt(2020, 5, 13).unwrap();
 

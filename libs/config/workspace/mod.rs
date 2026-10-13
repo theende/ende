@@ -477,7 +477,7 @@ pub trait WorkspaceCache {
 
 #[derive(Default, Clone)]
 pub struct WorkspaceDiscoverOptions<'a> {
-  /// A cache for deno.json files. This is mostly only useful in the LSP where
+  /// A cache for ende.json files. This is mostly only useful in the LSP where
   /// workspace discovery may occur multiple times.
   pub ende_json_cache: Option<&'a dyn crate::ende_json::EndeJsonCache>,
   pub pkg_json_cache: Option<&'a dyn ende_package_json::PackageJsonCache>,
@@ -1778,8 +1778,8 @@ impl Workspace {
   }
 
   /// Whether dependencies should be managed via `package.json` rather than
-  /// `deno.json`, as configured by the `preferPackageJson` field in the root
-  /// `deno.json`.
+  /// `ende.json`, as configured by the `preferPackageJson` field in the root
+  /// `ende.json`.
   pub fn prefer_package_json(&self) -> bool {
     self
       .with_root_config_only(|ende_json| {
@@ -1797,7 +1797,7 @@ impl Workspace {
 
   /// Whether `jsr:` dependencies should be installed into `node_modules` via
   /// JSR's npm compatibility registry (the `jsrDepsInNodeModules` config
-  /// option on the root deno.json).
+  /// option on the root ende.json).
   pub fn jsr_deps_in_node_modules(&self) -> Option<bool> {
     self
       .root_ende_json()
@@ -2113,7 +2113,7 @@ impl WorkspaceDirectory {
 
   /// Resolves the folder's deno.json.
   ///
-  /// This will exclude the root deno.json in a member.
+  /// This will exclude the root ende.json in a member.
   pub fn member_ende_json(&self) -> Option<&ConfigFileRc> {
     self.ende_json.member.as_ref()
   }
@@ -2125,7 +2125,7 @@ impl WorkspaceDirectory {
     self.pkg_json.member.as_ref()
   }
 
-  /// Resolves the member or root deno.json
+  /// Resolves the member or root ende.json
   pub fn member_or_root_ende_json(&self) -> Option<&ConfigFileRc> {
     self
       .ende_json
@@ -2857,7 +2857,7 @@ impl WorkspaceDirectory {
 }
 
 pub enum TaskOrScript<'a> {
-  /// A task from a deno.json.
+  /// A task from an ende.json.
   Task {
     details: &'a WorkspaceMemberTasksConfigFile<TaskDefinition>,
     task: &'a TaskDefinition,
@@ -5521,7 +5521,7 @@ pub mod test {
   #[test]
   fn test_ende_member_not_referenced_in_ende_workspace() {
     // A start directory that has a ende.json but is not a member of the
-    // parent deno workspace falls back to a standalone workspace at the start
+    // parent ende workspace falls back to a standalone workspace at the start
     // directory (a warning is logged about the ignored parent workspace).
     fn assert_standalone(
       workspace_dir: &WorkspaceDirectoryRc,
@@ -5650,9 +5650,9 @@ pub mod test {
     );
     sys.fs_insert_json(root_dir().join("member/ende.json"), json!({}));
     sys.fs_insert_json(root_dir().join("package/package.json"), json!({}));
-    // The start folder is not referenced by the parent deno workspace, so the
+    // The start folder is not referenced by the parent ende workspace, so the
     // parent workspace is discarded and the start folder is resolved on its
-    // own (a warning is logged for the deno workspace case).
+    // own (a warning is logged for the ende workspace case).
     let workspace_dir =
       workspace_at_start_dir(&sys, &root_dir().join("package"));
     assert_eq!(
@@ -6793,7 +6793,7 @@ pub mod test {
   }
 
   // Regression test for https://github.com/denoland/deno/issues/30915 — running
-  // `deno fmt .` (or `deno lint .`) from the workspace root must not cause each
+  // `ende fmt .` (or `ende lint .`) from the workspace root must not cause each
   // member to walk the whole workspace.
   #[test]
   fn test_resolve_config_for_members_cli_include_workspace_root() {
@@ -6807,7 +6807,7 @@ pub mod test {
     sys.fs_insert_json(root_dir().join("member-a/ende.json"), json!({}));
     sys.fs_insert_json(root_dir().join("member-b/ende.json"), json!({}));
     let workspace_dir = workspace_at_start_dir(&sys, &root_dir());
-    // Simulate CLI args from `deno fmt .` — base + include both pointing at the
+    // Simulate CLI args from `ende fmt .` — base + include both pointing at the
     // workspace root.
     let cli_args = FilePatterns {
       base: root_dir(),
@@ -7192,7 +7192,7 @@ pub mod test {
     assert_eq!(pkg_json_cache.0.borrow().len(), 1);
     assert_eq!(ende_json_cache.0.borrow().len(), 2);
     assert_eq!(workspace_cache.0.borrow().len(), 1);
-    // now delete from the deno json and pkg json caches
+    // now delete from the ende json and pkg json caches
     ende_json_cache.0.borrow_mut().clear();
     pkg_json_cache.0.borrow_mut().clear();
     // should load and not write to the caches

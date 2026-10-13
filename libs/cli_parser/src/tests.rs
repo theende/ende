@@ -16,7 +16,7 @@ macro_rules! svec {
 }
 
 // ---- Static command definitions for tests ----
-// These mirror a simplified version of Deno's CLI structure.
+// These mirror a simplified version of Ende's CLI structure.
 
 const GLOBAL_ARGS: &[ArgDef] = &[
   ArgDef::new("help")
@@ -1229,7 +1229,7 @@ fn eval_double_dash_before_code() {
 fn eval_double_dash_before_code_keeps_second_separator() {
   // Only the first `--` is special (mirrors clap): it was consumed to make
   // the positional literal, so a later `--` is forwarded as-is even though
-  // eval strips the separator in `deno eval code -- a`.
+  // eval strips the separator in `ende eval code -- a`.
   let r =
     parse(&TEST_ROOT, &svec!["ende", "eval", "--", "code", "--", "a"]).unwrap();
   assert_eq!(r.get_one("code_arg"), Some("code"));
@@ -1287,7 +1287,7 @@ fn missing_value_error() {
 
 #[test]
 fn default_subcommand_run() {
-  // `deno script.ts` parses with default subcommand args but subcommand is None
+  // `ende script.ts` parses with default subcommand args but subcommand is None
   // (the convert layer handles this as bare run)
   let r = parse(&TEST_ROOT, &svec!["ende", "script.ts"]).unwrap();
   assert_eq!(r.subcommand.as_deref(), None);
@@ -1296,7 +1296,7 @@ fn default_subcommand_run() {
 
 #[test]
 fn default_subcommand_with_flags() {
-  // `deno -A script.ts` parses with default subcommand args but subcommand is None
+  // `ende -A script.ts` parses with default subcommand args but subcommand is None
   let r = parse(&TEST_ROOT, &svec!["ende", "-A", "script.ts"]).unwrap();
   assert_eq!(r.subcommand.as_deref(), None);
   assert!(r.get_bool("allow-all"));
@@ -1668,7 +1668,7 @@ fn graph_only_commands_take_only_import_permissions() {
 /// them here.
 #[test]
 fn post_fork_flag_wiring() {
-  // #36149: `deno fmt --ext` gained xml/svg.
+  // #36149: `ende fmt --ext` gained xml/svg.
   let fmt = defs::ENDE_ROOT.find_subcommand("fmt").unwrap();
   let ext = fmt.all_args().find(|a| a.name == "ext").unwrap();
   let ValueParser::Choices(choices) = ext.value_parser.as_ref().unwrap() else {
@@ -1677,7 +1677,7 @@ fn post_fork_flag_wiring() {
   assert!(choices.contains(&"xml"));
   assert!(choices.contains(&"svg"));
 
-  // #35748: `deno task --members` conflicts with --recursive and --filter.
+  // #35748: `ende task --members` conflicts with --recursive and --filter.
   let task = defs::ENDE_ROOT.find_subcommand("task").unwrap();
   let members = task.all_args().find(|a| a.name == "members").unwrap();
   assert!(members.conflicts.contains(&"recursive"));

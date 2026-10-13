@@ -14,7 +14,7 @@ It works like this currently:
 1. Checkout a new branch based on this tag.
 1. Cherry pick the custom commit we made in a previous release to the new one.
 1. This commit has a "deno.ts" file in it. Read the instructions in it.
-1. Copy typescript.js into Deno repo.
+1. Copy typescript.js into this repo.
 1. Copy d.ts files into dts directory.
 1. Review the copied files, removing and reverting what's necessary
 
@@ -30,13 +30,13 @@ git checkout -b branch_v3.9.7
 git cherry pick <previous-release-branch-commit-we-did>
 npm install
 npx hereby
-rsync built/local/typescript.js ~/src/deno/cli/tsc/00_typescript.js
-rsync --exclude=protocol.d.ts --exclude=tsserverlibrary.d.ts --exclude=typescriptServices.d.ts built/local/*.d.ts ~/src/deno/cli/tsc/dts/
+rsync built/local/typescript.js ~/src/ende/cli/tsc/00_typescript.js
+rsync --exclude=protocol.d.ts --exclude=tsserverlibrary.d.ts --exclude=typescriptServices.d.ts built/local/*.d.ts ~/src/ende/cli/tsc/dts/
 ```
 
 ## Typescript-Go Integration
 
-Currently only integrated with deno check, though in the future it will also be
+Currently only integrated with ende check, though in the future it will also be
 integrated with our LSP implementation.
 
 In the CLI, we have a small abstraction over the tsc backend in
@@ -49,7 +49,7 @@ communicates via ops, and typescript-go which runs in a subprocess and uses IPC.
 From a high level, the way the tsgo backend works is that we download a
 typescript-go binary from
 [github releases](https://github.com/denoland/typescript-go/releases) into the
-deno cache dir. To actually interface with tsgo, we spawn it in a subprocess and
+ende cache dir. To actually interface with tsgo, we spawn it in a subprocess and
 write messages over stdin/stdout (similar to the Language Server Protocol). The
 format is a mixture of binary data (for the header and other protocol level
 details) followed by json encoded values for RPC calls. The rust implementation

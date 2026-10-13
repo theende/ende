@@ -462,7 +462,7 @@ pub trait DenoGraphLoaderSys:
 {
 }
 
-/// A "wrapper" for the FileFetcher and DiskCache for the Deno CLI that provides
+/// A "wrapper" for the FileFetcher and DiskCache for the Ende CLI that provides
 /// an implementation of `deno_graph::source::Loader`.
 pub struct DenoGraphLoader<
   TBlobStore: BlobStore,
@@ -534,12 +534,12 @@ impl<
   }
 
   /// The cache information takes a bit of time to fetch and it's
-  /// not always necessary. It should only be enabled for deno info.
+  /// not always necessary. It should only be enabled for ende info.
   pub fn enable_loading_cache_info(&mut self) {
     self.cache_info_enabled = true;
   }
 
-  /// Only use this for `deno info`.
+  /// Only use this for `ende info`.
   fn get_local_path(&self, specifier: &Url) -> Option<PathBuf> {
     // TODO(@kitsonk) fix when deno_graph does not query cache for synthetic
     // modules

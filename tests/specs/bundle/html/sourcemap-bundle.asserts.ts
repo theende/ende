@@ -7,7 +7,7 @@ Deno.readDirSync("./dist").forEach((entry) => {
 
 // The internal virtual-entry name must never leak into emitted output.
 for (const name of files) {
-  if (name.includes("deno-bundle-html.entry")) {
+  if (name.includes("ende-bundle-html.entry")) {
     throw new Error(
       "output file leaks the internal virtual-entry name: " + name,
     );

@@ -1810,7 +1810,7 @@ pub async fn op_http_upgrade_websocket_next(
 /// it as a `serverWebSocket` resource.
 ///
 /// If the server has already entered shutdown by the time we get here
-/// (because a handler called `Deno.upgradeWebSocket` while the listener
+/// (because a handler called `Ende.upgradeWebSocket` while the listener
 /// was already draining), `ActiveWebSockets::register` will immediately
 /// apply the recorded shutdown mode to this new socket so it does not
 /// pin the server alive past `shutdown()`.
@@ -5731,7 +5731,7 @@ pub async fn op_http_close(
     // Tell each upgraded server-side WebSocket to send a Close(1001 Going
     // Away) frame and stop reading. `begin_shutdown` also arms the
     // per-server registry, so a handler that calls
-    // `Deno.upgradeWebSocket` *after* this point — while in-flight
+    // `Ende.upgradeWebSocket` *after* this point — while in-flight
     // requests are still draining — has its new websocket torn down on
     // registration instead of holding the `poll_complete` below open
     // forever. See deno#22387.

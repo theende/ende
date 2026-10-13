@@ -8,7 +8,7 @@ pub enum CliErrorKind {
   /// An unknown flag was passed.
   UnknownFlag,
   /// An unknown subcommand was passed. Produced by the CLI when a bare
-  /// `deno <word>` fails to run as a script and `<word>` looks like a typo of
+  /// `ende <word>` fails to run as a script and `<word>` looks like a typo of
   /// a real subcommand.
   UnknownSubcommand,
   /// A required argument is missing.

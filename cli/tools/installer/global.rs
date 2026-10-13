@@ -110,7 +110,7 @@ pub async fn install_global(
     };
 
   // Validate every entry and default unprefixed bare package names to the npm
-  // registry (matching `deno add` and local `deno install`) before installing
+  // registry (matching `ende add` and local `ende install`) before installing
   // anything, so an error on entry N doesn't leave entries < N installed.
   let module_urls: Vec<String> = install_flags_global
     .module_urls
@@ -280,17 +280,17 @@ pub async fn uninstall(
     // Use the base file path (without extension) to compute related files
     let base_file = installation_dir.join(name);
     for ext in ["tsconfig.json", "deno.json", "lock.json"] {
-      // remove the plain extension files (e.g., name.deno.json, name.lock.json)
+      // remove the plain extension files (e.g., name.ende.json, name.lock.json)
       let file_path_ext = base_file.with_extension(ext);
       remove_file_if_exists(&file_path_ext)?;
 
       // also remove the hidden per-command copies created at install time
-      // (e.g., .name.deno.json)
+      // (e.g., .name.ende.json)
       let hidden_file = get_hidden_file_with_ext(&base_file, ext);
       remove_file_if_exists(&hidden_file)?;
 
       // On Windows, installs use a shim with a .cmd extension, which means the
-      // hidden files might be named like `.name.cmd.deno.json`. Attempt to remove
+      // hidden files might be named like `.name.cmd.ende.json`. Attempt to remove
       // those as well to be thorough.
       #[cfg(windows)]
       {
@@ -369,7 +369,7 @@ async fn install_global_compiled(
     }
     // Remove the existing file so that the compile step doesn't
     // fail its own safety check (which guards against overwriting
-    // files not produced by `deno compile`).
+    // files not produced by `ende compile`).
     std::fs::remove_file(&output_path).with_context(|| {
       format!(
         concat!(
@@ -612,7 +612,7 @@ async fn setup_config_dir(
 /// config keeps resolving `@scope/member` specifiers after the `workspace`
 /// field is stripped.
 ///
-/// `deno install -g -c deno.json` copies the workspace root config into a
+/// `ende install -g -c ende.json` copies the workspace root config into a
 /// per-binary directory and removes the `workspace` field to stop workspace
 /// discovery. Without this, bare specifiers that point at workspace members
 /// (e.g. `import { x } from "@scope/member"`) can no longer be resolved. Each
@@ -621,7 +621,7 @@ async fn setup_config_dir(
 /// would when invoked from the original workspace. See
 /// https://github.com/denoland/deno/issues/32057.
 ///
-/// Only `deno.json` members (those with a `name` and `exports`) are flattened,
+/// Only `ende.json` members (those with a `name` and `exports`) are flattened,
 /// since they are the ones resolved through the import map. `package.json`
 /// members resolve via `node_modules`, which is unaffected by stripping the
 /// `workspace` field, so they don't need an entry here.
@@ -648,7 +648,7 @@ fn workspace_member_import_entries(
 /// Builds import map entries for the dependencies declared in the closest
 /// package.json to a local file entrypoint.
 ///
-/// `deno install -g` copies the supplied config (or an empty one) into a
+/// `ende install -g` copies the supplied config (or an empty one) into a
 /// per-binary directory and the installed command runs with that config, so
 /// dependencies declared in the project's package.json are not visible to it.
 /// Flatten them into the copied config's import map (e.g. `"@std/log":
@@ -727,7 +727,7 @@ fn package_json_dep_import_entries(module_url: &Url) -> Vec<(String, String)> {
 /// Rewrites `./` and `../` paths inside `imports` and `scopes` to absolute
 /// `file://` URLs anchored to the original config file's location.
 ///
-/// `deno install -g -c deno.json` copies the supplied config into a per-binary
+/// `ende install -g -c ende.json` copies the supplied config into a per-binary
 /// directory. Relative specifiers / scope prefixes get resolved relative to
 /// that new directory by `ende_config`, so without rewriting them they end up
 /// pointing at non-existent paths under the install dir. See
@@ -858,7 +858,7 @@ fn resolve_native_binary_path(
   // ELF/Mach-O/PE. `node_resolver::read_bin_value` returns `Executable` for
   // any file whose first line isn't a recognized npx-style shebang (e.g.
   // `#!/usr/bin/env deno` scripts) — which would incorrectly cause us to
-  // generate an `exec`-the-file shim instead of a `deno run` shim. On
+  // generate an `exec`-the-file shim instead of an `ende run` shim. On
   // Windows there is no shebang interpretation, so that breaks installs of
   // ordinary npm packages whose bin scripts use a non-Node shebang.
   use std::io::Read;
@@ -1160,7 +1160,7 @@ struct ShimData {
   file_path: PathBuf,
   args: Vec<String>,
   /// If set, the bin entry is a native binary and the shim should exec it
-  /// directly instead of wrapping with `deno run`.
+  /// directly instead of wrapping with `ende run`.
   native_binary_path: Option<PathBuf>,
 }
 
@@ -2288,7 +2288,7 @@ mod tests {
     // We need to actually run it to make sure the URL is interpreted correctly
     let status = Command::new(file_path)
       .env_clear()
-      // use the deno binary in the target directory
+      // use the ende binary in the target directory
       .env("PATH", test_util::target_dir())
       .env("RUST_BACKTRACE", "1")
       .spawn()
@@ -2759,8 +2759,8 @@ mod tests {
   fn native_binary_not_detected_for_non_node_shebang_js() {
     // Regression: a JS bin script with a non-Node shebang (e.g.
     // `#!/usr/bin/env deno`) was being misclassified as a native binary,
-    // which broke `deno install -g` on Windows since the generated shim
-    // execed the .js file directly instead of running `deno run`.
+    // which broke `ende install -g` on Windows since the generated shim
+    // execed the .js file directly instead of running `ende run`.
     let temp_dir = TempDir::new();
     let bin_dir = temp_dir.path().join("bin").to_path_buf();
     let config_dir = bin_dir.join(".mytool");

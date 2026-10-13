@@ -974,7 +974,7 @@ pub struct DocumentModule {
   /// whenever the document content or the lint configuration changes, which
   /// naturally invalidates this cache.
   pub lint_diagnostics: once_cell::sync::OnceCell<Arc<Vec<lsp::Diagnostic>>>,
-  /// Cached `deno doc --lint` diagnostics. Like lint diagnostics, these are
+  /// Cached `ende doc --lint` diagnostics. Like lint diagnostics, these are
   /// derived solely from this module's own contents (a single-module graph),
   /// so they're cached per module instance.
   pub doc_diagnostics: once_cell::sync::OnceCell<Arc<Vec<lsp::Diagnostic>>>,

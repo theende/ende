@@ -320,7 +320,7 @@ impl ShellCommand for NpmCommand {
       // we don't handle stuff like `--workspaces` properly
       && !context.args.iter().any(|s| s.to_string_lossy().starts_with('-'))
     {
-      // run with deno task instead
+      // run with ende task instead
       let mut args: Vec<OsString> = Vec::with_capacity(context.args.len());
       args.push("task".into());
       args.extend(context.args.into_iter().skip(1));
@@ -436,7 +436,7 @@ impl ShellCommand for NodeGypCommand {
     context: ShellCommandContext,
   ) -> LocalBoxFuture<'static, ExecuteResult> {
     // at the moment this shell command is just to give a warning if node-gyp is not found
-    // in the future, we could try to run/install node-gyp for the user with deno
+    // in the future, we could try to run/install node-gyp for the user with ende
     if context
       .state
       .resolve_command_path(OsStr::new("node-gyp"))
@@ -621,7 +621,7 @@ fn resolve_managed_npm_commands(
   Ok(result)
 }
 
-/// Runs a deno task future forwarding any signals received
+/// Runs an ende task future forwarding any signals received
 /// to the process.
 ///
 /// Signal listeners and ctrl+c listening will be setup.

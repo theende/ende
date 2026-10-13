@@ -189,7 +189,7 @@ fn resolve_fmt_options(
     options.semi_colons = Some(!no_semis);
   }
 
-  // `--no-editorconfig` takes precedence over the deno.json
+  // `--no-editorconfig` takes precedence over the ende.json
   // `useEditorConfig` field. When the flag is absent the config value
   // (or its `None` default of "on") is left untouched.
   if fmt_flags.no_editorconfig {
@@ -228,7 +228,7 @@ impl WorkspaceTestOptions {
     // The CLI flag, env var, and config layers are enable-only: any of them
     // setting `true` turns the sanitizer on, and none of them can turn it
     // back off. To disable a sanitizer that was enabled by one of these
-    // layers, opt out from JS via `Deno.test.sanitizer({ ops: false })` at
+    // layers, opt out from JS via `Ende.test.sanitizer({ ops: false })` at
     // the module level, or `{ sanitizeOps: false }` on the individual test.
     let config_sanitize_ops =
       test_config.and_then(|c| c.sanitize_ops).unwrap_or(false);
@@ -701,7 +701,7 @@ impl CliOptions {
     self.flags.eszip
   }
 
-  /// Set by `deno compile --bundle` after rewriting the bundle's absolute
+  /// Set by `ende compile --bundle` after rewriting the bundle's absolute
   /// CJS paths; signals the standalone binary writer that the npm tree
   /// must still ship alongside the bundle.
   pub fn compile_bundle_embed_node_modules(&self) -> bool {
@@ -1032,7 +1032,7 @@ impl CliOptions {
     Ok(result)
   }
 
-  /// Resolves the coverage thresholds configured in `deno.json`'s `coverage`
+  /// Resolves the coverage thresholds configured in `ende.json`'s `coverage`
   /// section. CLI flags are layered on top of this by the caller.
   pub fn resolve_coverage_thresholds(
     &self,
@@ -1044,7 +1044,7 @@ impl CliOptions {
     &self,
     test_flags: &TestFlags,
   ) -> WorkspaceTestOptions {
-    // Get sanitizer config from deno.json if available
+    // Get sanitizer config from ende.json if available
     let test_config = self
       .start_dir
       .to_test_config(FilePatterns::new_with_base(
@@ -1239,7 +1239,7 @@ impl CliOptions {
   /// empty deny list: these rules decide whether code may be loaded at all, so
   /// failing to read them has to fail the command, not quietly load the code.
   /// Callers that build options whose config cannot see the user's `-P` set
-  /// (`deno x` generates a temp `deno.json`) are responsible for carrying the
+  /// (`ende x` generates a temp `ende.json`) are responsible for carrying the
   /// resolved rules over themselves — see `x::resolve_import_deny_rules`.
   pub fn import_deny_permissions_options(
     &self,
@@ -1452,7 +1452,7 @@ impl CliOptions {
 
   pub fn detect_cjs(&self) -> bool {
     // only enabled when there's a package.json in order to not have a
-    // perf penalty for non-npm Deno projects of searching for the closest
+    // perf penalty for non-npm Ende projects of searching for the closest
     // package.json beside each module
     self.workspace().package_jsons().next().is_some() || self.is_node_main()
   }
@@ -1513,9 +1513,9 @@ impl CliOptions {
 
   /// Returns unstable feature flags as CLI arguments (e.g., "--unstable-unsafe-proto").
   /// This includes features from both CLI flags and config file. Features that
-  /// are only valid in `deno.json` (e.g. `fmt-component`, `fmt-sql`) and don't
+  /// are only valid in `ende.json` (e.g. `fmt-component`, `fmt-sql`) and don't
   /// have a registered CLI flag are filtered out, otherwise child processes
-  /// spawned with these args (e.g. via `deno x`) would reject them with
+  /// spawned with these args (e.g. via `ende x`) would reject them with
   /// "unexpected argument".
   pub fn unstable_args(&self) -> Vec<String> {
     let cli_flag_names: std::collections::HashSet<&str> =

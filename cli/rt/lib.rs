@@ -71,7 +71,7 @@ pub fn main() {
   // Enable ANSI virtual terminal processing on Windows consoles that don't
   // do so by default (e.g. Windows Server / classic conhost), so that
   // compiled binaries render colored output instead of raw escape codes.
-  // This mirrors the setup done in the main `deno` binary entrypoint.
+  // This mirrors the setup done in the main `ende` binary entrypoint.
   #[cfg(windows)]
   colors::enable_ansi(); // For Windows 10
 

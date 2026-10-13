@@ -37,9 +37,9 @@ fn op_xyz(/* ... */) -> impl Future<Output = X> {}
 ```
 
 These are desugared to a function that adds a hidden `promise_id` argument, and
-returns `Option<X>` instead. Deno will eagerly poll the op, and if it is
+returns `Option<X>` instead. Ende will eagerly poll the op, and if it is
 immediately ready, the function will return `Some(X)`. If the op is not ready,
-the function will return `None` and the future will be handled by Deno's pending
+the function will return `None` and the future will be handled by Ende's pending
 op system.
 
 ```rust,ignore

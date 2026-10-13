@@ -657,7 +657,7 @@ impl ServerWebSocket {
   /// The read is cancelled *concurrently* with the write rather than after
   /// it: if the peer stops draining and our TCP send buffer fills,
   /// `write_frame` blocks indefinitely. Awaiting it before cancelling would
-  /// hang `Deno.serve` shutdown (the resource never drops → the
+  /// hang `Ende.serve` shutdown (the resource never drops → the
   /// `HttpServerState` poll-complete future never fires). Cancelling first
   /// lets the resource drain even on a stuck peer; the close frame still
   /// goes out when (and if) the write unblocks.

@@ -10,12 +10,12 @@ use super::ResourceHandleFd;
 use super::ResourceHandleSocket;
 
 /// A `ResourceId` is an integer value referencing a resource. It could be
-/// considered to be the Deno equivalent of a `file descriptor` in POSIX like
+/// considered to be the Ende equivalent of a `file descriptor` in POSIX like
 /// operating systems. Elsewhere in the code base it is commonly abbreviated
 /// to `rid`.
 // TODO: use `u64` instead?
 pub type ResourceId = u32;
-/// Map-like data structure storing Deno's resources (equivalent to file
+/// Map-like data structure storing Ende's resources (equivalent to file
 /// descriptors).
 ///
 /// Provides basic methods for element access. A resource can be of any type.

@@ -7,7 +7,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Inspector server for Deno runtime"
+description = "Inspector server for Ende runtime"
 
 [lib]
 path = "lib.rs"

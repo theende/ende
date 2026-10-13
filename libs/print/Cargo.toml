@@ -6,7 +6,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Print macros that don't panic on broken pipes, for Deno crates"
+description = "Print macros that don't panic on broken pipes, for Ende crates"
 
 [lib]
 path = "lib.rs"

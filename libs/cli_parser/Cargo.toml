@@ -7,7 +7,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Zero-cost CLI argument parser for the Deno CLI"
+description = "Zero-cost CLI argument parser for the Ende CLI"
 
 [lib]
 path = "src/lib.rs"

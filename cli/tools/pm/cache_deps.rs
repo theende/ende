@@ -26,7 +26,7 @@ use crate::graph_util::BuildGraphWithNpmOptions;
 pub struct CacheTopLevelDepsOptions {
   pub lockfile_only: bool,
   /// Extra specifiers to resolve and cache in addition to the project's
-  /// declared dependencies. Used by `deno add --no-save` to install packages
+  /// declared dependencies. Used by `ende add --no-save` to install packages
   /// without writing them to the configuration file.
   pub additional_roots: Vec<Url>,
 }

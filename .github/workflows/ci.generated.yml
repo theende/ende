@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip_build: '${{ steps.check.outputs.skip_build }}'
-      skip_deno_core_test: '${{ steps.deno_core_changes.outputs.skip_deno_core_test }}'
+      skip_ende_core_test: '${{ steps.ende_core_changes.outputs.skip_ende_core_test }}'
       docs_only: '${{ steps.docs_only_changes.outputs.docs_only }}'
     steps:
       - name: Configure git
@@ -50,11 +50,11 @@ jobs:
           GIT_MESSAGE=$(git log --format=%s -n 1 ${{github.event.after}})
           echo Commit message: $GIT_MESSAGE
           echo $GIT_MESSAGE | grep '\[ci\]' || (echo 'Exiting due to draft PR. Commit with [ci] to bypass or add the ci-draft label.' ; echo 'skip_build=true' >> $GITHUB_OUTPUT)
-      - id: deno_core_changes
+      - id: ende_core_changes
         if: github.event_name == 'pull_request'
         run: |-
           git fetch --depth=1 origin ${{ github.event.pull_request.base.sha }}
-          deno run -A tools/check_deno_core_changes.js ${{ github.event.pull_request.base.sha }}
+          deno run -A tools/check_ende_core_changes.js ${{ github.event.pull_request.base.sha }}
       - id: docs_only_changes
         if: github.event_name == 'pull_request'
         run: 'deno run -A tools/check_docs_only_changes.js ${{ github.event.pull_request.base.sha }}'
@@ -237,7 +237,7 @@ jobs:
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         run: ./tools/install_prebuilt.js wrk hyperfine
-      - name: Build deno
+      - name: Build ende
         if: '(contains(github.event.pull_request.labels.*.name, ''ci-bench'') || github.ref == ''refs/heads/main'') && !startsWith(github.ref, ''refs/tags/'')'
         env:
           ENDE_SNAPSHOT_MINIFY_SOURCES: '1'
@@ -382,7 +382,7 @@ jobs:
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
         run: cargo build --locked -p ende -p endert -p test_server --bin ende --bin endert --bin test_server --features=ende/panic-trace
-      - name: Check deno binary
+      - name: Check ende binary
         env:
           NO_COLOR: 1
         run: target/debug/ende eval "console.log(1+2)" | grep 3
@@ -792,8 +792,8 @@ jobs:
         env:
           NO_COLOR: 1
         run: |-
-          target/release/ende -A tools/release/create_symcache.ts ./deno.symcache
-          du -h deno.symcache
+          target/release/ende -A tools/release/create_symcache.ts ./ende.symcache
+          du -h ende.symcache
           du -h target/release/ende
       - name: Install rust-codesign
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'''
@@ -845,12 +845,12 @@ jobs:
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
           TARGET="x86_64-apple-darwin"
-          PREV_VERSION=$(curl -sf https://dl.deno.land/release-latest.txt | tr -d "v\n") || true
+          PREV_VERSION=$(curl -sf https://dl.ende.sh/release-latest.txt | tr -d "v\n") || true
           if [ -z "$PREV_VERSION" ]; then echo "No previous version found, skipping delta"; exit 0; fi
           echo "Generating delta from $PREV_VERSION for $TARGET"
-          curl -fSL -o prev.zip "https://github.com/denoland/deno/releases/download/v${PREV_VERSION}/deno-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }
+          curl -fSL -o prev.zip "https://github.com/theende/ende/releases/download/v${PREV_VERSION}/ende-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }
           unzip -o prev.zip -d prev/
-          ./target/release/bsdiff_helper prev/deno target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"
+          ./target/release/bsdiff_helper prev/ende target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"
           cd target/release && shasum -a 256 "ende-${TARGET}.from-${PREV_VERSION}.bsdiff" > "ende-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"
       - name: Upload canary to dl.deno.land
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'' && github.ref == ''refs/heads/main'''
@@ -872,7 +872,7 @@ jobs:
           du -hd1 "./target/release"
           du -ha  "./target/release/ende"
           du -ha  "./target/release/endert"
-      - name: Check deno binary
+      - name: Check ende binary
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'')'
         env:
           NO_COLOR: 1
@@ -964,8 +964,8 @@ jobs:
             target/release/endert-aarch64-apple-darwin.zip.sha256sum
             target/release/libendert-aarch64-apple-darwin.zip
             target/release/libendert-aarch64-apple-darwin.zip.sha256sum
-            target/release/deno_src.tar.gz
-            target/release/lib.deno.d.ts
+            target/release/ende_src.tar.gz
+            target/release/lib.ende.d.ts
             target/release/ende-*.bsdiff
             target/release/ende-*.bsdiff.sha256sum
           body_path: target/release/release-notes.md
@@ -1287,11 +1287,11 @@ jobs:
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
         run: cargo build --locked -p ende -p endert -p test_server --bin ende --bin endert --bin test_server --features=ende/panic-trace
-      - name: Check QuickJS backend (deno + endert)
+      - name: Check QuickJS backend (ende + endert)
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
         run: cargo check --locked -p ende -p endert --no-default-features --features quickjs
-      - name: Check deno binary
+      - name: Check ende binary
         env:
           NO_COLOR: 1
         run: target/debug/ende eval "console.log(1+2)" | grep 3
@@ -1692,7 +1692,7 @@ jobs:
         if: '!startsWith(github.ref, ''refs/tags/'')'
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
-        run: cargo test --locked --lib -p ende -p endert -p node_shim -p bsdiff_helper -p ende_lib -p endert_desktop -p ende_snapshots -p ende_bundle_runtime -p ende_cache -p ende_canvas -p ende_cron -p ende_crypto -p ende_fetch -p ende_ffi -p ende_fs -p ende_http -p ende_image -p ende_io -p ende_kv -p ende_napi -p napi_sym -p ende_net -p ende_node -p ende_node_crypto -p ende_node_sqlite -p endert_helper -p ende_signals -p ende_telemetry -p ende_url -p ende_web -p ende_webgpu -p ende_webidl -p ende_websocket -p ende_webstorage -p ende_cache_dir -p ende_cli_parser -p ende_config -p ende_crypto_provider -p ende_dotenv -p ende_env -p ende_v8 -p eszip -p ende_http_h1 -p ende_inspector_server -p ende_lockfile -p ende_maybe_sync -p napi_sys -p node_resolver -p ende_npm -p ende_npm_cache -p ende_npm_installer -p ende_npmrc -p ende_package_json -p ende_print -p ende_resolver -p ende_typescript_go_client_rust -p ende_runtime -p ende_features -p ende_permissions -p ende_subprocess_windows
+        run: cargo test --locked --lib -p ende -p endert -p node_shim -p bsdiff_helper -p ende_lib -p endert_desktop -p ende_snapshots -p ende_bundle_runtime -p ende_cache -p ende_canvas -p ende_cron -p ende_crypto -p ende_fetch -p ende_ffi -p ende_fs -p ende_http -p ende_image -p ende_io -p ende_kv -p ende_napi -p napi_sym -p ende_net -p ende_node -p ende_node_crypto -p ende_node_sqlite -p endert_helper -p ende_signals -p ende_telemetry -p ende_url -p ende_web -p ende_webgpu -p ende_webidl -p ende_websocket -p ende_webstorage -p ende_cache_dir -p ende_cli_parser -p ende_config -p ende_crypto_provider -p ende_dotenv -p ende_v8 -p ende_env -p eszip -p ende_http_h1 -p ende_inspector_server -p ende_lockfile -p ende_maybe_sync -p napi_sys -p node_resolver -p ende_npm -p ende_npm_cache -p ende_npm_installer -p ende_npmrc -p ende_package_json -p ende_print -p ende_resolver -p ende_typescript_go_client_rust -p ende_runtime -p ende_features -p ende_permissions -p ende_subprocess_windows
       - name: Cache cargo home
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         if: '!startsWith(github.ref, ''refs/tags/'') && github.ref == ''refs/heads/main'''
@@ -1868,7 +1868,7 @@ jobs:
             --output $GITHUB_WORKSPACE/target/release/startup-order-aarch64-apple-darwin.order \
             --repeats 3 \
             --workload-profile run-first
-      - name: Relink release deno with startup order
+      - name: Relink release ende with startup order
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'' && (github.ref == ''refs/heads/main'' || startsWith(github.ref, ''refs/tags/'') || contains(github.event.pull_request.labels.*.name, ''ci-full''))'
         env:
           ENDE_SNAPSHOT_MINIFY_SOURCES: '1'
@@ -1901,8 +1901,8 @@ jobs:
         env:
           NO_COLOR: 1
         run: |-
-          target/release/ende -A tools/release/create_symcache.ts ./deno.symcache
-          du -h deno.symcache
+          target/release/ende -A tools/release/create_symcache.ts ./ende.symcache
+          du -h ende.symcache
           du -h target/release/ende
       - name: Install rust-codesign
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'''
@@ -1954,12 +1954,12 @@ jobs:
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
           TARGET="aarch64-apple-darwin"
-          PREV_VERSION=$(curl -sf https://dl.deno.land/release-latest.txt | tr -d "v\n") || true
+          PREV_VERSION=$(curl -sf https://dl.ende.sh/release-latest.txt | tr -d "v\n") || true
           if [ -z "$PREV_VERSION" ]; then echo "No previous version found, skipping delta"; exit 0; fi
           echo "Generating delta from $PREV_VERSION for $TARGET"
-          curl -fSL -o prev.zip "https://github.com/denoland/deno/releases/download/v${PREV_VERSION}/deno-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }
+          curl -fSL -o prev.zip "https://github.com/theende/ende/releases/download/v${PREV_VERSION}/ende-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }
           unzip -o prev.zip -d prev/
-          ./target/release/bsdiff_helper prev/deno target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"
+          ./target/release/bsdiff_helper prev/ende target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"
           cd target/release && shasum -a 256 "ende-${TARGET}.from-${PREV_VERSION}.bsdiff" > "ende-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"
       - name: Upload canary to dl.deno.land
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'' && github.ref == ''refs/heads/main'''
@@ -1981,7 +1981,7 @@ jobs:
           du -hd1 "./target/release"
           du -ha  "./target/release/ende"
           du -ha  "./target/release/endert"
-      - name: Check deno binary
+      - name: Check ende binary
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'')'
         env:
           NO_COLOR: 1
@@ -2073,8 +2073,8 @@ jobs:
             target/release/endert-aarch64-apple-darwin.zip.sha256sum
             target/release/libendert-aarch64-apple-darwin.zip
             target/release/libendert-aarch64-apple-darwin.zip.sha256sum
-            target/release/deno_src.tar.gz
-            target/release/lib.deno.d.ts
+            target/release/ende_src.tar.gz
+            target/release/lib.ende.d.ts
             target/release/ende-*.bsdiff
             target/release/ende-*.bsdiff.sha256sum
           body_path: target/release/release-notes.md
@@ -2393,7 +2393,7 @@ jobs:
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
         run: cargo build --locked -p ende -p endert -p test_server --bin ende --bin endert --bin test_server --features=ende/panic-trace
-      - name: Check deno binary
+      - name: Check ende binary
         env:
           NO_COLOR: 1
         run: target/debug/ende eval "console.log(1+2)" | grep 3
@@ -2748,7 +2748,7 @@ jobs:
         if: '!startsWith(github.ref, ''refs/tags/'')'
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
-        run: cargo test --locked --lib -p ende -p endert -p node_shim -p bsdiff_helper -p ende_lib -p endert_desktop -p ende_snapshots -p ende_bundle_runtime -p ende_cache -p ende_canvas -p ende_cron -p ende_crypto -p ende_fetch -p ende_ffi -p ende_fs -p ende_http -p ende_image -p ende_io -p ende_kv -p ende_napi -p napi_sym -p ende_net -p ende_node -p ende_node_crypto -p ende_node_sqlite -p endert_helper -p ende_signals -p ende_telemetry -p ende_url -p ende_web -p ende_webgpu -p ende_webidl -p ende_websocket -p ende_webstorage -p ende_cache_dir -p ende_cli_parser -p ende_config -p ende_crypto_provider -p ende_dotenv -p ende_env -p ende_v8 -p eszip -p ende_http_h1 -p ende_inspector_server -p ende_lockfile -p ende_maybe_sync -p napi_sys -p node_resolver -p ende_npm -p ende_npm_cache -p ende_npm_installer -p ende_npmrc -p ende_package_json -p ende_print -p ende_resolver -p ende_typescript_go_client_rust -p ende_runtime -p ende_features -p ende_permissions -p ende_subprocess_windows
+        run: cargo test --locked --lib -p ende -p endert -p node_shim -p bsdiff_helper -p ende_lib -p endert_desktop -p ende_snapshots -p ende_bundle_runtime -p ende_cache -p ende_canvas -p ende_cron -p ende_crypto -p ende_fetch -p ende_ffi -p ende_fs -p ende_http -p ende_image -p ende_io -p ende_kv -p ende_napi -p napi_sym -p ende_net -p ende_node -p ende_node_crypto -p ende_node_sqlite -p endert_helper -p ende_signals -p ende_telemetry -p ende_url -p ende_web -p ende_webgpu -p ende_webidl -p ende_websocket -p ende_webstorage -p ende_cache_dir -p ende_cli_parser -p ende_config -p ende_crypto_provider -p ende_dotenv -p ende_v8 -p ende_env -p eszip -p ende_http_h1 -p ende_inspector_server -p ende_lockfile -p ende_maybe_sync -p napi_sys -p node_resolver -p ende_npm -p ende_npm_cache -p ende_npm_installer -p ende_npmrc -p ende_package_json -p ende_print -p ende_resolver -p ende_typescript_go_client_rust -p ende_runtime -p ende_features -p ende_permissions -p ende_subprocess_windows
       - name: Cache cargo home
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         if: '!startsWith(github.ref, ''refs/tags/'') && github.ref == ''refs/heads/main'''
@@ -2902,8 +2902,8 @@ jobs:
         env:
           NO_COLOR: 1
         run: |-
-          target/release/ende -A tools/release/create_symcache.ts ./deno.symcache
-          du -h deno.symcache
+          target/release/ende -A tools/release/create_symcache.ts ./ende.symcache
+          du -h ende.symcache
           du -h target/release/ende
       - name: Authenticate with Azure (windows)
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
@@ -2974,13 +2974,13 @@ jobs:
         shell: pwsh
         run: |-
           $Target = "x86_64-pc-windows-msvc"
-          $PrevVersion = (Invoke-RestMethod https://dl.deno.land/release-latest.txt).Trim() -replace "^v", ""
+          $PrevVersion = (Invoke-RestMethod https://dl.ende.sh/release-latest.txt).Trim() -replace "^v", ""
           if (-not $PrevVersion) { Write-Host "No previous version found, skipping delta"; exit 0 }
           Write-Host "Generating delta from $PrevVersion for $Target"
-          try { Invoke-WebRequest -Uri "https://github.com/denoland/deno/releases/download/v$PrevVersion/deno-$Target.zip" -OutFile prev.zip } catch { Write-Host "Previous release not found, skipping delta"; exit 0 }
+          try { Invoke-WebRequest -Uri "https://github.com/theende/ende/releases/download/v$PrevVersion/ende-$Target.zip" -OutFile prev.zip } catch { Write-Host "Previous release not found, skipping delta"; exit 0 }
           Remove-Item -Recurse -Force prev -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path prev | Out-Null
           Expand-Archive -Force -Path prev.zip -DestinationPath prev
-          & .\target\release\bsdiff_helper.exe "prev\deno.exe" "target\release\ende.exe" "target\release\ende-$Target.from-$PrevVersion.bsdiff"
+          & .\target\release\bsdiff_helper.exe "prev\ende.exe" "target\release\ende.exe" "target\release\ende-$Target.from-$PrevVersion.bsdiff"
           Get-FileHash "target\release\ende-$Target.from-$PrevVersion.bsdiff" -Algorithm SHA256 | Format-List > "target\release\ende-$Target.from-$PrevVersion.bsdiff.sha256sum"
       - name: Upload canary to dl.deno.land
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'' && github.ref == ''refs/heads/main'''
@@ -3002,7 +3002,7 @@ jobs:
           du -hd1 "./target/release"
           du -ha  "./target/release/ende"
           du -ha  "./target/release/endert"
-      - name: Check deno binary
+      - name: Check ende binary
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'')'
         env:
           NO_COLOR: 1
@@ -3094,8 +3094,8 @@ jobs:
             target/release/endert-aarch64-apple-darwin.zip.sha256sum
             target/release/libendert-aarch64-apple-darwin.zip
             target/release/libendert-aarch64-apple-darwin.zip.sha256sum
-            target/release/deno_src.tar.gz
-            target/release/lib.deno.d.ts
+            target/release/ende_src.tar.gz
+            target/release/lib.ende.d.ts
             target/release/ende-*.bsdiff
             target/release/ende-*.bsdiff.sha256sum
           body_path: target/release/release-notes.md
@@ -3391,7 +3391,7 @@ jobs:
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
         run: cargo build --locked -p ende -p endert -p test_server --bin ende --bin endert --bin test_server --features=ende/panic-trace
-      - name: Check deno binary
+      - name: Check ende binary
         env:
           NO_COLOR: 1
         run: target/debug/ende eval "console.log(1+2)" | grep 3
@@ -3781,8 +3781,8 @@ jobs:
         env:
           NO_COLOR: 1
         run: |-
-          target/release/ende -A tools/release/create_symcache.ts ./deno.symcache
-          du -h deno.symcache
+          target/release/ende -A tools/release/create_symcache.ts ./ende.symcache
+          du -h ende.symcache
           du -h target/release/ende
       - name: Authenticate with Azure (windows)
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
@@ -3853,13 +3853,13 @@ jobs:
         shell: pwsh
         run: |-
           $Target = "aarch64-pc-windows-msvc"
-          $PrevVersion = (Invoke-RestMethod https://dl.deno.land/release-latest.txt).Trim() -replace "^v", ""
+          $PrevVersion = (Invoke-RestMethod https://dl.ende.sh/release-latest.txt).Trim() -replace "^v", ""
           if (-not $PrevVersion) { Write-Host "No previous version found, skipping delta"; exit 0 }
           Write-Host "Generating delta from $PrevVersion for $Target"
-          try { Invoke-WebRequest -Uri "https://github.com/denoland/deno/releases/download/v$PrevVersion/deno-$Target.zip" -OutFile prev.zip } catch { Write-Host "Previous release not found, skipping delta"; exit 0 }
+          try { Invoke-WebRequest -Uri "https://github.com/theende/ende/releases/download/v$PrevVersion/ende-$Target.zip" -OutFile prev.zip } catch { Write-Host "Previous release not found, skipping delta"; exit 0 }
           Remove-Item -Recurse -Force prev -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path prev | Out-Null
           Expand-Archive -Force -Path prev.zip -DestinationPath prev
-          & .\target\release\bsdiff_helper.exe "prev\deno.exe" "target\release\ende.exe" "target\release\ende-$Target.from-$PrevVersion.bsdiff"
+          & .\target\release\bsdiff_helper.exe "prev\ende.exe" "target\release\ende.exe" "target\release\ende-$Target.from-$PrevVersion.bsdiff"
           Get-FileHash "target\release\ende-$Target.from-$PrevVersion.bsdiff" -Algorithm SHA256 | Format-List > "target\release\ende-$Target.from-$PrevVersion.bsdiff.sha256sum"
       - name: Upload canary to dl.deno.land
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'' && github.ref == ''refs/heads/main'''
@@ -3881,7 +3881,7 @@ jobs:
           du -hd1 "./target/release"
           du -ha  "./target/release/ende"
           du -ha  "./target/release/endert"
-      - name: Check deno binary
+      - name: Check ende binary
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'')'
         env:
           NO_COLOR: 1
@@ -3973,8 +3973,8 @@ jobs:
             target/release/endert-aarch64-apple-darwin.zip.sha256sum
             target/release/libendert-aarch64-apple-darwin.zip
             target/release/libendert-aarch64-apple-darwin.zip.sha256sum
-            target/release/deno_src.tar.gz
-            target/release/lib.deno.d.ts
+            target/release/ende_src.tar.gz
+            target/release/lib.ende.d.ts
             target/release/ende-*.bsdiff
             target/release/ende-*.bsdiff.sha256sum
           body_path: target/release/release-notes.md
@@ -4204,7 +4204,7 @@ jobs:
         run: |-
           mkdir -p target/release
           tar --exclude=".git*" --exclude=target --exclude=third_party/prebuilt \
-              -czvf target/release/deno_src.tar.gz -C .. deno
+              -czvf target/release/ende_src.tar.gz -C .. ende
       - name: Install Deno
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
         with:
@@ -4379,9 +4379,9 @@ jobs:
         run: |-
           echo "RUSTC_BOOTSTRAP=1" >> "$GITHUB_ENV"
           {
-            echo "RUSTFLAGS<<__DENO_RUSTFLAGS"
+            echo "RUSTFLAGS<<__ENDE_RUSTFLAGS"
             echo "$RUSTFLAGS -C force-frame-pointers=yes -C force-unwind-tables=no -C link-arg=-Wl,--no-eh-frame-hdr"
-            echo "__DENO_RUSTFLAGS"
+            echo "__ENDE_RUSTFLAGS"
           } >> "$GITHUB_ENV"
       - name: Build release
         env:
@@ -4408,7 +4408,7 @@ jobs:
             --output $GITHUB_WORKSPACE/target/release/startup-order-x86_64-unknown-linux-gnu.order \
             --repeats 3 \
             --workload-profile run-first
-      - name: Relink release deno with startup order
+      - name: Relink release ende with startup order
         if: 'github.ref == ''refs/heads/main'' || startsWith(github.ref, ''refs/tags/'') || contains(github.event.pull_request.labels.*.name, ''ci-full'')'
         env:
           ENDE_SNAPSHOT_MINIFY_SOURCES: '1'
@@ -4440,7 +4440,7 @@ jobs:
       - name: Check release snapshot flags
         run: |-
           if strings target/release/ende | grep -F -- '--no-lazy --no-lazy-eval --no-lazy-streaming'; then
-            echo "release deno binary contains eager snapshot flags"
+            echo "release ende binary contains eager snapshot flags"
             exit 1
           fi
       - name: 'Check eager bootstrap does not static-import node:'
@@ -4453,8 +4453,8 @@ jobs:
         env:
           NO_COLOR: 1
         run: |-
-          target/release/ende -A tools/release/create_symcache.ts ./deno.symcache
-          du -h deno.symcache
+          target/release/ende -A tools/release/create_symcache.ts ./ende.symcache
+          du -h ende.symcache
           du -h target/release/ende
       - name: Pre-release (linux)
         if: github.repository == 'denoland/deno'
@@ -4493,7 +4493,7 @@ jobs:
           shasum -a 256 libendert-quickjs-x86_64-unknown-linux-gnu.zip > libendert-quickjs-x86_64-unknown-linux-gnu.zip.sha256sum
           restore_v8_runtimes
           trap - EXIT
-          ./ende types > lib.deno.d.ts
+          ./ende types > lib.ende.d.ts
       - name: Build bsdiff helper
         if: 'github.repository == ''denoland/deno'' && startsWith(github.ref, ''refs/tags/'')'
         run: cargo build --release -p bsdiff_helper
@@ -4501,12 +4501,12 @@ jobs:
         if: 'github.repository == ''denoland/deno'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
           TARGET="x86_64-unknown-linux-gnu"
-          PREV_VERSION=$(curl -sf https://dl.deno.land/release-latest.txt | tr -d "v\n") || true
+          PREV_VERSION=$(curl -sf https://dl.ende.sh/release-latest.txt | tr -d "v\n") || true
           if [ -z "$PREV_VERSION" ]; then echo "No previous version found, skipping delta"; exit 0; fi
           echo "Generating delta from $PREV_VERSION for $TARGET"
-          curl -fSL -o prev.zip "https://github.com/denoland/deno/releases/download/v${PREV_VERSION}/deno-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }
+          curl -fSL -o prev.zip "https://github.com/theende/ende/releases/download/v${PREV_VERSION}/ende-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }
           unzip -o prev.zip -d prev/
-          ./target/release/bsdiff_helper prev/deno target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"
+          ./target/release/bsdiff_helper prev/ende target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"
           cd target/release && shasum -a 256 "ende-${TARGET}.from-${PREV_VERSION}.bsdiff" > "ende-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"
       - name: Upload canary to dl.deno.land
         if: github.repository == 'denoland/deno' && github.ref == 'refs/heads/main'
@@ -4528,11 +4528,11 @@ jobs:
           du -hd1 "./target/release"
           du -ha  "./target/release/ende"
           du -ha  "./target/release/endert"
-      - name: Check deno binary
+      - name: Check ende binary
         env:
           NO_COLOR: 1
         run: target/release/ende eval "console.log(1+2)" | grep 3
-      - name: Check deno binary (in sysroot)
+      - name: Check ende binary (in sysroot)
         run: sudo chroot /sysroot "$(pwd)/target/release/ende" --version
       - name: Upload artifact release-linux-x86_64-ende
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -4618,8 +4618,8 @@ jobs:
             target/release/endert-aarch64-apple-darwin.zip.sha256sum
             target/release/libendert-aarch64-apple-darwin.zip
             target/release/libendert-aarch64-apple-darwin.zip.sha256sum
-            target/release/deno_src.tar.gz
-            target/release/lib.deno.d.ts
+            target/release/ende_src.tar.gz
+            target/release/lib.ende.d.ts
             target/release/ende-*.bsdiff
             target/release/ende-*.bsdiff.sha256sum
           body_path: target/release/release-notes.md
@@ -5034,15 +5034,15 @@ jobs:
       - name: Run web platform tests (release)
         if: '!startsWith(github.ref, ''refs/tags/'')'
         env:
-          DENO_BIN: ./target/release/ende
+          ENDE_BIN: ./target/release/ende
         run: |-
           deno run -RWNE --allow-run --lock=tools/deno.lock.json --config tests/config/deno.json \
               ./tests/wpt/wpt.ts setup
           deno run -RWNE --allow-run --lock=tools/deno.lock.json --config tests/config/deno.json --unsafely-ignore-certificate-errors \
-              ./tests/wpt/wpt.ts run --all --quiet --release --binary="$DENO_BIN" --json=wpt.json --wptreport=wptreport.json
+              ./tests/wpt/wpt.ts run --all --quiet --release --binary="$ENDE_BIN" --json=wpt.json --wptreport=wptreport.json
       - name: Autobahn testsuite
         if: '!startsWith(github.ref, ''refs/tags/'')'
-        run: target/release/ende run -A --config tests/config/deno.json ext/websocket/autobahn/fuzzingclient.js
+        run: target/release/ende run -A --config tests/config/ende.json ext/websocket/autobahn/fuzzingclient.js
       - name: Upload wpt results to dl.deno.land
         if: '!startsWith(github.ref, ''refs/tags/'') && github.repository == ''denoland/deno'' && github.ref == ''refs/heads/main'''
         env:
@@ -5270,15 +5270,15 @@ jobs:
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
         run: cargo build --locked -p ende -p endert -p test_server --bin ende --bin endert --bin test_server --features=ende/panic-trace
-      - name: Check QuickJS backend (deno + endert)
+      - name: Check QuickJS backend (ende + endert)
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
         run: cargo check --locked -p ende -p endert --no-default-features --features quickjs
-      - name: Check deno binary
+      - name: Check ende binary
         env:
           NO_COLOR: 1
         run: target/debug/ende eval "console.log(1+2)" | grep 3
-      - name: Check deno binary (in sysroot)
+      - name: Check ende binary (in sysroot)
         run: sudo chroot /sysroot "$(pwd)/target/debug/ende" --version
       - name: Upload artifact debug-linux-x86_64-ende
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -5857,7 +5857,7 @@ jobs:
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
         run: cargo build --locked -p ende -p endert -p test_server --bin ende --bin endert --bin test_server --features=ende/panic-trace
-      - name: Check deno binary
+      - name: Check ende binary
         env:
           NO_COLOR: 1
         run: target/debug/ende eval "console.log(1+2)" | grep 3
@@ -6230,7 +6230,7 @@ jobs:
         if: '!startsWith(github.ref, ''refs/tags/'')'
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
-        run: cargo test --locked --lib -p ende -p endert -p node_shim -p bsdiff_helper -p ende_lib -p endert_desktop -p ende_snapshots -p ende_bundle_runtime -p ende_cache -p ende_canvas -p ende_cron -p ende_crypto -p ende_fetch -p ende_ffi -p ende_fs -p ende_http -p ende_image -p ende_io -p ende_kv -p ende_napi -p napi_sym -p ende_net -p ende_node -p ende_node_crypto -p ende_node_sqlite -p endert_helper -p ende_signals -p ende_telemetry -p ende_url -p ende_web -p ende_webgpu -p ende_webidl -p ende_websocket -p ende_webstorage -p ende_cache_dir -p ende_cli_parser -p ende_config -p ende_crypto_provider -p ende_dotenv -p ende_env -p ende_v8 -p eszip -p ende_http_h1 -p ende_inspector_server -p ende_lockfile -p ende_maybe_sync -p napi_sys -p node_resolver -p ende_npm -p ende_npm_cache -p ende_npm_installer -p ende_npmrc -p ende_package_json -p ende_print -p ende_resolver -p ende_typescript_go_client_rust -p ende_runtime -p ende_features -p ende_permissions -p ende_subprocess_windows
+        run: cargo test --locked --lib -p ende -p endert -p node_shim -p bsdiff_helper -p ende_lib -p endert_desktop -p ende_snapshots -p ende_bundle_runtime -p ende_cache -p ende_canvas -p ende_cron -p ende_crypto -p ende_fetch -p ende_ffi -p ende_fs -p ende_http -p ende_image -p ende_io -p ende_kv -p ende_napi -p napi_sym -p ende_net -p ende_node -p ende_node_crypto -p ende_node_sqlite -p endert_helper -p ende_signals -p ende_telemetry -p ende_url -p ende_web -p ende_webgpu -p ende_webidl -p ende_websocket -p ende_webstorage -p ende_cache_dir -p ende_cli_parser -p ende_config -p ende_crypto_provider -p ende_dotenv -p ende_v8 -p ende_env -p eszip -p ende_http_h1 -p ende_inspector_server -p ende_lockfile -p ende_maybe_sync -p napi_sys -p node_resolver -p ende_npm -p ende_npm_cache -p ende_npm_installer -p ende_npmrc -p ende_package_json -p ende_print -p ende_resolver -p ende_typescript_go_client_rust -p ende_runtime -p ende_features -p ende_permissions -p ende_subprocess_windows
       - name: Cache cargo home
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         if: '!startsWith(github.ref, ''refs/tags/'') && github.ref == ''refs/heads/main'''
@@ -6466,9 +6466,9 @@ jobs:
         run: |-
           echo "RUSTC_BOOTSTRAP=1" >> "$GITHUB_ENV"
           {
-            echo "RUSTFLAGS<<__DENO_RUSTFLAGS"
+            echo "RUSTFLAGS<<__ENDE_RUSTFLAGS"
             echo "$RUSTFLAGS -C force-frame-pointers=yes -C force-unwind-tables=no -C link-arg=-Wl,--no-eh-frame-hdr"
-            echo "__DENO_RUSTFLAGS"
+            echo "__ENDE_RUSTFLAGS"
           } >> "$GITHUB_ENV"
       - name: Build release
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'')'
@@ -6496,7 +6496,7 @@ jobs:
             --output $GITHUB_WORKSPACE/target/release/startup-order-aarch64-unknown-linux-gnu.order \
             --repeats 3 \
             --workload-profile run-first
-      - name: Relink release deno with startup order
+      - name: Relink release ende with startup order
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && (github.ref == ''refs/heads/main'' || startsWith(github.ref, ''refs/tags/'') || contains(github.event.pull_request.labels.*.name, ''ci-full''))'
         env:
           ENDE_SNAPSHOT_MINIFY_SOURCES: '1'
@@ -6529,7 +6529,7 @@ jobs:
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'')'
         run: |-
           if strings target/release/ende | grep -F -- '--no-lazy --no-lazy-eval --no-lazy-streaming'; then
-            echo "release deno binary contains eager snapshot flags"
+            echo "release ende binary contains eager snapshot flags"
             exit 1
           fi
       - name: 'Check eager bootstrap does not static-import node:'
@@ -6544,8 +6544,8 @@ jobs:
         env:
           NO_COLOR: 1
         run: |-
-          target/release/ende -A tools/release/create_symcache.ts ./deno.symcache
-          du -h deno.symcache
+          target/release/ende -A tools/release/create_symcache.ts ./ende.symcache
+          du -h ende.symcache
           du -h target/release/ende
       - name: Pre-release (linux)
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'''
@@ -6584,7 +6584,7 @@ jobs:
           shasum -a 256 libendert-quickjs-aarch64-unknown-linux-gnu.zip > libendert-quickjs-aarch64-unknown-linux-gnu.zip.sha256sum
           restore_v8_runtimes
           trap - EXIT
-          ./ende types > lib.deno.d.ts
+          ./ende types > lib.ende.d.ts
       - name: Build bsdiff helper
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'' && startsWith(github.ref, ''refs/tags/'')'
         run: cargo build --release -p bsdiff_helper
@@ -6592,12 +6592,12 @@ jobs:
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
           TARGET="aarch64-unknown-linux-gnu"
-          PREV_VERSION=$(curl -sf https://dl.deno.land/release-latest.txt | tr -d "v\n") || true
+          PREV_VERSION=$(curl -sf https://dl.ende.sh/release-latest.txt | tr -d "v\n") || true
           if [ -z "$PREV_VERSION" ]; then echo "No previous version found, skipping delta"; exit 0; fi
           echo "Generating delta from $PREV_VERSION for $TARGET"
-          curl -fSL -o prev.zip "https://github.com/denoland/deno/releases/download/v${PREV_VERSION}/deno-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }
+          curl -fSL -o prev.zip "https://github.com/theende/ende/releases/download/v${PREV_VERSION}/ende-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }
           unzip -o prev.zip -d prev/
-          ./target/release/bsdiff_helper prev/deno target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"
+          ./target/release/bsdiff_helper prev/ende target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"
           cd target/release && shasum -a 256 "ende-${TARGET}.from-${PREV_VERSION}.bsdiff" > "ende-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"
       - name: Upload canary to dl.deno.land
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'') && github.repository == ''denoland/deno'' && github.ref == ''refs/heads/main'''
@@ -6619,12 +6619,12 @@ jobs:
           du -hd1 "./target/release"
           du -ha  "./target/release/ende"
           du -ha  "./target/release/endert"
-      - name: Check deno binary
+      - name: Check ende binary
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'')'
         env:
           NO_COLOR: 1
         run: target/release/ende eval "console.log(1+2)" | grep 3
-      - name: Check deno binary (in sysroot)
+      - name: Check ende binary (in sysroot)
         if: '!(!contains(github.event.pull_request.labels.*.name, ''ci-full'') && github.event_name == ''pull_request'')'
         run: sudo chroot /sysroot "$(pwd)/target/release/ende" --version
       - name: Upload artifact release-linux-aarch64-ende
@@ -6714,8 +6714,8 @@ jobs:
             target/release/endert-aarch64-apple-darwin.zip.sha256sum
             target/release/libendert-aarch64-apple-darwin.zip
             target/release/libendert-aarch64-apple-darwin.zip.sha256sum
-            target/release/deno_src.tar.gz
-            target/release/lib.deno.d.ts
+            target/release/ende_src.tar.gz
+            target/release/lib.ende.d.ts
             target/release/ende-*.bsdiff
             target/release/ende-*.bsdiff.sha256sum
           body_path: target/release/release-notes.md
@@ -7151,11 +7151,11 @@ jobs:
             !./target/*/*.zip
             !./target/*/*.tar.gz
           key: '125-cargo-target-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.profile }}-lint-${{ github.sha }}'
-  deno-core-test:
+  ende-core-test:
     name: ende_core test linux-x86_64
     needs:
       - pre_build
-    if: needs.pre_build.outputs.skip_build != 'true' && needs.pre_build.outputs.skip_deno_core_test != 'true' && needs.pre_build.outputs.docs_only != 'true'
+    if: needs.pre_build.outputs.skip_build != 'true' && needs.pre_build.outputs.skip_ende_core_test != 'true' && needs.pre_build.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -7194,7 +7194,7 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
           key: never_saved
-          restore-keys: 125-cargo-home-linux-x86_64-deno-core-test-
+          restore-keys: 125-cargo-home-linux-x86_64-ende-core-test-
       - name: Restore cache build output
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         if: '!startsWith(github.ref, ''refs/tags/'') && github.ref != ''refs/heads/main'''
@@ -7206,7 +7206,7 @@ jobs:
             !./target/*/*.zip
             !./target/*/*.tar.gz
           key: never_saved
-          restore-keys: 125-cargo-target-linux-x86_64-release-deno-core-test-
+          restore-keys: 125-cargo-target-linux-x86_64-release-ende-core-test-
       - name: Apply and update mtime cache
         uses: ./.github/mtime_cache
         if: '!startsWith(github.ref, ''refs/tags/'')'
@@ -7373,7 +7373,7 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-          key: '125-cargo-home-linux-x86_64-deno-core-test-${{ github.sha }}'
+          key: '125-cargo-home-linux-x86_64-ende-core-test-${{ github.sha }}'
       - name: Cache build output
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         if: '!startsWith(github.ref, ''refs/tags/'') && github.ref == ''refs/heads/main'''
@@ -7384,8 +7384,8 @@ jobs:
             !./target/*/gn_root
             !./target/*/*.zip
             !./target/*/*.tar.gz
-          key: '125-cargo-target-linux-x86_64-release-deno-core-test-${{ github.sha }}'
-  deno-core-miri:
+          key: '125-cargo-target-linux-x86_64-release-ende-core-test-${{ github.sha }}'
+  ende-core-miri:
     name: ende_core miri linux-x86_64
     needs:
       - pre_build
@@ -7457,8 +7457,8 @@ jobs:
       - build-release-linux-aarch64
       - test-release-linux-aarch64
       - lint
-      - deno-core-test
-      - deno-core-miri
+      - ende-core-test
+      - ende-core-miri
       - pre_build
     if: needs.pre_build.outputs.skip_build != 'true' && always()
     runs-on: ubuntu-latest

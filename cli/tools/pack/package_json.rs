@@ -13,7 +13,7 @@ use super::ProcessedFile;
 use super::extensions::ts_to_dts_extension;
 use super::extensions::ts_to_js_extension;
 
-/// Build the lookup of source paths (as written in `deno.json` exports,
+/// Build the lookup of source paths (as written in `ende.json` exports,
 /// normalized) for which fast-check generated a usable `.d.ts`. We need
 /// this so the `types` field is only emitted for entries whose declarations
 /// actually exist in the tarball; otherwise TypeScript would resolve a
@@ -26,7 +26,7 @@ fn dts_available_set(files: &[ProcessedFile]) -> HashSet<String> {
     .collect()
 }
 
-/// Returns true if the deno.json export source path (e.g. "./mod.ts") has
+/// Returns true if the ende.json export source path (e.g. "./mod.ts") has
 /// a corresponding generated .d.ts in the tarball.
 fn has_dts(set: &HashSet<String>, source_path: &str) -> bool {
   set.contains(&ts_to_js_extension(source_path))
@@ -218,7 +218,7 @@ fn extract_main_and_types(
       };
       return (Some(js_path), dts_path);
     } else if let Some(obj) = dot_export.as_object() {
-      // Rewrite the source extension on the way out: deno.json may carry
+      // Rewrite the source extension on the way out: ende.json may carry
       // `{"import": "./foo.ts"}` for the dot-export, but the tarball
       // contains the transpiled `.js`, so package.json's `main` must
       // point at the `.js` file or `npm install`-time resolution fails.

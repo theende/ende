@@ -5,7 +5,7 @@
 // deno-lint-ignore-file no-undef
 
 // This module is the entry point for "compiler" isolate, ie. the one
-// that is created when Deno needs to type check TypeScript, and in some
+// that is created when Ende needs to type check TypeScript, and in some
 // instances convert TypeScript to JavaScript.
 
 // Removes the `__proto__` for security reasons.
@@ -109,7 +109,7 @@ function exec({ config, debug: debugFlag, rootNames, localOnly }) {
   Object.assign(options, {
     // The `allowNonTsExtensions` is a "hidden" compiler option used in VSCode
     // which is not allowed to be passed in JSON, we need it to allow special
-    // URLs which Deno supports. So we need to either ignore the diagnostic, or
+    // URLs which Ende supports. So we need to either ignore the diagnostic, or
     // inject it ourselves.
     allowNonTsExtensions: true,
     // This is special functionality we inject into the compiler options

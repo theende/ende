@@ -776,7 +776,7 @@ impl CliFactory {
           // the registry, which fails under `--cached-only` (offline
           // isolates booting from an immutable, pre-baked `ENDE_DIR`). See
           // denoland/deno#26427 for the original install-path dedup. This is
-          // safe on `deno run`: the dedup only affects the in-memory
+          // safe on `ende run`: the dedup only affects the in-memory
           // resolution snapshot and does not rewrite the user's lockfile
           // unless a real resolution runs (which the dedup is precisely what
           // avoids for an already-satisfied lockfile).
@@ -1291,8 +1291,8 @@ impl CliFactory {
     let npm_resolver = self.npm_resolver().await?;
     // Provide the watcher communicator whenever running under the file watcher,
     // not just for HMR. `CliMainWorker::run()` uses its presence to detect that
-    // it is under a watcher and route `Deno.exit()` through isolate termination
-    // instead of `std::process::exit()`, which keeps `deno serve --watch` (which
+    // it is under a watcher and route `Ende.exit()` through isolate termination
+    // instead of `std::process::exit()`, which keeps `ende serve --watch` (which
     // goes through `run()` rather than `run_for_watcher`) alive across exits.
     // HMR-specific behaviour is gated separately on `create_hmr_runner`. See
     // issue #7590.
@@ -1372,7 +1372,7 @@ impl CliFactory {
       is_inspecting: cli_options.is_inspecting(),
       location: cli_options.location_flag().clone(),
       // if the user ran a binary command, we'll need to set process.argv[0]
-      // to be the name of the binary command instead of deno
+      // to be the name of the binary command instead of ende
       argv0: cli_options
         .take_binary_npm_command_name()
         .or(std::env::args().next()),
@@ -1594,7 +1594,7 @@ fn new_workspace_factory_options(
       ConfigFlag::Disabled => ConfigDiscoveryOption::Disabled,
     },
     maybe_custom_ende_dir_root: flags.internal.cache_path.clone(),
-    // For `deno install/add/remove/init` we want to force the managed
+    // For `ende install/add/remove/init` we want to force the managed
     // resolver so it can set up the `node_modules/` directory.
     is_package_manager_subcommand: matches!(
       flags.subcommand,
@@ -1619,7 +1619,7 @@ fn new_workspace_factory_options(
           | EndeSubcommand::Uninstall(_)
       ),
     // Seed the lockfile from package-lock.json only when the user is explicitly
-    // setting up dependencies via `deno install` (local form).
+    // setting up dependencies via `ende install` (local form).
     import_npm_lockfile: matches!(
       flags.subcommand,
       EndeSubcommand::Install(InstallFlags::Local(..))

@@ -60,7 +60,7 @@ pub fn print_linker_flags(name: &str) {
       "combase",
       // network related functions
       "iphlpapi",
-      // restart manager (only needed on the `deno clean` locked-file path)
+      // restart manager (only needed on the `ende clean` locked-file path)
       "rstrtmgr",
       // timer functions
       "winmm",

@@ -164,11 +164,11 @@ unsafe extern "C" fn ende_ffi_callback(
     LOCAL_THREAD_ID.with(|s| {
       if *s.borrow() == info.thread_id {
         // Call from main thread. If this callback is being triggered due to a
-        // function call coming from Deno itself, then this callback will build
+        // function call coming from Ende itself, then this callback will build
         // ontop of that stack.
-        // If this callback is being triggered outside of Deno (for example from a
+        // If this callback is being triggered outside of Ende (for example from a
         // signal handler) then this will either create an empty new stack if
-        // Deno currently has nothing running and is waiting for promises to resolve,
+        // Ende currently has nothing running and is waiting for promises to resolve,
         // or will (very incorrectly) build ontop of whatever stack exists.
         // The callback will even be called through from a `while (true)` liveloop, but
         // it somehow cannot change the values that the loop sees, even if they both

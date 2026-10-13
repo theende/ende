@@ -6,7 +6,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Config file implementation for the Deno CLI"
+description = "Config file implementation for the Ende CLI"
 
 [lib]
 path = "lib.rs"

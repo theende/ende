@@ -6,7 +6,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Cryptography provider for Deno"
+description = "Cryptography provider for Ende"
 
 [lib]
 path = "lib.rs"

@@ -1,6 +1,6 @@
 # ende_webidl
 
-**This crate implements WebIDL for Deno. It consists of infrastructure to do
+**This crate implements WebIDL for Ende. It consists of infrastructure to do
 ECMA -> WebIDL conversions.**
 
 Spec: https://webidl.spec.whatwg.org/

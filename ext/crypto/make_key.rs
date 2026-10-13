@@ -255,7 +255,7 @@ fn stamp_symbols<'s>(
   // `DONT_ENUM` the cppgc instance exposes them as plain own properties,
   // which breaks `assert.deepStrictEqual` of two distinct keys with the
   // same material (test/parallel/test-assert-deep.js Crypto subtest) and
-  // shows up as `[Symbol(...)]` slots in `Deno.inspect()` output.
+  // shows up as `[Symbol(...)]` slots in `Ende.inspect()` output.
   let _ = key.define_own_property(
     scope,
     brand.into(),

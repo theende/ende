@@ -46,7 +46,7 @@ pub async fn serve(
   let http_client = factory.http_client_provider();
 
   // Run a background task that checks for available upgrades or output
-  // if an earlier run of this background task found a new version of Deno.
+  // if an earlier run of this background task found a new version of Ende.
   #[cfg(feature = "upgrade")]
   super::upgrade::check_for_upgrades(
     http_client.clone(),

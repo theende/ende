@@ -126,7 +126,7 @@ async fn registry_server_handler(
     && let [scope, "packages", package, "versions", version] =
       rest.split('/').collect::<Vec<_>>().as_slice()
   {
-    // `deno publish` probes this endpoint up front to skip already-published
+    // `ende publish` probes this endpoint up front to skip already-published
     // versions. Report "not published" (404) by default; the reserved
     // `already-published` scope lets tests simulate an existing version.
     if *scope == "already-published" {

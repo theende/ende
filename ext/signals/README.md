@@ -1,1 +1,1 @@
-Signal handling for Deno
+Signal handling for Ende

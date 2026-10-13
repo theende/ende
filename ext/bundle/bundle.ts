@@ -12,8 +12,8 @@ const decoder = new TextDecoder();
 let warnedDenoPlatform = false;
 
 export async function bundle(
-  options: Deno.bundle.Options,
-): Promise<Deno.bundle.Result> {
+  options: Ende.bundle.Options,
+): Promise<Ende.bundle.Result> {
   if (options?.platform === "deno") {
     if (!warnedDenoPlatform) {
       warnedDenoPlatform = true;

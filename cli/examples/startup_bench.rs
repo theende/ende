@@ -4,7 +4,7 @@
 //!
 //! Boots a `MainWorker` with the real CLI snapshot, executes a trivial
 //! script, then tears it down. Intended for fast iteration on startup-perf
-//! work — rebuilds only this example binary, not the full `deno` CLI.
+//! work — rebuilds only this example binary, not the full `ende` CLI.
 //!
 //! Usage:
 //!   cargo run --example startup_bench --release -- [iters]

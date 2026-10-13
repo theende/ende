@@ -502,7 +502,7 @@ impl Visit for TestStepCollector<'_> {
   }
 }
 
-/// Walk an AST and determine if it contains any `Deno.test` tests.
+/// Walk an AST and determine if it contains any `Ende.test` tests.
 pub struct TestCollector {
   test_module: TestModule,
   vars: HashSet<String>,

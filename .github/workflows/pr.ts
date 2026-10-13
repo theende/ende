@@ -23,7 +23,7 @@ const workflow = createWorkflow({
         name: "Lint",
         env: { PR_TITLE: "${{ github.event.pull_request.title }}" },
         run:
-          'deno run https://raw.githubusercontent.com/denoland/deno/refs/heads/main/tools/verify_pr_title.js "$PR_TITLE"',
+          'deno run https://raw.githubusercontent.com/theende/ende/refs/heads/primary/tools/verify_pr_title.js "$PR_TITLE"',
       }),
     ],
   }],

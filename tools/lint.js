@@ -399,7 +399,7 @@ async function clippy() {
     "warnings",
     "--deny",
     "clippy::unused_async",
-    // the std print macros panic on broken pipes (ex. `deno test | head`);
+    // the std print macros panic on broken pipes (ex. `ende test | head`);
     // prefer the `log` crate for diagnostics and ende_print's drop_println!
     // macros for stdout output, or ignore these print_* rules if necessary
     "--deny",
@@ -431,7 +431,7 @@ async function clippy() {
     const { code } = await child.status;
     if (/clippy::print[-_]std(out|err)/.test(stderrText)) {
       console.error(
-        "\nhint: the std print macros panic when the output pipe is closed (ex. `deno test | head`).",
+        "\nhint: the std print macros panic when the output pipe is closed (ex. `ende test | head`).",
       );
       console.error(
         "      use ende_print's drop_println!/drop_eprintln! macros for command output or the `log` crate for diagnostics.",
@@ -574,7 +574,7 @@ async function ensureNoNonPermissionCapitalLetterShortFlags() {
   const expected = [
     // --allow-all
     "A",
-    // --dev flag for `deno install` (precedence: `npm install -D <package>`)
+    // --dev flag for `ende install` (precedence: `npm install -D <package>`)
     "D",
     // --allow-env
     "E",
@@ -584,7 +584,7 @@ async function ensureNoNonPermissionCapitalLetterShortFlags() {
     "L",
     // --allow-net
     "N",
-    // --save-optional flag for `deno add`/`deno install`
+    // --save-optional flag for `ende add`/`ende install`
     // (precedence: `npm install -O <package>`)
     "O",
     // --permission-set

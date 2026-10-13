@@ -153,7 +153,7 @@ impl CjsAnalysisSourceProvider for VfsCjsAnalysisSourceProvider<'_> {
   }
 }
 
-// `deno compile` is a trusted local build step, so sources absent from the
+// `ende compile` is a trusted local build step, so sources absent from the
 // graph and VFS may be read directly to preserve compile-time CJS analysis.
 struct FileSystemCjsAnalysisSourceProvider<'a> {
   sys: &'a CliSys,
@@ -240,9 +240,9 @@ impl<'a> BytesAppendable<'a> for &'a SpecifierStoreForSerialization<'a> {
 }
 
 /// Given a canonical npm package folder (e.g.
-/// `<.deno>/<id>/node_modules/@scope/name`), walk up to the enclosing
+/// `<.ende>/<id>/node_modules/@scope/name`), walk up to the enclosing
 /// `node_modules/` directory. Embedding from there picks up sibling
-/// symlinks the deno linker creates for direct dependencies, which the
+/// symlinks the ende linker creates for direct dependencies, which the
 /// canonical folder itself doesn't contain.
 fn pkg_folder_node_modules_root(folder: &Path) -> Option<&Path> {
   let mut current = folder.parent()?;
@@ -336,7 +336,7 @@ fn default_app_name(display_output_filename: &str, is_desktop: bool) -> String {
 
 /// Resolve the stable app identity baked into a compiled binary: an explicit
 /// `--app-name`, otherwise the output file name (minus the executable extension
-/// added by Deno). The derived default is held to the same rules as an explicit
+/// added by Ende). The derived default is held to the same rules as an explicit
 /// flag, since it becomes a single directory component at runtime (possibly on
 /// a different target OS when cross-compiling); otherwise an output name like
 /// `aux` or one with a trailing dot would silently break persistent storage on
@@ -460,7 +460,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
 
     // Used for testing.
     //
-    // Phase 2 of the 'min sized' deno compile RFC talks
+    // Phase 2 of the 'min sized' ende compile RFC talks
     // about adding this as a flag.
     if let Some(path) = get_dev_binary_path() {
       if compile_flags.engine == JavaScriptEngine::QuickJs {
@@ -523,8 +523,8 @@ impl<'a> EndeCompileBinaryWriter<'a> {
     &self,
     compile_flags: &CompileFlags,
   ) -> Result<Vec<u8>, AnyError> {
-    // For development: check DENORT_DESKTOP_BIN env var or look
-    // for libendert next to the deno executable.
+    // For development: check ENDERT_DESKTOP_BIN env var or look
+    // for libendert next to the ende executable.
     if let Some(path) = get_dev_desktop_binary_path() {
       if compile_flags.engine == JavaScriptEngine::QuickJs {
         log::warn!(
@@ -629,7 +629,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
     Ok(bytes)
   }
 
-  /// This functions creates a standalone deno binary by appending a bundle
+  /// This functions creates a standalone ende binary by appending a bundle
   /// and magic trailer to the currently executing binary.
   async fn write_standalone_binary(
     &self,
@@ -1210,9 +1210,9 @@ impl<'a> EndeCompileBinaryWriter<'a> {
         None
       },
       // Bake in a stable app identity so origin-bound storage (default
-      // `Deno.openKv()`, `localStorage`, `caches`) persists to a per-app
+      // `Ende.openKv()`, `localStorage`, `caches`) persists to a per-app
       // directory at runtime. Prefer an explicit `--app-name`, otherwise derive
-      // it from the output file name (minus any executable extension Deno adds).
+      // it from the output file name (minus any executable extension Ende adds).
       // Resolving here keeps the identity stable even if the binary is later
       // renamed. The name is already validated in `write_bin` (via
       // `resolve_app_name`).
@@ -1296,7 +1296,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       .await
   }
 
-  /// Decide what to embed for `deno compile --bundle`. The bundle is
+  /// Decide what to embed for `ende compile --bundle`. The bundle is
   /// always shipped; this controls the npm portion. We need it when
   /// either the CJS-from-ESM wrapper pointed at on-disk paths during
   /// rewriting, or the resolved tree has a native (`.node`) addon — in
@@ -1362,7 +1362,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
         let progress =
           progress_bar.update_with_prompt(ProgressMessagePrompt::Compile, "");
         progress.set_total_size(needed_ids.len() as u64);
-        // Dedup the set of `<deno-cache>/<id>/node_modules/` directories we
+        // Dedup the set of `<ende-cache>/<id>/node_modules/` directories we
         // add: a single id's node_modules dir contains the canonical package
         // folder plus sibling symlinks to its direct deps. Going one level up
         // from the canonical folder picks both up so node-module resolution at
@@ -1501,7 +1501,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
 
         let global_cache_root_path = npm_resolver.global_cache_root_path();
 
-        // Flatten all the registries folders into a single ".deno_compile_node_modules/localhost" folder
+        // Flatten all the registries folders into a single ".ende_compile_node_modules/localhost" folder
         // that will be used by endert when loading the npm cache. This avoids us exposing
         // the user's private registry information and means we don't have to bother
         // serializing all the different registry config into the binary.
@@ -1798,8 +1798,21 @@ fn runtime_archive_name(
   format!("{prefix}{}-{target}.zip", engine.artifact_suffix())
 }
 
+/// Reads a development override env var, falling back to its deprecated
+/// pre-rename name with a warning.
+fn dev_env_var_os(name: &str, legacy_name: &str) -> Option<OsString> {
+  env::var_os(name).or_else(|| {
+    let value = env::var_os(legacy_name)?;
+    log::warn!(
+      "{} {legacy_name} is deprecated. Use {name} instead.",
+      crate::colors::yellow("Warning")
+    );
+    Some(value)
+  })
+}
+
 fn get_dev_binary_path() -> Option<OsString> {
-  env::var_os("DENORT_BIN").or_else(|| {
+  dev_env_var_os("ENDERT_BIN", "DENORT_BIN").or_else(|| {
     env::current_exe().ok().and_then(|exec_path| {
       if exec_path
         .components()
@@ -1826,7 +1839,7 @@ fn get_libendert_path(ende_exe: PathBuf) -> Option<OsString> {
 }
 
 fn get_dev_desktop_binary_path() -> Option<OsString> {
-  env::var_os("DENORT_DESKTOP_BIN").or_else(|| {
+  dev_env_var_os("ENDERT_DESKTOP_BIN", "DENORT_DESKTOP_BIN").or_else(|| {
     env::current_exe().ok().and_then(|exec_path| {
       if exec_path
         .components()

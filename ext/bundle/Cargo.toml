@@ -7,7 +7,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Bundle runtime API for Deno"
+description = "Bundle runtime API for Ende"
 
 [dependencies]
 async-trait.workspace = true

@@ -56,7 +56,7 @@ async function patchReadme() {
 
 The canonical source is considered to be https://github.com/gfx-rs/wgpu@trunk/deno_webgpu,
 even though they are maintained separately but synced occasionally using the script
-https://github.com/denoland/deno/blob/main/tools/wgpu_sync.js
+https://github.com/theende/ende/blob/primary/tools/wgpu_sync.js
 `;
 
   await patchFile(

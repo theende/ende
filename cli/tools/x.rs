@@ -36,18 +36,18 @@ use crate::util::console::confirm;
 use crate::util::draw_thread::DrawThread;
 use crate::util::fs::canonicalize_path;
 
-/// Renders the `--minimum-dependency-age` argument for the re-run `deno run`
+/// Renders the `--minimum-dependency-age` argument for the re-run `ende run`
 /// subprocess, but only when the user passed the flag EXPLICITLY on the CLI.
 ///
-/// `deno x` executes the target as a `deno run <target>` subprocess in the
-/// user's cwd, so it re-discovers the cwd `deno.json` `minimumDependencyAge`
+/// `ende x` executes the target as an `ende run <target>` subprocess in the
+/// user's cwd, so it re-discovers the cwd `ende.json` `minimumDependencyAge`
 /// (including its `exclude`) and `.npmrc` policy exactly as a plain
-/// `deno run <target>` would. The only thing that subprocess can't observe is
+/// `ende run <target>` would. The only thing that subprocess can't observe is
 /// an explicit CLI flag, so we forward just that — rendering the EXPLICIT value
 /// (never a computed effective policy). Forwarding a config-derived scalar
 /// would override the natively-discovered policy and drop its `exclude`,
-/// diverging from `deno run` (issue #35991). An explicit flag carries
-/// empty-`exclude` semantics, same as `deno run --minimum-dependency-age=...`.
+/// diverging from `ende run` (issue #35991). An explicit flag carries
+/// empty-`exclude` semantics, same as `ende run --minimum-dependency-age=...`.
 fn minimum_dependency_age_flag_arg(flags: &Flags) -> Option<String> {
   let value = match flags.minimum_dependency_age? {
     NewestDependencyDate::Disabled => "0".to_string(),
@@ -57,13 +57,13 @@ fn minimum_dependency_age_flag_arg(flags: &Flags) -> Option<String> {
 }
 
 /// Renders the user's explicit `--config`/`--no-config` selection for the re-run
-/// `deno run <target>` subprocess argv.
+/// `ende run <target>` subprocess argv.
 ///
 /// The subprocess re-resolves the target from the user's cwd, so it only
-/// auto-discovers a cwd `deno.json`. When the user selected a config that is NOT
+/// auto-discovers a cwd `ende.json`. When the user selected a config that is NOT
 /// auto-discoverable (an explicit `--config=<path>` outside cwd), that policy —
 /// including any `minimumDependencyAge` — would be dropped by the subprocess,
-/// diverging from `deno run --config=<path> <target>` (issue #35991). Forward it:
+/// diverging from `ende run --config=<path> <target>` (issue #35991). Forward it:
 /// - `Path(p)` -> `--config=<abs>` (made absolute, but WITHOUT resolving
 ///   symlinks, so it is robust regardless of the child's cwd).
 /// - `Disabled` -> `--no-config`.
@@ -83,7 +83,7 @@ fn config_flag_arg(flags: &Flags, initial_cwd: &Path) -> Option<String> {
       // only). Canonicalizing would resolve a symlinked config to its target, so
       // relative config members (permission set paths, `imports`, lock path,
       // ...) would then resolve relative to the target's directory instead of
-      // the path the user supplied — diverging from `deno run --config=<path>`.
+      // the path the user supplied — diverging from `ende run --config=<path>`.
       let abs = deno_path_util::normalize_path(abs);
       Some(format!("--config={}", abs.display()))
     }
@@ -91,15 +91,15 @@ fn config_flag_arg(flags: &Flags, initial_cwd: &Path) -> Option<String> {
 }
 
 /// Like [`config_flag_arg`], but for re-run sites whose child does NOT
-/// auto-discover the user's cwd `deno.json`, so an original `ConfigFlag::Discover`
+/// auto-discover the user's cwd `ende.json`, so an original `ConfigFlag::Discover`
 /// must be resolved to the discovered config path and forwarded explicitly. Two
 /// such sites (issue #35991):
 /// - the npm auto-install re-run, which executes the *installed bin file* (under
-///   `ende_dir/deno_x_cache/...`): its config auto-discovery anchors on the
+///   `ende_dir/ende_x_cache/...`): its config auto-discovery anchors on the
 ///   installed file's directory, NEVER the user's cwd (it finds the internal
-///   temp `deno.json` instead).
+///   temp `ende.json` instead).
 /// - the jsr/URL re-run, which executes a `jsr:`/`data:`/`http(s):` main module:
-///   `deno run` disables config discovery entirely for a non-`file:`/non-`npm:`
+///   `ende run` disables config discovery entirely for a non-`file:`/non-`npm:`
 ///   entrypoint, so the child would drop the cwd policy (`minimumDependencyAge`,
 ///   permission sets, ...) that the isolated install already honored.
 ///
@@ -123,13 +123,13 @@ fn config_flag_arg_carrying_discovered(
 }
 
 /// Renders the user's explicit `-P`/`--permission-set=<name>` selection for the
-/// re-run `deno run <target>` subprocess argv.
+/// re-run `ende run <target>` subprocess argv.
 ///
 /// A permission set is resolved from the (discovered or explicit) config file at
 /// runtime and is NOT baked into `flags.permissions`, so `to_permission_args()`
 /// does not forward it. Without forwarding the selection, the subprocess would
 /// run with no permission set and fail with `NotCapable`, diverging from
-/// `deno run --permission-set=<name> <target>` (issue #35991). A bare `-P`
+/// `ende run --permission-set=<name> <target>` (issue #35991). A bare `-P`
 /// resolves to `Some("")` (the default set), which round-trips as
 /// `--permission-set=`.
 fn permission_set_flag_arg(flags: &Flags) -> Option<String> {
@@ -139,7 +139,7 @@ fn permission_set_flag_arg(flags: &Flags) -> Option<String> {
     .map(|name| format!("--permission-set={}", name))
 }
 
-/// Computes the extra `deno run` arguments that carry the user's ORIGINAL CLI
+/// Computes the extra `ende run` arguments that carry the user's ORIGINAL CLI
 /// selections into a re-run subprocess argv: the explicit
 /// `--minimum-dependency-age` flag, the `--config`/`--no-config` selection
 /// (passed in as `config_arg`, rendered by `config_flag_arg_carrying_discovered`),
@@ -147,7 +147,7 @@ fn permission_set_flag_arg(flags: &Flags) -> Option<String> {
 ///
 /// These MUST be computed from the user's original `flags`/`cli_options`, never
 /// from the internal runner flags used for npm auto-install: those overwrite
-/// `config_flag` with a generated temp `deno.json` path (see
+/// `config_flag` with a generated temp `ende.json` path (see
 /// `autoinstall_package::make_new_flags`), which would forward the internal
 /// config instead of the user's explicit `--config` — or forward a config at all
 /// when the user relied on auto-discovery (issue #35991).
@@ -170,7 +170,7 @@ fn forwarded_run_args(
 
 /// Serializes the effective minimum dependency age policy (age + exclude) into
 /// the object form understood by `to_minimum_dependency_age_config`, so the
-/// full policy can be written into the generated temp `deno.json` used for
+/// full policy can be written into the generated temp `ende.json` used for
 /// installing. The temp workspace uses a config override and therefore can't
 /// see the user's cwd config, so the policy must travel with it.
 fn minimum_dependency_age_config_json(
@@ -315,11 +315,11 @@ pub(crate) fn run_bin_value(
   bin_value: BinValue,
   npm_process_state: Option<String>,
   unstable_args: &[String],
-  // Extra `deno run` args carrying the user's ORIGINAL CLI selections (config,
+  // Extra `ende run` args carrying the user's ORIGINAL CLI selections (config,
   // minimum-dependency-age, permission-set). Computed by the caller from the
   // original flags/cwd via `forwarded_run_args`, NOT from `flags` here: in the
   // npm auto-install path `flags` is the internal runner flags whose
-  // `config_flag` points at a generated temp `deno.json` (issue #35991).
+  // `config_flag` points at a generated temp `ende.json` (issue #35991).
   forwarded_args: &[String],
 ) -> Result<i32, AnyError> {
   match bin_value {
@@ -456,7 +456,7 @@ fn create_package_temp_dir(
       .replace(">", "gt")
       .replace("<", "lt"),
   );
-  let temp_dir = ende_dir.join("deno_x_cache").join(package_req_folder);
+  let temp_dir = ende_dir.join("ende_x_cache").join(package_req_folder);
   if temp_dir.exists() {
     if reload
       || !temp_dir
@@ -569,11 +569,11 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
   let unstable_args = cli_options.unstable_args();
   let npm_resolver = factory.npm_resolver().await?;
   let node_resolver = factory.node_resolver().await?;
-  // Extra `deno run` args forwarded to every re-run subprocess, computed ONCE
+  // Extra `ende run` args forwarded to every re-run subprocess, computed ONCE
   // from the user's ORIGINAL flags/cwd (never the internal npm-install runner
-  // flags, whose `config_flag` points at a generated temp deno.json). See
-  // `forwarded_run_args` (issue #35991). Every `deno x` re-run site executes a
-  // target whose child does NOT auto-discover the user's cwd `deno.json` — the
+  // flags, whose `config_flag` points at a generated temp ende.json). See
+  // `forwarded_run_args` (issue #35991). Every `ende x` re-run site executes a
+  // target whose child does NOT auto-discover the user's cwd `ende.json` — the
   // installed bin FILE anchors discovery on the install dir, and a jsr:/url main
   // module has config discovery disabled entirely — so an original `Discover` is
   // resolved to the discovered config path and forwarded explicitly, keeping the
@@ -645,7 +645,7 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
   // Effective minimum dependency age policy (CLI flag > cwd deno.json > .npmrc
   // > default) resolved from the ORIGINAL factory, i.e. the user's cwd config.
   // This full config (age + exclude) is written into the generated temp
-  // deno.json used for installing, since that temp workspace can't see the
+  // ende.json used for installing, since that temp workspace can't see the
   // user's cwd config on its own.
   let min_dep_age_config = factory
     .resolver_factory()?
@@ -811,7 +811,7 @@ fn bin_commands_for_package(
 /// The user's `--deny-import` rules, resolved against the config the user
 /// actually selected.
 ///
-/// The auto-install below runs against a generated temp `deno.json`, which
+/// The auto-install below runs against a generated temp `ende.json`, which
 /// cannot see a `-P` set defined in the user's config. Resolving the rules
 /// against the user's own options and baking them into the internal flags
 /// keeps the deny list — which decides what code may be downloaded at all —

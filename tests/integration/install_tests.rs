@@ -178,7 +178,7 @@ fn install_basic_global() {
 }
 
 // Regression test for #32798: a relative `--import-map` passed to a global
-// install (typically via `deno task`) must resolve against the user's cwd,
+// install (typically via `ende task`) must resolve against the user's cwd,
 // not the generated `~/.ende/bin/.<name>/` install dir.
 #[test]
 fn install_global_from_task_with_relative_import_map() {
@@ -519,7 +519,7 @@ fn check_local_by_default2() {
 #[test]
 fn unprefixed_global_install_defaults_to_npm() {
   // Unprefixed package names in `deno install -g` default to the npm
-  // registry, matching `deno add` and local `deno install`.
+  // registry, matching `ende add` and local `ende install`.
   let context = TestContextBuilder::new()
     .add_npm_env_vars()
     .add_jsr_env_vars()

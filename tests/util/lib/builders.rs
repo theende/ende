@@ -174,7 +174,7 @@ impl TestContextBuilder {
   /// it. You better have a good reason other than being lazy!
   ///
   /// If your tests are failing because the temp dir is symlinked on the CI,
-  /// then it likely means your code doesn't properly handle when Deno is running
+  /// then it likely means your code doesn't properly handle when Ende is running
   /// in a symlinked directory. That's a bug and you should fix it without using
   /// this.
   #[deprecated]
@@ -224,9 +224,9 @@ impl TestContextBuilder {
   }
 
   pub fn add_compile_env_vars(mut self) -> Self {
-    // The `endert` binary is in the same artifact directory as the `deno` binary.
+    // The `endert` binary is in the same artifact directory as the `ende` binary.
     let endert_bin = endert_exe_path();
-    self = self.env("DENORT_BIN", endert_bin.to_string());
+    self = self.env("ENDERT_BIN", endert_bin.to_string());
     self
   }
 
@@ -734,7 +734,7 @@ impl TestCommandBuilder {
 
     fn sanitize_output(text: String, args: &[OsString]) -> String {
       let mut text = strip_ansi_codes(&text).to_string();
-      // deno test's output capturing flushes with a zero-width space in order to
+      // ende test's output capturing flushes with a zero-width space in order to
       // synchronize the output pipes. Occasionally this zero width space
       // might end up in the output so strip it from the output comparison here.
       if args.first().and_then(|s| s.to_str()) == Some("test") {

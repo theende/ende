@@ -107,9 +107,9 @@ async function buildGitCommit(progress, commit) {
 
   let file;
   if (profile === "release") {
-    file = `deno-${hash}`;
+    file = `ende-${hash}`;
   } else {
-    file = `deno-${profile}-${hash}`;
+    file = `ende-${profile}-${hash}`;
   }
   progress.message(`copy ${hash}`);
   await tempDir.join("target").join(profile).join("ende").copyFile(file);

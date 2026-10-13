@@ -204,7 +204,7 @@ impl Module {
 
 /// This is the kind of module that is being stored. This is the same enum as is
 /// present in [ende_core::ModuleType] except that this has additional variant
-/// `Jsonc` which is used when an import map is embedded in Deno's config file
+/// `Jsonc` which is used when an import map is embedded in Ende's config file
 /// that can be JSONC.
 /// Note that a module of type `Jsonc` can be used only as an import map, not as
 /// a normal module.

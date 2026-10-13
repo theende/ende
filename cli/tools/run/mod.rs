@@ -139,7 +139,7 @@ async fn try_run_npm_bin_executable(
     &unstable_args,
     // This path only ever resolves to `BinValue::Executable` (native npm
     // bins); the `JsFile` re-run arm — the only consumer of these forwarded
-    // `deno run` args — is never reached here, so pass an empty set.
+    // `ende run` args — is never reached here, so pass an empty set.
     &[],
   )?;
   Ok(Some(exit_code))
@@ -193,7 +193,7 @@ pub async fn run_script(
   let node_resolver = factory.node_resolver().await?;
   crate::boot_phase("after node_resolver");
   // Run a background task that checks for available upgrades or output
-  // if an earlier run of this background task found a new version of Deno.
+  // if an earlier run of this background task found a new version of Ende.
   #[cfg(feature = "upgrade")]
   super::upgrade::check_for_upgrades(
     http_client.clone(),
@@ -386,7 +386,7 @@ pub async fn eval_command(
     .unwrap_or(true);
     // Only treat as CJS if it parses as a script AND contains CJS patterns.
     // This preserves backward compatibility: code without imports/exports
-    // defaults to ESM (the longstanding deno eval behavior).
+    // defaults to ESM (the longstanding ende eval behavior).
     let has_cjs_patterns = is_script
       && (source_code.contains("require(")
         || source_code.contains("module.exports")

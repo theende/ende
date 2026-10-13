@@ -115,9 +115,9 @@ pub struct Options {
   /// A callback to customize HTTP client configuration.
   ///
   /// The settings applied with this hook may be overridden by the options
-  /// provided through `Deno.createHttpClient()` API. For instance, if the hook
+  /// provided through `Ende.createHttpClient()` API. For instance, if the hook
   /// calls [`hyper_util::client::legacy::Builder::pool_max_idle_per_host`] with
-  /// a value of 99, and a user calls `Deno.createHttpClient({ poolMaxIdlePerHost: 42 })`,
+  /// a value of 99, and a user calls `Ende.createHttpClient({ poolMaxIdlePerHost: 42 })`,
   /// the value that will take effect is 42.
   ///
   /// For more info on what can be configured, see [`hyper_util::client::legacy::Builder`].
@@ -972,7 +972,7 @@ pub struct CreateHttpClientOptions {
   pub proxy: Option<Proxy>,
   pub dns_resolver: dns::Resolver,
   /// When set, every connection runs the net-deny check against the IP it
-  /// actually connected to, mirroring `Deno.connect`.
+  /// actually connected to, mirroring `Ende.connect`.
   pub permissions: Option<PermissionsContainer>,
   /// Which deny list `permissions` is checked against. Clients that load
   /// modules use `Import`; everything else uses `Net`.
@@ -1105,7 +1105,7 @@ pub fn create_http_client(
   // talk to. https://github.com/denoland/deno/issues/36462
   //
   // Apply this *before* the builder hook so an embedder can still override it,
-  // and apply the explicit `Deno.createHttpClient({ http2MaxHeaderListSize })`
+  // and apply the explicit `Ende.createHttpClient({ http2MaxHeaderListSize })`
   // option *after* the hook below, giving precedence: default < hook < option.
   builder.http2_max_header_list_size(DEFAULT_HTTP2_MAX_HEADER_LIST_SIZE);
 
@@ -1181,7 +1181,7 @@ pub fn create_http_client(
     );
   }
 
-  // An explicit `Deno.createHttpClient({ http2MaxHeaderListSize })` takes
+  // An explicit `Ende.createHttpClient({ http2MaxHeaderListSize })` takes
   // precedence over both the default above and the builder hook.
   if let Some(http2_max_header_list_size) = options.http2_max_header_list_size {
     builder.http2_max_header_list_size(http2_max_header_list_size);
@@ -1969,7 +1969,7 @@ impl CheckoutTracker {
   }
 }
 
-/// Deno.fetch's retry policy.
+/// Ende.fetch's retry policy.
 #[derive(Clone, Debug)]
 struct FetchRetry;
 

@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! Desktop window management for `deno compile --desktop`.
+//! Desktop window management for `ende compile --desktop`.
 //!
 //! The ops are defined in `ende_runtime::ops::desktop` and included in the
 //! V8 snapshot. This module re-exports the key types and provides the JS
@@ -14,10 +14,10 @@ pub use ende_runtime::ops::desktop::AutoUpdateState;
 pub use ende_runtime::ops::desktop::DesktopApi;
 pub use ende_runtime::ops::desktop::MenuItem;
 
-/// JS code that exposes desktop APIs via `Deno.BrowserWindow` and `Deno.desktop`.
+/// JS code that exposes desktop APIs via `Ende.BrowserWindow` and `Ende.desktop`.
 pub const DESKTOP_JS: &str = r#"
 (() => {
-  const internals = Deno[Deno.internal];
+  const internals = Ende[Ende.internal];
   const {
     BrowserWindow,
     Dock,
@@ -187,7 +187,7 @@ pub const DESKTOP_JS: &str = r#"
   };
   Object.setPrototypeOf(OrigBW, nativeConstructor);
   Object.setPrototypeOf(OrigBW.prototype, nativeConstructor.prototype);
-  Deno.BrowserWindow = OrigBW;
+  Ende.BrowserWindow = OrigBW;
 
   internals.defineEventHandler(BrowserWindowPrototype, "keydown");
   internals.defineEventHandler(BrowserWindowPrototype, "keyup");
@@ -211,11 +211,11 @@ pub const DESKTOP_JS: &str = r#"
   // Per-window bind callback registry: windowId -> Map<name, fn>
   const windowBindCallbacks = new Map();
 
-  // Binding-call correlation: when --inspect is active, both the Deno
+  // Binding-call correlation: when --inspect is active, both the Ende
   // and renderer consoles emit matching console.debug messages so the
   // developer can trace a binding call across isolates.
   // bindingTrace is only useful under --inspect (where ENDE_DESKTOP_MUX_WS
-  // is set by the parent). `Deno.env.get` THROWS `NotCapable` if the
+  // is set by the parent). `Ende.env.get` THROWS `NotCapable` if the
   // runtime wasn't compiled with --allow-env, which aborts DESKTOP_JS
   // execution before the event-loop IIFE below has a chance to register.
   // That's the "nothing works — no mouse, no keyboard, no alerts"
@@ -224,8 +224,8 @@ pub const DESKTOP_JS: &str = r#"
   // the script. Catch the env-permission error and disable tracing.
   let bindingTrace = false;
   try {
-    bindingTrace = typeof Deno.env?.get === "function"
-      && Deno.env.get("ENDE_DESKTOP_MUX_WS") != null;
+    bindingTrace = typeof Ende.env?.get === "function"
+      && Ende.env.get("ENDE_DESKTOP_MUX_WS") != null;
   } catch (_) {
     // No env access — fine, we just don't trace binding calls.
   }
@@ -323,13 +323,13 @@ pub const DESKTOP_JS: &str = r#"
   };
   Object.setPrototypeOf(OrigDock, nativeDockConstructor);
   Object.setPrototypeOf(OrigDock.prototype, nativeDockConstructor.prototype);
-  Deno.Dock = OrigDock;
+  Ende.Dock = OrigDock;
 
   internals.defineEventHandler(DockPrototype, "menuclick");
   internals.defineEventHandler(DockPrototype, "reopen");
 
   const dock = new OrigDock();
-  Object.defineProperty(Deno, "dock", internals.core.propReadOnly(dock));
+  Object.defineProperty(Ende, "dock", internals.core.propReadOnly(dock));
 
   const TrayPrototype = Tray.prototype;
   Object.setPrototypeOf(TrayPrototype, EventTarget.prototype);
@@ -346,7 +346,7 @@ pub const DESKTOP_JS: &str = r#"
   };
   Object.setPrototypeOf(OrigTray, nativeTrayConstructor);
   Object.setPrototypeOf(OrigTray.prototype, nativeTrayConstructor.prototype);
-  Deno.Tray = OrigTray;
+  Ende.Tray = OrigTray;
 
   TrayPrototype.destroy = function() {
     trays.delete(this.trayId);
@@ -373,7 +373,7 @@ pub const DESKTOP_JS: &str = r#"
     const positionFn = options.position;
     const tray = this;
 
-    const window = new Deno.BrowserWindow({
+    const window = new Ende.BrowserWindow({
       width,
       height,
       frameless: true,
@@ -674,10 +674,10 @@ pub const DESKTOP_JS: &str = r#"
     },
   };
 
-  // Plug into globalThis.navigator. The base Deno runtime defines
+  // Plug into globalThis.navigator. The base Ende runtime defines
   // `navigator` without a `permissions` slot — add ours, but don't
   // clobber the object if it's missing entirely (defensive against
-  // future-Deno changes). Wrapped: a failure here must not abort the
+  // future-Ende changes). Wrapped: a failure here must not abort the
   // event-loop IIFE below, because that's what drives all input.
   try {
     if (typeof navigator === "object" && navigator != null) {
@@ -1033,8 +1033,8 @@ pub fn desktop_auto_update_js(
     op_desktop_apply_patch,
     op_desktop_verify_ed25519,
     op_desktop_confirm_update,
-  }} = Deno[Deno.internal].core.ops;
-  const {{ propReadOnly, propWritable }} = Deno[Deno.internal].core;
+  }} = Ende[Ende.internal].core.ops;
+  const {{ propReadOnly, propWritable }} = Ende[Ende.internal].core;
 
   const _version = {version};
   const _rolledBack = {rolled_back};
@@ -1197,7 +1197,7 @@ pub fn desktop_auto_update_js(
     }}
   }}
 
-  Object.defineProperties(Deno, {{
+  Object.defineProperties(Ende, {{
     desktopVersion: propReadOnly(_version),
     autoUpdate: propWritable(autoUpdate),
   }});
@@ -1218,7 +1218,7 @@ pub fn desktop_error_reporting_js(
 ) -> String {
   format!(
     r#"(() => {{
-  const {{ op_desktop_alert_async, op_desktop_send_error_report }} = Deno[Deno.internal].core.ops;
+  const {{ op_desktop_alert_async, op_desktop_send_error_report }} = Ende[Ende.internal].core.ops;
   const _errorReportingUrl = {url};
   const _appVersion = {version};
   // Set once the first error has taken over the exit. The dialog it shows
@@ -1233,7 +1233,7 @@ pub fn desktop_error_reporting_js(
     // at all (#36393).
     //
     // Log the error object itself when there is one. `preventDefault()`
-    // below suppresses Deno's own uncaught-error output, and passing the
+    // below suppresses Ende's own uncaught-error output, and passing the
     // object keeps that path's formatting (console.error inspects an Error
     // into its formatted stack); flattening to `String(message)` plus a raw
     // stack string would hand a developer watching a terminal strictly less
@@ -1252,8 +1252,8 @@ pub fn desktop_error_reporting_js(
         stack: stack ?? null,
         appVersion: _appVersion,
         timestamp: new Date().toISOString(),
-        platform: Deno.build.os,
-        arch: Deno.build.arch,
+        platform: Ende.build.os,
+        arch: Ende.build.arch,
       }});
       // The destination is not passed from JS — the op reads the
       // operator-configured `error_reporting_url` from native state so an
@@ -1276,11 +1276,11 @@ pub fn desktop_error_reporting_js(
     try {{
       shown = op_desktop_alert_async("Application Error", String(message));
     }} catch (_) {{
-      Deno.exit(1);
+      Ende.exit(1);
       return;
     }}
     // Exit on rejection too: a dialog we can't show must not strand the app.
-    shown.then(() => Deno.exit(1), () => Deno.exit(1));
+    shown.then(() => Ende.exit(1), () => Ende.exit(1));
   }}
 
   addEventListener("error", (ev) => {{
@@ -1348,12 +1348,12 @@ mod tests {
   //
   // DESKTOP_JS is an 800+ line string baked into the binary. We can't
   // cheaply exec it in a v8 isolate from here, but the asserts below
-  // pin the regressions that motivated this whole fix: the "Deno.env
+  // pin the regressions that motivated this whole fix: the "Ende.env
   // throws NotCapable and aborts the IIFE" bug from May 2026.
 
   #[test]
   fn desktop_js_wraps_binding_trace_env_read_in_try_catch() {
-    // The original bug: `Deno.env.get("ENDE_DESKTOP_MUX_WS")` threw
+    // The original bug: `Ende.env.get("ENDE_DESKTOP_MUX_WS")` threw
     // NotCapable when --allow-env wasn't granted, aborting the rest of
     // DESKTOP_JS. The fix is to wrap that read in try/catch and let it
     // soft-fail. A regression that removed the try/catch would
@@ -1459,7 +1459,7 @@ mod tests {
 
   #[test]
   fn desktop_js_installs_browser_window_constructor() {
-    assert!(DESKTOP_JS.contains("Deno.BrowserWindow"));
+    assert!(DESKTOP_JS.contains("Ende.BrowserWindow"));
     // The original BrowserWindow is wrapped so per-window state is
     // recorded.
     assert!(DESKTOP_JS.contains("windows.set"));
@@ -1528,7 +1528,7 @@ mod tests {
   #[test]
   fn auto_update_js_inlines_release_base_url() {
     // The configured `desktop.release.baseUrl` is baked in as the default
-    // `url` for `Deno.autoUpdate`, so a no-arg call uses it.
+    // `url` for `Ende.autoUpdate`, so a no-arg call uses it.
     let js = desktop_auto_update_js(
       Some("1.0.0"),
       false,
@@ -1600,7 +1600,7 @@ mod tests {
       "handler must prevent the runtime from terminating before the dialog"
     );
     assert!(
-      js.contains("Deno.exit(1)"),
+      js.contains("Ende.exit(1)"),
       "having prevented the default, the handler owns the exit"
     );
     // Both listeners must pass the event through, or `preventDefault` above

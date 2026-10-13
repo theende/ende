@@ -37,7 +37,7 @@ fn create_named_pipe_inner() -> io::Result<(RawHandle, RawHandle)> {
   static NEXT_ID: AtomicU32 = AtomicU32::new(0);
   // Create an extremely-likely-unique pipe name from randomness, identity and a serial counter.
   let pipe_name = format!(
-    concat!(r#"\\.\pipe\deno_pipe_{:x}.{:x}.{:x}"#, "\0"),
+    concat!(r#"\\.\pipe\ende_pipe_{:x}.{:x}.{:x}"#, "\0"),
     thread_rng().next_u64(),
     std::process::id(),
     NEXT_ID.fetch_add(1, Ordering::SeqCst),

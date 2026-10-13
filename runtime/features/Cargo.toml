@@ -7,7 +7,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Provides definitions of Deno unstable features."
+description = "Provides definitions of Ende unstable features."
 
 [lib]
 name = "ende_features"

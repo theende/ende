@@ -906,7 +906,7 @@ fn get_node_completions(
   })
 }
 
-/// Get remote completions that include modules in the Deno cache which match
+/// Get remote completions that include modules in the Ende cache which match
 /// the current specifier string.
 fn get_remote_completions(
   module: &DocumentModule,
@@ -1000,7 +1000,7 @@ fn find_string_at<'a, 'b>(
   None
 }
 
-/// Determine whether a path inside a deno config file corresponds to an
+/// Determine whether a path inside an Ende config file corresponds to an
 /// import-map value position (i.e. the value of an `imports.<key>` entry or a
 /// `scopes.<scope>.<key>` entry).
 fn is_import_value_path(path: &[String]) -> bool {
@@ -1040,7 +1040,7 @@ fn jsonc_string_to_narrow_lsp_range(
 }
 
 /// Provide jsr:/npm:/node: import-specifier completions for the value of an
-/// `imports` (or `scopes.<scope>.<key>`) entry inside a Deno configuration
+/// `imports` (or `scopes.<scope>.<key>`) entry inside an Ende configuration
 /// file. Returns `None` if the position isn't inside such a value, so the
 /// caller can fall through to other completion providers.
 pub async fn get_ende_json_import_completions(

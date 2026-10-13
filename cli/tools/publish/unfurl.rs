@@ -719,7 +719,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
       }
     };
 
-    // now look in the member and root deno json
+    // now look in the member and root ende json
     let ende_jsons = [
       self.workspace_dir.member_ende_json(),
       self.workspace_dir.workspace.root_ende_json(),

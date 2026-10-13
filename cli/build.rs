@@ -283,7 +283,7 @@ fn emit_laufey_version() {
   // During `cargo publish` the crate is verified in an isolated package dir
   // where the workspace lock is absent. The crate-local `Cargo.lock` cargo
   // bundles into the tarball is no help here either: `laufey` is a dependency
-  // of `endert_desktop`, not of the `deno` crate, so it never appears in the
+  // of `endert_desktop`, not of the `ende` crate, so it never appears in the
   // `deno` crate's own resolved lockfile. Fall back to the `# version:`
   // directive committed in `cli/laufey_sums.lock`, which is always bundled into
   // the published tarball.

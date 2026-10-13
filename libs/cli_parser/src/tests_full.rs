@@ -55,8 +55,8 @@ fn global_flags() {
 #[test]
 fn crlf_shebang_arg() {
   // A script saved with CRLF line endings whose first line is
-  // `#!/usr/bin/env -S deno run --allow-net` is invoked by the kernel as
-  // roughly `deno run --allow-net\r script.ts`. The stray `\r` on the last
+  // `#!/usr/bin/env -S ende run --allow-net` is invoked by the kernel as
+  // roughly `ende run --allow-net\r script.ts`. The stray `\r` on the last
   // shebang token must not break flag parsing.
   let r = flags_from_vec(svec!["ende", "run", "--allow-net\r", "script.ts"]);
   let flags = r.unwrap();
@@ -859,7 +859,7 @@ fn deny_read() {
 fn double_hyphen() {
   // notice that flags passed after double dash will not
   // be parsed to Flags but instead forwarded to
-  // script args as Deno.args
+  // script args as Ende.args
   let r = flags_from_vec(svec![
     "ende",
     "run",
@@ -7033,7 +7033,7 @@ fn remove_global_alias_for_uninstall() {
     );
   }
 
-  // `--root` is honored, just like `deno uninstall --global --root`.
+  // `--root` is honored, just like `ende uninstall --global --root`.
   let r = flags_from_vec(svec![
     "ende",
     "remove",
@@ -7055,7 +7055,7 @@ fn remove_global_alias_for_uninstall() {
     }
   );
 
-  // A global removal accepts multiple executables, like `deno uninstall
+  // A global removal accepts multiple executables, like `ende uninstall
   // --global`.
   let r = flags_from_vec(svec!["ende", "remove", "-g", "file_server", "chalk"]);
   assert_eq!(
@@ -7604,7 +7604,7 @@ fn node_modules_dir_default() {
 
 #[test]
 fn flag_before_subcommand() {
-  // PORT-NOTE: clap appends a `Usage: deno repl [OPTIONS] [-- [ARGS]...]`
+  // PORT-NOTE: clap appends a `Usage: ende repl [OPTIONS] [-- [ARGS]...]`
   // trailer; the new parser reports only the error and the tip.
   let r = flags_from_vec(svec!["ende", "--allow-net", "repl"]);
   assert_eq!(
@@ -7619,7 +7619,7 @@ fn flag_before_subcommand() {
 fn flag_before_subcommand_not_supported() {
   // `lint` does not accept `--allow-all`, so the error must not claim that
   // `lint --allow-all` exists (see issue #27336).
-  // PORT-NOTE: clap appends a `Usage: deno lint [OPTIONS] [files]...`
+  // PORT-NOTE: clap appends a `Usage: ende lint [OPTIONS] [files]...`
   // trailer; the new parser reports only the error.
   let r = flags_from_vec(svec!["ende", "--allow-all", "lint"]);
   assert_eq!(
@@ -9459,7 +9459,7 @@ fn tier1_desktop_flags() {
   assert_eq!(d.exclude, svec!["skip.ts"]);
   assert_eq!(d.source_file, "main.ts");
 
-  // Bare `deno desktop` defaults the entrypoint to ".".
+  // Bare `ende desktop` defaults the entrypoint to ".".
   let flags = flags_from_vec(svec!["ende", "desktop"]).unwrap();
   assert!(
     matches!(flags.subcommand, EndeSubcommand::Desktop(d) if d.source_file == ".")
@@ -9699,7 +9699,7 @@ fn unlink_subcommand() {
 
 #[test]
 fn eval_double_dash_stripped() {
-  // Unlike run/task, `deno eval` strips the `--` separator from argv
+  // Unlike run/task, `ende eval` strips the `--` separator from argv
   // (clap plain trailing-var-arg, not `.last(true)`).
   let flags =
     flags_from_vec(svec!["ende", "eval", "console.log(1)", "--", "a&b"])

@@ -726,7 +726,7 @@ pub(crate) fn upgrade_snapshotted_ops_with_fast_calls<'s, 'i>(
 /// residual ext-module loaders (`op_lazy_load_esm` / `op_load_ext_script`)
 /// before the loaded module's body captures its op references, so runtime
 /// modules see the fast-call overloads. Programs that never load a residual
-/// module (e.g. `deno run empty.js`) never trigger it, saving the ~0.9ms pass.
+/// module (e.g. `ende run empty.js`) never trigger it, saving the ~0.9ms pass.
 /// No-op during snapshot build / fresh-bind (flag pre-set in `new_inner`).
 /// Read `Ende.core.ops` + `Ende.core.setUpAsyncStub` from the global. Valid
 /// only while `Ende.core` is still present (during `new_inner`, before the
@@ -1397,7 +1397,7 @@ fn host_import_module_with_vm_dynamic_import_callback<'s, 'i>(
 
 /// Build a Node-style `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING` TypeError.
 /// The error code and message string match Node.js exactly so that user
-/// code switching on `err.code` behaves the same under Deno.
+/// code switching on `err.code` behaves the same under Ende.
 fn vm_dynamic_import_callback_missing_exception<'s>(
   scope: &mut v8::PinScope<'s, '_>,
 ) -> v8::Local<'s, v8::Value> {
@@ -1713,15 +1713,15 @@ pub extern "C" fn promise_reject_callback(message: v8::PromiseRejectMessage) {
 ///
 /// Each method on console object should be bound to this function, eg:
 /// ```ignore
-/// function wrapConsole(consoleFromDeno, consoleFromV8) {
+/// function wrapConsole(consoleFromEnde, consoleFromV8) {
 ///   const callConsole = core.callConsole;
 ///
 ///   for (const key of Object.keys(consoleFromV8)) {
-///     if (consoleFromDeno.hasOwnProperty(key)) {
-///       consoleFromDeno[key] = callConsole.bind(
-///         consoleFromDeno,
+///     if (consoleFromEnde.hasOwnProperty(key)) {
+///       consoleFromEnde[key] = callConsole.bind(
+///         consoleFromEnde,
 ///         consoleFromV8[key],
-///         consoleFromDeno[key],
+///         consoleFromEnde[key],
 ///       );
 ///     }
 ///   }

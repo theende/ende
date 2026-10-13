@@ -356,7 +356,7 @@ function createByteStruct(types) {
   // types can be "date", "bool" or "u64".
   let offset = 0;
   let str =
-    'const unix = Deno.build.os === "darwin" || Deno.build.os === "linux" || Deno.build.os === "android" || Deno.build.os === "openbsd" || Deno.build.os === "freebsd";' +
+    'const unix = Ende.build.os === "darwin" || Ende.build.os === "linux" || Ende.build.os === "android" || Ende.build.os === "openbsd" || Ende.build.os === "freebsd";' +
     // Two's-complement inversion avoids float64 precision loss near 2^64.
     " const readI64Ms = (lo, hi) => hi < 2147483648 ? lo + hi * 4294967296 : -((~hi >>> 0) * 4294967296 + (~lo >>> 0) + 1);" +
     " return {";

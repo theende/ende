@@ -129,7 +129,7 @@ impl GPUAdapter {
     // because support is not complete. Allow applications to request that
     // feature even though it is not reported as an adapter-supported feature.
     //
-    // There is probably not anything useful that Deno applications can do with
+    // There is probably not anything useful that Ende applications can do with
     // external textures, but it is useful to be able to enable it in
     // `cts_runner`.
     if !required_features

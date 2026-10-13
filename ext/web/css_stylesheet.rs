@@ -4,7 +4,7 @@
 //! scripts (`import sheet from "./a.css" with { type: "css" }`):
 //! https://html.spec.whatwg.org/multipage/webappapis.html#css-module-script
 //!
-//! Deno has no DOM, so a sheet can't be adopted anywhere; the implementation
+//! Ende has no DOM, so a sheet can't be adopted anywhere; the implementation
 //! is backed by the raw CSS text. `cssRules` performs a naive top-level rule
 //! split (tracking braces, strings and comments) instead of real CSS parsing,
 //! which is enough to read rules back out for SSR-style serialization.

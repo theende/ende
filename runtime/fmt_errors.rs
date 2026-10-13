@@ -1,5 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-//! This mod provides DenoError to unify errors across Deno.
+//! This mod provides DenoError to unify errors across Ende.
 use std::borrow::Cow;
 use std::fmt::Write as _;
 use std::sync::LazyLock;
@@ -578,7 +578,7 @@ fn get_message_suggestions_inner(
         ),
       ];
     } else if msg.contains("invalid peer certificate: UnknownIssuer") {
-      // The certificate chain isn't trusted by Deno's CA store (the default is
+      // The certificate chain isn't trusted by Ende's CA store (the default is
       // Mozilla's bundle). This commonly happens with `mkcert` dev certs or a
       // corporate TLS proxy, whose root is in the OS trust store but not
       // Mozilla's. See denoland/deno#25366.
@@ -601,10 +601,10 @@ fn get_message_suggestions_inner(
         "Run again with the `--unsafely-ignore-certificate-errors` flag to bypass certificate errors.",
       )];
     // `isolated-vm` is a native addon built directly on V8's C++ internals,
-    // which Deno does not expose. It fails either with a `Cannot find module
+    // which Ende does not expose. It fails either with a `Cannot find module
     // './out/isolated_vm'` error (when the addon was never built, the most
     // commonly reported case) or, if built, with the legacy native addon ABI
-    // error from `ext/napi`. Either way it cannot run in Deno, so point users
+    // error from `ext/napi`. Either way it cannot run in Ende, so point users
     // at the supported isolation primitives. See denoland/deno#25130.
     } else if (msg.contains("isolated_vm") || msg.contains("isolated-vm"))
       && (msg.contains("Cannot find module")
@@ -654,7 +654,7 @@ fn get_message_suggestions_inner(
     // Captures the error thrown by `ext/napi` when a native addon was built
     // against the legacy Node.js native addon ABI (the `NODE_MODULE` macro /
     // `nan`) instead of Node-API. Such addons link against V8's C++ internals,
-    // which Deno does not expose, so they cannot be loaded. See
+    // which Ende does not expose, so they cannot be loaded. See
     // denoland/deno#26034 (better-sqlite3) and denoland/deno#26656.
     } else if msg.contains("legacy Node.js native addon API") {
       // `better-sqlite3` is by far the most commonly reported offender, so

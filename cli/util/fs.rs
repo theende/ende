@@ -186,7 +186,7 @@ pub struct FsCleaner {
   pub bytes_removed: u64,
   /// Paths that could not be removed, along with the error encountered. The
   /// cleaner is best-effort: a single locked or read-only file (for example a
-  /// cache database held open by a running Deno process) should not abort the
+  /// cache database held open by a running Ende process) should not abort the
   /// entire clean, so failures are collected here and reported afterwards.
   pub failed: Vec<(PathBuf, std::io::Error)>,
   pub progress_guard: Option<UpdateGuard>,

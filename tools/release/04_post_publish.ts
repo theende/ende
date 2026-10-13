@@ -1,9 +1,9 @@
 #!/usr/bin/env -S deno run -A --lock=tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
-import { DenoWorkspace } from "./deno_workspace.ts";
+import { EndeWorkspace } from "./ende_workspace.ts";
 import { $, createOctoKit, getGitHubRepository } from "./deps.ts";
 
-const workspace = await DenoWorkspace.load();
+const workspace = await EndeWorkspace.load();
 const repo = workspace.repo;
 const cliCrate = workspace.getCliCrate();
 
@@ -82,7 +82,7 @@ async function forwardReleaseCommitToMain() {
     $.log(`Opened PR at ${openedPr.data.url}`);
   } catch (err) {
     $.logError(
-      `Failed to open PR. Please open one manually: https://github.com/denoland/deno/pull/new/${newBranchName}`,
+      `Failed to open PR. Please open one manually: https://github.com/theende/ende/pull/new/${newBranchName}`,
       err,
     );
   }

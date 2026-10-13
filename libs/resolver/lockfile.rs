@@ -191,7 +191,7 @@ pub struct LockfileFlags {
   pub no_npm: bool,
   /// When no lockfile exists in the workspace, attempt to seed one by
   /// translating a sibling `package-lock.json`. Currently only set by
-  /// `deno install`.
+  /// `ende install`.
   pub import_npm_lockfile: bool,
 }
 
@@ -275,7 +275,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
     // If the lockfile path is a symlink, resolve it to its target so the
     // atomic write below replaces the target file rather than clobbering the
     // symlink with a freshly created regular file. This matches how the
-    // deno.json/package.json writes follow symlinks (they write in place).
+    // ende.json/package.json writes follow symlinks (they write in place).
     let write_path = if self.sys.fs_is_symlink_no_err(&lockfile.filename) {
       self
         .sys
@@ -284,7 +284,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
     } else {
       lockfile.filename.clone()
     };
-    // do an atomic write to reduce the chance of multiple deno
+    // do an atomic write to reduce the chance of multiple ende
     // processes corrupting the file
     const CACHE_PERM: u32 = 0o644;
     atomic_write_file_with_retries(&self.sys, &write_path, &bytes, CACHE_PERM)

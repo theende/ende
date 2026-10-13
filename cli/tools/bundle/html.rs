@@ -318,7 +318,7 @@ pub struct HtmlEntrypoint {
   pub virtual_module_path: PathBuf,
 }
 
-const VIRTUAL_ENTRY_SUFFIX: &str = ".deno-bundle-html.entry";
+const VIRTUAL_ENTRY_SUFFIX: &str = ".ende-bundle-html.entry";
 
 // Helper to create a filesystem-friendly name based on a path
 fn sanitize_entry_name(cwd: &Path, path: &Path) -> String {
@@ -409,7 +409,7 @@ pub struct HtmlOutputFiles<'a, 'f> {
 impl<'a, 'f> HtmlOutputFiles<'a, 'f> {
   pub fn new(output_files: &'f mut Vec<OutputFile<'a>>) -> Self {
     let re =
-      lazy_regex::regex!(r"(^.+\.deno-bundle-html.entry)-([^.]+)(\..+)$");
+      lazy_regex::regex!(r"(^.+\.ende-bundle-html.entry)-([^.]+)(\..+)$");
     let mut index = std::collections::HashMap::new();
     for (i, f) in output_files.iter().enumerate() {
       if let Some(name) = f.path.file_name().map(|s| s.to_string_lossy()) {
@@ -518,7 +518,7 @@ impl HtmlEntrypoint {
     // esbuild emits the external/linked sourcemap (`*.js.map`) for the entry
     // under the internal virtual-entry name. Rename it to match the renamed JS
     // bundle (e.g. `index-HASH.js.map`) and fix the JS `sourceMappingURL`
-    // reference so the emitted output doesn't leak the `deno-bundle-html.entry`
+    // reference so the emitted output doesn't leak the `ende-bundle-html.entry`
     // implementation detail. See denoland/deno#30750.
     let map_entry_name = format!("{}.js.map", entry_name);
     let mut old_map_name = None;

@@ -1,14 +1,11 @@
-# Deno Core Crate
-
-[![crates](https://img.shields.io/crates/v/deno_core.svg)](https://crates.io/crates/deno_core)
-[![docs](https://docs.rs/deno_core/badge.svg)](https://docs.rs/deno_core)
+# Ende Core Crate
 
 The main dependency of this crate is
 [rusty_v8](https://github.com/denoland/rusty_v8), which provides the V8-Rust
 bindings.
 
-This Rust crate contains the essential V8 bindings for Deno's command-line
-interface (Deno CLI). The main abstraction here is the JsRuntime which provides
+This Rust crate contains the essential V8 bindings for Ende's command-line
+interface (Ende CLI). The main abstraction here is the JsRuntime which provides
 a way to execute JavaScript.
 
 The JsRuntime implements an event loop abstraction for the executed code that

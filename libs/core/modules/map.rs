@@ -1496,7 +1496,7 @@ impl ModuleMap {
   ///
   /// Internal modules that aren't baked into the snapshot get instantiated at
   /// runtime, at which point the installed loader is the embedder's
-  /// user-facing one. In Deno that loader applies the user's import map, so an
+  /// user-facing one. In Ende that loader applies the user's import map, so an
   /// entry like `{ "ext:core/mod.js": "./mod.js" }` used to rewrite the imports
   /// of internal modules such as `ext:cli/40_test_common.js` or
   /// `node:_http_agent`, breaking instantiation. Internal specifiers are owned

@@ -1,6 +1,6 @@
 # Tools
 
-Documentation for various tooling in support of Deno development.
+Documentation for various tooling in support of Ende development.
 
 ## format.js
 
@@ -24,7 +24,7 @@ To run linting:
 deno run --allow-read --allow-write --allow-run ./tools/lint.js
 ```
 
-Tip: You can also use cargo to run the current or pending build of the deno
+Tip: You can also use cargo to run the current or pending build of the ende
 executable
 
 ```sh

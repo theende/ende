@@ -271,7 +271,7 @@ fn vfs_as_display_tree(
     }
 
     // in this scenario, we want to show
-    // .deno_compile_node_modules/localhost/<package_name>/<version>/*
+    // .ende_compile_node_modules/localhost/<package_name>/<version>/*
     show_subset(vfs_dir, 3, seen_offsets)
   }
 

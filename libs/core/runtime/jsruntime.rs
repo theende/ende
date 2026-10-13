@@ -33,7 +33,7 @@ fn startup_phases_enabled() -> bool {
     // Diagnostic env var — only consulted once per process. Bypassing
     // `sys_traits` here is intentional: the snapshot/runtime layers don't
     // thread an `EnvProvider` through this code path, and this opt-in
-    // tracing is only useful when running an actual `deno` binary anyway.
+    // tracing is only useful when running an actual `ende` binary anyway.
     let v = ende_env::var_os("ENDE_STARTUP_PHASES");
     v.is_some_and(|v| !v.is_empty() && v != "0")
   })
@@ -597,7 +597,7 @@ pub struct RuntimeOptions {
   /// Isolate creation parameters.
   pub create_params: Option<v8::CreateParams>,
 
-  /// V8 platform instance to use. Used when Deno initializes V8
+  /// V8 platform instance to use. Used when Ende initializes V8
   /// (which it only does once), otherwise it's silently dropped.
   pub v8_platform: Option<v8::SharedRef<v8::Platform>>,
 
@@ -1099,7 +1099,7 @@ impl JsRuntime {
         // residual module (e.g. an empty script) never pays for it.
         //
         // Capture the refs the deferred upgrade needs NOW, while `Ende.core` is
-        // still on the global — it's scrubbed from the public `Deno` after
+        // still on the global — it's scrubbed from the public `Ende` after
         // bootstrap, so the post-bootstrap deferred caller can't read them.
         let (ops_obj, stub_fn) =
           bindings::snapshotted_fast_op_refs(scope, context);
@@ -3677,7 +3677,7 @@ impl JsRuntime {
   ///
   /// This mirrors the JS `drainTicks()` (see `01_core.js`) exactly, but keeps
   /// the common path — no `process.nextTick` scheduled and no promise rejection
-  /// to warn about, which is every pure-Deno workload — entirely on the Rust
+  /// to warn about, which is every pure-Ende workload — entirely on the Rust
   /// side. In that case `drainTicks` just runs `op_run_microtasks()` (a
   /// `perform_microtask_checkpoint`) and returns; doing it here avoids a
   /// Rust->JS call plus the JS->Rust op call it would otherwise make. Only when

@@ -393,7 +393,7 @@ function getTypeSizeAndAlignment(type, cache = new SafeMap()) {
 
 class UnsafeCallback {
   #refcount;
-  // Internal promise only meant to keep Deno from exiting
+  // Internal promise only meant to keep Ende from exiting
   #refpromise;
   #rid;
   definition;

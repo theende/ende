@@ -566,7 +566,7 @@ pub struct CompilerOptionsOverrides {
   /// import that is re-exported without the `type` modifier
   /// (`import { type X }` + `export { X }`) is left as a dangling value
   /// export and crashes at runtime. Falling back to heuristic import
-  /// elision matches the `deno compile` runtime, which forces verbatim
+  /// elision matches the `ende compile` runtime, which forces verbatim
   /// off too.
   pub force_disable_verbatim_module_syntax: bool,
 }

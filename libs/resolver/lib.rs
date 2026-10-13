@@ -232,7 +232,7 @@ pub struct EndeResolverOptions<
     >,
   >,
   pub workspace_resolver: WorkspaceResolverRc<TSys>,
-  /// Whether "bring your own node_modules" is enabled where Deno does not
+  /// Whether "bring your own node_modules" is enabled where Ende does not
   /// setup the node_modules directories automatically, but instead uses
   /// what already exists on the file system.
   pub is_byonm: bool,
@@ -255,7 +255,7 @@ pub type RawEndeResolverRc<
 >;
 
 /// Helper type for a RawEndeResolverRc that has the implementations
-/// used by the Deno CLI.
+/// used by the Ende CLI.
 pub type DefaultRawEndeResolverRc<TSys> = RawEndeResolverRc<
   npm::DenoInNpmPackageChecker,
   DenoIsBuiltInNodeModuleChecker,
@@ -690,7 +690,7 @@ impl<
 ///
 /// The variable is read exactly once (via `sys`) and cached. Module loading
 /// happens before any user code runs, so the value is effectively snapshotted
-/// at startup and cannot be toggled later via `Deno.env.set`.
+/// at startup and cannot be toggled later via `Ende.env.set`.
 pub fn is_react_cve_patch_enabled(sys: &impl sys_traits::EnvVar) -> bool {
   static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
   *ENABLED.get_or_init(|| {

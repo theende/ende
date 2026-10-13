@@ -129,7 +129,7 @@ pub async fn publish(
   // Bail out early if the version is already published, before doing the
   // expensive type checking and tarball preparation. Already-published
   // versions are skipped with a warning (rather than erroring) so that
-  // re-running `deno publish` after a partial or concurrent publish still
+  // re-running `ende publish` after a partial or concurrent publish still
   // succeeds, matching the idempotent behavior of the publish step itself.
   if !publish_flags.dry_run {
     publish_configs = filter_out_published_packages(

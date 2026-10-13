@@ -795,7 +795,7 @@ impl PackageJson {
   /// unsatisfied or has an unparseable version requirement.
   ///
   /// Only the `node` and `deno` keys are checked. Other entries (`npm`,
-  /// `yarn`, `pnpm`, ...) are intentionally ignored — Deno cannot reason
+  /// `yarn`, `pnpm`, ...) are intentionally ignored — Ende cannot reason
   /// about external package manager versions.
   pub fn check_engines(
     &self,

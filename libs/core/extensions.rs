@@ -338,7 +338,7 @@ impl OpDecl {
   }
 }
 
-/// Declares a block of Deno `#[op]`s. The first parameter determines the name of the
+/// Declares a block of Ende `#[op]`s. The first parameter determines the name of the
 /// op declaration block, and is usually `ende_ops`. This block generates a function that
 /// returns a [`Vec<OpDecl>`].
 ///
@@ -408,7 +408,7 @@ macro_rules! or {
   };
 }
 
-/// Defines a Deno extension. The first parameter is the name of the extension symbol namespace to create. This is the symbol you
+/// Defines an Ende extension. The first parameter is the name of the extension symbol namespace to create. This is the symbol you
 /// will use to refer to the extension.
 ///
 /// Most extensions will define a combination of ops and ESM files, like so:
@@ -480,7 +480,7 @@ macro_rules! extension {
   ) => {
     $( $(#[doc = $docblocks])+ )?
     ///
-    /// An extension for use with the Deno JS runtime.
+    /// An extension for use with the Ende JS runtime.
     /// To use it, provide it as an argument when instantiating your runtime:
     ///
     /// ```rust,ignore

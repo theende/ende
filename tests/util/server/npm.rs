@@ -502,7 +502,7 @@ fn get_npm_package(
   } else if package_name == "@denotest/tarballs-npmjs" {
     // Packument points `dist.tarball` at the public npm registry even though the
     // package is served by a private/proxy registry (some proxies don't rewrite
-    // tarball URLs). Deno should relocate the tarball download to the configured
+    // tarball URLs). Ende should relocate the tarball download to the configured
     // registry rather than downloading it from `registry.npmjs.org`.
     "https://registry.npmjs.org"
   } else {

@@ -1,13 +1,13 @@
 # Runtime JavaScript Code
 
-This directory contains Deno runtime code written in plain JavaScript.
+This directory contains Ende runtime code written in plain JavaScript.
 
 Each file is an ES module and is prefixed with a number, telling in which order
 scripts should be loaded into V8 isolate.
 
-## Deno Web APIs
+## Ende Web APIs
 
-This directory facilities Web APIs that are available in Deno.
+This directory facilities Web APIs that are available in Ende.
 
 Please note, that some implementations might not be completely aligned with
 specification.
@@ -25,7 +25,7 @@ Some Web APIs are using ops under the hood, eg. `console`, `performance`.
   and
   [EventListener](https://developer.mozilla.org/en-US/docs/Web/API/EventListener):
   to work with DOM events.
-  - **Implementation notes:** There is no DOM hierarchy in Deno, so there is no
+  - **Implementation notes:** There is no DOM hierarchy in Ende, so there is no
     tree for Events to bubble/capture through.
 - [fetch](https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch),
   [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request),

@@ -27,8 +27,8 @@ const {
   TypeError,
 } = primordials;
 
-// Capture `Deno.inspect` and `Deno.noColor` early so that user code mangling
-// the `Deno` global doesn't affect snapshot serialization.
+// Capture `Ende.inspect` and `Ende.noColor` early so that user code mangling
+// the `Ende` global doesn't affect snapshot serialization.
 const EndeNs = globalThis.Ende;
 const inspect = EndeNs.inspect;
 const noColor = EndeNs.noColor;
@@ -305,7 +305,7 @@ function getErrorMessage(message, options) {
 }
 
 /**
- * Implementation of `Deno.TestContext.assertSnapshot()`. `tContext` is the
+ * Implementation of `Ende.TestContext.assertSnapshot()`. `tContext` is the
  * test context object the method was called on.
  */
 export function assertSnapshot(

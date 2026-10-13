@@ -2,7 +2,7 @@ import process from "node:process";
 
 // In a compiled binary, process.argv[1] should be the binary path
 // (same as Deno.execPath()), not an internal temp extraction path
-// like "deno-compile-<name>/path/to/module.ts".
+// like "ende-compile-<name>/path/to/module.ts".
 const argv1 = process.argv[1];
 const execPath = Deno.execPath();
 

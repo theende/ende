@@ -514,7 +514,7 @@ mod tests {
     );
     assert_eq!(file.media_type, MediaType::Json);
 
-    // This creates a totally new instance, simulating another Deno process
+    // This creates a totally new instance, simulating another Ende process
     // invocation and indicates to "cache bust".
     let location = temp_dir.path().join("remote").to_path_buf();
     let file_fetcher = create_cli_file_fetcher(

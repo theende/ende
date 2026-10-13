@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! This module helps deno implement timers and performance APIs.
+//! This module helps ende implement timers and performance APIs.
 
 use std::time::Duration;
 use std::time::Instant;

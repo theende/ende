@@ -78,8 +78,8 @@ function getSafeOwnPropertyDescriptors(object) {
 const {
   isNativeError,
 } = core;
-// Deno.serve (00_serve.ts) chains through 23_request/23_response/22_body
-// into the 208 KB web-streams polyfill. Only loaded if `deno serve` / a
+// Ende.serve (00_serve.ts) chains through 23_request/23_response/22_body
+// into the 208 KB web-streams polyfill. Only loaded if `ende serve` / a
 // declarative server export is actually used.
 let _serveMod;
 const lazyServeMod = () =>
@@ -652,7 +652,7 @@ function exposeUnstableFeaturesForWindowOrWorkerGlobalScope(unstableFeatures) {
 // NOTE(bartlomieju): remove all the ops that have already been imported using
 // "virtual op module" (`ext:core/ops`).
 const NOT_IMPORTED_OPS = [
-  // Related to `Deno.bench()` API
+  // Related to `Ende.bench()` API
   "op_bench_now",
   "op_dispatch_bench_event",
   "op_register_bench",
@@ -686,7 +686,7 @@ const NOT_IMPORTED_OPS = [
   "op_lint_create_serialized_ast",
   "op_is_cancelled",
 
-  // Related to `Deno.test()` API
+  // Related to `Ende.test()` API
   "op_test_event_step_result_failed",
   "op_test_event_step_result_ignored",
   "op_test_event_step_result_ok",
@@ -713,7 +713,7 @@ const NOT_IMPORTED_OPS = [
   "op_set_exit_code",
   "op_napi_open",
 
-  // Related to `Deno.desktop` API (deno compile --desktop)
+  // Related to `Ende.desktop` API (ende compile --desktop)
   "BrowserWindow",
   "Dock",
   "Tray",
@@ -768,7 +768,7 @@ function removeImportedOps(isWorker = false) {
   }
 }
 
-// `Deno[Deno.internal]` is reachable from user code. Preserve its existing
+// `Ende[Ende.internal]` is reachable from user code. Preserve its existing
 // internal compatibility surface, but keep extension-loading capabilities on
 // the core object imported through `ext:core/mod.js`.
 const userVisibleCoreDescriptors = getSafeOwnPropertyDescriptors(core);
@@ -780,9 +780,9 @@ const userVisibleCore = ObjectFreeze(ObjectDefineProperties(
 ));
 ObjectAssign(internals, { core: userVisibleCore });
 const internalSymbol = Symbol("Deno.internal");
-// `Deno.test` and its sub-methods are no-ops outside of `deno test`, kept for
-// compatibility so they don't error under `deno run`. Mirrors the surface of
-// the real `Deno.test` defined in cli/js/40_test.js.
+// `Ende.test` and its sub-methods are no-ops outside of `ende test`, kept for
+// compatibility so they don't error under `ende run`. Mirrors the surface of
+// the real `Ende.test` defined in cli/js/40_test.js.
 function noopTest() {}
 noopTest.ignore = () => {};
 noopTest.only = () => {};
@@ -796,7 +796,7 @@ noopTest.each = noopTestEach;
 noopTest.only.each = noopTestEach;
 noopTest.ignore.each = noopTestEach;
 // Build finalEndeNs without spreading endeNs: spread invokes every getter,
-// including the lazy ones (Deno.serve / Deno.run / etc.) that intentionally
+// including the lazy ones (Ende.serve / Ende.run / etc.) that intentionally
 // avoid loading 06_streams / 22_body / 40_process at snapshot time. Use
 // ObjectDefineProperties + getOwnPropertyDescriptors to preserve the lazy
 // descriptors.
@@ -804,9 +804,9 @@ const finalEndeNs = ObjectDefineProperties(
   {
     internal: internalSymbol,
     [internalSymbol]: internals,
-    // Deno.test, Deno.bench, Deno.lint are noops here, but kept for
+    // Ende.test, Ende.bench, Ende.lint are noops here, but kept for
     // compatibility; so that they don't cause errors when used outside of
-    // `deno test`/`deno bench`/`deno lint` contexts.
+    // `ende test`/`ende bench`/`ende lint` contexts.
     test: noopTest,
     bench: () => {},
     lint: {
@@ -870,7 +870,7 @@ const executionModes = {
 let protoSetRecorded = false;
 let protoGetRecorded = false;
 
-// By default Deno disables the `Object.prototype.__proto__` accessor for
+// By default Ende disables the `Object.prototype.__proto__` accessor for
 // security reasons (it enables prototype pollution), see
 // https://tc39.es/ecma262/#sec-get-object.prototype.__proto__
 //
@@ -1009,7 +1009,7 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
           // have an unrelated `export default`, so that graph was being
           // compiled for programs that will never serve anything. Hoist the
           // guard here. `dflt == null` still calls through, so the TypeError
-          // `Object.hasOwn(null, ...)` raises under `deno serve` is unchanged.
+          // `Object.hasOwn(null, ...)` raises under `ende serve` is unchanged.
           if (dflt == null || ObjectHasOwn(dflt, "fetch")) {
             try {
               serve = lazyServeMod().registerDeclarativeServer(dflt);
@@ -1285,7 +1285,7 @@ function bootstrapWorkerRuntime(
     event.defineEventHandler(globalThis, "message");
     event.defineEventHandler(globalThis, "error", undefined, true);
 
-    // `Deno.exit()` closes the worker using the internal worker close
+    // `Ende.exit()` closes the worker using the internal worker close
     // operation. Setting an exit code using an op in worker context is a no-op.
     os.setExitHandler((_exitCode) => {
       workerClose();

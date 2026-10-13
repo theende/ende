@@ -69,11 +69,11 @@ Where:
 
 - **ende_webidl**: Provided by the `ende_webidl` crate
 - **ende_web**: Provided by the `ende_web` crate
-- **deno_console**: Provided by the `deno_console` crate
+- **ende_console**: Provided by the `ende_console` crate
 
 ## Provided ops
 
-Following ops are provided, which can be accessed through `Deno.ops`:
+Following ops are provided, which can be accessed through `Ende.ops`:
 
 - op_fetch
 - op_fetch_send

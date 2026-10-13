@@ -202,8 +202,8 @@ const workflow = createWorkflow({
           run: [
             "# Unzip a binary to get the version",
             "unzip -o ende-x86_64-apple-darwin.zip",
-            "DENO_VERSION=$(./ende -V | cut -d ' ' -f 2 | cut -d '+' -f 1)",
-            'echo "v${DENO_VERSION}" > release-${{github.event.inputs.releaseKind}}-latest.txt',
+            "ENDE_VERSION=$(./ende -V | cut -d ' ' -f 2 | cut -d '+' -f 1)",
+            'echo "v${ENDE_VERSION}" > release-${{github.event.inputs.releaseKind}}-latest.txt',
             "rm -f ./ende",
           ],
         }),
@@ -255,7 +255,7 @@ const workflow = createWorkflow({
           run: [
             "# The latest.txt file lives at a stable URL but changes every",
             "# release, so the edge has to be told to drop it. Otherwise",
-            "# `deno upgrade` keeps serving the previous version until the",
+            "# `ende upgrade` keeps serving the previous version until the",
             "# 4 hour TTL expires.",
             "deno run -A --lock=tools/deno.lock.json tools/release/purge_cdn_cache.ts release-${{github.event.inputs.releaseKind}}-latest.txt",
           ],

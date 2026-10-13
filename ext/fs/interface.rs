@@ -189,7 +189,7 @@ pub enum FsFileType {
   Junction,
 }
 
-/// WARNING: This is part of the public JS Deno API.
+/// WARNING: This is part of the public JS Ende API.
 #[derive(Debug, Clone, ende_core::ToV8)]
 pub struct FsDirEntry {
   pub name: String,

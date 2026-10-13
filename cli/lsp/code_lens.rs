@@ -54,7 +54,7 @@ pub struct CodeLensData {
 }
 
 /// The body of a test or test step registration call, i.e. the function passed
-/// to `Deno.test(...)`, `t.step(...)`, `describe(...)`, `it(...)`, etc.
+/// to `Ende.test(...)`, `t.step(...)`, `describe(...)`, `it(...)`, etc.
 enum TestFnBody<'a> {
   Arrow(&'a ast::ArrowExpr),
   Fn(&'a ast::Function),
@@ -151,7 +151,7 @@ fn find_test_fn_body(node: &ast::CallExpr) -> Option<TestFnBody<'_>> {
 
 /// Push the "Run Test" and "Debug" code lenses for a test or test step. For a
 /// test step, `name` is the name of the enclosing top-level test (the only
-/// granularity `deno test --filter` supports), so debugging a step runs its
+/// granularity `ende test --filter` supports), so debugging a step runs its
 /// parent test under the inspector.
 fn add_test_code_lenses(
   code_lenses: &mut Vec<lsp::CodeLens>,
@@ -434,7 +434,7 @@ impl Visit for EndeTestStepCollector<'_> {
       &rightmost_symbol_range,
     );
     // A step body can itself contain nested steps (`t.step(...)` within a
-    // `t.step(...)`), so descend into it as a `Deno.test`-style step body.
+    // `t.step(...)`), so descend into it as an `Ende.test`-style step body.
     if let Some(body) = find_test_fn_body(node) {
       collect_step_code_lenses(
         self.code_lenses,

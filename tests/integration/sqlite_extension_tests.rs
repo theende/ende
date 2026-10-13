@@ -21,7 +21,7 @@ fn build_sqlite_extension() {
   let tests_dir = tests_path();
   let extension_manifest =
     tests_dir.join("sqlite_extension").join("Cargo.toml");
-  // Output to the repo's target directory so the Deno tests can find it
+  // Output to the repo's target directory so the Ende tests can find it
   let target_dir = tests_dir.parent().join("target");
 
   let mut build_plugin_base = Command::new("cargo");
@@ -32,7 +32,7 @@ fn build_sqlite_extension() {
     .arg("--target-dir")
     .arg(target_dir.as_path())
     // Don't inherit RUSTFLAGS from the test environment - the sysroot
-    // configuration used for main Deno builds doesn't have libsqlite3
+    // configuration used for main Ende builds doesn't have libsqlite3
     .env_remove("RUSTFLAGS")
     .env_remove("RUSTDOCFLAGS");
 

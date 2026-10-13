@@ -1,10 +1,10 @@
 #!/usr/bin/env -S deno run -A --lock=tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
-import { DenoWorkspace } from "./deno_workspace.ts";
+import { EndeWorkspace } from "./ende_workspace.ts";
 import { $, createOctoKit, getGitHubRepository } from "./deps.ts";
 
 const octoKit = createOctoKit();
-const workspace = await DenoWorkspace.load();
+const workspace = await EndeWorkspace.load();
 const repo = workspace.repo;
 const cliCrate = workspace.getCliCrate();
 

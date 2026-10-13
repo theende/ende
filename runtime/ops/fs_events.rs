@@ -86,7 +86,7 @@ impl Drop for FsEventsResource {
 
     // Reference-count the underlying watches: only unwatch when no other
     // resource still depends on this path. Without this, calling
-    // `Deno.watchFs(path)` repeatedly leaks watches in the shared
+    // `Ende.watchFs(path)` repeatedly leaks watches in the shared
     // `RecommendedWatcher` — on Windows each leaked watch registers a
     // separate `ReadDirectoryChangesW` request, so the next watcher created
     // for the same path receives every event N times.
@@ -152,7 +152,7 @@ impl From<NotifyEvent> for FsEvent {
 }
 
 fn is_ignored_notify_event(event: &NotifyEvent) -> bool {
-  // notify 8 added inotify OPEN events to the default watch mask. Deno did not
+  // notify 8 added inotify OPEN events to the default watch mask. Ende did not
   // expose these with notify 6, and forwarding them can self-amplify because
   // our path filtering performs filesystem reads.
   matches!(
@@ -223,7 +223,7 @@ struct WatcherInner {
   /// reference without keeping the rest of [`WatcherInner`] alive.
   senders: Arc<Mutex<Vec<WatchSender>>>,
   /// The shared `RecommendedWatcher` instance backing every
-  /// `Deno.watchFs(...)` call in this OpState.
+  /// `Ende.watchFs(...)` call in this OpState.
   watcher: Mutex<RecommendedWatcher>,
   /// Reference count per (path, recursive_mode) registered with `watcher`.
   /// When a count drops to zero, the path is unwatched.

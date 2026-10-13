@@ -1,7 +1,7 @@
 # Updating the version of TypeScript
 
 This document provides an overview of how to update the version of TypeScript
-that is built into the Deno CLI.
+that is built into the Ende CLI.
 
 ## Pre-flight checklist
 
@@ -11,7 +11,7 @@ that is built into the Deno CLI.
 ## Background information
 
 The TypeScript engine (`/cli/tsc/00_typescript.js`) provides type checking and
-transformation services for the Deno CLI.
+transformation services for the Ende CLI.
 
 During the build (`/cli/build.rs`) the TypeScript engine, and integration code
 (`/cli/tsc/99_main_compiler.js`) are loaded into a V8 isolate, which in turn
@@ -24,14 +24,14 @@ not "default" libraries at runtime, but we want to make them available to be
 loaded dynamically for a user. They are built into the binary as text resources
 during the build process.
 
-Because Deno often supports web standards in advance of TypeScript supporting
+Because Ende often supports web standards in advance of TypeScript supporting
 them, we find ourselves in the undesirable situation of having to "patch" the
 published type libraries included with TypeScript. Also, to allow TypeScript to
 access any type libraries that aren't included with the distribution, we have to
 patch the list in the TypeScript, so they are available to users.
 
 While in theory a lot of this process could be automated, things can and do
-change in both Deno and TypeScript, and often you don't know that they have
+change in both Ende and TypeScript, and often you don't know that they have
 changed until you try to go through the process. Because updates to TypeScript
 are relatively infrequent, and the process requires a decent amount of
 contextual awareness, it is the author's opinion that it is best to spend the
@@ -40,7 +40,7 @@ contextual awareness, it is the author's opinion that it is best to spend the
 ## Updating
 
 1. If not present, create an empty npm project outside of the source tree of
-   Deno. (e.g. `ts`, which will be used in this example).
+   Ende. (e.g. `ts`, which will be used in this example).
 2. Install the version of TypeScript you want to update to inside the empty
    project. (e.g. `npm i typescript@latest`).
 
@@ -49,12 +49,12 @@ contextual awareness, it is the author's opinion that it is best to spend the
      expect.
 
 3. Copy `ts/node_modules/typescript/lib/typescript.js` to
-   `deno/cli/tsc/00_typescript.js`.
-4. Copy `ts/node_modules/typescript/lib/*.d.ts` to `deno/cli/dts/`.
-5. Delete `deno/cli/dts/protocol.d.ts`, `deno/cli/dts/tsserverlibrary.d.ts`,
-   `deno/cli/dts/typescriptServices.d.ts` as they are not included in the CLI in
+   `ende/cli/tsc/00_typescript.js`.
+4. Copy `ts/node_modules/typescript/lib/*.d.ts` to `ende/cli/dts/`.
+5. Delete `ende/cli/dts/protocol.d.ts`, `ende/cli/dts/tsserverlibrary.d.ts`,
+   `ende/cli/dts/typescriptServices.d.ts` as they are not included in the CLI in
    any fashion.
-6. Analyze the diff to `deno/cli/dts`:
+6. Analyze the diff to `ende/cli/dts`:
 
    - A lot of the diff will be line termination differences which git will
      normalize when committed.
@@ -80,16 +80,16 @@ contextual awareness, it is the author's opinion that it is best to spend the
        has not built these into the libraries. (See:
        https://github.com/microsoft/TypeScript/issues/29867)
      - We add `lib.dom.extras.d.ts` because TypeScript is often behind
-       supporting some DOM standards that Deno supports and when people use
-       `lib: ["dom", "deno.ns"]` they will get error messages that are confusing
+       supporting some DOM standards that Ende supports and when people use
+       `lib: ["dom", "ende.ns"]` they will get error messages that are confusing
        when using libraries that take advantage of these standards. We add the
        library to `lib.dom.d.ts`, so it is automatically included when using the
-       `dom` lib under Deno.
+       `dom` lib under Ende.
      - Response in cli/dts/lib.dom.d.ts gets an additional:
        `json(data: unknown, init?: ResponseInit): Response;`
 
 7. Based on the changes to the lib files, you will need to edit the map of lib
-   names to files in the TypeScript compiler (`deno/cli/tsc/00_typescript.js`).
+   names to files in the TypeScript compiler (`ende/cli/tsc/00_typescript.js`).
    The map is currently named `libEntries` and will look a bit like this:
 
    ```js
@@ -110,11 +110,11 @@ contextual awareness, it is the author's opinion that it is best to spend the
    deletion of `dom.asynciterable` and `dom.extras`.
 
 8. For any new lib files that were added, but not included in the snapshot (e.g.
-   `lib.es####.full.d.ts`) add them to `STATIC_ASSETS` in `deno/cli/tsc.rs`.
+   `lib.es####.full.d.ts`) add them to `STATIC_ASSETS` in `ende/cli/tsc.rs`.
 9. For any new lib files that will be loaded as part of the snapshot, (e.g.
-   `lib.es####.d.ts`) add them to `libs` in `deno/cli/build.rs`.
+   `lib.es####.d.ts`) add them to `libs` in `ende/cli/build.rs`.
 10. For any APIs that we might have had forward support for but now are part of
-    the libs, edit `deno/cli/tests/unit/esnext_test.ts` to remove the tests, so
+    the libs, edit `ende/cli/tests/unit/esnext_test.ts` to remove the tests, so
     we are only testing our modifications.
 11. Do a build and test for the changes. Specifically `esnext_test.ts` should
     pass and is an indicator that something isn't right.

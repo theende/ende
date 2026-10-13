@@ -53,10 +53,10 @@ pub fn exit(code: i32) -> ! {
   std::process::exit(code);
 }
 
-/// Callbacks to run before the process exits via `Deno.exit()`.
+/// Callbacks to run before the process exits via `Ende.exit()`.
 ///
 /// Used to flush CPU profiling data and coverage data that would otherwise
-/// be lost when `Deno.exit()` calls `std::process::exit()` directly,
+/// be lost when `Ende.exit()` calls `std::process::exit()` directly,
 /// bypassing normal cleanup in the worker's run loop.
 #[derive(Default)]
 pub struct OpExitCallbacks(Vec<Box<dyn FnMut()>>);
@@ -73,17 +73,17 @@ impl OpExitCallbacks {
   }
 }
 
-/// Holds the main isolate's handle so that `op_exit` (i.e. `Deno.exit()`) can
+/// Holds the main isolate's handle so that `op_exit` (i.e. `Ende.exit()`) can
 /// terminate the current isolate instead of the whole process. Installed by
-/// `deno run --watch` / `deno serve --watch` so a script calling `Deno.exit()`
+/// `ende run --watch` / `ende serve --watch` so a script calling `Ende.exit()`
 /// ends the current run without killing the file watcher. See issue #7590.
 pub struct WatcherExitHandle(pub v8::IsolateHandle);
 
 /// Marker set by `op_exit` when a [`WatcherExitHandle`] is present, recording
-/// that the script called `Deno.exit()`. The watcher reads this after the run
-/// to confirm the V8 termination it observes was caused by `Deno.exit()` rather
+/// that the script called `Ende.exit()`. The watcher reads this after the run
+/// to confirm the V8 termination it observes was caused by `Ende.exit()` rather
 /// than another error; the requested exit code is read separately from the
-/// worker's `ExitCode` (set by `Deno.exit()` before `op_exit` runs).
+/// worker's `ExitCode` (set by `Ende.exit()` before `op_exit` runs).
 #[derive(Clone, Copy, Debug)]
 pub struct WatcherExited;
 
@@ -201,7 +201,7 @@ impl ProcessEnvGuard {
     value: impl AsRef<std::ffi::OsStr>,
   ) {
     let key = key.as_ref();
-    // SAFETY: Deno exposes process environment mutation for compatibility.
+    // SAFETY: Ende exposes process environment mutation for compatibility.
     // This guard coordinates the runtime mutation paths with the native
     // timezone refresh below, but cannot coordinate arbitrary native readers.
     unsafe {
@@ -227,7 +227,7 @@ impl ProcessEnvGuard {
 
   pub fn remove_var(&self, key: impl AsRef<std::ffi::OsStr>) {
     let key = key.as_ref();
-    // SAFETY: Deno exposes process environment mutation for compatibility.
+    // SAFETY: Ende exposes process environment mutation for compatibility.
     // This guard coordinates the runtime mutation paths with the native
     // timezone refresh below, but cannot coordinate arbitrary native readers.
     unsafe {
@@ -326,7 +326,7 @@ fn op_env(
 ) -> Result<HashMap<String, String>, PermissionCheckError> {
   fn map_kv(kv: (OsString, OsString)) -> Option<(String, String)> {
     let key = kv.0.into_string().ok()?;
-    // Skip keys that `Deno.env.get`/`set`/`delete` would reject, so that
+    // Skip keys that `Ende.env.get`/`set`/`delete` would reject, so that
     // enumeration stays consistent with the rest of the API. On Windows,
     // cmd.exe exposes hidden per-drive cwd variables such as `=C:` which
     // contain `=` and are not meant to be surfaced to users.
@@ -456,7 +456,7 @@ fn op_get_exit_code(state: &mut OpState) -> i32 {
 
 #[op2(fast)]
 fn op_exit(state: &mut OpState) {
-  // Under `deno run --watch`, terminate the current V8 isolate instead of
+  // Under `ende run --watch`, terminate the current V8 isolate instead of
   // exiting the process so the file watcher survives and can restart the
   // script on the next file change. See issue #7590.
   //

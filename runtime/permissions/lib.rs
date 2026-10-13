@@ -1826,7 +1826,7 @@ pub enum HostParseError {
 /// `--allow-net=unix:<path>` rules.
 ///
 /// A leading `/` is an absolute POSIX path on every host, including
-/// `deno compile --target=<unix>` from Windows (`Path::is_absolute()` on
+/// `ende compile --target=<unix>` from Windows (`Path::is_absolute()` on
 /// Windows requires a drive letter, so `/var/run/docker.sock` would be
 /// rejected). Otherwise fall back to host semantics so Windows named pipes
 /// (`\\.\pipe\foo`) remain expressible as a scoped rule.
@@ -2805,7 +2805,7 @@ pub enum RunDescriptorArg {
 
 pub enum AllowRunDescriptorParseResult {
   /// An error occurred getting the descriptor that should
-  /// be surfaced as a warning when launching deno, but should
+  /// be surfaced as a warning when launching ende, but should
   /// be ignored when creating a worker.
   Unresolved(Box<which::Error>),
   Descriptor(AllowRunDescriptor),
@@ -7677,7 +7677,7 @@ mod tests {
   // Recursive remove must keep strict deny semantics: `check_write` rejects an
   // ancestor of a denied path, while the partial checks used by single-path ops
   // (`check_write_partial`, `check_open`) allow it. Without this, a recursive
-  // `Deno.remove("/foo", { recursive: true })` under `--deny-write=/foo/bar`
+  // `Ende.remove("/foo", { recursive: true })` under `--deny-write=/foo/bar`
   // would delete the denied descendant.
   #[test]
   fn test_check_write_strict_for_recursive_remove() {
@@ -8504,7 +8504,7 @@ mod tests {
         )),
       ),
       // Unix socket rules are POSIX paths on every host (including Windows
-      // `deno compile --target=linux`). Lexically normalize `.`/`..` at parse
+      // `ende compile --target=linux`). Lexically normalize `.`/`..` at parse
       // time so the rule matches the call-side path.
       (
         "unix:/var/run/docker.sock",

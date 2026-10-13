@@ -1,6 +1,6 @@
 # Testing
 
-Deno has several test suites, each aimed at a different layer. This page is a
+Ende has several test suites, each aimed at a different layer. This page is a
 map of what each one is for and how to run it.
 
 ## The suites at a glance
@@ -10,14 +10,14 @@ map of what each one is for and how to run it.
 | Spec tests  | `tests/specs/`       | CLI commands end-to-end (the main one) |
 | Unit tests  | `tests/unit/`        | Runtime/web APIs from JS/TS            |
 | unit_node   | `tests/unit_node/`   | The `node:*` compatibility layer       |
-| Node compat | `tests/node_compat/` | Node's own test suite, run on Deno     |
+| Node compat | `tests/node_compat/` | Node's own test suite, run on Ende     |
 | WPT         | `tests/wpt/`         | Web Platform Tests (web standards)     |
 | Rust tests  | throughout           | Crate-level Rust logic                 |
 
 ## Spec tests — the main integration tests
 
 Spec tests live in `tests/specs/`. Each test directory contains a
-`__test__.jsonc` file describing one or more steps; a step is a `deno`
+`__test__.jsonc` file describing one or more steps; a step is an `ende`
 invocation whose output is captured and matched against an expectation. The test
 name is the directory name. The expectation language supports wildcards
 (`[WILDCARD]`, `[WILDLINE]`), unordered blocks, and inline comments; the schema
@@ -37,15 +37,15 @@ To create one:
 
 JavaScript/TypeScript tests for runtime and web APIs, named `*_test.ts`. Use
 these for behavior that is best asserted from inside the runtime (a Web API's
-semantics, a `Deno.*` method). They run under the cargo test harness, not under
-a bare `deno test`, because they rely on harness setup.
+semantics, an `Ende.*` method). They run under the cargo test harness, not under
+a bare `ende test`, because they rely on harness setup.
 
 ## Node compatibility tests
 
 Two distinct things, often confused:
 
-- `tests/unit_node/` — Deno-authored unit tests for the `node:*` builtins.
-- `tests/node_compat/` — Node.js's **own** test files, executed against Deno to
+- `tests/unit_node/` — Ende's own unit tests for the `node:*` builtins.
+- `tests/node_compat/` — Node.js's **own** test files, executed against Ende to
   measure compatibility. The set that runs is controlled by
   `tests/node_compat/config.jsonc`. OS-specific skips use per-OS flags (for
   example `"windows": false`), not a blanket `"ignore"`.
@@ -76,7 +76,7 @@ the appropriate `tools/lint.js` invocation (`--js` when only JS/TS changed).
 
 ## What CI runs
 
-On a pull request, CI builds Deno across the supported platforms and runs the
+On a pull request, CI builds Ende across the supported platforms and runs the
 spec, unit, node-compat and WPT suites, plus the `ende_core` crate tests and
 lint. The exception is a PR that only edits `doc/`: it runs the `lint` job alone
 and skips the rest, since Markdown changes cannot affect the binary. See

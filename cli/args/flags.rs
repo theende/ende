@@ -85,7 +85,7 @@ pub fn resolve_file_patterns(
   })
 }
 
-/// The `--target` triple for `deno compile`, defaulting to the triple this
+/// The `--target` triple for `ende compile`, defaulting to the triple this
 /// binary was built for.
 pub fn resolve_compile_target(flags: &CompileFlags) -> String {
   flags
@@ -566,7 +566,7 @@ impl FlagsExt for Flags {
         source_file: script,
         ..
       }) => resolve_single_folder_path(script, current_dir, |p| {
-        // The desktop entrypoint is commonly a directory (e.g. `deno desktop
+        // The desktop entrypoint is commonly a directory (e.g. `ende desktop
         // .` for framework detection), in which case the config lives in that
         // directory itself — don't pop up to its parent. Only pop when the
         // entrypoint is a file.
@@ -638,7 +638,7 @@ pub fn flags_from_vec(args: Vec<OsString>) -> Result<Flags, CliError> {
 /// Strip a single trailing carriage return from an argument.
 ///
 /// When a script with CRLF line endings starts with a shebang like
-/// `#!/usr/bin/env -S deno run --allow-net`, the kernel passes the trailing
+/// `#!/usr/bin/env -S ende run --allow-net`, the kernel passes the trailing
 /// `\r` as part of the final argument (e.g. `--allow-net\r`), which then
 /// fails clap parsing with a confusing "isn't valid in this context" error.
 /// Trimming a trailing CR here makes such scripts run as the author intended.
@@ -656,10 +656,10 @@ fn strip_trailing_cr(arg: OsString) -> OsString {
   }
 }
 
-/// Fast path for `deno run <file> [script args...]` with no deno-level flags
+/// Fast path for `ende run <file> [script args...]` with no ende-level flags
 /// before the file. Building the parse tree / walking the parser costs a couple
 /// microseconds; for the overwhelmingly common bare-run case we skip it and
-/// build `RunFlags` directly. Any deno flag before the file (anything starting
+/// build `RunFlags` directly. Any ende flag before the file (anything starting
 /// with `-`, or `-` itself) falls through to the full parser. `args` must be
 /// already `\r`-stripped and dx-shimmed. Returns `None` when the fast path does
 /// not apply. Must stay output-identical to the full parse (see the
@@ -695,7 +695,7 @@ fn bare_run_fast_path(args: &[OsString]) -> Option<Flags> {
   }
 }
 
-/// Main entry point for parsing deno's command line flags. Routes through the
+/// Main entry point for parsing ende's command line flags. Routes through the
 /// hand-written `ende_cli_parser`; the `Flags` type is shared between this
 /// crate and the parser crate (`pub use ende_cli_parser::flags::*`), so no
 /// conversion is needed.
@@ -726,8 +726,8 @@ pub fn flags_from_vec_with_initial_cwd(
     args
   };
 
-  // Fast path for the overwhelmingly common `deno run <file> [args...]` with no
-  // deno-level flags before the file: build `RunFlags` directly and skip the
+  // Fast path for the overwhelmingly common `ende run <file> [args...]` with no
+  // ende-level flags before the file: build `RunFlags` directly and skip the
   // parser entirely. `bare_run_fast_path` produces output identical to the full
   // parse (asserted by `fast_path_matches_full_parse`).
   if let Some(mut flags) = bare_run_fast_path(&args) {
@@ -761,7 +761,7 @@ pub fn flags_from_vec_with_initial_cwd(
   }
 }
 
-/// Render the text printed by `deno --version` (`long`) and `deno -V` (short).
+/// Render the text printed by `ende --version` (`long`) and `ende -V` (short).
 /// Both forms are prefixed with the binary name and terminated by a newline,
 /// matching what clap's `render_long_version` / `render_version` used to emit.
 pub fn render_version(long: bool) -> String {
@@ -803,7 +803,7 @@ where
 /// Handle a dynamic-completion callback: the shell invoked us with
 /// `COMPLETE=<shell>` set and the words being completed passed after a `--`
 /// separator. Candidates are computed from the hand-written command tree via
-/// `ende_cli_parser::completions` (no clap), with `deno task` names supplied by
+/// `ende_cli_parser::completions` (no clap), with `ende task` names supplied by
 /// [`dynamic_task_completer`].
 pub fn handle_shell_completion(_cwd: &Path) -> Result<(), AnyError> {
   let shell = std::env::var("COMPLETE").unwrap_or_default();
@@ -837,7 +837,7 @@ pub fn handle_dynamic_shell_completion(shell: &str) -> Result<(), AnyError> {
 }
 
 /// The words being completed, extracted from the callback invocation. The
-/// registration scripts invoke `<deno> -- <typed words...>`, so everything
+/// registration scripts invoke `<ende> -- <typed words...>`, so everything
 /// after the first `--` is the command line (starting with the command name).
 fn shell_completion_words() -> Vec<String> {
   let mut words = Vec::new();
@@ -853,8 +853,8 @@ fn shell_completion_words() -> Vec<String> {
 }
 
 /// Positional-argument completer injected into the parser's completion engine.
-/// Completes `deno task <TAB>` with the available task names read from the
-/// resolved config (the only dynamic completion Deno offers). Kept CLI-side
+/// Completes `ende task <TAB>` with the available task names read from the
+/// resolved config (the only dynamic completion Ende offers). Kept CLI-side
 /// because the parser crate has no config/workspace access.
 fn dynamic_task_completer(
   active_cmd: &ende_cli_parser::CommandDef,
@@ -881,7 +881,7 @@ fn dynamic_task_completer(
 }
 
 /// Best-effort parse of the completion command line into `Flags`, used to pick
-/// up `deno task`'s `--config`/`--recursive`/`--filter` for task resolution.
+/// up `ende task`'s `--config`/`--recursive`/`--filter` for task resolution.
 fn task_flags_for_completion() -> Option<Flags> {
   let words = shell_completion_words();
   // The last word is the partial being completed; if the full line doesn't
@@ -916,7 +916,7 @@ mod tests {
   /// parser and builds `RunFlags` by hand, so it must produce output identical
   /// to running the args through the full hand-written parser. Assert that for
   /// every case where the fast path fires, and assert it correctly declines
-  /// (returns `None`) when any deno-level flag precedes the script.
+  /// (returns `None`) when any ende-level flag precedes the script.
   #[test]
   fn fast_path_matches_full_parse() {
     // Cases where the fast path SHOULD fire; its output must equal the full
@@ -1093,7 +1093,7 @@ mod tests {
       ])
     );
 
-    // `deno desktop .` (and bare `deno desktop`) runs framework detection on
+    // `ende desktop .` (and bare `ende desktop`) runs framework detection on
     // the current directory, so config discovery must start in that directory
     // rather than its parent. See issue #35653.
     let flags = flags_from_vec(svec!["ende", "desktop", "."]).unwrap();
@@ -1107,7 +1107,7 @@ mod tests {
       flags_from_vec(svec!["ende", "desktop", "sub/main.ts"]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.join("sub")]));
   }
-  /// `deno <sub> --help`, `deno <sub> -h` and `deno help <sub>` must all render
+  /// `ende <sub> --help`, `ende <sub> -h` and `ende help <sub>` must all render
   /// the same text for every subcommand.
   #[test]
   fn equal_help_output() {
@@ -1134,9 +1134,9 @@ mod tests {
     }
   }
 
-  /// When `deno <subcommand>` is spawned via `node:child_process`, the args are
+  /// When `ende <subcommand>` is spawned via `node:child_process`, the args are
   /// passed through unchanged only if node_shim recognizes the subcommand.
-  /// Otherwise it is misinterpreted as a script for `deno run` (see #35591).
+  /// Otherwise it is misinterpreted as a script for `ende run` (see #35591).
   /// This test fails if a subcommand is added to the CLI without also adding it
   /// to `DENO_SUBCOMMANDS` in `libs/node_shim/lib.rs`.
   ///

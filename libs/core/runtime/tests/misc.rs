@@ -79,7 +79,7 @@ impl WakeRef for LoggingWaker {
   }
 }
 
-/// This is a reproduction for a very obscure bug where the Deno runtime locks up we end up polling
+/// This is a reproduction for a very obscure bug where the Ende runtime locks up we end up polling
 /// an empty JoinSet and attempt to resolve ops after-the-fact. There's a small footgun in the JoinSet
 /// API where polling it while empty returns Ready(None), which means that it never holds on to the
 /// waker. This means that if we aren't testing for this particular return value and don't stash the waker

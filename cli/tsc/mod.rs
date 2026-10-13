@@ -572,7 +572,7 @@ pub struct Request {
 
   pub initial_cwd: PathBuf,
   /// When true, .d.ts and .d.ts.map files emitted by TSC will be captured
-  /// in the response. Only set this for `deno transpile --declaration`.
+  /// in the response. Only set this for `ende transpile --declaration`.
   pub capture_emitted_files: bool,
 }
 
@@ -1246,7 +1246,7 @@ pub fn load_for_tsc<T: LoadContent, M: Mapper>(
           if module.specifier.scheme() != "file" {
             None
           } else {
-            // means it's Deno code importing an npm module
+            // means it's Ende code importing an npm module
             let specifier = resolve_specifier_into_node_modules(
               &CliSys::default(),
               &module.specifier,
@@ -1331,7 +1331,7 @@ pub static IGNORED_DIAGNOSTIC_CODES: LazyLock<HashSet<u64>> =
       // so we will ignore complaints about this compiler setting.
       5070,
       // TS6200: Definitions of the following identifiers conflict with those in another file.
-      // Deno provides its own web API types (WebAssembly, BufferSource, etc.) that intentionally
+      // Ende provides its own web API types (WebAssembly, BufferSource, etc.) that intentionally
       // overlap with lib.dom.d.ts or @types/node. This is expected when both are loaded together.
       6200,
       // TS7016: Could not find a declaration file for module '...'. '...'
@@ -1339,7 +1339,7 @@ pub static IGNORED_DIAGNOSTIC_CODES: LazyLock<HashSet<u64>> =
       // default but importing of a JavaScript module.
       7016,
       // TS18060: Deferred imports are only supported when the '--module' flag
-      // is set to 'esnext' or 'preserve'. Deno uses its own module resolution
+      // is set to 'esnext' or 'preserve'. Ende uses its own module resolution
       // and supports import defer natively.
       18060,
     ]
@@ -1347,10 +1347,10 @@ pub static IGNORED_DIAGNOSTIC_CODES: LazyLock<HashSet<u64>> =
     .collect()
   });
 
-// Names of globals that `@types/node` redeclares but that Deno already
+// Names of globals that `@types/node` redeclares but that Ende already
 // declares natively (typically in `lib.ende.web.d.ts`). When the TypeScript
 // fork merges `@types/node` into the global symbol table, declarations for
-// these names are dropped so the user-visible global remains Deno's.
+// these names are dropped so the user-visible global remains Ende's.
 //
 // This keeps `new AbortController().signal` assignable to the `AbortSignal`
 // parameters of `node:fs`, `node:timers/promises`, etc., and avoids the

@@ -15,15 +15,15 @@ use deno_terminal::colors;
 
 use crate::sys::CliSys;
 
-/// Environment variables that configure Deno's own runtime behavior and must
+/// Environment variables that configure Ende's own runtime behavior and must
 /// not be settable from an `.env` file loaded via `--env` / `--env-file`.
 ///
 /// An `.env` file ships alongside the code it accompanies, so letting it set
-/// Deno's own control variables would let that file change runtime behavior
+/// Ende's own control variables would let that file change runtime behavior
 /// the user did not opt into, for example silently enabling tunnel mode
 /// (`ENDE_CONNECTED`) or overriding the tunnel control endpoint
 /// (`ENDE_DEPLOY_TUNNEL_ENDPOINT`). Env files are meant to provide
-/// configuration to the user's program, not to reconfigure Deno itself, so
+/// configuration to the user's program, not to reconfigure Ende itself, so
 /// these keys are ignored when they originate from an env file. The
 /// deprecated `DENO_*` names are listed too because they are still read as
 /// fallbacks.
@@ -34,7 +34,7 @@ const ENV_FILE_DENYLIST: &[&str] = &[
   "DENO_DEPLOY_TUNNEL_ENDPOINT",
 ];
 
-/// Whether `key` is a Deno-internal control variable that must not be set from
+/// Whether `key` is an Ende-internal control variable that must not be set from
 /// an env file. The comparison is ASCII case-insensitive because environment
 /// variable lookups are case-insensitive on Windows.
 fn is_denied_env_file_key(key: &OsStr) -> bool {

@@ -2948,7 +2948,7 @@ async fn uv_write_callback_is_deferred() {
 
 /// Verify that multiple connections queued before a tick are all accepted
 /// in a single event loop iteration. This prevents starvation when the
-/// connection handler does async work (e.g., Deno.listenTls) that delays
+/// connection handler does async work (e.g., Ende.listenTls) that delays
 /// returning to the I/O phase.
 #[tokio::test(flavor = "current_thread")]
 async fn tcp_batch_accept() {

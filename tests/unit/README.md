@@ -1,21 +1,21 @@
-# Deno runtime tests
+# Ende runtime tests
 
-Files in this directory are unit tests for Deno runtime.
+Files in this directory are unit tests for Ende runtime.
 
-Testing Deno runtime code requires checking API under different runtime
+Testing Ende runtime code requires checking API under different runtime
 permissions. To accomplish this all tests exercised are created using
-`Deno.test()` function.
+`Ende.test()` function.
 
 ```ts
 import {} from "./test_util.ts";
 
-Deno.test(function simpleTestFn(): void {
+Ende.test(function simpleTestFn(): void {
   // test code here
 });
 
-Deno.test(
+Ende.test(
   {
-    ignore: Deno.build.os === "windows",
+    ignore: Ende.build.os === "windows",
     permissions: { read: true, write: true },
   },
   function complexTestFn(): void {
@@ -30,10 +30,10 @@ There are two ways to run `unit_test_runner.ts`:
 
 ```sh
 # Run all tests.
-cargo run --bin deno -- test --allow-all --location=http://js-unit-tests/foo/bar cli/tests/unit/
+cargo run --bin ende -- test --allow-all --location=http://js-unit-tests/foo/bar cli/tests/unit/
 
 # Run a specific test module
-cargo run --bin deno -- test --allow-all --location=http://js-unit-tests/foo/bar cli/tests/unit/files_test.ts
+cargo run --bin ende -- test --allow-all --location=http://js-unit-tests/foo/bar cli/tests/unit/files_test.ts
 ```
 
 ### Http server

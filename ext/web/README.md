@@ -1,4 +1,4 @@
-# deno web
+# ende_web
 
 **Implements timers, as well as the following APIs:**
 
@@ -135,7 +135,7 @@ Where:
 
 ## Provided ops
 
-Following ops are provided, which can be accessed through `Deno.ops`:
+Following ops are provided, which can be accessed through `Ende.ops`:
 
 - op_base64_decode
 - op_base64_decode_into

@@ -402,7 +402,7 @@ fn from_raw(
 fn from_raw(
   handle: RawBiPipeHandle,
 ) -> Result<(BiPipeRead, BiPipeWrite), std::io::Error> {
-  // Safety: We cannot use `get_osfhandle` because Deno statically links to msvcrt. It is not guaranteed that the
+  // Safety: We cannot use `get_osfhandle` because Ende statically links to msvcrt. It is not guaranteed that the
   // fd handle map will be the same.
   let pipe = unsafe {
     tokio::net::windows::named_pipe::NamedPipeClient::from_raw_handle(

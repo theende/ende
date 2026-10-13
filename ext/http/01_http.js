@@ -206,7 +206,7 @@ function createRespondWith(
       // The Response prototype check above passes for Response-like objects
       // that don't carry the internal slot (e.g. `Object.create(Response.prototype)`
       // or a polyfilled/foreign-realm Response). Reject those here instead of
-      // crashing later on `innerResp.body`. Mirrors the Deno.serve guard
+      // crashing later on `innerResp.body`. Mirrors the Ende.serve guard
       // added in #34416.
       const innerResp = toInnerResponse(resp);
       if (innerResp === undefined) {

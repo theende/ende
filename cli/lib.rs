@@ -548,13 +548,13 @@ async fn run_subcommand(
   handle.await?
 }
 
-/// Determines whether a error encountered during `deno run`
-/// should trigger fallback behavior, such as attempting to run a Deno task
+/// Determines whether a error encountered during `ende run`
+/// should trigger fallback behavior, such as attempting to run an Ende task
 /// with the same name.
 ///
 /// Checks if the error message indicates a "module not found",
 /// "unsupported scheme", or certain OS-level import failures (such as
-/// "Is a directory" or "Access is denied"); if so, Deno will attempt to
+/// "Is a directory" or "Access is denied"); if so, Ende will attempt to
 /// interpret the original argument as a script name or task instead of a
 /// file path.
 ///
@@ -577,20 +577,20 @@ fn setup_panic_hook() {
   // This function does two things inside of the panic hook:
   // - Tokio does not exit the process when a task panics, so we define a custom
   //   panic hook to implement this behaviour.
-  // - We print a message to stderr to indicate that this is a bug in Deno, and
+  // - We print a message to stderr to indicate that this is a bug in Ende, and
   //   should be reported to us.
   let orig_hook = std::panic::take_hook();
   std::panic::set_hook(Box::new(move |panic_info| {
-    // Broken-pipe panics from `println!`/`eprintln!` (e.g. `deno | cls` on
+    // Broken-pipe panics from `println!`/`eprintln!` (e.g. `ende | cls` on
     // Windows, where the reader closes the pipe before we finish writing) are
-    // not bugs in Deno — they're a normal consequence of the downstream
+    // not bugs in Ende — they're a normal consequence of the downstream
     // process exiting. Exit silently rather than emitting the bug-report
     // banner. https://github.com/denoland/deno/issues/16308
     if is_broken_pipe_print_panic(panic_info) {
       ende_runtime::exit(1);
     }
 
-    // Worker thread creation failures are not bugs in Deno — they typically
+    // Worker thread creation failures are not bugs in Ende — they typically
     // happen when running in a container with a low PID limit (e.g. Docker
     // `--pids-limit`). Show a targeted message instead of the bug-report
     // banner. The matched strings come from V8 (via the `error_handler`
@@ -772,7 +772,7 @@ fn exit_for_error(error: AnyError, initial_cwd: Option<&std::path::Path>) -> ! {
   // If this looks like a workspace/npm resolution failure and a
   // pnpm-workspace.yaml is nearby, convert it into the equivalent deno.json
   // fields and tell the user to run the command again, rather than leaving them
-  // with the misleading "run deno install" hint baked into the error.
+  // with the misleading "run ende install" hint baked into the error.
   if let Some(hint) = util::pnpm_workspace::maybe_auto_migrate_pnpm_workspace(
     &error_string,
     initial_cwd,
@@ -890,7 +890,7 @@ pub fn main() {
 
   let args: Vec<_> = env::args_os().collect();
   // If we were invoked through a `node` shim (a symlink/hardlink named `node`
-  // pointing at this binary), translate the Node.js CLI args to Deno args.
+  // pointing at this binary), translate the Node.js CLI args to Ende args.
   // Done here, before any threads are spawned, because it may set env vars.
   let args = node_compat_shim::maybe_rewrite_node_arg0(args);
   let future = async move {
@@ -967,7 +967,7 @@ async fn resolve_flags_and_init(
   initial_cwd: Option<std::path::PathBuf>,
 ) -> Result<Flags, AnyError> {
   // This env var enables dynamic completions; it's set by the shell when
-  // executing deno to get dynamic completions.
+  // executing ende to get dynamic completions.
   if std::env::var("COMPLETE").is_ok() {
     let cwd = resolve_cwd(initial_cwd.as_deref())?;
     crate::args::handle_shell_completion(&cwd)?;

@@ -349,7 +349,7 @@ fn format_markdown(
         };
 
         let fake_filename =
-          PathBuf::from(format!("deno_fmt_stdin.{extension}"));
+          PathBuf::from(format!("ende_fmt_stdin.{extension}"));
         match extension {
           "json" | "jsonc" => {
             let mut json_config = get_resolved_json_config(fmt_options);
@@ -880,14 +880,14 @@ trait Formatter {
 
 /// Returns a per-file [`FmtOptionsConfig`], merging values from
 /// `.editorconfig` (lowest priority) under the resolved `base` config
-/// (which already incorporates `deno.json` plus CLI flags).
+/// (which already incorporates `ende.json` plus CLI flags).
 fn resolve_per_file_options(
   base: &FmtOptionsConfig,
   editorconfig_cache: &EditorConfigCache,
   file_path: &Path,
 ) -> FmtOptionsConfig {
   // `.editorconfig` reading is on by default; `useEditorConfig: false` in
-  // deno.json or `--no-editorconfig` on the CLI opts out (the latter takes
+  // ende.json or `--no-editorconfig` on the CLI opts out (the latter takes
   // precedence, resolved upstream in `resolve_fmt_options`).
   if base.use_editor_config == Some(false) {
     return base.clone();
@@ -1412,7 +1412,7 @@ fn get_typescript_config_builder(
       OperatorPosition::NextLine => dprint_config::OperatorPosition::NextLine,
       OperatorPosition::SameLine => dprint_config::OperatorPosition::SameLine,
     };
-    // Because Deno's defaults are set at AST specific options, we need to
+    // Because Ende's defaults are set at AST specific options, we need to
     // set them to AST specific options to override them.
     builder.binary_expression_operator_position(option);
     builder.conditional_expression_operator_position(option);
@@ -1725,7 +1725,7 @@ where
 }
 
 /// This function is similar to is_supported_ext but adds additional extensions
-/// supported by `deno fmt`.
+/// supported by `ende fmt`.
 fn is_supported_ext_fmt(path: &Path) -> bool {
   get_extension(path).is_some_and(|ext| {
     matches!(

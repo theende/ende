@@ -36,7 +36,7 @@ pub fn new_console_static_text() -> ConsoleStaticText {
 }
 
 /// Escapes terminal control and other non-printable characters in text that
-/// will be embedded in Deno-owned terminal output.
+/// will be embedded in Ende-owned terminal output.
 ///
 /// Unlike [`filter_destructive_ansi`], this does not preserve styling from the
 /// input. Control characters are rendered visibly so surrounding text remains
@@ -260,14 +260,14 @@ mod windows_vt_input {
 
 /// A snapshot of the terminal mode that can be restored later.
 ///
-/// This is used by `deno task` so that a child process (for example a dev
+/// This is used by `ende task` so that a child process (for example a dev
 /// server like `vite`) that switches the terminal into raw mode and is then
 /// terminated (e.g. via Ctrl+C) does not leave the user's terminal in a broken
 /// state with input echo and line editing disabled.
 ///
 /// On non-Windows platforms this is a no-op: there the child process belongs to
 /// the same process group and the controlling terminal's line discipline is
-/// restored by the shell, so there's nothing for `deno` to do.
+/// restored by the shell, so there's nothing for `ende` to do.
 #[derive(Clone, Copy, Default)]
 pub struct SavedTerminalMode {
   #[cfg(windows)]

@@ -171,9 +171,9 @@ pub async fn run(
     .create_custom_worker(
       WorkerExecutionMode::Repl,
       main_module.clone(),
-      // `deno repl` doesn't support preloading modules
+      // `ende repl` doesn't support preloading modules
       vec![],
-      // `deno repl` doesn't support require modules
+      // `ende repl` doesn't support require modules
       vec![],
       permissions.clone(),
       vec![crate::ops::testing::ende_test::init(test_event_sender)],
@@ -206,11 +206,12 @@ pub async fn run(
     sync_sender: rustyline_channel.0,
   };
 
-  let history_file_path = factory
-    .ende_dir()
-    .ok()
-    .and_then(|dir| dir.repl_history_file_path());
-  let editor = ReplEditor::new(helper, history_file_path)?;
+  let ende_dir = factory.ende_dir().ok();
+  let history_file_path = ende_dir.and_then(|dir| dir.repl_history_file_path());
+  let legacy_history_file_path =
+    ende_dir.and_then(|dir| dir.legacy_repl_history_file_path());
+  let editor =
+    ReplEditor::new(helper, history_file_path, legacy_history_file_path)?;
 
   let mut repl = Repl {
     session,

@@ -5,7 +5,7 @@
 //! macros with the same semantics.
 //!
 //! The Rust runtime ignores `SIGPIPE`, so when the other end of a pipe is
-//! closed (ex. `deno test | head`) writes to stdout surface as `EPIPE`
+//! closed (ex. `ende test | head`) writes to stdout surface as `EPIPE`
 //! errors, which make the std print macros panic. The macros in this crate
 //! drop write errors instead, matching how Node.js treats `EPIPE` on stdout
 //! and how `env_logger` treats write errors.

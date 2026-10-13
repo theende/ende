@@ -165,7 +165,7 @@ pub struct WatcherCommunicatorOptions {
   pub banner: String,
 }
 
-/// An interface to interact with Deno's CLI file watcher.
+/// An interface to interact with Ende's CLI file watcher.
 #[derive(Debug)]
 pub struct WatcherCommunicator {
   /// Send a list of paths that should be watched for changes.
@@ -274,8 +274,8 @@ where
     WatcherRestartMode::Automatic,
     move |flags, communicator, changed_paths| {
       // Tools driven by `watch_func` have no meaningful per-run exit code, so
-      // report 0 to `watch_recv`. Only `deno run` / `deno serve` surface a
-      // real exit code (e.g. one set via `Deno.exit()`).
+      // report 0 to `watch_recv`. Only `ende run` / `ende serve` surface a
+      // real exit code (e.g. one set via `Ende.exit()`).
       let operation_future = operation(flags, communicator, changed_paths)?;
       Ok(async move { operation_future.await.map(|()| 0) })
     },
@@ -372,9 +372,9 @@ where
     }
 
     // The previous iteration of the watched program may have changed the
-    // process's working directory (e.g. via `Deno.chdir()`). Restore it
+    // process's working directory (e.g. via `Ende.chdir()`). Restore it
     // before starting the next run so that module resolution, watched
-    // paths, and `Deno.cwd()` all behave as they did on the first run.
+    // paths, and `Ende.cwd()` all behave as they did on the first run.
     if let Some(initial_cwd) = &initial_cwd {
       let _ = std::env::set_current_dir(initial_cwd);
     }

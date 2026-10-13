@@ -307,7 +307,7 @@ crate::v8_static_strings! {
 ///
 /// These are cached per-context (in [`crate::runtime::ContextState`]) rather
 /// than in a `thread_local`, because `v8` string handles are bound to the
-/// isolate that created them. `deno test` runs each test file in its own
+/// isolate that created them. `ende test` runs each test file in its own
 /// isolate on reused thread-pool threads, so a thread-local handle would
 /// dangle into a disposed isolate once a thread was reused, producing spurious
 /// "can not be converted to a sequence" errors and intermittent SIGSEGV. This
@@ -357,7 +357,7 @@ fn for_each_in_sequence<'a, 'b, 'i>(
 
   // The "next"/"done"/"value" iterator keys are cached per-context. They must
   // not be cached in a `thread_local`, because the `v8::String` handles are
-  // bound to the isolate that created them: `deno test` reuses thread-pool
+  // bound to the isolate that created them: `ende test` reuses thread-pool
   // threads across per-file isolates, so a thread-local handle would dangle
   // into a disposed isolate (see `WebIdlSequenceKeys`). Materialize them lazily
   // on the first sequence conversion in this context and reuse them afterwards.

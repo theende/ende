@@ -1,11 +1,11 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 // `flags` holds the canonical flag type definitions (`Flags`,
-// `EndeSubcommand`, etc.), shared by this crate and re-exported by the Deno CLI.
+// `EndeSubcommand`, etc.), shared by this crate and re-exported by the Ende CLI.
 pub mod flags;
 
 // The zero-cost argument parser. `types` defines the static `CommandDef` /
-// `ArgDef` tables, `defs` is the actual command tree for Deno, `parse` walks
+// `ArgDef` tables, `defs` is the actual command tree for Ende, `parse` walks
 // argv against the tables into a `ParseResult`, `convert` turns that into
 // `Flags`, and `help` / `completions` render help text and shell completions
 // from the same static tables. `error` is the parser's public error type.

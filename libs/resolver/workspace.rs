@@ -955,7 +955,7 @@ impl<TSys: FsMetadata + FsRead> WorkspaceResolver<TSys> {
       // Builds the import map scope contributed by a workspace member or linked
       // package. The member's `imports` (not its `scopes`) are layered into the
       // synthetic map; this follows an external `importMap` file when the
-      // member uses one. `to_import_map_value` already applies Deno's bare
+      // member uses one. `to_import_map_value` already applies Ende's bare
       // specifier expansion for inline maps and leaves external maps untouched,
       // matching the import map standard, so no extra expansion is done here.
       fn child_import_map_config(
@@ -1006,7 +1006,7 @@ impl<TSys: FsMetadata + FsRead> WorkspaceResolver<TSys> {
 
       // The base of the synthetic import map: either an explicitly specified map
       // (the `--import-map` flag or the root's external `importMap` file) or the
-      // root deno.json's own import map. Either way, workspace member and linked
+      // root ende.json's own import map. Either way, workspace member and linked
       // package scopes are layered on top so their bare specifiers resolve.
       let base_import_map_config = match specified_import_map {
         Some(SpecifiedImportMap { base_url, value }) => {

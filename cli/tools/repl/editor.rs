@@ -597,6 +597,7 @@ impl ReplEditor {
   pub fn new(
     helper: EditorHelper,
     history_file_path: Option<PathBuf>,
+    legacy_history_file_path: Option<PathBuf>,
   ) -> Result<Self, AnyError> {
     let editor_config = Config::builder()
       .completion_type(CompletionType::List)
@@ -606,7 +607,15 @@ impl ReplEditor {
       Editor::with_config(editor_config).expect("Failed to create editor.");
     editor.set_helper(Some(helper));
     if let Some(history_file_path) = &history_file_path {
-      editor.load_history(history_file_path).unwrap_or(());
+      // Carry over history from the pre-rename file; new entries are written
+      // to `history_file_path` only.
+      let load_path = match &legacy_history_file_path {
+        Some(legacy) if !history_file_path.exists() && legacy.exists() => {
+          legacy
+        }
+        _ => history_file_path,
+      };
+      editor.load_history(load_path).unwrap_or(());
     }
     editor.bind_sequence(
       KeyEvent(KeyCode::Char('s'), Modifiers::CTRL),

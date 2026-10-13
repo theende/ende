@@ -1,6 +1,6 @@
 # Pinned SHA-256 digests for Laufey backend archives.
 #
-# This file is the trust anchor for `deno desktop` backend downloads. Each
+# This file is the trust anchor for `ende desktop` backend downloads. Each
 # entry pins the digest of an archive published at:
 #   https://github.com/littledivy/laufey/releases/download/v<LAUFEY_VERSION>/<file>
 # `LAUFEY_VERSION` comes from the workspace `Cargo.lock` (the `laufey` crate).

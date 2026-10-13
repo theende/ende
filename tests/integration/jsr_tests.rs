@@ -277,7 +277,7 @@ fn reload_info_not_found_cache_but_exists_remote() {
 
 #[test]
 fn install_cache_busts_if_version_not_found() {
-  // Tests that if you try to deno install a package, if we can't find the version in the cached
+  // Tests that if you try to ende install a package, if we can't find the version in the cached
   // meta.json, we bust the cache to .
   let test_context = TestContextBuilder::for_jsr().use_temp_cwd().build();
   let ende_dir = test_context.ende_dir();

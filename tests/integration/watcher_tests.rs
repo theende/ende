@@ -953,7 +953,7 @@ async fn serve_watch_with_import_map() {
 }
 
 // Regression test for https://github.com/denoland/deno/issues/26052
-// On a watcher restart, `deno serve --parallel` used to leave the previous
+// On a watcher restart, `ende serve --parallel` used to leave the previous
 // generation of workers running (the worker threads were never signalled and
 // the main worker task was detached), so requests kept being served by the old
 // code and the process would eventually panic with an isolate mismatch.
@@ -986,7 +986,7 @@ async fn serve_watch_parallel_stops_old_workers() {
     .unwrap();
 
   // If anything in the test body panics (a timeout, a failed assertion), the
-  // child must still be killed before unwinding: a leaked `deno serve --watch`
+  // child must still be killed before unwinding: a leaked `ende serve --watch`
   // child never exits on its own, and on Windows tokio reads child pipes with
   // blocking threads, so dropping the test runtime during the unwind waits
   // forever on a stderr read that never completes. This wedged CI for the
@@ -1149,7 +1149,7 @@ async fn serve_watch_parallel_stops_old_workers_inner(
 }
 
 // Regression test for https://github.com/denoland/deno/issues/30046
-// `deno serve` used to ignore `--watch-exclude` entirely, so writing to an
+// `ende serve` used to ignore `--watch-exclude` entirely, so writing to an
 // excluded file that's part of the module graph would trigger a restart.
 #[test(flaky)]
 async fn serve_watch_with_excluded_paths() {
@@ -1824,7 +1824,7 @@ async fn test_watch_doc() {
 }
 
 // Regression test for https://github.com/denoland/deno/issues/24558:
-// `deno test --doc --watch` panicked with a parse error on Markdown files
+// `ende test --doc --watch` panicked with a parse error on Markdown files
 // because the watcher passed them to the module graph builder as roots.
 #[test(flaky)]
 async fn test_watch_doc_markdown() {
@@ -2000,7 +2000,7 @@ async fn run_watch_blob_urls_reset() {
 }
 
 // Regression test for https://github.com/denoland/deno/issues/25559 —
-// `Deno.chdir()` in the watched program must not break module
+// `Ende.chdir()` in the watched program must not break module
 // resolution on restart. The watcher should restore the original cwd
 // before re-running so the main module can still be loaded.
 #[test(flaky)]
@@ -2035,7 +2035,7 @@ Deno.chdir("temp");
   let initial_cwd_log = wait_contains("cwd:", &mut stdout_lines).await;
   wait_for_watcher("file_to_watch.js", &mut stderr_lines).await;
 
-  // Trigger a restart. The previous run changed cwd via `Deno.chdir`;
+  // Trigger a restart. The previous run changed cwd via `Ende.chdir`;
   // the watcher must restore the original cwd or this restart will
   // fail with "Module not found".
   file_to_watch.write(
@@ -2053,7 +2053,7 @@ console.log("done");
   let cwd_line_after = wait_contains("cwd:", &mut stdout_lines).await;
   wait_contains("done", &mut stdout_lines).await;
   // The cwd printed on restart must match the cwd printed on the
-  // first run — `Deno.chdir("temp")` from the previous iteration must
+  // first run — `Ende.chdir("temp")` from the previous iteration must
   // not leak across the watcher restart.
   assert_eq!(initial_cwd_log, cwd_line_after);
   check_alive_then_kill(child);
@@ -2227,7 +2227,7 @@ async fn wait_for_exit_code_and_watcher<R>(
   }
 }
 
-/// Shared body for the `Deno.exit()` / `process.exit()` under-watch tests: the
+/// Shared body for the `Ende.exit()` / `process.exit()` under-watch tests: the
 /// exit call ends the current run with the requested code, the `unload` event
 /// still fires, code after the exit call does not run, and the watcher stays
 /// alive and restarts on the next file change.
@@ -2279,7 +2279,7 @@ async fn run_watch_exit_keeps_watcher_alive(watch_flag: &str, exit_call: &str) {
   check_alive_then_kill(child);
 }
 
-/// Test that a script calling `Deno.exit()` under `--watch` ends the current
+/// Test that a script calling `Ende.exit()` under `--watch` ends the current
 /// run without killing the watcher, which keeps watching and restarts the
 /// script on the next file change. See https://github.com/denoland/deno/issues/7590.
 #[test(flaky)]
@@ -2296,16 +2296,16 @@ async fn run_watch_process_exit() {
 
 /// Like [`run_watch_ende_exit`], but for HMR mode (`--watch-hmr`), which runs
 /// through `worker.run()` rather than `run_for_watcher`. A script calling
-/// `Deno.exit()` must still keep the watcher alive. See
+/// `Ende.exit()` must still keep the watcher alive. See
 /// https://github.com/denoland/deno/issues/7590.
 #[test(flaky)]
 async fn run_watch_hmr_ende_exit() {
   run_watch_exit_keeps_watcher_alive("--watch-hmr", "Deno.exit(42)").await;
 }
 
-/// Test that a served module calling `Deno.exit()` under `deno serve --watch`
+/// Test that a served module calling `Ende.exit()` under `ende serve --watch`
 /// ends the current run without killing the watcher, which keeps watching and
-/// restarts on the next file change. `deno serve --watch` shares the same exit
+/// restarts on the next file change. `ende serve --watch` shares the same exit
 /// handling as `deno run --watch`. See https://github.com/denoland/deno/issues/7590.
 #[test(flaky)]
 async fn serve_watch_ende_exit() {
@@ -2338,7 +2338,7 @@ async fn serve_watch_ende_exit() {
 
   wait_contains("Process started", &mut stderr_lines).await;
   wait_contains("started", &mut stdout_lines).await;
-  // The watcher must survive `Deno.exit()` instead of terminating the process,
+  // The watcher must survive `Ende.exit()` instead of terminating the process,
   // and the requested exit code is surfaced in the finished message.
   wait_for_exit_code_and_watcher(
     42,
@@ -2708,7 +2708,7 @@ async fn test_watch_serve() {
   check_alive_then_kill(child);
 }
 
-/// Ensures that Deno.serve with unix socket operates properly after a watch restart.
+/// Ensures that Ende.serve with unix socket operates properly after a watch restart.
 #[cfg(unix)]
 #[test(flaky)]
 async fn test_watch_serve_unix_socket() {
@@ -3109,11 +3109,11 @@ console.log("Listening...")
   );
 
   wait_contains("Replaced changed module", &mut stderr_lines).await;
-  // Re-evaluating the module calls `Deno.serve` again, so there is a window
+  // Re-evaluating the module calls `Ende.serve` again, so there is a window
   // right after the module is replaced where the listener has been closed and
   // not yet rebound and a connection is refused. Retry until it is accepting.
   //
-  // This used to spawn a fire-and-forget `deno eval` child that fetched once
+  // This used to spawn a fire-and-forget `ende eval` child that fetched once
   // and was never awaited: a refused connection there silently dropped the
   // request (leaving this test to hang until `wait_contains` timed out) and
   // printed `error sending request for url (http://localhost:11111/)` onto the
@@ -3870,7 +3870,7 @@ console.log("---");
 
   // Also check that a warning was logged about the invalid syntax
   // This assertion might reveal if error handling is actually working
-  // (depending on how Deno handles invalid .env syntax)
+  // (depending on how Ende handles invalid .env syntax)
 
   check_alive_then_kill(child);
 }
@@ -4017,7 +4017,7 @@ console.log("---");
     "Multiline values should be parsed correctly"
   );
   // Note: The newline in multiline might not appear as separate lines in console.log output
-  // This assertion might need adjustment based on how Deno actually handles multiline env vars
+  // This assertion might need adjustment based on how Ende actually handles multiline env vars
   wait_contains("BAR: another_value", &mut stdout_lines).await;
   wait_contains("---", &mut stdout_lines).await;
 

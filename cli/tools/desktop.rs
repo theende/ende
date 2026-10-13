@@ -29,7 +29,7 @@ use crate::util::progress_bar::ProgressBarStyle;
 /// binaries from `github.com/littledivy/laufey/releases/tag/v{LAUFEY_VERSION}`.
 const LAUFEY_VERSION: &str = env!("LAUFEY_VERSION");
 
-/// Rustc target triple the deno binary was built for. Used as the default
+/// Rustc target triple the ende binary was built for. Used as the default
 /// target when selecting a prebuilt laufey backend archive.
 const LAUFEY_NATIVE_TARGET: &str = env!("TARGET");
 
@@ -94,7 +94,7 @@ pub async fn desktop(
   }
 }
 
-/// Applies `deno.json`'s `desktop` config to the CLI flags. A `deno.json` field
+/// Applies `ende.json`'s `desktop` config to the CLI flags. An `ende.json` field
 /// only fills in a flag that was left unset — CLI flags always win. The webview
 /// backend remains the final fallback via the `unwrap_or("webview")` call sites
 /// that consume `desktop_flags.backend`.
@@ -333,7 +333,7 @@ async fn compile_desktop(
             // (e.g. Vite's); type-checking it would demand the project ship
             // `@types/node` and checks nothing user-authored, so skip it.
             flags.type_check_mode = TypeCheckMode::None;
-            // The dev server used to run as an unsandboxed `deno task dev`
+            // The dev server used to run as an unsandboxed `ende task dev`
             // subprocess; now that it runs inside the desktop runtime, keep
             // that behavior — a sandboxed Vite immediately dies on env reads
             // (e.g. NAPI_RS_WASI_FLAVOR from its napi loader).
@@ -347,10 +347,10 @@ async fn compile_desktop(
       };
       log::info!("Detected {} framework", detection.name);
       if !use_framework_hmr {
-        // Run the framework's build step (e.g. `deno task build`) before its
+        // Run the framework's build step (e.g. `ende task build`) before its
         // build output (`dist`, `.next`, etc.) is added to the compile includes
         // below; otherwise the include points at a directory that doesn't exist
-        // yet and the compile fails (#35535). Mirrors `deno compile .`.
+        // yet and the compile fails (#35535). Mirrors `ende compile .`.
         super::framework::run_build_command(detection, cwd)?;
       }
       // Enable CJS detection for Node-based frameworks.
@@ -383,7 +383,7 @@ async fn compile_desktop(
         }
       }
       // Write a temporary entrypoint file. tempfile gives us a unique
-      // name (no collision between concurrent `deno desktop` runs in
+      // name (no collision between concurrent `ende desktop` runs in
       // the same project) and 0600 mode (no symlink-pre-creation
       // attack); cleanup-on-drop replaces the explicit guard.
       let entrypoint_temp = tempfile::Builder::new()
@@ -1249,7 +1249,7 @@ async fn spawn_framework_dev_server(
 /// Launch the desktop app with HMR enabled after compilation.
 ///
 /// Framework dev servers provide HMR via websocket. Since they run inside
-/// the Deno desktop runtime, `Deno.desktop` APIs remain available.
+/// the Ende desktop runtime, `Ende.desktop` APIs remain available.
 /// `child_process.fork()` works because forked workers use
 /// `override_main_module` to run the target script instead of the
 /// embedded entrypoint.
@@ -1288,7 +1288,7 @@ async fn run_desktop_hmr(
   // menu bar, Dock and Cmd-Tab switcher. Pass a clearer name (the configured
   // app name / project directory) so laufey can override the process name at
   // launch. `desktop_flags.output` is already resolved from `--output`,
-  // deno.json `desktop.app.name`, or the project dir before we get here.
+  // ende.json `desktop.app.name`, or the project dir before we get here.
   let app_name = desktop_flags
     .output
     .as_deref()
@@ -1339,7 +1339,7 @@ async fn run_desktop_hmr(
     cmd.env("LAUFEY_APP_NAME", name);
   }
   // Only enable the file watcher + setScriptSource pipeline when the user
-  // actually asked for HMR. `deno desktop --inspect` alone used to spin up
+  // actually asked for HMR. `ende desktop --inspect` alone used to spin up
   // both, surprising users (and burning the inspector channel on hot
   // reloads they didn't request).
   if desktop_flags.hmr {
@@ -1348,7 +1348,7 @@ async fn run_desktop_hmr(
 
   // In-runtime framework dev: the compiled entrypoint boots the framework's
   // dev server inside the desktop runtime (see `hmr_entrypoint_code`), so
-  // server-side code keeps access to `Deno.desktop` (#35899). Signal
+  // server-side code keeps access to `Ende.desktop` (#35899). Signal
   // rt_desktop to restore CWD to the source dir and leave hot reloading to
   // the framework; the webview finds the server via the regular
   // ENDE_SERVE_ADDRESS poll, so no external process and no URL scraping.
@@ -1378,7 +1378,7 @@ async fn run_desktop_hmr(
   };
 
   // Wire up the unified DevTools multiplexer when --inspect is set.
-  // The mux runs in this (parent) process and fronts both the Deno runtime
+  // The mux runs in this (parent) process and fronts both the Ende runtime
   // inspector (in the LAUFEY subprocess) and the CEF renderer's debug port
   // (in CEF's child process). We allocate two internal ports here, hand
   // them to the subprocess via env vars, and bind the user-visible port
@@ -1458,7 +1458,7 @@ async fn run_desktop_hmr(
   // On macOS we go through posix_spawn with TCC responsibility disclaimed
   // (see `disclaim_spawn`) so the laufey child is its own permission principal.
   // Without this, the kernel attributes notification/location/etc requests
-  // to whatever started deno (typically the terminal), which has no bundle
+  // to whatever started ende (typically the terminal), which has no bundle
   // id and causes `UNUserNotificationCenter.requestAuthorization` to fail
   // with UNErrorCodeNotificationsNotAllowed before any user prompt.
   #[cfg(target_os = "macos")]
@@ -1507,7 +1507,7 @@ const APP_DIR_MARKER: &str = ".ende-desktop-app";
 /// The marker written by versions before the rename to Ende; still recognized.
 const LEGACY_APP_DIR_MARKER: &str = ".deno-desktop-app";
 
-/// Used for `deno desktop --hmr` when a framework runs its own HMR server.
+/// Used for `ende desktop --hmr` when a framework runs its own HMR server.
 /// The compiled app has nothing to serve in this case.
 const NOOP_ENTRYPOINT: &str =
   "// @ts-nocheck\nawait new Promise<void>(() => {});\n";
@@ -1616,7 +1616,7 @@ async fn package_desktop_app(
 /// AppName/
 ///   AppName.exe         (LAUFEY backend binary, renamed to the app name)
 ///   libcef.dll, ...     (CEF support files, if any)
-///   AppName.dll         (compiled Deno runtime + user code)
+///   AppName.dll         (compiled Ende runtime + user code)
 ///   AppIcon.ico         (optional)
 /// ```
 ///
@@ -1741,7 +1741,7 @@ async fn package_windows_app_dir(
 /// AppName/
 ///   AppName             (LAUFEY backend binary, renamed to the app name)
 ///   libcef.so, ...      (CEF support files, if any)
-///   AppName.so          (compiled Deno runtime + user code)
+///   AppName.so          (compiled Ende runtime + user code)
 ///   AppIcon.png         (optional)
 /// ```
 ///
@@ -2008,7 +2008,7 @@ impl LaufeyBackendResolver {
     })?;
     std::fs::create_dir_all(parent)?;
 
-    // Stage extraction in a sibling tempdir so concurrent `deno desktop`
+    // Stage extraction in a sibling tempdir so concurrent `ende desktop`
     // builds don't see (or stomp on) a half-populated `dir` while one
     // is mid-extract. tempfile's cleanup-on-drop covers panic /
     // early-return paths; on the happy path we consume the TempDir via
@@ -2213,7 +2213,7 @@ fn extract_laufey_archive(
     let decoder = flate2::read::GzDecoder::new(data);
     let mut archive = tar::Archive::new(decoder);
     // Strip mode bits from archive entries: a tampered archive could
-    // otherwise ship setuid/setgid binaries into the deno cache. Files keep
+    // otherwise ship setuid/setgid binaries into the ende cache. Files keep
     // the umask-applied default; we re-add execute bits below for entries
     // that need them.
     archive.set_preserve_permissions(false);
@@ -2372,7 +2372,7 @@ fn locate_app_bundle(dir: &Path, backend: &str) -> Option<PathBuf> {
 
 /// Target triple to use when selecting a laufey backend archive. Honors
 /// `desktop_flags.target` (for cross-target packaging); otherwise defaults to
-/// the host triple this deno binary was built for.
+/// the host triple this ende binary was built for.
 fn laufey_target_for(desktop_flags: &DesktopFlags) -> &str {
   desktop_flags
     .target
@@ -3051,7 +3051,7 @@ fn dylib_parts(dylib_path: &Path) -> Result<DylibParts<'_>, AnyError> {
 ///
 /// The coupling is two-way and silent. If laufey changes
 /// `LaufeyFindColocatedRuntime` to strip only a known extension, every app
-/// built by this version of Deno stops starting: the launcher would begin
+/// built by this version of Ende stops starting: the launcher would begin
 /// looking for `MyApp-2.9.2.so`, which we deliberately do not ship. **Re-check
 /// this function when bumping laufey**, and if the lookup has changed, ship
 /// the library under the name the new lookup resolves.
@@ -3171,7 +3171,7 @@ fn macos_runtime_dylib_name(backend: &str, laufey_exe_stem: &str) -> String {
 ///     Info.plist          (CFBundleExecutable = the LAUFEY backend binary)
 ///     MacOS/
 ///       laufey_webview    (LAUFEY backend binary; the bundle executable)
-///       libruntime.dylib  (compiled Deno runtime + user code; the `cef`
+///       libruntime.dylib  (compiled Ende runtime + user code; the `cef`
 ///                          backend uses `<backend-executable>.dylib` instead)
 ///     Resources/
 ///       AppIcon.icns      (optional)
@@ -3248,7 +3248,7 @@ async fn package_macos_app_bundle(
   // a `--runtime` argument (see `macos_runtime_dylib_name`). We deliberately do
   // NOT write a shell-script launcher that execs the backend with `--runtime`:
   // under LaunchServices (open / Finder / double-click) that `exec` breaks the
-  // app's foreground-GUI registration, so an `NSStatusItem` (Deno.Tray) is
+  // app's foreground-GUI registration, so an `NSStatusItem` (Ende.Tray) is
   // created but never attaches to the menu bar. Instead the backend binary is
   // the bundle's CFBundleExecutable directly (see Info.plist below), so the
   // process LaunchServices launches IS the GUI process. See denoland/deno#35619.
@@ -3258,7 +3258,7 @@ async fn package_macos_app_bundle(
 
   // Resolve the bundle identifier. The user-configured `identifier` is
   // preferred; otherwise we synthesize one from the app name. The
-  // synthetic form is fine for `deno run`-like local use, but real
+  // synthetic form is fine for `ende run`-like local use, but real
   // distribution wants a stable reverse-DNS identifier — notification
   // permission (and other tcc-keyed permissions) are decided per
   // (bundle id, code signature), so a synthetic id changes the user's
@@ -3281,7 +3281,7 @@ async fn package_macos_app_bundle(
   // string builder (and is called repeatedly from tests). The plist keys
   // accept only period-separated integers, so a non-numeric version leaves
   // the defaults in place — say so, since the deb/rpm path rejects the same
-  // `deno.json` outright.
+  // `ende.json` outright.
   warn_about_unusable_version(
     config_package_version(cli_options).as_deref(),
     "the bundle will carry CFBundleShortVersionString 1.0 / CFBundleVersion \
@@ -3387,7 +3387,7 @@ fn render_macos_info_plist(
   has_icon: bool,
   config_version: Option<&str>,
 ) -> String {
-  // deno.json `version` when configured (#36503), reduced to the numeric
+  // ende.json `version` when configured (#36503), reduced to the numeric
   // `major.minor.build` form both version keys accept — a semver prerelease
   // carried through verbatim is rejected by notarization and App Store
   // validation (macOS only tolerates it for locally-distributed apps). The
@@ -3822,7 +3822,7 @@ fn debian_package_name(app_name: &str) -> String {
   }
 }
 
-/// The workspace root deno.json `version` field, used as the package version
+/// The workspace root ende.json `version` field, used as the package version
 /// across the macOS bundle and the Linux/Windows installers (#36503).
 fn config_package_version(
   cli_options: &crate::args::CliOptions,
@@ -3834,7 +3834,7 @@ fn config_package_version(
     .filter(|v| !v.is_empty())
 }
 
-/// The workspace root deno.json `license` field (when it is a string), used
+/// The workspace root ende.json `license` field (when it is a string), used
 /// for the `.rpm` License tag (#36503).
 fn config_package_license(
   cli_options: &crate::args::CliOptions,
@@ -3871,7 +3871,7 @@ fn linux_package_meta(
   })
 }
 
-/// The `.deb`/`.rpm` version string for a configured deno.json `version`.
+/// The `.deb`/`.rpm` version string for a configured ende.json `version`.
 ///
 /// Both formats constrain the version tag, and outside of publishing
 /// `version` is a free-form string, so an unusable value has to be rejected
@@ -4280,7 +4280,7 @@ fn create_linux_rpm(
   let arch = rpm_arch_for_target(target)?;
 
   // Zstd payload (see Cargo.toml: gzip would pull flate2's zlib-rs shim, which
-  // link-clashes with deno's zlib-ng), plus a pinned source date for
+  // link-clashes with ende's zlib-ng), plus a pinned source date for
   // reproducible builds — mirrors the `mtime: 0` used in the AppImage/`.deb`
   // paths so identical inputs yield identical packages.
   let config = rpm::BuildConfig::default()
@@ -4290,7 +4290,7 @@ fn create_linux_rpm(
   let mut builder = rpm::PackageBuilder::new(
     &meta.package,
     &meta.version,
-    // deno.json `license` when configured; the previous hard-coded "MIT"
+    // ende.json `license` when configured; the previous hard-coded "MIT"
     // mislabeled every package built from a differently-licensed project
     // (#36503).
     config_license.unwrap_or("MIT"),
@@ -4522,7 +4522,7 @@ fn msi_product_version(
 /// the format holds. Neither is an error: MSI's ProductVersion and the plist
 /// version keys simply can't express those versions, so falling back or
 /// truncating is the only way through. But the deb/rpm path rejects the very
-/// same `deno.json`, and quietly shipping a version the user didn't write is
+/// same `ende.json`, and quietly shipping a version the user didn't write is
 /// the failure #36503 is about. `consequence` names what will ship instead.
 ///
 /// Call this once per build, from the packager rather than from a helper:
@@ -4609,7 +4609,7 @@ fn create_windows_msi(
     .file_name()
     .map(|s| s.to_string_lossy().into_owned())
     .unwrap_or_else(|| "App".to_string());
-  // deno.json `version` when configured, reduced to the numeric
+  // ende.json `version` when configured, reduced to the numeric
   // `major.minor.build` form MSI's ProductVersion requires (a semver
   // prerelease/build suffix would fail MSI validation); the default matches
   // the macOS bundle's CFBundleVersion and the Linux package default
@@ -5648,7 +5648,7 @@ pub fn convert_icon_set_to_ico(
 
 /// Spawn a child with macOS TCC "responsibility" disclaimed, so the child
 /// is its own permission principal instead of inheriting attribution from
-/// the calling chain (terminal → deno → laufey).
+/// the calling chain (terminal → ende → laufey).
 ///
 /// Without this, requests like `UNUserNotificationCenter.requestAuthorization`
 /// fail immediately with `UNErrorCodeNotificationsNotAllowed` because TCC
@@ -6269,7 +6269,7 @@ def456  other.zip
 
   #[test]
   fn resolve_app_dir_targets_rejects_clobbering_a_backend_library() {
-    // `deno desktop --output libcef` on Linux, `--output libcef` on Windows:
+    // `ende desktop --output libcef` on Linux, `--output libcef` on Windows:
     // the runtime library copy would replace a file CEF ships.
     let tmp = tempfile::tempdir().unwrap();
 
@@ -6402,7 +6402,7 @@ def456  other.zip
 
   #[test]
   fn reject_backend_file_collision_rejects_a_backend_file() {
-    // `deno desktop --output libcef` on Linux, or `--output d3dcompiler_47` on
+    // `ende desktop --output libcef` on Linux, or `--output d3dcompiler_47` on
     // Windows: the copy would replace a file CEF ships and the app would no
     // longer start, with nothing in the build output to say why.
     let tmp = tempfile::tempdir().unwrap();
@@ -7589,7 +7589,7 @@ def456  other.zip
 
   #[test]
   fn packaging_honors_config_version_and_license() {
-    // deno.json `version`/`license` must reach the installers instead of the
+    // ende.json `version`/`license` must reach the installers instead of the
     // hard-coded 1.0.0 / MIT defaults (#36503). Semver prereleases map to the
     // `~` ordering both deb and rpm use for "before the release".
     let tmp = tempfile::tempdir().unwrap();
@@ -8282,7 +8282,7 @@ def456  other.zip
 
   #[test]
   fn reserve_app_dir_clears_previous_build() {
-    // A directory carrying our marker is a prior `deno desktop` output and
+    // A directory carrying our marker is a prior `ende desktop` output and
     // may be replaced.
     let tmp = tempfile::tempdir().unwrap();
     let app_dir = tmp.path().join("app");
@@ -8343,7 +8343,7 @@ def456  other.zip
     assert!(path.exists());
   }
 
-  // --- desktop.backend config merge (CLI flag > deno.json > webview) ---
+  // --- desktop.backend config merge (CLI flag > ende.json > webview) ---
 
   #[test]
   fn backend_from_ende_json_when_flag_absent() {

@@ -395,8 +395,8 @@ impl LanguageServer {
     }
   }
 
-  /// Similar to `deno install --entrypoint` on the command line, where modules will be cached
-  /// in the Deno cache, including any of their dependencies.
+  /// Similar to `ende install --entrypoint` on the command line, where modules will be cached
+  /// in the Ende cache, including any of their dependencies.
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
   pub async fn cache(
     &self,
@@ -1195,7 +1195,7 @@ impl Inner {
           ) {
             continue;
           }
-          // ignore cargo target directories for anyone using Deno with Rust
+          // ignore cargo target directories for anyone using Ende with Rust
           if dir_name == "target"
             && path
               .parent()
@@ -2986,7 +2986,7 @@ impl Inner {
   ) -> LspResult<Option<CompletionResponse>> {
     let mark = self.performance.mark_with_args("lsp.completion", &params);
     let uri = &params.text_document_position.text_document.uri;
-    // Handle completions inside Deno configuration files (deno.json/jsonc)
+    // Handle completions inside Ende configuration files (ende.json/jsonc)
     // separately, since they're not "diagnosable" documents but still benefit
     // from registry (jsr:/npm:/node:) import-specifier completion in the
     // `imports` and `scopes` fields. Use `Enabled::Ignore` because a config
@@ -3032,7 +3032,7 @@ impl Inner {
       return Ok(None);
     }
 
-    // Import specifiers are something wholly internal to Deno, so for
+    // Import specifiers are something wholly internal to Ende, so for
     // completions, we will use internal logic and if there are completions
     // for imports, we will return those and not send a message into tsc, where
     // other completions come from.

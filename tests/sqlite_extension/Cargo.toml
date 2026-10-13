@@ -8,7 +8,7 @@
 [package]
 name = "test_sqlite_extension"
 version = "0.1.0"
-authors = ["the Deno authors"]
+authors = ["the Ende authors", "the Deno authors"]
 edition = "2024"
 license = "MIT"
 publish = false

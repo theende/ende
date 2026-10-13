@@ -176,7 +176,7 @@ fn load_single_config(
   version_flags: &VersionFlags,
 ) -> Result<ConfigUpdater, AnyError> {
   // Explicit --config takes precedence over auto-detection. May point at a
-  // deno.json/.jsonc or a package.json.
+  // ende.json/.jsonc or a package.json.
   if let Some(path) = &version_flags.config {
     let abs = if Path::new(path).is_absolute() {
       PathBuf::from(path)
@@ -195,8 +195,8 @@ fn load_single_config(
 
   // Prefer the manifest that actually carries a `version` field. When both
   // deno.json and package.json are present (common when a JSR/npm dual-published
-  // package uses deno.json purely for toolchain config), this lets users bump
-  // package.json's version even though deno.json is also present.
+  // package uses ende.json purely for toolchain config), this lets users bump
+  // package.json's version even though ende.json is also present.
   if let Some(ende_json) = ende_json {
     let path = deno_path_util::url_to_file_path(&ende_json.specifier)
       .context("Failed to convert ende.json URL to path")?;
@@ -208,7 +208,7 @@ fn load_single_config(
     {
       return ConfigUpdater::new(pkg_json.path.clone());
     }
-    // Neither has a version; default to deno.json so we can write/initialize.
+    // Neither has a version; default to ende.json so we can write/initialize.
     return ConfigUpdater::new(path);
   }
 
@@ -948,7 +948,7 @@ fn apply_conventional_bump(
 // Git
 // ---------------------------------------------------------------------------
 
-/// Read the `"version"` field from a deno.json at a given git ref.
+/// Read the `"version"` field from an ende.json at a given git ref.
 /// Returns `None` if the file doesn't exist at that ref or has no version.
 fn read_version_at_ref(
   cwd: &Path,
@@ -957,7 +957,7 @@ fn read_version_at_ref(
 ) -> Option<Version> {
   let refspec = format!("{}:{}", git_ref, relative_path);
   let content = run_git(cwd, &["show", &refspec]).ok()?;
-  // Parse as JSONC since deno.json may contain comments/trailing commas.
+  // Parse as JSONC since ende.json may contain comments/trailing commas.
   let value: serde_json::Value =
     jsonc_parser::parse_to_serde_value(&content, &Default::default())
       .ok()
@@ -1033,9 +1033,9 @@ fn rewrite_import_map(
 
   // Collect every file we'd like to rewrite jsr: refs in.
   // - The explicit --import-map argument, if provided.
-  // - Otherwise, the root deno.json's importMap target (if any) AND the root
-  //   deno.json itself (since users sometimes inline imports there).
-  // - Always also rewrite each member's deno.json so internal cross-package
+  // - Otherwise, the root ende.json's importMap target (if any) AND the root
+  //   ende.json itself (since users sometimes inline imports there).
+  // - Always also rewrite each member's ende.json so internal cross-package
   //   `jsr:` references stay consistent.
   let mut files: Vec<PathBuf> = Vec::new();
 
@@ -1059,7 +1059,7 @@ fn rewrite_import_map(
     }
   }
 
-  // Always rewrite each member deno.json.
+  // Always rewrite each member ende.json.
   for (_, _, _, member_path) in updates {
     if !files.iter().any(|f| f == member_path) {
       files.push(member_path.clone());

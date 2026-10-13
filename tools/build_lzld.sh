@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Deno on macOS (aarch64) with lzld — a thin ld64.lld wrapper that strips
+# Build Ende on macOS (aarch64) with lzld — a thin ld64.lld wrapper that strips
 # `-framework`/`-weak_framework` and links liblzld instead, so system frameworks
 # (CoreFoundation/Foundation/Security/CoreServices/Metal/QuartzCore/...) are
 # dlopen'd on first use rather than loaded at process launch. Cuts ~0.5-1ms of
@@ -10,7 +10,7 @@
 # portably — so we compute it here at invocation time and inject it via
 # `cargo --config`, leaving .cargo/config.toml untouched.
 #
-# Usage:  tools/build_lzld.sh [extra cargo args]   (default: --release --bin deno)
+# Usage:  tools/build_lzld.sh [extra cargo args]   (default: --release --bin ende)
 set -euo pipefail
 
 if [ "$(uname -s)" != "Darwin" ] || [ "$(uname -m)" != "arm64" ]; then
@@ -36,7 +36,7 @@ link_args="-fuse-ld=$lzld_dir/lzld -Wl,--icf=safe -L$lzld_dir -llzld_$(uname -m)
 
 args=("$@")
 if [ ${#args[@]} -eq 0 ]; then
-  args=(--release --bin deno)
+  args=(--release --bin ende)
 fi
 
 exec cargo build \

@@ -89,7 +89,7 @@ const lazyProcessMod = core.createLazyLoader("node:process");
 // internal foundation: internal/errors, internal/buffer, primordials,
 // internal_binding/*, internal/util/*, async_hooks, ~22 modules / ~700 SFIs)
 // are NOT pulled into the eager startup snapshot. The Buffer and node-timer
-// globals below are installed via propWritableLazyLoaded, so a plain `deno run`
+// globals below are installed via propWritableLazyLoaded, so a plain `ende run`
 // that never touches them skips the deserialization entirely.
 const lazyBufferMod = core.createLazyLoader("node:buffer");
 const lazyTimersMod = core.createLazyLoader("node:timers");

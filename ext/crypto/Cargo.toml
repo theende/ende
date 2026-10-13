@@ -8,7 +8,7 @@ edition.workspace = true
 license.workspace = true
 readme = "README.md"
 repository.workspace = true
-description = "Web Cryptography API implementation for Deno"
+description = "Web Cryptography API implementation for Ende"
 
 [lib]
 path = "lib.rs"

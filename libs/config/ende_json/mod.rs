@@ -434,7 +434,7 @@ pub struct FmtOptionsConfig {
   pub angular_next_control_flow_same_line: Option<bool>,
   pub sort_named_imports: Option<SortOrder>,
   pub sort_named_exports: Option<SortOrder>,
-  /// Whether `deno fmt` should read `.editorconfig` files to fill in
+  /// Whether `ende fmt` should read `.editorconfig` files to fill in
   /// options that are not otherwise set. Defaults to `true` when unset.
   pub use_editor_config: Option<bool>,
 }
@@ -810,8 +810,8 @@ impl BenchConfig {
   }
 }
 
-/// Minimum coverage percentages required for `deno coverage` and
-/// `deno test --coverage` to succeed. Modelled on Vitest's
+/// Minimum coverage percentages required for `ende coverage` and
+/// `ende test --coverage` to succeed. Modelled on Vitest's
 /// `coverage.thresholds`. A `None` value means the metric is not checked.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct CoverageThresholds {
@@ -1742,7 +1742,7 @@ pub struct ConfigFile {
 }
 
 impl ConfigFile {
-  /// Filenames that Deno will recognize when discovering config.
+  /// Filenames that Ende will recognize when discovering config.
   pub(crate) fn resolve_config_file_names<'a>(
     additional_config_file_names: &[&'a str],
   ) -> Cow<'a, [&'a str]> {

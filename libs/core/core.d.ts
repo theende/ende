@@ -36,8 +36,8 @@ export namespace core {
 
   /**
    * Enables collection of stack traces for sanitizers. This allows for
-   * debugging of where a given async op was started. Deno CLI uses this for
-   * improving error message in sanitizer errors for `deno test`.
+   * debugging of where a given async op was started. Ende CLI uses this for
+   * improving error message in sanitizer errors for `ende test`.
    *
    * **NOTE:** enabling tracing has a significant negative performance impact.
    */

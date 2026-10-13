@@ -397,10 +397,10 @@ pub fn print_install_report(
 }
 
 /// Emit a warning for each package.json in the workspace whose `engines.node`
-/// or `engines.deno` field is not satisfied by the current runtime.
+/// or `engines.ende` field is not satisfied by the current runtime.
 ///
 /// Modeled on `npm`/`yarn`'s default behavior: this is a warning, never an
-/// error. Engines other than `node` and `deno` are ignored — Deno has no way
+/// error. Engines other than `node` and `ende` are ignored — Ende has no way
 /// to verify them.
 fn warn_on_engines_mismatch(workspace: &WorkspaceResolver<CliSys>) {
   for pkg_json in workspace.package_jsons() {

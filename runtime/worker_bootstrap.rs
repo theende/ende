@@ -18,17 +18,17 @@ pub enum WorkerExecutionMode {
 
   /// Running in a worker.
   Worker,
-  /// `deno run`
+  /// `ende run`
   Run,
-  /// `deno repl`
+  /// `ende repl`
   Repl,
-  /// `deno eval`
+  /// `ende eval`
   Eval,
-  /// `deno test`
+  /// `ende test`
   Test,
-  /// `deno bench`
+  /// `ende bench`
   Bench,
-  /// `deno serve`
+  /// `ende serve`
   ServeMain {
     worker_count: usize,
   },
@@ -92,7 +92,7 @@ impl From<log::Level> for WorkerLogLevel {
 #[derive(Clone)]
 pub struct BootstrapOptions {
   pub ende_version: String,
-  /// Sets `Deno.args` in JS runtime.
+  /// Sets `Ende.args` in JS runtime.
   pub args: Vec<String>,
   pub cpu_count: usize,
   pub log_level: WorkerLogLevel,
@@ -104,7 +104,7 @@ pub struct BootstrapOptions {
   pub unstable_features: Vec<i32>,
   pub user_agent: String,
   pub inspect: bool,
-  /// If this is a `deno compile`-ed executable.
+  /// If this is an `ende compile`-ed executable.
   pub is_standalone: bool,
   pub has_node_modules_dir: bool,
   pub argv0: Option<String>,
@@ -114,7 +114,7 @@ pub struct BootstrapOptions {
   pub node_ipc_init: Option<(i64, ChildIpcSerialization)>,
   pub mode: WorkerExecutionMode,
   pub no_legacy_abort: bool,
-  // Used by `deno serve`
+  // Used by `ende serve`
   pub serve_port: Option<u16>,
   pub serve_host: Option<String>,
   pub auto_serve: bool,
@@ -177,7 +177,7 @@ impl Default for BootstrapOptions {
 /// Keep this in sync with `99_main.js`.
 #[derive(Serialize)]
 struct BootstrapV8<'a>(
-  // deno version
+  // ende version
   &'a str,
   // location
   Option<&'a str>,

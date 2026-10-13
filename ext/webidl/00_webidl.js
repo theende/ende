@@ -1378,7 +1378,7 @@ function mixinPairIterable(name, prototype, dataSymbol, keyKey, valueKey) {
       return { value: result, done: false };
     },
     // Node-compatible inspector output (e.g. `URLSearchParams Iterator { 'a',
-    // 'b' }`). Picked up by Deno's `util.inspect` via the privateCustomInspect
+    // 'b' }`). Picked up by Ende's `util.inspect` via the privateCustomInspect
     // path so `node:util.inspect` returns the same shape.
     [SymbolFor("Deno.privateCustomInspect")](inspect, inspectOptions) {
       const internal = this == null ? undefined : this[_iteratorInternal];
@@ -1646,12 +1646,12 @@ function setlikeObjectWrap(objPrototype, readonly) {
 
 internals.webidlBrand = brand;
 // The subset of webidl needed by post-bootstrap classic scripts that can't
-// `import` this module (e.g. the `deno desktop` init script, which defines
+// `import` this module (e.g. the `ende desktop` init script, which defines
 // web interfaces like `navigator.clipboard`).
 //
 // `converters` is deliberately NOT exposed. It is the live registry backing
 // argument coercion for every web API in the process, and this object lands
-// in every Deno runtime rather than just desktop, so handing it out would
+// in every Ende runtime rather than just desktop, so handing it out would
 // let anything with `internals` access rewrite how any API coerces its
 // arguments. Only the individual converters a consumer needs belong here.
 internals.webidl = ObjectFreeze({

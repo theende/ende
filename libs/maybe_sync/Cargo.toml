@@ -6,7 +6,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Optionally sync structures for Deno crates"
+description = "Optionally sync structures for Ende crates"
 
 [lib]
 path = "lib.rs"

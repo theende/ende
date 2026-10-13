@@ -36,7 +36,7 @@ gclient_config.py_entries
 # Coverage files
 /coverage
 
-# JUnit files produced by deno test --junit
+# JUnit files produced by ende test --junit
 junit.xml
 
 # Jupyter files

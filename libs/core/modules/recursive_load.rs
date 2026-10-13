@@ -446,7 +446,7 @@ impl RecursiveModuleLoad {
       // Use the module's canonical (post-redirect) URL as the referrer for
       // its child imports. After `new_module` aliases e.g. `npm:foo@^1` to
       // its `file:///.../node_modules/...` location, V8 records the module
-      // under the file URL, and Deno's resolver requires that file URL to
+      // under the file URL, and Ende's resolver requires that file URL to
       // resolve bare specifiers via the package's `package.json`. Using the
       // original specifier (e.g. `npm:foo@^1`) here strands intra-package
       // imports without resolution context.

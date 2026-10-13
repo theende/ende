@@ -15,18 +15,18 @@ use std::sync::OnceLock;
 
 use sys_traits::EnvTempDir;
 
-const NATIVE_ADDON_CACHE_DIR_NAME: &str = "deno-native-addons";
+const NATIVE_ADDON_CACHE_DIR_NAME: &str = "ende-native-addons";
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
 pub enum LoadError {
   #[class(generic)]
-  #[error("Failed to write native addon (Deno FFI/Node API) '{0}' to '{1}' because the file system was readonly. This is a limitation of native addons with deno compile.", executable_path.display(), real_path.display())]
+  #[error("Failed to write native addon (Ende FFI/Node API) '{0}' to '{1}' because the file system was readonly. This is a limitation of native addons with ende compile.", executable_path.display(), real_path.display())]
   ReadOnlyFilesystem {
     real_path: PathBuf,
     executable_path: PathBuf,
   },
   #[class(generic)]
-  #[error("Failed to write native addon (Deno FFI/Node API) '{0}' to '{1}'.", executable_path.display(), real_path.display())]
+  #[error("Failed to write native addon (Ende FFI/Node API) '{0}' to '{1}'.", executable_path.display(), real_path.display())]
   FailedWriting {
     real_path: PathBuf,
     executable_path: PathBuf,
@@ -40,7 +40,7 @@ pub enum LoadError {
 
 pub type EndeRtNativeAddonLoaderRc = Arc<dyn EndeRtNativeAddonLoader>;
 
-/// Loads native addons in `deno compile`.
+/// Loads native addons in `ende compile`.
 ///
 /// The implementation should provide the bytes from the binary
 /// of the native file.
@@ -196,7 +196,7 @@ fn create_native_addon_cache_dir(temp_dir: &Path) -> std::io::Result<PathBuf> {
   }
 
   let mut builder = tempfile::Builder::new();
-  builder.prefix("deno-native-addons-");
+  builder.prefix("ende-native-addons-");
   #[cfg(unix)]
   {
     use std::os::unix::fs::PermissionsExt;
@@ -351,7 +351,7 @@ mod test {
         .file_name()
         .unwrap()
         .to_string_lossy()
-        .starts_with("deno-native-addons-")
+        .starts_with("ende-native-addons-")
     );
     let metadata = std::fs::symlink_metadata(&cache_dir).unwrap();
     assert!(metadata.is_dir());

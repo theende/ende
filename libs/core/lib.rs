@@ -289,7 +289,7 @@ mod tests {
     assert_eq!(&name[..expected.len()], expected);
   }
 
-  // If the deno command is available, we ensure the async stubs are correctly rebuilt.
+  // If the ende command is available, we ensure the async stubs are correctly rebuilt.
   #[test]
   #[cfg_attr(all(target_os = "windows", target_arch = "aarch64"), ignore)]
   fn test_rebuild_async_stubs() {

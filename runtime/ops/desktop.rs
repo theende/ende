@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! Desktop window management ops for `deno compile --desktop`.
+//! Desktop window management ops for `ende compile --desktop`.
 //!
 //! These ops are included in the V8 snapshot so their external references
 //! are stable. When `DesktopApi` is not present in OpState (non-desktop
@@ -22,7 +22,7 @@ use ende_core::cppgc::SameObject;
 use ende_core::op2;
 use ende_core::v8;
 
-/// Thread-safe intermediate value type for crossing the WEF ↔ Deno boundary.
+/// Thread-safe intermediate value type for crossing the WEF ↔ Ende boundary.
 /// Converts directly to V8 values without going through serde.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DesktopValue {
@@ -309,7 +309,7 @@ pub struct OpenDevtoolsOptions {
   pub deno: Option<bool>,
 }
 
-/// A single event type that flows from the laufey backend to the Deno runtime.
+/// A single event type that flows from the laufey backend to the Ende runtime.
 #[derive(Debug, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum DesktopEvent {
@@ -465,7 +465,7 @@ pub fn create_desktop_event_channel()
   )
 }
 
-/// A pending call from the webview to a bound Deno function.
+/// A pending call from the webview to a bound Ende function.
 pub struct PendingBindCall {
   pub name: String,
   pub args: Vec<DesktopValue>,
@@ -708,7 +708,7 @@ pub enum PermissionState {
 /// window; subsequent constructors create new windows.
 pub struct InitialWindowId(pub std::sync::Mutex<Option<u32>>);
 
-/// The compiled app's name (from deno.json `desktop.app.name`, falling back to
+/// The compiled app's name (from ende.json `desktop.app.name`, falling back to
 /// the output file name). Used as the default window title so a window the app
 /// doesn't explicitly title shows the app name instead of the backend's
 /// internal default (`laufey_webview`).
@@ -1125,7 +1125,7 @@ pub enum MenuItem {
 pub struct AutoUpdateState {
   /// Path to the currently running dylib on disk.
   pub dylib_path: std::path::PathBuf,
-  /// App version from metadata (deno.json `version` field).
+  /// App version from metadata (ende.json `version` field).
   pub app_version: Option<String>,
   /// Whether we rolled back from a failed update on this launch.
   pub rolled_back: bool,
@@ -1425,8 +1425,8 @@ const ERROR_DIALOG_TIMEOUT: std::time::Duration =
 /// the handler returned, cutting the dialog off before it appeared.
 ///
 /// Thread-safety: `DesktopApi::alert` may be called from any thread. In a
-/// packaged desktop app the Deno runtime already runs on its own
-/// `deno-desktop-runtime` thread (`run_on_runtime_thread` in
+/// packaged desktop app the Ende runtime already runs on its own
+/// `ende-desktop-runtime` thread (`run_on_runtime_thread` in
 /// `cli/rt_desktop`), never the laufey UI thread, so every existing
 /// `op_desktop_alert` call is already an off-UI-thread call; the backend
 /// marshals the dialog onto the UI thread and blocks the caller until it is
@@ -1602,7 +1602,7 @@ fn op_desktop_send_error_report(state: &mut OpState, #[string] body: &str) {
   // (`https://`) primitive that bypasses the `--allow-write`/`--allow-net`
   // permission checks every other fs/net op performs.
   let Some((url, _)) = error_report_config() else {
-    // No reporting URL configured (e.g. plain `deno run`, or a desktop app
+    // No reporting URL configured (e.g. plain `ende run`, or a desktop app
     // that didn't set one) — there is nowhere to send, so do nothing.
     return;
   };
@@ -1670,7 +1670,7 @@ const CLIPBOARD_TIMEOUT: std::time::Duration =
 /// `navigator.clipboard.readText()` would have made it look impossible.
 ///
 /// Thread-safety: in a packaged desktop app the runtime already runs on its
-/// own `deno-desktop-runtime` thread (`run_on_runtime_thread` in
+/// own `ende-desktop-runtime` thread (`run_on_runtime_thread` in
 /// `cli/rt_desktop`), never the laufey UI thread, so the existing call was
 /// already an off-UI-thread one that the backend marshals; the pool thread
 /// used here is in the same position, not a new kind of caller.
@@ -3077,7 +3077,7 @@ mod tests {
 
   #[tokio::test]
   async fn bind_call_dropped_receiver_doesnt_panic_resolve() {
-    // The renderer may give up on a bind call before the Deno side
+    // The renderer may give up on a bind call before the Ende side
     // resolves it (window closed). The resolve path uses `let _ = tx.send(...)`
     // explicitly because the receiver might be gone; we pin that
     // behaviour here so a future refactor doesn't reintroduce a

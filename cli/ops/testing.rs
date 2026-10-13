@@ -58,9 +58,9 @@ ende_core::extension!(ende_test,
 );
 
 /// Set by `op_test_isolate_exit` to record that the current test isolate
-/// asked to exit via `Deno.exit()` from outside any test function. The test
+/// asked to exit via `Ende.exit()` from outside any test function. The test
 /// runner reads this flag after each step to detect that the V8 termination
-/// it sees was caused by `Deno.exit()` (rather than, say, the watchdog) and
+/// it sees was caused by `Ende.exit()` (rather than, say, the watchdog) and
 /// can move on to the next specifier without killing the process.
 #[derive(Clone, Copy, Debug)]
 pub struct IsolateExitInfo {
@@ -288,7 +288,7 @@ fn op_test_event_step_result_failed(
     .ok();
 }
 
-/// Called when a test calls `Deno.exit()` while the exit sanitizer is disabled
+/// Called when a test calls `Ende.exit()` while the exit sanitizer is disabled
 /// (`sanitizeExit: false`). Rather than letting the process terminate
 /// immediately - which can drop buffered test output - we hand the exit code
 /// off to the reporter (running on a separate thread) so it can print a
@@ -296,7 +296,7 @@ fn op_test_event_step_result_failed(
 ///
 /// This op does not return: once the `Exit` event has been queued, we park the
 /// worker so it doesn't keep executing user code (which would otherwise resume
-/// after `Deno.exit()` returned) while we wait for the process to be
+/// after `Ende.exit()` returned) while we wait for the process to be
 /// terminated.
 #[op2(fast)]
 fn op_test_event_exit(state: &mut OpState, #[smi] exit_code: i32) {
@@ -313,12 +313,12 @@ fn op_test_event_exit(state: &mut OpState, #[smi] exit_code: i32) {
   // nobody left to print a message or flush - just exit directly.
   #[allow(
     clippy::disallowed_methods,
-    reason = "a test called Deno.exit() with the exit sanitizer disabled"
+    reason = "a test called Ende.exit() with the exit sanitizer disabled"
   )]
   std::process::exit(exit_code);
 }
 
-/// Marker put into `OpState` by the test runner when `deno test` was invoked
+/// Marker put into `OpState` by the test runner when `ende test` was invoked
 /// with `--update-snapshots`. Its presence is what authorizes
 /// `op_test_snapshot_write` - JS cannot enable update mode on its own.
 pub struct SnapshotUpdateMode;
@@ -479,9 +479,9 @@ fn op_test_event_snapshot_summary(
     .ok();
 }
 
-/// Called when user code in a test isolate calls `Deno.exit()` outside of any
+/// Called when user code in a test isolate calls `Ende.exit()` outside of any
 /// running test function (top-level code, an unload listener, or in async
-/// code that the test left running). Instead of terminating the deno
+/// code that the test left running). Instead of terminating the ende
 /// process, we record the exit code, notify the reporter, and ask V8 to
 /// terminate the current isolate so the test runner can move on to the
 /// next specifier.

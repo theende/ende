@@ -7,7 +7,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "An implementation of a lockfile used in Deno"
+description = "An implementation of a lockfile used in Ende"
 
 [lib]
 path = "./lib.rs"

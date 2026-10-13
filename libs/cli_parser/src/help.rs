@@ -1,5 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-//! Help text rendering for the Deno CLI parser.
+//! Help text rendering for the Ende CLI parser.
 //!
 //! Walks a `CommandDef` and its `ArgDef` list to produce formatted help text.
 
@@ -145,7 +145,7 @@ fn has_permission_args(cmd: &CommandDef) -> bool {
     .any(|g| std::ptr::eq(g.as_ptr(), crate::defs::PERMISSION_ARGS.as_ptr()))
 }
 
-/// Render the "Environment variables" section documented in `deno --help`.
+/// Render the "Environment variables" section documented in `ende --help`.
 fn render_env_vars() -> String {
   use crate::env_vars::ENV_VARS;
   let mut out = String::from(
@@ -174,7 +174,7 @@ fn render_env_vars() -> String {
   out
 }
 
-/// Render help for the root command when called with `deno --help`.
+/// Render help for the root command when called with `ende --help`.
 pub fn render_root_help(cmd: &CommandDef) -> String {
   render_help(cmd)
 }

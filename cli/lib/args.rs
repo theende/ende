@@ -52,7 +52,7 @@ pub fn has_flag_env_var(sys: &impl EnvVar, name: &str) -> bool {
 /// `process.on("message")`. The env vars are removed once read so they don't
 /// leak into grandchild processes. Returns `Ok(None)` when no channel was set.
 ///
-/// Shared by the `deno` CLI and the standalone (`endert`) runtime so the two
+/// Shared by the `ende` CLI and the standalone (`endert`) runtime so the two
 /// entry points can't drift; the latter relies on this for IPC to work in a
 /// compiled binary's forked child (issue #26304).
 pub fn node_ipc_init(

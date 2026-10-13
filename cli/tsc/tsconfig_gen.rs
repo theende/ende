@@ -3,9 +3,9 @@
 //! Generate `.ende/tsconfig.json` for use with stock TypeScript tooling
 //! (tsc, tsgo).
 //!
-//! This module translates Deno's compiler options (from `deno.json`) into a
+//! This module translates Ende's compiler options (from `ende.json`) into a
 //! standard `tsconfig.json` that stock TypeScript understands. It also injects
-//! Deno type definitions so that the `Deno` namespace and other Deno-specific
+//! Ende type definitions so that the `Ende` namespace and other Ende-specific
 //! globals are available.
 
 use std::collections::BTreeMap;
@@ -27,16 +27,16 @@ pub struct GeneratedTsConfig {
   pub tsconfig_path: PathBuf,
 }
 
-/// Generate `.ende/tsconfig.json` and Deno type definitions for use with
+/// Generate `.ende/tsconfig.json` and Ende type definitions for use with
 /// stock TypeScript tooling.
 ///
 /// Writes Ende types to `.ende/types/ende/index.d.ts` (a private typeRoot
 /// only the generated tsconfig points at). They deliberately do NOT go to
 /// `node_modules/@types/ende/`: TypeScript auto-discovers everything under
 /// `node_modules/@types/*` whenever `compilerOptions.types` is unset, which
-/// is exactly the state Deno's own type checker sees after the resolver
+/// is exactly the state Ende's own type checker sees after the resolver
 /// filters our generated tsconfig out of the extends chain. With @types/ende
-/// auto-loaded into Deno's checker, every global also declared in
+/// auto-loaded into Ende's checker, every global also declared in
 /// `lib.ende.shared_globals.d.ts` would duplicate (TS2403).
 ///
 /// Generates `.ende/tsconfig.json` with compiler options and paths mappings
@@ -213,20 +213,20 @@ fn ensure_root_tsconfig(project_root: &Path) -> Result<(), std::io::Error> {
 }
 
 /// Web-global types that `@types/node` also declares (globally, via `node:url`)
-/// and that must be owned by a single source. Deno ships the `URLPattern`
+/// and that must be owned by a single source. Ende ships the `URLPattern`
 /// *interface* but lets `@types/node` own the *constructor var* (a second
 /// unconditional `declare var URLPattern` would collide, TS2403). That split
 /// means `new URLPattern()` yields Node's type while `x: URLPattern`
-/// annotations use Deno's, and the shapes diverge (`@types/node`'s
-/// `URLPatternResult.inputs` is `URLPatternInput[]`, Deno's/the DOM lib's is the
+/// annotations use Ende's, and the shapes diverge (`@types/node`'s
+/// `URLPatternResult.inputs` is `URLPatternInput[]`, Ende's/the DOM lib's is the
 /// `[URLPatternInit] | [URLPatternInit, string]` tuple) -> TS2322.
 ///
-/// This is a deliberate hack: when generating types we drop Deno's declarations
+/// This is a deliberate hack: when generating types we drop Ende's declarations
 /// for the whole family so both the constructor and the instance type come from
 /// `@types/node`. It assumes the `@types/node` we always install provides these
 /// globals; a project pinning an `@types/node` that doesn't is on its own. The
-/// proper fix is dual-globals reconciliation in Deno's core libs (which also
-/// fixes `deno check`, broken on this today), not this generator.
+/// proper fix is dual-globals reconciliation in Ende's core libs (which also
+/// fixes `ende check`, broken on this today), not this generator.
 const NODE_OWNED_GLOBAL_TYPES: &[&str] = &[
   "URLPattern",
   "URLPatternInit",
@@ -236,7 +236,7 @@ const NODE_OWNED_GLOBAL_TYPES: &[&str] = &[
   "URLPatternOptions",
 ];
 
-/// Write the Deno type declarations to a `.d.ts` file.
+/// Write the Ende type declarations to a `.d.ts` file.
 fn write_ende_types(
   path: &Path,
   has_node_types: bool,
@@ -272,7 +272,7 @@ fn write_ende_types(
 }
 
 /// Remove top-level `interface NAME {...}` and `type NAME = ...;` declarations
-/// (and their leading JSDoc block) for each NAME in `names`. Deno's lib types
+/// (and their leading JSDoc block) for each NAME in `names`. Ende's lib types
 /// are formatted with each top-level declaration's opening at column 0 and its
 /// closing `}` at column 0, which this relies on.
 fn strip_top_level_type_decls(text: &str, names: &[&str]) -> String {
@@ -403,7 +403,7 @@ fn build_tsconfig(
     specifier_paths.insert(key.clone(), value.clone());
   }
 
-  // Merge user-defined paths from deno.json compilerOptions — these take
+  // Merge user-defined paths from ende.json compilerOptions — these take
   // priority over generated specifier mappings. The user's values are relative
   // to the project root, but the generated tsconfig lives in `.ende/`, so each
   // value is rebased one level up (like every generated mapping above).
@@ -453,13 +453,13 @@ fn build_tsconfig(
     compiler_options.insert("paths".to_string(), json!(specifier_paths));
   }
 
-  // The `_deno_generated` sentinel lets Deno's own resolver identify this
+  // The `_ende_generated` sentinel lets Ende's own resolver identify this
   // tsconfig and exclude it from extends chains it processes — see
   // libs/resolver/ende_json.rs. Stock tsc/tsgo ignore unknown top-level
   // properties.
   if check_files.is_empty() {
     // No specific files — check entire project. Mirror the project's own
-    // `exclude` (from deno.json) so we don't type-check paths Deno itself skips
+    // `exclude` (from ende.json) so we don't type-check paths Ende itself skips
     // (test fixtures, generated output, etc.); the tsconfig lives in `.ende/`,
     // so a project-root pattern `x` is rebased to `../x`.
     let mut exclude = vec![json!("../**/node_modules")];
@@ -468,7 +468,7 @@ fn build_tsconfig(
       exclude.push(json!(rebased));
     }
     json!({
-      "_deno_generated": true,
+      "_ende_generated": true,
       "compilerOptions": compiler_options,
       "include": ["../**/*"],
       "exclude": exclude,
@@ -478,7 +478,7 @@ fn build_tsconfig(
     let files_array: Vec<Value> =
       check_files.iter().map(|f| json!(f)).collect();
     json!({
-      "_deno_generated": true,
+      "_ende_generated": true,
       "compilerOptions": compiler_options,
       "files": files_array,
     })
@@ -487,7 +487,7 @@ fn build_tsconfig(
 
 /// Generate tsconfig "paths" entries for npm: specifiers.
 ///
-/// Scans `deno.json` `"imports"` for entries like:
+/// Scans `ende.json` `"imports"` for entries like:
 ///   `"express": "npm:express@4"` -> `{ "npm:express": ["../node_modules/express"] }`
 ///
 /// Only generates `npm:<pkg>` keys -- bare aliases are resolved by
@@ -570,7 +570,7 @@ fn generate_npm_paths(
       let pkg_name = npm_ref.req().name.to_string();
       let pkg_dir = project_root.join(format!("node_modules/{pkg_name}"));
       // Only map a package that is actually materialized under `node_modules`.
-      // With Deno's default global-cache mode, `deno install` may resolve npm
+      // With Ende's default global-cache mode, `ende install` may resolve npm
       // deps without a local `node_modules/<pkg>`; emitting a path to a
       // nonexistent directory just makes stock tsc fail. The caller warns when
       // this happens so the user knows to enable a node_modules directory.
@@ -865,10 +865,10 @@ pub fn parse_jsr_specifier(
   Some((scope.to_string(), name.to_string(), version))
 }
 
-/// Base compiler options for stock tsc that approximate Deno's defaults.
+/// Base compiler options for stock tsc that approximate Ende's defaults.
 fn base_compiler_options() -> Map<String, Value> {
   let obj = json!({
-    // Deno defaults
+    // Ende defaults
     "strict": true,
     "noImplicitOverride": true,
     "allowJs": true,
@@ -886,14 +886,14 @@ fn base_compiler_options() -> Map<String, Value> {
     // Allow .ts extensions in imports (TS 5.0+)
     "allowImportingTsExtensions": true,
 
-    // Standard libs (Deno-specific libs like deno.window are replaced by
+    // Standard libs (Ende-specific libs like ende.window are replaced by
     // the @types/ende package under .ende/types/)
     "lib": ["esnext"],
 
     // typeRoots points at our private .ende/types/ dir; "types: [ende]"
     // tells tsc to load exactly that and nothing else. Without this, tsc
     // would auto-include every @types/* in node_modules, which would
-    // collide with Deno's runtime types when this file is read by Deno's
+    // collide with Ende's runtime types when this file is read by Ende's
     // own checker.
     "typeRoots": ["./types"],
     "types": ["ende"],
@@ -908,14 +908,14 @@ fn base_compiler_options() -> Map<String, Value> {
   }
 }
 
-/// Merge user's deno.json compilerOptions into the base, filtering to only
+/// Merge user's ende.json compilerOptions into the base, filtering to only
 /// options that stock tsc understands.
 fn merge_ende_options(base: &mut Map<String, Value>, user_opts: &Value) {
   let Some(user_map) = user_opts.as_object() else {
     return;
   };
 
-  // Options from deno.json that map directly to tsconfig.json
+  // Options from ende.json that map directly to tsconfig.json
   const PASSTHROUGH_OPTIONS: &[&str] = &[
     "allowUnreachableCode",
     "allowUnusedLabels",
@@ -992,7 +992,7 @@ fn merge_ende_options(base: &mut Map<String, Value>, user_opts: &Value) {
 /// name belongs here: unscoped (`node`) or scoped (`@types/react`). A subpath
 /// entry (`lume/types.ts`) can't resolve this way and would make stock tsc/tsgo
 /// fail the whole program build (TS2688), masking every real diagnostic, so it
-/// is dropped. Deno accepts such entries because it loads them as modules; the
+/// is dropped. Ende accepts such entries because it loads them as modules; the
 /// stock-tooling equivalent is that the (materialized) file is pulled into the
 /// program by the tsconfig `include` glob, which carries its ambient
 /// declarations and `/// <reference lib=... />` directives just the same.

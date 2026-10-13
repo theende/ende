@@ -4,7 +4,7 @@ Compile [WILDCARD]main.ts to [WILDLINE]
 Embedded Files
 
 main[WILDLINE]
-├── .deno_compile_node_modules/localhost/@denotest/esm-basic/* ([WILDLINE]
+├── .ende_compile_node_modules/localhost/@denotest/esm-basic/* ([WILDLINE]
 └── main.ts ([WILDLINE]
 
 Files: [WILDLINE]

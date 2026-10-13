@@ -51,11 +51,11 @@ const {
   writableStreamForRid,
 } = core.loadExtScript("ext:ende_web/06_streams.js");
 
-// The key for private `input` option for `Deno.Command`
+// The key for private `input` option for `Ende.Command`
 const kInputOption = Symbol("kInputOption");
-// The key for private `timeout` option for `Deno.Command`
+// The key for private `timeout` option for `Ende.Command`
 const kTimeoutOption = Symbol("kTimeoutOption");
-// The key for private `killSignal` option for `Deno.Command`
+// The key for private `killSignal` option for `Ende.Command`
 const kKillSignalOption = Symbol("kKillSignalOption");
 
 function opKill(pid, signo, apiName) {
@@ -280,7 +280,7 @@ internals.getExtraPipeRids = (process) => process[_extraPipeRids];
 internals.kExtraStdio = kExtraStdio;
 
 // Node compat spawn: returns a lightweight object with raw fds for stdio
-// instead of a full Deno.ChildProcess with web streams.
+// instead of a full Ende.ChildProcess with web streams.
 // The caller (child_process.ts) is responsible for providing all fields.
 function nodeSpawnChild(command, {
   args = [],
@@ -358,7 +358,7 @@ function nodeSpawnChild(command, {
 }
 
 // Node compat sync spawn: calls op_spawn_sync and returns pid/killedByTimeout
-// as normal fields instead of hidden properties on a Deno.CommandOutput.
+// as normal fields instead of hidden properties on an Ende.CommandOutput.
 function nodeSpawnSyncChild({
   args,
   cwd,

@@ -1,10 +1,10 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! Framework detection for `deno compile .`.
+//! Framework detection for `ende compile .`.
 //!
 //! Detects web frameworks (Next.js, Astro, Remix, React Router, SvelteKit,
 //! Nuxt, Fresh, SolidStart, TanStack Start, Vite) and generates the
-//! appropriate entrypoint and include paths so that `deno compile .` just
+//! appropriate entrypoint and include paths so that `ende compile .` just
 //! works.
 
 use std::path::Path;
@@ -31,10 +31,10 @@ pub struct FrameworkDetection {
   pub hmr_command: Option<Vec<String>>,
 }
 
-/// Entrypoint compiled for `deno desktop --hmr` on projects whose dev command
+/// Entrypoint compiled for `ende desktop --hmr` on projects whose dev command
 /// is plain `vite dev`: it boots the project's own Vite dev server through
 /// Vite's JS API *inside* the desktop runtime, so server-side code (SvelteKit
-/// endpoints, Vite SSR handlers) keeps access to `Deno.desktop` — matching the
+/// endpoints, Vite SSR handlers) keeps access to `Ende.desktop` — matching the
 /// compiled app, where the server also runs in the desktop runtime (#35899).
 ///
 /// The runtime publishes `ENDE_SERVE_ADDRESS` before user code runs and the
@@ -57,9 +57,9 @@ server.printUrls();
 
 impl FrameworkDetection {
   /// Entrypoint that boots the framework's dev server *inside* the desktop
-  /// runtime for `deno desktop --hmr`, so server-side code keeps access to
-  /// `Deno.desktop` (#35899). `None` means `--hmr` falls back to spawning
-  /// `hmr_command` as a separate plain-Deno process, where desktop APIs are
+  /// runtime for `ende desktop --hmr`, so server-side code keeps access to
+  /// `Ende.desktop` (#35899). `None` means `--hmr` falls back to spawning
+  /// `hmr_command` as a separate plain-Ende process, where desktop APIs are
   /// unavailable to server code.
   pub fn hmr_entrypoint_code(&self) -> Option<&'static str> {
     match self.name {
@@ -119,12 +119,12 @@ pub fn find_framework_favicon(
   None
 }
 
-/// Run the framework's build step (e.g. `deno task build`) with `dir` as the
+/// Run the framework's build step (e.g. `ende task build`) with `dir` as the
 /// working directory, if the detection specifies one. This must run before the
 /// framework's `include_paths` are bundled, since they point at the build
 /// output (`dist`, `.next`, etc.) which doesn't exist until the build runs.
 ///
-/// Shared by `deno compile .` and `deno desktop .` so the two can't drift.
+/// Shared by `ende compile .` and `ende desktop .` so the two can't drift.
 pub fn run_build_command(
   detection: &FrameworkDetection,
   dir: &Path,
@@ -159,7 +159,7 @@ pub fn run_build_command(
 /// Detection priority:
 /// 1. Config-file based detection (highest priority)
 /// 2. Package.json dependency-based detection
-/// 3. deno.json import-based detection
+/// 3. ende.json import-based detection
 pub fn detect_framework(
   dir: &Path,
 ) -> Result<Option<FrameworkDetection>, AnyError> {
@@ -191,7 +191,7 @@ pub fn detect_framework(
   // would otherwise be misdetected as a plain Vite SPA and bundle a
   // non-existent `dist/`). `detect_sveltekit` resolves the adapter's output
   // shape, or errors with an actionable hint when the configured adapter isn't
-  // one `deno desktop` can bundle. A bare `svelte.config.*` is not enough on
+  // one `ende desktop` can bundle. A bare `svelte.config.*` is not enough on
   // its own: the Vite Svelte template ships a `svelte.config.js` with only
   // `vitePreprocess()` and no SvelteKit, and such plain Svelte SPAs must keep
   // falling through to the Vite branch that bundles `dist/`.
@@ -241,7 +241,7 @@ pub fn detect_framework(
     return Ok(Some(detect_vite(dir)));
   }
 
-  // --- deno.json import-based detection ---
+  // --- ende.json import-based detection ---
   if let Some(imports) = read_ende_json_imports(dir)
     && imports
       .iter()
@@ -299,7 +299,7 @@ if (!Ende.env.get("NODE_CHANNEL_FD")) {{
     entrypoint_code: entrypoint,
     include_paths,
     build_command: Some(ende_task_build()),
-    hmr_command: None, // TODO: add command to enable `deno desktop --hmr` for Next.js
+    hmr_command: None, // TODO: add command to enable `ende desktop --hmr` for Next.js
   })
 }
 
@@ -310,13 +310,13 @@ fn detect_astro(_dir: &Path) -> FrameworkDetection {
       .into(),
     include_paths: vec!["dist".into()],
     build_command: Some(ende_task_build()),
-    hmr_command: None, // TODO: add command to enable `deno desktop --hmr` for Astro
+    hmr_command: None, // TODO: add command to enable `ende desktop --hmr` for Astro
   }
 }
 
 fn detect_fresh(dir: &Path) -> FrameworkDetection {
   // Fresh 2.x uses _fresh/server.js (build output) or imports @fresh/core
-  // in deno.json. We intentionally do NOT use `fresh.gen.ts + deno.json`
+  // in ende.json. We intentionally do NOT use `fresh.gen.ts + ende.json`
   // as a heuristic because Fresh 1 projects also have both of those files.
   let is_fresh2 = dir.join("_fresh/server.js").exists()
     || read_ende_json_imports(dir)
@@ -370,7 +370,7 @@ fn detect_remix(dir: &Path) -> FrameworkDetection {
       "// @ts-nocheck\nimport \"./node_modules/.bin/remix-serve\";\n".into(),
     include_paths,
     build_command: Some(ende_task_build()),
-    hmr_command: None, // TODO: add command to enable `deno desktop --hmr` for Remix
+    hmr_command: None, // TODO: add command to enable `ende desktop --hmr` for Remix
   }
 }
 
@@ -379,10 +379,10 @@ fn detect_react_router(dir: &Path) -> FrameworkDetection {
   //   * SPA (`ssr: false`): a fully static site in `build/client` with a
   //     prerendered `index.html` fallback and no server to run.
   //   * SSR (default): a server build at `build/server/index.js`. This works in
-  //     Deno when the app provides a Web Streams `app/entry.server.tsx` using
+  //     Ende when the app provides a Web Streams `app/entry.server.tsx` using
   //     `renderToReadableStream`; the default React Router Node entry uses
   //     `renderToPipeableStream` and fails during `react-router build` under
-  //     Deno before this generated entrypoint is compiled.
+  //     Ende before this generated entrypoint is compiled.
   // Detection runs *before* the build, so decide from the config file.
   let spa_mode = [
     "react-router.config.ts",
@@ -550,7 +550,7 @@ fn detect_sveltekit(dir: &Path) -> Result<FrameworkDetection, AnyError> {
   // the static assets from sibling `client`/`static`/`prerendered`
   // directories. Those asset directories aren't part of the module graph, so
   // they must be included explicitly or every request 404s in the compiled
-  // binary. The adapter-node server runs under Deno via Node.js compatibility.
+  // binary. The adapter-node server runs under Ende via Node.js compatibility.
   if dir.join("build/index.js").exists()
     && dir.join("build/handler.js").exists()
   {
@@ -575,7 +575,7 @@ fn detect_sveltekit(dir: &Path) -> Result<FrameworkDetection, AnyError> {
     });
   }
   // `@sveltejs/adapter-node` emits the same `build/index.js` shape as
-  // `svelte-adapter-deno` and runs under Deno via Node.js compatibility, so no
+  // `svelte-adapter-deno` and runs under Ende via Node.js compatibility, so no
   // Deno-specific adapter is required. Default `out` is `build`; only
   // `build/client` is guaranteed to exist after the build, so include just
   // that here — the post-build branch above picks up `static`/`prerendered`
@@ -650,7 +650,7 @@ fn detect_nitro_framework(
     build_command: Some(ende_task_build()),
     // Nuxt (`nuxi dev`), SolidStart and TanStack Start (`vinxi dev`) all run a
     // Vite-based dev server that prints the `Local:   http://…` line
-    // `parse_dev_server_url` scans for, so `deno task dev` drives HMR for all
+    // `parse_dev_server_url` scans for, so `ende task dev` drives HMR for all
     // three.
     hmr_command: Some(ende_task_dev()),
   }
@@ -670,7 +670,7 @@ fn detect_vite(dir: &Path) -> FrameworkDetection {
       build_command: Some(ende_task_build()),
       // `vite` (and Vue/React SPA templates built on it) prints the
       // `Local:   http://…` line `parse_dev_server_url` scans for, so
-      // `deno task dev` drives HMR.
+      // `ende task dev` drives HMR.
       hmr_command: Some(ende_task_dev()),
     };
   }
@@ -709,7 +709,7 @@ Ende.serve(async (req) => {
     include_paths: vec!["dist".into()],
     build_command: Some(ende_task_build()),
     // See the SSR branch above: the Vite dev server prints the `Local:` URL
-    // that `parse_dev_server_url` scans for, so `deno task dev` drives HMR.
+    // that `parse_dev_server_url` scans for, so `ende task dev` drives HMR.
     hmr_command: Some(ende_task_dev()),
   }
 }
@@ -789,9 +789,9 @@ fn detect_package_version(dir: &Path, package: &str) -> Option<u32> {
     .ok()
 }
 
-/// Read the `imports` keys from deno.json / deno.jsonc.
+/// Read the `imports` keys from ende.json / ende.jsonc.
 ///
-/// Uses JSONC-aware parsing so that commented deno.jsonc files are
+/// Uses JSONC-aware parsing so that commented ende.jsonc files are
 /// handled correctly instead of silently failing detection.
 fn read_ende_json_imports(dir: &Path) -> Option<Vec<String>> {
   let content = ende_config::ende_json::CONFIG_FILE_NAMES
@@ -987,7 +987,7 @@ mod tests {
     let det = detect_framework(dir.path()).unwrap().unwrap();
     assert_eq!(det.name, "Nuxt");
     assert_eq!(det.include_paths, vec![".output"]);
-    // Nuxt runs a Vite-based dev server, so `deno desktop --hmr` is
+    // Nuxt runs a Vite-based dev server, so `ende desktop --hmr` is
     // supported — but `nuxi dev` is not plain `vite dev`, so it keeps the
     // external dev-server process rather than the in-runtime dev entrypoint.
     assert!(det.hmr_entrypoint_code().is_none());
@@ -1086,7 +1086,7 @@ mod tests {
   #[test]
   fn detects_sveltekit_adapter_node_from_config() {
     // `@sveltejs/adapter-node` emits the `build/index.js` shape and runs under
-    // Deno via Node.js compatibility — no Deno-specific adapter required.
+    // Ende via Node.js compatibility — no Deno-specific adapter required.
     let dir = setup_dir();
     write_sveltekit_pkg(dir.path());
     fs::write(
@@ -1100,7 +1100,7 @@ mod tests {
     assert_eq!(det.include_paths, vec!["build/client"]);
     // SvelteKit's dev command is plain `vite dev`, so `--hmr` boots the dev
     // server inside the desktop runtime and server-side endpoints keep
-    // `Deno.desktop` (#35899).
+    // `Ende.desktop` (#35899).
     assert!(
       det
         .hmr_entrypoint_code()
@@ -1415,7 +1415,7 @@ mod tests {
     assert_eq!(det.include_paths, vec!["dist"]);
     let cmd = det.build_command.unwrap();
     assert_eq!(cmd[1..], vec!["task", "build"]);
-    // The Vite dev server drives HMR for `deno desktop --hmr`.
+    // The Vite dev server drives HMR for `ende desktop --hmr`.
     let hmr = det.hmr_command.unwrap();
     assert_eq!(hmr[1..], vec!["task", "dev"]);
   }
@@ -1445,7 +1445,7 @@ mod tests {
     // binary is reproducible.
     assert!(det.entrypoint_code.contains("jsr:@std/http@^1/file-server"));
     assert_eq!(det.include_paths, vec!["dist"]);
-    // A plain Vite SPA (e.g. the Vue template) supports `deno desktop --hmr`.
+    // A plain Vite SPA (e.g. the Vue template) supports `ende desktop --hmr`.
     // Vite's dev command is plain `vite dev`, so `--hmr` boots the dev server
     // inside the desktop runtime and server code keeps the desktop APIs
     // (#35899).
@@ -1464,7 +1464,7 @@ mod tests {
   fn vue_vite_spa_supports_hmr() {
     // A Vue SPA scaffolded with `npm create vue@latest` is a plain Vite project
     // (`vue` + `vite` in devDependencies, a `vite.config.ts`). It must resolve
-    // to the Vite path with `deno desktop --hmr` enabled so the dev-server
+    // to the Vite path with `ende desktop --hmr` enabled so the dev-server
     // workflow from issue #35745 works.
     let dir = setup_dir();
     fs::write(dir.path().join("vite.config.ts"), "").unwrap();

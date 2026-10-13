@@ -257,7 +257,7 @@ pub fn target_dir() -> PathRef {
 }
 
 pub fn ende_exe_path() -> PathRef {
-  // Allow overriding the deno executable path via environment variable
+  // Allow overriding the ende executable path via environment variable
   if let Ok(path) = std::env::var("ENDE_TEST_UTIL_ENDE_EXE") {
     return PathRef::new(PathBuf::from(path));
   }

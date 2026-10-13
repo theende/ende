@@ -165,7 +165,7 @@ impl Service<Name> for Resolver {
 /// can't run the port-aware deny check. This wrapper sees the full `Uri`
 /// (and thus the real port) and owns the resolver: it resolves the hostname
 /// itself, checks every resolved address (denying before any connection is
-/// made, like `Deno.connect` in `ext/net/ops.rs`), and then hands the vetted
+/// made, like `Ende.connect` in `ext/net/ops.rs`), and then hands the vetted
 /// addresses to the inner connector through a pre-resolved resolver, so the
 /// connection goes to exactly the addresses that were checked and no second
 /// DNS query can race with a record change.

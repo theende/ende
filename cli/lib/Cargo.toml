@@ -8,7 +8,7 @@ edition.workspace = true
 license.workspace = true
 readme = "README.md"
 repository.workspace = true
-description = "Shared code between the Deno CLI and endert"
+description = "Shared code between the Ende CLI and endert"
 
 [lib]
 path = "lib.rs"

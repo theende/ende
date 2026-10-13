@@ -603,7 +603,7 @@ fn handle_workspace_with_members<TSys: FsRead + FsMetadata + FsReadDir>(
     .unwrap_or(false);
   // If the start config folder is not a member of the discovered workspace,
   // discard the parent workspace and resolve just the start config standalone.
-  // For npm workspaces this is silent backwards-compatible behavior; for deno
+  // For npm workspaces this is silent backwards-compatible behavior; for ende
   // workspaces with an explicit "workspace" property we warn so the user knows
   // the parent config was ignored.
   if let Some(first_config_folder) = &first_config_folder_url
@@ -657,7 +657,7 @@ fn handle_workspace_with_members<TSys: FsRead + FsMetadata + FsReadDir>(
     }
   }
 
-  // ensure no duplicate names in deno configuration files
+  // ensure no duplicate names in ende configuration files
   let mut seen_names: HashMap<&str, &Url> =
     HashMap::with_capacity(root_workspace.config_folders.len() + 1);
   for ende_json in root_workspace.ende_jsons() {
@@ -827,9 +827,9 @@ fn resolve_workspace_for_config_folder<
       .iter()
       .partition(|member| is_glob_pattern(member) || member.starts_with('!'));
 
-    // Deno workspaces can discover wildcard members that use any of the
+    // Ende workspaces can discover wildcard members that use any of the
     // config file names (`ende.json(c)`, deprecated `deno.json(c)`) or
-    // `package.json`. But it only works for Deno workspaces, npm workspaces
+    // `package.json`. But it only works for Ende workspaces, npm workspaces
     // don't discover those config files, otherwise we'd be incompatible with
     // npm workspaces if we discovered more files.
     let ende_json_paths = collect_member_config_folders(
@@ -948,7 +948,7 @@ fn resolve_workspace_for_config_folder<
               continue;
             }
             ResolveWorkspaceMemberErrorKind::NotFound { dir_url } => {
-              // dir exists but neither deno.json nor package.json — for
+              // dir exists but neither ende.json nor package.json — for
               // an npm workspace member, surface this as the more specific
               // "package.json not found" error.
               return Err(
@@ -1309,7 +1309,7 @@ fn resolve_link_config_folders_with_auto<
 }
 
 /// Walks path-style import map entries to a fixpoint and registers the
-/// governing `deno.json` of each external file as an (implicit) link, so its
+/// governing `ende.json` of each external file as an (implicit) link, so its
 /// `imports`/`scopes` become a referrer-scoped entry in the synthetic import
 /// map. This is equivalent to the user manually listing those directories in
 /// the `links` field, but discovered automatically.
@@ -1388,7 +1388,7 @@ fn enqueue_import_path_values<TSys: FsRead>(
     return;
   };
   // Resolve the import map, following an external `importMap` file if present.
-  // Path entries resolve against the import map's own location: the deno.json
+  // Path entries resolve against the import map's own location: the ende.json
   // for inline maps, or the external file's directory otherwise.
   let map_value = match ende_json.to_import_map_value(sys) {
     Ok(Some((specifier, value))) => (url_parent(&specifier), value),
@@ -1460,7 +1460,7 @@ fn import_value_target_url(base_dir: &Url, value: &str) -> Option<Url> {
   }
 }
 
-/// Finds the directory of the nearest `deno.json` that governs `target_url`,
+/// Finds the directory of the nearest `ende.json` that governs `target_url`,
 /// walking up from the target's directory.
 fn find_governing_config_dir(
   target_url: &Url,

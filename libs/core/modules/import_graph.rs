@@ -12,7 +12,7 @@
 //! - `ENDE_LOG_LAZY_LOAD=1` — print a short line to stderr each time a
 //!   `lazy_loaded_esm` module is loaded via `op_lazy_load_esm` or a
 //!   `lazy_loaded_js` script via `op_load_ext_script`. Use to see what
-//!   `deno run hello.js` actually evaluates at startup (i.e. what *fell
+//!   `ende run hello.js` actually evaluates at startup (i.e. what *fell
 //!   out* of the snapshot and is now paying parse/compile cost lazily).
 //!
 //! For `lazy_*` edges `from` is the calling script (best-effort via the v8

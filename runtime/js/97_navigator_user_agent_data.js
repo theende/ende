@@ -25,7 +25,7 @@ const console = core.loadExtScript("ext:ende_web/01_console.js");
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 
 /**
- * Maps Deno's `core.build.os` value to the OS name reported by
+ * Maps Ende's `core.build.os` value to the OS name reported by
  * `navigator.userAgentData.platform`, mirroring the values browsers return.
  * @param {string} os
  * @returns {string}
@@ -57,7 +57,7 @@ function getPlatform(os) {
 }
 
 /**
- * Maps Deno's `core.build.arch` value to the architecture reported by the
+ * Maps Ende's `core.build.arch` value to the architecture reported by the
  * `architecture` high-entropy hint, mirroring the values browsers return.
  * @param {string} arch
  * @returns {string}

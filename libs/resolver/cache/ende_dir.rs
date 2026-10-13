@@ -21,7 +21,7 @@ pub trait EndeDirSys: DiskCacheSys + ResolveEndeDirSys + Clone {}
 pub type EndeDirProviderRc<TSys> =
   ende_maybe_sync::MaybeArc<EndeDirProvider<TSys>>;
 
-/// Lazily creates the deno dir which might be useful in scenarios
+/// Lazily creates the ende dir which might be useful in scenarios
 /// where functionality wants to continue if the ENDE_DIR can't be created.
 pub struct EndeDirProvider<TSys: EndeDirSys> {
   options: EndeDirOptions,
@@ -58,7 +58,7 @@ impl<TSys: EndeDirSys> EndeDirProvider<TSys> {
 /// in single directory that can be controlled with `$ENDE_DIR` env variable.
 #[derive(Debug, Clone)]
 pub struct EndeDir<TSys: DiskCacheSys> {
-  /// Example: /Users/rld/.deno/
+  /// Example: /Users/rld/.ende/
   pub root: PathBuf,
   /// Used by TsCompiler to cache compiler output.
   pub gen_cache: DiskCache<TSys>,
@@ -159,11 +159,22 @@ impl<TSys: DiskCacheSys> EndeDir<TSys> {
         Some(PathBuf::from(ende_repl_history))
       }
     } else {
+      Some(self.root.join("ende_history.txt"))
+    }
+  }
+
+  /// Pre-rename REPL history file (`deno_history.txt`), read when
+  /// `ende_history.txt` doesn't exist yet. `None` when the history path is
+  /// set with `ENDE_REPL_HISTORY`.
+  pub fn legacy_repl_history_file_path(&self) -> Option<PathBuf> {
+    if ende_env::var_os("ENDE_REPL_HISTORY").is_some() {
+      None
+    } else {
       Some(self.root.join("deno_history.txt"))
     }
   }
 
-  /// Folder path used for downloading new versions of deno.
+  /// Folder path used for downloading new versions of ende.
   pub fn dl_folder_path(&self) -> PathBuf {
     self.root.join("dl")
   }

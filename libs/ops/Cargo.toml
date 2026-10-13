@@ -8,7 +8,7 @@ edition.workspace = true
 license.workspace = true
 readme = "README.md"
 repository.workspace = true
-description = "Proc macro for writing Deno Ops"
+description = "Proc macro for writing Ende Ops"
 
 [lib]
 path = "./lib.rs"

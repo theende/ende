@@ -926,7 +926,7 @@ pub fn cover_files(
     reporter.done(&coverage_root, &file_reports);
   }
 
-  // Layer the `--threshold` CLI flag over per-metric thresholds from deno.json
+  // Layer the `--threshold` CLI flag over per-metric thresholds from ende.json
   // (the flag wins) and fail the command if any configured threshold is unmet.
   let config_thresholds = cli_options.resolve_coverage_thresholds()?;
   let thresholds = CoverageThresholds {
@@ -1006,7 +1006,7 @@ fn check_coverage_thresholds(
 }
 
 /// Returned when a configured coverage threshold is not met. A distinct type so
-/// `deno test --coverage` can treat it as fatal while still tolerating benign
+/// `ende test --coverage` can treat it as fatal while still tolerating benign
 /// report-generation errors.
 #[derive(Debug)]
 pub struct CoverageThresholdError(pub String);

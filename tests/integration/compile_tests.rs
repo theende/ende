@@ -656,7 +656,7 @@ fn dynamic_import_unanalyzable() {
     .assert_exit_code(0);
 }
 
-// TODO(2.0): this test should first run `deno install`?
+// TODO(2.0): this test should first run `ende install`?
 #[test]
 #[ignore]
 fn compile_npm_specifiers() {
@@ -913,7 +913,7 @@ fn run_npm_bin_compile_test(opts: RunNpmBinCompileOptions) {
 #[test]
 fn compile_node_modules_symlink_outside() {
   // this code is using a canonicalized temp dir because otherwise
-  // it fails on the Windows CI because Deno makes the root directory
+  // it fails on the Windows CI because Ende makes the root directory
   // a common ancestor of the symlinked temp dir and the canonicalized
   // temp dir, which causes the warnings to not be surfaced
   #[allow(deprecated, reason = "needed for canonicalized temp dir")]

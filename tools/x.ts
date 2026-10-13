@@ -3,7 +3,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 /**
- * x - Developer CLI for contributing to Deno
+ * x - Developer CLI for contributing to Ende
  *
  * Inspired by Servo's mach tool, this script provides a unified
  * interface for common development tasks like building, testing, and more.
@@ -134,7 +134,7 @@ it skips the linking step.
 Under the hood:
   cargo build --bin ende`,
       async fn(_args: string[]) {
-        $.logStep("Building Deno...");
+        $.logStep("Building Ende...");
         await $`cargo build --bin ende`.cwd(root);
         $.logStep("Build complete.");
       },
@@ -161,12 +161,12 @@ Under the hood:
       root,
       ["-p", "unit_tests", "--test", "unit"],
       {
-        description: "Run Deno runtime unit tests",
+        description: "Run Ende runtime unit tests",
         stepName: "unit tests",
         help:
-          `Runs the Deno runtime unit tests. These are JavaScript/TypeScript tests
-that exercise Deno's built-in APIs (e.g. Deno.readFile, Deno.serve,
-Web API implementations) by running them inside the Deno runtime itself.
+          `Runs the Ende runtime unit tests. These are JavaScript/TypeScript tests
+that exercise Ende's built-in APIs (e.g. Ende.readFile, Ende.serve,
+Web API implementations) by running them inside the Ende runtime itself.
 
 The test files live under tests/unit/ and are compiled into the
 'unit_tests' crate.
@@ -194,8 +194,8 @@ Under the hood:
     ], {
       description: "Run Node.js API unit tests",
       stepName: "Node.js unit tests",
-      help: `Runs unit tests for Deno's Node.js compatibility layer. These tests
-verify that Deno's implementations of Node.js built-in modules (fs,
+      help: `Runs unit tests for Ende's Node.js compatibility layer. These tests
+verify that Ende's implementations of Node.js built-in modules (fs,
 path, http, crypto, etc.) behave correctly.
 
 The test files live under tests/unit_node/ and are compiled into the
@@ -219,7 +219,7 @@ Under the hood:
       description: "Run Node.js compatibility tests",
       stepName: "Node.js compatibility tests",
       help: `Runs the Node.js compatibility test suite. These tests use actual
-Node.js test cases (ported or adapted) to verify that Deno's node:*
+Node.js test cases (ported or adapted) to verify that Ende's node:*
 module implementations match Node.js behavior.
 
 The test runner lives in tests/node_compat/runner/.
@@ -248,7 +248,7 @@ Under the hood:
       stepName: "spec tests",
       help:
         `Runs the spec integration tests. These are the primary integration tests
-for Deno's CLI — each test defines CLI commands to execute and asserts
+for Ende's CLI — each test defines CLI commands to execute and asserts
 on their stdout/stderr output.
 
 Spec tests live under tests/specs/. Each test directory contains a
@@ -315,7 +315,7 @@ Under the hood:
     "test-napi": {
       description: "Run NAPI (native addon) tests",
       help: `Builds the test_napi native module and runs the NAPI test suite.
-These tests verify Deno's Node-API compatibility by loading a native
+These tests verify Ende's Node-API compatibility by loading a native
 addon (cdylib) and calling its exported functions from JavaScript.
 
 The native module source is in tests/napi/src/ and the JS tests are
@@ -333,7 +333,7 @@ Examples:
 
 Under the hood:
   cargo build -p test_napi
-  deno test --allow-read --allow-env --allow-ffi --allow-run \\
+  ende test --allow-read --allow-env --allow-ffi --allow-run \\
     --v8-flags=--expose-gc tests/napi/`,
       async fn(args: string[]) {
         $.logStep("Building test_napi native module...");
@@ -343,7 +343,7 @@ Under the hood:
         await $`${
           root.join("target/debug/ende").toString()
         } test --allow-read --allow-env --allow-ffi --allow-run --v8-flags=--expose-gc --config ${
-          root.join("tests/config/deno.json").toString()
+          root.join("tests/config/ende.json").toString()
         } --no-lock ${filter} .`.cwd(root.join("tests/napi"));
         $.logStep("NAPI tests complete.");
       },
@@ -398,7 +398,7 @@ Equivalent to running:
 function printHelp(COMMANDS: Record<string, Command>) {
   console.log();
   console.log(
-    `  ${bold(cyan("x"))} ${dim("-")} Developer CLI for contributing to Deno`,
+    `  ${bold(cyan("x"))} ${dim("-")} Developer CLI for contributing to Ende`,
   );
   console.log();
   console.log(`  ${bold("USAGE")}`);

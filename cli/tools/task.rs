@@ -855,7 +855,7 @@ impl<'a> TaskRunner<'a> {
 
     // At this point we already checked if the task name exists in package.json.
     // We can therefore check for "pre" and "post" scripts too, since we're only
-    // dealing with package.json here and not deno.json
+    // dealing with package.json here and not ende.json
     let task_names = vec![
       format!("pre{}", task_name),
       task_name.to_string(),
@@ -872,7 +872,7 @@ impl<'a> TaskRunner<'a> {
     // npm sets a number of `npm_*` env vars when running a package.json script.
     // Build them once (the `npm_package_*` vars from the script's package.json
     // plus the process-level `npm_execpath`/`npm_node_execpath`/`npm_command`)
-    // so that `deno task` matches npm's behavior (see #35251, #35306). The
+    // so that `ende task` matches npm's behavior (see #35251, #35306). The
     // per-script `npm_lifecycle_*` vars are overwritten in place each iteration,
     // so this single map is reused across the package's pre/run/post scripts.
     let pkg_json = self
@@ -1149,7 +1149,7 @@ fn matches_package(
   }
 
   // Fall back to matching the workspace member's directory name so that
-  // `deno task --filter <dir>` works when the package name diverges
+  // `ende task --filter <dir>` works when the package name diverges
   // from the directory (#28620). Skip the workspace root so it is never
   // accidentally selected by `--filter *`.
   if !is_workspace_root
@@ -1172,10 +1172,10 @@ fn matches_package(
 /// Process vars (independent of the package):
 /// - `npm_execpath`: the package manager executable. npm points this at
 ///   `npm-cli.js`; like pnpm/yarn point it at their own binary, we point it at
-///   the running `deno` executable.
+///   the running `ende` executable.
 /// - `npm_node_execpath`: the JS runtime executing the script. npm sets this to
-///   the `node` binary; under `deno task` the runtime is `deno` itself.
-/// - `npm_command`: the npm command being run. `deno task <name>` runs a script
+///   the `node` binary; under `ende task` the runtime is `ende` itself.
+/// - `npm_command`: the npm command being run. `ende task <name>` runs a script
 ///   the same way `npm run <name>` does, which npm reports as `run-script`.
 fn npm_script_env_vars(
   pkg_json: Option<&ende_package_json::PackageJson>,
@@ -1206,7 +1206,7 @@ fn npm_script_env_vars(
     }
   }
   if let Ok(exe) = std::env::current_exe() {
-    // Normalize so `npm_execpath`/`npm_node_execpath` match `Deno.execPath()`
+    // Normalize so `npm_execpath`/`npm_node_execpath` match `Ende.execPath()`
     // exactly (it normalizes `current_exe()` too).
     let exe = normalize_path(Cow::Owned(exe))
       .into_owned()
@@ -1543,7 +1543,7 @@ fn match_tasks(
   let mut matched: IndexSet<String> = IndexSet::new();
   let mut visited: HashSet<String> = HashSet::new();
 
-  // Match tasks in deno.json
+  // Match tasks in ende.json
   for name in tasks_config.task_names() {
     if task_name_filter.matches(name) && !visited.contains(name) {
       matched.insert(name.to_string());

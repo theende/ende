@@ -87,7 +87,7 @@ function processUrlList(urlList, urlListProcessed) {
  * Fields named `*Mode`, `mode`, `referrer*`, `integrity`, and `keepalive` are
  * only set on the inner object when the constructor's init bag customized
  * them away from the spec default. Leaving them off the object literal keeps
- * the V8 hidden class for `Deno.serve()`-created requests unchanged. The
+ * the V8 hidden class for `Ende.serve()`-created requests unchanged. The
  * getters substitute the spec defaults when a field is missing.
  *
  * @typedef InnerRequest
@@ -108,7 +108,7 @@ function processUrlList(urlList, urlListProcessed) {
  * @property {number} redirectCount
  * @property {(() => string)[]} urlList
  * @property {string[]} urlListProcessed
- * @property {number | null} clientRid NOTE: non standard extension for `Deno.HttpClient`.
+ * @property {number | null} clientRid NOTE: non standard extension for `Ende.HttpClient`.
  * @property {Blob | null} blobUrlEntry
  */
 
@@ -505,7 +505,7 @@ class Request {
       signal = init.signal;
     }
 
-    // NOTE: non standard extension. This handles Deno.HttpClient parameter
+    // NOTE: non standard extension. This handles Ende.HttpClient parameter
     if (init.client !== undefined) {
       if (
         init.client !== null &&

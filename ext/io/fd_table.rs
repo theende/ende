@@ -29,7 +29,7 @@ pub enum FdOwnership {
 
 /// Central table tracking all known file descriptors.
 ///
-/// Both Deno's resource table and Node's fd-based ops use this table
+/// Both Ende's resource table and Node's fd-based ops use this table
 /// to look up files and detect duplicate registrations.
 pub struct FdTable {
   entries: HashMap<i32, FdOwnership>,

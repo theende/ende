@@ -655,7 +655,7 @@ fn custom_history_path() {
 #[test(flaky)]
 fn disable_history_file() {
   let ende_dir = util::new_ende_dir();
-  let default_history_path = ende_dir.path().join("deno_history.txt");
+  let default_history_path = ende_dir.path().join("ende_history.txt");
   let (out, err) = util::run_and_collect_output(
     true,
     "repl",
@@ -668,6 +668,32 @@ fn disable_history_file() {
     false,
   );
   assert!(!default_history_path.try_exists().unwrap());
+  assert_ends_with!(out, "1\n");
+  assert!(err.is_empty());
+}
+
+#[test(flaky)]
+fn legacy_history_file() {
+  let ende_dir = util::new_ende_dir();
+  let legacy_history_path = ende_dir.path().join("deno_history.txt");
+  let history_path = ende_dir.path().join("ende_history.txt");
+  legacy_history_path.write("legacyEntry\n");
+  let (out, err) = util::run_and_collect_output(
+    true,
+    "repl",
+    Some(vec!["1"]),
+    Some(vec![
+      ("ENDE_DIR".to_owned(), ende_dir.path().to_string()),
+      ("NO_COLOR".to_owned(), "1".to_owned()),
+    ]),
+    false,
+  );
+  // The old history is carried over into the new file, which gets the new
+  // entries; the old file is left alone.
+  let history = history_path.read_to_string();
+  assert_contains!(history, "legacyEntry");
+  assert_contains!(history, "1");
+  assert_eq!(legacy_history_path.read_to_string(), "legacyEntry\n");
   assert_ends_with!(out, "1\n");
   assert!(err.is_empty());
 }

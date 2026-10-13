@@ -236,16 +236,16 @@ class InnerRequest {
 
   _throwIfUpgraded() {
     if (this.#upgraded) {
-      throw new Deno.errors.Http("Already upgraded");
+      throw new Ende.errors.Http("Already upgraded");
     }
   }
 
   _wantsUpgrade(upgradeType) {
     if (this.#upgraded) {
-      throw new Deno.errors.Http("Already upgraded");
+      throw new Ende.errors.Http("Already upgraded");
     }
     if (this.#external === null) {
-      throw new Deno.errors.Http("Already closed");
+      throw new Ende.errors.Http("Already closed");
     }
 
     if (upgradeType == "upgradeWebSocket") {
@@ -1143,7 +1143,7 @@ function formatHostName(hostname: string): string {
   // because browsers in Windows don't resolve "0.0.0.0".
   // See the discussion in https://github.com/denoland/deno_std/issues/1165
   if (
-    Deno.build.os === "windows" &&
+    Ende.build.os === "windows" &&
     (hostname == "0.0.0.0" || hostname == "::")
   ) {
     return "localhost";
@@ -1577,7 +1577,7 @@ function serveHttpOn(context, addr) {
         !ObjectPrototypeIsPrototypeOf(BadResourcePrototype, error) &&
         !ObjectPrototypeIsPrototypeOf(InterruptedPrototype, error)
       ) {
-        throw new Deno.errors.Http(error);
+        throw new Ende.errors.Http(error);
       }
     }
 
@@ -1674,7 +1674,7 @@ function registerDeclarativeServer(exports) {
     serveHost,
     workerCountWhenMain,
   }) => {
-    const server = Deno.serve({
+    const server = Ende.serve({
       port: servePort,
       hostname: serveHost,
       [kLoadBalanced]: workerCountWhenMain == null
@@ -1721,7 +1721,7 @@ function registerDeclarativeServer(exports) {
       },
     });
 
-    // Wire SIGTERM/SIGINT to a graceful server shutdown so that `deno serve`
+    // Wire SIGTERM/SIGINT to a graceful server shutdown so that `ende serve`
     // drains in-flight requests and exits cleanly (exit code 0) instead of
     // being terminated by the OS default signal handler (exit code 143/130),
     // e.g. when a container is redeployed.
@@ -1729,15 +1729,15 @@ function registerDeclarativeServer(exports) {
       // Stop listening for the signal so a second SIGTERM/SIGINT falls through
       // to the default handler and forcibly terminates a server that is slow
       // to drain.
-      Deno.removeSignalListener("SIGTERM", shutdownHandler);
-      Deno.removeSignalListener("SIGINT", shutdownHandler);
+      Ende.removeSignalListener("SIGTERM", shutdownHandler);
+      Ende.removeSignalListener("SIGINT", shutdownHandler);
       // `shutdown()` already swallows the errors from an interrupted server,
       // but guard against any rejection becoming unhandled.
       PromisePrototypeCatch(server.shutdown(), () => {});
     };
     try {
-      Deno.addSignalListener("SIGTERM", shutdownHandler);
-      Deno.addSignalListener("SIGINT", shutdownHandler);
+      Ende.addSignalListener("SIGTERM", shutdownHandler);
+      Ende.addSignalListener("SIGINT", shutdownHandler);
     } catch {
       // Adding signal listeners can fail in restricted environments; fall back
       // to the default behavior in that case.

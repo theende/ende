@@ -8,7 +8,7 @@ first. For the conceptual layering behind this layout, see
 
 | Directory      | What lives here                                             |
 | -------------- | ----------------------------------------------------------- |
-| `cli/`         | The `deno` binary: subcommands, tooling, LSP, module loader |
+| `cli/`         | The `ende` binary: subcommands, tooling, LSP, module loader |
 | `runtime/`     | `ende_runtime`: assembles the JS runtime and workers        |
 | `ext/`         | Extensions — native capabilities exposed to JavaScript      |
 | `libs/`        | `ende_core` and the supporting resolution/packaging crates  |
@@ -44,7 +44,7 @@ roughly by purpose:
 - **Web platform:** `web`, `fetch`, `url`, `crypto`, `console`, `webidl`,
   `websocket`, `webgpu`, `canvas`, `image`, `broadcast_channel`, `webstorage`.
 - **System access:** `fs`, `net`, `io`, `os`, `process`, `signals`, `tls`.
-- **Deno APIs:** `kv`, `cron`, `cache`, `ffi`, `napi`, `bundle`, `telemetry`.
+- **Ende APIs:** `kv`, `cron`, `cache`, `ffi`, `napi`, `bundle`, `telemetry`.
 - **Node compatibility:** `node` (most `node:*` builtins), `node_crypto`,
   `node_sqlite`.
 
@@ -71,7 +71,7 @@ packaging:
 - `tests/unit/` — JavaScript/TypeScript unit tests for runtime APIs
   (`*_test.ts`).
 - `tests/unit_node/` — unit tests for the `node:*` compatibility layer.
-- `tests/node_compat/` — Node.js's own test suite, run against Deno.
+- `tests/node_compat/` — Node.js's own test suite, run against Ende.
 - `tests/wpt/` — Web Platform Tests.
 - `tests/testdata/` — fixtures shared across suites.
 
@@ -79,11 +79,11 @@ See [`testing.md`](./testing.md) for the command that runs each suite.
 
 ## Inside `tools/`
 
-Developer and CI scripts, all run with Deno:
+Developer and CI scripts, all run with (upstream) Deno:
 
-- `tools/format.js` — format the whole tree (`deno fmt` plus extras).
+- `tools/format.js` — format the whole tree (dprint plus extras).
 - `tools/lint.js` — lint Rust and JS/TS; pass `--js` for JS/TS only.
-- `tools/check_deno_core_changes.js`, `tools/check_docs_only_changes.js` — CI
+- `tools/check_ende_core_changes.js`, `tools/check_docs_only_changes.js` — CI
   helpers that decide which jobs to run based on the changed files.
 - `tools/release/` — release automation.
 

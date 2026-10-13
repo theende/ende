@@ -2631,7 +2631,7 @@ fn broken_stdout_repl() {
 }
 
 // Regression test for https://github.com/denoland/deno/issues/16308 — when
-// `println!` panics on a broken stdout pipe (e.g. `deno | cls` on Windows),
+// `println!` panics on a broken stdout pipe (e.g. `ende | cls` on Windows),
 // the panic hook should exit cleanly instead of printing the bug-report banner.
 #[test]
 fn broken_stdout_no_panic_banner() {
@@ -3215,7 +3215,7 @@ console.log(require("./big.cjs").marker);
     .assert_matches_text("AAAA\n");
 
   // V8's identity hash only considers the length for strings over 16,383
-  // characters. Changing equal-length CJS source must invalidate Deno's cache.
+  // characters. Changing equal-length CJS source must invalidate Ende's cache.
   temp_dir.write("big.cjs", cjs_source("BBBB"));
   test_context
     .new_command()

@@ -3,12 +3,12 @@
 
 // deno-lint-ignore-file no-console
 
-import { DenoWorkspace } from "./deno_workspace.ts";
+import { EndeWorkspace } from "./ende_workspace.ts";
 import { $, getCratesPublishOrder } from "./deps.ts";
 
 $.logStep(`Running cargo publish...`);
 
-const workspace = await DenoWorkspace.load();
+const workspace = await EndeWorkspace.load();
 const cliCrate = workspace.getCliCrate();
 
 const dependencyCrates = getCratesPublishOrder(
@@ -20,9 +20,9 @@ try {
     // `--no-verify` because the dependency crates can't be built on their own:
     // they depend on `ende_core` with default features off, so nothing selects
     // an engine for the `ende_v8` facade and it hits its `compile_error!`.
-    // Engine selection happens at the top of the tree (see `deno`'s `v8` and
+    // Engine selection happens at the top of the tree (see `ende`'s `v8` and
     // `quickjs` features), which cargo's standalone tarball verification can't
-    // reproduce. The `deno` crate itself is still verified below.
+    // reproduce. The `ende` crate itself is still verified below.
     await crate.publish("--no-verify");
     $.log(`Finished ${i + 1} of ${dependencyCrates.length} crates.`);
   }

@@ -6,11 +6,11 @@
 // ende_core-related package directories (or root Cargo files). Used in CI
 // to decide whether to run ende_core tests.
 //
-// Usage: deno run --allow-run=git check_deno_core_changes.js <base_sha>
-// Writes "skip_deno_core_test=true" or "skip_deno_core_test=false" to
+// Usage: deno run --allow-run=git check_ende_core_changes.js <base_sha>
+// Writes "skip_ende_core_test=true" or "skip_ende_core_test=false" to
 // $GITHUB_OUTPUT when running in GitHub Actions.
 
-const DENO_CORE_PACKAGE_DIRS = [
+const ENDE_CORE_PACKAGE_DIRS = [
   "libs/core_testing",
   "libs/core",
   "libs/core/examples/snapshot",
@@ -22,7 +22,7 @@ const DENO_CORE_PACKAGE_DIRS = [
 
 const baseSha = Deno.args[0];
 if (!baseSha) {
-  console.error("Usage: check_deno_core_changes.js <base_sha>");
+  console.error("Usage: check_ende_core_changes.js <base_sha>");
   Deno.exit(1);
 }
 
@@ -43,26 +43,26 @@ if (code !== 0) {
 const stdoutText = new TextDecoder().decode(stdout);
 const changedFiles = stdoutText.trim().split("\n").filter(Boolean);
 
-const denoCoreChanged = changedFiles.some((file) =>
-  DENO_CORE_PACKAGE_DIRS.some((dir) => file.startsWith(dir + "/")) ||
+const endeCoreChanged = changedFiles.some((file) =>
+  ENDE_CORE_PACKAGE_DIRS.some((dir) => file.startsWith(dir + "/")) ||
   file === "Cargo.lock" ||
   file === "Cargo.toml"
 );
 
-const skip = !denoCoreChanged;
+const skip = !endeCoreChanged;
 console.log(`Changed files (${changedFiles.length}):`);
 for (const f of changedFiles) {
   console.log(`  ${f}`);
 }
-console.log(`Deno core changed: ${denoCoreChanged}`);
-console.log(`skip_deno_core_test: ${skip}`);
+console.log(`ende_core changed: ${endeCoreChanged}`);
+console.log(`skip_ende_core_test: ${skip}`);
 
 await writeOutput(skip);
 
 async function writeOutput(skip) {
   const outputFile = Deno.env.get("GITHUB_OUTPUT");
   if (outputFile) {
-    await Deno.writeTextFile(outputFile, `skip_deno_core_test=${skip}\n`, {
+    await Deno.writeTextFile(outputFile, `skip_ende_core_test=${skip}\n`, {
       append: true,
     });
   }

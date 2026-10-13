@@ -30,6 +30,10 @@ const macosX86Runner = "macos-15-intel";
 const macosArmRunner = "macos-14";
 
 // shared conditions
+// Steps gated on `isDenoland` publish to or sign with Deno-company
+// infrastructure (dl.deno.land buckets, Azure code signing, benchmark data,
+// wpt.fyi, larger runners). They only run on denoland/deno and are skipped on
+// theende/ende until Ende has its own equivalents.
 const isDenoland = conditions.isRepository("denoland/deno");
 const isMainBranch = conditions.isBranch("main");
 const isTag = conditions.isTag();
@@ -96,7 +100,7 @@ const Runners = {
   },
 } as const;
 
-const denoCorePackageDirs = [
+const endeCorePackageDirs = [
   "libs/core_testing",
   "libs/core",
   "libs/core/examples/snapshot",
@@ -511,14 +515,14 @@ const preBuildCheckStep = step({
   outputs: ["skip_build"] as const,
 });
 
-const denoCoreChangesCheckStep = step({
-  id: "deno_core_changes",
+const endeCoreChangesCheckStep = step({
+  id: "ende_core_changes",
   run: [
     // Fetch the base SHA so it's available even in shallow clones
     `git fetch --depth=1 origin \${{ github.event.pull_request.base.sha }}`,
-    `deno run -A tools/check_deno_core_changes.js \${{ github.event.pull_request.base.sha }}`,
+    `deno run -A tools/check_ende_core_changes.js \${{ github.event.pull_request.base.sha }}`,
   ],
-  outputs: ["skip_deno_core_test"] as const,
+  outputs: ["skip_ende_core_test"] as const,
 });
 
 // Detects PRs that only touch the `doc/` directory. Such PRs run the `lint`
@@ -540,12 +544,12 @@ const preBuildJob = job("pre_build", {
     cloneRepoStep,
     installDenoStep,
     step.if(conditions.isDraftPr())(preBuildCheckStep),
-    denoCoreChangesCheckStep,
+    endeCoreChangesCheckStep,
     docsOnlyChangesCheckStep,
   ),
   outputs: {
     skip_build: preBuildCheckStep.outputs.skip_build,
-    skip_deno_core_test: denoCoreChangesCheckStep.outputs.skip_deno_core_test,
+    skip_ende_core_test: endeCoreChangesCheckStep.outputs.skip_ende_core_test,
     docs_only: docsOnlyChangesCheckStep.outputs.docs_only,
   },
 });
@@ -672,8 +676,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
     };
   };
 
-  const denoArtifact = createBinaryArtifact("ende");
-  const denortArtifact = createBinaryArtifact("endert");
+  const endeArtifact = createBinaryArtifact("ende");
+  const endertArtifact = createBinaryArtifact("endert");
   const testServerArtifact = createBinaryArtifact("test_server");
   const env = {
     CARGO_TERM_COLOR: "always",
@@ -734,7 +738,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           run: [
             "mkdir -p target/release",
             'tar --exclude=".git*" --exclude=target --exclude=third_party/prebuilt \\',
-            "    -czvf target/release/deno_src.tar.gz -C .. deno",
+            "    -czvf target/release/ende_src.tar.gz -C .. ende",
           ],
         });
 
@@ -751,7 +755,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               `shasum -a 256 ende > ende-${buildItem.arch}-unknown-linux-gnu.sha256sum`,
               `zip -r ende-${buildItem.arch}-unknown-linux-gnu.zip ende`,
               `shasum -a 256 ende-${buildItem.arch}-unknown-linux-gnu.zip > ende-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              // endert is the `deno compile` base binary: libsui rewrites its
+              // endert is the `ende compile` base binary: libsui rewrites its
               // ELF to embed user code, and that rewrite drops `.relr.dyn`
               // relative relocations when the symbol table is gone, producing a
               // compiled binary whose C++ static-init guards deadlock
@@ -767,7 +771,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               "if readelf -lW ./libendert.so | grep -q GNU_EH_FRAME; then echo 'PT_GNU_EH_FRAME remains in libendert.so'; exit 1; fi",
               `zip -r libendert-${buildItem.arch}-unknown-linux-gnu.zip libendert.so`,
               `shasum -a 256 libendert-${buildItem.arch}-unknown-linux-gnu.zip > libendert-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              // QuickJS endert/libendert for `deno compile --engine quickjs`.
+              // QuickJS endert/libendert for `ende compile --engine quickjs`.
               // Reuse the same target dir (a second one would exceed runner
               // disk). Back up the v8 binaries and restore them even if the
               // QuickJS build fails so later release steps never see a partial
@@ -788,7 +792,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               `shasum -a 256 libendert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip > libendert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
               "restore_v8_runtimes",
               "trap - EXIT",
-              "./ende types > lib.deno.d.ts",
+              "./ende types > lib.ende.d.ts",
             ],
           },
           step.dependsOn(setupPrebuiltMacStep, installDenoStep)({
@@ -828,7 +832,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               "strip -x -S ./libendert.dylib",
               `zip -r libendert-${buildItem.arch}-apple-darwin.zip libendert.dylib`,
               `shasum -a 256 libendert-${buildItem.arch}-apple-darwin.zip > libendert-${buildItem.arch}-apple-darwin.zip.sha256sum`,
-              // QuickJS endert/libendert for `deno compile --engine quickjs`
+              // QuickJS endert/libendert for `ende compile --engine quickjs`
               // (see the linux note).
               "restore_v8_runtimes() {",
               "  test ! -e endert.v8 || mv -f endert.v8 endert",
@@ -905,7 +909,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               `Get-FileHash target/release/endert-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/endert-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
               `Compress-Archive -CompressionLevel Optimal -Force -Path target/release/endert.dll -DestinationPath target/release/libendert-${buildItem.arch}-pc-windows-msvc.zip`,
               `Get-FileHash target/release/libendert-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/libendert-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
-              // QuickJS endert/libendert for `deno compile --engine quickjs`
+              // QuickJS endert/libendert for `ende compile --engine quickjs`
               // (see the linux note).
               "try {",
               "  Move-Item target/release/endert.exe target/release/endert.v8.exe",
@@ -939,12 +943,12 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             if: isLinux.and(isDenoland).and(isTag),
             run: [
               `TARGET="${buildItem.arch}-unknown-linux-gnu"`,
-              'PREV_VERSION=$(curl -sf https://dl.deno.land/release-latest.txt | tr -d "v\\n") || true',
+              'PREV_VERSION=$(curl -sf https://dl.ende.sh/release-latest.txt | tr -d "v\\n") || true',
               'if [ -z "$PREV_VERSION" ]; then echo "No previous version found, skipping delta"; exit 0; fi',
               'echo "Generating delta from $PREV_VERSION for $TARGET"',
-              'curl -fSL -o prev.zip "https://github.com/denoland/deno/releases/download/v${PREV_VERSION}/deno-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }',
+              'curl -fSL -o prev.zip "https://github.com/theende/ende/releases/download/v${PREV_VERSION}/ende-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }',
               "unzip -o prev.zip -d prev/",
-              './target/release/bsdiff_helper prev/deno target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"',
+              './target/release/bsdiff_helper prev/ende target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"',
               'cd target/release && shasum -a 256 "ende-${TARGET}.from-${PREV_VERSION}.bsdiff" > "ende-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"',
             ],
           },
@@ -953,12 +957,12 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             if: isMacos.and(isDenoland).and(isTag),
             run: [
               `TARGET="${buildItem.arch}-apple-darwin"`,
-              'PREV_VERSION=$(curl -sf https://dl.deno.land/release-latest.txt | tr -d "v\\n") || true',
+              'PREV_VERSION=$(curl -sf https://dl.ende.sh/release-latest.txt | tr -d "v\\n") || true',
               'if [ -z "$PREV_VERSION" ]; then echo "No previous version found, skipping delta"; exit 0; fi',
               'echo "Generating delta from $PREV_VERSION for $TARGET"',
-              'curl -fSL -o prev.zip "https://github.com/denoland/deno/releases/download/v${PREV_VERSION}/deno-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }',
+              'curl -fSL -o prev.zip "https://github.com/theende/ende/releases/download/v${PREV_VERSION}/ende-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }',
               "unzip -o prev.zip -d prev/",
-              './target/release/bsdiff_helper prev/deno target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"',
+              './target/release/bsdiff_helper prev/ende target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"',
               'cd target/release && shasum -a 256 "ende-${TARGET}.from-${PREV_VERSION}.bsdiff" > "ende-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"',
             ],
           },
@@ -968,13 +972,13 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             shell: "pwsh",
             run: [
               `$Target = "${buildItem.arch}-pc-windows-msvc"`,
-              '$PrevVersion = (Invoke-RestMethod https://dl.deno.land/release-latest.txt).Trim() -replace "^v", ""',
+              '$PrevVersion = (Invoke-RestMethod https://dl.ende.sh/release-latest.txt).Trim() -replace "^v", ""',
               'if (-not $PrevVersion) { Write-Host "No previous version found, skipping delta"; exit 0 }',
               'Write-Host "Generating delta from $PrevVersion for $Target"',
-              'try { Invoke-WebRequest -Uri "https://github.com/denoland/deno/releases/download/v$PrevVersion/deno-$Target.zip" -OutFile prev.zip } catch { Write-Host "Previous release not found, skipping delta"; exit 0 }',
+              'try { Invoke-WebRequest -Uri "https://github.com/theende/ende/releases/download/v$PrevVersion/ende-$Target.zip" -OutFile prev.zip } catch { Write-Host "Previous release not found, skipping delta"; exit 0 }',
               "Remove-Item -Recurse -Force prev -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path prev | Out-Null",
               "Expand-Archive -Force -Path prev.zip -DestinationPath prev",
-              '& .\\target\\release\\bsdiff_helper.exe "prev\\deno.exe" "target\\release\\ende.exe" "target\\release\\ende-$Target.from-$PrevVersion.bsdiff"',
+              '& .\\target\\release\\bsdiff_helper.exe "prev\\ende.exe" "target\\release\\ende.exe" "target\\release\\ende-$Target.from-$PrevVersion.bsdiff"',
               'Get-FileHash "target\\release\\ende-$Target.from-$PrevVersion.bsdiff" -Algorithm SHA256 | Format-List > "target\\release\\ende-$Target.from-$PrevVersion.bsdiff.sha256sum"',
             ],
           },
@@ -1019,7 +1023,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               ? [{
                 name: "Configure frame-pointer panic traces",
                 run: [
-                  // `build-std` is unstable, but keeping Deno's pinned stable
+                  // `build-std` is unstable, but keeping Ende's pinned stable
                   // compiler plus this narrow opt-in is preferable to moving
                   // release builds to a separate nightly toolchain.
                   'echo "RUSTC_BOOTSTRAP=1" >> "$GITHUB_ENV"',
@@ -1029,9 +1033,9 @@ const buildJobs = buildItems.map((rawBuildItem) => {
                   // existing value, otherwise the added flags fuse into one
                   // bogus token.
                   "{",
-                  '  echo "RUSTFLAGS<<__DENO_RUSTFLAGS"',
+                  '  echo "RUSTFLAGS<<__ENDE_RUSTFLAGS"',
                   '  echo "$RUSTFLAGS -C force-frame-pointers=yes -C force-unwind-tables=no -C link-arg=-Wl,--no-eh-frame-hdr"',
-                  '  echo "__DENO_RUSTFLAGS"',
+                  '  echo "__ENDE_RUSTFLAGS"',
                   '} >> "$GITHUB_ENV"',
                 ],
               }]
@@ -1088,7 +1092,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
                   ],
                 env: { NO_COLOR: 1 },
               }, {
-                name: "Relink release deno with startup order",
+                name: "Relink release ende with startup order",
                 if: runStartupOrder,
                 run: cargoBuildReleaseCommand,
                 env: {
@@ -1132,7 +1136,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               if: isLinux,
               run: [
                 "if strings target/release/ende | grep -F -- '--no-lazy --no-lazy-eval --no-lazy-streaming'; then",
-                '  echo "release deno binary contains eager snapshot flags"',
+                '  echo "release ende binary contains eager snapshot flags"',
                 "  exit 1",
                 "fi",
               ],
@@ -1155,8 +1159,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             {
               name: "Generate symcache",
               run: [
-                "target/release/ende -A tools/release/create_symcache.ts ./deno.symcache",
-                "du -h deno.symcache",
+                "target/release/ende -A tools/release/create_symcache.ts ./ende.symcache",
+                "du -h ende.symcache",
                 "du -h target/release/ende",
               ],
               env: { NO_COLOR: 1 },
@@ -1190,12 +1194,12 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             {
               // The rest of CI only exercises the default v8 backend. Make sure the
               // experimental QuickJS backend (the ende_v8 facade over the v8x crate)
-              // keeps compiling for the deno + endert binaries so `deno compile`
+              // keeps compiling for the ende + endert binaries so `ende compile`
               // and the desktop runtime don't silently regress (notably the
               // mutually-exclusive v8/quickjs feature guard). A `check` is enough to
               // catch feature/build-script breakage and does not clobber the v8
               // binary this job produces.
-              name: "Check QuickJS backend (deno + endert)",
+              name: "Check QuickJS backend (ende + endert)",
               if: isDebug.and(
                 isLinux.and(buildItem.arch.equals("x86_64")).or(
                   isMacos.and(buildItem.arch.equals("aarch64")),
@@ -1209,20 +1213,20 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             {
               // Run a minimal check to ensure that binary is not corrupted, regardless
               // of our build mode
-              name: "Check deno binary",
+              name: "Check ende binary",
               run:
                 `target/${buildItem.profile}/ende eval "console.log(1+2)" | grep 3`,
               env: { NO_COLOR: 1 },
             },
             {
               // Verify that the binary actually works in the Ubuntu-16.04 sysroot.
-              name: "Check deno binary (in sysroot)",
+              name: "Check ende binary (in sysroot)",
               if: buildItem.use_sysroot,
               run:
                 `sudo chroot /sysroot "$(pwd)/target/${buildItem.profile}/ende" --version`,
             },
-            denoArtifact.upload(),
-            denortArtifact.upload(),
+            endeArtifact.upload(),
+            endertArtifact.upload(),
             testServerArtifact.upload(),
           );
 
@@ -1296,8 +1300,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
                 "target/release/endert-aarch64-apple-darwin.zip.sha256sum",
                 "target/release/libendert-aarch64-apple-darwin.zip",
                 "target/release/libendert-aarch64-apple-darwin.zip.sha256sum",
-                "target/release/deno_src.tar.gz",
-                "target/release/lib.deno.d.ts",
+                "target/release/ende_src.tar.gz",
+                "target/release/lib.ende.d.ts",
                 "target/release/ende-*.bsdiff",
                 "target/release/ende-*.bsdiff.sha256sum",
               ].join("\n"),
@@ -1423,8 +1427,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           installRustStep,
           installLldStep,
           sysRootStep,
-          denoArtifact.download(),
-          denortArtifact.download().if(
+          endeArtifact.download(),
+          endertArtifact.download().if(
             testCrateNameExpr.equals("integration")
               .or(testCrateNameExpr.equals("specs")),
           ),
@@ -1542,7 +1546,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
         installRustStep,
         installLldStep,
         sysRootStep,
-        denoArtifact.download(),
+        endeArtifact.download(),
         testServerArtifact.download(),
         {
           name: "Test libs",
@@ -1629,7 +1633,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           buildCacheSteps.restoreCacheStep,
           installDenoStep,
           installPythonStep,
-          denoArtifact.download(),
+          endeArtifact.download(),
           {
             name: "Configure hosts file for WPT",
             run: "./wpt make-hosts-file | sudo tee -a /etc/hosts",
@@ -1638,32 +1642,32 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           {
             name: "Run web platform tests (debug)",
             if: isDebug,
-            env: { DENO_BIN: "./target/debug/ende" },
+            env: { ENDE_BIN: "./target/debug/ende" },
             run: [
               "deno run -RWNE --allow-run --lock=tools/deno.lock.json --config tests/config/deno.json \\",
               "    ./tests/wpt/wpt.ts setup",
               "deno run -RWNE --allow-run --lock=tools/deno.lock.json --config tests/config/deno.json --unsafely-ignore-certificate-errors \\",
-              '    ./tests/wpt/wpt.ts run --all --quiet --binary="$DENO_BIN"',
+              '    ./tests/wpt/wpt.ts run --all --quiet --binary="$ENDE_BIN"',
             ],
           },
           {
             name: "Run web platform tests (release)",
             if: isRelease,
             env: {
-              DENO_BIN: "./target/release/ende",
+              ENDE_BIN: "./target/release/ende",
             },
             run: [
               "deno run -RWNE --allow-run --lock=tools/deno.lock.json --config tests/config/deno.json \\",
               "    ./tests/wpt/wpt.ts setup",
               "deno run -RWNE --allow-run --lock=tools/deno.lock.json --config tests/config/deno.json --unsafely-ignore-certificate-errors \\",
-              '    ./tests/wpt/wpt.ts run --all --quiet --release --binary="$DENO_BIN" --json=wpt.json --wptreport=wptreport.json',
+              '    ./tests/wpt/wpt.ts run --all --quiet --release --binary="$ENDE_BIN" --json=wpt.json --wptreport=wptreport.json',
             ],
           },
           {
             name: "Autobahn testsuite",
             if: isRelease,
             run:
-              "target/release/ende run -A --config tests/config/deno.json ext/websocket/autobahn/fuzzingclient.js",
+              "target/release/ende run -A --config tests/config/ende.json ext/websocket/autobahn/fuzzingclient.js",
           },
           step({
             name: "Upload wpt results to dl.deno.land",
@@ -1747,12 +1751,12 @@ const benchJob = job(
           env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" },
           run: "./tools/install_prebuilt.js wrk hyperfine",
         },
-        // We currently do a full deno build instead of getting this from the build
+        // We currently do a full ende build instead of getting this from the build
         // job because the benchmarks inspect the target folder to see the sizes of
         // libraries like v8 and swc as well as the snapshot sizes. Maybe in the future
         // we could optimize this to not need this.
         {
-          name: "Build deno",
+          name: "Build ende",
           env: {
             ENDE_SNAPSHOT_MINIFY_SOURCES: "1",
           },
@@ -1881,11 +1885,11 @@ const publishCanaryJob = job("publish-canary", {
 });
 
 // === ende_core test job ===
-// Ported from denoland/ende_core .github/workflows/ci-test/action.yml
+// Ported from denoland/deno_core .github/workflows/ci-test/action.yml
 // Tests the merged ende_core crates (libs/*) using cargo nextest.
 
 // Cargo package names for the libs/* workspace members (merged from ende_core).
-const denoCorePackageNames = [
+const endeCorePackageNames = [
   "ende_core",
   "ende_v8",
   "build-your-own-js-snapshot",
@@ -1895,21 +1899,21 @@ const denoCorePackageNames = [
   "serde_v8",
   "ende_core_testing",
 ];
-const denoCoreTestProfile = defineExprObj({
+const endeCoreTestProfile = defineExprObj({
   ...Runners.linuxX86Xl,
   profile: "release",
 });
-const denoCoreTestCacheSteps = createCacheSteps({
-  ...denoCoreTestProfile,
-  cachePrefix: "deno-core-test",
+const endeCoreTestCacheSteps = createCacheSteps({
+  ...endeCoreTestProfile,
+  cachePrefix: "ende-core-test",
 });
-const denoCoreTestJob = job("deno-core-test", {
+const endeCoreTestJob = job("ende-core-test", {
   name: `ende_core test linux-x86_64`,
   needs: [preBuildJob],
   if: preBuildJob.outputs.skip_build.notEquals("true")
-    .and(preBuildJob.outputs.skip_deno_core_test.notEquals("true"))
+    .and(preBuildJob.outputs.skip_ende_core_test.notEquals("true"))
     .and(notDocsOnly),
-  runsOn: denoCoreTestProfile.runner,
+  runsOn: endeCoreTestProfile.runner,
   timeoutMinutes: 60,
   defaults: {
     run: {
@@ -1933,7 +1937,7 @@ const denoCoreTestJob = job("deno-core-test", {
       ],
     },
     cloneRepoStep,
-    denoCoreTestCacheSteps.restoreCacheStep,
+    endeCoreTestCacheSteps.restoreCacheStep,
     installRustStep,
     installDenoStep,
     step(sysRootConfig),
@@ -1951,11 +1955,11 @@ const denoCoreTestJob = job("deno-core-test", {
         `cargo nextest run --release`,
         `  --features "ende_core/default ende_core/unsafe_use_unprotected_platform ende_core/v8"`,
         `  --tests --examples`,
-        `  ${denoCorePackageNames.map((p) => `-p ${p}`).join(" ")}`,
+        `  ${endeCorePackageNames.map((p) => `-p ${p}`).join(" ")}`,
       ].join(" \\\n    "),
     },
     {
-      // Ported from denoland/ende_core .github/workflows/ci-test-ops/action.yml
+      // Ported from denoland/deno_core .github/workflows/ci-test-ops/action.yml
       name: "Cargo nextest ops compile test runner (release)",
       run:
         "cargo nextest run --release -p ende_ops_compile_test_runner -p ende_v8",
@@ -1963,7 +1967,7 @@ const denoCoreTestJob = job("deno-core-test", {
     {
       name: "Cargo doc test",
       run: `cargo test --doc --release ${
-        denoCorePackageNames.filter((p) =>
+        endeCorePackageNames.filter((p) =>
           p !== "ende_ops_compile_test_runner" && p !== "ecore"
         ).map((p) => `-p ${p}`).join(" ")
       }`,
@@ -1975,16 +1979,16 @@ const denoCoreTestJob = job("deno-core-test", {
         "cargo run -p ende_core --example op2 --features v8",
       ],
     },
-    denoCoreTestCacheSteps.saveCacheStep,
+    endeCoreTestCacheSteps.saveCacheStep,
   ),
 });
 
 // === ende_core miri test job ===
-// Ported from denoland/ende_core .github/workflows/ci-test-miri/action.yml
+// Ported from denoland/deno_core .github/workflows/ci-test-miri/action.yml
 // Runs miri tests for ende_core using a nightly Rust toolchain.
 
 const miriNightlyToolchain = "nightly-2025-11-12";
-const denoCoreMiriJob = job("deno-core-miri", {
+const endeCoreMiriJob = job("ende-core-miri", {
   name: "ende_core miri linux-x86_64",
   needs: [preBuildJob],
   if: preBuildJob.outputs.skip_build.notEquals("true").and(notDocsOnly),
@@ -2031,8 +2035,8 @@ const ciStatusJob = job("ci-status", {
     benchJob,
     ...buildJobs.map((j) => [j.buildJob, ...j.additionalJobs]).flat(),
     lintJob,
-    denoCoreTestJob,
-    denoCoreMiriJob,
+    endeCoreTestJob,
+    endeCoreMiriJob,
   ],
   if: preBuildJob.outputs.skip_build.notEquals("true")
     .and(conditions.status.always()),
@@ -2082,8 +2086,8 @@ const workflow = createWorkflow({
     benchJob,
     ...buildJobs.map((j) => [j.buildJob, ...j.additionalJobs]).flat(),
     lintJob,
-    denoCoreTestJob,
-    denoCoreMiriJob,
+    endeCoreTestJob,
+    endeCoreMiriJob,
     ciStatusJob,
     publishCanaryJob,
   ],
@@ -2161,9 +2165,9 @@ function resolveWorkspaceCrates(testPackageMembers: Set<string>) {
       if (!testPackageMembers.has(member)) {
         ensureNoIntegrationTests(member, cargoToml);
       }
-    } else if (denoCorePackageDirs.includes(member)) {
+    } else if (endeCorePackageDirs.includes(member)) {
       // libs/* crates (merged from ende_core) have their own dedicated
-      // deno-core-test CI job, so skip them here.
+      // ende-core-test CI job, so skip them here.
       continue;
     } else if (cargoToml.bin) {
       ensureNoIntegrationTests(member, cargoToml);
@@ -2187,8 +2191,8 @@ function ensureNoIntegrationTests(
     errors.push("has a tests/ folder");
   }
   const hasNonRunnerTests = cargoToml.test?.some(
-    // this path is allowed because it's only used by deno and endert
-    // to cause the deno and endert binaries to be built when running
+    // this path is allowed because it's only used by ende and endert
+    // to cause the ende and endert binaries to be built when running
     // tests, but it doesn't actually run any tests itself
     (t) => t.path !== "integration_tests_runner.rs",
   );

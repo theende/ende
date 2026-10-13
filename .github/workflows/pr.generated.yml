@@ -22,6 +22,6 @@ jobs:
       - name: Lint
         env:
           PR_TITLE: '${{ github.event.pull_request.title }}'
-        run: 'deno run https://raw.githubusercontent.com/denoland/deno/refs/heads/main/tools/verify_pr_title.js "$PR_TITLE"'
+        run: 'deno run https://raw.githubusercontent.com/theende/ende/refs/heads/primary/tools/verify_pr_title.js "$PR_TITLE"'
 
 # gagen:pin denoland/setup-deno@v2 = 667a34cdef165d8d2b2e98dde39547c9daac7282

@@ -1,5 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-//! Environment variables documented in `deno --help`.
+//! Environment variables documented in `ende --help`.
 
 #[derive(serde::Serialize)]
 pub struct EnvVar {

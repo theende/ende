@@ -2,7 +2,7 @@
 
 import { $, ReleasesMdFile, Repo } from "./deps.ts";
 
-export class DenoWorkspace {
+export class EndeWorkspace {
   #repo: Repo;
 
   static get rootDirPath() {
@@ -10,11 +10,11 @@ export class DenoWorkspace {
     return currentDirPath.parentOrThrow().parentOrThrow();
   }
 
-  static async load(): Promise<DenoWorkspace> {
-    return new DenoWorkspace(
+  static async load(): Promise<EndeWorkspace> {
+    return new EndeWorkspace(
       await Repo.load({
         name: "deno",
-        path: DenoWorkspace.rootDirPath,
+        path: EndeWorkspace.rootDirPath,
       }),
     );
   }
@@ -45,11 +45,11 @@ export class DenoWorkspace {
     return this.getCrate("ende");
   }
 
-  getDenoRtCrate() {
+  getEndeRtCrate() {
     return this.getCrate("endert");
   }
 
-  getDenoLibCrate() {
+  getEndeLibCrate() {
     return this.getCrate("ende_lib");
   }
 
@@ -59,7 +59,7 @@ export class DenoWorkspace {
 
   getReleasesMdFile() {
     return new ReleasesMdFile(
-      DenoWorkspace.rootDirPath.join("Releases.md").toString(),
+      EndeWorkspace.rootDirPath.join("Releases.md").toString(),
     );
   }
 

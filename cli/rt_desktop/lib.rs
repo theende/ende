@@ -1,13 +1,13 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! Desktop runtime for Deno (libendert).
+//! Desktop runtime for Ende (libendert).
 //!
 //! This is a cdylib that exports the Laufey C ABI (laufey_runtime_init,
-//! laufey_runtime_start, laufey_runtime_shutdown) and boots the full Deno
+//! laufey_runtime_start, laufey_runtime_shutdown) and boots the full Ende
 //! standalone runtime. A Laufey backend (CEF, WebView) loads this
 //! shared library and provides the browser/window layer.
 //!
-//! The user's code uses `Deno.serve()` or `export default { fetch }`
+//! The user's code uses `Ende.serve()` or `export default { fetch }`
 //! to serve an HTTP app. The desktop runtime starts it on a local port
 //! and navigates the webview to it.
 
@@ -1432,7 +1432,7 @@ fn should_show_native_error_dialog(
   is_startup || !is_js_error
 }
 
-/// Stack size for the thread the Deno runtime runs on. Laufey invokes
+/// Stack size for the thread the Ende runtime runs on. Laufey invokes
 /// `laufey_runtime_start` on its RuntimeLoader thread, which gets the
 /// platform-default stack for secondary threads — only 512KB on macOS.
 /// That is far too small for the runtime: synchronous module parsing (swc)
@@ -1442,7 +1442,7 @@ fn should_show_native_error_dialog(
 const RUNTIME_THREAD_STACK_SIZE: usize = 8 * 1024 * 1024;
 
 /// Run `f` to completion on a dedicated thread with a stack large enough
-/// for the Deno runtime (see `RUNTIME_THREAD_STACK_SIZE`), keeping the
+/// for the Ende runtime (see `RUNTIME_THREAD_STACK_SIZE`), keeping the
 /// calling (loader) thread parked until it finishes.
 fn run_on_runtime_thread<F: FnOnce() + Send + 'static>(f: F) {
   let thread = std::thread::Builder::new()
@@ -1556,7 +1556,7 @@ fn run_headless_worker() {
 /// Extract the script path from fork'd process arguments.
 ///
 /// When `child_process.fork(scriptPath)` is called, the args are translated
-/// to Deno CLI args: `["<exe>", "run", "-A", "--unstable-...", "script.js", ...]`
+/// to Ende CLI args: `["<exe>", "run", "-A", "--unstable-...", "script.js", ...]`
 /// This function finds the script path (first non-flag arg after "run").
 fn extract_fork_script_path(
   args: &[std::ffi::OsString],
@@ -1726,8 +1726,8 @@ async fn run_desktop(
   );
   endert::load_env_vars(&data.metadata.env_vars_from_env_file);
 
-  // Wire up the Deno-side inspector when launched under
-  // `deno desktop --inspect[-brk|-wait]`. The parent process binds the
+  // Wire up the Ende-side inspector when launched under
+  // `ende desktop --inspect[-brk|-wait]`. The parent process binds the
   // user-visible port and runs a multiplexer that fronts both this
   // inspector and the CEF renderer's debug port; we just listen on the
   // internal port that the parent allocated for us.
@@ -1768,7 +1768,7 @@ async fn run_desktop(
   // do it from here. `desktop_serve_port` is the port we put into it.
 
   // Enable HMR if ENDE_DESKTOP_HMR is set to a directory path
-  // (set by `deno compile --desktop --hmr`).
+  // (set by `ende compile --desktop --hmr`).
   let hmr_watch_dir = env::var("ENDE_DESKTOP_HMR").ok().map(PathBuf::from);
 
   // Framework dev servers handle their own HMR via websocket.
@@ -1780,7 +1780,7 @@ async fn run_desktop(
   //   and parsed its URL; navigate there directly.
   // - ENDE_DESKTOP_FRAMEWORK_DEV: the embedded entrypoint boots the dev
   //   server inside this runtime on the desktop serve port (so server code
-  //   keeps `Deno.desktop`, #35899); use the regular serve-port poll.
+  //   keeps `Ende.desktop`, #35899); use the regular serve-port poll.
   let external_dev_url = env::var("ENDE_DESKTOP_DEV_URL").ok();
   let is_framework_dev = external_dev_url.is_some()
     || env::var("ENDE_DESKTOP_FRAMEWORK_DEV").is_ok();
@@ -1824,7 +1824,7 @@ async fn run_desktop(
       None
     };
 
-  // Desktop extension: provides Deno.desktop.* APIs + auto-update
+  // Desktop extension: provides Ende.desktop.* APIs + auto-update
   #[cfg(unix)]
   let auto_update_state = get_dylib_path().map(|p| {
     endert::desktop::AutoUpdateState {
@@ -1847,7 +1847,7 @@ async fn run_desktop(
   let auto_update_rolled_back =
     auto_update_state.as_ref().is_some_and(|s| s.rolled_back);
 
-  // App name (deno.json `desktop.app.name`, baked in at compile time) used as
+  // App name (ende.json `desktop.app.name`, baked in at compile time) used as
   // the default window title. Moved into the op_state_init closure below.
   let app_name = data.metadata.app_name.clone();
 
@@ -1877,7 +1877,7 @@ async fn run_desktop(
 
       // Forward macOS dock-reopen callbacks (clicking the dock icon while
       // no windows are visible) into the shared event channel so JS can
-      // observe them as `Deno.dock` "reopen" events.
+      // observe them as `Ende.dock` "reopen" events.
       {
         let reopen_tx = event_tx.0.clone();
         laufey::on_dock_reopen(move |has_visible_windows| {
@@ -1929,7 +1929,7 @@ async fn run_desktop(
     is_inspecting: inspect_internal_port.is_some(),
   };
 
-  // Run the Deno runtime and Laufey event loop concurrently.
+  // Run the Ende runtime and Laufey event loop concurrently.
   // We spawn the runtime first, wait for the server to be ready,
   // then navigate the webview.
   let poll_serve_port = external_dev_url.is_none();
@@ -2162,7 +2162,7 @@ mod tests {
   #[test]
   fn permission_status_maps_one_to_one() {
     // Every laufey PermissionStatus must round-trip to the matching
-    // deno PermissionState. Off-by-one swaps here would surface in JS
+    // Ende PermissionState. Off-by-one swaps here would surface in JS
     // as "granted shows up as denied" — silent and very confusing.
     assert!(matches!(
       map_permission_status(laufey::PermissionStatus::Granted),

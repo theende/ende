@@ -1921,7 +1921,7 @@ pub static SERVE_NOTIFIER: Notify = Notify::const_new();
 static SERVE_KIND: AtomicU32 = AtomicU32::new(0);
 
 /// Returns the kind of server that triggered [`SERVE_NOTIFIER`]:
-/// `"deno-serve"` for `Deno.serve`, `"node-http"` for a `node:http` or
+/// `"deno-serve"` for `Ende.serve`, `"node-http"` for a `node:http` or
 /// `node:https` server, `"node-http2"` for a `node:http2` server, or
 /// `None` when unknown.
 pub fn serving_server_kind() -> Option<&'static str> {

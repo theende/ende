@@ -8,7 +8,7 @@ edition.workspace = true
 license.workspace = true
 readme = "README.md"
 repository.workspace = true
-description = "Implementation of the Deno cron API"
+description = "Implementation of the Ende cron API"
 
 [lib]
 path = "lib.rs"

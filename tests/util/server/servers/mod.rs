@@ -1132,7 +1132,7 @@ console.log("imported", import.meta.url);
       Ok(
         Response::builder()
           .status(StatusCode::OK)
-          // use a deno version that will never happen
+          // use an ende version that will never happen
           .body(string_body("99999.99.99"))
           .unwrap(),
       )
@@ -1153,7 +1153,7 @@ console.log("imported", import.meta.url);
         .body(string_body("bda3850f84f24b71e02512c1ba2d6bf2e3daa2fd"))
         .unwrap(),
     ),
-    // for testing deno upgrade
+    // for testing ende upgrade
     (&Method::GET, path)
       if path.starts_with("/ende-upgrade/download/")
         && path.rsplit('/').next().unwrap_or("").starts_with("ende-")
@@ -1192,7 +1192,7 @@ console.log("imported", import.meta.url);
           .unwrap(),
       )
     }
-    // for testing deno upgrade -- uncompressed binary SHA-256
+    // for testing ende upgrade -- uncompressed binary SHA-256
     (&Method::GET, path)
       if path.starts_with("/ende-upgrade/download/")
         && path.ends_with(".sha256sum")
@@ -1216,7 +1216,7 @@ console.log("imported", import.meta.url);
           .unwrap(),
       )
     }
-    // for testing deno upgrade -- bsdiff delta patch
+    // for testing ende upgrade -- bsdiff delta patch
     (&Method::GET, path)
       if path.starts_with("/ende-upgrade/download/")
         && path.ends_with(".bsdiff") =>
@@ -1247,7 +1247,7 @@ console.log("imported", import.meta.url);
           .unwrap(),
       )
     }
-    // for testing deno upgrade -- bsdiff delta patch SHA-256
+    // for testing ende upgrade -- bsdiff delta patch SHA-256
     (&Method::GET, path)
       if path.starts_with("/ende-upgrade/download/")
         && path.ends_with(".bsdiff.sha256sum") =>

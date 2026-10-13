@@ -45,9 +45,9 @@ pub struct GPUTexture {
   pub error_handler: super::error::ErrorHandler,
 
   pub id: wgpu_core::id::TextureId,
-  // needed by deno
+  // needed by ende
   pub device_id: wgpu_core::id::DeviceId,
-  // needed by deno
+  // needed by ende
   pub queue_id: wgpu_core::id::QueueId,
   pub default_view_id: OnceLock<wgpu_core::id::TextureViewId>,
 

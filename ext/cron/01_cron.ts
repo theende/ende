@@ -65,7 +65,7 @@ function formatToCronSchedule(
 }
 
 function parseScheduleToString(
-  schedule: string | Deno.CronSchedule,
+  schedule: string | Ende.CronSchedule,
 ): string {
   if (typeof schedule === "string") {
     return schedule;
@@ -107,7 +107,7 @@ function parseScheduleToString(
 
 function cron(
   name: string,
-  schedule: string | Deno.CronSchedule,
+  schedule: string | Ende.CronSchedule,
   handlerOrOptions1:
     | (() => Promise<void> | void)
     | ({ backoffSchedule?: number[]; signal?: AbortSignal }),
