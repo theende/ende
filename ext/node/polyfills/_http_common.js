@@ -42,7 +42,7 @@ const {
   allMethods,
   HTTPParser,
   methods,
-} = core.loadExtScript("ext:deno_node/internal_binding/http_parser.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/http_parser.ts");
 import { IncomingMessage, readStart, readStop } from "node:_http_incoming";
 
 const kIncomingMessage = Symbol("IncomingMessage");

@@ -13,10 +13,10 @@ use std::sync::Arc;
 use bencher::Bencher;
 use bencher::benchmark_group;
 use bencher::benchmark_main;
-use deno_core::arena::ArenaShared;
-use deno_core::arena::ArenaSharedAtomic;
-use deno_core::arena::ArenaUnique;
-use deno_core::arena::RawArena;
+use ende_core::arena::ArenaShared;
+use ende_core::arena::ArenaSharedAtomic;
+use ende_core::arena::ArenaUnique;
+use ende_core::arena::RawArena;
 
 const COUNT: usize = 10_000;
 type TestType = RefCell<usize>;

@@ -4,9 +4,9 @@
 
 use std::path::PathBuf;
 
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::op2;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::op2;
 pub use rusqlite;
 use rusqlite::Connection;
 use rusqlite::OptionalExtension;
@@ -33,8 +33,8 @@ struct OriginStorageDir(PathBuf);
 
 const MAX_STORAGE_BYTES: usize = 10 * 1024 * 1024;
 
-deno_core::extension!(deno_webstorage,
-  deps = [ deno_webidl ],
+ende_core::extension!(ende_webstorage,
+  deps = [ ende_webidl ],
   ops = [
     op_webstorage_iterate_keys,
   ],
@@ -126,7 +126,7 @@ struct Storage {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for Storage {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"Storage"

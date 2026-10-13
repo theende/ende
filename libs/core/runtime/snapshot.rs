@@ -175,7 +175,7 @@ pub struct CreateSnapshotOutput {
 ///  * In your project's source:
 ///    * Load the bytes of the generated snapshot file
 ///      ([`include_bytes`] is useful here)
-///    * Pass those bytes to [`deno_core::JsRuntime::new`] via
+///    * Pass those bytes to [`ende_core::JsRuntime::new`] via
 ///      [`RuntimeOptions::startup_snapshot`]
 ///
 /// For a concrete example, see [core/examples/snapshot/][example].

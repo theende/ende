@@ -47,8 +47,8 @@ const {
 const {
   validateFunction,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 
 const lazyWritable = core.createLazyLoader("node:_stream_writable");
 
@@ -59,15 +59,15 @@ const {
   prepareAsymmetricKey,
   PrivateKeyObject,
   PublicKeyObject,
-} = core.loadExtScript("ext:deno_node/internal/crypto/keys.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/keys.ts");
 const { createHash } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/hash.ts",
+  "ext:ende_node/internal/crypto/hash.ts",
 );
 const {
   ERR_CRYPTO_SIGN_KEY_REQUIRED,
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const FastBuffer = Buffer[SymbolSpecies];
 

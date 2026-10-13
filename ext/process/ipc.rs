@@ -5,14 +5,14 @@ use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicUsize;
 
-use deno_core::AsyncRefCell;
-use deno_core::CancelHandle;
-use deno_core::ExternalOpsTracker;
-use deno_core::RcRef;
-use deno_core::serde_json;
-use deno_io::BiPipe;
-use deno_io::BiPipeRead;
-use deno_io::BiPipeWrite;
+use ende_core::AsyncRefCell;
+use ende_core::CancelHandle;
+use ende_core::ExternalOpsTracker;
+use ende_core::RcRef;
+use ende_core::serde_json;
+use ende_io::BiPipe;
+use ende_io::BiPipeRead;
+use ende_io::BiPipeWrite;
 use memchr::memchr;
 use tokio::io::AsyncWriteExt;
 
@@ -142,7 +142,7 @@ pub struct IpcJsonStreamResource {
   pub ref_tracker: IpcRefTracker,
 }
 
-impl deno_core::Resource for IpcJsonStreamResource {
+impl ende_core::Resource for IpcJsonStreamResource {
   fn close(self: Rc<Self>) {
     self.cancel.cancel();
   }
@@ -471,7 +471,7 @@ impl IpcAdvancedStreamResource {
   }
 }
 
-impl deno_core::Resource for IpcAdvancedStreamResource {
+impl ende_core::Resource for IpcAdvancedStreamResource {
   fn close(self: Rc<Self>) {
     self.cancel.cancel();
   }
@@ -579,8 +579,8 @@ impl IpcJsonStream {
 mod tests {
   use std::rc::Rc;
 
-  use deno_core::RcRef;
-  use deno_core::serde_json::json;
+  use ende_core::RcRef;
+  use ende_core::serde_json::json;
 
   use super::IpcJsonStreamResource;
 
@@ -695,8 +695,8 @@ mod tests {
     Ok(())
   }
 
-  fn json_to_bytes(v: deno_core::serde_json::Value) -> Vec<u8> {
-    let mut buf = deno_core::serde_json::to_vec(&v).unwrap();
+  fn json_to_bytes(v: ende_core::serde_json::Value) -> Vec<u8> {
+    let mut buf = ende_core::serde_json::to_vec(&v).unwrap();
     buf.push(b'\n');
     buf
   }

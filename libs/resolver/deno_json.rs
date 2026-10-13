@@ -9,22 +9,22 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use deno_config::deno_json::CompilerOptions;
-use deno_config::glob::FilePatterns;
-use deno_config::glob::PathOrPattern;
-use deno_config::glob::PathOrPatternSet;
-use deno_config::workspace::CompilerOptionsSource;
-use deno_config::workspace::TsTypeLib;
-use deno_config::workspace::WorkspaceDirectory;
-use deno_config::workspace::WorkspaceRc;
 use deno_error::JsError;
-use deno_maybe_sync::new_rc;
 use deno_path_util::normalize_path;
 use deno_path_util::url_from_directory_path;
 use deno_path_util::url_from_file_path;
 use deno_path_util::url_to_file_path;
 use deno_terminal::colors;
 use deno_unsync::sync::AtomicFlag;
+use ende_config::deno_json::CompilerOptions;
+use ende_config::glob::FilePatterns;
+use ende_config::glob::PathOrPattern;
+use ende_config::glob::PathOrPatternSet;
+use ende_config::workspace::CompilerOptionsSource;
+use ende_config::workspace::TsTypeLib;
+use ende_config::workspace::WorkspaceDirectory;
+use ende_config::workspace::WorkspaceRc;
+use ende_maybe_sync::new_rc;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use node_resolver::DenoIsBuiltInNodeModuleChecker;
@@ -50,12 +50,12 @@ use crate::npm::DenoInNpmPackageChecker;
 use crate::npm::NpmResolverSys;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-type UrlRc = deno_maybe_sync::MaybeArc<Url>;
+type UrlRc = ende_maybe_sync::MaybeArc<Url>;
 #[allow(clippy::disallowed_types, reason = "definition")]
-type CompilerOptionsRc = deno_maybe_sync::MaybeArc<CompilerOptions>;
+type CompilerOptionsRc = ende_maybe_sync::MaybeArc<CompilerOptions>;
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type CompilerOptionsTypesRc =
-  deno_maybe_sync::MaybeArc<Vec<(Url, Vec<String>)>>;
+  ende_maybe_sync::MaybeArc<Vec<(Url, Vec<String>)>>;
 
 /// A structure that represents a set of options that were ignored and the
 /// path those options came from.
@@ -241,7 +241,7 @@ impl JsxImportSourceConfig {
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type JsxImportSourceConfigRc =
-  deno_maybe_sync::MaybeArc<JsxImportSourceConfig>;
+  ende_maybe_sync::MaybeArc<JsxImportSourceConfig>;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 enum CompilerOptionsModule {
@@ -384,7 +384,7 @@ pub struct TranspileAndEmitOptions {
 #[cfg(feature = "deno_ast")]
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type TranspileAndEmitOptionsRc =
-  deno_maybe_sync::MaybeArc<TranspileAndEmitOptions>;
+  ende_maybe_sync::MaybeArc<TranspileAndEmitOptions>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 struct WildcardString {
@@ -482,11 +482,11 @@ impl CompilerOptionsPaths {
 #[derive(Debug, Default)]
 struct LoggedWarnings {
   experimental_decorators: AtomicFlag,
-  folders: deno_maybe_sync::MaybeDashSet<Url>,
+  folders: ende_maybe_sync::MaybeDashSet<Url>,
 }
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-type LoggedWarningsRc = deno_maybe_sync::MaybeArc<LoggedWarnings>;
+type LoggedWarningsRc = ende_maybe_sync::MaybeArc<LoggedWarnings>;
 
 #[derive(Default, Debug)]
 struct MemoizedValues {
@@ -1022,7 +1022,7 @@ impl TsConfigFileFilter {
 }
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-type TsConfigFileFilterRc = deno_maybe_sync::MaybeArc<TsConfigFileFilter>;
+type TsConfigFileFilterRc = ende_maybe_sync::MaybeArc<TsConfigFileFilter>;
 
 #[derive(Debug)]
 pub struct TsConfigData {
@@ -1696,7 +1696,7 @@ impl deno_graph::CheckJsResolver for CompilerOptionsResolver {
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type CompilerOptionsResolverRc =
-  deno_maybe_sync::MaybeArc<CompilerOptionsResolver>;
+  ende_maybe_sync::MaybeArc<CompilerOptionsResolver>;
 
 #[derive(Debug, Default)]
 struct JsxImportSourceConfigData {
@@ -1758,10 +1758,10 @@ impl JsxImportSourceConfigResolver {
 
 #[cfg(feature = "deno_ast")]
 fn compiler_options_to_transpile_and_emit_options(
-  config: deno_config::deno_json::CompilerOptions,
+  config: ende_config::deno_json::CompilerOptions,
   overrides: &CompilerOptionsOverrides,
 ) -> Result<TranspileAndEmitOptions, serde_json::Error> {
-  let options: deno_config::deno_json::EmitConfigOptions =
+  let options: ende_config::deno_json::EmitConfigOptions =
     serde_json::from_value(config.0)?;
   let imports_not_used_as_values =
     match options.imports_not_used_as_values.as_str() {

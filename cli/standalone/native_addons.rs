@@ -18,9 +18,9 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_core::error::AnyError;
-use deno_npm::NpmPackageId;
-use deno_npm::NpmSystemInfo;
+use ende_core::error::AnyError;
+use ende_npm::NpmPackageId;
+use ende_npm::NpmSystemInfo;
 
 use crate::npm::CliNpmResolver;
 
@@ -65,7 +65,7 @@ pub fn find_native_addon_packages(
           // Skip packages that aren't actually present on disk (e.g.
           // platform-specific optional deps for other systems).
           Err(
-            deno_resolver::npm::managed::ResolvePkgFolderFromPkgIdError::NotFound(_),
+            ende_resolver::npm::managed::ResolvePkgFolderFromPkgIdError::NotFound(_),
           ) => continue,
           Err(err) => return Err(err.into()),
         };

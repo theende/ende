@@ -9,12 +9,12 @@ use std::collections::hash_map;
 use std::sync::Arc;
 
 use deno_error::JsError;
-use deno_lockfile::Lockfile;
 use deno_semver::StackString;
 use deno_semver::VersionReq;
 use deno_semver::package::PackageName;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
+use ende_lockfile::Lockfile;
 use futures::StreamExt;
 use futures::stream::FuturesOrdered;
 use rustc_hash::FxHashMap;
@@ -1305,8 +1305,8 @@ pub fn snapshot_from_lockfile(
 mod tests {
   use std::path::PathBuf;
 
-  use deno_lockfile::NewLockfileOptions;
   use deno_semver::Version;
+  use ende_lockfile::NewLockfileOptions;
   use pretty_assertions::assert_eq;
 
   use super::*;

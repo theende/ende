@@ -262,7 +262,7 @@ pub fn deno_exe_path() -> PathRef {
     return PathRef::new(PathBuf::from(path));
   }
   // Something like /Users/rld/src/deno/target/debug/deps/deno
-  let mut p = target_dir().join("deno").to_path_buf();
+  let mut p = target_dir().join("ende").to_path_buf();
   if cfg!(windows) {
     p.set_extension("exe");
   }
@@ -270,7 +270,7 @@ pub fn deno_exe_path() -> PathRef {
 }
 
 pub fn denort_exe_path() -> PathRef {
-  let mut p = target_dir().join("denort").to_path_buf();
+  let mut p = target_dir().join("endert").to_path_buf();
   if cfg!(windows) {
     p.set_extension("exe");
   }

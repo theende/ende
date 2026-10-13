@@ -2,10 +2,10 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 import { core, primordials } from "ext:core/mod.js";
-import { pipeline } from "ext:deno_node/internal/streams/pipeline.js";
+import { pipeline } from "ext:ende_node/internal/streams/pipeline.js";
 import Duplex from "node:_stream_duplex";
 const { destroyer } = core.loadExtScript(
-  "ext:deno_node/internal/streams/destroy.js",
+  "ext:ende_node/internal/streams/destroy.js",
 );
 
 const {
@@ -16,11 +16,11 @@ const {
   isWebStream,
   isWritable,
   isWritableStream,
-} = core.loadExtScript("ext:deno_node/internal/streams/utils.js");
+} = core.loadExtScript("ext:ende_node/internal/streams/utils.js");
 
-const imported1 = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const imported1 = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const eos =
-  core.loadExtScript("ext:deno_node/internal/streams/end-of-stream.js").default;
+  core.loadExtScript("ext:ende_node/internal/streams/end-of-stream.js").default;
 
 const {
   AbortError,

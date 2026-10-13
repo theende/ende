@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_maybe_sync::MaybeDashMap;
 use deno_media_type::MediaType;
+use ende_maybe_sync::MaybeDashMap;
 use node_resolver::InNpmPackageChecker;
 use node_resolver::PackageJsonResolverRc;
 use node_resolver::ResolutionMode;
@@ -15,7 +15,7 @@ pub mod analyzer;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type CjsTrackerRc<TInNpmPackageChecker, TSys> =
-  deno_maybe_sync::MaybeArc<CjsTracker<TInNpmPackageChecker, TSys>>;
+  ende_maybe_sync::MaybeArc<CjsTracker<TInNpmPackageChecker, TSys>>;
 
 /// Keeps track of what module specifiers were resolved as CJS.
 ///

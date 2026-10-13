@@ -3,8 +3,8 @@
 
 import process from "node:process";
 import { core, primordials } from "ext:core/mod.js";
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const _mod1 = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const _mod1 = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const {
   ERR_INVALID_ARG_TYPE,

@@ -44,8 +44,8 @@ const {
   readableStreamForRid,
   WritableStream,
   writableStreamForRid,
-} = core.loadExtScript("ext:deno_web/06_streams.js");
-const { loadTlsKeyPair } = core.loadExtScript("ext:deno_net/02_tls.js");
+} = core.loadExtScript("ext:ende_web/06_streams.js");
+const { loadTlsKeyPair } = core.loadExtScript("ext:ende_net/02_tls.js");
 const {
   BadResourcePrototype,
 } = core;

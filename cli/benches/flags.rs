@@ -1,5 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-//! Microbenchmark of the CLI flag-parsing entry point (`deno_cli_parser` plus
+//! Microbenchmark of the CLI flag-parsing entry point (`ende_cli_parser` plus
 //! the CLI-side bare-run fast path), built into the same binary (same profile /
 //! LTO) so the numbers are free of the runtime-startup and build confounders
 //! that a `deno run` wall-clock benchmark has.
@@ -54,7 +54,7 @@ fn benches(c: &mut Criterion) {
       b.iter_batched(
         || input.clone(),
         |args| {
-          black_box(deno::flags_from_vec_with_initial_cwd(
+          black_box(ende::flags_from_vec_with_initial_cwd(
             black_box(args),
             None,
           ))

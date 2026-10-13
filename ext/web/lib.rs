@@ -23,16 +23,16 @@ use std::sync::Arc;
 pub use blob::BlobError;
 pub use compression::CompressionError;
 pub use css_stylesheet::create_css_style_sheet;
-use deno_core::U16String;
-use deno_core::convert::ByteString;
-use deno_core::convert::Uint8Array;
-use deno_core::op2;
-use deno_core::url::Url;
-use deno_core::v8;
 use encoding_rs::CoderResult;
 use encoding_rs::Decoder;
 use encoding_rs::DecoderResult;
 use encoding_rs::Encoding;
+use ende_core::U16String;
+use ende_core::convert::ByteString;
+use ende_core::convert::Uint8Array;
+use ende_core::op2;
+use ende_core::url::Url;
+use ende_core::v8;
 pub use message_port::MessagePortError;
 pub use stream_resource::StreamResourceError;
 
@@ -68,8 +68,8 @@ use crate::timers::op_now;
 use crate::timers::op_time_origin;
 pub mod locks;
 
-deno_core::extension!(deno_web,
-  deps = [ deno_webidl ],
+ende_core::extension!(ende_web,
+  deps = [ ende_webidl ],
   ops = [
     op_base64_decode,
     op_base64_decode_into,
@@ -818,8 +818,8 @@ struct TextDecoderResource {
 }
 
 // SAFETY: we're sure `TextDecoderResource` can be GCed
-unsafe impl deno_core::GarbageCollected for TextDecoderResource {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for TextDecoderResource {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"TextDecoderResource"

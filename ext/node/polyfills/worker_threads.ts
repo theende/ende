@@ -39,9 +39,9 @@ const {
   serializeMessageData,
   setMessagePortId,
   unrefParentPort,
-} = core.loadExtScript("ext:deno_web/13_message_port.js");
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
-const { notImplemented } = core.loadExtScript("ext:deno_node/_utils.ts");
+} = core.loadExtScript("ext:ende_web/13_message_port.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
+const { notImplemented } = core.loadExtScript("ext:ende_node/_utils.ts");
 const {
   ERR_CLOSED_MESSAGE_PORT,
   ERR_CONSTRUCT_CALL_REQUIRED,
@@ -55,24 +55,24 @@ const {
   ERR_WORKER_MESSAGING_TIMEOUT,
   ERR_WORKER_NOT_RUNNING,
   ERR_WORKER_PATH,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   validateArray,
   validateInteger,
   validateObject,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 const { channel: createDiagnosticsChannel } = core.loadExtScript(
-  "ext:deno_node/diagnostics_channel.js",
+  "ext:ende_node/diagnostics_channel.js",
 );
 const workerThreadsChannel = createDiagnosticsChannel("worker_threads");
 const lazyStream = core.createLazyLoader("node:stream");
 const {
   BroadcastChannel: WebBroadcastChannel,
   refBroadcastChannel,
-} = core.loadExtScript("ext:deno_web/01_broadcast_channel.js");
+} = core.loadExtScript("ext:ende_web/01_broadcast_channel.js");
 const { untransferableSymbol } = core.loadExtScript(
-  "ext:deno_node/internal_binding/util.ts",
+  "ext:ende_node/internal_binding/util.ts",
 );
 const lazyProcess = core.createLazyLoader("node:process");
 const lazyUrl = core.createLazyLoader("node:url");
@@ -1170,7 +1170,7 @@ internals.__initWorkerThreads = (
         if (metadata.execArgv) {
           lazyProcess().default.execArgv = metadata.execArgv;
           core.loadExtScript(
-            "ext:deno_node/internal_binding/node_options.ts",
+            "ext:ende_node/internal_binding/node_options.ts",
           ).setOptionSourceExecArgv(metadata.execArgv);
           for (let i = 0; i < metadata.execArgv.length; i++) {
             if (metadata.execArgv[i] === "--trace-warnings") {
@@ -1727,7 +1727,7 @@ function isMarkedAsUntransferable(obj: unknown): boolean {
 function markAsUncloneable(obj: unknown) {
   return webMarkAsUncloneable(obj);
 }
-const lazyVm = () => core.loadExtScript("ext:deno_node/vm.js");
+const lazyVm = () => core.loadExtScript("ext:ende_node/vm.js");
 
 // Move a MessagePort into a vm.Context. The returned object lives in the
 // target context (so its prototype chain is in that realm and it is *not*
@@ -2244,7 +2244,7 @@ class BroadcastChannel extends WebBroadcastChannel {
   }
 }
 
-const { locks } = core.createLazyLoader("ext:deno_web/locks.js")();
+const { locks } = core.createLazyLoader("ext:ende_web/locks.js")();
 
 // Node's `worker_threads.MessagePort` is a function (not a class) that throws
 // `ERR_CONSTRUCT_CALL_INVALID` whether called as `MessagePort()` or

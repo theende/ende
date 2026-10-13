@@ -10,7 +10,7 @@ publish = false
 cargo-fuzz = true
 
 [dependencies]
-deno_npm = { path = ".." }
+ende_npm = { path = ".." }
 libfuzzer-sys = "0.4"
 
 [[bin]]

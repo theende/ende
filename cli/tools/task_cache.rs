@@ -48,10 +48,10 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
 
-use deno_config::glob::FileCollector;
-use deno_config::glob::FilePatterns;
-use deno_config::glob::PathOrPatternSet;
-use deno_core::serde_json;
+use ende_config::glob::FileCollector;
+use ende_config::glob::FilePatterns;
+use ende_config::glob::PathOrPatternSet;
+use ende_core::serde_json;
 use serde::Deserialize;
 use serde::Serialize;
 use sha2::Digest;

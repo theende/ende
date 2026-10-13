@@ -8,31 +8,31 @@ use std::thread;
 use console_static_text::ansi::strip_ansi_codes;
 use deno_ast::MediaType;
 use deno_ast::diagnostics::Diagnostic as _;
-use deno_core::ModuleSpecifier;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::futures::StreamExt;
-use deno_core::parking_lot::RwLock;
-use deno_core::resolve_url;
-use deno_core::serde::Deserialize;
-use deno_core::serde_json;
-use deno_core::serde_json::json;
-use deno_core::url::Url;
 use deno_error::JsErrorClass;
 use deno_graph::Resolution;
 use deno_graph::ResolutionError;
 use deno_graph::SpecifierError;
 use deno_graph::fast_check::FastCheckDiagnostic;
 use deno_graph::source::ResolveError;
-use deno_lib::args::CaData;
-use deno_resolver::deno_json::CompilerOptionsKey;
-use deno_resolver::graph::enhanced_resolution_error_message;
-use deno_resolver::workspace::sloppy_imports_resolve;
-use deno_runtime::deno_node;
-use deno_runtime::tokio_util::create_basic_runtime;
 use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageReq;
+use ende_core::ModuleSpecifier;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::futures::StreamExt;
+use ende_core::parking_lot::RwLock;
+use ende_core::resolve_url;
+use ende_core::serde::Deserialize;
+use ende_core::serde_json;
+use ende_core::serde_json::json;
+use ende_core::url::Url;
+use ende_lib::args::CaData;
+use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_resolver::graph::enhanced_resolution_error_message;
+use ende_resolver::workspace::sloppy_imports_resolve;
+use ende_runtime::ende_node;
+use ende_runtime::tokio_util::create_basic_runtime;
 use import_map::ImportMap;
 use import_map::ImportMapDiagnostic;
 use import_map::ImportMapErrorKind;
@@ -107,7 +107,7 @@ pub type NoSlowTypesDiagnosticsCache = OnceCellMap<
 >;
 
 fn should_send_diagnostic_batch_notifications() -> bool {
-  deno_lib::args::has_flag_env_var(
+  ende_lib::args::has_flag_env_var(
     &CliSys::default(),
     "DENO_INTERNAL_DIAGNOSTIC_BATCH_NOTIFICATIONS",
   )
@@ -268,7 +268,7 @@ impl DiagnosticsServer {
               Arc::new(NoSlowTypesDiagnosticsCache::default());
             let open_docs =
               snapshot.document_modules.documents.open_docs().cloned();
-            deno_core::futures::stream::iter(open_docs.map(|document| {
+            ende_core::futures::stream::iter(open_docs.map(|document| {
               let snapshot = snapshot.clone();
               let ts_server = ts_server.clone();
               let ambient_modules_regex_cache =
@@ -610,7 +610,7 @@ fn compute_document_doc_diagnostics(
   let roots = vec![specifier.clone()];
   let mut graph =
     deno_graph::ModuleGraph::new(deno_graph::GraphKind::TypesOnly);
-  deno_core::futures::executor::block_on(graph.build(
+  ende_core::futures::executor::block_on(graph.build(
     roots.clone(),
     Vec::new(),
     &loader,
@@ -769,7 +769,7 @@ impl DenoDiagnostic {
       Self::NoExportNpm(_) => "no-export-npm",
       Self::NoLocal(_) => "no-local",
       Self::ResolutionError(err, _) => {
-        if deno_resolver::graph::get_resolution_error_bare_node_specifier(err)
+        if ende_resolver::graph::get_resolution_error_bare_node_specifier(err)
           .is_some()
         {
           "import-node-prefix-missing"
@@ -1014,7 +1014,7 @@ impl DenoDiagnostic {
       Self::NotInstalledNpm(pkg_req, specifier) => (lsp::DiagnosticSeverity::ERROR, format!("npm package \"{pkg_req}\" is not installed or doesn't exist."), Some(json!({ "specifier": specifier }))),
       Self::NoExportNpm(pkg_ref) => (lsp::DiagnosticSeverity::ERROR, format!("NPM package \"{}\" does not define an export \"{}\".", pkg_ref.req(), pkg_ref.sub_path().unwrap_or(".")), None),
       Self::NoLocal(specifier) => {
-        let sloppy_resolution = sloppy_imports_resolve(specifier, deno_resolver::workspace::ResolutionKind::Execution, CliSys::default());
+        let sloppy_resolution = sloppy_imports_resolve(specifier, ende_resolver::workspace::ResolutionKind::Execution, CliSys::default());
         let data = sloppy_resolution.as_ref().map(|(resolved, sloppy_reason)| {
           json!({
             "specifier": specifier,
@@ -1029,7 +1029,7 @@ impl DenoDiagnostic {
         (
         lsp::DiagnosticSeverity::ERROR,
         message,
-        deno_resolver::graph::get_resolution_error_bare_node_specifier(err)
+        ende_resolver::graph::get_resolution_error_bare_node_specifier(err)
           .map(|specifier| json!({ "specifier": specifier }))
       )},
       Self::UnknownNodeSpecifier(specifier) => (lsp::DiagnosticSeverity::ERROR, format!("No such built-in module: node:{}", specifier.path()), None),
@@ -1244,7 +1244,7 @@ fn diagnose_resolution(
                   if let Some(module_name) =
                     specifier.as_str().strip_prefix("node:")
                   {
-                    if !deno_node::is_builtin_node_module(module_name) {
+                    if !ende_node::is_builtin_node_module(module_name) {
                       diagnostics.push(DenoDiagnostic::UnknownNodeSpecifier(
                         specifier.clone(),
                       ));
@@ -2149,7 +2149,7 @@ mod tests {
   use std::str::FromStr;
   use std::sync::Arc;
 
-  use deno_config::deno_json::ConfigFile;
+  use ende_config::deno_json::ConfigFile;
   use pretty_assertions::assert_eq;
   use test_util::TempDir;
 

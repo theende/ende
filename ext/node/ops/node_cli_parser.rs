@@ -5,8 +5,8 @@
 //! This module uses the node_shim crate to parse Node.js CLI arguments
 //! and translates them to Deno CLI arguments.
 
-use deno_core::ToV8;
-use deno_core::op2;
+use ende_core::ToV8;
+use ende_core::op2;
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
 #[class(generic)]

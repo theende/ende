@@ -9,14 +9,14 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::parking_lot::Mutex;
-use deno_core::unsync::sync::AtomicFlag;
-use deno_lib::util::hash::FastInsecureHasher;
 use deno_path_util::get_atomic_path;
-use deno_runtime::code_cache::CodeCache;
-use deno_runtime::code_cache::CodeCacheType;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::parking_lot::Mutex;
+use ende_core::unsync::sync::AtomicFlag;
+use ende_lib::util::hash::FastInsecureHasher;
+use ende_runtime::code_cache::CodeCache;
+use ende_runtime::code_cache::CodeCacheType;
 use url::Url;
 
 enum CodeCacheStrategy {

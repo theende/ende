@@ -14,20 +14,20 @@ use std::sync::LazyLock;
 use std::sync::OnceLock;
 
 use deno_ast::MediaType;
-use deno_core::ModuleSpecifier;
-use deno_core::serde::Deserialize;
-use deno_core::serde::Deserializer;
-use deno_core::serde::Serialize;
-use deno_core::serde::Serializer;
-use deno_core::url::Url;
 use deno_graph::Module;
 use deno_graph::ModuleGraph;
-use deno_lib::util::checksum;
-use deno_lib::util::hash::FastInsecureHasher;
-use deno_resolver::deno_json::JsxImportSourceConfigResolver;
-use deno_resolver::npm::ResolvePkgFolderFromDenoReqError;
-use deno_resolver::npm::managed::ResolvePkgFolderFromDenoModuleError;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_core::ModuleSpecifier;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Deserializer;
+use ende_core::serde::Serialize;
+use ende_core::serde::Serializer;
+use ende_core::url::Url;
+use ende_lib::util::checksum;
+use ende_lib::util::hash::FastInsecureHasher;
+use ende_resolver::deno_json::JsxImportSourceConfigResolver;
+use ende_resolver::npm::ResolvePkgFolderFromDenoReqError;
+use ende_resolver::npm::managed::ResolvePkgFolderFromDenoModuleError;
 use indexmap::IndexMap;
 use node_resolver::NodeResolutionKind;
 use node_resolver::ResolutionMode;
@@ -588,7 +588,7 @@ pub enum LoadError {
   ResolveUrlOrPathError(#[from] deno_path_util::ResolveUrlOrPathError),
   #[class(inherit)]
   #[error("Error converting a string module specifier for \"op_resolve\": {0}")]
-  ModuleResolution(#[from] deno_core::ModuleResolutionError),
+  ModuleResolution(#[from] ende_core::ModuleResolutionError),
   #[class(inherit)]
   #[error("{0}")]
   ClosestPkgJson(#[from] node_resolver::errors::PackageJsonLoadError),
@@ -645,7 +645,7 @@ fn get_specifier_raw_import(specifier: &Url) -> Option<RawImportKind> {
 pub enum ResolveError {
   #[class(inherit)]
   #[error("Error converting a string module specifier for \"op_resolve\": {0}")]
-  ModuleResolution(#[from] deno_core::ModuleResolutionError),
+  ModuleResolution(#[from] ende_core::ModuleResolutionError),
   #[class(inherit)]
   #[error(transparent)]
   FilePathToUrl(#[from] deno_path_util::PathToUrlError),
@@ -858,7 +858,7 @@ pub enum ExecError {
   ResponseNotSet,
   #[class(inherit)]
   #[error(transparent)]
-  Js(Box<deno_core::error::JsError>),
+  Js(Box<ende_core::error::JsError>),
 }
 
 #[derive(Clone)]
@@ -908,7 +908,7 @@ pub(crate) fn decompress_source(contents: &[u8]) -> Arc<str> {
 /// optionally an updated TypeScript build info.
 pub fn exec(
   request: Request,
-  code_cache: Option<Arc<dyn deno_runtime::code_cache::CodeCache>>,
+  code_cache: Option<Arc<dyn ende_runtime::code_cache::CodeCache>>,
 ) -> Result<Response, ExecError> {
   // tsc cannot handle root specifiers that don't have one of the "acceptable"
   // extensions.  Therefore, we have to check the root modules against their

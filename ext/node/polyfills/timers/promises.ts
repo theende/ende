@@ -2,7 +2,7 @@
 
 (function () {
 const { core } = __bootstrap;
-const timers = core.loadExtScript("ext:deno_node/timers.ts");
+const timers = core.loadExtScript("ext:ende_node/timers.ts");
 
 const setTimeout = timers.promises.setTimeout;
 const setImmediate = timers.promises.setImmediate;

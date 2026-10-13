@@ -101,9 +101,9 @@ Under the hood:
 
   return {
     "setup": {
-      description: "Initial setup: build deno and test_server",
+      description: "Initial setup: build ende and test_server",
       help:
-        `Sets up the development environment by compiling both the main 'deno'
+        `Sets up the development environment by compiling both the main 'ende'
 binary and the 'test_server' binary used by the test suite.
 
 Run this once after cloning the repository, or after pulling changes that
@@ -111,18 +111,18 @@ modify Rust code, to ensure you have working binaries for development and
 testing.
 
 Under the hood:
-  cargo build --bin deno --bin test_server`,
+  cargo build --bin ende --bin test_server`,
       async fn(_args: string[]) {
         $.logStep("Setting up development environment...");
-        $.logStep("Building deno and test_server...");
-        await $`cargo build --bin deno --bin test_server`.cwd(root);
+        $.logStep("Building ende and test_server...");
+        await $`cargo build --bin ende --bin test_server`.cwd(root);
         $.logStep("Setup complete.");
       },
     },
     "build": {
-      description: "Build the deno binary (debug mode)",
-      help: `Compiles the main 'deno' binary in debug mode (unoptimized, with
-debug symbols). The resulting binary is placed at ./target/debug/deno.
+      description: "Build the ende binary (debug mode)",
+      help: `Compiles the main 'ende' binary in debug mode (unoptimized, with
+debug symbols). The resulting binary is placed at ./target/debug/ende.
 
 Use this during normal development iteration. For a release-optimized
 build, run 'cargo build --release' directly.
@@ -132,10 +132,10 @@ binary, use './x check' instead — it is significantly faster because
 it skips the linking step.
 
 Under the hood:
-  cargo build --bin deno`,
+  cargo build --bin ende`,
       async fn(_args: string[]) {
         $.logStep("Building Deno...");
-        await $`cargo build --bin deno`.cwd(root);
+        await $`cargo build --bin ende`.cwd(root);
         $.logStep("Build complete.");
       },
     },
@@ -270,46 +270,46 @@ Under the hood:
   cargo test -p specs_tests --test specs -- <filter>`,
     }),
     "test-core": {
-      description: "Run deno_core and related crate tests (nextest)",
+      description: "Run ende_core and related crate tests (nextest)",
       help:
-        `Runs the deno_core test suite and related crates using cargo-nextest,
-matching what CI runs in the 'deno_core test' job.
+        `Runs the ende_core test suite and related crates using cargo-nextest,
+matching what CI runs in the 'ende_core test' job.
 
-This includes tests for: deno_core, deno_ops, serde_v8, deno_core_testing,
-build-your-own-js-snapshot, dcore, and deno_ops_compile_test_runner.
+This includes tests for: ende_core, ende_ops, serde_v8, ende_core_testing,
+build-your-own-js-snapshot, ecore, and ende_ops_compile_test_runner.
 
 Requires cargo-nextest to be installed:
   cargo binstall cargo-nextest
 
 Usage:
-  ./x test-core              Run all deno_core tests
+  ./x test-core              Run all ende_core tests
   ./x test-core <filter>     Run tests matching the filter
 
 Under the hood:
-  cargo nextest run --features "deno_core/default deno_core/unsafe_use_unprotected_platform deno_core/v8" \\
+  cargo nextest run --features "ende_core/default ende_core/unsafe_use_unprotected_platform ende_core/v8" \\
     --tests --examples \\
-    -p deno_core -p deno_v8 -p build-your-own-js-snapshot -p dcore -p deno_ops -p deno_ops_compile_test_runner -p serde_v8 -p deno_core_testing
-  cargo nextest run -p deno_ops_compile_test_runner -p deno_v8
-  cargo test --doc -p deno_core -p deno_v8 -p build-your-own-js-snapshot -p deno_ops -p serde_v8 -p deno_core_testing`,
+    -p ende_core -p ende_v8 -p build-your-own-js-snapshot -p ecore -p ende_ops -p ende_ops_compile_test_runner -p serde_v8 -p ende_core_testing
+  cargo nextest run -p ende_ops_compile_test_runner -p ende_v8
+  cargo test --doc -p ende_core -p ende_v8 -p build-your-own-js-snapshot -p ende_ops -p serde_v8 -p ende_core_testing`,
       async fn(args: string[]) {
         const filterArgs = args.length > 0
           ? ["-E", `test(${args.join(" ")})`]
           : [];
-        $.logStep("Running deno_core nextest...");
+        $.logStep("Running ende_core nextest...");
         await $`cargo nextest run ${filterArgs}
-          --features ${"deno_core/default deno_core/unsafe_use_unprotected_platform deno_core/v8"}
+          --features ${"ende_core/default ende_core/unsafe_use_unprotected_platform ende_core/v8"}
           --tests --examples
-          -p deno_core -p deno_v8 -p build-your-own-js-snapshot -p dcore -p deno_ops -p deno_ops_compile_test_runner -p serde_v8 -p deno_core_testing`
+          -p ende_core -p ende_v8 -p build-your-own-js-snapshot -p ecore -p ende_ops -p ende_ops_compile_test_runner -p serde_v8 -p ende_core_testing`
           .cwd(root);
-        $.logStep("Running deno_ops compile test runner...");
-        await $`cargo nextest run ${filterArgs} -p deno_ops_compile_test_runner -p deno_v8`
+        $.logStep("Running ende_ops compile test runner...");
+        await $`cargo nextest run ${filterArgs} -p ende_ops_compile_test_runner -p ende_v8`
           .cwd(root);
         if (filterArgs.length === 0) {
           $.logStep("Running doc tests...");
-          await $`cargo test --doc -p deno_core -p deno_v8 -p build-your-own-js-snapshot -p deno_ops -p serde_v8 -p deno_core_testing`
+          await $`cargo test --doc -p ende_core -p ende_v8 -p build-your-own-js-snapshot -p ende_ops -p serde_v8 -p ende_core_testing`
             .cwd(root);
         }
-        $.logStep("deno_core tests complete.");
+        $.logStep("ende_core tests complete.");
       },
     },
     "test-napi": {
@@ -341,7 +341,7 @@ Under the hood:
         $.logStep("Running NAPI tests...");
         const filter = args.length > 0 ? args.map((a) => `--filter=${a}`) : [];
         await $`${
-          root.join("target/debug/deno").toString()
+          root.join("target/debug/ende").toString()
         } test --allow-read --allow-env --allow-ffi --allow-run --v8-flags=--expose-gc --config ${
           root.join("tests/config/deno.json").toString()
         } --no-lock ${filter} .`.cwd(root.join("tests/napi"));
@@ -407,7 +407,7 @@ function printHelp(COMMANDS: Record<string, Command>) {
   console.log(`  ${bold("EXAMPLES")}`);
   console.log(
     `    ${dim("$")} ./x ${green("build")}              ${
-      dim("# build the deno binary")
+      dim("# build the ende binary")
     }`,
   );
   console.log(

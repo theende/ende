@@ -9,9 +9,9 @@ const {
   CHAR_COLON,
   CHAR_DOT,
   CHAR_QUESTION_MARK,
-} = core.loadExtScript("ext:deno_node/path/_constants.ts");
+} = core.loadExtScript("ext:ende_node/path/_constants.ts");
 const { ERR_INVALID_ARG_TYPE } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 
 const {
@@ -21,10 +21,10 @@ const {
   isPosixPathSeparator,
   isWindowsDeviceRoot,
   normalizeString,
-} = core.loadExtScript("ext:deno_node/path/_util.ts");
-const { default: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+} = core.loadExtScript("ext:ende_node/path/_util.ts");
+const { default: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 const lazyLoadGlob = core.createLazyLoader(
-  "ext:deno_node/_fs/_fs_glob.ts",
+  "ext:ende_node/_fs/_fs_glob.ts",
 );
 
 const {

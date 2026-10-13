@@ -1,4 +1,4 @@
-# deno_os
+# ende_os
 
 This crate implements OS specific APIs for Deno
 

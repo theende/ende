@@ -17,24 +17,8 @@ use base64::prelude::BASE64_URL_SAFE;
 use boxed_error::Boxed;
 use chrono::DateTime;
 use chrono::Utc;
-use deno_core::AsyncRefCell;
-use deno_core::ByteString;
-use deno_core::CancelFuture;
-use deno_core::CancelHandle;
-use deno_core::JsBuffer;
-use deno_core::OpState;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::ToJsBuffer;
-use deno_core::convert::Uint8Array;
-use deno_core::futures::StreamExt;
-use deno_core::op2;
-use deno_core::serde_v8::AnyValue;
-use deno_core::serde_v8::BigInt;
 use deno_error::JsErrorBox;
 use deno_error::JsErrorClass;
-use deno_features::FeatureChecker;
 use denokv_proto::AtomicWrite;
 use denokv_proto::Check;
 use denokv_proto::Consistency;
@@ -55,6 +39,22 @@ use denokv_proto::decode_key;
 use denokv_proto::encode_key;
 use dynamic::DynamicDbHandler;
 use dynamic::RcDynamicDb;
+use ende_core::AsyncRefCell;
+use ende_core::ByteString;
+use ende_core::CancelFuture;
+use ende_core::CancelHandle;
+use ende_core::JsBuffer;
+use ende_core::OpState;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::ToJsBuffer;
+use ende_core::convert::Uint8Array;
+use ende_core::futures::StreamExt;
+use ende_core::op2;
+use ende_core::serde_v8::AnyValue;
+use ende_core::serde_v8::BigInt;
+use ende_features::FeatureChecker;
 use log::debug;
 use serde::Deserialize;
 use serde::Serialize;
@@ -64,8 +64,8 @@ pub use crate::interface::*;
 
 pub const UNSTABLE_FEATURE_NAME: &str = "kv";
 
-deno_core::extension!(deno_kv,
-  deps = [ deno_web ],
+ende_core::extension!(ende_kv,
+  deps = [ ende_web ],
   ops = [
     op_kv_database_open,
     op_kv_snapshot_read,
@@ -129,7 +129,7 @@ pub enum KvErrorKind {
   DatabaseHandler(JsErrorBox),
   #[class(inherit)]
   #[error(transparent)]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
   #[class(type)]
   #[error("Too many ranges (max {0})")]
   TooManyRanges(usize),

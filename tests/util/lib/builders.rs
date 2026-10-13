@@ -223,7 +223,7 @@ impl TestContextBuilder {
   }
 
   pub fn add_compile_env_vars(mut self) -> Self {
-    // The `denort` binary is in the same artifact directory as the `deno` binary.
+    // The `endert` binary is in the same artifact directory as the `deno` binary.
     let denort_bin = denort_exe_path();
     self = self.env("DENORT_BIN", denort_bin.to_string());
     self

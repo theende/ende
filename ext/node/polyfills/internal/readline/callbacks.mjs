@@ -30,14 +30,14 @@ const {
 const {
   ERR_INVALID_ARG_VALUE,
   ERR_INVALID_CURSOR_POS,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const { validateFunction } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 
 const { CSI } = core.loadExtScript(
-  "ext:deno_node/internal/readline/utils.mjs",
+  "ext:ende_node/internal/readline/utils.mjs",
 );
 
 const {

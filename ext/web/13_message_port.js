@@ -52,7 +52,7 @@ const {
   InterruptedPrototype,
   isArrayBuffer,
 } = core;
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 
 // Lazy-load createFilteredInspectProxy from console to avoid
 // circular dependency at load time. Only needed for custom inspect.
@@ -60,7 +60,7 @@ let _createFilteredInspectProxy;
 function getCreateFilteredInspectProxy() {
   if (!_createFilteredInspectProxy) {
     _createFilteredInspectProxy = core.loadExtScript(
-      "ext:deno_web/01_console.js",
+      "ext:ende_web/01_console.js",
     ).createFilteredInspectProxy;
   }
   return _createFilteredInspectProxy;
@@ -72,9 +72,9 @@ const {
   MessageEvent,
   setEventTargetData,
   setIsTrusted,
-} = core.loadExtScript("ext:deno_web/02_event.js");
+} = core.loadExtScript("ext:ende_web/02_event.js");
 
-const { DOMException } = core.loadExtScript("ext:deno_web/01_dom_exception.js");
+const { DOMException } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
 
 // counter of how many message ports are actively refed
 // either due to the existence of "message" event listeners or
@@ -589,13 +589,13 @@ const emptyTransferables = ObjectFreeze([]);
 
 // The web-streams transferable resources (ReadableStream/WritableStream/
 // TransformStream) are registered as a side effect of evaluating
-// ext:deno_web/06_streams.js, which is lazy. A realm (e.g. a worker) that
+// ext:ende_web/06_streams.js, which is lazy. A realm (e.g. a worker) that
 // receives a transferred stream may not have loaded that module yet, so on a
 // miss force-load it (loadExtScript is idempotent) before resolving.
 function resolveTransferableResource(type) {
   let resource = core.getTransferableResource(type);
   if (resource === undefined) {
-    core.loadExtScript("ext:deno_web/06_streams.js");
+    core.loadExtScript("ext:ende_web/06_streams.js");
     resource = core.getTransferableResource(type);
   }
   return resource;
@@ -896,7 +896,7 @@ function deserializeMessageData(buffer, useDeserializers = true) {
 }
 
 function serializeJsMessageData(data, transferables) {
-  const { isDetachedBuffer } = core.loadExtScript("ext:deno_web/06_streams.js");
+  const { isDetachedBuffer } = core.loadExtScript("ext:ende_web/06_streams.js");
 
   // Honor markAsUncloneable at the top level. V8's ValueSerializer
   // can't see the JS-only symbol, so check here before invoking it.

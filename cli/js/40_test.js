@@ -45,7 +45,7 @@ const {
   TypeError,
 } = primordials;
 
-const { setExitHandler } = core.loadExtScript("ext:deno_os/30_os.js");
+const { setExitHandler } = core.loadExtScript("ext:ende_os/30_os.js");
 
 // Capture `Deno` global so that users deleting or mangling it, won't
 // have impact on our sanitizers.

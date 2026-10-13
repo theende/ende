@@ -2,8 +2,8 @@
 
 use std::time::Duration;
 
-use deno_core::error::AnyError;
-use deno_core::serde_json;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
 
 /// A function that converts a float to a string the represents a human
 /// readable version of that number.
@@ -89,7 +89,7 @@ where
   T: ?Sized + serde::ser::Serialize,
 {
   let json = serde_json::to_string_pretty(value)?;
-  deno_print::drop_println!("{}", json);
+  ende_print::drop_println!("{}", json);
   Ok(())
 }
 

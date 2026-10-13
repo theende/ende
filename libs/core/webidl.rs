@@ -1179,7 +1179,7 @@ mod tests {
   #[test]
   fn integers() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     macro_rules! test_integer {
       ($t:ty: $($val:expr_2021 => $expected:literal$(, $opts:expr_2021)?);+;) => {
@@ -1298,7 +1298,7 @@ mod tests {
   #[test]
   fn float() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let val = v8::Number::new(scope, 3.0);
     let converted = f32::convert(
@@ -1334,7 +1334,7 @@ mod tests {
   #[test]
   fn unrestricted_float() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let val = v8::Number::new(scope, 3.0);
     let converted = UnrestrictedFloat::convert(
@@ -1381,7 +1381,7 @@ mod tests {
   #[test]
   fn double() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let val = v8::Number::new(scope, 3.0);
     let converted = f64::convert(
@@ -1417,7 +1417,7 @@ mod tests {
   #[test]
   fn unrestricted_double() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let val = v8::Number::new(scope, 3.0);
     let converted = UnrestrictedDouble::convert(
@@ -1464,7 +1464,7 @@ mod tests {
   #[test]
   fn string() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let val = v8::String::new(scope, "foo").unwrap();
     let converted = String::convert(
@@ -1544,7 +1544,7 @@ mod tests {
   #[test]
   fn byte_string() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let val = v8::String::new(scope, "foo").unwrap();
     let converted = ByteString::convert(
@@ -1624,7 +1624,7 @@ mod tests {
   #[test]
   fn any() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let val = v8::Object::new(scope);
     let converted = v8::Local::<Value>::convert(
@@ -1640,7 +1640,7 @@ mod tests {
   #[test]
   fn sequence() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let a = v8::Number::new(scope, 1.0);
     let b = v8::String::new(scope, "2").unwrap();
@@ -1671,7 +1671,7 @@ mod tests {
       )
       .unwrap();
 
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let val = Local::new(scope, val);
     let err = Vec::<u8>::convert(
       scope,
@@ -1709,7 +1709,7 @@ mod tests {
       .unwrap();
 
     let err = {
-      deno_core::scope!(scope, runtime);
+      ende_core::scope!(scope, runtime);
       let val = Local::new(scope, val);
       Vec::<u8>::convert(
         scope,
@@ -1759,7 +1759,7 @@ mod tests {
       .unwrap();
 
     let converted = {
-      deno_core::scope!(scope, runtime);
+      ende_core::scope!(scope, runtime);
       let val = Local::new(scope, val);
       Vec::<u8>::convert(
         scope,
@@ -1774,7 +1774,7 @@ mod tests {
 
     let next_reads =
       runtime.execute_script("", "globalThis.nextReads").unwrap();
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let next_reads = Local::new(scope, next_reads);
     assert_eq!(next_reads.uint32_value(scope).unwrap(), 1);
   }
@@ -1782,7 +1782,7 @@ mod tests {
   #[test]
   fn constrained_sequence_one_of() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let values = [
       v8::Number::new(scope, 1.0).into(),
@@ -1805,7 +1805,7 @@ mod tests {
   #[test]
   fn nullable() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let val = v8::undefined(scope);
     let converted = Nullable::<u8>::convert(
@@ -1831,7 +1831,7 @@ mod tests {
   #[test]
   fn record() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let obj = v8::Object::new(scope);
     let key = v8::String::new(scope, "foo").unwrap();
@@ -1855,7 +1855,7 @@ mod tests {
 
   #[test]
   fn dictionary() {
-    #[derive(deno_ops::WebIDL, Debug, Eq, PartialEq)]
+    #[derive(ende_ops::WebIDL, Debug, Eq, PartialEq)]
     #[webidl(dictionary)]
     pub struct Dict {
       a: u8,
@@ -1877,7 +1877,7 @@ mod tests {
       )
       .unwrap();
 
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let val = Local::new(scope, val);
 
     let converted = Dict::convert(
@@ -1903,7 +1903,7 @@ mod tests {
 
   #[test]
   fn r#enum() {
-    #[derive(deno_ops::WebIDL, Debug, Eq, PartialEq)]
+    #[derive(ende_ops::WebIDL, Debug, Eq, PartialEq)]
     #[webidl(enum)]
     pub enum Enumeration {
       FooBar,
@@ -1913,7 +1913,7 @@ mod tests {
     }
 
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let val = v8::String::new(scope, "foo-bar").unwrap();
     let converted = Enumeration::convert(

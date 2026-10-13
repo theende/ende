@@ -3,14 +3,14 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_core::anyhow;
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
-use deno_npm::registry::NpmRegistryApi;
-use deno_npm_cache::TarballCache;
-use deno_npmrc::ResolvedNpmRc;
-use deno_resolver::workspace::WorkspaceNpmLinkPackagesRc;
 use deno_semver::package::PackageNv;
+use ende_core::anyhow;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_npm::registry::NpmRegistryApi;
+use ende_npm_cache::TarballCache;
+use ende_npmrc::ResolvedNpmRc;
+use ende_resolver::workspace::WorkspaceNpmLinkPackagesRc;
 
 use crate::cache::DenoDir;
 use crate::npm::CliNpmCache;

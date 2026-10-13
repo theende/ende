@@ -58,7 +58,7 @@ pub trait DenoRtNativeAddonLoader: Send + Sync {
           .as_ref()
           .and_then(|p| p.file_stem())
           .map(|s| s.to_string_lossy())
-          .unwrap_or("denort".into());
+          .unwrap_or("endert".into());
         let cache_dir = native_addon_cache_dir().map_err(LoadError::Io)?;
         let real_path =
           resolve_temp_file_name(cache_dir, &exe_name, path, &bytes);

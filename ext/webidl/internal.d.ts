@@ -4,7 +4,7 @@
 /// <reference no-default-lib="true" />
 /// <reference lib="esnext" />
 
-declare module "ext:deno_webidl/00_webidl.js" {
+declare module "ext:ende_webidl/00_webidl.js" {
   function makeException(
     ErrorType: any,
     message: string,

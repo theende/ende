@@ -37,11 +37,11 @@ const {
   HTTP_STATUS_EXPECTATION_FAILED,
   HTTP_STATUS_METHOD_NOT_ALLOWED,
   HTTP_STATUS_OK,
-} = core.loadExtScript("ext:deno_node/internal/http2/constants.ts");
-const { default: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+} = core.loadExtScript("ext:ende_node/internal/http2/constants.ts");
+const { default: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 const lazyStream = core.createLazyLoader("node:stream");
 const { codes, hideStackFrames } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 const {
   ERR_HTTP2_HEADERS_SENT,
@@ -60,14 +60,14 @@ const {
   validateLinkHeaderValue,
   validateObject,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   assertValidPseudoHeader,
   getAuthority,
   kProxySocket,
   kRequest,
   kSocket,
-} = core.loadExtScript("ext:deno_node/internal/http2/util.ts");
+} = core.loadExtScript("ext:ende_node/internal/http2/util.ts");
 const lazyHttpCommon = core.createLazyLoader("node:_http_common");
 const lazyProcess = core.createLazyLoader("node:process");
 

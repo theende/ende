@@ -71,7 +71,7 @@ pub fn get_body(
       // Type-alias to workaround https://github.com/rust-lang/rust/issues/86935
       quote! {
         {
-          type Alias<'a> = <#ty as ::deno_core::webidl::WebIdlConverter<'a>>::Options;
+          type Alias<'a> = <#ty as ::ende_core::webidl::WebIdlConverter<'a>>::Options;
           Alias {
             #(#inner),*,
             ..Default::default()
@@ -98,10 +98,10 @@ pub fn get_body(
       default.to_token_stream()
     } _ => {
       quote! {
-        return Err(::deno_core::webidl::WebIdlError::new(
+        return Err(::ende_core::webidl::WebIdlError::new(
           __prefix,
           __context.borrowed(),
-          ::deno_core::webidl::WebIdlErrorKind::DictionaryCannotConvertKey {
+          ::ende_core::webidl::WebIdlErrorKind::DictionaryCannotConvertKey {
             converter: #ident_string,
             key: #js_name,
           },
@@ -114,11 +114,11 @@ pub fn get_body(
         let __key = #key;
 
         if let Some(__value) = __obj.as_ref().and_then(|__obj| __obj.get(__scope, __key))#undefined_as_none {
-          ::deno_core::webidl::WebIdlConverter::convert(
+          ::ende_core::webidl::WebIdlConverter::convert(
             __scope,
             __value,
             __prefix.clone(),
-            ::deno_core::webidl::ContextFn::new_borrowed(&|| {
+            ::ende_core::webidl::ContextFn::new_borrowed(&|| {
               let mut __context_msg = #context_prefix.to_string();
               __context_msg.push_str(" (");
               __context_msg.push_str(&__context.call());
@@ -135,16 +135,16 @@ pub fn get_body(
   }).collect::<Result<Vec<_>, Error>>()?;
 
   let body = quote! {
-    let __obj: Option<::deno_core::v8::Local<::deno_core::v8::Object>> = if __value.is_undefined() || __value.is_null() {
+    let __obj: Option<::ende_core::v8::Local<::ende_core::v8::Object>> = if __value.is_undefined() || __value.is_null() {
       None
     } else {
       if let Ok(obj) = __value.try_into() {
         Some(obj)
       } else {
-        return Err(::deno_core::webidl::WebIdlError::new(
+        return Err(::ende_core::webidl::WebIdlError::new(
           __prefix,
           __context.borrowed(),
-          ::deno_core::webidl::WebIdlErrorKind::ConvertToConverterType("dictionary")
+          ::ende_core::webidl::WebIdlErrorKind::ConvertToConverterType("dictionary")
         ));
       }
     };

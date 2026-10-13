@@ -7,11 +7,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::cppgc::SameObject;
-use deno_core::op2;
-use deno_core::v8;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::cppgc::SameObject;
+use ende_core::op2;
+use ende_core::v8;
 use serde::Deserialize as _;
 use serde::de::IntoDeserializer;
 pub use wgpu_core;
@@ -78,9 +78,9 @@ pub fn print_linker_flags(name: &str) {
 
 pub type Instance = Arc<wgpu_core::global::Global>;
 
-deno_core::extension!(
-  deno_webgpu,
-  deps = [deno_webidl, deno_web],
+ende_core::extension!(
+  ende_webgpu,
+  deps = [ende_webidl, ende_web],
   ops = [
     op_create_gpu,
     device::op_webgpu_device_start_capture,

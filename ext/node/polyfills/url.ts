@@ -65,9 +65,9 @@ const {
   ERR_INVALID_FILE_URL_PATH,
   ERR_INVALID_URL,
   ERR_INVALID_URL_SCHEME,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { validateString } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const {
   CHAR_0,
@@ -105,25 +105,25 @@ const {
   CHAR_UPPERCASE_Z,
   CHAR_VERTICAL_LINE,
   CHAR_ZERO_WIDTH_NOBREAK_SPACE,
-} = core.loadExtScript("ext:deno_node/path/_constants.ts");
+} = core.loadExtScript("ext:ende_node/path/_constants.ts");
 const lazyPath = core.createLazyLoader("node:path");
 const {
   domainToASCII: idnaToASCII,
   domainToUnicode: idnaToUnicode,
-} = core.loadExtScript("ext:deno_node/internal/idna.ts");
-const { isWindows, osType } = core.loadExtScript("ext:deno_node/_util/os.ts");
+} = core.loadExtScript("ext:ende_node/internal/idna.ts");
+const { isWindows, osType } = core.loadExtScript("ext:ende_node/_util/os.ts");
 let _Buffer;
 function lazyBuffer() {
   return _Buffer ??=
-    core.loadExtScript("ext:deno_node/internal/buffer.mjs").Buffer;
+    core.loadExtScript("ext:ende_node/internal/buffer.mjs").Buffer;
 }
 const { encodeStr, hexTable } = core.loadExtScript(
-  "ext:deno_node/internal/querystring.ts",
+  "ext:ende_node/internal/querystring.ts",
 );
-const querystring = core.loadExtScript("ext:deno_node/querystring.js").default;
-const { URL, URLSearchParams } = core.loadExtScript("ext:deno_web/00_url.js");
+const querystring = core.loadExtScript("ext:ende_node/querystring.js").default;
+const { URL, URLSearchParams } = core.loadExtScript("ext:ende_web/00_url.js");
 const { urlToHttpOptions } = core.loadExtScript(
-  "ext:deno_node/internal/url.ts",
+  "ext:ende_node/internal/url.ts",
 );
 
 const forwardSlashRegEx = new SafeRegExp(/\//g);

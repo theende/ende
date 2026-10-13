@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 // Tiny IIFE-wrapped helper for `node:repl`'s inline preview path. Lives
-// here (rather than in `repl.ts`) because the deno_node ops we need are
+// here (rather than in `repl.ts`) because the ende_node ops we need are
 // only reachable from scripts loaded via `core.loadExtScript` -- those
 // see the snapshot-time `__bootstrap.core.ops` capture. ES-module
 // polyfills like `repl.ts` only see the post-`removeImportedOps` view,

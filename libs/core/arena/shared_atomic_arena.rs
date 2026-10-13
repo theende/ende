@@ -343,7 +343,7 @@ impl<T> ArenaSharedAtomic<T> {
   /// # Example
   ///
   /// ```rust
-  /// # use deno_core::arena::ArenaSharedAtomic;
+  /// # use ende_core::arena::ArenaSharedAtomic;
   ///
   /// // Define a struct that will be allocated within the arena
   /// struct MyStruct {

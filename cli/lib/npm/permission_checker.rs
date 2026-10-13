@@ -7,8 +7,8 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use deno_error::JsErrorBox;
-use deno_runtime::deno_permissions::OpenAccessKind;
-use deno_runtime::deno_permissions::PermissionsContainer;
+use ende_runtime::ende_permissions::OpenAccessKind;
+use ende_runtime::ende_permissions::PermissionsContainer;
 use parking_lot::Mutex;
 
 use crate::sys::DenoLibSys;

@@ -5,12 +5,12 @@ use std::cell::RefCell;
 use std::ffi::c_int;
 use std::rc::Rc;
 
-use deno_core::OpState;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::v8_static_strings;
-use deno_permissions::OpenAccessKind;
-use deno_permissions::PermissionsContainer;
+use ende_core::OpState;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::v8_static_strings;
+use ende_permissions::OpenAccessKind;
+use ende_permissions::PermissionsContainer;
 use rusqlite::Connection;
 use rusqlite::backup;
 

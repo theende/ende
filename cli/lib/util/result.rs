@@ -4,11 +4,11 @@ use std::convert::Infallible;
 
 use deno_error::JsErrorBox;
 use deno_error::JsErrorClass;
-use deno_resolver::DenoResolveError;
-use deno_resolver::DenoResolveErrorKind;
-use deno_runtime::deno_core::error::AnyError;
-use deno_runtime::deno_core::error::CoreError;
-use deno_runtime::deno_core::error::CoreErrorKind;
+use ende_resolver::DenoResolveError;
+use ende_resolver::DenoResolveErrorKind;
+use ende_runtime::ende_core::error::AnyError;
+use ende_runtime::ende_core::error::CoreError;
+use ende_runtime::ende_core::error::CoreErrorKind;
 
 pub trait InfallibleResultExt<T> {
   fn unwrap_infallible(self) -> T;
@@ -25,7 +25,7 @@ impl<T> InfallibleResultExt<T> for Result<T, Infallible> {
 
 pub fn js_error_downcast_ref(
   err: &AnyError,
-) -> Option<&deno_runtime::deno_core::error::JsError> {
+) -> Option<&ende_runtime::ende_core::error::JsError> {
   any_and_jserrorbox_downcast_ref(err)
     .or_else(|| {
       err

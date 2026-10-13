@@ -10,7 +10,7 @@
 const { core, primordials } = __bootstrap;
 const lazyNet = core.createLazyLoader("node:net");
 const { sendHelper } = core.loadExtScript(
-  "ext:deno_node/internal/cluster/utils.ts",
+  "ext:ende_node/internal/cluster/utils.ts",
 );
 const {
   append,
@@ -18,16 +18,16 @@ const {
   isEmpty,
   peek,
   remove,
-} = core.loadExtScript("ext:deno_node/internal/cluster/linkedlist.ts");
+} = core.loadExtScript("ext:ende_node/internal/cluster/linkedlist.ts");
 const {
   constants: TCPConstants,
   setupListenWrap: setupTCPListenWrap,
   TCP,
-} = core.loadExtScript("ext:deno_node/internal_binding/tcp_wrap.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/tcp_wrap.ts");
 const {
   Pipe,
   setupListenWrap: setupPipeListenWrap,
-} = core.loadExtScript("ext:deno_node/internal_binding/pipe_wrap.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/pipe_wrap.ts");
 
 const { ArrayIsArray, Boolean, SafeMap } = primordials;
 

@@ -9,11 +9,11 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use deno_core::BufMutView;
-use deno_core::Resource;
-use deno_core::convert::ByteString;
-use deno_core::parking_lot::Mutex;
-use deno_core::unsync::spawn_blocking;
+use ende_core::BufMutView;
+use ende_core::Resource;
+use ende_core::convert::ByteString;
+use ende_core::parking_lot::Mutex;
+use ende_core::unsync::spawn_blocking;
 use rusqlite::Connection;
 use rusqlite::OptionalExtension;
 use rusqlite::params;
@@ -501,7 +501,7 @@ fn get_responses_dir(cache_storage_dir: PathBuf, cache_id: i64) -> PathBuf {
     .join("responses")
 }
 
-impl deno_core::Resource for SqliteBackedCache {
+impl ende_core::Resource for SqliteBackedCache {
   fn name(&self) -> std::borrow::Cow<'_, str> {
     "SqliteBackedCache".into()
   }

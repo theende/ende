@@ -3,14 +3,14 @@
 use std::sync::Arc;
 
 use boxed_error::Boxed;
-use deno_core::OpState;
-use deno_core::ToV8;
-use deno_core::futures::StreamExt;
-use deno_core::op2;
-use deno_core::url::Url;
-use deno_fetch::FetchError;
-use deno_fetch::data_url::DataUrl;
-use deno_web::BlobStoreTrait;
+use ende_core::OpState;
+use ende_core::ToV8;
+use ende_core::futures::StreamExt;
+use ende_core::op2;
+use ende_core::url::Url;
+use ende_fetch::FetchError;
+use ende_fetch::data_url::DataUrl;
+use ende_web::BlobStoreTrait;
 use http_body_util::BodyExt;
 use hyper::body::Bytes;
 
@@ -93,7 +93,7 @@ pub fn op_worker_sync_fetch(
   let handle = state.borrow::<WebWorkerInternalHandle>().clone();
   assert_eq!(handle.worker_type, WorkerThreadType::Classic);
 
-  let client = deno_fetch::get_or_create_client_from_state(state)
+  let client = ende_fetch::get_or_create_client_from_state(state)
     .map_err(FetchError::ClientCreate)?;
 
   // TODO(andreubotella) It's not good to throw an exception related to blob
@@ -120,14 +120,14 @@ pub fn op_worker_sync_fetch(
           let client = client.clone();
           let blob_store = blob_store.clone();
           let maybe_main_module_blob = handle.maybe_main_module_blob.clone();
-          deno_core::unsync::spawn(async move {
+          ende_core::unsync::spawn(async move {
             let script_url = Url::parse(&script)
               .map_err(|_| SyncFetchErrorKind::InvalidScriptUrl)?;
             let mut loose_mime_checks = loose_mime_checks;
 
             let (body, mime_type, res_url) = match script_url.scheme() {
               "http" | "https" => {
-                let mut req = http::Request::new(deno_fetch::ReqBody::empty());
+                let mut req = http::Request::new(ende_fetch::ReqBody::empty());
                 *req.uri_mut() = script_url.as_str().parse()?;
 
                 let resp =
@@ -217,7 +217,7 @@ pub fn op_worker_sync_fetch(
             })
           })
         })
-        .collect::<deno_core::futures::stream::FuturesUnordered<_>>();
+        .collect::<ende_core::futures::stream::FuturesUnordered<_>>();
       let mut ret = Vec::with_capacity(futures.len());
       while let Some(result) = futures.next().await {
         let script = result??;

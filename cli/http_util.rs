@@ -6,25 +6,25 @@ use std::sync::Arc;
 
 use boxed_error::Boxed;
 use dashmap::DashMap;
-use deno_cache_dir::file_fetcher::RedirectHeaderParseError;
-use deno_core::error::AnyError;
-use deno_core::futures::StreamExt;
-use deno_core::serde;
-use deno_core::serde_json;
-use deno_core::url::Url;
 use deno_error::JsError;
 use deno_error::JsErrorBox;
-use deno_lib::version::DENO_VERSION_INFO;
-use deno_runtime::deno_fetch;
-use deno_runtime::deno_fetch::CreateHttpClientOptions;
-use deno_runtime::deno_fetch::ResBody;
-use deno_runtime::deno_fetch::create_http_client;
-use deno_runtime::deno_fetch::dns::ResolvedDenyCheckKind;
-use deno_runtime::deno_permissions::PermissionsContainer;
-use deno_runtime::deno_tls::RootCertStoreProvider;
-use deno_runtime::deno_tls::TlsKey;
-use deno_runtime::deno_tls::load_certs;
-use deno_runtime::deno_tls::load_private_keys;
+use ende_cache_dir::file_fetcher::RedirectHeaderParseError;
+use ende_core::error::AnyError;
+use ende_core::futures::StreamExt;
+use ende_core::serde;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_lib::version::DENO_VERSION_INFO;
+use ende_runtime::ende_fetch;
+use ende_runtime::ende_fetch::CreateHttpClientOptions;
+use ende_runtime::ende_fetch::ResBody;
+use ende_runtime::ende_fetch::create_http_client;
+use ende_runtime::ende_fetch::dns::ResolvedDenyCheckKind;
+use ende_runtime::ende_permissions::PermissionsContainer;
+use ende_runtime::ende_tls::RootCertStoreProvider;
+use ende_runtime::ende_tls::TlsKey;
+use ende_runtime::ende_tls::load_certs;
+use ende_runtime::ende_tls::load_private_keys;
 use http::HeaderMap;
 use http::StatusCode;
 use http::header::CONTENT_ENCODING;
@@ -40,7 +40,7 @@ use crate::util::progress_bar::UpdateGuard;
 #[derive(Debug, Error)]
 pub enum SendError {
   #[error(transparent)]
-  Send(#[from] deno_fetch::ClientSendError),
+  Send(#[from] ende_fetch::ClientSendError),
   #[error(transparent)]
   InvalidUri(#[from] http::uri::InvalidUri),
 }
@@ -48,8 +48,8 @@ pub enum SendError {
 pub struct HttpClientProvider {
   options: CreateHttpClientOptions,
   root_cert_store_provider: Option<Arc<dyn RootCertStoreProvider>>,
-  client: OnceCell<deno_fetch::Client>,
-  cert_clients: DashMap<(String, String), deno_fetch::Client>,
+  client: OnceCell<ende_fetch::Client>,
+  cert_clients: DashMap<(String, String), ende_fetch::Client>,
 }
 
 impl std::fmt::Debug for HttpClientProvider {
@@ -185,10 +185,10 @@ pub struct DownloadError(pub Box<DownloadErrorKind>);
 pub enum DownloadErrorKind {
   #[class(inherit)]
   #[error(transparent)]
-  Fetch(deno_fetch::ClientSendError),
+  Fetch(ende_fetch::ClientSendError),
   #[class(inherit)]
   #[error(transparent)]
-  UrlParse(#[from] deno_core::url::ParseError),
+  UrlParse(#[from] ende_core::url::ParseError),
   #[class(generic)]
   #[error(transparent)]
   HttpParse(#[from] http::Error),
@@ -252,18 +252,18 @@ impl HttpClientResponse {
 
 #[derive(Debug)]
 pub struct HttpClient {
-  client: deno_fetch::Client,
+  client: ende_fetch::Client,
 }
 
 impl HttpClient {
   // DO NOT make this public. You should always be creating one of these from
   // the HttpClientProvider
-  fn new(client: deno_fetch::Client) -> Self {
+  fn new(client: ende_fetch::Client) -> Self {
     Self { client }
   }
 
   pub fn get(&self, url: Url) -> Result<RequestBuilder, http::Error> {
-    let body = deno_fetch::ReqBody::empty();
+    let body = ende_fetch::ReqBody::empty();
     let mut req = http::Request::new(body);
     *req.uri_mut() = url.as_str().parse()?;
     Ok(RequestBuilder {
@@ -275,7 +275,7 @@ impl HttpClient {
   pub fn post(
     &self,
     url: Url,
-    body: deno_fetch::ReqBody,
+    body: ende_fetch::ReqBody,
   ) -> Result<RequestBuilder, http::Error> {
     let mut req = http::Request::new(body);
     *req.method_mut() = http::Method::POST;
@@ -294,8 +294,8 @@ impl HttpClient {
   where
     S: serde::Serialize,
   {
-    let json = deno_core::serde_json::to_vec(ser)?;
-    let body = deno_fetch::ReqBody::full(json.into());
+    let json = ende_core::serde_json::to_vec(ser)?;
+    let body = ende_fetch::ReqBody::full(json.into());
     let builder = self.post(url, body)?;
     Ok(builder.header(
       http::header::CONTENT_TYPE,
@@ -308,7 +308,7 @@ impl HttpClient {
     url: &Url,
     headers: HeaderMap,
   ) -> Result<http::Response<ResBody>, SendError> {
-    let body = deno_fetch::ReqBody::empty();
+    let body = ende_fetch::ReqBody::empty();
     let mut request = http::Request::new(body);
     *request.uri_mut() = http::Uri::try_from(url.as_str())?;
     *request.headers_mut() = headers;
@@ -422,7 +422,7 @@ impl HttpClient {
     mut url: Url,
     headers: &HeaderMap<HeaderValue>,
     should_decompress: bool,
-  ) -> Result<(http::Response<deno_fetch::ResBody>, Url), DownloadError> {
+  ) -> Result<(http::Response<ende_fetch::ResBody>, Url), DownloadError> {
     let mut req = self.get(url.clone())?.build();
     *req.headers_mut() = headers.clone();
     let mut response = if should_decompress {
@@ -475,7 +475,7 @@ fn should_strip_auth_on_redirect(original: &Url, new_url: &Url) -> bool {
 }
 
 pub async fn get_response_body_with_progress(
-  response: http::Response<deno_fetch::ResBody>,
+  response: http::Response<ende_fetch::ResBody>,
   progress_guard: Option<&UpdateGuard>,
 ) -> Result<(HeaderMap, Vec<u8>), JsErrorBox> {
   use http_body::Body as _;
@@ -517,7 +517,7 @@ fn resolve_redirect_from_response<B>(
   response: &http::Response<B>,
 ) -> Result<Url, DownloadError> {
   debug_assert!(response.status().is_redirection());
-  deno_cache_dir::file_fetcher::resolve_redirect_from_headers(
+  ende_cache_dir::file_fetcher::resolve_redirect_from_headers(
     request_url,
     response.headers(),
   )
@@ -541,13 +541,13 @@ where
   D: serde::de::DeserializeOwned,
 {
   let bytes = body.collect().await?.to_bytes();
-  let val = deno_core::serde_json::from_slice(&bytes)?;
+  let val = ende_core::serde_json::from_slice(&bytes)?;
   Ok(val)
 }
 
 pub struct RequestBuilder {
-  client: deno_fetch::Client,
-  req: http::Request<deno_fetch::ReqBody>,
+  client: ende_fetch::Client,
+  req: http::Request<ende_fetch::ReqBody>,
 }
 
 impl RequestBuilder {
@@ -558,11 +558,11 @@ impl RequestBuilder {
 
   pub async fn send(
     self,
-  ) -> Result<http::Response<deno_fetch::ResBody>, AnyError> {
+  ) -> Result<http::Response<ende_fetch::ResBody>, AnyError> {
     self.client.send(self.req).await.map_err(Into::into)
   }
 
-  pub fn build(self) -> http::Request<deno_fetch::ReqBody> {
+  pub fn build(self) -> http::Request<ende_fetch::ReqBody> {
     self.req
   }
 }
@@ -574,7 +574,7 @@ mod test {
   use std::collections::HashSet;
   use std::hash::RandomState;
 
-  use deno_runtime::deno_tls::rustls::RootCertStore;
+  use ende_runtime::ende_tls::rustls::RootCertStore;
   use tokio::io::AsyncReadExt;
   use tokio::io::AsyncWriteExt;
   use tokio::net::TcpListener;

@@ -63,17 +63,17 @@ const {
   op_node_getnameinfo,
 } = core.ops;
 const { isIPv4, isIPv6 } = core.loadExtScript(
-  "ext:deno_node/internal/net.ts",
+  "ext:ende_node/internal/net.ts",
 );
 const { codeMap } = core.loadExtScript(
-  "ext:deno_node/internal_binding/uv.ts",
+  "ext:ende_node/internal_binding/uv.ts",
 );
 const {
   AsyncWrap,
   providerType,
-} = core.loadExtScript("ext:deno_node/internal_binding/async_wrap.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/async_wrap.ts");
 const { ares_strerror } = core.loadExtScript(
-  "ext:deno_node/internal_binding/ares.ts",
+  "ext:ende_node/internal_binding/ares.ts",
 );
 
 interface LookupAddress {

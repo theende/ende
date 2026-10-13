@@ -3,7 +3,7 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { op_fetch_custom_client } = core.ops;
-const { loadTlsKeyPair } = core.loadExtScript("ext:deno_net/02_tls.js");
+const { loadTlsKeyPair } = core.loadExtScript("ext:ende_net/02_tls.js");
 
 const { internalRidSymbol } = core;
 const {

@@ -4,13 +4,13 @@ use std::borrow::Cow;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_package_json::PackageJson;
-use deno_package_json::PackageJsonDepValue;
-use deno_package_json::PackageJsonRc;
 use deno_path_util::url_to_file_path;
 use deno_semver::StackString;
 use deno_semver::Version;
 use deno_semver::package::PackageReq;
+use ende_package_json::PackageJson;
+use ende_package_json::PackageJsonDepValue;
+use ende_package_json::PackageJsonRc;
 use node_resolver::InNpmPackageChecker;
 use node_resolver::NpmPackageFolderResolver;
 use node_resolver::PackageJsonResolverRc;
@@ -66,7 +66,7 @@ pub trait ByonmNpmResolverSys:
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type ByonmNpmResolverRc<TSys> =
-  deno_maybe_sync::MaybeArc<ByonmNpmResolver<TSys>>;
+  ende_maybe_sync::MaybeArc<ByonmNpmResolver<TSys>>;
 
 #[derive(Debug)]
 pub struct ByonmNpmResolver<TSys: ByonmNpmResolverSys> {

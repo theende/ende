@@ -42,10 +42,10 @@ await $`docker run
   wstest -m fuzzingclient -s fuzzingclient.json`
   .cwd(pwd);
 
-const { deno_websocket } = JSON.parse(
+const { ende_websocket } = JSON.parse(
   Deno.readTextFileSync(`${pwd}/reports/servers/index.json`),
 );
-const result = Object.values(deno_websocket);
+const result = Object.values(ende_websocket);
 
 function failed(name) {
   return name != "OK" && name != "INFORMATIONAL" && name != "NON-STRICT";

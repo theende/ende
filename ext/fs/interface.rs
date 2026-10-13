@@ -5,16 +5,16 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use deno_core::FromV8;
-use deno_io::fs::File;
-use deno_io::fs::FsResult;
-use deno_io::fs::FsStat;
-use deno_io::fs::FsStatFs;
-use deno_maybe_sync::MaybeSend;
-use deno_maybe_sync::MaybeSync;
-use deno_permissions::CheckedPath;
-use deno_permissions::CheckedPathBuf;
-use deno_permissions::OpenAccessKind;
+use ende_core::FromV8;
+use ende_io::fs::File;
+use ende_io::fs::FsResult;
+use ende_io::fs::FsStat;
+use ende_io::fs::FsStatFs;
+use ende_maybe_sync::MaybeSend;
+use ende_maybe_sync::MaybeSync;
+use ende_permissions::CheckedPath;
+use ende_permissions::CheckedPathBuf;
+use ende_permissions::OpenAccessKind;
 use serde::Deserialize;
 
 #[derive(FromV8, Default, Debug, Clone, Copy)]
@@ -190,7 +190,7 @@ pub enum FsFileType {
 }
 
 /// WARNING: This is part of the public JS Deno API.
-#[derive(Debug, Clone, deno_core::ToV8)]
+#[derive(Debug, Clone, ende_core::ToV8)]
 pub struct FsDirEntry {
   pub name: String,
   pub is_file: bool,
@@ -204,9 +204,9 @@ pub trait FsReadDir: std::fmt::Debug + MaybeSend + MaybeSync {
 }
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type FileSystemRc = deno_maybe_sync::MaybeArc<dyn FileSystem>;
+pub type FileSystemRc = ende_maybe_sync::MaybeArc<dyn FileSystem>;
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type FsReadDirRc = deno_maybe_sync::MaybeArc<dyn FsReadDir>;
+pub type FsReadDirRc = ende_maybe_sync::MaybeArc<dyn FsReadDir>;
 
 #[async_trait::async_trait(?Send)]
 pub trait FileSystem: std::fmt::Debug + MaybeSend + MaybeSync {

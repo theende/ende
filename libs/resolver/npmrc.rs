@@ -6,18 +6,18 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use boxed_error::Boxed;
-use deno_config::workspace::Workspace;
-use deno_npmrc::NpmRc;
-use deno_npmrc::NpmRegistryUrl;
-use deno_npmrc::RegistryConfigWithUrl;
-use deno_npmrc::ResolvedNpmRc;
+use ende_config::workspace::Workspace;
+use ende_npmrc::NpmRc;
+use ende_npmrc::NpmRegistryUrl;
+use ende_npmrc::RegistryConfigWithUrl;
+use ende_npmrc::ResolvedNpmRc;
 use sys_traits::EnvHomeDir;
 use sys_traits::EnvVar;
 use sys_traits::FsRead;
 use thiserror::Error;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type ResolvedNpmRcRc = deno_maybe_sync::MaybeArc<ResolvedNpmRc>;
+pub type ResolvedNpmRcRc = ende_maybe_sync::MaybeArc<ResolvedNpmRc>;
 
 #[derive(Debug, Boxed)]
 pub struct NpmRcDiscoverError(pub Box<NpmRcDiscoverErrorKind>);
@@ -47,7 +47,7 @@ pub struct NpmRcLoadError {
 pub struct NpmRcParseError {
   path: PathBuf,
   #[source]
-  source: deno_npmrc::NpmRcParseError,
+  source: ende_npmrc::NpmRcParseError,
 }
 
 #[derive(Debug, Error)]
@@ -55,7 +55,7 @@ pub struct NpmRcParseError {
 pub struct NpmRcOptionsResolveError {
   path: PathBuf,
   #[source]
-  source: deno_npmrc::ResolveError,
+  source: ende_npmrc::ResolveError,
 }
 
 /// Discover `.npmrc` file - currently we only support it next to `package.json`,
@@ -154,7 +154,7 @@ fn discover_npmrc<TSys: EnvVar + EnvHomeDir + FsRead>(
         .min_release_age_days
         .or(home_rc.min_release_age_days),
       trust_policy: if project_rc.trust_policy
-        != deno_npmrc::TrustPolicyConfig::Off
+        != ende_npmrc::TrustPolicyConfig::Off
       {
         project_rc.trust_policy
       } else {
@@ -261,7 +261,7 @@ fn discover_npmrc<TSys: EnvVar + EnvHomeDir + FsRead>(
 
 pub fn create_default_npmrc(sys: &impl EnvVar) -> ResolvedNpmRc {
   ResolvedNpmRc {
-    default_config: deno_npmrc::RegistryConfigWithUrl {
+    default_config: ende_npmrc::RegistryConfigWithUrl {
       registry_url: NpmRegistryUrl::for_npm(sys).url,
       config: Default::default(),
     },
@@ -273,9 +273,9 @@ pub fn create_default_npmrc(sys: &impl EnvVar) -> ResolvedNpmRc {
       },
     )]),
     registry_configs: Default::default(),
-    replace_registry_host: deno_npmrc::ReplaceRegistryHost::for_npm(sys)
+    replace_registry_host: ende_npmrc::ReplaceRegistryHost::for_npm(sys)
       .unwrap_or_default(),
-    min_release_age_days: deno_npmrc::min_release_age_days_from_env(sys),
+    min_release_age_days: ende_npmrc::min_release_age_days_from_env(sys),
     trust_policy: Default::default(),
     trust_policy_ignore_after_minutes: None,
     trust_policy_exclude: Vec::new(),
@@ -319,7 +319,7 @@ mod test {
     );
     assert_eq!(
       npmrc.trust_policy,
-      deno_npmrc::TrustPolicyConfig::NoDowngrade
+      ende_npmrc::TrustPolicyConfig::NoDowngrade
     );
   }
 }

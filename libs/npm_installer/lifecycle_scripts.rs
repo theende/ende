@@ -9,14 +9,14 @@ use std::path::PathBuf;
 
 use anyhow::Error as AnyError;
 use deno_error::JsErrorBox;
-use deno_npm::NpmPackageExtraInfo;
-use deno_npm::NpmPackageId;
-use deno_npm::NpmResolutionPackage;
-use deno_npm::resolution::NpmResolutionSnapshot;
 use deno_semver::SmallStackString;
 use deno_semver::Version;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
+use ende_npm::NpmPackageExtraInfo;
+use ende_npm::NpmPackageId;
+use ende_npm::NpmResolutionPackage;
+use ende_npm::resolution::NpmResolutionSnapshot;
 use sys_traits::FsMetadata;
 
 use crate::CachedNpmPackageExtraInfoProvider;
@@ -451,14 +451,14 @@ mod tests {
   use std::collections::HashMap;
   use std::path::PathBuf;
 
-  use deno_npm::NpmPackageId;
-  use deno_npm::NpmResolutionPackage;
-  use deno_npm::NpmResolutionPackageSystemInfo;
-  use deno_npm::resolution::NpmResolutionSnapshot;
-  use deno_npm::resolution::SerializedNpmResolutionSnapshot;
-  use deno_npm::resolution::SerializedNpmResolutionSnapshotPackage;
   use deno_semver::StackString;
   use deno_semver::package::PackageReq;
+  use ende_npm::NpmPackageId;
+  use ende_npm::NpmResolutionPackage;
+  use ende_npm::NpmResolutionPackageSystemInfo;
+  use ende_npm::resolution::NpmResolutionSnapshot;
+  use ende_npm::resolution::SerializedNpmResolutionSnapshot;
+  use ende_npm::resolution::SerializedNpmResolutionSnapshotPackage;
 
   use super::PackageWithScript;
   use super::compute_lifecycle_script_layers;

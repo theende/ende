@@ -12,15 +12,15 @@ use std::ffi::c_void;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use deno_core::FromV8;
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::op2;
-use deno_core::v8;
 use deno_error::JsErrorBox;
-use deno_permissions::PermissionsContainer;
-use deno_webgpu::canvas::ContextData;
-use deno_webgpu::canvas::SurfaceData;
+use ende_core::FromV8;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::op2;
+use ende_core::v8;
+use ende_permissions::PermissionsContainer;
+use ende_webgpu::canvas::ContextData;
+use ende_webgpu::canvas::SurfaceData;
 
 use crate::canvas::Context;
 use crate::canvas::CreateCanvasContext;
@@ -43,10 +43,10 @@ pub enum ByowError {
   InvalidParameters,
   #[class(inherit)]
   #[error(transparent)]
-  Permission(#[from] deno_permissions::PermissionCheckError),
+  Permission(#[from] ende_permissions::PermissionCheckError),
   #[class(generic)]
   #[error(transparent)]
-  CreateSurface(deno_webgpu::wgpu_core::instance::CreateSurfaceError),
+  CreateSurface(ende_webgpu::wgpu_core::instance::CreateSurfaceError),
   #[cfg(target_os = "windows")]
   #[class(type)]
   #[error("Invalid system on Windows")]
@@ -164,9 +164,9 @@ impl UnsafeWindowSurface {
       .borrow_mut::<PermissionsContainer>()
       .check_ffi_partial_no_path()?;
 
-    let (_, instance) = deno_webgpu::get_or_init_instance(
+    let (_, instance) = ende_webgpu::get_or_init_instance(
       state,
-      &deno_webgpu::adapter::GPURequestAdapterOptions {
+      &ende_webgpu::adapter::GPURequestAdapterOptions {
         feature_level: "core".to_string(),
         power_preference: None,
         force_fallback_adapter: false,
@@ -220,12 +220,12 @@ impl UnsafeWindowSurface {
     if self.active_context.get().is_none() {
       let create_context: CreateCanvasContext = match context_id.as_str() {
         super::bitmaprenderer::CONTEXT_ID => super::bitmaprenderer::create as _,
-        deno_webgpu::canvas::CONTEXT_ID => deno_webgpu::canvas::create as _,
+        ende_webgpu::canvas::CONTEXT_ID => ende_webgpu::canvas::create as _,
         _ => return Ok(None),
       };
 
       let instance = state
-        .try_borrow::<deno_webgpu::Instance>()
+        .try_borrow::<ende_webgpu::Instance>()
         .expect("accessed in constructor")
         .clone();
 
@@ -348,7 +348,7 @@ impl<'a> FromV8<'a> for UnsafeWindowSurfaceOptions {
     let val = obj
       .get(scope, key.into())
       .ok_or_else(|| JsErrorBox::type_error("missing field 'windowHandle'"))?;
-    let Some(window_handle) = deno_core::_ops::to_external_option(&val) else {
+    let Some(window_handle) = ende_core::_ops::to_external_option(&val) else {
       return Err(JsErrorBox::type_error("expected external"));
     };
 
@@ -356,7 +356,7 @@ impl<'a> FromV8<'a> for UnsafeWindowSurfaceOptions {
     let val = obj
       .get(scope, key.into())
       .ok_or_else(|| JsErrorBox::type_error("missing field 'displayHandle'"))?;
-    let Some(display_handle) = deno_core::_ops::to_external_option(&val) else {
+    let Some(display_handle) = ende_core::_ops::to_external_option(&val) else {
       return Err(JsErrorBox::type_error("expected external"));
     };
 

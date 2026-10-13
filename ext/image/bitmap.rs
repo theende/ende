@@ -5,10 +5,10 @@ use std::cell::RefCell;
 use std::io::BufReader;
 use std::io::Cursor;
 
-use deno_core::GarbageCollected;
-use deno_core::JsBuffer;
-use deno_core::op2;
-use deno_core::webidl::WebIdlInterfaceConverter;
+use ende_core::GarbageCollected;
+use ende_core::JsBuffer;
+use ende_core::op2;
+use ende_core::webidl::WebIdlInterfaceConverter;
 use image::DynamicImage;
 use image::ImageDecoder;
 use image::RgbaImage;
@@ -542,7 +542,7 @@ pub struct ImageBitmap {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for ImageBitmap {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"ImageBitmap"

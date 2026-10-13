@@ -9,14 +9,14 @@ use deno_ast::MediaType;
 use deno_ast::ModuleKind;
 use deno_ast::ParseParams;
 use deno_ast::SourceMapOption;
-use deno_core::Extension;
-use deno_core::JsRuntime;
-use deno_core::JsRuntimeForSnapshot;
-use deno_core::ModuleCodeString;
-use deno_core::ModuleName;
-use deno_core::RuntimeOptions;
-use deno_core::SourceMapData;
 use deno_error::JsErrorBox;
+use ende_core::Extension;
+use ende_core::JsRuntime;
+use ende_core::JsRuntimeForSnapshot;
+use ende_core::ModuleCodeString;
+use ende_core::ModuleName;
+use ende_core::RuntimeOptions;
+use ende_core::SourceMapData;
 use url::Url;
 
 macro_rules! fake_extensions {
@@ -24,7 +24,7 @@ macro_rules! fake_extensions {
     {
       $(
         mod $name {
-          deno_core::extension!(
+          ende_core::extension!(
             $name,
             ops = [ ops::$name ],
             esm_entry_point = concat!("ext:", stringify!($name), "/file.js"),
@@ -32,7 +32,7 @@ macro_rules! fake_extensions {
           );
 
           mod ops {
-            #[deno_core::op2(fast)]
+            #[ende_core::op2(fast)]
             pub fn $name() {
             }
           }

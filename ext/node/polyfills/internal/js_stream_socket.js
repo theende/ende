@@ -16,9 +16,9 @@ const {
 const lazyNet = core.createLazyLoader("node:net");
 const lazyTimers = core.createLazyLoader("node:timers");
 
-const { nextTick } = core.loadExtScript("ext:deno_node/_next_tick.ts");
+const { nextTick } = core.loadExtScript("ext:ende_node/_next_tick.ts");
 const { codeMap, UV_ECANCELED } = core.loadExtScript(
-  "ext:deno_node/internal_binding/uv.ts",
+  "ext:ende_node/internal_binding/uv.ts",
 );
 const {
   kArrayBufferOffset,
@@ -26,10 +26,10 @@ const {
   kLastWriteWasAsync,
   kReadBytesOrError,
   streamBaseState,
-} = core.loadExtScript("ext:deno_node/internal_binding/stream_wrap.ts");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+} = core.loadExtScript("ext:ende_node/internal_binding/stream_wrap.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const { ERR_STREAM_WRAP } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 
 const kCurrentWriteRequest = Symbol("kCurrentWriteRequest");

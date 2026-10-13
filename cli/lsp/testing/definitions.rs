@@ -1,8 +1,8 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::ModuleSpecifier;
-use deno_core::error::AnyError;
-use deno_lib::util::checksum;
+use ende_core::ModuleSpecifier;
+use ende_core::error::AnyError;
+use ende_lib::util::checksum;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use lsp::Range;

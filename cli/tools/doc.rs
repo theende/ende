@@ -14,12 +14,6 @@ use deno_ast::diagnostics::DiagnosticSnippetHighlight;
 use deno_ast::diagnostics::DiagnosticSnippetHighlightStyle;
 use deno_ast::diagnostics::DiagnosticSourcePos;
 use deno_ast::diagnostics::DiagnosticSourceRange;
-use deno_config::glob::FilePatterns;
-use deno_config::glob::PathOrPatternSet;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
 use deno_doc as doc;
 use deno_doc::Document;
 use deno_doc::ParseOutput;
@@ -33,10 +27,16 @@ use deno_graph::ModuleSpecifier;
 use deno_graph::analysis::ModuleAnalyzer;
 use deno_graph::ast::EsParser;
 use deno_graph::source::NullFileSystem;
-use deno_lib::version::DENO_VERSION_INFO;
-use deno_npm_installer::graph::NpmCachingStrategy;
 use doc::DocDiagnostic;
 use doc::html::ShortPath;
+use ende_config::glob::FilePatterns;
+use ende_config::glob::PathOrPatternSet;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_lib::version::DENO_VERSION_INFO;
+use ende_npm_installer::graph::NpmCachingStrategy;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 
@@ -324,7 +324,7 @@ pub async fn doc(
         check_diagnostics(&diagnostics)?;
       }
 
-      let markdown_downloads = deno_core::futures::future::try_join_all(
+      let markdown_downloads = ende_core::futures::future::try_join_all(
         markdown_urls.into_iter().map(|url| async {
           // ok to skip permissions because these were provided on the CLI
           let file = file_fetcher.fetch_bypass_permissions(&url).await?;
@@ -487,7 +487,7 @@ impl deno_doc::html::HrefResolver for DocResolver {
     module: &str,
     _symbol: Option<&str>,
   ) -> Option<(String, String)> {
-    if let Ok(url) = deno_core::url::Url::parse(module) {
+    if let Ok(url) = ende_core::url::Url::parse(module) {
       match url.scheme() {
         "npm" => {
           let res =
@@ -717,7 +717,7 @@ fn print_docs_to_stdout(
     )
   );
 
-  deno_print::drop_write_stdout(details.as_bytes());
+  ende_print::drop_write_stdout(details.as_bytes());
   Ok(())
 }
 

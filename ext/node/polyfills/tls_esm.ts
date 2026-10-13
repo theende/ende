@@ -4,7 +4,7 @@ import { core, primordials } from "ext:core/mod.js";
 import tlsCommon from "node:_tls_common";
 import tlsWrap from "node:_tls_wrap";
 
-const mod = core.loadExtScript("ext:deno_node/tls.ts");
+const mod = core.loadExtScript("ext:ende_node/tls.ts");
 
 const { ObjectDefineProperty } = primordials;
 

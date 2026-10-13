@@ -7,15 +7,15 @@ use std::env;
 use std::error::Error;
 use std::str;
 
-use deno_http_h1::BodyKind;
-use deno_http_h1::Error as H1Error;
-use deno_http_h1::Header;
-use deno_http_h1::Response;
-use deno_http_h1::ResponseBody;
-use deno_http_h1::ResponseHead;
-use deno_http_h1::SharedConn;
-use deno_http_h1::SharedScratch;
-use deno_http_h1::Version;
+use ende_http_h1::BodyKind;
+use ende_http_h1::Error as H1Error;
+use ende_http_h1::Header;
+use ende_http_h1::Response;
+use ende_http_h1::ResponseBody;
+use ende_http_h1::ResponseHead;
+use ende_http_h1::SharedConn;
+use ende_http_h1::SharedScratch;
+use ende_http_h1::Version;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 
@@ -105,7 +105,7 @@ struct OwnedRequest {
 }
 
 impl OwnedRequest {
-  fn from_request(request: deno_http_h1::Request<'_>) -> Self {
+  fn from_request(request: ende_http_h1::Request<'_>) -> Self {
     Self {
       method: request.method.to_vec(),
       target: request.target.to_vec(),
@@ -229,7 +229,7 @@ async fn write_echo(
 
   let mut header_bytes: Vec<(Vec<u8>, Vec<u8>)> = vec![
     (b"Date".to_vec(), DATE.to_vec()),
-    (b"Server".to_vec(), b"deno_http_h1/h11spec".to_vec()),
+    (b"Server".to_vec(), b"ende_http_h1/h11spec".to_vec()),
     (b"Content-Type".to_vec(), b"application/json".to_vec()),
   ];
   if request.method == b"OPTIONS" {

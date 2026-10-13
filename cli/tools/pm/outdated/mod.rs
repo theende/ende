@@ -5,15 +5,15 @@ mod interactive;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use deno_cache_dir::GlobalOrLocalHttpCache;
-use deno_cache_dir::file_fetcher::CacheSetting;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
 use deno_semver::StackString;
 use deno_semver::VersionReq;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
 use deno_terminal::colors;
+use ende_cache_dir::GlobalOrLocalHttpCache;
+use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
 
 use super::CacheTopLevelDepsOptions;
 use super::deps::Dep;
@@ -261,8 +261,8 @@ pub async fn outdated(
   let http_client = factory.http_client_provider();
   let deps_http_cache = factory.global_http_cache()?;
   let file_fetcher = create_cli_file_fetcher(
-    Arc::new(deno_runtime::deno_web::BlobStore::default())
-      as Arc<dyn deno_runtime::deno_web::BlobStoreTrait>,
+    Arc::new(ende_runtime::ende_web::BlobStore::default())
+      as Arc<dyn ende_runtime::ende_web::BlobStoreTrait>,
     GlobalOrLocalHttpCache::Global(deps_http_cache.clone()),
     http_client.clone(),
     factory.memory_files().clone(),
@@ -699,10 +699,10 @@ async fn dep_manager_args(
 }
 
 pub(crate) mod filter {
-  use deno_core::anyhow::Context;
-  use deno_core::anyhow::anyhow;
-  use deno_core::error::AnyError;
   use deno_semver::VersionReq;
+  use ende_core::anyhow::Context;
+  use ende_core::anyhow::anyhow;
+  use ende_core::error::AnyError;
 
   enum FilterKind {
     Exclude,

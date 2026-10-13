@@ -17,11 +17,11 @@ use std::sync::Arc;
 use std::task::Context;
 use std::task::Poll;
 
-use deno_core::futures::TryFutureExt;
+use ende_core::futures::TryFutureExt;
 #[cfg(not(windows))]
-use deno_permissions::OpenAccessKind;
-use deno_permissions::PermissionsContainer;
-use deno_tls::rustls::ClientConfig as TlsConfig;
+use ende_permissions::OpenAccessKind;
+use ende_permissions::PermissionsContainer;
+use ende_tls::rustls::ClientConfig as TlsConfig;
 use http::Uri;
 use http::header::HeaderValue;
 use http::uri::Scheme;

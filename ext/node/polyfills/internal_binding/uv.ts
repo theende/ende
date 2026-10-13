@@ -28,9 +28,9 @@
 
 (function () {
 const { core, primordials } = __bootstrap;
-const { osType } = core.loadExtScript("ext:deno_node/_util/os.ts");
+const { osType } = core.loadExtScript("ext:ende_node/_util/os.ts");
 const { uvTranslateSysError } = core.loadExtScript(
-  "ext:deno_node/internal_binding/_libuv_winerror.ts",
+  "ext:ende_node/internal_binding/_libuv_winerror.ts",
 );
 const {
   ArrayPrototypeMap,

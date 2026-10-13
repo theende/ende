@@ -4,16 +4,16 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use deno_lib::standalone::virtual_fs::BuiltVfs;
-use deno_lib::standalone::virtual_fs::DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME;
-use deno_lib::standalone::virtual_fs::OffsetWithLength;
-use deno_lib::standalone::virtual_fs::VfsEntry;
-use deno_lib::standalone::virtual_fs::VirtualDirectory;
-use deno_lib::standalone::virtual_fs::VirtualDirectoryEntries;
-use deno_lib::standalone::virtual_fs::VirtualFile;
-use deno_lib::standalone::virtual_fs::VirtualSymlinkParts;
-use deno_lib::standalone::virtual_fs::WindowsSystemRootablePath;
-use deno_resolver::display::DisplayTreeNode;
+use ende_lib::standalone::virtual_fs::BuiltVfs;
+use ende_lib::standalone::virtual_fs::DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME;
+use ende_lib::standalone::virtual_fs::OffsetWithLength;
+use ende_lib::standalone::virtual_fs::VfsEntry;
+use ende_lib::standalone::virtual_fs::VirtualDirectory;
+use ende_lib::standalone::virtual_fs::VirtualDirectoryEntries;
+use ende_lib::standalone::virtual_fs::VirtualFile;
+use ende_lib::standalone::virtual_fs::VirtualSymlinkParts;
+use ende_lib::standalone::virtual_fs::WindowsSystemRootablePath;
+use ende_resolver::display::DisplayTreeNode;
 
 use crate::util::display::human_size;
 
@@ -369,7 +369,7 @@ fn vfs_as_display_tree(
 #[cfg(test)]
 mod test {
   use console_static_text::ansi::strip_ansi_codes;
-  use deno_lib::standalone::virtual_fs::VfsBuilder;
+  use ende_lib::standalone::virtual_fs::VfsBuilder;
   use pretty_assertions::assert_eq;
   use test_util::TempDir;
 

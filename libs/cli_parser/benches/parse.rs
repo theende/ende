@@ -8,9 +8,9 @@ use criterion::BatchSize;
 use criterion::Criterion;
 use criterion::criterion_group;
 use criterion::criterion_main;
-use deno_cli_parser::convert::flags_from_vec;
-use deno_cli_parser::defs::DENO_ROOT;
-use deno_cli_parser::parse;
+use ende_cli_parser::convert::flags_from_vec;
+use ende_cli_parser::defs::DENO_ROOT;
+use ende_cli_parser::parse;
 
 fn svec(args: &[&str]) -> Vec<String> {
   args.iter().map(|s| s.to_string()).collect()

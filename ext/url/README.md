@@ -1,4 +1,4 @@
-# deno_url
+# ende_url
 
 This crate has been deprecated, use
-[deno_web](https://crates.io/crates/deno_web) instead.
+[ende_web](https://crates.io/crates/deno_web) instead.

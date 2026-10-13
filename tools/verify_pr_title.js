@@ -12,15 +12,15 @@ console.log("PR title:", prTitle);
 
 if (
   prTitle.startsWith("chore:") &&
-  (prTitle.includes("deno_core") || prTitle.includes("v8")) &&
+  (prTitle.includes("ende_core") || prTitle.includes("v8")) &&
   (prTitle.includes("upgrade") || prTitle.includes("update"))
 ) {
   console.error([
-    "Please categorize this deno_core/v8 upgrade as a 'feat:', 'fix:' or a ",
+    "Please categorize this ende_core/v8 upgrade as a 'feat:', 'fix:' or a ",
     "'refactor:'. If your upgrade does not fall into either of these ",
-    "categories, wait until the next deno_core release.\n\n",
+    "categories, wait until the next ende_core release.\n\n",
     "For feats and fixes, please title your PR outlining the fixed issue ",
-    "rather than just `fix: upgrade deno_core` so that users understand the ",
+    "rather than just `fix: upgrade ende_core` so that users understand the ",
     "change that was made in the changelog.",
   ].join(""));
   Deno.exit(1);

@@ -25,7 +25,7 @@ and hot swap `init_ops_and_esm` function into the previously built `deno` bin.
 
 ```
 cargo plonk run \
-  --package deno_webgpu \
+  --package ende_webgpu \
   --symbol init_ops_and_esm \
   --bin deno \
   --watch
@@ -40,7 +40,7 @@ You can use `cargo plonk run` to re-run commands on changes.
 
 ```
 cargo plonk run -v \
-  -p deno_webgpu \
+  -p ende_webgpu \
   -s init_ops_and_esm \
   -b deno \
   --watch \

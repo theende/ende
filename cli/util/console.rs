@@ -12,8 +12,8 @@ use crossterm::event::KeyEvent;
 use crossterm::event::KeyEventKind;
 use crossterm::event::KeyModifiers;
 use crossterm::terminal;
-use deno_core::parking_lot::Mutex;
-use deno_runtime::ops::tty::ConsoleSize;
+use ende_core::parking_lot::Mutex;
+use ende_runtime::ops::tty::ConsoleSize;
 use unicode_general_category::GeneralCategory;
 use unicode_general_category::get_general_category;
 
@@ -21,7 +21,7 @@ use super::draw_thread::DrawThread;
 
 /// Gets the console size.
 pub fn console_size() -> Option<ConsoleSize> {
-  deno_runtime::ops::tty::console_size_of_stderr().ok()
+  ende_runtime::ops::tty::console_size_of_stderr().ok()
 }
 
 pub fn new_console_static_text() -> ConsoleStaticText {

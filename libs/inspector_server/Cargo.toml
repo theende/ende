@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_inspector_server"
+name = "ende_inspector_server"
 version = "0.33.0"
 authors.workspace = true
 edition.workspace = true
@@ -13,8 +13,8 @@ description = "Inspector server for Deno runtime"
 path = "lib.rs"
 
 [dependencies]
-deno_core.workspace = true
 deno_error.workspace = true
+ende_core.workspace = true
 
 fastwebsockets.workspace = true
 http.workspace = true

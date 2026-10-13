@@ -4,8 +4,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::time::UNIX_EPOCH;
 
-use deno_maybe_sync::MaybeSend;
-use deno_maybe_sync::MaybeSync;
+use ende_maybe_sync::MaybeSend;
+use ende_maybe_sync::MaybeSync;
 use parking_lot::Mutex;
 use sys_traits::SystemTimeNow;
 use url::Url;

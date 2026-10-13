@@ -3,19 +3,19 @@
 use std::sync::Arc;
 
 use deno_ast::MediaType;
-use deno_cache_dir::GlobalOrLocalHttpCache;
-use deno_cache_dir::file_fetcher::BlobData;
-use deno_cache_dir::file_fetcher::CacheSetting;
-use deno_cache_dir::file_fetcher::File;
-use deno_cache_dir::file_fetcher::SendError;
-use deno_cache_dir::file_fetcher::SendResponse;
-use deno_core::ModuleSpecifier;
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
-use deno_core::url::Url;
-use deno_resolver::file_fetcher::PermissionedFileFetcherOptions;
-use deno_resolver::loader::MemoryFiles;
-use deno_runtime::deno_web::BlobStoreTrait;
+use ende_cache_dir::GlobalOrLocalHttpCache;
+use ende_cache_dir::file_fetcher::BlobData;
+use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_cache_dir::file_fetcher::File;
+use ende_cache_dir::file_fetcher::SendError;
+use ende_cache_dir::file_fetcher::SendResponse;
+use ende_core::ModuleSpecifier;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_core::url::Url;
+use ende_resolver::file_fetcher::PermissionedFileFetcherOptions;
+use ende_resolver::loader::MemoryFiles;
+use ende_runtime::ende_web::BlobStoreTrait;
 use http::HeaderMap;
 use http::StatusCode;
 
@@ -61,12 +61,12 @@ impl TextDecodedFile {
   }
 }
 
-pub type CliFileFetcher = deno_resolver::file_fetcher::PermissionedFileFetcher<
+pub type CliFileFetcher = ende_resolver::file_fetcher::PermissionedFileFetcher<
   BlobStoreAdapter,
   CliSys,
   HttpClientAdapter,
 >;
-pub type CliDenoGraphLoader = deno_resolver::file_fetcher::DenoGraphLoader<
+pub type CliDenoGraphLoader = ende_resolver::file_fetcher::DenoGraphLoader<
   BlobStoreAdapter,
   CliSys,
   HttpClientAdapter,
@@ -109,7 +109,7 @@ pub fn create_cli_file_fetcher(
 pub struct BlobStoreAdapter(Arc<dyn BlobStoreTrait>);
 
 #[async_trait::async_trait(?Send)]
-impl deno_cache_dir::file_fetcher::BlobStore for BlobStoreAdapter {
+impl ende_cache_dir::file_fetcher::BlobStore for BlobStoreAdapter {
   async fn get(&self, specifier: &Url) -> std::io::Result<Option<BlobData>> {
     let Some(blob) = self.0.get_object_url(specifier.clone()) else {
       return Ok(None);
@@ -129,7 +129,7 @@ pub struct HttpClientAdapter {
 }
 
 #[async_trait::async_trait(?Send)]
-impl deno_cache_dir::file_fetcher::HttpClient for HttpClientAdapter {
+impl ende_cache_dir::file_fetcher::HttpClient for HttpClientAdapter {
   async fn send_no_follow(
     &self,
     url: &Url,
@@ -245,15 +245,15 @@ impl deno_cache_dir::file_fetcher::HttpClient for HttpClientAdapter {
 mod tests {
   use std::collections::HashMap;
 
-  use deno_cache_dir::HttpCache;
-  use deno_cache_dir::file_fetcher::HttpClient;
-  use deno_core::resolve_url;
-  use deno_resolver::file_fetcher::FetchErrorKind;
-  use deno_resolver::file_fetcher::FetchPermissionsOptionRef;
-  use deno_resolver::loader::MemoryFilesRc;
-  use deno_runtime::deno_web::Blob;
-  use deno_runtime::deno_web::BlobStore;
-  use deno_runtime::deno_web::InMemoryBlobPart;
+  use ende_cache_dir::HttpCache;
+  use ende_cache_dir::file_fetcher::HttpClient;
+  use ende_core::resolve_url;
+  use ende_resolver::file_fetcher::FetchErrorKind;
+  use ende_resolver::file_fetcher::FetchPermissionsOptionRef;
+  use ende_resolver::loader::MemoryFilesRc;
+  use ende_runtime::ende_web::Blob;
+  use ende_runtime::ende_web::BlobStore;
+  use ende_runtime::ende_web::InMemoryBlobPart;
   use test_util::TempDir;
 
   use super::*;
@@ -398,7 +398,7 @@ mod tests {
         "content-type".to_string(),
         "application/javascript".to_string(),
       )])),
-      loaded_from: deno_cache_dir::file_fetcher::LoadedFrom::Local,
+      loaded_from: ende_cache_dir::file_fetcher::LoadedFrom::Local,
     };
     file_fetcher.insert_memory_files(file.clone());
 
@@ -872,14 +872,14 @@ mod tests {
       FetchErrorKind::TooManyRedirects(_) => unreachable!(),
     };
     let err = match err.into_kind() {
-      deno_resolver::file_fetcher::FetchNoFollowErrorKind::FetchNoFollow(
+      ende_resolver::file_fetcher::FetchNoFollowErrorKind::FetchNoFollow(
         err,
       ) => err,
       _ => unreachable!(),
     };
     let err = err.into_kind();
     match &err {
-      deno_cache_dir::file_fetcher::FetchNoFollowErrorKind::NoRemote {
+      ende_cache_dir::file_fetcher::FetchNoFollowErrorKind::NoRemote {
         ..
       } => {
         assert_eq!(
@@ -932,14 +932,14 @@ mod tests {
       FetchErrorKind::TooManyRedirects(_) => unreachable!(),
     };
     let err = match err.into_kind() {
-      deno_resolver::file_fetcher::FetchNoFollowErrorKind::FetchNoFollow(
+      ende_resolver::file_fetcher::FetchNoFollowErrorKind::FetchNoFollow(
         err,
       ) => err,
       _ => unreachable!(),
     };
     let err = err.into_kind();
     match &err {
-      deno_cache_dir::file_fetcher::FetchNoFollowErrorKind::NotCached {
+      ende_cache_dir::file_fetcher::FetchNoFollowErrorKind::NotCached {
         ..
       } => {
         assert_eq!(

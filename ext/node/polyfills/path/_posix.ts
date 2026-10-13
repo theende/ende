@@ -5,10 +5,10 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { CHAR_DOT, CHAR_FORWARD_SLASH } = core.loadExtScript(
-  "ext:deno_node/path/_constants.ts",
+  "ext:ende_node/path/_constants.ts",
 );
 const { ERR_INVALID_ARG_TYPE } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 
 const {
@@ -16,13 +16,13 @@ const {
   assertPath,
   isPosixPathSeparator,
   normalizeString,
-} = core.loadExtScript("ext:deno_node/path/_util.ts");
+} = core.loadExtScript("ext:ende_node/path/_util.ts");
 const { validateString } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
-const { isWindows } = core.loadExtScript("ext:deno_node/_util/os.ts");
+const { isWindows } = core.loadExtScript("ext:ende_node/_util/os.ts");
 const lazyLoadGlob = core.createLazyLoader(
-  "ext:deno_node/_fs/_fs_glob.ts",
+  "ext:ende_node/_fs/_fs_glob.ts",
 );
 
 const {

@@ -15,15 +15,15 @@ use std::collections::VecDeque;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::serde_json::Value;
-use deno_core::serde_json::json;
-use deno_core::url::Url;
-use deno_runtime::deno_permissions::PermissionsContainer;
 use deno_semver::Version;
 use deno_semver::VersionReq;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::serde_json::Value;
+use ende_core::serde_json::json;
+use ende_core::url::Url;
+use ende_runtime::ende_permissions::PermissionsContainer;
 use flate2::read::GzDecoder;
 
 use crate::file_fetcher::CliFileFetcher;

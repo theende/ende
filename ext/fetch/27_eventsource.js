@@ -21,29 +21,29 @@ const {
   SymbolFor,
 } = primordials;
 
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const { createFilteredInspectProxy } = core.loadExtScript(
-  "ext:deno_web/01_console.js",
+  "ext:ende_web/01_console.js",
 );
-const { URL } = core.loadExtScript("ext:deno_web/00_url.js");
-const { DOMException } = core.loadExtScript("ext:deno_web/01_dom_exception.js");
+const { URL } = core.loadExtScript("ext:ende_web/00_url.js");
+const { DOMException } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
 const {
   defineEventHandler,
   EventTarget,
   setIsTrusted,
-} = core.loadExtScript("ext:deno_web/02_event.js");
-const { TransformStream } = core.loadExtScript("ext:deno_web/06_streams.js");
+} = core.loadExtScript("ext:ende_web/02_event.js");
+const { TransformStream } = core.loadExtScript("ext:ende_web/06_streams.js");
 const { TextDecoderStream } = core.loadExtScript(
-  "ext:deno_web/08_text_encoding.js",
+  "ext:ende_web/08_text_encoding.js",
 );
-const { getLocationHref } = core.loadExtScript("ext:deno_web/12_location.js");
-const { newInnerRequest } = core.loadExtScript("ext:deno_fetch/23_request.js");
-const { mainFetch } = core.loadExtScript("ext:deno_fetch/26_fetch.js");
+const { getLocationHref } = core.loadExtScript("ext:ende_web/12_location.js");
+const { newInnerRequest } = core.loadExtScript("ext:ende_fetch/23_request.js");
+const { mainFetch } = core.loadExtScript("ext:ende_fetch/26_fetch.js");
 const {
   fillHeaders,
   headerListFromHeaders,
   headersFromHeaderList,
-} = core.loadExtScript("ext:deno_fetch/20_headers.js");
+} = core.loadExtScript("ext:ende_fetch/20_headers.js");
 
 // Same semantics as
 // https://github.com/denoland/deno_std/blob/e0753abe0c8602552862a568348c046996709521/streams/text_line_stream.ts#L20-L74

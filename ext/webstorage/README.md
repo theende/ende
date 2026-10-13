@@ -1,4 +1,4 @@
-# deno_webstorage
+# ende_webstorage
 
 This op crate implements the WebStorage spec in Deno.
 

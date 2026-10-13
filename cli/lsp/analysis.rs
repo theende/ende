@@ -10,21 +10,9 @@ use std::sync::Arc;
 
 use deno_ast::SourceRange;
 use deno_ast::SourceTextInfo;
-use deno_core::ModuleSpecifier;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::resolve_url;
-use deno_core::serde::Deserialize;
-use deno_core::serde::Serialize;
-use deno_core::serde_json;
-use deno_core::serde_json::json;
-use deno_core::url::Url;
 use deno_error::JsErrorBox;
 use deno_lint::diagnostic::LintDiagnosticRange;
-use deno_npm::NpmPackageId;
 use deno_path_util::url_to_file_path;
-use deno_resolver::npm::managed::NpmResolutionCell;
-use deno_runtime::deno_node::PathClean;
 use deno_semver::SmallStackString;
 use deno_semver::StackString;
 use deno_semver::Version;
@@ -35,6 +23,18 @@ use deno_semver::package::PackageNv;
 use deno_semver::package::PackageNvReference;
 use deno_semver::package::PackageReq;
 use deno_semver::package::PackageReqReference;
+use ende_core::ModuleSpecifier;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::resolve_url;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Serialize;
+use ende_core::serde_json;
+use ende_core::serde_json::json;
+use ende_core::url::Url;
+use ende_npm::NpmPackageId;
+use ende_resolver::npm::managed::NpmResolutionCell;
+use ende_runtime::ende_node::PathClean;
 use import_map::ImportMap;
 use lsp_types::Uri;
 use node_resolver::InNpmPackageChecker;
@@ -717,7 +717,7 @@ fn try_reverse_map_package_json_exports(
   target_path: &Path,
   exports: &serde_json::Map<String, serde_json::Value>,
 ) -> Option<String> {
-  use deno_core::serde_json::Value;
+  use ende_core::serde_json::Value;
 
   fn try_reverse_map_package_json_exports_inner(
     root_path: &Path,

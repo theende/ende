@@ -10,15 +10,15 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use deno_config::glob::FilePatterns;
-use deno_config::glob::PathOrPatternSet;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::parking_lot::Mutex;
-use deno_core::url::Url;
-use deno_lib::util::result::js_error_downcast_ref;
-use deno_runtime::fmt_errors::format_js_error;
-use deno_signals;
+use ende_config::glob::FilePatterns;
+use ende_config::glob::PathOrPatternSet;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::parking_lot::Mutex;
+use ende_core::url::Url;
+use ende_lib::util::result::js_error_downcast_ref;
+use ende_runtime::fmt_errors::format_js_error;
+use ende_signals;
 use log::info;
 use notify::Error as NotifyError;
 use notify::RecommendedWatcher;
@@ -351,7 +351,7 @@ where
   let changed_paths_ = changed_paths.clone();
   let watcher_ = watcher_communicator.clone();
 
-  deno_core::unsync::spawn(async move {
+  ende_core::unsync::spawn(async move {
     loop {
       let received_changed_paths = watcher_receiver.recv().await;
       changed_paths_
@@ -428,7 +428,7 @@ where
       // (https://github.com/denoland/deno/issues/35824). This branch is
       // reached when a JS signal listener prevented the default behavior,
       // in which case we shut down gracefully below.
-      _ = deno_signals::ctrl_c_allow_default() => {
+      _ = ende_signals::ctrl_c_allow_default() => {
         // Dispatch SIGINT (matching what Ctrl+C normally sends) and
         // SIGTERM to give JS code a chance for async cleanup. Some
         // libraries only listen for SIGINT, others for SIGTERM.
@@ -438,8 +438,8 @@ where
         //
         // Use bitwise OR (not `||`) to ensure both signals are always
         // raised regardless of whether the first one has handlers.
-        let has_handlers = deno_signals::raise(deno_signals::SIGINT)
-          | deno_signals::raise(deno_signals::SIGTERM);
+        let has_handlers = ende_signals::raise(ende_signals::SIGINT)
+          | ende_signals::raise(ende_signals::SIGTERM);
         if has_handlers {
           info!(
             "{} Waiting for graceful termination...",
@@ -457,7 +457,7 @@ where
         // Dispatch SIGTERM to give JS code a chance for async cleanup
         // before restarting. If handlers are registered, wait for the
         // operation to finish gracefully before restarting.
-        if deno_signals::raise(deno_signals::SIGTERM) {
+        if ende_signals::raise(ende_signals::SIGTERM) {
           info!(
             "{} Waiting for graceful termination...",
             colors::intense_blue(banner),
@@ -468,7 +468,7 @@ where
           )
           .await;
         }
-        deno_runtime::deno_inspector_server::notify_restart();
+        ende_runtime::ende_inspector_server::notify_restart();
         print_after_restart();
         continue;
       },
@@ -501,11 +501,11 @@ where
     // watched paths has changed.
     select! {
       _ = receiver_future => {},
-      _ = deno_signals::ctrl_c_allow_default() => {
+      _ = ende_signals::ctrl_c_allow_default() => {
         return Ok(());
       },
       _ = restart_rx.recv() => {
-        deno_runtime::deno_inspector_server::notify_restart();
+        ende_runtime::ende_inspector_server::notify_restart();
         print_after_restart();
         continue;
       },

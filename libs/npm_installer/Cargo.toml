@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_npm_installer"
+name = "ende_npm_installer"
 version = "0.54.0"
 authors.workspace = true
 edition.workspace = true
@@ -20,20 +20,20 @@ async-trait.workspace = true
 bincode.workspace = true
 boxed_error.workspace = true
 capacity_builder.workspace = true
-deno_cache_dir.workspace = true
-deno_config.workspace = true
 deno_error.workspace = true
 deno_graph.workspace = true
-deno_lockfile.workspace = true
-deno_npm.workspace = true
-deno_npm_cache.workspace = true
-deno_npmrc.workspace = true
-deno_package_json.workspace = true
 deno_path_util.workspace = true
-deno_resolver = { workspace = true, features = ["graph", "sync"] }
 deno_semver.workspace = true
 deno_terminal.workspace = true
 deno_unsync.workspace = true
+ende_cache_dir.workspace = true
+ende_config.workspace = true
+ende_lockfile.workspace = true
+ende_npm.workspace = true
+ende_npm_cache.workspace = true
+ende_npmrc.workspace = true
+ende_package_json.workspace = true
+ende_resolver = { workspace = true, features = ["graph", "sync"] }
 futures.workspace = true
 lazy-regex.workspace = true
 libc.workspace = true

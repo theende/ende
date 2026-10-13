@@ -46,7 +46,7 @@ const {
 const {
   codes: errorCodes,
   genericNodeError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const {
   ERR_BROTLI_INVALID_PARAM,
@@ -60,24 +60,24 @@ const {
 
 const { finished, Transform } = core.createLazyLoader("node:stream")();
 const { deprecateInstantiation } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 const {
   isAnyArrayBuffer,
   isArrayBufferView,
   isUint8Array,
-} = core.loadExtScript("ext:deno_node/internal/util/types.ts");
-const binding = core.loadExtScript("ext:deno_node/_zlib_binding.mjs");
+} = core.loadExtScript("ext:ende_node/internal/util/types.ts");
+const binding = core.loadExtScript("ext:ende_node/_zlib_binding.mjs");
 const { crc32: crc32Native } = binding;
 
 const assert = core.loadExtScript(
-  "ext:deno_node/internal/assert.mjs",
+  "ext:ende_node/internal/assert.mjs",
 );
 const { Buffer, kMaxLength } = core.loadExtScript(
-  "ext:deno_node/internal/buffer.mjs",
+  "ext:ende_node/internal/buffer.mjs",
 );
 const { ownerSymbol: owner_symbol } = core.loadExtScript(
-  "ext:deno_node/internal_binding/symbols.ts",
+  "ext:ende_node/internal_binding/symbols.ts",
 );
 const {
   checkRangesOrGetDefault,
@@ -85,9 +85,9 @@ const {
   validateFiniteNumber,
   validateFunction,
   validateUint32,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const { zlib: zlibConstants } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
 
 const kFlushFlag = Symbol("kFlushFlag");

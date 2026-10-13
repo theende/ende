@@ -34,15 +34,15 @@ const { op_get_env_no_permission_check } = core.ops;
 const lazyTls = core.createLazyLoader("node:tls");
 const lazyNet = core.createLazyLoader("node:net");
 const { urlToHttpOptions } = core.loadExtScript(
-  "ext:deno_node/internal/url.ts",
+  "ext:ende_node/internal/url.ts",
 );
 const lazyHttp = core.createLazyLoader("node:http");
 const lazyAddressOverride = core.createLazyLoader(
-  "ext:deno_node/internal/http/address_override.js",
+  "ext:ende_node/internal/http/address_override.js",
 );
-const { nextTick } = core.loadExtScript("ext:deno_node/_next_tick.ts");
+const { nextTick } = core.loadExtScript("ext:ende_node/_next_tick.ts");
 const { ERR_INVALID_URL, ERR_PROXY_TUNNEL } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 const {
   httpServerPreClose,
@@ -51,12 +51,12 @@ const {
 } = core.createLazyLoader("node:_http_server")();
 const { Agent: HttpAgent } = core.createLazyLoader("node:_http_agent")();
 const { validateObject } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const { kEmptyObject } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 
 const tls = lazyTls().default;
 const net = lazyNet();

@@ -169,7 +169,7 @@ impl ResourceTable {
   /// # Example
   ///
   /// ```
-  /// # use deno_core::ResourceTable;
+  /// # use ende_core::ResourceTable;
   /// # let resource_table = ResourceTable::default();
   /// let resource_names = resource_table.names().collect::<Vec<_>>();
   /// ```

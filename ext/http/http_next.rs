@@ -17,32 +17,32 @@ use std::time::Duration;
 use std::time::SystemTime;
 
 use bytes::Bytes;
-use deno_core::AsyncRefCell;
-use deno_core::AsyncResult;
-use deno_core::BufMutView;
-use deno_core::BufView;
-use deno_core::CancelFuture;
-use deno_core::CancelHandle;
-use deno_core::CancelTryFuture;
-use deno_core::ExternalPointer;
-use deno_core::FromV8;
-use deno_core::JsBuffer;
-use deno_core::OpState;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::convert::ByteString;
-use deno_core::external;
-use deno_core::op2;
-use deno_core::unsync::JoinHandle;
-use deno_core::unsync::spawn;
-use deno_core::v8;
-use deno_http_h1 as h1;
-use deno_net::ops_tls::TlsStream;
-use deno_net::raw::NetworkStream;
-use deno_websocket::ServerWebSocket;
-use deno_websocket::ws_create_server_stream;
-use deno_websocket::ws_create_server_stream_with_guard;
+use ende_core::AsyncRefCell;
+use ende_core::AsyncResult;
+use ende_core::BufMutView;
+use ende_core::BufView;
+use ende_core::CancelFuture;
+use ende_core::CancelHandle;
+use ende_core::CancelTryFuture;
+use ende_core::ExternalPointer;
+use ende_core::FromV8;
+use ende_core::JsBuffer;
+use ende_core::OpState;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::convert::ByteString;
+use ende_core::external;
+use ende_core::op2;
+use ende_core::unsync::JoinHandle;
+use ende_core::unsync::spawn;
+use ende_core::v8;
+use ende_http_h1 as h1;
+use ende_net::ops_tls::TlsStream;
+use ende_net::raw::NetworkStream;
+use ende_websocket::ServerWebSocket;
+use ende_websocket::ws_create_server_stream;
+use ende_websocket::ws_create_server_stream_with_guard;
 use fly_accept_encoding::Encoding;
 use hyper::StatusCode;
 use hyper::body::Incoming;
@@ -248,7 +248,7 @@ impl HttpRecordExternal {
     }
   }
 
-  fn copy_span_to_otel_info(&self, span: &deno_telemetry::OtelSpan) {
+  fn copy_span_to_otel_info(&self, span: &ende_telemetry::OtelSpan) {
     match self {
       Self::Hyper(record) => record.copy_span_to_otel_info(span),
       Self::Raw(record) => record.copy_span_to_otel_info(span),
@@ -291,7 +291,7 @@ macro_rules! try_clone_external {
     if ptr.is_null()
       || ptr.align_offset(std::mem::align_of::<usize>()) != 0
       || std::ptr::read::<usize>(ptr as _)
-        != <RcHttpRecord as deno_core::Externalizable>::external_marker()
+        != <RcHttpRecord as ende_core::Externalizable>::external_marker()
     {
       None
     } else {
@@ -305,7 +305,7 @@ macro_rules! try_clone_external {
 pub enum HttpNextError {
   #[class(inherit)]
   #[error(transparent)]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
   #[class(inherit)]
   #[error("{0}")]
   Io(#[from] io::Error),
@@ -324,7 +324,7 @@ pub enum HttpNextError {
   Canceled(
     #[from]
     #[inherit]
-    deno_core::Canceled,
+    ende_core::Canceled,
   ),
   #[class(generic)]
   #[error(transparent)]
@@ -344,7 +344,7 @@ pub enum HttpNextError {
   TakeNetworkStream(
     #[from]
     #[inherit]
-    deno_net::raw::TakeNetworkStreamError,
+    ende_net::raw::TakeNetworkStreamError,
   ),
 }
 
@@ -1198,7 +1198,7 @@ impl RawHttpRecord {
     } else {
       None
     };
-    let otel_info = deno_telemetry::OTEL_GLOBALS
+    let otel_info = ende_telemetry::OTEL_GLOBALS
       .get()
       .filter(|o| o.has_metrics())
       .map(|otel| {
@@ -1487,13 +1487,13 @@ impl RawHttpRecord {
     }
   }
 
-  fn copy_span_to_otel_info(&self, span: &deno_telemetry::OtelSpan) {
+  fn copy_span_to_otel_info(&self, span: &ende_telemetry::OtelSpan) {
     let mut inner = self.0.borrow_mut();
     let Some(info) = inner.otel_info.as_mut() else {
       return;
     };
     let span_state = span.0.borrow();
-    if let deno_telemetry::OtelSpanState::Recording(data) = &**span_state {
+    if let ende_telemetry::OtelSpanState::Recording(data) = &**span_state {
       for attr in &data.attributes {
         if attr.key.as_str() == "http.route" {
           info.attributes.http_route = Some(attr.value.to_string());
@@ -1837,7 +1837,7 @@ fn register_server_websocket(
 
 /// Create a server WebSocket from a TCP stream resource (e.g. taken from a
 /// node:http TCPWrap handle). This lets ext/node hand off the raw stream
-/// without depending on deno_websocket directly.
+/// without depending on ende_websocket directly.
 #[op2(fast)]
 #[smi]
 pub fn op_http_ws_create_from_stream_resource(
@@ -1845,7 +1845,7 @@ pub fn op_http_ws_create_from_stream_resource(
   #[smi] stream_rid: ResourceId,
   #[buffer] extra_bytes: &[u8],
 ) -> Result<ResourceId, HttpNextError> {
-  let stream = deno_net::raw::take_network_stream_resource(
+  let stream = ende_net::raw::take_network_stream_resource(
     &mut state.resource_table,
     stream_rid,
   )?;
@@ -2970,7 +2970,7 @@ fn set_static_response_body_from_v8<'s>(
       set_static_empty_response(http, status);
     }
   } else if let Ok(buffer) =
-    deno_core::serde_v8::from_v8::<JsBuffer>(scope, body)
+    ende_core::serde_v8::from_v8::<JsBuffer>(scope, body)
   {
     if !buffer.is_empty() {
       set_static_response_bufview(http, buffer, status);
@@ -2998,7 +2998,7 @@ fn direct_response_body_from_v8<'s>(
       )))
     }
   } else {
-    let buffer = deno_core::serde_v8::from_v8::<JsBuffer>(scope, body).ok()?;
+    let buffer = ende_core::serde_v8::from_v8::<JsBuffer>(scope, body).ok()?;
     if buffer.is_empty() {
       Some(DirectResponseBody::Empty)
     } else {
@@ -5656,8 +5656,8 @@ fn is_normal_close(err: &(dyn std::error::Error + 'static)) -> bool {
     return false;
   }
 
-  if let Some(err) = err.downcast_ref::<deno_net::tunnel::Error>() {
-    if let deno_net::tunnel::Error::QuinnConnection(err) = err {
+  if let Some(err) = err.downcast_ref::<ende_net::tunnel::Error>() {
+    if let ende_net::tunnel::Error::QuinnConnection(err) = err {
       return is_normal_close(err);
     }
 
@@ -5665,9 +5665,9 @@ fn is_normal_close(err: &(dyn std::error::Error + 'static)) -> bool {
   }
 
   if let Some(err) =
-    err.downcast_ref::<deno_net::tunnel::quinn::ConnectionError>()
+    err.downcast_ref::<ende_net::tunnel::quinn::ConnectionError>()
   {
-    if matches!(err, deno_net::tunnel::quinn::ConnectionError::LocallyClosed) {
+    if matches!(err, ende_net::tunnel::quinn::ConnectionError::LocallyClosed) {
       return true;
     }
 
@@ -5683,7 +5683,7 @@ pub fn op_http_cancel(
   state: &mut OpState,
   #[smi] rid: ResourceId,
   graceful: bool,
-) -> Result<(), deno_core::error::ResourceError> {
+) -> Result<(), ende_core::error::ResourceError> {
   let join_handle = state.resource_table.get::<HttpJoinHandle>(rid)?;
 
   // `op_http_cancel` is called from the abort-signal path. Treat
@@ -5791,7 +5791,7 @@ pub fn op_http_metric_handle_otel_error(external: *const c_void) {
 #[op2(fast)]
 pub fn op_http_copy_span_to_otel_info(
   external: *const c_void,
-  #[cppgc] span: &deno_telemetry::OtelSpan,
+  #[cppgc] span: &ende_telemetry::OtelSpan,
 ) {
   // SAFETY: The external may have already been consumed by a take_external!
   // call (e.g. op_http_set_promise_complete). On some platforms (Windows),

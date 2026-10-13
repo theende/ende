@@ -6,12 +6,12 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 
 use anyhow::bail;
-use deno_core::JsRuntime;
-use deno_core::OpState;
-use deno_core::PollEventLoopOptions;
-use deno_core::op2;
-use deno_core::url::Url;
-use deno_core::v8;
+use ende_core::JsRuntime;
+use ende_core::OpState;
+use ende_core::PollEventLoopOptions;
+use ende_core::op2;
+use ende_core::url::Url;
+use ende_core::v8;
 use pretty_assertions::assert_eq;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -22,7 +22,7 @@ use super::create_runtime_from_snapshot;
 use super::run_async;
 use super::snapshot;
 
-deno_core::extension!(
+ende_core::extension!(
   checkin_testing,
   ops = [
     op_test_register,
@@ -88,7 +88,7 @@ async fn run_integration_test_task(
   runtime
     .op_state()
     .borrow_mut()
-    .put(deno_core::error::InitialCwd(Arc::new(Url::parse(
+    .put(ende_core::error::InitialCwd(Arc::new(Url::parse(
       "test:///",
     )?)));
   let maybe_error = match runtime.load_main_es_module(&url).await {
@@ -144,7 +144,7 @@ async fn run_unit_test_task(
   runtime
     .op_state()
     .borrow_mut()
-    .put(deno_core::error::InitialCwd(Arc::new(Url::parse(
+    .put(ende_core::error::InitialCwd(Arc::new(Url::parse(
       "test:///",
     )?)));
   let module = runtime.load_main_es_module(&url).await?;

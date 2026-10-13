@@ -2,9 +2,9 @@
 
 use std::str::FromStr;
 
-use deno_cli_parser::CliError;
-use deno_cli_parser::CliErrorKind;
-use deno_runtime::deno_permissions::NetDescriptor;
+use ende_cli_parser::CliError;
+use ende_cli_parser::CliErrorKind;
+use ende_runtime::ende_permissions::NetDescriptor;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParsePortError(String);

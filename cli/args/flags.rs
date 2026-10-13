@@ -9,29 +9,29 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use color_print::cstr;
-use deno_cli_parser::CliError;
-pub use deno_cli_parser::flags::*;
-use deno_config::glob::FilePatterns;
-use deno_config::glob::PathOrPatternSet;
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
 use deno_graph::GraphKind;
-use deno_lib::version::DENO_VERSION_INFO;
-use deno_npm::NpmSystemInfo;
 use deno_path_util::normalize_path;
 use deno_path_util::resolve_url_or_path;
 use deno_path_util::url_to_file_path;
-pub use deno_runtime::deno_inspector_server::InspectPublishUid;
-use deno_telemetry::OtelConfig;
-use deno_telemetry::OtelConsoleConfig;
-use deno_telemetry::OtelPropagators;
+use ende_cli_parser::CliError;
+pub use ende_cli_parser::flags::*;
+use ende_config::glob::FilePatterns;
+use ende_config::glob::PathOrPatternSet;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_lib::version::DENO_VERSION_INFO;
+use ende_npm::NpmSystemInfo;
+pub use ende_runtime::ende_inspector_server::InspectPublishUid;
+use ende_telemetry::OtelConfig;
+use ende_telemetry::OtelConsoleConfig;
+use ende_telemetry::OtelPropagators;
 
 use crate::util::env::resolve_cwd;
 use crate::util::fs::canonicalize_path;
 
 // ---------------------------------------------------------------------------
 // CLI-only helpers. These stay in the CLI because they depend on deno_graph /
-// deno_telemetry / the cli build env, which the parser crate intentionally
+// ende_telemetry / the cli build env, which the parser crate intentionally
 // does not.
 // ---------------------------------------------------------------------------
 
@@ -680,7 +680,7 @@ fn bare_run_fast_path(args: &[OsString]) -> Option<Flags> {
       code_cache_enabled: true,
       ..Default::default()
     };
-    deno_cli_parser::convert::apply_node_options(&mut flags);
+    ende_cli_parser::convert::apply_node_options(&mut flags);
     Some(flags)
   } else {
     None
@@ -688,8 +688,8 @@ fn bare_run_fast_path(args: &[OsString]) -> Option<Flags> {
 }
 
 /// Main entry point for parsing deno's command line flags. Routes through the
-/// hand-written `deno_cli_parser`; the `Flags` type is shared between this
-/// crate and the parser crate (`pub use deno_cli_parser::flags::*`), so no
+/// hand-written `ende_cli_parser`; the `Flags` type is shared between this
+/// crate and the parser crate (`pub use ende_cli_parser::flags::*`), so no
 /// conversion is needed.
 pub fn flags_from_vec_with_initial_cwd(
   args: Vec<OsString>,
@@ -698,7 +698,7 @@ pub fn flags_from_vec_with_initial_cwd(
   // Strip a trailing `\r` from each arg so a CRLF-shebang script isn't poisoned
   // by a stray carriage return. The hand-written parser also does this
   // internally; doing it here first keeps the fast path below consistent with
-  // the full parse. (`deno_cli_parser::convert::flags_from_vec` re-strips, which
+  // the full parse. (`ende_cli_parser::convert::flags_from_vec` re-strips, which
   // is a no-op on already-stripped args.)
   let args: Vec<OsString> = args.into_iter().map(strip_trailing_cr).collect();
 
@@ -737,7 +737,7 @@ pub fn flags_from_vec_with_initial_cwd(
     .map(|a| a.to_string_lossy().into_owned())
     .collect();
 
-  match deno_cli_parser::convert::flags_from_vec(string_args) {
+  match ende_cli_parser::convert::flags_from_vec(string_args) {
     Ok(mut flags) => {
       // Set (and, for compile/desktop, canonicalize) the initial cwd — the
       // parser crate has no filesystem access, so this stays on the CLI side.
@@ -758,14 +758,14 @@ pub fn flags_from_vec_with_initial_cwd(
 /// matching what clap's `render_long_version` / `render_version` used to emit.
 pub fn render_version(long: bool) -> String {
   if long {
-    debug_assert_eq!(DENO_VERSION_INFO.typescript, deno_snapshots::TS_VERSION);
+    debug_assert_eq!(DENO_VERSION_INFO.typescript, ende_snapshots::TS_VERSION);
     format!(
       "deno {} ({}, {}, {})\nv8 {}\ntypescript {}\n",
       DENO_VERSION_INFO.deno,
       DENO_VERSION_INFO.release_channel.name(),
       env!("PROFILE"),
       env!("TARGET"),
-      deno_core::v8::VERSION_STRING,
+      ende_core::v8::VERSION_STRING,
       DENO_VERSION_INFO.typescript,
     )
   } else {
@@ -795,13 +795,13 @@ where
 /// Handle a dynamic-completion callback: the shell invoked us with
 /// `COMPLETE=<shell>` set and the words being completed passed after a `--`
 /// separator. Candidates are computed from the hand-written command tree via
-/// `deno_cli_parser::completions` (no clap), with `deno task` names supplied by
+/// `ende_cli_parser::completions` (no clap), with `deno task` names supplied by
 /// [`dynamic_task_completer`].
 pub fn handle_shell_completion(_cwd: &Path) -> Result<(), AnyError> {
   let shell = std::env::var("COMPLETE").unwrap_or_default();
   let words = shell_completion_words();
-  deno_cli_parser::completions::try_complete(
-    &deno_cli_parser::defs::DENO_ROOT,
+  ende_cli_parser::completions::try_complete(
+    &ende_cli_parser::defs::DENO_ROOT,
     &words,
     &shell,
     &dynamic_task_completer,
@@ -823,8 +823,8 @@ pub fn handle_dynamic_shell_completion(shell: &str) -> Result<(), AnyError> {
     .map(|c| c.into_owned())
     .unwrap_or(completer);
   let script =
-    deno_cli_parser::completions::generate_dynamic(shell, "deno", &completer);
-  deno_print::drop_write_stdout(&script);
+    ende_cli_parser::completions::generate_dynamic(shell, "deno", &completer);
+  ende_print::drop_write_stdout(&script);
   Ok(())
 }
 
@@ -849,7 +849,7 @@ fn shell_completion_words() -> Vec<String> {
 /// resolved config (the only dynamic completion Deno offers). Kept CLI-side
 /// because the parser crate has no config/workspace access.
 fn dynamic_task_completer(
-  active_cmd: &deno_cli_parser::CommandDef,
+  active_cmd: &ende_cli_parser::CommandDef,
   _current: &str,
 ) -> Vec<(String, Option<String>)> {
   if active_cmd.name != "task" {
@@ -878,11 +878,11 @@ fn task_flags_for_completion() -> Option<Flags> {
   let words = shell_completion_words();
   // The last word is the partial being completed; if the full line doesn't
   // parse, retry without it (mirrors clap's `ignore_errors`).
-  let flags = deno_cli_parser::convert::flags_from_vec(words.clone())
+  let flags = ende_cli_parser::convert::flags_from_vec(words.clone())
     .or_else(|_| {
       let mut w = words;
       w.pop();
-      deno_cli_parser::convert::flags_from_vec(w)
+      ende_cli_parser::convert::flags_from_vec(w)
     })
     .ok()?;
   matches!(flags.subcommand, DenoSubcommand::Task(_)).then_some(flags)
@@ -890,7 +890,7 @@ fn task_flags_for_completion() -> Option<Flags> {
 
 #[cfg(test)]
 mod tests {
-  use deno_cli_parser::defs::DENO_ROOT;
+  use ende_cli_parser::defs::DENO_ROOT;
   use pretty_assertions::assert_eq;
 
   use super::*;
@@ -927,7 +927,7 @@ mod tests {
       });
       let string_args: Vec<String> =
         case.iter().map(|s| s.to_string()).collect();
-      let full = deno_cli_parser::convert::flags_from_vec(string_args)
+      let full = ende_cli_parser::convert::flags_from_vec(string_args)
         .unwrap_or_else(|e| panic!("full parse failed for {case:?}: {e:?}"));
       assert_eq!(
         fast, full,
@@ -1160,7 +1160,7 @@ mod tests {
   /// uses `:` to separate a completion candidate from its description.
   #[test]
   fn no_colon_in_value_name() {
-    fn check(cmd: &'static deno_cli_parser::CommandDef) {
+    fn check(cmd: &'static ende_cli_parser::CommandDef) {
       for arg in cmd.all_args() {
         if let Some(value_name) = arg.value_name {
           assert!(

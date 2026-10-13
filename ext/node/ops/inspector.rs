@@ -6,20 +6,20 @@ use std::net::SocketAddr;
 use std::net::ToSocketAddrs;
 use std::rc::Rc;
 
-use deno_core::GarbageCollected;
-use deno_core::InspectorMsg;
-use deno_core::InspectorSessionKind;
-use deno_core::JsRuntimeInspector;
-use deno_core::ModuleSpecifier;
-use deno_core::OpState;
-use deno_core::op2;
-use deno_core::serde_json;
-use deno_core::v8;
-use deno_inspector_server::InspectPublishUid;
-use deno_inspector_server::InspectorServerUrl;
-use deno_inspector_server::create_inspector_server;
-use deno_inspector_server::stop_inspector_server;
-use deno_permissions::PermissionsContainer;
+use ende_core::GarbageCollected;
+use ende_core::InspectorMsg;
+use ende_core::InspectorSessionKind;
+use ende_core::JsRuntimeInspector;
+use ende_core::ModuleSpecifier;
+use ende_core::OpState;
+use ende_core::op2;
+use ende_core::serde_json;
+use ende_core::v8;
+use ende_inspector_server::InspectPublishUid;
+use ende_inspector_server::InspectorServerUrl;
+use ende_inspector_server::create_inspector_server;
+use ende_inspector_server::stop_inspector_server;
+use ende_permissions::PermissionsContainer;
 
 #[op2(fast)]
 pub fn op_inspector_enabled(state: &OpState) -> bool {
@@ -291,12 +291,12 @@ fn capture_initiator(scope: &mut v8::PinScope<'_, '_>) -> serde_json::Value {
 }
 
 struct JSInspectorSession {
-  session: RefCell<Option<deno_core::LocalInspectorSession>>,
+  session: RefCell<Option<ende_core::LocalInspectorSession>>,
 }
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for JSInspectorSession {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"JSInspectorSession"
@@ -310,14 +310,14 @@ pub enum InspectorOpenError {
   Permission(
     #[from]
     #[inherit]
-    deno_permissions::PermissionCheckError,
+    ende_permissions::PermissionCheckError,
   ),
   #[class(inherit)]
   #[error(transparent)]
   Server(
     #[from]
     #[inherit]
-    deno_inspector_server::InspectorServerError,
+    ende_inspector_server::InspectorServerError,
   ),
   #[class(generic)]
   #[error("{0}")]
@@ -331,7 +331,7 @@ pub enum InspectorConnectError {
   Permission(
     #[from]
     #[inherit]
-    deno_permissions::PermissionCheckError,
+    ende_permissions::PermissionCheckError,
   ),
   #[class(generic)]
   #[error("connectToMainThread not supported")]

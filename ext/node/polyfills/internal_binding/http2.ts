@@ -3,7 +3,7 @@
 const { core } = __bootstrap;
 const { op_http2_error_string } = core.ops;
 const constants = core.loadExtScript(
-  "ext:deno_node/internal/http2/constants.ts",
+  "ext:ende_node/internal/http2/constants.ts",
 );
 
 class Http2Stream {

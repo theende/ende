@@ -9,11 +9,11 @@
 
 use std::ffi::CStr;
 
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::webidl::WebIdlInterfaceConverter;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::webidl::WebIdlInterfaceConverter;
 use rand::Rng;
 use rand::rngs::StdRng;
 use rand::thread_rng;
@@ -158,7 +158,7 @@ impl Crypto {
 
   /// `Crypto.registerSymbols(webidlBrand, kKeyObject)` — internal static
   /// method called by the crypto module bootstrap to hand the WebIDL brand
-  /// symbol (a private of `ext:deno_webidl/00_webidl.js`) and the
+  /// symbol (a private of `ext:ende_webidl/00_webidl.js`) and the
   /// `kKeyObject` symbol (a private of ext/node) over to the crypto cppgc
   /// methods, which need them to brand every freshly-constructed
   /// `CryptoKey`. Idempotent and effect-only; returns `true` on success.

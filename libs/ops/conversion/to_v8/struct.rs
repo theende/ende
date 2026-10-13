@@ -68,15 +68,15 @@ pub fn get_body(span: Span, data: DataStruct) -> Result<TokenStream, Error> {
           .collect::<Result<Vec<_>, Error>>()?;
 
         let body = quote! {
-          let __null = ::deno_core::v8::null(__scope).into();
-          let mut __keys: ::std::vec::Vec<::deno_core::v8::Local<::deno_core::v8::Name>> =
+          let __null = ::ende_core::v8::null(__scope).into();
+          let mut __keys: ::std::vec::Vec<::ende_core::v8::Local<::ende_core::v8::Name>> =
             ::std::vec::Vec::with_capacity(#len);
-          let mut __values: ::std::vec::Vec<::deno_core::v8::Local<::deno_core::v8::Value>> =
+          let mut __values: ::std::vec::Vec<::ende_core::v8::Local<::ende_core::v8::Value>> =
             ::std::vec::Vec::with_capacity(#len);
 
           #(#pushes)*
 
-          Ok::<_, ::deno_error::JsErrorBox>(::deno_core::v8::Object::with_prototype_and_properties(
+          Ok::<_, ::deno_error::JsErrorBox>(::ende_core::v8::Object::with_prototype_and_properties(
             __scope,
             __null,
             &__keys,
@@ -101,13 +101,13 @@ pub fn get_body(span: Span, data: DataStruct) -> Result<TokenStream, Error> {
       }
 
       let body = quote! {
-        let __null = ::deno_core::v8::null(__scope).into();
+        let __null = ::ende_core::v8::null(__scope).into();
         let __keys = &[#
           (#names),
         *];
         let __converters = &[#(#converters),*];
 
-        Ok::<_, ::deno_error::JsErrorBox>(::deno_core::v8::Object::with_prototype_and_properties(
+        Ok::<_, ::deno_error::JsErrorBox>(::ende_core::v8::Object::with_prototype_and_properties(
           __scope,
           __null,
           __keys,
@@ -140,7 +140,7 @@ pub fn get_body(span: Span, data: DataStruct) -> Result<TokenStream, Error> {
 
         quote! {
           let __value = &[#(#fields),*];
-          Ok::<_, ::deno_error::JsErrorBox>(::deno_core::v8::Array::new_with_elements(__scope, __value).into())
+          Ok::<_, ::deno_error::JsErrorBox>(::ende_core::v8::Array::new_with_elements(__scope, __value).into())
         }
       };
 

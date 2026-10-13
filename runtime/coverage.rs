@@ -8,14 +8,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicI32;
 
-use deno_core::InspectorSessionKind;
-use deno_core::JsRuntime;
-use deno_core::JsRuntimeInspector;
-use deno_core::LocalInspectorSession;
-use deno_core::error::CoreError;
-use deno_core::parking_lot::Mutex;
-use deno_core::serde_json;
-use deno_core::url::Url;
+use ende_core::InspectorSessionKind;
+use ende_core::JsRuntime;
+use ende_core::JsRuntimeInspector;
+use ende_core::LocalInspectorSession;
+use ende_core::error::CoreError;
+use ende_core::parking_lot::Mutex;
+use ende_core::serde_json;
+use ende_core::url::Url;
 use uuid::Uuid;
 
 static NEXT_MSG_ID: AtomicI32 = AtomicI32::new(0);
@@ -41,8 +41,8 @@ impl CoverageCollectorState {
     })))
   }
 
-  pub fn callback(&self, msg: deno_core::InspectorMsg) {
-    let deno_core::InspectorMsgKind::Message(msg_id) = msg.kind else {
+  pub fn callback(&self, msg: ende_core::InspectorMsg) {
+    let ende_core::InspectorMsgKind::Message(msg_id) = msg.kind else {
       return;
     };
     let maybe_coverage_msg_id = self.0.lock().coverage_msg_id.as_ref().cloned();

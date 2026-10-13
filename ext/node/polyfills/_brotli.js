@@ -32,11 +32,11 @@ import {
 } from "ext:core/ops";
 
 const { zlib: constants } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
-const { TextEncoder } = core.loadExtScript("ext:deno_web/08_text_encoding.js");
+const { TextEncoder } = core.loadExtScript("ext:ende_web/08_text_encoding.js");
 import { Transform } from "node:stream";
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 
 const enc = new TextEncoder();
 const toU8 = (input) => {

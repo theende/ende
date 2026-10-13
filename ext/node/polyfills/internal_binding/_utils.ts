@@ -7,7 +7,7 @@ const {
 } = core.ops;
 const {
   forgivingBase64Decode,
-} = core.loadExtScript("ext:deno_web/00_infra.js");
+} = core.loadExtScript("ext:ende_web/00_infra.js");
 const {
   DataView,
   DataViewPrototypeSetUint16,

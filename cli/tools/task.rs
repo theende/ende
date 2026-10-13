@@ -11,26 +11,26 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use console_static_text::ansi::strip_ansi_codes;
-use deno_config::workspace::FolderConfigs;
-use deno_config::workspace::TaskDefinition;
-use deno_config::workspace::TaskOrScript;
-use deno_config::workspace::WorkspaceDirectory;
-use deno_config::workspace::WorkspaceMemberTasksConfig;
-use deno_config::workspace::WorkspaceTasksConfig;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::anyhow;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::futures::StreamExt;
-use deno_core::futures::future::LocalBoxFuture;
-use deno_core::futures::stream::futures_unordered;
-use deno_core::serde_json::Value;
-use deno_core::url::Url;
-use deno_npm_installer::PackageCaching;
 use deno_path_util::normalize_path;
 use deno_task_shell::KillSignal;
 use deno_task_shell::ShellCommand;
+use ende_config::workspace::FolderConfigs;
+use ende_config::workspace::TaskDefinition;
+use ende_config::workspace::TaskOrScript;
+use ende_config::workspace::WorkspaceDirectory;
+use ende_config::workspace::WorkspaceMemberTasksConfig;
+use ende_config::workspace::WorkspaceTasksConfig;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::anyhow;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::futures::StreamExt;
+use ende_core::futures::future::LocalBoxFuture;
+use ende_core::futures::stream::futures_unordered;
+use ende_core::serde_json::Value;
+use ende_core::url::Url;
+use ende_npm_installer::PackageCaching;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use regex::Regex;
@@ -424,7 +424,7 @@ impl<'a> TaskRunner<'a> {
     task_name: &str,
     kill_signal: &KillSignal,
     argv: &'a [String],
-  ) -> Result<i32, deno_core::anyhow::Error> {
+  ) -> Result<i32, ende_core::anyhow::Error> {
     let mut sorted: Vec<ResolvedTask<'a>> = Vec::new();
     for pkg in packages {
       if let Err(err) = sort_tasks_topo(pkg, &mut sorted) {
@@ -485,7 +485,7 @@ impl<'a> TaskRunner<'a> {
     tasks: Vec<ResolvedTask<'a>>,
     kill_signal: &KillSignal,
     args: &[String],
-  ) -> Result<i32, deno_core::anyhow::Error> {
+  ) -> Result<i32, ende_core::anyhow::Error> {
     let workspace_root_url: &Url =
       self.cli_options.workspace().root_dir_url().as_ref();
     let concurrent_task_color_indices = if self.task_flags.no_prefix {
@@ -717,7 +717,7 @@ impl<'a> TaskRunner<'a> {
     // `None` means a dependency always runs (is non-cacheable), which makes
     // this task non-cacheable too.
     dep_fingerprints: Option<Vec<String>>,
-  ) -> Result<i32, deno_core::anyhow::Error> {
+  ) -> Result<i32, ende_core::anyhow::Error> {
     let Some(command) = &definition.command else {
       self.record_fingerprint(task_id, None);
       self.output_task(
@@ -844,7 +844,7 @@ impl<'a> TaskRunner<'a> {
     kill_signal: KillSignal,
     argv: &[String],
     parallel_info: Option<ParallelInfo>,
-  ) -> Result<i32, deno_core::anyhow::Error> {
+  ) -> Result<i32, ende_core::anyhow::Error> {
     // ensure the npm packages are installed if using a managed resolver
     self.maybe_npm_install().await?;
 
@@ -1178,7 +1178,7 @@ fn matches_package(
 /// - `npm_command`: the npm command being run. `deno task <name>` runs a script
 ///   the same way `npm run <name>` does, which npm reports as `run-script`.
 fn npm_script_env_vars(
-  pkg_json: Option<&deno_package_json::PackageJson>,
+  pkg_json: Option<&ende_package_json::PackageJson>,
 ) -> HashMap<OsString, OsString> {
   let mut env_vars = HashMap::new();
   if let Some(pkg_json) = pkg_json {
@@ -1408,7 +1408,7 @@ fn get_available_tasks(
           is_root,
           is_deno: false,
           name: name.to_string(),
-          task: deno_config::deno_json::TaskDefinition {
+          task: ende_config::deno_json::TaskDefinition {
             command: Some(script.to_string()),
             dependencies: vec![],
             description: None,

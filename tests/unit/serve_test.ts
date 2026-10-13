@@ -4400,7 +4400,7 @@ for (const delay of ["delay", "nodelay"]) {
   }
 }
 
-// NOTE: This test will start failing when we disable "deno_http/legacy_abort" feature.
+// NOTE: This test will start failing when we disable "ende_http/legacy_abort" feature.
 //
 // Test for the internal implementation detail of cached request signals. Ensure that the request's
 // signal is aborted if we try to access it after the request has been completed.
@@ -5855,7 +5855,7 @@ Deno.test(
 // realm/polyfill) must not crash the serve loop. This was the crash reported
 // in https://github.com/denoland/deno/issues/33893 for nitro+vite, where the
 // loop tore down with "Cannot read properties of undefined (reading 'status')"
-// inside `mapped` in `ext:deno_http/00_serve.ts`.
+// inside `mapped` in `ext:ende_http/00_serve.ts`.
 function makeResponseLike(): Response {
   const fake = Object.create(Response.prototype);
   // Own-data properties for getters Deno.serve probes during validation,

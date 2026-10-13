@@ -19,14 +19,14 @@ use std::task::Poll;
 use std::task::Waker;
 use std::task::ready;
 
-use deno_core::BufView;
-use deno_core::JsBuffer;
-use deno_core::OpState;
-use deno_core::ResourceId;
-use deno_core::futures::task::AtomicWaker;
-use deno_core::serde_v8;
-use deno_core::v8;
 use deno_error::JsErrorBox;
+use ende_core::BufView;
+use ende_core::JsBuffer;
+use ende_core::OpState;
+use ende_core::ResourceId;
+use ende_core::futures::task::AtomicWaker;
+use ende_core::serde_v8;
+use ende_core::v8;
 use http::request::Parts;
 use hyper::body::Body;
 use hyper::body::Frame;
@@ -114,7 +114,7 @@ pub(crate) enum WsShutdownMode {
 #[derive(Default)]
 pub(crate) struct ActiveWebSockets {
   next_key: Cell<u64>,
-  entries: RefCell<HashMap<u64, Weak<deno_websocket::ServerWebSocket>>>,
+  entries: RefCell<HashMap<u64, Weak<ende_websocket::ServerWebSocket>>>,
   /// Once set, every new websocket registered through
   /// [`Self::register`] is immediately shut down. Set by
   /// [`Self::begin_shutdown`] when `op_http_close` / `op_http_cancel` starts
@@ -138,7 +138,7 @@ impl ActiveWebSockets {
   pub(crate) fn register(
     &self,
     key: u64,
-    ws: &Rc<deno_websocket::ServerWebSocket>,
+    ws: &Rc<ende_websocket::ServerWebSocket>,
   ) {
     self.entries.borrow_mut().insert(key, Rc::downgrade(ws));
     if let Some(mode) = self.shutting_down.get() {
@@ -178,7 +178,7 @@ impl ActiveWebSockets {
     // Bind first: `for ... in self.entries.borrow().values()...collect()`
     // would hold the `Ref` across the loop body, blocking any re-entry into
     // the registry from `apply_shutdown`.
-    let live: Vec<Rc<deno_websocket::ServerWebSocket>> = self
+    let live: Vec<Rc<ende_websocket::ServerWebSocket>> = self
       .entries
       .borrow()
       .values()
@@ -191,7 +191,7 @@ impl ActiveWebSockets {
 }
 
 fn apply_shutdown(
-  ws: &Rc<deno_websocket::ServerWebSocket>,
+  ws: &Rc<ende_websocket::ServerWebSocket>,
   mode: WsShutdownMode,
 ) {
   match mode {
@@ -696,7 +696,7 @@ where
     return Ok(response);
   }
 
-  let otel_info = if let Some(otel) = deno_telemetry::OTEL_GLOBALS
+  let otel_info = if let Some(otel) = ende_telemetry::OTEL_GLOBALS
     .get()
     .filter(|o| o.has_metrics())
   {
@@ -1174,10 +1174,10 @@ impl HttpRecord {
 
   /// Copy relevant attributes (like `http.route`) from a span to OtelInfo
   /// for metrics.
-  pub fn copy_span_to_otel_info(&self, span: &deno_telemetry::OtelSpan) {
+  pub fn copy_span_to_otel_info(&self, span: &ende_telemetry::OtelSpan) {
     let mut inner = self.self_mut();
     let span_state = span.0.borrow();
-    if let deno_telemetry::OtelSpanState::Recording(data) = &**span_state
+    if let ende_telemetry::OtelSpanState::Recording(data) = &**span_state
       && let Some(info) = inner.otel_info.as_mut()
     {
       for attr in &data.attributes {
@@ -1351,7 +1351,7 @@ mod tests {
   use std::error::Error as StdError;
 
   use bytes::Buf;
-  use deno_net::raw::NetworkStreamType;
+  use ende_net::raw::NetworkStreamType;
   use hyper::body::Body;
   use hyper::service::HttpService;
   use hyper::service::service_fn;
@@ -1397,7 +1397,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_handle_request() -> Result<(), deno_core::error::AnyError> {
+  async fn test_handle_request() -> Result<(), ende_core::error::AnyError> {
     let (tx, mut rx) = tokio::sync::mpsc::channel(10);
     let server_state = HttpServerState::new();
     let server_state_check = server_state.clone();

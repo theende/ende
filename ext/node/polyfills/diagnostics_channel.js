@@ -6,11 +6,11 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { ERR_INVALID_ARG_TYPE } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
-const { nextTick } = core.loadExtScript("ext:deno_node/_next_tick.ts");
+const { nextTick } = core.loadExtScript("ext:ende_node/_next_tick.ts");
 const { validateFunction } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 
 const {
@@ -36,7 +36,7 @@ const {
   SymbolHasInstance,
 } = primordials;
 const { WeakReference } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 
 // Can't delete when weakref count reaches 0 as it could increment again.

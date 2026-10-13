@@ -14,14 +14,14 @@ const {
   SymbolFor,
 } = primordials;
 
-const location = core.loadExtScript("ext:deno_web/12_location.js");
-const console = core.loadExtScript("ext:deno_web/01_console.js");
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const location = core.loadExtScript("ext:ende_web/12_location.js");
+const console = core.loadExtScript("ext:ende_web/01_console.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const globalInterfaces = core.loadExtScript(
-  "ext:deno_web/04_global_interfaces.js",
+  "ext:ende_web/04_global_interfaces.js",
 );
-const loadLocks = core.createLazyLoader("ext:deno_web/locks.js");
-const { loadWebGPU } = core.loadExtScript("ext:deno_webgpu/00_init.js");
+const loadLocks = core.createLazyLoader("ext:ende_web/locks.js");
+const { loadWebGPU } = core.loadExtScript("ext:ende_webgpu/00_init.js");
 import {
   NavigatorUAData,
   navigatorUAData,

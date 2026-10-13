@@ -10,20 +10,20 @@ use std::cell::RefCell;
 use std::net::ToSocketAddrs;
 use std::rc::Rc;
 
-use deno_core::CppgcInherits;
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::ResourceId;
-use deno_core::error::ResourceError;
-use deno_core::op2;
-use deno_core::uv_compat;
-use deno_core::uv_compat::UvConnect;
-use deno_core::uv_compat::UvLoop;
-use deno_core::uv_compat::UvStream;
-use deno_core::uv_compat::UvTcp;
-use deno_core::v8;
-use deno_net::io::TcpStreamResource;
-use deno_permissions::PermissionsContainer;
+use ende_core::CppgcInherits;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::ResourceId;
+use ende_core::error::ResourceError;
+use ende_core::op2;
+use ende_core::uv_compat;
+use ende_core::uv_compat::UvConnect;
+use ende_core::uv_compat::UvLoop;
+use ende_core::uv_compat::UvStream;
+use ende_core::uv_compat::UvTcp;
+use ende_core::v8;
+use ende_net::io::TcpStreamResource;
+use ende_permissions::PermissionsContainer;
 use socket2::SockAddr as Socket2SockAddr;
 
 use crate::ops::handle_wrap::AsyncWrap;
@@ -176,7 +176,7 @@ pub struct TCPWrap {
   /// Permission token from DNS lookup. When set, connect() checks
   /// permissions against the original hostname, but only for an address
   /// that is among the token's resolved IPs.
-  net_perm_token: RefCell<Option<deno_net::ops::NetPermToken>>,
+  net_perm_token: RefCell<Option<ende_net::ops::NetPermToken>>,
 }
 
 // SAFETY: TCPWrap is a cppgc-managed object; the GC traces it via the base field.
@@ -320,7 +320,7 @@ impl TCPWrap {
     address: &str,
     port: i32,
     flags: u32,
-  ) -> Result<i32, deno_permissions::PermissionCheckError> {
+  ) -> Result<i32, ende_permissions::PermissionCheckError> {
     state
       .borrow_mut::<PermissionsContainer>()
       .check_net(&(address, Some(port as u16)), "node:net.listen()")?;
@@ -400,7 +400,7 @@ impl TCPWrap {
     // inherited TCP socket claimed via net.Socket({ fd }) or
     // server.listen({ fd }); other tracked fds are rejected).
     let Some(was_inherited) =
-      state.borrow::<deno_io::FdTable>().begin_uv_adopt(fd)
+      state.borrow::<ende_io::FdTable>().begin_uv_adopt(fd)
     else {
       return -libc::EEXIST;
     };
@@ -441,7 +441,7 @@ impl TCPWrap {
     // dropped from the FdTable on close.
     if ret == 0 {
       state
-        .borrow_mut::<deno_io::FdTable>()
+        .borrow_mut::<ende_io::FdTable>()
         .finish_uv_adopt(fd, was_inherited);
       self.base.set_fd(fd);
     }
@@ -463,7 +463,7 @@ impl TCPWrap {
     if fd >= 0 {
       op_state
         .borrow_mut()
-        .borrow_mut::<deno_io::FdTable>()
+        .borrow_mut::<ende_io::FdTable>()
         .remove(fd);
       // Clear the cached fd so the removal is one-shot. `close_handle()`
       // guards against double frees of the libuv handle, but a second
@@ -537,7 +537,7 @@ impl TCPWrap {
     state: &mut OpState,
     #[string] address: &str,
     #[smi] port: i32,
-  ) -> Result<i32, deno_permissions::PermissionCheckError> {
+  ) -> Result<i32, ende_permissions::PermissionCheckError> {
     self.bind_inner(state, address, port, 0)
   }
 
@@ -549,7 +549,7 @@ impl TCPWrap {
     #[string] address: &str,
     #[smi] port: i32,
     #[smi] flags: u32,
-  ) -> Result<i32, deno_permissions::PermissionCheckError> {
+  ) -> Result<i32, ende_permissions::PermissionCheckError> {
     self.bind_inner(state, address, port, flags)
   }
 
@@ -560,7 +560,7 @@ impl TCPWrap {
     #[string] address: &str,
     #[smi] port: i32,
     #[smi] flags: u32,
-  ) -> Result<i32, deno_permissions::PermissionCheckError> {
+  ) -> Result<i32, ende_permissions::PermissionCheckError> {
     state
       .borrow_mut::<PermissionsContainer>()
       .check_net(&(address, Some(port as u16)), "node:net.listen()")?;
@@ -699,8 +699,8 @@ impl TCPWrap {
   /// address the token actually resolved (see `net_perm_check_host`),
   /// matching Node.js netPermToken behavior.
   #[nofast]
-  fn set_net_perm_token(&self, #[cppgc] token: &deno_net::ops::NetPermToken) {
-    *self.net_perm_token.borrow_mut() = Some(deno_net::ops::NetPermToken {
+  fn set_net_perm_token(&self, #[cppgc] token: &ende_net::ops::NetPermToken) {
+    *self.net_perm_token.borrow_mut() = Some(ende_net::ops::NetPermToken {
       hostname: token.hostname.clone(),
       port: token.port,
       resolved_ips: token.resolved_ips.clone(),
@@ -717,7 +717,7 @@ impl TCPWrap {
     #[string] address: &str,
     #[smi] port: i32,
     scope: &mut v8::PinScope,
-  ) -> Result<i32, deno_permissions::PermissionCheckError> {
+  ) -> Result<i32, ende_permissions::PermissionCheckError> {
     // If a hostname was stored from DNS lookup, check permissions against
     // the original hostname instead of the resolved IP address, but only
     // when `address` is one of the token's resolved IPs.
@@ -788,7 +788,7 @@ impl TCPWrap {
     #[string] address: &str,
     #[smi] port: i32,
     scope: &mut v8::PinScope,
-  ) -> Result<i32, deno_permissions::PermissionCheckError> {
+  ) -> Result<i32, ende_permissions::PermissionCheckError> {
     let check_host = self.net_perm_check_host(address);
     state.borrow_mut::<PermissionsContainer>().check_net(
       &(check_host.as_str(), Some(port as u16)),

@@ -4,10 +4,10 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use deno_core::GarbageCollected;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::v8_static_strings;
+use ende_core::GarbageCollected;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::v8_static_strings;
 use rusqlite::ffi as libsqlite3_sys;
 
 use super::SqliteError;
@@ -182,7 +182,7 @@ fn release_iterator_context(ctx_ptr: *mut SQLTagStoreIteratorContext) {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for SQLTagStore {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"SQLTagStore"

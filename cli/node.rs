@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_resolver::cjs::analyzer::DenoCjsCodeAnalyzer;
-use deno_resolver::npm::DenoInNpmPackageChecker;
+use ende_resolver::cjs::analyzer::DenoCjsCodeAnalyzer;
+use ende_resolver::npm::DenoInNpmPackageChecker;
 use node_resolver::DenoIsBuiltInNodeModuleChecker;
 use node_resolver::analyze::CjsModuleExportAnalyzer;
 
@@ -17,7 +17,7 @@ pub type CliCjsModuleExportAnalyzer = CjsModuleExportAnalyzer<
   CliNpmResolver,
   CliSys,
 >;
-pub type CliNodeResolver<TSys = CliSys> = deno_runtime::deno_node::NodeResolver<
+pub type CliNodeResolver<TSys = CliSys> = ende_runtime::ende_node::NodeResolver<
   DenoInNpmPackageChecker,
   CliNpmResolver<TSys>,
   TSys,

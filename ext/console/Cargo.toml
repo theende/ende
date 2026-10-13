@@ -8,7 +8,7 @@ edition = "2024"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/denoland/deno"
-description = "DEPRECATED: use `deno_web` instead"
+description = "DEPRECATED: use `ende_web` instead"
 
 [lib]
 path = "lib.rs"

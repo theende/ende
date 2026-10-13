@@ -147,21 +147,21 @@ fn read_node_version() -> String {
 
   // The report is only meaningful if the runtime under test claims to be the
   // same Node version the suite was vendored from. These are bumped in two
-  // different places (`deno_node::NODE_VERSION` and the submodule), so without
+  // different places (`ende_node::NODE_VERSION` and the submodule), so without
   // this the report can silently claim a version Deno does not emulate.
   let emulated_version = get_emulated_node_version();
   assert_eq!(
     suite_version, emulated_version,
     "node_compat suite is vendored from Node {suite_version} but Deno reports \
      process.versions.node = {emulated_version}. Update \
-     `deno_node::NODE_VERSION` to match the submodule."
+     `ende_node::NODE_VERSION` to match the submodule."
   );
 
   suite_version
 }
 
 /// The Node version the runtime under test reports, i.e.
-/// `deno_node::NODE_VERSION` as observed through `process.versions.node`.
+/// `ende_node::NODE_VERSION` as observed through `process.versions.node`.
 fn get_emulated_node_version() -> String {
   let output = std::process::Command::new(util::deno_exe_path().as_path())
     .arg("eval")

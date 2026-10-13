@@ -3,7 +3,7 @@
 //! Error formatting ported from `01_console.js` (`formatError`,
 //! `getStackString`, `improveStack`, stack-frame collapsing, cwd marking).
 
-use deno_core::v8;
+use ende_core::v8;
 
 use super::inspect::*;
 
@@ -941,7 +941,7 @@ pub fn format_error<'s, 'i>(
 }
 
 fn path_to_file_url_href(path: &str) -> String {
-  match deno_core::url::Url::from_file_path(path) {
+  match ende_core::url::Url::from_file_path(path) {
     Ok(url) => url.to_string(),
     Err(_) => String::new(),
   }

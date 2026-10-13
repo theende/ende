@@ -278,7 +278,7 @@ pub struct OpCtxs {
 
 /// A contiguous run of op declarations, in op-registration order.
 ///
-/// Declarations that already live in static memory (deno_core's `BUILTIN_OPS`,
+/// Declarations that already live in static memory (ende_core's `BUILTIN_OPS`,
 /// an extension's method tables, and any extension whose op table is
 /// `Cow::Borrowed` — which `extension!` emits for every extension, generic or
 /// not, a generic one getting one static table per monomorphization) are

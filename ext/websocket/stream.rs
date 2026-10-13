@@ -6,7 +6,7 @@ use std::task::ready;
 
 use bytes::Buf;
 use bytes::Bytes;
-use deno_net::raw::NetworkStream;
+use ende_net::raw::NetworkStream;
 use h2::RecvStream;
 use h2::SendStream;
 use hyper::upgrade::Upgraded;

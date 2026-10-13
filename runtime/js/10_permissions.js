@@ -26,8 +26,8 @@ const {
   TypeError,
 } = primordials;
 
-const { pathFromURL } = core.loadExtScript("ext:deno_web/00_infra.js");
-const { Event, EventTarget } = core.loadExtScript("ext:deno_web/02_event.js");
+const { pathFromURL } = core.loadExtScript("ext:ende_web/00_infra.js");
+const { Event, EventTarget } = core.loadExtScript("ext:ende_web/02_event.js");
 
 const illegalConstructorKey = Symbol("illegalConstructorKey");
 

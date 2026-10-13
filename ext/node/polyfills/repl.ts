@@ -59,31 +59,31 @@ const {
   SyntaxError,
 } = primordials;
 
-import { Interface } from "ext:deno_node/_readline.mjs";
+import { Interface } from "ext:ende_node/_readline.mjs";
 const { commonPrefix } = core.loadExtScript(
-  "ext:deno_node/internal/readline/utils.mjs",
+  "ext:ende_node/internal/readline/utils.mjs",
 );
 const { inspect } = core.loadExtScript(
-  "ext:deno_node/internal/util/inspect.mjs",
+  "ext:ende_node/internal/util/inspect.mjs",
 );
 const {
   ERR_INVALID_REPL_EVAL_CONFIG,
   ERR_INVALID_REPL_INPUT,
   ERR_MISSING_ARGS,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { validateFunction } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const { shouldColorize } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
-const vm = core.loadExtScript("ext:deno_node/vm.js").default;
+const vm = core.loadExtScript("ext:ende_node/vm.js").default;
 import process from "node:process";
 import path from "node:path";
 import fs from "node:fs";
 import { Console } from "node:console";
 import Module from "node:module";
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 
 export const REPL_MODE_SLOPPY = Symbol("repl-sloppy");
 export const REPL_MODE_STRICT = Symbol("repl-strict");
@@ -141,7 +141,7 @@ function _replCaptureCallback(err: any) {
   if (typeof _prevCaptureCallback === "function") {
     _prevCaptureCallback(err);
   } else {
-    // Re-throw so deno_core's default uncaught handler runs.
+    // Re-throw so ende_core's default uncaught handler runs.
     throw err;
   }
 }
@@ -203,7 +203,7 @@ const reNodeParenFrame = new SafeRegExp(/\(node:[a-z_]+:/);
 const reNodeFrame = new SafeRegExp(/\bnode:[a-z_]+:\d+:\d+\)?$/);
 const reOpenParen = new SafeRegExp(/\(/);
 
-// Drop frames that originate from the REPL polyfill / deno_core internals,
+// Drop frames that originate from the REPL polyfill / ende_core internals,
 // plus the trailing top-level eval frame, so the stack matches Node's
 // `overrideStackTrace`-filtered output.
 function filterReplStack(stack: string): string {
@@ -336,7 +336,7 @@ interface PreviewSession {
 // this file only see the post-`removeImportedOps` view, which doesn't
 // include `op_node_repl_inspector_connect`. See `_repl_preview.js`.
 const { createPreviewSession: _createPreviewSession } = core.loadExtScript(
-  "ext:deno_node/_repl_preview.js",
+  "ext:ende_node/_repl_preview.js",
 ) as { createPreviewSession(): PreviewSession | null };
 
 const reUnexpectedEndOfInput = new SafeRegExp(/Unexpected end of input/);

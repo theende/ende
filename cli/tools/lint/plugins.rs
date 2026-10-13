@@ -8,20 +8,20 @@ use ::tokio_util::sync::CancellationToken;
 use deno_ast::ModuleSpecifier;
 use deno_ast::ParsedSource;
 use deno_ast::SourceTextInfo;
-use deno_core::FromV8;
-use deno_core::PollEventLoopOptions;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::error::JsError;
-use deno_core::futures::FutureExt;
-use deno_core::parking_lot::Mutex;
-use deno_core::v8;
 use deno_lint::diagnostic::LintDiagnostic;
 use deno_path_util::resolve_url_or_path;
 use deno_path_util::url_from_file_path;
-use deno_runtime::WorkerExecutionMode;
-use deno_runtime::tokio_util;
-use deno_runtime::worker::MainWorker;
+use ende_core::FromV8;
+use ende_core::PollEventLoopOptions;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::error::JsError;
+use ende_core::futures::FutureExt;
+use ende_core::parking_lot::Mutex;
+use ende_core::v8;
+use ende_runtime::WorkerExecutionMode;
+use ende_runtime::tokio_util;
+use ende_runtime::worker::MainWorker;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
@@ -88,7 +88,7 @@ impl PluginLogger {
 macro_rules! v8_static_strings {
   ($($ident:ident = $str:literal),* $(,)?) => {
     $(
-      pub static $ident: deno_core::FastStaticString = deno_core::ascii_str!($str);
+      pub static $ident: ende_core::FastStaticString = ende_core::ascii_str!($str);
     )*
   };
 }
@@ -161,7 +161,7 @@ async fn create_plugin_runner_inner(
       // `deno lint` doesn't support require modules
       vec![],
       permissions,
-      vec![crate::ops::lint::deno_lint_ext::init(logger.clone())],
+      vec![crate::ops::lint::ende_lint_ext::init(logger.clone())],
       Default::default(),
       None,
     )
@@ -174,7 +174,7 @@ async fn create_plugin_runner_inner(
 
   log::debug!("Lint plugins loaded, capturing default exports");
   let (install_plugins_fn, run_plugins_for_file_fn) = {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let module_exports: v8::Local<v8::Object> =
       v8::Local::new(scope, obj).try_into().unwrap();
 
@@ -329,7 +329,7 @@ impl PluginHost {
       );
     }
 
-    deno_core::scope!(scope, &mut self.worker.js_runtime);
+    ende_core::scope!(scope, &mut self.worker.js_runtime);
     let file_name_v8: v8::Local<v8::Value> =
       v8::String::new(scope, &file_path.display().to_string())
         .unwrap()
@@ -393,7 +393,7 @@ impl PluginHost {
     for (fut, mod_id) in load_futures {
       fut.await?;
       let module = self.worker.js_runtime.get_module_namespace(mod_id).unwrap();
-      deno_core::scope!(scope, &mut self.worker.js_runtime);
+      ende_core::scope!(scope, &mut self.worker.js_runtime);
       let module_local = v8::Local::new(scope, module);
       let default_export_str = DEFAULT.v8_string(scope).unwrap();
       let default_export =
@@ -402,7 +402,7 @@ impl PluginHost {
       plugin_handles.push(default_export_global);
     }
 
-    deno_core::scope!(scope, &mut self.worker.js_runtime);
+    ende_core::scope!(scope, &mut self.worker.js_runtime);
     let install_plugins_local = v8::Local::new(scope, &self.install_plugins_fn);
     let exclude_v8: v8::Local<v8::Value> =
       exclude.map_or(v8::null(scope).into(), |v| {

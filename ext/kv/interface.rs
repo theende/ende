@@ -4,9 +4,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use async_trait::async_trait;
-use deno_core::OpState;
 use deno_error::JsErrorBox;
 use denokv_proto::Database;
+use ende_core::OpState;
 
 #[async_trait(?Send)]
 pub trait DatabaseHandler {

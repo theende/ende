@@ -7,9 +7,9 @@ use std::path::PathBuf;
 use std::path::Prefix;
 use std::str;
 
-use deno_cache_dir::CACHE_PERM;
-use deno_cache_dir::url_to_filename;
 use deno_path_util::fs::atomic_write_file_with_retries;
+use ende_cache_dir::CACHE_PERM;
+use ende_cache_dir::url_to_filename;
 use sys_traits::FsRead;
 use url::Host;
 use url::Url;

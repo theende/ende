@@ -6,10 +6,10 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { ERR_UNHANDLED_ERROR } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 const { AsyncHook } = core.loadExtScript(
-  "ext:deno_node/internal/async_hooks.ts",
+  "ext:ende_node/internal/async_hooks.ts",
 );
 const {
   ArrayPrototypeEvery,
@@ -25,7 +25,7 @@ const {
   ReflectApply,
   SafeMap,
 } = primordials;
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 
 function emitError(e) {
   this.emit("error", e);

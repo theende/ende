@@ -319,7 +319,7 @@ fn position_le(a: lsp::Position, b: lsp::Position) -> bool {
 #[cfg(test)]
 mod tests {
   use deno_ast::MediaType;
-  use deno_core::resolve_url;
+  use ende_core::resolve_url;
   use pretty_assertions::assert_eq;
 
   use super::*;

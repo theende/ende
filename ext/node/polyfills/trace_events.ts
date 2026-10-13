@@ -26,13 +26,13 @@ const {
   Uint8Array,
 } = primordials;
 const { ERR_TRACE_EVENTS_CATEGORY_REQUIRED } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 const { validateObject, validateStringArray } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const lazyBindingMod = core.createLazyLoader(
-  "ext:deno_node/internal_binding/mod.ts",
+  "ext:ende_node/internal_binding/mod.ts",
 );
 
 function getProc() {
@@ -51,7 +51,7 @@ let _wtExports = null;
 function getWorkerThreadsExports() {
   if (_wtExports !== null) return _wtExports;
   try {
-    _wtExports = core.loadExtScript("ext:deno_node/worker_threads.ts");
+    _wtExports = core.loadExtScript("ext:ende_node/worker_threads.ts");
   } catch {
     _wtExports = {};
   }
@@ -240,7 +240,7 @@ let _fsExports = null;
 function getFs() {
   if (_fsExports !== null) return _fsExports;
   try {
-    _fsExports = core.loadExtScript("ext:deno_node/fs.ts");
+    _fsExports = core.loadExtScript("ext:ende_node/fs.ts");
   } catch {
     _fsExports = {};
   }

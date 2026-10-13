@@ -22,13 +22,13 @@ const xmlEscapePattern = new SafeRegExp("[<>&\"']", "g");
 const {
   tapEscape,
   tapIndent,
-} = core.loadExtScript("ext:deno_node/internal/test/reporters.ts");
+} = core.loadExtScript("ext:ende_node/internal/test/reporters.ts");
 
 let _Transform = null;
 function getTransform() {
   if (_Transform === null) {
     _Transform = core.loadExtScript(
-      "ext:deno_node/internal/streams/transform.js",
+      "ext:ende_node/internal/streams/transform.js",
     ).Transform;
   }
   return _Transform;

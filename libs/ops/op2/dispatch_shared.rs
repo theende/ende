@@ -53,7 +53,7 @@ pub fn v8_to_arg(
     throw_type_error()?
   };
   Ok(quote! {
-    let Ok(mut #arg_ident) = deno_core::_ops::#try_convert::<deno_core::v8::#v8>(#arg_ident) else {
+    let Ok(mut #arg_ident) = ende_core::_ops::#try_convert::<ende_core::v8::#v8>(#arg_ident) else {
       #throw_type_error_block
     };
     #extract_intermediate
@@ -108,7 +108,7 @@ pub fn v8slice_to_buffer(
       quote!(let #arg_ident = #v8slice.to_vec().into();)
     }
     BufferType::JsBuffer => {
-      quote!(let #arg_ident = deno_core::serde_v8::JsBuffer::from_parts(#v8slice);)
+      quote!(let #arg_ident = ende_core::serde_v8::JsBuffer::from_parts(#v8slice);)
     }
     _ => return Err("a v8slice argument"),
   };

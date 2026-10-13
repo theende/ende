@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { core } from "ext:core/mod.js";
-const mod = core.loadExtScript("ext:deno_node/async_hooks.ts");
+const mod = core.loadExtScript("ext:ende_node/async_hooks.ts");
 
 export const {
   AsyncLocalStorage,

@@ -25,37 +25,37 @@ use async_compression::tokio::write::GzipEncoder;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use bytes::Bytes;
-use deno_core::AsyncRefCell;
-use deno_core::AsyncResult;
-use deno_core::BufView;
-use deno_core::CancelFuture;
-use deno_core::CancelHandle;
-use deno_core::CancelTryFuture;
-use deno_core::JsBuffer;
-use deno_core::OpState;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::StringOrBuffer;
-use deno_core::convert::ByteString;
-use deno_core::futures::FutureExt;
-use deno_core::futures::Stream;
-use deno_core::futures::StreamExt;
-use deno_core::futures::TryFutureExt;
-use deno_core::futures::channel::mpsc;
-use deno_core::futures::channel::oneshot;
-use deno_core::futures::future::RemoteHandle;
-use deno_core::futures::future::Shared;
-use deno_core::futures::stream::Peekable;
-use deno_core::op2;
-use deno_core::unsync::spawn;
 use deno_error::JsErrorBox;
-use deno_net::raw::NetworkStream;
-use deno_telemetry::Histogram;
-use deno_telemetry::MeterProvider;
-use deno_telemetry::OTEL_GLOBALS;
-use deno_telemetry::UpDownCounter;
-use deno_websocket::ws_create_server_stream;
+use ende_core::AsyncRefCell;
+use ende_core::AsyncResult;
+use ende_core::BufView;
+use ende_core::CancelFuture;
+use ende_core::CancelHandle;
+use ende_core::CancelTryFuture;
+use ende_core::JsBuffer;
+use ende_core::OpState;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::StringOrBuffer;
+use ende_core::convert::ByteString;
+use ende_core::futures::FutureExt;
+use ende_core::futures::Stream;
+use ende_core::futures::StreamExt;
+use ende_core::futures::TryFutureExt;
+use ende_core::futures::channel::mpsc;
+use ende_core::futures::channel::oneshot;
+use ende_core::futures::future::RemoteHandle;
+use ende_core::futures::future::Shared;
+use ende_core::futures::stream::Peekable;
+use ende_core::op2;
+use ende_core::unsync::spawn;
+use ende_net::raw::NetworkStream;
+use ende_telemetry::Histogram;
+use ende_telemetry::MeterProvider;
+use ende_telemetry::OTEL_GLOBALS;
+use ende_telemetry::UpDownCounter;
+use ende_websocket::ws_create_server_stream;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use http_body_util::Channel;
@@ -200,9 +200,9 @@ pub struct Options {
 }
 
 #[cfg(not(feature = "default_property_extractor"))]
-deno_core::extension!(
-  deno_http,
-  deps = [deno_web, deno_net, deno_fetch, deno_websocket],
+ende_core::extension!(
+  ende_http,
+  deps = [ende_web, ende_net, ende_fetch, ende_websocket],
   parameters = [ HTTP: HttpPropertyExtractor ],
   ops = [
     op_http_accept,
@@ -264,9 +264,9 @@ deno_core::extension!(
 );
 
 #[cfg(feature = "default_property_extractor")]
-deno_core::extension!(
-  deno_http,
-  deps = [deno_web, deno_net, deno_fetch, deno_websocket],
+ende_core::extension!(
+  ende_http,
+  deps = [ende_web, ende_net, ende_fetch, ende_websocket],
   ops = [
     op_http_accept,
     op_http_headers,
@@ -331,10 +331,10 @@ deno_core::extension!(
 pub enum HttpError {
   #[class(inherit)]
   #[error(transparent)]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
   #[class(inherit)]
   #[error(transparent)]
-  Canceled(#[from] deno_core::Canceled),
+  Canceled(#[from] ende_core::Canceled),
   #[class("Http")]
   #[error("{0}")]
   Hyper(#[source] Arc<hyper::Error>),
@@ -452,33 +452,33 @@ impl OtelInfoAttributes {
     }
   }
 
-  fn for_counter(&self) -> Vec<deno_telemetry::KeyValue> {
+  fn for_counter(&self) -> Vec<ende_telemetry::KeyValue> {
     let mut attributes = vec![
-      deno_telemetry::KeyValue::new(
+      ende_telemetry::KeyValue::new(
         "http.request.method",
         self.http_request_method.clone(),
       ),
-      deno_telemetry::KeyValue::new("url.scheme", self.url_scheme.clone()),
+      ende_telemetry::KeyValue::new("url.scheme", self.url_scheme.clone()),
     ];
 
     if let Some(address) = self.server_address.clone() {
-      attributes.push(deno_telemetry::KeyValue::new("server.address", address));
+      attributes.push(ende_telemetry::KeyValue::new("server.address", address));
     }
     if let Some(port) = self.server_port {
-      attributes.push(deno_telemetry::KeyValue::new("server.port", port));
+      attributes.push(ende_telemetry::KeyValue::new("server.port", port));
     }
 
     attributes
   }
 
-  fn for_histogram(&self) -> Vec<deno_telemetry::KeyValue> {
+  fn for_histogram(&self) -> Vec<ende_telemetry::KeyValue> {
     let mut histogram_attributes = vec![
-      deno_telemetry::KeyValue::new(
+      ende_telemetry::KeyValue::new(
         "http.request.method",
         self.http_request_method.clone(),
       ),
-      deno_telemetry::KeyValue::new("url.scheme", self.url_scheme.clone()),
-      deno_telemetry::KeyValue::new(
+      ende_telemetry::KeyValue::new("url.scheme", self.url_scheme.clone()),
+      ende_telemetry::KeyValue::new(
         "network.protocol.version",
         self.network_protocol_version,
       ),
@@ -486,14 +486,14 @@ impl OtelInfoAttributes {
 
     if let Some(address) = self.server_address.clone() {
       histogram_attributes
-        .push(deno_telemetry::KeyValue::new("server.address", address));
+        .push(ende_telemetry::KeyValue::new("server.address", address));
     }
     if let Some(port) = self.server_port {
       histogram_attributes
-        .push(deno_telemetry::KeyValue::new("server.port", port));
+        .push(ende_telemetry::KeyValue::new("server.port", port));
     }
     if let Some(status_code) = self.http_response_status_code {
-      histogram_attributes.push(deno_telemetry::KeyValue::new(
+      histogram_attributes.push(ende_telemetry::KeyValue::new(
         "http.response.status_code",
         status_code,
       ));
@@ -501,12 +501,12 @@ impl OtelInfoAttributes {
 
     if let Some(error) = self.error_type {
       histogram_attributes
-        .push(deno_telemetry::KeyValue::new("error.type", error));
+        .push(ende_telemetry::KeyValue::new("error.type", error));
     }
 
     if let Some(route) = self.http_route.clone() {
       histogram_attributes
-        .push(deno_telemetry::KeyValue::new("http.route", route));
+        .push(ende_telemetry::KeyValue::new("http.route", route));
     }
 
     histogram_attributes
@@ -515,7 +515,7 @@ impl OtelInfoAttributes {
 
 impl OtelInfo {
   fn new(
-    otel: &deno_telemetry::OtelGlobals,
+    otel: &ende_telemetry::OtelGlobals,
     instant: std::time::Instant,
     request_size: u64,
     attributes: OtelInfoAttributes,
@@ -1150,7 +1150,7 @@ impl Drop for BodyUncompressedSender {
 }
 
 // We use a tuple instead of struct to avoid serialization overhead of the keys.
-#[derive(deno_core::ToV8)]
+#[derive(ende_core::ToV8)]
 struct NextRequestResponse(
   // read_stream_rid:
   ResourceId,
@@ -1711,7 +1711,7 @@ where
   Fut::Output: 'static,
 {
   fn execute(&self, fut: Fut) {
-    deno_core::unsync::spawn(fut);
+    ende_core::unsync::spawn(fut);
   }
 }
 
@@ -1790,7 +1790,7 @@ fn extract_network_stream<U: CanDowncastUpgrade>(
       Err(x) => x,
     };
   let upgraded = match maybe_extract_network_stream::<
-    deno_net::ops_tls::TlsStream<TcpStream>,
+    ende_net::ops_tls::TlsStream<TcpStream>,
     _,
   >(upgraded)
   {
@@ -1811,7 +1811,7 @@ fn extract_network_stream<U: CanDowncastUpgrade>(
       Err(x) => x,
     };
   let upgraded =
-    match maybe_extract_network_stream::<deno_net::tunnel::TunnelStream, _>(
+    match maybe_extract_network_stream::<ende_net::tunnel::TunnelStream, _>(
       upgraded,
     ) {
       Ok(res) => return res,
@@ -1834,7 +1834,7 @@ pub fn op_http_serve_address_override() -> (u8, String, u32, bool) {
     return parse_serve_address(&val);
   };
 
-  if deno_net::tunnel::get_tunnel().is_some() {
+  if ende_net::tunnel::get_tunnel().is_some() {
     return (4, String::new(), 0, true);
   }
 

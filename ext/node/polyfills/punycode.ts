@@ -9,7 +9,7 @@ const {
   op_node_idna_punycode_to_unicode,
 } = core.ops;
 
-const { ucs2 } = core.loadExtScript("ext:deno_node/internal/idna.ts");
+const { ucs2 } = core.loadExtScript("ext:ende_node/internal/idna.ts");
 
 const version = "2.1.0";
 

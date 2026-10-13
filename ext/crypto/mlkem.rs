@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 use aws_lc_rs::kem;
-use deno_core::convert::Uint8Array;
+use ende_core::convert::Uint8Array;
 use fips203::traits::KeyGen;
 use fips203::traits::SerDes;
 use rsa::pkcs8;
@@ -365,7 +365,7 @@ fn parse_tlv(buf: &[u8], tag: u8) -> Option<(&[u8], &[u8])> {
   Some(body.split_at(len))
 }
 
-#[derive(deno_core::ToV8)]
+#[derive(ende_core::ToV8)]
 pub struct MlKemPkcs8Import {
   #[to_v8(serde)]
   pub variant: MlKemVariant,

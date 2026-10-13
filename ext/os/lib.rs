@@ -12,14 +12,14 @@ use std::sync::MutexGuard;
 use std::sync::atomic::AtomicI32;
 use std::sync::atomic::Ordering;
 
-use deno_core::OpState;
-use deno_core::ToV8;
-use deno_core::op2;
-use deno_core::v8;
 use deno_path_util::normalize_path;
-use deno_permissions::PermissionCheckError;
-use deno_permissions::PermissionState;
-use deno_permissions::PermissionsContainer;
+use ende_core::OpState;
+use ende_core::ToV8;
+use ende_core::op2;
+use ende_core::v8;
+use ende_permissions::PermissionCheckError;
+use ende_permissions::PermissionState;
+use ende_permissions::PermissionsContainer;
 
 mod ops;
 pub mod sys_info;
@@ -45,7 +45,7 @@ impl ExitCode {
 }
 
 pub fn exit(code: i32) -> ! {
-  deno_signals::run_exit();
+  ende_signals::run_exit();
   #[allow(
     clippy::disallowed_methods,
     reason = "exit is the intended behavior"
@@ -87,8 +87,8 @@ pub struct WatcherExitHandle(pub v8::IsolateHandle);
 #[derive(Clone, Copy, Debug)]
 pub struct WatcherExited;
 
-deno_core::extension!(
-  deno_os,
+ende_core::extension!(
+  ende_os,
   ops = [
     op_env,
     op_exec_path,

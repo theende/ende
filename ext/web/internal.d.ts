@@ -3,7 +3,7 @@
 /// <reference no-default-lib="true" />
 /// <reference lib="esnext" />
 
-declare module "ext:deno_web/00_infra.js" {
+declare module "ext:ende_web/00_infra.js" {
   function collectSequenceOfCodepoints(
     input: string,
     position: number,
@@ -45,12 +45,12 @@ declare module "ext:deno_web/00_infra.js" {
   function serializeJSValueToJSONString(value: unknown): string;
 }
 
-declare module "ext:deno_web/01_dom_exception.js" {
+declare module "ext:ende_web/01_dom_exception.js" {
   const DOMException: DOMException;
   const QuotaExceededError: QuotaExceededError;
 }
 
-declare module "ext:deno_web/01_mimesniff.js" {
+declare module "ext:ende_web/01_mimesniff.js" {
   interface MimeType {
     type: string;
     subtype: string;
@@ -64,7 +64,7 @@ declare module "ext:deno_web/01_mimesniff.js" {
   ): MimeType | null;
 }
 
-declare module "ext:deno_web/02_event.js" {
+declare module "ext:ende_web/02_event.js" {
   const EventTarget: typeof EventTarget;
   const Event: typeof event;
   const ErrorEvent: typeof ErrorEvent;
@@ -76,23 +76,23 @@ declare module "ext:deno_web/02_event.js" {
   const reportError: typeof reportError;
 }
 
-declare module "ext:deno_web/12_location.js" {
+declare module "ext:ende_web/12_location.js" {
   function getLocationHref(): string | undefined;
 }
 
-declare module "ext:deno_web/05_base64.js" {
+declare module "ext:ende_web/05_base64.js" {
   function atob(data: string): string;
   function btoa(data: string): string;
 }
 
-declare module "ext:deno_web/09_file.js" {
+declare module "ext:ende_web/09_file.js" {
   function blobFromObjectUrl(url: string): Blob | null;
   function getParts(blob: Blob): string[];
   const Blob: typeof Blob;
   const File: typeof File;
 }
 
-declare module "ext:deno_web/06_streams.js" {
+declare module "ext:ende_web/06_streams.js" {
   const ReadableStream: typeof ReadableStream;
   function readableStreamCancel<T>(
     stream: ReadableStream<T>,
@@ -102,7 +102,7 @@ declare module "ext:deno_web/06_streams.js" {
   function createProxy<T>(stream: ReadableStream<T>): ReadableStream<T>;
 }
 
-declare module "ext:deno_web/13_message_port.js" {
+declare module "ext:ende_web/13_message_port.js" {
   type Transferable = {
     kind: "messagePort";
     data: number;
@@ -123,18 +123,18 @@ declare module "ext:deno_web/13_message_port.js" {
   ): [object, object[]];
 }
 
-declare module "ext:deno_web/00_url.js" {
+declare module "ext:ende_web/00_url.js" {
   const URL: typeof globalThis.URL;
   const URLPrototype: typeof globalThis.URL.prototype;
   const URLSearchParams: typeof globalThis.URLSearchParams;
   function parseUrlEncoded(bytes: Uint8Array): [string, string][];
 }
 
-declare module "ext:deno_web/01_urlpattern.js" {
+declare module "ext:ende_web/01_urlpattern.js" {
   const URLPattern: typeof URLPattern;
 }
 
-declare module "ext:deno_web/01_console.js" {
+declare module "ext:ende_web/01_console.js" {
   function createFilteredInspectProxy<TObject>(params: {
     object: TObject;
     keys: (keyof TObject)[];

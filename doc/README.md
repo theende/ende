@@ -8,8 +8,8 @@ live, the kind of background that saves a lot of exploration time up front.
 ## Contents
 
 - [`architecture.md`](./architecture.md) — the layered design of the runtime:
-  the `deno` CLI crate, the `deno_runtime` crate, the `ext/*` extensions, and
-  the `deno_core` / `libs/*` foundation. Read this first.
+  the `deno` CLI crate, the `ende_runtime` crate, the `ext/*` extensions, and
+  the `ende_core` / `libs/*` foundation. Read this first.
 - [`codebase-map.md`](./codebase-map.md) — a directory-by-directory map plus the
   handful of files worth understanding before anything else.
 - [`testing.md`](./testing.md) — the test taxonomy (spec, unit, unit_node, node
@@ -33,6 +33,6 @@ the repository. Run `tools/format.js` before committing. Keep prose hard-wrapped
 at 80 columns to match the existing style.
 
 A pull request that touches **only** `doc/` runs the `lint` job and nothing
-else. The build, test, bench and `deno_core` jobs are skipped, because editing
+else. The build, test, bench and `ende_core` jobs are skipped, because editing
 Markdown cannot break the binary. See [`ci.md`](./ci.md) for how that is wired
 up. If your PR changes anything outside `doc/`, the full pipeline runs as usual.

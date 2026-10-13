@@ -3,16 +3,16 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use deno_core::CancelFuture;
-use deno_core::OpState;
-use deno_core::futures::FutureExt;
-use deno_core::url::Url;
-use deno_fs::FileSystemRc;
-use deno_fs::OpenOptions;
-use deno_io::fs::FileResource;
-use deno_permissions::CheckedPath;
-use deno_permissions::OpenAccessKind;
-use deno_permissions::PermissionsContainer;
+use ende_core::CancelFuture;
+use ende_core::OpState;
+use ende_core::futures::FutureExt;
+use ende_core::url::Url;
+use ende_fs::FileSystemRc;
+use ende_fs::OpenOptions;
+use ende_io::fs::FileResource;
+use ende_permissions::CheckedPath;
+use ende_permissions::OpenAccessKind;
+use ende_permissions::PermissionsContainer;
 use http_body_util::combinators::BoxBody;
 
 use crate::CancelHandle;
@@ -20,7 +20,7 @@ use crate::CancelableResponseFuture;
 use crate::FetchHandler;
 use crate::ResourceToBodyAdapter;
 
-/// An implementation which tries to read file URLs via `deno_fs::FileSystem`.
+/// An implementation which tries to read file URLs via `ende_fs::FileSystem`.
 #[derive(Clone)]
 pub struct FsFetchHandler;
 

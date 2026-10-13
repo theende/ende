@@ -4,13 +4,13 @@ use std::sync::Arc;
 
 use deno_ast::MediaType;
 use deno_ast::ModuleSpecifier;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
 use deno_error::JsErrorBox;
 use deno_graph::analysis::ModuleInfo;
 use deno_graph::ast::ParserModuleAnalyzer;
-use deno_resolver::cache::ParsedSourceCache;
-use deno_runtime::deno_webstorage::rusqlite::params;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_resolver::cache::ParsedSourceCache;
+use ende_runtime::ende_webstorage::rusqlite::params;
 
 use super::cache_db::CacheDB;
 use super::cache_db::CacheDBConfiguration;
@@ -261,7 +261,7 @@ impl deno_graph::analysis::ModuleAnalyzer
     }
 
     // otherwise, get the module info from the parsed source cache
-    let module_info = deno_core::unsync::spawn_blocking({
+    let module_info = ende_core::unsync::spawn_blocking({
       let cache = self.parsed_source_cache.clone();
       let specifier = specifier.clone();
       move || {

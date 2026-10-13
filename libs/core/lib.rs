@@ -50,17 +50,17 @@ pub mod webidl;
 
 // Re-exports
 pub use anyhow;
-pub use deno_ops::CppgcBase;
-pub use deno_ops::CppgcInherits;
-pub use deno_ops::FromV8;
-pub use deno_ops::ToV8;
-pub use deno_ops::WebIDL;
-pub use deno_ops::op2;
 pub use deno_path_util::normalize_path;
 pub use deno_path_util::resolve_path;
 pub use deno_path_util::resolve_url_or_path;
 pub use deno_path_util::specifier_has_uri_scheme;
 pub use deno_unsync as unsync;
+pub use ende_ops::CppgcBase;
+pub use ende_ops::CppgcInherits;
+pub use ende_ops::FromV8;
+pub use ende_ops::ToV8;
+pub use ende_ops::WebIDL;
+pub use ende_ops::op2;
 pub use futures;
 pub use parking_lot;
 pub use serde;
@@ -208,10 +208,10 @@ pub use crate::source_map::SourceMapper;
 pub use crate::tasks::V8CrossThreadTaskSpawner;
 pub use crate::tasks::V8TaskSpawner;
 
-// Ensure we can use op2 in deno_core without any hackery.
-extern crate self as deno_core;
+// Ensure we can use op2 in ende_core without any hackery.
+extern crate self as ende_core;
 
-/// An internal module re-exporting functions used by the #[op] (`deno_ops`) macro
+/// An internal module re-exporting functions used by the #[op] (`ende_ops`) macro
 #[doc(hidden)]
 pub mod _ops {
   pub use inventory;

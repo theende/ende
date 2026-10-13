@@ -4,7 +4,7 @@
 const { core, primordials } = __bootstrap;
 const lazyUrl = core.createLazyLoader("node:url");
 const { validateObject } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const {
   Boolean,

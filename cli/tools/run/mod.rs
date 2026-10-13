@@ -4,17 +4,17 @@ use std::io::Read;
 use std::sync::Arc;
 
 use deno_ast::ModuleSpecifier;
-use deno_cache_dir::file_fetcher::File;
-use deno_config::deno_json::NodeModulesDirMode;
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_lib::worker::LibWorkerFactoryRoots;
-use deno_npm_installer::PackageCaching;
-use deno_npm_installer::graph::NpmCachingStrategy;
 use deno_path_util::resolve_url_or_path;
-use deno_runtime::WorkerExecutionMode;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_cache_dir::file_fetcher::File;
+use ende_config::deno_json::NodeModulesDirMode;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_lib::worker::LibWorkerFactoryRoots;
+use ende_npm_installer::PackageCaching;
+use ende_npm_installer::graph::NpmCachingStrategy;
+use ende_runtime::WorkerExecutionMode;
 
 use crate::args::EvalFlags;
 use crate::args::Flags;
@@ -171,7 +171,7 @@ pub async fn run_script(
   mode: WorkerExecutionMode,
   flags: Arc<Flags>,
   watch: Option<WatchFlagsWithPaths>,
-  unconfigured_runtime: Option<deno_runtime::UnconfiguredRuntime>,
+  unconfigured_runtime: Option<ende_runtime::UnconfiguredRuntime>,
   roots: LibWorkerFactoryRoots,
 ) -> Result<i32, AnyError> {
   check_permission_before_script(&flags);
@@ -237,20 +237,20 @@ pub async fn run_script(
       unconfigured_runtime,
     )
     .await
-    .inspect_err(|e| deno_telemetry::report_event("boot_failure", e))?;
+    .inspect_err(|e| ende_telemetry::report_event("boot_failure", e))?;
   crate::boot_phase("after create_main_worker");
 
   let exit_code = worker
     .run()
     .await
-    .inspect_err(|e| deno_telemetry::report_event("uncaught_exception", e))?;
+    .inspect_err(|e| ende_telemetry::report_event("uncaught_exception", e))?;
   crate::boot_phase("after worker.run (exit)");
   Ok(exit_code)
 }
 
 pub async fn run_from_stdin(
   flags: Arc<Flags>,
-  unconfigured_runtime: Option<deno_runtime::UnconfiguredRuntime>,
+  unconfigured_runtime: Option<ende_runtime::UnconfiguredRuntime>,
   roots: LibWorkerFactoryRoots,
 ) -> Result<i32, AnyError> {
   let factory = CliFactory::from_flags(flags);
@@ -274,7 +274,7 @@ pub async fn run_from_stdin(
     mtime: None,
     maybe_headers: None,
     source: source.into(),
-    loaded_from: deno_cache_dir::file_fetcher::LoadedFrom::Local,
+    loaded_from: ende_cache_dir::file_fetcher::LoadedFrom::Local,
   });
 
   let mut worker = worker_factory
@@ -324,7 +324,7 @@ async fn run_with_watch(
         maybe_npm_install(&factory).await?;
 
         if is_npm_native_bin(&factory, main_module).await? {
-          return Err(deno_core::anyhow::anyhow!(
+          return Err(ende_core::anyhow::anyhow!(
             "Cannot use --watch with an npm package whose bin entry is a native executable: {main_module}"
           ));
         }
@@ -373,7 +373,7 @@ pub async fn eval_command(
     } else {
       eval_flags.code.clone()
     };
-    let specifier = deno_core::url::Url::parse("file:///eval.js").unwrap();
+    let specifier = ende_core::url::Url::parse("file:///eval.js").unwrap();
     let is_script = deno_ast::parse_program(deno_ast::ParseParams {
       specifier,
       text: source_code.clone().into(),
@@ -431,7 +431,7 @@ pub async fn eval_command(
     mtime: None,
     maybe_headers: None,
     source: source_code.into_bytes().into(),
-    loaded_from: deno_cache_dir::file_fetcher::LoadedFrom::Local,
+    loaded_from: ende_cache_dir::file_fetcher::LoadedFrom::Local,
   });
 
   let worker_factory = factory.create_cli_main_worker_factory().await?;
@@ -475,7 +475,7 @@ pub async fn maybe_npm_install(factory: &CliFactory) -> Result<(), AnyError> {
 pub async fn run_eszip(
   flags: Arc<Flags>,
   run_flags: RunFlags,
-  unconfigured_runtime: Option<deno_runtime::UnconfiguredRuntime>,
+  unconfigured_runtime: Option<ende_runtime::UnconfiguredRuntime>,
   roots: LibWorkerFactoryRoots,
 ) -> Result<i32, AnyError> {
   // TODO(bartlomieju): actually I think it will also fail if there's an import

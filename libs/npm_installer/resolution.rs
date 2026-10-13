@@ -9,25 +9,6 @@ use std::sync::Arc;
 
 use capacity_builder::StringBuilder;
 use deno_error::JsErrorBox;
-use deno_lockfile::NpmPackageDependencyLockfileInfo;
-use deno_lockfile::NpmPackageLockfileInfo;
-use deno_npm::NpmResolutionPackage;
-use deno_npm::registry::NpmPackageInfo;
-use deno_npm::registry::NpmRegistryApi;
-use deno_npm::registry::NpmRegistryPackageInfoLoadError;
-use deno_npm::resolution::AddPkgReqsOptions;
-use deno_npm::resolution::DefaultTarballUrlProvider;
-use deno_npm::resolution::NpmResolutionError;
-use deno_npm::resolution::NpmResolutionSnapshot;
-use deno_npm::resolution::UnmetPeerDepDiagnostic;
-use deno_npm_cache::NpmCacheHttpClient;
-use deno_npm_cache::NpmCacheSys;
-use deno_npm_cache::RegistryInfoProvider;
-use deno_resolver::display::DisplayTreeNode;
-use deno_resolver::factory::NpmVersionResolverRc;
-use deno_resolver::lockfile::LockfileLock;
-use deno_resolver::lockfile::LockfileSys;
-use deno_resolver::npm::managed::NpmResolutionCell;
 use deno_semver::SmallStackString;
 use deno_semver::StackString;
 use deno_semver::jsr::JsrDepPackageReq;
@@ -37,6 +18,25 @@ use deno_semver::package::PackageReq;
 use deno_terminal::colors;
 use deno_unsync::sync::AtomicFlag;
 use deno_unsync::sync::TaskQueue;
+use ende_lockfile::NpmPackageDependencyLockfileInfo;
+use ende_lockfile::NpmPackageLockfileInfo;
+use ende_npm::NpmResolutionPackage;
+use ende_npm::registry::NpmPackageInfo;
+use ende_npm::registry::NpmRegistryApi;
+use ende_npm::registry::NpmRegistryPackageInfoLoadError;
+use ende_npm::resolution::AddPkgReqsOptions;
+use ende_npm::resolution::DefaultTarballUrlProvider;
+use ende_npm::resolution::NpmResolutionError;
+use ende_npm::resolution::NpmResolutionSnapshot;
+use ende_npm::resolution::UnmetPeerDepDiagnostic;
+use ende_npm_cache::NpmCacheHttpClient;
+use ende_npm_cache::NpmCacheSys;
+use ende_npm_cache::RegistryInfoProvider;
+use ende_resolver::display::DisplayTreeNode;
+use ende_resolver::factory::NpmVersionResolverRc;
+use ende_resolver::lockfile::LockfileLock;
+use ende_resolver::lockfile::LockfileSys;
+use ende_resolver::npm::managed::NpmResolutionCell;
 use parking_lot::Mutex;
 
 pub struct AddPkgReqsResult {
@@ -94,7 +94,7 @@ pub struct NpmResolutionInstaller<
   has_js_execution_started_flag: HasJsExecutionStartedFlagRc,
   npm_version_resolver: NpmVersionResolverRc,
   registry_info_provider: Arc<RegistryInfoProvider<TNpmCacheHttpClient, TSys>>,
-  reporter: Option<Arc<dyn deno_npm::resolution::Reporter>>,
+  reporter: Option<Arc<dyn ende_npm::resolution::Reporter>>,
   resolution: Arc<NpmResolutionCell>,
   maybe_lockfile: Option<Arc<LockfileLock<TSys>>>,
   update_queue: TaskQueue,
@@ -110,7 +110,7 @@ impl<TNpmCacheHttpClient: NpmCacheHttpClient, TSys: NpmResolutionInstallerSys>
     registry_info_provider: Arc<
       RegistryInfoProvider<TNpmCacheHttpClient, TSys>,
     >,
-    reporter: Option<Arc<dyn deno_npm::resolution::Reporter>>,
+    reporter: Option<Arc<dyn ende_npm::resolution::Reporter>>,
     resolution: Arc<NpmResolutionCell>,
     maybe_lockfile: Option<Arc<LockfileLock<TSys>>>,
   ) -> Self {
@@ -188,7 +188,7 @@ impl<TNpmCacheHttpClient: NpmCacheHttpClient, TSys: NpmResolutionInstallerSys>
   async fn add_package_reqs_to_snapshot(
     &self,
     package_reqs: &[PackageReq],
-  ) -> deno_npm::resolution::AddPkgReqsResult {
+  ) -> ende_npm::resolution::AddPkgReqsResult {
     let snapshot = self.resolution.snapshot();
     // Skip npm resolution when the lockfile snapshot already resolves every
     // requirement and either the lockfile is unchanged, or we are offline
@@ -206,7 +206,7 @@ impl<TNpmCacheHttpClient: NpmCacheHttpClient, TSys: NpmResolutionInstallerSys>
         .all(|req| snapshot.package_reqs().contains_key(req))
     {
       log::debug!("Snapshot already up to date. Skipping npm resolution.");
-      return deno_npm::resolution::AddPkgReqsResult {
+      return ende_npm::resolution::AddPkgReqsResult {
         results: package_reqs
           .iter()
           .map(|req| Ok(snapshot.package_reqs().get(req).unwrap().clone()))
@@ -357,7 +357,7 @@ impl<TNpmCacheHttpClient: NpmCacheHttpClient, TSys: NpmResolutionInstallerSys>
         tarball: pkg.dist.as_ref().and_then(|dist| {
           // Omit the tarball URL if it's the standard NPM registry URL
           let tarbal_url_provider =
-            deno_npm::resolution::NpmRegistryDefaultTarballUrlProvider;
+            ende_npm::resolution::NpmRegistryDefaultTarballUrlProvider;
           if dist.tarball == tarbal_url_provider.default_tarball_url(&pkg.id.nv)
           {
             None

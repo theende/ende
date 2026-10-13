@@ -22,7 +22,7 @@ use crate::io::BufMutView;
 use crate::io::BufView;
 use crate::io::WriteOutcome;
 
-/// Resources are Rust objects that are attached to a [deno_core::JsRuntime].
+/// Resources are Rust objects that are attached to a [ende_core::JsRuntime].
 /// They are identified in JS by a numeric ID (the resource ID, or rid).
 /// Resources can be created in ops. Resources can also be retrieved in ops by
 /// their rid. Resources are not thread-safe - they can only be accessed from
@@ -55,7 +55,7 @@ use crate::io::WriteOutcome;
 /// implement `read()` as an operation that allocates a new chunk with
 /// `len == limit`, then calls `read_byob()`, and then returns a chunk sliced to
 /// the number of bytes read. Kernel backed resources can use the
-/// [deno_core::impl_readable_byob] macro to implement optimized `read_byob()`
+/// [ende_core::impl_readable_byob] macro to implement optimized `read_byob()`
 /// and `read()` implementations from a single `Self::read()` method.
 ///
 /// ### Writable

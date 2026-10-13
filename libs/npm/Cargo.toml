@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_npm"
+name = "ende_npm"
 version = "0.71.0"
 authors.workspace = true
 edition.workspace = true
@@ -23,9 +23,9 @@ bytemuck = { workspace = true, features = ["aarch64_simd", "avx512_simd", "must_
 capacity_builder.workspace = true
 chrono = { workspace = true, default-features = false, features = ["serde"] }
 deno_error.workspace = true
-deno_lockfile.workspace = true
-deno_package_json.workspace = true
 deno_semver.workspace = true
+ende_lockfile.workspace = true
+ende_package_json.workspace = true
 futures.workspace = true
 indexmap.workspace = true
 log.workspace = true

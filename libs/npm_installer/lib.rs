@@ -5,19 +5,19 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_config::deno_json::NodeModulesLinkerMode;
 use deno_error::JsErrorBox;
-use deno_npm::NpmSystemInfo;
-use deno_npm::registry::NpmPackageInfo;
-use deno_npm::registry::NpmRegistryPackageInfoLoadError;
-use deno_npm::resolution::UnmetPeerDepDiagnostic;
-use deno_npm_cache::NpmCache;
-use deno_npm_cache::NpmCacheHttpClient;
-use deno_resolver::lockfile::LockfileLock;
-use deno_resolver::npm::managed::NpmResolutionCell;
-use deno_resolver::workspace::WorkspaceNpmLinkPackagesRc;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
+use ende_config::deno_json::NodeModulesLinkerMode;
+use ende_npm::NpmSystemInfo;
+use ende_npm::registry::NpmPackageInfo;
+use ende_npm::registry::NpmRegistryPackageInfoLoadError;
+use ende_npm::resolution::UnmetPeerDepDiagnostic;
+use ende_npm_cache::NpmCache;
+use ende_npm_cache::NpmCacheHttpClient;
+use ende_resolver::lockfile::LockfileLock;
+use ende_resolver::npm::managed::NpmResolutionCell;
+use ende_resolver::workspace::WorkspaceNpmLinkPackagesRc;
 
 mod bin_entries;
 mod extra_info;
@@ -192,7 +192,7 @@ impl<TNpmCacheHttpClient: NpmCacheHttpClient, TSys: NpmInstallerSys>
     npm_cache: Arc<NpmCache<TSys>>,
     npm_install_deps_provider: Arc<NpmInstallDepsProvider>,
     npm_registry_info_provider: Arc<
-      dyn deno_npm::registry::NpmRegistryApi + Send + Sync,
+      dyn ende_npm::registry::NpmRegistryApi + Send + Sync,
     >,
     npm_resolution: Arc<NpmResolutionCell>,
     npm_resolution_initializer: Arc<NpmResolutionInitializer<TSys>>,
@@ -201,7 +201,7 @@ impl<TNpmCacheHttpClient: NpmCacheHttpClient, TSys: NpmInstallerSys>
     >,
     reporter: &TReporter,
     sys: TSys,
-    tarball_cache: Arc<deno_npm_cache::TarballCache<TNpmCacheHttpClient, TSys>>,
+    tarball_cache: Arc<ende_npm_cache::TarballCache<TNpmCacheHttpClient, TSys>>,
     options: NpmInstallerOptions<TSys>,
   ) -> Self {
     let fs_installer: Arc<dyn NpmPackageFsInstaller> =
@@ -445,14 +445,14 @@ impl<TNpmCacheHttpClient: NpmCacheHttpClient, TSys: NpmInstallerSys>
   ) -> Result<(), EnsurePackageJsonDepsError> {
     for err in self.npm_install_deps_provider.pkg_json_dep_errors() {
       match err.source.as_kind() {
-        deno_package_json::PackageJsonDepValueParseErrorKind::JsrRequiresScope { .. } |
-        deno_package_json::PackageJsonDepValueParseErrorKind::VersionReq { .. } => {
+        ende_package_json::PackageJsonDepValueParseErrorKind::JsrRequiresScope { .. } |
+        ende_package_json::PackageJsonDepValueParseErrorKind::VersionReq { .. } => {
           return Err(Box::new(err.clone()).into());
         }
-        deno_package_json::PackageJsonDepValueParseErrorKind::Unsupported {
+        ende_package_json::PackageJsonDepValueParseErrorKind::Unsupported {
           ..
         }
-        | deno_package_json::PackageJsonDepValueParseErrorKind::EmptyName => {
+        | ende_package_json::PackageJsonDepValueParseErrorKind::EmptyName => {
           // only warn for these
           log::warn!(
             "{} {}\n    at {}",

@@ -7,7 +7,7 @@
 const { core, primordials } = __bootstrap;
 const { Symbol } = primordials;
 const { kKeyObject } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/constants.ts",
+  "ext:ende_node/internal/crypto/constants.ts",
 );
 
 const kKeyType = Symbol("kKeyType");

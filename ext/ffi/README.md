@@ -1,4 +1,4 @@
-# deno_ffi
+# ende_ffi
 
 This crate implements dynamic library ffi.
 

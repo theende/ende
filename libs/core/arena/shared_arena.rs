@@ -300,7 +300,7 @@ impl<T> ArenaShared<T> {
   /// # Example
   ///
   /// ```rust
-  /// # use deno_core::arena::ArenaShared;
+  /// # use ende_core::arena::ArenaShared;
   ///
   /// // Define a struct that will be allocated within the arena
   /// struct MyStruct {

@@ -9,20 +9,8 @@ use std::fmt;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_config::deno_json::ConfigFileError;
-use deno_config::deno_json::ConfigFileRc;
-use deno_config::workspace::ResolverWorkspaceJsrPackage;
-use deno_config::workspace::Workspace;
 use deno_error::JsError;
-use deno_maybe_sync::MaybeDashMap;
-use deno_maybe_sync::new_rc;
 use deno_media_type::MediaType;
-use deno_npm::registry::NpmPackageVersionInfo;
-use deno_package_json::PackageJsonDepValue;
-use deno_package_json::PackageJsonDepValueParseError;
-use deno_package_json::PackageJsonDepWorkspaceReq;
-use deno_package_json::PackageJsonDepsRc;
-use deno_package_json::PackageJsonRc;
 use deno_path_util::SpecifierError;
 use deno_path_util::url_from_directory_path;
 use deno_path_util::url_from_file_path;
@@ -36,6 +24,18 @@ use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::package::PackageName;
 use deno_semver::package::PackageReq;
 use deno_terminal::colors;
+use ende_config::deno_json::ConfigFileError;
+use ende_config::deno_json::ConfigFileRc;
+use ende_config::workspace::ResolverWorkspaceJsrPackage;
+use ende_config::workspace::Workspace;
+use ende_maybe_sync::MaybeDashMap;
+use ende_maybe_sync::new_rc;
+use ende_npm::registry::NpmPackageVersionInfo;
+use ende_package_json::PackageJsonDepValue;
+use ende_package_json::PackageJsonDepValueParseError;
+use ende_package_json::PackageJsonDepWorkspaceReq;
+use ende_package_json::PackageJsonDepsRc;
+use ende_package_json::PackageJsonRc;
 use import_map::ImportMap;
 use import_map::ImportMapDiagnostic;
 use import_map::ImportMapError;
@@ -58,7 +58,7 @@ use crate::deno_json::CompilerOptionsPaths;
 use crate::deno_json::CompilerOptionsResolverRc;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-type UrlRc = deno_maybe_sync::MaybeArc<Url>;
+type UrlRc = ende_maybe_sync::MaybeArc<Url>;
 
 #[derive(Debug)]
 struct PkgJsonResolverFolderConfig {
@@ -693,7 +693,7 @@ pub fn sloppy_imports_resolve<TSys: FsMetadata>(
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 type SloppyImportsResolverRc<T> =
-  deno_maybe_sync::MaybeArc<SloppyImportsResolver<T>>;
+  ende_maybe_sync::MaybeArc<SloppyImportsResolver<T>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompilerOptionsRootDirsDiagnostic {
@@ -836,7 +836,7 @@ impl fmt::Display for WorkspaceResolverDiagnostic<'_> {
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 type CompilerOptionsResolverCellRc =
-  deno_maybe_sync::MaybeArc<RwLock<CompilerOptionsResolverRc>>;
+  ende_maybe_sync::MaybeArc<RwLock<CompilerOptionsResolverRc>>;
 
 #[derive(Debug)]
 pub struct WorkspaceResolver<TSys: FsMetadata + FsRead> {
@@ -1107,7 +1107,7 @@ impl<TSys: FsMetadata + FsRead> WorkspaceResolver<TSys> {
       if workspace.jsr_deps_in_node_modules() == Some(true)
         && uses_node_modules_dir
       {
-        deno_config::import_map::rewrite_jsr_imports_to_npm(&mut import_map);
+        ende_config::import_map::rewrite_jsr_imports_to_npm(&mut import_map);
       }
       log::debug!(
         "Workspace config generated this import map {}",
@@ -1294,7 +1294,7 @@ impl<TSys: FsMetadata + FsRead> WorkspaceResolver<TSys> {
           url_to_file_path(&root_dir_url.join(&relative_path).unwrap())
             .unwrap();
         let pkg_json =
-          deno_package_json::PackageJson::load_from_value(path, json).unwrap();
+          ende_package_json::PackageJson::load_from_value(path, json).unwrap();
         PackageJsonRc::new(pkg_json)
       })
       .collect();
@@ -1913,7 +1913,7 @@ impl WorkspaceNpmLinkPackagesRc {
         }
       }
     }
-    Self(deno_maybe_sync::new_arc(entries))
+    Self(ende_maybe_sync::new_arc(entries))
   }
 }
 
@@ -1933,7 +1933,7 @@ enum PkgJsonToVersionInfoError {
 }
 
 fn pkg_json_to_version_info(
-  pkg_json: &deno_package_json::PackageJson,
+  pkg_json: &ende_package_json::PackageJson,
 ) -> Result<NpmPackageVersionInfo, PkgJsonToVersionInfoError> {
   fn parse_deps(
     deps: Option<&IndexMap<String, String>>,
@@ -1966,7 +1966,7 @@ fn pkg_json_to_version_info(
     exports: pkg_json
       .exports
       .as_ref()
-      .map(deno_npm::registry::NpmPackageExportKeys::from_exports_object),
+      .map(ende_npm::registry::NpmPackageExportKeys::from_exports_object),
     dist: None,
     bin: pkg_json
       .bin
@@ -2021,14 +2021,14 @@ mod test {
   use std::path::Path;
   use std::path::PathBuf;
 
-  use deno_config::workspace::WorkspaceDirectory;
-  use deno_config::workspace::WorkspaceDirectoryRc;
-  use deno_config::workspace::WorkspaceDiscoverOptions;
-  use deno_config::workspace::WorkspaceDiscoverStart;
-  use deno_npm::registry::NpmPeerDependencyMeta;
   use deno_path_util::url_from_directory_path;
   use deno_path_util::url_from_file_path;
   use deno_semver::VersionReq;
+  use ende_config::workspace::WorkspaceDirectory;
+  use ende_config::workspace::WorkspaceDirectoryRc;
+  use ende_config::workspace::WorkspaceDiscoverOptions;
+  use ende_config::workspace::WorkspaceDiscoverStart;
+  use ende_npm::registry::NpmPeerDependencyMeta;
   use node_resolver::DenoIsBuiltInNodeModuleChecker;
   use node_resolver::NodeResolver;
   use node_resolver::NodeResolverOptions;
@@ -3819,7 +3819,7 @@ mod test {
     fn convert(
       text: &str,
     ) -> Result<NpmPackageVersionInfo, PkgJsonToVersionInfoError> {
-      let pkg_json = deno_package_json::PackageJson::load_from_string(
+      let pkg_json = ende_package_json::PackageJson::load_from_string(
         PathBuf::from("package.json"),
         text,
       )
@@ -3865,7 +3865,7 @@ mod test {
         exports: None,
         dist: None,
         has_install_script: None,
-        bin: Some(deno_npm::registry::NpmPackageVersionBinEntry::String(
+        bin: Some(ende_npm::registry::NpmPackageVersionBinEntry::String(
           "./bin.js".to_string()
         )),
         dependencies: HashMap::from([(
@@ -3898,7 +3898,7 @@ mod test {
             "testing2".to_string(),
           )
         ]),
-        // we don't bother ever setting this because we don't store it in deno_package_json
+        // we don't bother ever setting this because we don't store it in ende_package_json
         deprecated: None,
         npm_user: None,
       }

@@ -523,7 +523,7 @@ const denoCoreChangesCheckStep = step({
 
 // Detects PRs that only touch the `doc/` directory. Such PRs run the `lint`
 // job alone (markdown is still formatted/linted) and skip the build, test,
-// bench and deno_core jobs. The base SHA is already fetched by the deno_core
+// bench and ende_core jobs. The base SHA is already fetched by the ende_core
 // changes step above.
 const docsOnlyChangesCheckStep = step({
   id: "docs_only_changes",
@@ -615,8 +615,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
     ? " -Zbuild-std=core,alloc,std,proc_macro,panic_abort"
     : "";
   const panicTraceFeatures = usesFramePointerPanicTrace
-    ? "deno/panic-trace-frame-pointer"
-    : "deno/panic-trace";
+    ? "ende/panic-trace-frame-pointer"
+    : "ende/panic-trace";
   const usesStartupOrder = rawBuildItem.profile === "release" &&
     ((rawBuildItem.os === "linux" &&
       (rawBuildItem.arch === "x86_64" || rawBuildItem.arch === "aarch64")) ||
@@ -672,8 +672,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
     };
   };
 
-  const denoArtifact = createBinaryArtifact("deno");
-  const denortArtifact = createBinaryArtifact("denort");
+  const denoArtifact = createBinaryArtifact("ende");
+  const denortArtifact = createBinaryArtifact("endert");
   const testServerArtifact = createBinaryArtifact("test_server");
   const env = {
     CARGO_TERM_COLOR: "always",
@@ -744,51 +744,51 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             if: isLinux.and(isDenoland),
             run: [
               "cd target/release",
-              `./deno -A ../../tools/release/create_symcache.ts deno-${buildItem.arch}-unknown-linux-gnu.symcache`,
-              "strip --remove-section=.eh_frame --remove-section=.eh_frame_hdr ./deno",
-              "if readelf -SW ./deno | grep -Eq '\\.eh_frame(_hdr)?'; then echo 'unwind sections remain in deno'; exit 1; fi",
-              "if readelf -lW ./deno | grep -q GNU_EH_FRAME; then echo 'PT_GNU_EH_FRAME remains in deno'; exit 1; fi",
-              `shasum -a 256 deno > deno-${buildItem.arch}-unknown-linux-gnu.sha256sum`,
-              `zip -r deno-${buildItem.arch}-unknown-linux-gnu.zip deno`,
-              `shasum -a 256 deno-${buildItem.arch}-unknown-linux-gnu.zip > deno-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              // denort is the `deno compile` base binary: libsui rewrites its
+              `./ende -A ../../tools/release/create_symcache.ts ende-${buildItem.arch}-unknown-linux-gnu.symcache`,
+              "strip --remove-section=.eh_frame --remove-section=.eh_frame_hdr ./ende",
+              "if readelf -SW ./ende | grep -Eq '\\.eh_frame(_hdr)?'; then echo 'unwind sections remain in ende'; exit 1; fi",
+              "if readelf -lW ./ende | grep -q GNU_EH_FRAME; then echo 'PT_GNU_EH_FRAME remains in ende'; exit 1; fi",
+              `shasum -a 256 ende > ende-${buildItem.arch}-unknown-linux-gnu.sha256sum`,
+              `zip -r ende-${buildItem.arch}-unknown-linux-gnu.zip ende`,
+              `shasum -a 256 ende-${buildItem.arch}-unknown-linux-gnu.zip > ende-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
+              // endert is the `deno compile` base binary: libsui rewrites its
               // ELF to embed user code, and that rewrite drops `.relr.dyn`
               // relative relocations when the symbol table is gone, producing a
               // compiled binary whose C++ static-init guards deadlock
               // (`__cxa_guard_acquire failed to acquire mutex`). Keep .symtab
               // (strip only debug info) so the relocations survive.
-              "strip --strip-debug --remove-section=.eh_frame --remove-section=.eh_frame_hdr ./denort",
-              "if readelf -SW ./denort | grep -Eq '\\.eh_frame(_hdr)?'; then echo 'unwind sections remain in denort'; exit 1; fi",
-              "if readelf -lW ./denort | grep -q GNU_EH_FRAME; then echo 'PT_GNU_EH_FRAME remains in denort'; exit 1; fi",
-              `zip -r denort-${buildItem.arch}-unknown-linux-gnu.zip denort`,
-              `shasum -a 256 denort-${buildItem.arch}-unknown-linux-gnu.zip > denort-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              "strip --remove-section=.eh_frame --remove-section=.eh_frame_hdr ./libdenort.so",
-              "if readelf -SW ./libdenort.so | grep -Eq '\\.eh_frame(_hdr)?'; then echo 'unwind sections remain in libdenort.so'; exit 1; fi",
-              "if readelf -lW ./libdenort.so | grep -q GNU_EH_FRAME; then echo 'PT_GNU_EH_FRAME remains in libdenort.so'; exit 1; fi",
-              `zip -r libdenort-${buildItem.arch}-unknown-linux-gnu.zip libdenort.so`,
-              `shasum -a 256 libdenort-${buildItem.arch}-unknown-linux-gnu.zip > libdenort-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              // QuickJS denort/libdenort for `deno compile --engine quickjs`.
+              "strip --strip-debug --remove-section=.eh_frame --remove-section=.eh_frame_hdr ./endert",
+              "if readelf -SW ./endert | grep -Eq '\\.eh_frame(_hdr)?'; then echo 'unwind sections remain in endert'; exit 1; fi",
+              "if readelf -lW ./endert | grep -q GNU_EH_FRAME; then echo 'PT_GNU_EH_FRAME remains in endert'; exit 1; fi",
+              `zip -r endert-${buildItem.arch}-unknown-linux-gnu.zip endert`,
+              `shasum -a 256 endert-${buildItem.arch}-unknown-linux-gnu.zip > endert-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
+              "strip --remove-section=.eh_frame --remove-section=.eh_frame_hdr ./libendert.so",
+              "if readelf -SW ./libendert.so | grep -Eq '\\.eh_frame(_hdr)?'; then echo 'unwind sections remain in libendert.so'; exit 1; fi",
+              "if readelf -lW ./libendert.so | grep -q GNU_EH_FRAME; then echo 'PT_GNU_EH_FRAME remains in libendert.so'; exit 1; fi",
+              `zip -r libendert-${buildItem.arch}-unknown-linux-gnu.zip libendert.so`,
+              `shasum -a 256 libendert-${buildItem.arch}-unknown-linux-gnu.zip > libendert-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
+              // QuickJS endert/libendert for `deno compile --engine quickjs`.
               // Reuse the same target dir (a second one would exceed runner
               // disk). Back up the v8 binaries and restore them even if the
               // QuickJS build fails so later release steps never see a partial
               // or wrong-engine runtime.
               "restore_v8_runtimes() {",
-              "  test ! -e denort.v8 || mv -f denort.v8 denort",
-              "  test ! -e libdenort.v8.so || mv -f libdenort.v8.so libdenort.so",
+              "  test ! -e endert.v8 || mv -f endert.v8 endert",
+              "  test ! -e libendert.v8.so || mv -f libendert.v8.so libendert.so",
               "}",
               "trap restore_v8_runtimes EXIT",
-              "mv denort denort.v8",
-              "mv libdenort.so libdenort.v8.so",
-              `(cd ../.. && cargo build --release --locked -p denort -p denort_desktop --no-default-features --features quickjs)`,
-              "strip --strip-debug ./denort",
-              `zip -r denort-quickjs-${buildItem.arch}-unknown-linux-gnu.zip denort`,
-              `shasum -a 256 denort-quickjs-${buildItem.arch}-unknown-linux-gnu.zip > denort-quickjs-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              "strip ./libdenort.so",
-              `zip -r libdenort-quickjs-${buildItem.arch}-unknown-linux-gnu.zip libdenort.so`,
-              `shasum -a 256 libdenort-quickjs-${buildItem.arch}-unknown-linux-gnu.zip > libdenort-quickjs-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
+              "mv endert endert.v8",
+              "mv libendert.so libendert.v8.so",
+              `(cd ../.. && cargo build --release --locked -p endert -p endert_desktop --no-default-features --features quickjs)`,
+              "strip --strip-debug ./endert",
+              `zip -r endert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip endert`,
+              `shasum -a 256 endert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip > endert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
+              "strip ./libendert.so",
+              `zip -r libendert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip libendert.so`,
+              `shasum -a 256 libendert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip > libendert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
               "restore_v8_runtimes",
               "trap - EXIT",
-              "./deno types > lib.deno.d.ts",
+              "./ende types > lib.deno.d.ts",
             ],
           },
           step.dependsOn(setupPrebuiltMacStep, installDenoStep)({
@@ -808,42 +808,42 @@ const buildJobs = buildItems.map((rawBuildItem) => {
                 "${{ secrets.APPLE_CODESIGN_PASSWORD }}",
             },
             run: [
-              `target/release/deno -A tools/release/create_symcache.ts target/release/deno-${buildItem.arch}-apple-darwin.symcache`,
-              "strip -x -S target/release/deno",
+              `target/release/ende -A tools/release/create_symcache.ts target/release/ende-${buildItem.arch}-apple-darwin.symcache`,
+              "strip -x -S target/release/ende",
               'if [[ "$GITHUB_REF" == "refs/heads/main" || "$GITHUB_REF" == refs/tags/* ]]; then',
               '  echo "Key is $(echo $APPLE_CODESIGN_KEY | base64 -d | wc -c) bytes"',
-              "  rcodesign sign target/release/deno " +
+              "  rcodesign sign target/release/ende " +
               "--code-signature-flags=runtime " +
               '--p12-password="$APPLE_CODESIGN_PASSWORD" ' +
               "--p12-file=<(echo $APPLE_CODESIGN_KEY | base64 -d) " +
               "--entitlements-xml-file=cli/entitlements.plist",
               "fi",
               "cd target/release",
-              `shasum -a 256 deno > deno-${buildItem.arch}-apple-darwin.sha256sum`,
-              `zip -r deno-${buildItem.arch}-apple-darwin.zip deno`,
-              `shasum -a 256 deno-${buildItem.arch}-apple-darwin.zip > deno-${buildItem.arch}-apple-darwin.zip.sha256sum`,
-              "strip -x -S ./denort",
-              `zip -r denort-${buildItem.arch}-apple-darwin.zip denort`,
-              `shasum -a 256 denort-${buildItem.arch}-apple-darwin.zip > denort-${buildItem.arch}-apple-darwin.zip.sha256sum`,
-              "strip -x -S ./libdenort.dylib",
-              `zip -r libdenort-${buildItem.arch}-apple-darwin.zip libdenort.dylib`,
-              `shasum -a 256 libdenort-${buildItem.arch}-apple-darwin.zip > libdenort-${buildItem.arch}-apple-darwin.zip.sha256sum`,
-              // QuickJS denort/libdenort for `deno compile --engine quickjs`
+              `shasum -a 256 ende > ende-${buildItem.arch}-apple-darwin.sha256sum`,
+              `zip -r ende-${buildItem.arch}-apple-darwin.zip ende`,
+              `shasum -a 256 ende-${buildItem.arch}-apple-darwin.zip > ende-${buildItem.arch}-apple-darwin.zip.sha256sum`,
+              "strip -x -S ./endert",
+              `zip -r endert-${buildItem.arch}-apple-darwin.zip endert`,
+              `shasum -a 256 endert-${buildItem.arch}-apple-darwin.zip > endert-${buildItem.arch}-apple-darwin.zip.sha256sum`,
+              "strip -x -S ./libendert.dylib",
+              `zip -r libendert-${buildItem.arch}-apple-darwin.zip libendert.dylib`,
+              `shasum -a 256 libendert-${buildItem.arch}-apple-darwin.zip > libendert-${buildItem.arch}-apple-darwin.zip.sha256sum`,
+              // QuickJS endert/libendert for `deno compile --engine quickjs`
               // (see the linux note).
               "restore_v8_runtimes() {",
-              "  test ! -e denort.v8 || mv -f denort.v8 denort",
-              "  test ! -e libdenort.v8.dylib || mv -f libdenort.v8.dylib libdenort.dylib",
+              "  test ! -e endert.v8 || mv -f endert.v8 endert",
+              "  test ! -e libendert.v8.dylib || mv -f libendert.v8.dylib libendert.dylib",
               "}",
               "trap restore_v8_runtimes EXIT",
-              "mv denort denort.v8",
-              "mv libdenort.dylib libdenort.v8.dylib",
-              `(cd ../.. && cargo build --release --locked -p denort -p denort_desktop --no-default-features --features quickjs)`,
-              "strip -x -S ./denort",
-              `zip -r denort-quickjs-${buildItem.arch}-apple-darwin.zip denort`,
-              `shasum -a 256 denort-quickjs-${buildItem.arch}-apple-darwin.zip > denort-quickjs-${buildItem.arch}-apple-darwin.zip.sha256sum`,
-              "strip -x -S ./libdenort.dylib",
-              `zip -r libdenort-quickjs-${buildItem.arch}-apple-darwin.zip libdenort.dylib`,
-              `shasum -a 256 libdenort-quickjs-${buildItem.arch}-apple-darwin.zip > libdenort-quickjs-${buildItem.arch}-apple-darwin.zip.sha256sum`,
+              "mv endert endert.v8",
+              "mv libendert.dylib libendert.v8.dylib",
+              `(cd ../.. && cargo build --release --locked -p endert -p endert_desktop --no-default-features --features quickjs)`,
+              "strip -x -S ./endert",
+              `zip -r endert-quickjs-${buildItem.arch}-apple-darwin.zip endert`,
+              `shasum -a 256 endert-quickjs-${buildItem.arch}-apple-darwin.zip > endert-quickjs-${buildItem.arch}-apple-darwin.zip.sha256sum`,
+              "strip -x -S ./libendert.dylib",
+              `zip -r libendert-quickjs-${buildItem.arch}-apple-darwin.zip libendert.dylib`,
+              `shasum -a 256 libendert-quickjs-${buildItem.arch}-apple-darwin.zip > libendert-quickjs-${buildItem.arch}-apple-darwin.zip.sha256sum`,
               "restore_v8_runtimes",
               "trap - EXIT",
             ],
@@ -862,7 +862,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             },
           },
           {
-            name: "Code sign deno.exe (windows)",
+            name: "Code sign ende.exe (windows)",
             if: isWindows.and(isDenoland).and(isMainOrTag),
             uses: "Azure/artifact-signing-action@v0",
             with: {
@@ -870,7 +870,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               "trusted-signing-account-name": "deno-cli-code-signing",
               "certificate-profile-name": "deno-cli-code-signing-cert",
               "files-folder": "target/release",
-              "files-folder-filter": "deno.exe",
+              "files-folder-filter": "ende.exe",
               "file-digest": "SHA256",
               "timestamp-rfc3161": "http://timestamp.acs.microsoft.com",
               "timestamp-digest": "SHA256",
@@ -890,7 +890,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             run: [
               '$SignTool = Get-ChildItem -Path "C:\\Program Files*\\Windows Kits\\*\\bin\\*\\x64\\signtool.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1',
               "$SignToolPath = $SignTool.FullName",
-              "& $SignToolPath verify /pa /v target\\release\\deno.exe",
+              "& $SignToolPath verify /pa /v target\\release\\ende.exe",
             ],
           },
           {
@@ -898,33 +898,33 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             if: isWindows.and(isDenoland),
             shell: "pwsh",
             run: [
-              `Get-FileHash target/release/deno.exe -Algorithm SHA256 | Format-List > target/release/deno-${buildItem.arch}-pc-windows-msvc.sha256sum`,
-              `Compress-Archive -CompressionLevel Optimal -Force -Path target/release/deno.exe -DestinationPath target/release/deno-${buildItem.arch}-pc-windows-msvc.zip`,
-              `Get-FileHash target/release/deno-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/deno-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
-              `Compress-Archive -CompressionLevel Optimal -Force -Path target/release/denort.exe -DestinationPath target/release/denort-${buildItem.arch}-pc-windows-msvc.zip`,
-              `Get-FileHash target/release/denort-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/denort-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
-              `Compress-Archive -CompressionLevel Optimal -Force -Path target/release/denort.dll -DestinationPath target/release/libdenort-${buildItem.arch}-pc-windows-msvc.zip`,
-              `Get-FileHash target/release/libdenort-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/libdenort-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
-              // QuickJS denort/libdenort for `deno compile --engine quickjs`
+              `Get-FileHash target/release/ende.exe -Algorithm SHA256 | Format-List > target/release/ende-${buildItem.arch}-pc-windows-msvc.sha256sum`,
+              `Compress-Archive -CompressionLevel Optimal -Force -Path target/release/ende.exe -DestinationPath target/release/ende-${buildItem.arch}-pc-windows-msvc.zip`,
+              `Get-FileHash target/release/ende-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/ende-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
+              `Compress-Archive -CompressionLevel Optimal -Force -Path target/release/endert.exe -DestinationPath target/release/endert-${buildItem.arch}-pc-windows-msvc.zip`,
+              `Get-FileHash target/release/endert-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/endert-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
+              `Compress-Archive -CompressionLevel Optimal -Force -Path target/release/endert.dll -DestinationPath target/release/libendert-${buildItem.arch}-pc-windows-msvc.zip`,
+              `Get-FileHash target/release/libendert-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/libendert-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
+              // QuickJS endert/libendert for `deno compile --engine quickjs`
               // (see the linux note).
               "try {",
-              "  Move-Item target/release/denort.exe target/release/denort.v8.exe",
-              "  Move-Item target/release/denort.dll target/release/denort.v8.dll",
-              // Both packages produce denort.pdb on Windows. Building them in
+              "  Move-Item target/release/endert.exe target/release/endert.v8.exe",
+              "  Move-Item target/release/endert.dll target/release/endert.v8.dll",
+              // Both packages produce endert.pdb on Windows. Building them in
               // one Cargo invocation lets their linkers race to write it.
-              `  cargo build --release --locked -p denort --no-default-features --features quickjs`,
-              '  if ($LASTEXITCODE -ne 0) { throw "QuickJS denort build failed" }',
-              `  cargo build --release --locked -p denort_desktop --no-default-features --features quickjs`,
-              '  if ($LASTEXITCODE -ne 0) { throw "QuickJS denort_desktop build failed" }',
-              `  Compress-Archive -CompressionLevel Optimal -Force -Path target/release/denort.exe -DestinationPath target/release/denort-quickjs-${buildItem.arch}-pc-windows-msvc.zip`,
-              `  Get-FileHash target/release/denort-quickjs-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/denort-quickjs-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
-              `  Compress-Archive -CompressionLevel Optimal -Force -Path target/release/denort.dll -DestinationPath target/release/libdenort-quickjs-${buildItem.arch}-pc-windows-msvc.zip`,
-              `  Get-FileHash target/release/libdenort-quickjs-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/libdenort-quickjs-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
+              `  cargo build --release --locked -p endert --no-default-features --features quickjs`,
+              '  if ($LASTEXITCODE -ne 0) { throw "QuickJS endert build failed" }',
+              `  cargo build --release --locked -p endert_desktop --no-default-features --features quickjs`,
+              '  if ($LASTEXITCODE -ne 0) { throw "QuickJS endert_desktop build failed" }',
+              `  Compress-Archive -CompressionLevel Optimal -Force -Path target/release/endert.exe -DestinationPath target/release/endert-quickjs-${buildItem.arch}-pc-windows-msvc.zip`,
+              `  Get-FileHash target/release/endert-quickjs-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/endert-quickjs-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
+              `  Compress-Archive -CompressionLevel Optimal -Force -Path target/release/endert.dll -DestinationPath target/release/libendert-quickjs-${buildItem.arch}-pc-windows-msvc.zip`,
+              `  Get-FileHash target/release/libendert-quickjs-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/libendert-quickjs-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
               "} finally {",
-              "  if (Test-Path target/release/denort.v8.exe) { Move-Item -Force target/release/denort.v8.exe target/release/denort.exe }",
-              "  if (Test-Path target/release/denort.v8.dll) { Move-Item -Force target/release/denort.v8.dll target/release/denort.dll }",
+              "  if (Test-Path target/release/endert.v8.exe) { Move-Item -Force target/release/endert.v8.exe target/release/endert.exe }",
+              "  if (Test-Path target/release/endert.v8.dll) { Move-Item -Force target/release/endert.v8.dll target/release/endert.dll }",
               "}",
-              `target/release/deno.exe -A tools/release/create_symcache.ts target/release/deno-${buildItem.arch}-pc-windows-msvc.symcache`,
+              `target/release/ende.exe -A tools/release/create_symcache.ts target/release/ende-${buildItem.arch}-pc-windows-msvc.symcache`,
             ],
           },
           {
@@ -944,8 +944,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               'echo "Generating delta from $PREV_VERSION for $TARGET"',
               'curl -fSL -o prev.zip "https://github.com/denoland/deno/releases/download/v${PREV_VERSION}/deno-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }',
               "unzip -o prev.zip -d prev/",
-              './target/release/bsdiff_helper prev/deno target/release/deno "target/release/deno-${TARGET}.from-${PREV_VERSION}.bsdiff"',
-              'cd target/release && shasum -a 256 "deno-${TARGET}.from-${PREV_VERSION}.bsdiff" > "deno-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"',
+              './target/release/bsdiff_helper prev/deno target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"',
+              'cd target/release && shasum -a 256 "ende-${TARGET}.from-${PREV_VERSION}.bsdiff" > "ende-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"',
             ],
           },
           {
@@ -958,8 +958,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               'echo "Generating delta from $PREV_VERSION for $TARGET"',
               'curl -fSL -o prev.zip "https://github.com/denoland/deno/releases/download/v${PREV_VERSION}/deno-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }',
               "unzip -o prev.zip -d prev/",
-              './target/release/bsdiff_helper prev/deno target/release/deno "target/release/deno-${TARGET}.from-${PREV_VERSION}.bsdiff"',
-              'cd target/release && shasum -a 256 "deno-${TARGET}.from-${PREV_VERSION}.bsdiff" > "deno-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"',
+              './target/release/bsdiff_helper prev/deno target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"',
+              'cd target/release && shasum -a 256 "ende-${TARGET}.from-${PREV_VERSION}.bsdiff" > "ende-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"',
             ],
           },
           {
@@ -974,8 +974,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               'try { Invoke-WebRequest -Uri "https://github.com/denoland/deno/releases/download/v$PrevVersion/deno-$Target.zip" -OutFile prev.zip } catch { Write-Host "Previous release not found, skipping delta"; exit 0 }',
               "Remove-Item -Recurse -Force prev -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path prev | Out-Null",
               "Expand-Archive -Force -Path prev.zip -DestinationPath prev",
-              '& .\\target\\release\\bsdiff_helper.exe "prev\\deno.exe" "target\\release\\deno.exe" "target\\release\\deno-$Target.from-$PrevVersion.bsdiff"',
-              'Get-FileHash "target\\release\\deno-$Target.from-$PrevVersion.bsdiff" -Algorithm SHA256 | Format-List > "target\\release\\deno-$Target.from-$PrevVersion.bsdiff.sha256sum"',
+              '& .\\target\\release\\bsdiff_helper.exe "prev\\deno.exe" "target\\release\\ende.exe" "target\\release\\ende-$Target.from-$PrevVersion.bsdiff"',
+              'Get-FileHash "target\\release\\ende-$Target.from-$PrevVersion.bsdiff" -Algorithm SHA256 | Format-List > "target\\release\\ende-$Target.from-$PrevVersion.bsdiff.sha256sum"',
             ],
           },
           step({
@@ -992,9 +992,9 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             ],
           }),
         );
-        const packagesToBuild = ["deno", "denort", "test_server"]
+        const packagesToBuild = ["ende", "endert", "test_server"]
           .map((name) => `-p ${name}`).join(" ");
-        const binsToBuild = ["deno", "denort", "test_server"]
+        const binsToBuild = ["ende", "endert", "test_server"]
           .map((name) => `--bin ${name}`).join(" ");
         const cargoBuildReleaseCommand =
           `cargo build${buildStdArgs} --release --locked ${packagesToBuild} ${binsToBuild} --features=${panicTraceFeatures}`;
@@ -1057,11 +1057,11 @@ const buildJobs = buildItems.map((rawBuildItem) => {
                 // output fs space before and after building
                 "df -h",
                 cargoBuildReleaseCommand,
-                // Build the desktop runtime shared library (libdenort cdylib) for
+                // Build the desktop runtime shared library (libendert cdylib) for
                 // laufey-based desktop apps. It is a separate invocation, but
                 // still needs the frame-pointer standard library before its
                 // unwind sections can be removed during packaging.
-                `cargo build${buildStdArgs} --release --locked -p denort_desktop`,
+                `cargo build${buildStdArgs} --release --locked -p endert_desktop`,
                 "df -h",
               ],
             },
@@ -1071,17 +1071,17 @@ const buildJobs = buildItems.map((rawBuildItem) => {
                 if: runStartupOrder,
                 run: rawBuildItem.os === "macos"
                   ? [
-                    "cp -p target/release/deno target/release/deno-before-startup-order",
-                    "target/release/deno run -A tools/startup_order/generate_macos_function_orderfile.ts \\",
-                    "  --binary $GITHUB_WORKSPACE/target/release/deno-before-startup-order \\",
+                    "cp -p target/release/ende target/release/ende-before-startup-order",
+                    "target/release/ende run -A tools/startup_order/generate_macos_function_orderfile.ts \\",
+                    "  --binary $GITHUB_WORKSPACE/target/release/ende-before-startup-order \\",
                     `  --output $GITHUB_WORKSPACE/${startupOrderPath} \\`,
                     "  --repeats 3 \\",
                     "  --workload-profile run-first",
                   ]
                   : [
-                    "cp -p target/release/deno target/release/deno-before-startup-order",
-                    "target/release/deno run -A tools/startup_order/generate_linux_function_orderfile.ts \\",
-                    "  --binary $GITHUB_WORKSPACE/target/release/deno-before-startup-order \\",
+                    "cp -p target/release/ende target/release/ende-before-startup-order",
+                    "target/release/ende run -A tools/startup_order/generate_linux_function_orderfile.ts \\",
+                    "  --binary $GITHUB_WORKSPACE/target/release/ende-before-startup-order \\",
                     `  --output $GITHUB_WORKSPACE/${startupOrderPath} \\`,
                     "  --repeats 3 \\",
                     "  --workload-profile run-first",
@@ -1101,9 +1101,9 @@ const buildJobs = buildItems.map((rawBuildItem) => {
                 name: "Verify startup order",
                 if: runStartupOrder,
                 run: [
-                  "target/release/deno run -A tools/startup_order/verify_orderfile.ts \\",
-                  "  --baseline-binary target/release/deno-before-startup-order \\",
-                  "  --binary target/release/deno \\",
+                  "target/release/ende run -A tools/startup_order/verify_orderfile.ts \\",
+                  "  --baseline-binary target/release/ende-before-startup-order \\",
+                  "  --binary target/release/ende \\",
                   `  --order ${startupOrderPath} \\`,
                   `  --output ${startupOrderPath}.verify.json`,
                 ],
@@ -1131,7 +1131,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               name: "Check release snapshot flags",
               if: isLinux,
               run: [
-                "if strings target/release/deno | grep -F -- '--no-lazy --no-lazy-eval --no-lazy-streaming'; then",
+                "if strings target/release/ende | grep -F -- '--no-lazy --no-lazy-eval --no-lazy-streaming'; then",
                 '  echo "release deno binary contains eager snapshot flags"',
                 "  exit 1",
                 "fi",
@@ -1155,9 +1155,9 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             {
               name: "Generate symcache",
               run: [
-                "target/release/deno -A tools/release/create_symcache.ts ./deno.symcache",
+                "target/release/ende -A tools/release/create_symcache.ts ./deno.symcache",
                 "du -h deno.symcache",
-                "du -h target/release/deno",
+                "du -h target/release/ende",
               ],
               env: { NO_COLOR: 1 },
             },
@@ -1167,8 +1167,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               if: isMainOrTag,
               run: [
                 `du -hd1 "./target/${buildItem.profile}"`,
-                `du -ha  "./target/${buildItem.profile}/deno"`,
-                `du -ha  "./target/${buildItem.profile}/denort"`,
+                `du -ha  "./target/${buildItem.profile}/ende"`,
+                `du -ha  "./target/${buildItem.profile}/endert"`,
               ],
             },
           );
@@ -1184,25 +1184,25 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               name: "Build debug",
               if: isDebug,
               run:
-                `cargo build --locked ${packagesToBuild} ${binsToBuild} --features=deno/panic-trace`,
+                `cargo build --locked ${packagesToBuild} ${binsToBuild} --features=ende/panic-trace`,
               env: { CARGO_PROFILE_DEV_DEBUG: 0 },
             },
             {
               // The rest of CI only exercises the default v8 backend. Make sure the
-              // experimental QuickJS backend (the deno_v8 facade over the v8x crate)
-              // keeps compiling for the deno + denort binaries so `deno compile`
+              // experimental QuickJS backend (the ende_v8 facade over the v8x crate)
+              // keeps compiling for the deno + endert binaries so `deno compile`
               // and the desktop runtime don't silently regress (notably the
               // mutually-exclusive v8/quickjs feature guard). A `check` is enough to
               // catch feature/build-script breakage and does not clobber the v8
               // binary this job produces.
-              name: "Check QuickJS backend (deno + denort)",
+              name: "Check QuickJS backend (deno + endert)",
               if: isDebug.and(
                 isLinux.and(buildItem.arch.equals("x86_64")).or(
                   isMacos.and(buildItem.arch.equals("aarch64")),
                 ),
               ),
               run:
-                `cargo check --locked -p deno -p denort --no-default-features --features quickjs`,
+                `cargo check --locked -p ende -p endert --no-default-features --features quickjs`,
               env: { CARGO_PROFILE_DEV_DEBUG: 0 },
             },
             cargoBuildReleaseStep,
@@ -1211,7 +1211,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               // of our build mode
               name: "Check deno binary",
               run:
-                `target/${buildItem.profile}/deno eval "console.log(1+2)" | grep 3`,
+                `target/${buildItem.profile}/ende eval "console.log(1+2)" | grep 3`,
               env: { NO_COLOR: 1 },
             },
             {
@@ -1219,7 +1219,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               name: "Check deno binary (in sysroot)",
               if: buildItem.use_sysroot,
               run:
-                `sudo chroot /sysroot "$(pwd)/target/${buildItem.profile}/deno" --version`,
+                `sudo chroot /sysroot "$(pwd)/target/${buildItem.profile}/ende" --version`,
             },
             denoArtifact.upload(),
             denortArtifact.upload(),
@@ -1254,52 +1254,52 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             },
             with: {
               files: [
-                "target/release/deno-x86_64-pc-windows-msvc.zip",
-                "target/release/deno-x86_64-pc-windows-msvc.zip.sha256sum",
-                "target/release/deno-x86_64-pc-windows-msvc.sha256sum",
-                "target/release/denort-x86_64-pc-windows-msvc.zip",
-                "target/release/denort-x86_64-pc-windows-msvc.zip.sha256sum",
-                "target/release/libdenort-x86_64-pc-windows-msvc.zip",
-                "target/release/libdenort-x86_64-pc-windows-msvc.zip.sha256sum",
-                "target/release/deno-aarch64-pc-windows-msvc.zip",
-                "target/release/deno-aarch64-pc-windows-msvc.zip.sha256sum",
-                "target/release/deno-aarch64-pc-windows-msvc.sha256sum",
-                "target/release/denort-aarch64-pc-windows-msvc.zip",
-                "target/release/denort-aarch64-pc-windows-msvc.zip.sha256sum",
-                "target/release/libdenort-aarch64-pc-windows-msvc.zip",
-                "target/release/libdenort-aarch64-pc-windows-msvc.zip.sha256sum",
-                "target/release/deno-x86_64-unknown-linux-gnu.zip",
-                "target/release/deno-x86_64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/deno-x86_64-unknown-linux-gnu.sha256sum",
-                "target/release/denort-x86_64-unknown-linux-gnu.zip",
-                "target/release/denort-x86_64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/libdenort-x86_64-unknown-linux-gnu.zip",
-                "target/release/libdenort-x86_64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/deno-x86_64-apple-darwin.zip",
-                "target/release/deno-x86_64-apple-darwin.zip.sha256sum",
-                "target/release/deno-x86_64-apple-darwin.sha256sum",
-                "target/release/denort-x86_64-apple-darwin.zip",
-                "target/release/denort-x86_64-apple-darwin.zip.sha256sum",
-                "target/release/libdenort-x86_64-apple-darwin.zip",
-                "target/release/libdenort-x86_64-apple-darwin.zip.sha256sum",
-                "target/release/deno-aarch64-unknown-linux-gnu.zip",
-                "target/release/deno-aarch64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/deno-aarch64-unknown-linux-gnu.sha256sum",
-                "target/release/denort-aarch64-unknown-linux-gnu.zip",
-                "target/release/denort-aarch64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/libdenort-aarch64-unknown-linux-gnu.zip",
-                "target/release/libdenort-aarch64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/deno-aarch64-apple-darwin.zip",
-                "target/release/deno-aarch64-apple-darwin.zip.sha256sum",
-                "target/release/deno-aarch64-apple-darwin.sha256sum",
-                "target/release/denort-aarch64-apple-darwin.zip",
-                "target/release/denort-aarch64-apple-darwin.zip.sha256sum",
-                "target/release/libdenort-aarch64-apple-darwin.zip",
-                "target/release/libdenort-aarch64-apple-darwin.zip.sha256sum",
+                "target/release/ende-x86_64-pc-windows-msvc.zip",
+                "target/release/ende-x86_64-pc-windows-msvc.zip.sha256sum",
+                "target/release/ende-x86_64-pc-windows-msvc.sha256sum",
+                "target/release/endert-x86_64-pc-windows-msvc.zip",
+                "target/release/endert-x86_64-pc-windows-msvc.zip.sha256sum",
+                "target/release/libendert-x86_64-pc-windows-msvc.zip",
+                "target/release/libendert-x86_64-pc-windows-msvc.zip.sha256sum",
+                "target/release/ende-aarch64-pc-windows-msvc.zip",
+                "target/release/ende-aarch64-pc-windows-msvc.zip.sha256sum",
+                "target/release/ende-aarch64-pc-windows-msvc.sha256sum",
+                "target/release/endert-aarch64-pc-windows-msvc.zip",
+                "target/release/endert-aarch64-pc-windows-msvc.zip.sha256sum",
+                "target/release/libendert-aarch64-pc-windows-msvc.zip",
+                "target/release/libendert-aarch64-pc-windows-msvc.zip.sha256sum",
+                "target/release/ende-x86_64-unknown-linux-gnu.zip",
+                "target/release/ende-x86_64-unknown-linux-gnu.zip.sha256sum",
+                "target/release/ende-x86_64-unknown-linux-gnu.sha256sum",
+                "target/release/endert-x86_64-unknown-linux-gnu.zip",
+                "target/release/endert-x86_64-unknown-linux-gnu.zip.sha256sum",
+                "target/release/libendert-x86_64-unknown-linux-gnu.zip",
+                "target/release/libendert-x86_64-unknown-linux-gnu.zip.sha256sum",
+                "target/release/ende-x86_64-apple-darwin.zip",
+                "target/release/ende-x86_64-apple-darwin.zip.sha256sum",
+                "target/release/ende-x86_64-apple-darwin.sha256sum",
+                "target/release/endert-x86_64-apple-darwin.zip",
+                "target/release/endert-x86_64-apple-darwin.zip.sha256sum",
+                "target/release/libendert-x86_64-apple-darwin.zip",
+                "target/release/libendert-x86_64-apple-darwin.zip.sha256sum",
+                "target/release/ende-aarch64-unknown-linux-gnu.zip",
+                "target/release/ende-aarch64-unknown-linux-gnu.zip.sha256sum",
+                "target/release/ende-aarch64-unknown-linux-gnu.sha256sum",
+                "target/release/endert-aarch64-unknown-linux-gnu.zip",
+                "target/release/endert-aarch64-unknown-linux-gnu.zip.sha256sum",
+                "target/release/libendert-aarch64-unknown-linux-gnu.zip",
+                "target/release/libendert-aarch64-unknown-linux-gnu.zip.sha256sum",
+                "target/release/ende-aarch64-apple-darwin.zip",
+                "target/release/ende-aarch64-apple-darwin.zip.sha256sum",
+                "target/release/ende-aarch64-apple-darwin.sha256sum",
+                "target/release/endert-aarch64-apple-darwin.zip",
+                "target/release/endert-aarch64-apple-darwin.zip.sha256sum",
+                "target/release/libendert-aarch64-apple-darwin.zip",
+                "target/release/libendert-aarch64-apple-darwin.zip.sha256sum",
                 "target/release/deno_src.tar.gz",
                 "target/release/lib.deno.d.ts",
-                "target/release/deno-*.bsdiff",
-                "target/release/deno-*.bsdiff.sha256sum",
+                "target/release/ende-*.bsdiff",
+                "target/release/ende-*.bsdiff.sha256sum",
               ].join("\n"),
               body_path: "target/release/release-notes.md",
               draft: true,
@@ -1578,24 +1578,24 @@ const buildJobs = buildItems.map((rawBuildItem) => {
         installWasmStep,
         // we want these crates to be Wasm compatible
         {
-          name: "Cargo check (deno_resolver)",
+          name: "Cargo check (ende_resolver)",
           run:
-            "cargo check --target wasm32-unknown-unknown -p deno_resolver && cargo check --target wasm32-unknown-unknown -p deno_resolver --features graph && cargo check --target wasm32-unknown-unknown -p deno_resolver --features graph --features deno_ast",
+            "cargo check --target wasm32-unknown-unknown -p ende_resolver && cargo check --target wasm32-unknown-unknown -p ende_resolver --features graph && cargo check --target wasm32-unknown-unknown -p ende_resolver --features graph --features deno_ast",
         },
         {
-          name: "Cargo check (deno_npm_installer)",
+          name: "Cargo check (ende_npm_installer)",
           run:
-            "cargo check --target wasm32-unknown-unknown -p deno_npm_installer",
+            "cargo check --target wasm32-unknown-unknown -p ende_npm_installer",
         },
         {
-          name: "Cargo check (deno_config)",
+          name: "Cargo check (ende_config)",
           run: [
-            "cargo check --no-default-features -p deno_config",
-            "cargo check --no-default-features --features workspace -p deno_config",
-            "cargo check --no-default-features --features package_json -p deno_config",
-            "cargo check --no-default-features --features workspace --features sync -p deno_config",
-            "cargo check --target wasm32-unknown-unknown --all-features -p deno_config",
-            "cargo check -p deno --features=lsp-tracing",
+            "cargo check --no-default-features -p ende_config",
+            "cargo check --no-default-features --features workspace -p ende_config",
+            "cargo check --no-default-features --features package_json -p ende_config",
+            "cargo check --no-default-features --features workspace --features sync -p ende_config",
+            "cargo check --target wasm32-unknown-unknown --all-features -p ende_config",
+            "cargo check -p ende --features=lsp-tracing",
           ],
         },
         saveCacheStep,
@@ -1638,7 +1638,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           {
             name: "Run web platform tests (debug)",
             if: isDebug,
-            env: { DENO_BIN: "./target/debug/deno" },
+            env: { DENO_BIN: "./target/debug/ende" },
             run: [
               "deno run -RWNE --allow-run --lock=tools/deno.lock.json --config tests/config/deno.json \\",
               "    ./tests/wpt/wpt.ts setup",
@@ -1650,7 +1650,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             name: "Run web platform tests (release)",
             if: isRelease,
             env: {
-              DENO_BIN: "./target/release/deno",
+              DENO_BIN: "./target/release/ende",
             },
             run: [
               "deno run -RWNE --allow-run --lock=tools/deno.lock.json --config tests/config/deno.json \\",
@@ -1663,7 +1663,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             name: "Autobahn testsuite",
             if: isRelease,
             run:
-              "target/release/deno run -A --config tests/config/deno.json ext/websocket/autobahn/fuzzingclient.js",
+              "target/release/ende run -A --config tests/config/deno.json ext/websocket/autobahn/fuzzingclient.js",
           },
           step({
             name: "Upload wpt results to dl.deno.land",
@@ -1692,7 +1692,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               GITHUB_TOKEN: "${{ secrets.DENOBOT_PAT }}",
             },
             run: [
-              "./target/release/deno run --allow-all --lock=tools/deno.lock.json \\",
+              "./target/release/ende run --allow-all --lock=tools/deno.lock.json \\",
               "    ./tools/upload_wptfyi.js $(git rev-parse HEAD) --ghstatus",
             ],
           },
@@ -1756,7 +1756,7 @@ const benchJob = job(
           env: {
             DENO_SNAPSHOT_MINIFY_SOURCES: "1",
           },
-          run: "cargo build --release -p deno",
+          run: "cargo build --release -p ende",
         },
         {
           name: "Run benchmarks",
@@ -1772,7 +1772,7 @@ const benchJob = job(
             "git clone --depth 1 --branch gh-pages                             \\",
             "    https://${DENOBOT_PAT}@github.com/denoland/benchmark_data.git \\",
             "    gh-pages",
-            "./target/release/deno run --allow-all ./tools/build_benchmark_jsons.js --release",
+            "./target/release/ende run --allow-all ./tools/build_benchmark_jsons.js --release",
             "cd gh-pages",
             'git config user.email "propelml@gmail.com"',
             'git config user.name "denobot"',
@@ -1880,20 +1880,20 @@ const publishCanaryJob = job("publish-canary", {
   })(),
 });
 
-// === deno_core test job ===
-// Ported from denoland/deno_core .github/workflows/ci-test/action.yml
-// Tests the merged deno_core crates (libs/*) using cargo nextest.
+// === ende_core test job ===
+// Ported from denoland/ende_core .github/workflows/ci-test/action.yml
+// Tests the merged ende_core crates (libs/*) using cargo nextest.
 
-// Cargo package names for the libs/* workspace members (merged from deno_core).
+// Cargo package names for the libs/* workspace members (merged from ende_core).
 const denoCorePackageNames = [
-  "deno_core",
-  "deno_v8",
+  "ende_core",
+  "ende_v8",
   "build-your-own-js-snapshot",
-  "dcore",
-  "deno_ops",
-  "deno_ops_compile_test_runner",
+  "ecore",
+  "ende_ops",
+  "ende_ops_compile_test_runner",
   "serde_v8",
-  "deno_core_testing",
+  "ende_core_testing",
 ];
 const denoCoreTestProfile = defineExprObj({
   ...Runners.linuxX86Xl,
@@ -1904,7 +1904,7 @@ const denoCoreTestCacheSteps = createCacheSteps({
   cachePrefix: "deno-core-test",
 });
 const denoCoreTestJob = job("deno-core-test", {
-  name: `deno_core test linux-x86_64`,
+  name: `ende_core test linux-x86_64`,
   needs: [preBuildJob],
   if: preBuildJob.outputs.skip_build.notEquals("true")
     .and(preBuildJob.outputs.skip_deno_core_test.notEquals("true"))
@@ -1925,7 +1925,7 @@ const denoCoreTestJob = job("deno-core-test", {
     {
       // Frees several GB of preinstalled toolchains this job never uses
       // (.NET, Android SDK, GHC, Boost), fixing recurring "No space left
-      // on device" failures while compiling deno_core's doctests.
+      // on device" failures while compiling ende_core's doctests.
       name: "Free disk space",
       run: [
         'sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true',
@@ -1949,22 +1949,22 @@ const denoCoreTestJob = job("deno-core-test", {
       name: "Cargo nextest (release)",
       run: [
         `cargo nextest run --release`,
-        `  --features "deno_core/default deno_core/unsafe_use_unprotected_platform deno_core/v8"`,
+        `  --features "ende_core/default ende_core/unsafe_use_unprotected_platform ende_core/v8"`,
         `  --tests --examples`,
         `  ${denoCorePackageNames.map((p) => `-p ${p}`).join(" ")}`,
       ].join(" \\\n    "),
     },
     {
-      // Ported from denoland/deno_core .github/workflows/ci-test-ops/action.yml
+      // Ported from denoland/ende_core .github/workflows/ci-test-ops/action.yml
       name: "Cargo nextest ops compile test runner (release)",
       run:
-        "cargo nextest run --release -p deno_ops_compile_test_runner -p deno_v8",
+        "cargo nextest run --release -p ende_ops_compile_test_runner -p ende_v8",
     },
     {
       name: "Cargo doc test",
       run: `cargo test --doc --release ${
         denoCorePackageNames.filter((p) =>
-          p !== "deno_ops_compile_test_runner" && p !== "dcore"
+          p !== "ende_ops_compile_test_runner" && p !== "ecore"
         ).map((p) => `-p ${p}`).join(" ")
       }`,
     },
@@ -1972,20 +1972,20 @@ const denoCoreTestJob = job("deno-core-test", {
       // Regression test for https://github.com/denoland/deno/pull/19615.
       name: "Run examples (regression tests)",
       run: [
-        "cargo run -p deno_core --example op2 --features v8",
+        "cargo run -p ende_core --example op2 --features v8",
       ],
     },
     denoCoreTestCacheSteps.saveCacheStep,
   ),
 });
 
-// === deno_core miri test job ===
-// Ported from denoland/deno_core .github/workflows/ci-test-miri/action.yml
-// Runs miri tests for deno_core using a nightly Rust toolchain.
+// === ende_core miri test job ===
+// Ported from denoland/ende_core .github/workflows/ci-test-miri/action.yml
+// Runs miri tests for ende_core using a nightly Rust toolchain.
 
 const miriNightlyToolchain = "nightly-2025-11-12";
 const denoCoreMiriJob = job("deno-core-miri", {
-  name: "deno_core miri linux-x86_64",
+  name: "ende_core miri linux-x86_64",
   needs: [preBuildJob],
   if: preBuildJob.outputs.skip_build.notEquals("true").and(notDocsOnly),
   runsOn: Runners.linuxX86Xl.runner,
@@ -2015,7 +2015,7 @@ const denoCoreMiriJob = job("deno-core-miri", {
         "cargo clean",
         `rustup component add --toolchain ${miriNightlyToolchain} miri`,
         "# This somehow prints errors in CI that don't show up locally",
-        `RUSTFLAGS=-Awarnings cargo +${miriNightlyToolchain} miri test -p deno_core --features v8`,
+        `RUSTFLAGS=-Awarnings cargo +${miriNightlyToolchain} miri test -p ende_core --features v8`,
       ],
     },
   ),
@@ -2162,7 +2162,7 @@ function resolveWorkspaceCrates(testPackageMembers: Set<string>) {
         ensureNoIntegrationTests(member, cargoToml);
       }
     } else if (denoCorePackageDirs.includes(member)) {
-      // libs/* crates (merged from deno_core) have their own dedicated
+      // libs/* crates (merged from ende_core) have their own dedicated
       // deno-core-test CI job, so skip them here.
       continue;
     } else if (cargoToml.bin) {
@@ -2187,8 +2187,8 @@ function ensureNoIntegrationTests(
     errors.push("has a tests/ folder");
   }
   const hasNonRunnerTests = cargoToml.test?.some(
-    // this path is allowed because it's only used by deno and denort
-    // to cause the deno and denort binaries to be built when running
+    // this path is allowed because it's only used by deno and endert
+    // to cause the deno and endert binaries to be built when running
     // tests, but it doesn't actually run any tests itself
     (t) => t.path !== "integration_tests_runner.rs",
   );

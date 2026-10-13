@@ -4,10 +4,10 @@ import { DenoWorkspace } from "./deno_workspace.ts";
 import { $, type Crate, GitLogOutput, semver } from "./deps.ts";
 
 // Crates that the root Cargo.toml declares under a key that differs from the
-// crate name (ex. `v8 = { package = "deno_v8", ... }`). The release automation
+// crate name (ex. `v8 = { package = "ende_v8", ... }`). The release automation
 // finds dependency entries by matching the crate name at the start of a line,
 // so it can't see these and errors out. Bump them by hand instead.
-const renamedCrates = new Set(["deno_v8"]);
+const renamedCrates = new Set(["ende_v8"]);
 
 const workspace = await DenoWorkspace.load();
 const repo = workspace.repo;
@@ -213,7 +213,7 @@ async function bumpCiCacheVersion() {
 
 async function assertDenoBinaryVersion(expectedVersion: string) {
   $.logStep("Verifying Deno binary version.");
-  const text = (await $`cargo run -p deno -- -v`.text()).replace("deno ", "");
+  const text = (await $`cargo run -p ende -- -v`.text()).replace("deno ", "");
   $.logLight("Version:", text);
   if (text.trim() !== expectedVersion) {
     $.logError("Error: Expected", expectedVersion, "but found", text);

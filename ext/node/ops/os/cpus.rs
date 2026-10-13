@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::ToV8;
+use ende_core::ToV8;
 
 #[derive(Debug, Default, ToV8, Clone)]
 pub struct CpuTimes {

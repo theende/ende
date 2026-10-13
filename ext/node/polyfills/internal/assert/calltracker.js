@@ -17,16 +17,16 @@ const {
   SetPrototypeForEach,
 } = primordials;
 
-const { codes } = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const { codes } = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   ERR_INVALID_ARG_VALUE,
   ERR_UNAVAILABLE_DURING_EXIT,
 } = codes;
 const { AssertionError } = core.loadExtScript(
-  "ext:deno_node/internal/assert/assertion_error.js",
+  "ext:ende_node/internal/assert/assertion_error.js",
 );
 const { validateUint32 } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 
 const noop = FunctionPrototype;

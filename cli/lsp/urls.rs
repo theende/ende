@@ -6,11 +6,11 @@ use std::path::PathBuf;
 use std::path::Prefix;
 use std::str::FromStr;
 
-use deno_config::UrlToFilePathError;
-use deno_core::error::AnyError;
-use deno_core::url::Position;
-use deno_core::url::Url;
 use deno_path_util::url_to_file_path;
+use ende_config::UrlToFilePathError;
+use ende_core::error::AnyError;
+use ende_core::url::Position;
+use ende_core::url::Url;
 use lsp_types::Uri;
 
 use super::logging::lsp_warn;

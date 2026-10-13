@@ -1,10 +1,10 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_cache_dir::HttpCache;
-use deno_lockfile::Lockfile;
-use deno_lockfile::NewLockfileOptions;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::package::PackageNv;
+use ende_cache_dir::HttpCache;
+use ende_lockfile::Lockfile;
+use ende_lockfile::NewLockfileOptions;
 use serde_json::Value;
 use serde_json::json;
 use test_util as util;
@@ -131,12 +131,12 @@ error: Type checking failed.
 struct TestNpmPackageInfoProvider;
 
 #[async_trait::async_trait(?Send)]
-impl deno_lockfile::NpmPackageInfoProvider for TestNpmPackageInfoProvider {
+impl ende_lockfile::NpmPackageInfoProvider for TestNpmPackageInfoProvider {
   async fn get_npm_package_info(
     &self,
     values: &[deno_semver::package::PackageNv],
   ) -> Result<
-    Vec<deno_lockfile::Lockfile5NpmInfo>,
+    Vec<ende_lockfile::Lockfile5NpmInfo>,
     Box<dyn std::error::Error + Send + Sync>,
   > {
     Ok(values.iter().map(|_| Default::default()).collect())
@@ -209,7 +209,7 @@ fn remove_version_for_package(
   let specifier =
     Url::parse(&format!("http://127.0.0.1:4250/{}/meta.json", package))
       .unwrap();
-  let cache = deno_cache_dir::GlobalHttpCache::new(
+  let cache = ende_cache_dir::GlobalHttpCache::new(
     sys_traits::impls::RealSys,
     deno_dir.path().join("remote").to_path_buf(),
   );

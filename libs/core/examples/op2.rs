@@ -5,7 +5,7 @@
 use std::rc::Rc;
 
 use anyhow::Context;
-use deno_core::*;
+use ende_core::*;
 
 #[op2]
 fn op_use_state(
@@ -33,7 +33,7 @@ fn main() -> Result<(), anyhow::Error> {
   "
   .to_string();
 
-  let mut js_runtime = JsRuntime::new(deno_core::RuntimeOptions {
+  let mut js_runtime = JsRuntime::new(ende_core::RuntimeOptions {
     module_loader: Some(Rc::new(FsModuleLoader)),
     extensions: vec![op2_sample::init()],
     ..Default::default()

@@ -21,8 +21,8 @@ const {
   SymbolFor,
 } = primordials;
 
-const console = core.loadExtScript("ext:deno_web/01_console.js");
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const console = core.loadExtScript("ext:ende_web/01_console.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 
 /**
  * Maps Deno's `core.build.os` value to the OS name reported by

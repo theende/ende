@@ -112,7 +112,7 @@ async function buildGitCommit(progress, commit) {
     file = `deno-${profile}-${hash}`;
   }
   progress.message(`copy ${hash}`);
-  await tempDir.join("target").join(profile).join("deno").copyFile(file);
+  await tempDir.join("target").join(profile).join("ende").copyFile(file);
 
   progress.message(`cleanup ${hash}`);
   await tempDir.remove({ recursive: true });

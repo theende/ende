@@ -88,7 +88,7 @@ async fn js_realm_ref_unref_ops() {
     std::future::pending().await
   }
 
-  deno_core::extension!(test_ext, ops = [op_pending]);
+  ende_core::extension!(test_ext, ops = [op_pending]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -135,7 +135,7 @@ async fn js_realm_ref_unref_ops() {
 fn es_snapshot() {
   let _snapshot_lock = super::snapshot_test_lock();
   let startup_data = {
-    deno_core::extension!(
+    ende_core::extension!(
       module_snapshot,
       esm_entry_point = "mod:test",
       esm = ["mod:test" =
@@ -159,7 +159,7 @@ fn es_snapshot() {
   // The module was evaluated ahead of time
   {
     let global_test = runtime.execute_script("", "globalThis.TEST").unwrap();
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let global_test = v8::Local::new(scope, global_test);
     assert!(global_test.is_string());
     assert_eq!(global_test.to_rust_string_lossy(scope).as_str(), "foo");
@@ -175,7 +175,7 @@ fn es_snapshot() {
       futures::executor::block_on(runtime.resolve_value(test_export_promise))
         .unwrap();
 
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let test_export = v8::Local::new(scope, test_export);
     assert!(test_export.is_string());
     assert_eq!(test_export.to_rust_string_lossy(scope).as_str(), "bar");
@@ -186,7 +186,7 @@ fn es_snapshot() {
 fn lazy() {
   static CALLED: AtomicBool = AtomicBool::new(false);
 
-  deno_core::extension!(
+  ende_core::extension!(
     lazy_ext,
     options = {
       a: String,
@@ -197,7 +197,7 @@ fn lazy() {
     },
   );
 
-  deno_core::extension!(lazy_bad, state = |_state| {},);
+  ende_core::extension!(lazy_bad, state = |_state| {},);
 
   let extensions = vec![lazy_ext::lazy_init()];
 

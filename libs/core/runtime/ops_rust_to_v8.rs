@@ -449,7 +449,7 @@ impl<'a, T: crate::cppgc::GarbageCollected + 'static> RustToV8<'a>
     self,
     scope: &mut v8::PinScope<'a, 'i>,
   ) -> v8::Local<'a, v8::Value> {
-    v8::Local::<v8::Value>::from(deno_core::cppgc::make_cppgc_object(
+    v8::Local::<v8::Value>::from(ende_core::cppgc::make_cppgc_object(
       scope, self.0,
     ))
   }

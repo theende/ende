@@ -24,11 +24,11 @@
 const { core, primordials } = __bootstrap;
 
 const { ownerSymbol } = core.loadExtScript(
-  "ext:deno_node/internal/async_hooks.ts",
+  "ext:ende_node/internal/async_hooks.ts",
 );
 // deno-lint-ignore no-unused-vars
 const { HandleWrap } = core.loadExtScript(
-  "ext:deno_node/internal_binding/handle_wrap.ts",
+  "ext:ende_node/internal_binding/handle_wrap.ts",
 );
 const {
   kArrayBufferOffset,
@@ -37,20 +37,20 @@ const {
   kReadBytesOrError,
   streamBaseState,
   WriteWrap,
-} = core.loadExtScript("ext:deno_node/internal_binding/stream_wrap.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/stream_wrap.ts");
 const { errnoException } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 const lazyInternalTimers = () =>
-  core.loadExtScript("ext:deno_node/internal/timers.mjs");
+  core.loadExtScript("ext:ende_node/internal/timers.mjs");
 const lazyTimers = core.createLazyLoader("node:timers");
-const { codeMap } = core.loadExtScript("ext:deno_node/internal_binding/uv.ts");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { codeMap } = core.loadExtScript("ext:ende_node/internal_binding/uv.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const { isUint8Array } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 const { validateFunction } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 
 const {

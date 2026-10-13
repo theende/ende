@@ -22,22 +22,22 @@ const {
   TypeError,
 } = primordials;
 
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const {
   Request,
   RequestPrototype,
   toInnerRequest,
-} = core.loadExtScript("ext:deno_fetch/23_request.js");
+} = core.loadExtScript("ext:ende_fetch/23_request.js");
 const { toInnerResponse, wireHeaderList } = core.loadExtScript(
-  "ext:deno_fetch/23_response.js",
+  "ext:ende_fetch/23_response.js",
 );
-const { URLPrototype } = core.loadExtScript("ext:deno_web/00_url.js");
-const { getHeader } = core.loadExtScript("ext:deno_fetch/20_headers.js");
+const { URLPrototype } = core.loadExtScript("ext:ende_web/00_url.js");
+const { getHeader } = core.loadExtScript("ext:ende_fetch/20_headers.js");
 const {
   getReadableStreamResourceBacking,
   readableStreamForRid,
   resourceForReadableStream,
-} = core.loadExtScript("ext:deno_web/06_streams.js");
+} = core.loadExtScript("ext:ende_web/06_streams.js");
 class CacheStorage {
   constructor() {
     webidl.illegalConstructor();

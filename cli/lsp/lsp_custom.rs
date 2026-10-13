@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::serde::Deserialize;
-use deno_core::serde::Serialize;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Serialize;
 use tower_lsp::lsp_types as lsp;
 
 pub const PERFORMANCE_REQUEST: &str = "deno/performance";

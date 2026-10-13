@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use deno_core::Extension;
-use deno_resolver::npm::DenoInNpmPackageChecker;
-use deno_resolver::npm::NpmResolver;
+use ende_core::Extension;
+use ende_resolver::npm::DenoInNpmPackageChecker;
+use ende_resolver::npm::NpmResolver;
 
 use crate::ops;
 use crate::shared::runtime;
@@ -13,60 +13,60 @@ pub fn get_extensions_in_snapshot() -> Vec<Extension> {
   // NOTE(bartlomieju): ordering is important here, keep it in sync with
   // `runtime/worker.rs`, `runtime/web_worker.rs`, `runtime/snapshot_info.rs`
   // and `runtime/snapshot.rs`!
-  let fs = std::sync::Arc::new(deno_fs::RealFs);
+  let fs = std::sync::Arc::new(ende_fs::RealFs);
   vec![
-    deno_telemetry::deno_telemetry::init(),
-    deno_webidl::deno_webidl::init(),
-    deno_web::deno_web::init(
-      deno_web::BlobStore::default_arc(),
+    ende_telemetry::ende_telemetry::init(),
+    ende_webidl::ende_webidl::init(),
+    ende_web::ende_web::init(
+      ende_web::BlobStore::default_arc(),
       Default::default(),
       Default::default(),
-      deno_web::InMemoryBroadcastChannel::default(),
+      ende_web::InMemoryBroadcastChannel::default(),
     ),
-    deno_webgpu::deno_webgpu::init(),
-    deno_image::deno_image::init(),
-    deno_canvas::deno_canvas::init(),
-    deno_fetch::deno_fetch::init(Default::default()),
-    deno_cache::deno_cache::init(None),
-    deno_websocket::deno_websocket::init(),
-    deno_webstorage::deno_webstorage::init(None),
-    deno_crypto::deno_crypto::init(None),
-    deno_ffi::deno_ffi::init(None),
-    deno_net::deno_net::init(None, None),
-    deno_tls::deno_tls::init(),
-    deno_kv::deno_kv::init(
-      Box::new(deno_kv::sqlite::SqliteDbHandler::new(None, None)),
-      deno_kv::KvConfig::builder().build(),
+    ende_webgpu::ende_webgpu::init(),
+    ende_image::ende_image::init(),
+    ende_canvas::ende_canvas::init(),
+    ende_fetch::ende_fetch::init(Default::default()),
+    ende_cache::ende_cache::init(None),
+    ende_websocket::ende_websocket::init(),
+    ende_webstorage::ende_webstorage::init(None),
+    ende_crypto::ende_crypto::init(None),
+    ende_ffi::ende_ffi::init(None),
+    ende_net::ende_net::init(None, None),
+    ende_tls::ende_tls::init(),
+    ende_kv::ende_kv::init(
+      Box::new(ende_kv::sqlite::SqliteDbHandler::new(None, None)),
+      ende_kv::KvConfig::builder().build(),
     ),
-    deno_cron::deno_cron::init(Box::new(
-      deno_cron::local::LocalCronHandler::new(),
+    ende_cron::ende_cron::init(Box::new(
+      ende_cron::local::LocalCronHandler::new(),
     )),
-    deno_napi::deno_napi::init(None),
-    deno_http::deno_http::init(deno_http::Options::default()),
-    deno_io::deno_io::init(Some(Default::default())),
-    deno_fs::deno_fs::init(fs.clone()),
-    deno_os::deno_os::init(Default::default()),
-    deno_process::deno_process::init(Default::default()),
-    deno_node_crypto::deno_node_crypto::init(),
-    deno_node_sqlite::deno_node_sqlite::init(),
-    deno_node::deno_node::init::<
+    ende_napi::ende_napi::init(None),
+    ende_http::ende_http::init(ende_http::Options::default()),
+    ende_io::ende_io::init(Some(Default::default())),
+    ende_fs::ende_fs::init(fs.clone()),
+    ende_os::ende_os::init(Default::default()),
+    ende_process::ende_process::init(Default::default()),
+    ende_node_crypto::ende_node_crypto::init(),
+    ende_node_sqlite::ende_node_sqlite::init(),
+    ende_node::ende_node::init::<
       DenoInNpmPackageChecker,
       NpmResolver<sys_traits::impls::RealSys>,
       sys_traits::impls::RealSys,
     >(None, fs.clone()),
-    ops::runtime::deno_runtime::init("deno:runtime".parse().unwrap()),
-    ops::worker_host::deno_worker_host::init(
+    ops::runtime::ende_runtime::init("deno:runtime".parse().unwrap()),
+    ops::worker_host::ende_worker_host::init(
       Arc::new(|_| unreachable!("not used in snapshot.")),
       None,
     ),
-    ops::fs_events::deno_fs_events::init(),
-    ops::permissions::deno_permissions::init(),
-    ops::tty::deno_tty::init(),
-    ops::http::deno_http_runtime::init(),
-    deno_bundle_runtime::deno_bundle_runtime::init(None),
-    ops::desktop::deno_desktop::init(),
-    ops::bootstrap::deno_bootstrap::init(None, false),
+    ops::fs_events::ende_fs_events::init(),
+    ops::permissions::ende_permissions::init(),
+    ops::tty::ende_tty::init(),
+    ops::http::ende_http_runtime::init(),
+    ende_bundle_runtime::ende_bundle_runtime::init(None),
+    ops::desktop::ende_desktop::init(),
+    ops::bootstrap::ende_bootstrap::init(None, false),
     runtime::init(),
-    ops::web_worker::deno_web_worker::init(),
+    ops::web_worker::ende_web_worker::init(),
   ]
 }

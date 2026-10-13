@@ -3,13 +3,13 @@
 use std::io::Write;
 use std::sync::Arc;
 
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
-use deno_core::futures;
-use deno_core::futures::FutureExt;
-use deno_core::futures::StreamExt;
-use deno_core::serde_json;
-use deno_npm::resolution::NpmResolutionSnapshot;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_core::futures;
+use ende_core::futures::FutureExt;
+use ende_core::futures::StreamExt;
+use ende_core::serde_json;
+use ende_npm::resolution::NpmResolutionSnapshot;
 use eszip::v2::Url;
 use http::header::HeaderName;
 use http::header::HeaderValue;
@@ -1059,7 +1059,7 @@ mod socket_dev {
 
 #[cfg(test)]
 mod tests {
-  use deno_core::serde_json;
+  use ende_core::serde_json;
 
   use super::npm::BulkAuditResponse;
   use super::print_fix_summary;

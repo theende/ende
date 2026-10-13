@@ -85,9 +85,9 @@ pub fn get_body(
       }).collect::<Result<Vec<_>, Error>>()?;
 
       let body = quote! {
-        let __obj: ::deno_core::v8::Local<::deno_core::v8::Object> =  match __value.try_into() {
+        let __obj: ::ende_core::v8::Local<::ende_core::v8::Object> =  match __value.try_into() {
           Ok(obj) => obj,
-          Err(err) => return Err(::deno_error::JsErrorBox::from_err(::deno_core::error::DataError::from(err))),
+          Err(err) => return Err(::deno_error::JsErrorBox::from_err(::ende_core::error::DataError::from(err))),
         };
 
         #(#fields)*
@@ -128,8 +128,8 @@ pub fn get_body(
           .collect::<Vec<_>>();
 
         quote! {
-          let __array = ::deno_core::v8::Local::<::deno_core::v8::Array>::try_from(__value)
-            .map_err(|err| ::deno_error::JsErrorBox::from_err(::deno_core::error::DataError::from(err)))?;
+          let __array = ::ende_core::v8::Local::<::ende_core::v8::Array>::try_from(__value)
+            .map_err(|err| ::deno_error::JsErrorBox::from_err(::ende_core::error::DataError::from(err)))?;
 
           Ok(Self(#(#fields),*))
         }

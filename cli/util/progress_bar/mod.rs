@@ -5,8 +5,8 @@ use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
-use deno_core::parking_lot::Mutex;
-use deno_runtime::ops::tty::ConsoleSize;
+use ende_core::parking_lot::Mutex;
+use ende_runtime::ops::tty::ConsoleSize;
 
 use self::renderer::ProgressBarRenderer;
 use self::renderer::ProgressData;
@@ -287,7 +287,7 @@ pub struct ProgressBar {
   inner: ProgressBarInner,
 }
 
-impl deno_npm_installer::Reporter for ProgressBar {
+impl ende_npm_installer::Reporter for ProgressBar {
   type Guard = UpdateGuard;
   type ClearGuard = UpdateGuard;
 

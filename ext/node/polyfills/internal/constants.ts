@@ -2,7 +2,7 @@
 // Copyright Joyent and Node contributors. All rights reserved. MIT license.
 (function () {
 const { core } = __bootstrap;
-const { isWindows } = core.loadExtScript("ext:deno_node/_util/os.ts");
+const { isWindows } = core.loadExtScript("ext:ende_node/_util/os.ts");
 
 // Alphabet chars.
 const CHAR_UPPERCASE_A = 65; /* A */

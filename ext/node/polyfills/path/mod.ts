@@ -4,9 +4,9 @@
 
 (function () {
 const { core } = __bootstrap;
-const { isWindows } = core.loadExtScript("ext:deno_node/_util/os.ts");
-const _win32 = core.loadExtScript("ext:deno_node/path/_win32.ts").default;
-const _posix = core.loadExtScript("ext:deno_node/path/_posix.ts").default;
+const { isWindows } = core.loadExtScript("ext:ende_node/_util/os.ts");
+const _win32 = core.loadExtScript("ext:ende_node/path/_win32.ts").default;
+const _posix = core.loadExtScript("ext:ende_node/path/_posix.ts").default;
 
 const win32 = {
   ..._win32,
@@ -41,7 +41,7 @@ const {
   _makeLong,
   matchesGlob,
 } = path;
-const { common } = core.loadExtScript("ext:deno_node/path/common.ts");
+const { common } = core.loadExtScript("ext:ende_node/path/common.ts");
 
 return {
   win32,

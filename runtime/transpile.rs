@@ -7,10 +7,10 @@ use std::sync::OnceLock;
 use deno_ast::MediaType;
 use deno_ast::ParseParams;
 use deno_ast::SourceMapOption;
-use deno_core::ModuleCodeString;
-use deno_core::ModuleName;
-use deno_core::SourceMapData;
 use deno_error::JsErrorBox;
+use ende_core::ModuleCodeString;
+use ende_core::ModuleName;
+use ende_core::SourceMapData;
 
 deno_error::js_error_wrapper!(
   deno_ast::ParseDiagnostic,
@@ -39,7 +39,7 @@ pub fn maybe_transpile_and_minify_source(
 
 /// The `node:process` polyfill carries a `__NODE_VERSION__` placeholder so the
 /// reported `process.version` / `process.versions.node` stays bound to the
-/// single source of truth in `deno_node::NODE_VERSION` instead of duplicating
+/// single source of truth in `ende_node::NODE_VERSION` instead of duplicating
 /// the literal. Substitute it here, at snapshot build time, so the value is
 /// baked into the snapshot and no runtime work is needed.
 fn maybe_substitute_node_version(
@@ -47,7 +47,7 @@ fn maybe_substitute_node_version(
   source: ModuleCodeString,
 ) -> ModuleCodeString {
   const TOKEN: &str = "__NODE_VERSION__";
-  if !name.ends_with("deno_node/_process/process.ts") {
+  if !name.ends_with("ende_node/_process/process.ts") {
     return source;
   }
   debug_assert!(
@@ -56,7 +56,7 @@ fn maybe_substitute_node_version(
   );
   source
     .as_str()
-    .replace(TOKEN, deno_node::NODE_VERSION)
+    .replace(TOKEN, ende_node::NODE_VERSION)
     .into()
 }
 
@@ -91,7 +91,7 @@ fn maybe_transpile_source_inner(
   }
 
   let parsed = deno_ast::parse_module(ParseParams {
-    specifier: deno_core::url::Url::parse(&name).unwrap(),
+    specifier: ende_core::url::Url::parse(&name).unwrap(),
     text: source.into(),
     media_type,
     capture_tokens: false,

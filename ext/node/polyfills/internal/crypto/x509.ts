@@ -44,26 +44,26 @@ const {
 const {
   KeyObject,
   PublicKeyObject,
-} = core.loadExtScript("ext:deno_node/internal/crypto/keys.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/keys.ts");
 const { kHandle } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/constants.ts",
+  "ext:ende_node/internal/crypto/constants.ts",
 );
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { isArrayBufferView } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 const {
   validateBoolean,
   validateObject,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { inspect } = core.loadExtScript("ext:deno_node/util.ts");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { inspect } = core.loadExtScript("ext:ende_node/util.ts");
 const { customInspectSymbol: kInspect } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 
 const kEmptyObject = ObjectFreeze({ __proto__: null } as any);

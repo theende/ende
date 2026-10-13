@@ -8,9 +8,9 @@
 //! through the Rust `raw-secret` import path
 //! ([`crate::subtle_import_key::run`]).
 
-use deno_core::ToV8;
-use deno_core::v8;
 use deno_error::JsErrorBox;
+use ende_core::ToV8;
+use ende_core::v8;
 
 use crate::CryptoError;
 use crate::algorithm::compute_key_length;

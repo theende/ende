@@ -240,8 +240,8 @@ macro_rules! napi_wrap {
       $crate::util::napi_clear_last_error(env);
 
       let scope_env = unsafe { &mut *env_ptr };
-      deno_core::v8::callback_scope!(unsafe scope, scope_env.context());
-      deno_core::v8::tc_scope!(try_catch, scope);
+      ende_core::v8::callback_scope!(unsafe scope, scope_env.context());
+      ende_core::v8::tc_scope!(try_catch, scope);
 
       #[inline(always)]
       fn inner $( < $( $x ),* > )? ( $env: & $( $lt )? mut Env , $( $ident : $ty ),* ) -> napi_status $body

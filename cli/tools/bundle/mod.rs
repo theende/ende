@@ -21,18 +21,6 @@ use deno_ast::EmitOptions;
 use deno_ast::MediaType;
 use deno_ast::ModuleKind;
 use deno_ast::ModuleSpecifier;
-use deno_bundle_runtime::BundleFormat;
-use deno_bundle_runtime::BundlePlatform;
-use deno_bundle_runtime::PackageHandling;
-use deno_bundle_runtime::SourceMapType;
-use deno_config::workspace::TsTypeLib;
-use deno_core::anyhow::Context as _;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt as _;
-use deno_core::parking_lot::Mutex;
-use deno_core::parking_lot::RwLock;
-use deno_core::serde_json;
-use deno_core::url::Url;
 use deno_error::JsError;
 use deno_error::JsErrorClass;
 use deno_graph::GraphKind;
@@ -40,22 +28,34 @@ use deno_graph::ModuleErrorKind;
 use deno_graph::ModuleGraph;
 use deno_graph::Position;
 use deno_path_util::resolve_url_or_path;
-use deno_resolver::cache::ParsedSourceCache;
-use deno_resolver::graph::ResolveWithGraphError;
-use deno_resolver::graph::ResolveWithGraphOptions;
-use deno_resolver::loader::LoadCodeSourceError;
-use deno_resolver::loader::LoadCodeSourceErrorKind;
-use deno_resolver::loader::LoadPreparedModuleErrorKind;
-use deno_resolver::loader::LoadedModuleOrAsset;
-use deno_resolver::loader::LoadedModuleSource;
-use deno_resolver::loader::RequestedModuleType;
-use deno_resolver::npm::managed::ResolvePkgFolderFromDenoModuleError;
-use deno_resolver::npmrc::discover_npmrc_from_home;
-use deno_resolver::workspace::WorkspaceNpmLinkPackagesRc;
-use deno_runtime::deno_permissions::CheckSpecifierKind;
-use deno_runtime::deno_permissions::OpenAccessKind;
-use deno_runtime::deno_permissions::PermissionsContainer;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_bundle_runtime::BundleFormat;
+use ende_bundle_runtime::BundlePlatform;
+use ende_bundle_runtime::PackageHandling;
+use ende_bundle_runtime::SourceMapType;
+use ende_config::workspace::TsTypeLib;
+use ende_core::anyhow::Context as _;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt as _;
+use ende_core::parking_lot::Mutex;
+use ende_core::parking_lot::RwLock;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_resolver::cache::ParsedSourceCache;
+use ende_resolver::graph::ResolveWithGraphError;
+use ende_resolver::graph::ResolveWithGraphOptions;
+use ende_resolver::loader::LoadCodeSourceError;
+use ende_resolver::loader::LoadCodeSourceErrorKind;
+use ende_resolver::loader::LoadPreparedModuleErrorKind;
+use ende_resolver::loader::LoadedModuleOrAsset;
+use ende_resolver::loader::LoadedModuleSource;
+use ende_resolver::loader::RequestedModuleType;
+use ende_resolver::npm::managed::ResolvePkgFolderFromDenoModuleError;
+use ende_resolver::npmrc::discover_npmrc_from_home;
+use ende_resolver::workspace::WorkspaceNpmLinkPackagesRc;
+use ende_runtime::ende_permissions::CheckSpecifierKind;
+use ende_runtime::ende_permissions::OpenAccessKind;
+use ende_runtime::ende_permissions::PermissionsContainer;
 use esbuild_client::EsbuildFlagsBuilder;
 use esbuild_client::EsbuildService;
 use esbuild_client::protocol;
@@ -145,12 +145,12 @@ pub async fn prepare_inputs(
   } else {
     // require an outdir when any HTML is present
     if bundle_flags.output_dir.is_none() {
-      return Err(deno_core::anyhow::anyhow!(
+      return Err(ende_core::anyhow::anyhow!(
         "--outdir is required when bundling HTML entrypoints",
       ));
     }
     if bundle_flags.output_path.is_some() {
-      return Err(deno_core::anyhow::anyhow!(
+      return Err(ende_core::anyhow::anyhow!(
         "--output is not supported with HTML entrypoints; use --outdir",
       ));
     }
@@ -371,7 +371,7 @@ pub async fn bundle(
         &bundler.plugin_handler.take_deferred_resolve_errors(),
       );
       if !response.errors.is_empty() {
-        deno_core::anyhow::bail!("bundling failed");
+        ende_core::anyhow::bail!("bundling failed");
       }
     }
     return bundle_watch(
@@ -412,7 +412,7 @@ pub async fn bundle(
   }
 
   if !response.errors.is_empty() {
-    deno_core::anyhow::bail!("bundling failed");
+    ende_core::anyhow::bail!("bundling failed");
   }
 
   Ok(())
@@ -466,7 +466,7 @@ async fn emit_bundle_declarations(
   )?;
 
   if result.diagnostics.has_diagnostic() {
-    deno_core::anyhow::bail!(
+    ende_core::anyhow::bail!(
       "Type checking failed when generating declarations:\n{}",
       result.diagnostics
     );
@@ -489,7 +489,7 @@ async fn emit_bundle_declarations(
   // For each entry point, produce a single rolled-up .d.ts
   for entry_specifier in &entrypoint_specifiers {
     let entry_path = entry_specifier.to_file_path().map_err(|_| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "Entry point must be a file: {}",
         entry_specifier
       )
@@ -500,7 +500,7 @@ async fn emit_bundle_declarations(
     let entry_dts = dts_by_source
       .get(&dts_path.to_string_lossy().to_string())
       .ok_or_else(|| {
-        deno_core::anyhow::anyhow!(
+        ende_core::anyhow::anyhow!(
           "No declaration file emitted for entry point: {}",
           entry_specifier
         )
@@ -909,7 +909,7 @@ pub async fn bundle_for_compile(
     &bundler.plugin_handler.take_deferred_resolve_errors(),
   );
   if !response.errors.is_empty() {
-    deno_core::anyhow::bail!("bundling failed");
+    ende_core::anyhow::bail!("bundling failed");
   }
 
   let output_files = collect_output_files(
@@ -935,7 +935,7 @@ pub async fn bundle_for_compile(
     );
   }
 
-  deno_core::anyhow::bail!("esbuild produced no JavaScript output")
+  ende_core::anyhow::bail!("esbuild produced no JavaScript output")
 }
 
 fn metafile_from_response(
@@ -943,7 +943,7 @@ fn metafile_from_response(
 ) -> Result<esbuild_client::Metafile, AnyError> {
   Ok(serde_json::from_str::<esbuild_client::Metafile>(
     response.metafile.as_deref().ok_or_else(|| {
-      deno_core::anyhow::anyhow!("expected a metafile to be present")
+      ende_core::anyhow::anyhow!("expected a metafile to be present")
     })?,
   )?)
 }
@@ -1182,7 +1182,7 @@ impl EsbuildBundler {
           .context("failed to send rebuild request to esbuild")?
           .map_err(|e| message_to_error(&e, &self.cwd))?;
         let response = self.on_end_rx.recv().await.ok_or_else(|| {
-          deno_core::anyhow::anyhow!(
+          ende_core::anyhow::anyhow!(
             "esbuild exited before the rebuild completed"
           )
         })?;
@@ -1250,7 +1250,7 @@ fn message_to_error(
   message: &esbuild_client::protocol::Message,
   current_dir: &Path,
 ) -> AnyError {
-  deno_core::anyhow::anyhow!("{}", format_message(message, current_dir))
+  ende_core::anyhow::anyhow!("{}", format_message(message, current_dir))
 }
 
 // TODO(nathanwhit): MASSIVE HACK
@@ -1390,9 +1390,9 @@ struct BundleError(Box<BundleErrorKind>);
 #[class(generic)]
 enum BundleErrorKind {
   #[error(transparent)]
-  Resolver(#[from] deno_resolver::graph::ResolveWithGraphError),
+  Resolver(#[from] ende_resolver::graph::ResolveWithGraphError),
   #[error(transparent)]
-  Url(#[from] deno_core::url::ParseError),
+  Url(#[from] ende_core::url::ParseError),
   #[error(transparent)]
   ResolveNpmPkg(#[from] ResolvePkgFolderFromDenoModuleError),
   #[error(transparent)]
@@ -1408,7 +1408,7 @@ enum BundleErrorKind {
   #[error(transparent)]
   PrepareModuleLoad(#[from] crate::module_loader::PrepareModuleLoadError),
   #[error(transparent)]
-  ResolveReqWithSubPath(#[from] deno_resolver::npm::ResolveReqWithSubPathError),
+  ResolveReqWithSubPath(#[from] ende_resolver::npm::ResolveReqWithSubPathError),
   #[error(transparent)]
   PackageReqReferenceParse(
     #[from] deno_semver::package::PackageReqReferenceParseError,
@@ -1537,9 +1537,9 @@ impl DenoPluginHandler {
       .ok()
       .flatten()?;
     match pkg_json.side_effects.as_ref()? {
-      deno_package_json::PackageJsonSideEffects::Bool(true) => None,
-      deno_package_json::PackageJsonSideEffects::Bool(false) => Some(false),
-      deno_package_json::PackageJsonSideEffects::Patterns(patterns) => {
+      ende_package_json::PackageJsonSideEffects::Bool(true) => None,
+      ende_package_json::PackageJsonSideEffects::Bool(false) => Some(false),
+      ende_package_json::PackageJsonSideEffects::Patterns(patterns) => {
         let rel = file_path.strip_prefix(pkg_json.dir_path()).ok()?;
         let rel_str = rel.to_string_lossy().replace('\\', "/");
         for pattern in patterns {
@@ -1809,7 +1809,7 @@ pub struct BundleLoadError(pub Box<BundleLoadErrorKind>);
 pub enum BundleLoadErrorKind {
   #[class(inherit)]
   #[error(transparent)]
-  Fetch(#[from] deno_resolver::file_fetcher::FetchError),
+  Fetch(#[from] ende_resolver::file_fetcher::FetchError),
   #[class(inherit)]
   #[error(transparent)]
   LoadCodeSource(#[from] LoadCodeSourceError),
@@ -1818,7 +1818,7 @@ pub enum BundleLoadErrorKind {
   ResolveUrlOrPath(#[from] deno_path_util::ResolveUrlOrPathError),
   #[class(inherit)]
   #[error(transparent)]
-  Permission(#[from] deno_runtime::deno_permissions::PermissionCheckError),
+  Permission(#[from] ende_runtime::ende_permissions::PermissionCheckError),
   #[class(inherit)]
   #[error(transparent)]
   ResolveWithGraph(#[from] ResolveWithGraphError),
@@ -1848,7 +1848,7 @@ pub enum BundleLoadErrorKind {
   #[class(generic)]
   #[error("Emit parsed source helper error")]
   EmitParsedSourceHelperError(
-    #[from] deno_resolver::emit::EmitParsedSourceHelperError,
+    #[from] ende_resolver::emit::EmitParsedSourceHelperError,
   ),
 }
 
@@ -1877,12 +1877,12 @@ fn browser_map_disabled_specifier(error: &BundleError) -> Option<String> {
   let BundleErrorKind::Resolver(resolve_err) = error.as_kind() else {
     return None;
   };
-  let deno_resolver::graph::ResolveWithGraphErrorKind::Resolve(e) =
+  let ende_resolver::graph::ResolveWithGraphErrorKind::Resolve(e) =
     resolve_err.as_kind()
   else {
     return None;
   };
-  let deno_resolver::DenoResolveErrorKind::Node(node_err) = e.as_kind() else {
+  let ende_resolver::DenoResolveErrorKind::Node(node_err) = e.as_kind() else {
     return None;
   };
   let node_resolver::errors::NodeResolveErrorKind::BrowserMapDisabled(disabled) =
@@ -1910,9 +1910,9 @@ fn looks_like_bare_specifier(specifier: &str) -> bool {
 fn maybe_ignorable_resolution_error(
   error: &ResolveWithGraphError,
 ) -> Option<String> {
-  if let deno_resolver::graph::ResolveWithGraphErrorKind::Resolve(e) =
+  if let ende_resolver::graph::ResolveWithGraphErrorKind::Resolve(e) =
     error.as_kind()
-    && let deno_resolver::DenoResolveErrorKind::Node(node_err) = e.as_kind()
+    && let ende_resolver::DenoResolveErrorKind::Node(node_err) = e.as_kind()
     && let node_resolver::errors::NodeResolveErrorKind::PackageResolve(pkg_err) =
       node_err.as_kind()
     && let node_resolver::errors::PackageResolveErrorKind::PackageFolderResolve(
@@ -1923,7 +1923,7 @@ fn maybe_ignorable_resolution_error(
     ) = pkg_folder_err.as_kind()
   {
     Some(package_name.to_string())
-  } else if let deno_resolver::graph::ResolveWithGraphErrorKind::Resolution(
+  } else if let ende_resolver::graph::ResolveWithGraphErrorKind::Resolution(
     deno_graph::ResolutionError::ResolverError {
       error: resolve_error,
       specifier,
@@ -2140,7 +2140,7 @@ impl DenoPluginHandler {
     if self.is_runtime_api {
       if specifier.scheme() == "file" {
         let path = deno_path_util::url_to_file_path(specifier).map_err(|_| {
-          deno_runtime::deno_permissions::PermissionCheckError::InvalidFilePath(
+          ende_runtime::ende_permissions::PermissionCheckError::InvalidFilePath(
             specifier.clone(),
           )
         })?;
@@ -2153,7 +2153,7 @@ impl DenoPluginHandler {
           &checked_path,
         )
         .map_err(|_| {
-          deno_runtime::deno_permissions::PermissionCheckError::InvalidFilePath(
+          ende_runtime::ende_permissions::PermissionCheckError::InvalidFilePath(
             specifier.clone(),
           )
         })?;
@@ -2739,10 +2739,10 @@ fn configure_esbuild_flags(
     builder.metafile(true);
   }
   match bundle_flags.platform {
-    deno_bundle_runtime::BundlePlatform::Browser => {
+    ende_bundle_runtime::BundlePlatform::Browser => {
       builder.platform(esbuild_client::Platform::Browser);
     }
-    deno_bundle_runtime::BundlePlatform::Deno => {}
+    ende_bundle_runtime::BundlePlatform::Deno => {}
   }
 
   builder.build()
@@ -2923,7 +2923,7 @@ pub fn collect_output_files<'a>(
   } = input
   {
     let outdir = outdir.ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "--outdir is required when bundling HTML entrypoints",
       )
     })?;
@@ -2962,7 +2962,7 @@ pub fn process_result(
       .unwrap_or_else(|| Cow::Borrowed(file.contents.as_ref()));
 
     if file.path.ends_with("<stdout>") {
-      deno_print::drop_write_stdout(bytes.as_ref());
+      ende_print::drop_write_stdout(bytes.as_ref());
       continue;
     }
 
@@ -3052,7 +3052,7 @@ fn print_finished_message(
 
 #[cfg(test)]
 mod entrypoint_tests {
-  use deno_core::url::Url;
+  use ende_core::url::Url;
 
   use super::is_html_entrypoint;
 

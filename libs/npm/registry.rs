@@ -1310,12 +1310,12 @@ pub struct TestNpmRegistryApi {
 }
 
 #[async_trait::async_trait(?Send)]
-impl deno_lockfile::NpmPackageInfoProvider for TestNpmRegistryApi {
+impl ende_lockfile::NpmPackageInfoProvider for TestNpmRegistryApi {
   async fn get_npm_package_info(
     &self,
     values: &[PackageNv],
   ) -> Result<
-    Vec<deno_lockfile::Lockfile5NpmInfo>,
+    Vec<ende_lockfile::Lockfile5NpmInfo>,
     Box<dyn std::error::Error + Send + Sync>,
   > {
     let mut infos = Vec::new();
@@ -1326,7 +1326,7 @@ impl deno_lockfile::NpmPackageInfoProvider for TestNpmRegistryApi {
         .await
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
       let version_info = info.version_info(nv, &linked_packages).unwrap();
-      let lockfile_info = deno_lockfile::Lockfile5NpmInfo {
+      let lockfile_info = ende_lockfile::Lockfile5NpmInfo {
         tarball_url: version_info
           .dist
           .as_ref()

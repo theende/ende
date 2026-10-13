@@ -3,10 +3,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_config::workspace::Workspace;
-use deno_package_json::PackageJsonDepValue;
-use deno_package_json::PackageJsonDepValueParseError;
-use deno_package_json::PackageJsonDepWorkspaceReq;
 use deno_semver::SmallStackString;
 use deno_semver::StackString;
 use deno_semver::Version;
@@ -15,6 +11,10 @@ use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageName;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
+use ende_config::workspace::Workspace;
+use ende_package_json::PackageJsonDepValue;
+use ende_package_json::PackageJsonDepValueParseError;
+use ende_package_json::PackageJsonDepWorkspaceReq;
 use serde_json;
 use thiserror::Error;
 use url::Url;
@@ -130,7 +130,7 @@ pub struct NpmInstallDepsProvider {
 }
 
 fn package_json_to_lifecycle_nv(
-  pkg_json: &deno_package_json::PackageJson,
+  pkg_json: &ende_package_json::PackageJson,
 ) -> PackageNv {
   let name = pkg_json
     .name

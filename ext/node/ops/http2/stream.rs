@@ -4,10 +4,10 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 
-use deno_core::cppgc;
-use deno_core::op2;
-use deno_core::uv_compat::UV_ECANCELED;
-use deno_core::v8;
+use ende_core::cppgc;
+use ende_core::op2;
+use ende_core::uv_compat::UV_ECANCELED;
+use ende_core::v8;
 use libnghttp2 as ffi;
 use serde::Serialize;
 
@@ -247,7 +247,7 @@ pub struct Http2Stream {
 }
 
 // SAFETY: Http2Stream is GC-traced by cppgc
-unsafe impl deno_core::GarbageCollected for Http2Stream {
+unsafe impl ende_core::GarbageCollected for Http2Stream {
   fn trace(&self, _: &mut v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {

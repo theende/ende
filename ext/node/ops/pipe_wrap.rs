@@ -11,18 +11,18 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use deno_core::CppgcInherits;
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::error::ResourceError;
-use deno_core::op2;
-use deno_core::uv_compat;
-use deno_core::uv_compat::UvConnect;
-use deno_core::uv_compat::UvLoop;
-use deno_core::uv_compat::UvStream;
-use deno_core::v8;
-use deno_net::check_unix_socket_path;
-use deno_permissions::PermissionsContainer;
+use ende_core::CppgcInherits;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::error::ResourceError;
+use ende_core::op2;
+use ende_core::uv_compat;
+use ende_core::uv_compat::UvConnect;
+use ende_core::uv_compat::UvLoop;
+use ende_core::uv_compat::UvStream;
+use ende_core::v8;
+use ende_net::check_unix_socket_path;
+use ende_permissions::PermissionsContainer;
 
 use crate::ops::handle_wrap::AsyncWrap;
 use crate::ops::handle_wrap::Handle;
@@ -317,7 +317,7 @@ impl PipeWrap {
     // inherited extra stdio fds may be adopted; other tracked fds are
     // rejected).
     let Some(was_inherited) =
-      state.borrow::<deno_io::FdTable>().begin_uv_adopt(fd)
+      state.borrow::<ende_io::FdTable>().begin_uv_adopt(fd)
     else {
       return -libc::EEXIST;
     };
@@ -339,7 +339,7 @@ impl PipeWrap {
     };
     if ret == 0 {
       state
-        .borrow_mut::<deno_io::FdTable>()
+        .borrow_mut::<ende_io::FdTable>()
         .finish_uv_adopt(fd, was_inherited);
       self.base.set_fd(fd);
     }
@@ -351,7 +351,7 @@ impl PipeWrap {
     &self,
     state: &mut OpState,
     #[string] path: &str,
-  ) -> Result<i32, deno_permissions::PermissionCheckError> {
+  ) -> Result<i32, ende_permissions::PermissionCheckError> {
     // Binding a unix-domain socket creates a socket inode on disk (and arms
     // the fchmod/unlink-on-close that operate on the bound path), so it
     // requires filesystem read+write permission for the path AND an
@@ -362,7 +362,7 @@ impl PipeWrap {
     check_unix_socket_path(
       state.borrow_mut::<PermissionsContainer>(),
       std::borrow::Cow::Borrowed(std::path::Path::new(path)),
-      deno_permissions::OpenAccessKind::ReadWriteNoFollow,
+      ende_permissions::OpenAccessKind::ReadWriteNoFollow,
       Some("node:net.Server.listen()"),
     )?;
 
@@ -379,7 +379,7 @@ impl PipeWrap {
     &self,
     state: &mut OpState,
     #[smi] backlog: i32,
-  ) -> Result<i32, deno_permissions::PermissionCheckError> {
+  ) -> Result<i32, ende_permissions::PermissionCheckError> {
     let pipe = self.pipe_ptr();
     if pipe.is_null() {
       return Ok(uv_compat::UV_EBADF);
@@ -393,7 +393,7 @@ impl PipeWrap {
       check_unix_socket_path(
         state.borrow_mut::<PermissionsContainer>(),
         std::borrow::Cow::Borrowed(std::path::Path::new(path)),
-        deno_permissions::OpenAccessKind::ReadWriteNoFollow,
+        ende_permissions::OpenAccessKind::ReadWriteNoFollow,
         Some("node:net.Server.listen()"),
       )?;
     }
@@ -423,7 +423,7 @@ impl PipeWrap {
     js_req: v8::Local<v8::Object>,
     #[string] path: &str,
     scope: &mut v8::PinScope,
-  ) -> Result<i32, deno_permissions::PermissionCheckError> {
+  ) -> Result<i32, ende_permissions::PermissionCheckError> {
     // A Unix-domain socket is both a filesystem entry and an outbound network
     // primitive, so connecting requires filesystem read+write permission for
     // the path AND an `--allow-net=unix:<path>` grant -- matching the native
@@ -435,7 +435,7 @@ impl PipeWrap {
     check_unix_socket_path(
       state.borrow_mut::<PermissionsContainer>(),
       std::borrow::Cow::Borrowed(std::path::Path::new(path)),
-      deno_permissions::OpenAccessKind::ReadWriteNoFollow,
+      ende_permissions::OpenAccessKind::ReadWriteNoFollow,
       Some("node:net.createConnection()"),
     )?;
 
@@ -533,7 +533,7 @@ impl PipeWrap {
         if let Some(fd) = unsafe { &*pipe }.fd() {
           op_state
             .borrow_mut()
-            .borrow_mut::<deno_io::FdTable>()
+            .borrow_mut::<ende_io::FdTable>()
             .remove(fd);
         }
       }
@@ -557,7 +557,7 @@ impl PipeWrap {
       if fd >= 0 {
         op_state
           .borrow_mut()
-          .borrow_mut::<deno_io::FdTable>()
+          .borrow_mut::<ende_io::FdTable>()
           .remove(fd);
       }
       fd

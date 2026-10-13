@@ -384,7 +384,7 @@ impl<'a> NpmPackageVersionResolver<'a> {
   /// registry.
   ///
   /// This is the canonical prerelease fallback used by the npm graph resolver.
-  /// `deno_config`'s `version_req_matches_including_pre` keeps an identical
+  /// `ende_config`'s `version_req_matches_including_pre` keeps an identical
   /// copy for the workspace/byonm paths (it can't depend on this crate, since
   /// the dependency goes the other way). Keep the two in sync.
   fn link_version_req_satisfies(

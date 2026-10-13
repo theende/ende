@@ -3,10 +3,10 @@
 use std::ffi::c_void;
 use std::sync::LazyLock;
 
-use deno_core::OpState;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::v8::fast_api;
+use ende_core::OpState;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::v8::fast_api;
 
 use crate::NativeType;
 use crate::Symbol;
@@ -477,35 +477,35 @@ impl From<&NativeType> for fast_api::CTypeInfo {
 }
 
 extern "C" fn turbocall_ab_contents(
-  v: deno_core::v8::Local<deno_core::v8::Value>,
+  v: ende_core::v8::Local<ende_core::v8::Value>,
 ) -> *mut c_void {
   super::ir::parse_buffer_arg(v).unwrap_or(isize::MAX as _)
 }
 
 unsafe extern "C" fn turbocall_raise(
-  options: *const deno_core::v8::fast_api::FastApiCallbackOptions,
+  options: *const ende_core::v8::fast_api::FastApiCallbackOptions,
 ) {
   // SAFETY: This is called with valid FastApiCallbackOptions from within fast callback.
   v8::callback_scope!(unsafe scope, unsafe { &*options });
   let exception =
-    deno_core::error::to_v8_error(scope, &crate::IRError::InvalidBufferType);
+    ende_core::error::to_v8_error(scope, &crate::IRError::InvalidBufferType);
   scope.throw_exception(exception);
 }
 
 pub struct TurbocallTarget(String);
 
 unsafe extern "C" fn turbocall_trace(
-  options: *const deno_core::v8::fast_api::FastApiCallbackOptions,
+  options: *const ende_core::v8::fast_api::FastApiCallbackOptions,
 ) {
   // SAFETY: This is called with valid FastApiCallbackOptions from within fast callback.
   v8::callback_scope!(unsafe let scope, unsafe { &*options });
-  let func_data = deno_core::cppgc::try_unwrap_cppgc_object::<FunctionData>(
+  let func_data = ende_core::cppgc::try_unwrap_cppgc_object::<FunctionData>(
     scope,
     // SAFETY: This is valid if the options are valid.
     unsafe { (&*options).data },
   )
   .unwrap();
-  deno_core::JsRuntime::op_state_from(scope)
+  ende_core::JsRuntime::op_state_from(scope)
     .borrow_mut()
     .put(TurbocallTarget(func_data.symbol.name.clone()));
 }

@@ -4,21 +4,21 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { inspect } = core.loadExtScript(
-  "ext:deno_node/internal/util/inspect.mjs",
+  "ext:ende_node/internal/util/inspect.mjs",
 );
-const { isError } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+const { isError } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 const { isErrorStackTraceLimitWritable } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
-const colors = core.loadExtScript("ext:deno_node/internal/util/colors.ts");
+const colors = core.loadExtScript("ext:ende_node/internal/util/colors.ts");
 const { myersDiff, printMyersDiff, printSimpleMyersDiff } = core
   .loadExtScript(
-    "ext:deno_node/internal/assert/myers_diff.js",
+    "ext:ende_node/internal/assert/myers_diff.js",
   );
 const { validateObject } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
-const io = core.loadExtScript("ext:deno_io/12_io.js");
+const io = core.loadExtScript("ext:ende_io/12_io.js");
 
 function getConsoleWidth() {
   try {

@@ -57,7 +57,7 @@ const {
 // Mock trace for now
 const trace = () => {};
 const { channel: createDiagnosticsChannel } = core.loadExtScript(
-  "ext:deno_node/diagnostics_channel.js",
+  "ext:ende_node/diagnostics_channel.js",
 );
 const onConsoleLog = createDiagnosticsChannel("console.log");
 const onConsoleInfo = createDiagnosticsChannel("console.info");
@@ -69,37 +69,37 @@ const {
   ERR_INCOMPATIBLE_OPTION_PAIR,
   ERR_INVALID_ARG_VALUE,
   isStackOverflowError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   validateArray,
   validateInteger,
   validateObject,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const { isBuffer } = Buffer;
 const {
   formatWithOptions,
   inspect,
-} = core.loadExtScript("ext:deno_node/internal/util/inspect.mjs");
+} = core.loadExtScript("ext:ende_node/internal/util/inspect.mjs");
 const {
   isMap,
   isMapIterator,
   isSet,
   isSetIterator,
   isTypedArray,
-} = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+} = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 const {
   CHAR_LOWERCASE_B: kTraceBegin,
   CHAR_LOWERCASE_E: kTraceEnd,
   CHAR_LOWERCASE_N: kTraceInstant,
   CHAR_UPPERCASE_C: kTraceCount,
-} = core.loadExtScript("ext:deno_node/internal/constants.ts");
+} = core.loadExtScript("ext:ende_node/internal/constants.ts");
 const {
   clearScreenDown,
   cursorTo,
-} = core.loadExtScript("ext:deno_node/internal/readline/callbacks.mjs");
+} = core.loadExtScript("ext:ende_node/internal/readline/callbacks.mjs");
 const { default: cliTable } = core.loadExtScript(
-  "ext:deno_node/internal/cli_table.ts",
+  "ext:ende_node/internal/cli_table.ts",
 );
 const kCounts = Symbol("counts");
 

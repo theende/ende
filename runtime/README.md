@@ -1,4 +1,4 @@
-# `deno_runtime` crate
+# `ende_runtime` crate
 
 [![crates](https://img.shields.io/crates/v/deno_runtime.svg)](https://crates.io/crates/deno_runtime)
 [![docs](https://docs.rs/deno_runtime/badge.svg)](https://docs.rs/deno_runtime)
@@ -16,7 +16,7 @@ changes.
 ## `MainWorker`
 
 The main API of this crate is `MainWorker`. `MainWorker` is a structure
-encapsulating `deno_core::JsRuntime` with a set of ops used to implement `Deno`
+encapsulating `ende_core::JsRuntime` with a set of ops used to implement `Deno`
 namespace.
 
 When creating a `MainWorker` implementors must call `MainWorker::bootstrap` to
@@ -34,7 +34,7 @@ runtime's properties:
 
 ## `Worker` Web API
 
-`deno_runtime` comes with support for `Worker` Web API. The `Worker` API is
+`ende_runtime` comes with support for `Worker` Web API. The `Worker` API is
 implemented using `WebWorker` structure.
 
 When creating a new instance of `MainWorker` implementors must provide a

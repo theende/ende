@@ -4,10 +4,10 @@ use std::cmp::Ordering;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_npm::NpmPackageCacheFolderId;
-use deno_npm::NpmPackageId;
-use deno_npm::resolution::NpmResolutionSnapshot;
 use deno_semver::Version;
+use ende_npm::NpmPackageCacheFolderId;
+use ende_npm::NpmPackageId;
+use ende_npm::resolution::NpmResolutionSnapshot;
 use node_resolver::NpmPackageFolderResolver;
 use node_resolver::UrlOrPathRef;
 use sys_traits::FsCanonicalize;

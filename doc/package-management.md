@@ -75,7 +75,7 @@ graph with npm resolution, then `cache_packages()` materializes everything into
 ### Gotcha: `optionalDependencies` are never installed from `package.json`
 
 The installer only sees `dependencies` and `devDependencies`. This is a
-limitation of the external `deno_package_json` crate: `PackageJsonDeps` /
+limitation of the external `ende_package_json` crate: `PackageJsonDeps` /
 `resolve_local_package_json_deps()` expose only those two maps — there is no
 `optional_dependencies` in the resolved deps used by the installer. So a package
 written to `optionalDependencies` will **not** be materialized by the normal
@@ -119,13 +119,13 @@ section now runs when there is either an import map _or_ additional roots, so
 - Parser unit tests: `add_or_install_subcommand` in both `cli/args/flags.rs`
   (run via `cargo test -p deno --lib add_or_install`) and
   `libs/cli_parser/src/tests_full.rs`
-  (`cargo test -p deno_cli_parser
+  (`cargo test -p ende_cli_parser
   add_or_install`).
 
 ## Related work / next steps
 
 - Make the installer honor `optionalDependencies` from `package.json` (upstream
-  `deno_package_json` `resolve_local_package_json_deps` + the npm installer),
+  `ende_package_json` `resolve_local_package_json_deps` + the npm installer),
   which would let `--save-optional` install through the normal config-derived
   path and remove the `additional_roots` workaround for it.
 - `--no-save` in a directory with no config still creates an empty config file

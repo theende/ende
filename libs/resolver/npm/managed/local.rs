@@ -6,11 +6,11 @@ use std::borrow::Cow;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_npm::NpmPackageCacheFolderId;
-use deno_npm::NpmPackageId;
 use deno_path_util::fs::canonicalize_path_maybe_not_exists;
 use deno_path_util::url_from_directory_path;
 use deno_semver::Version;
+use ende_npm::NpmPackageCacheFolderId;
+use ende_npm::NpmPackageId;
 use node_resolver::NpmPackageFolderResolver;
 use node_resolver::UrlOrPathRef;
 use node_resolver::cache::NodeResolutionSys;

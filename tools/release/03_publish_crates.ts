@@ -18,8 +18,8 @@ const dependencyCrates = getCratesPublishOrder(
 try {
   for (const [i, crate] of dependencyCrates.entries()) {
     // `--no-verify` because the dependency crates can't be built on their own:
-    // they depend on `deno_core` with default features off, so nothing selects
-    // an engine for the `deno_v8` facade and it hits its `compile_error!`.
+    // they depend on `ende_core` with default features off, so nothing selects
+    // an engine for the `ende_v8` facade and it hits its `compile_error!`.
     // Engine selection happens at the top of the tree (see `deno`'s `v8` and
     // `quickjs` features), which cargo's standalone tarball verification can't
     // reproduce. The `deno` crate itself is still verified below.

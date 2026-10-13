@@ -2,15 +2,15 @@
 
 import { core, primordials } from "ext:core/mod.js";
 const { denoErrorToNodeError } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 import {
   type Dirent,
   direntFromDeno,
   getValidatedPathToString,
-} from "ext:deno_node/internal/fs/utils.mjs";
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { promisify } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+} from "ext:ende_node/internal/fs/utils.mjs";
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { promisify } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 import {
   op_fs_read_dir_async,
   op_fs_read_dir_async_next,

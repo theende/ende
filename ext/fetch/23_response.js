@@ -6,30 +6,30 @@ const {
   op_http_drop_response_native: opHttpDropResponseNative,
   op_http_new_response_native_headers: opHttpNewResponseNativeHeaders,
 } = core.ops;
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const { createFilteredInspectProxy } = core.loadExtScript(
-  "ext:deno_web/01_console.js",
+  "ext:ende_web/01_console.js",
 );
 const {
   byteLowerCase,
   HTTP_TAB_OR_SPACE,
   regexMatcher,
   serializeJSValueToJSONString,
-} = core.loadExtScript("ext:deno_web/00_infra.js");
+} = core.loadExtScript("ext:ende_web/00_infra.js");
 const { extractBody, mixinBody } = core.loadExtScript(
-  "ext:deno_fetch/22_body.js",
+  "ext:ende_fetch/22_body.js",
 );
-const { getLocationHref } = core.loadExtScript("ext:deno_web/12_location.js");
-const { extractMimeType } = core.loadExtScript("ext:deno_web/01_mimesniff.js");
-const { URL } = core.loadExtScript("ext:deno_web/00_url.js");
+const { getLocationHref } = core.loadExtScript("ext:ende_web/12_location.js");
+const { extractMimeType } = core.loadExtScript("ext:ende_web/01_mimesniff.js");
+const { URL } = core.loadExtScript("ext:ende_web/00_url.js");
 const {
   fillHeaderList,
   getDecodeSplitHeader,
   guardFromHeaders,
   headersFromHeaderList,
-} = core.loadExtScript("ext:deno_fetch/20_headers.js");
+} = core.loadExtScript("ext:ende_fetch/20_headers.js");
 const { markNotSerializable } = core.loadExtScript(
-  "ext:deno_web/13_message_port.js",
+  "ext:ende_web/13_message_port.js",
 );
 const {
   ArrayPrototypeFilter,

@@ -2,20 +2,20 @@
 
 use std::sync::Arc;
 
-use deno_core::anyhow::Context;
-use deno_core::anyhow::anyhow;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::located_script_name;
-use deno_core::serde_json;
-use deno_core::url::Url;
-use deno_core::v8;
 use deno_path_util::resolve_url_or_path;
-use deno_runtime::WorkerExecutionMode;
-use deno_runtime::deno_io::Stdio;
-use deno_runtime::deno_io::StdioPipe;
-use deno_runtime::deno_permissions::PermissionsContainer;
 use deno_terminal::colors;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::anyhow;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::located_script_name;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_core::v8;
+use ende_runtime::WorkerExecutionMode;
+use ende_runtime::ende_io::Stdio;
+use ende_runtime::ende_io::StdioPipe;
+use ende_runtime::ende_permissions::PermissionsContainer;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
@@ -132,8 +132,8 @@ pub async fn kernel(
           vec![],
           repl_permissions,
           vec![
-            ops::jupyter::deno_jupyter_repl::init(repl_iopub_tx, repl_input_tx),
-            ops::testing::deno_test::init(test_event_sender),
+            ops::jupyter::ende_jupyter_repl::init(repl_iopub_tx, repl_input_tx),
+            ops::testing::ende_test::init(test_event_sender),
           ],
           Stdio {
             stdin: StdioPipe::inherit(),
@@ -179,7 +179,7 @@ pub async fn kernel(
 
       Ok::<(), AnyError>(())
     };
-    deno_runtime::tokio_util::create_and_run_current_thread(fut)
+    ende_runtime::tokio_util::create_and_run_current_thread(fut)
   });
 
   // Wait for the REPL to be ready.
@@ -217,7 +217,7 @@ pub async fn kernel(
       vec![],
       vec![],
       permissions,
-      vec![ops::jupyter::deno_jupyter_kernel::init()],
+      vec![ops::jupyter::ende_jupyter_kernel::init()],
       Stdio {
         stdin: StdioPipe::inherit(),
         stdout: StdioPipe::file(stdout2),

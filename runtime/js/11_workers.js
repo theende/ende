@@ -27,12 +27,12 @@ const {
   SymbolToStringTag,
 } = primordials;
 
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const { createFilteredInspectProxy } = core.loadExtScript(
-  "ext:deno_web/01_console.js",
+  "ext:ende_web/01_console.js",
 );
-const { URL } = core.loadExtScript("ext:deno_web/00_url.js");
-const { getLocationHref } = core.loadExtScript("ext:deno_web/12_location.js");
+const { URL } = core.loadExtScript("ext:ende_web/00_url.js");
+const { getLocationHref } = core.loadExtScript("ext:ende_web/12_location.js");
 const { serializePermissions } = core.loadExtScript(
   "ext:runtime/10_permissions.js",
 );
@@ -43,15 +43,15 @@ const {
   EventTarget,
   MessageEvent,
   setIsTrusted,
-} = core.loadExtScript("ext:deno_web/02_event.js");
+} = core.loadExtScript("ext:ende_web/02_event.js");
 const {
   deserializeJsMessageData,
   MessagePortPrototype,
   serializeJsMessageData,
   serializeMessageData,
-} = core.loadExtScript("ext:deno_web/13_message_port.js");
+} = core.loadExtScript("ext:ende_web/13_message_port.js");
 const { DOMException } = core.loadExtScript(
-  "ext:deno_web/01_dom_exception.js",
+  "ext:ende_web/01_dom_exception.js",
 );
 
 function createWorker(

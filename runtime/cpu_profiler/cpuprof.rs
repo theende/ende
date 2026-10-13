@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
 
-use deno_core::serde_json;
+use ende_core::serde_json;
 use serde::Deserialize;
 
 // V8 CPU Profile data structures (shared with flamegraph module)

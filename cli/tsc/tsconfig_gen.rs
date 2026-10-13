@@ -12,11 +12,11 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_core::serde_json;
-use deno_core::serde_json::Map;
-use deno_core::serde_json::Value;
-use deno_core::serde_json::json;
-use deno_core::url::Url;
+use ende_core::serde_json;
+use ende_core::serde_json::Map;
+use ende_core::serde_json::Value;
+use ende_core::serde_json::json;
+use ende_core::url::Url;
 
 use super::get_types_declaration_file_text;
 

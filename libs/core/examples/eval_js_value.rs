@@ -8,9 +8,9 @@
 
 #![allow(clippy::print_stdout, reason = "this is fine for example code")]
 
-use deno_core::JsRuntime;
-use deno_core::RuntimeOptions;
-use deno_core::v8;
+use ende_core::JsRuntime;
+use ende_core::RuntimeOptions;
+use ende_core::v8;
 
 fn main() {
   let mut runtime = JsRuntime::new(RuntimeOptions::default());
@@ -33,7 +33,7 @@ fn eval(
   let res = context.execute_script("<anon>", code);
   match res {
     Ok(global) => {
-      deno_core::scope!(scope, context);
+      ende_core::scope!(scope, context);
       let local = v8::Local::new(scope, global);
       // Deserialize a `v8` object into a Rust type using `serde_v8`,
       // in this case deserialize to a JSON `Value`.

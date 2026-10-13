@@ -32,33 +32,33 @@ use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 
-use deno_core::AsyncMutFuture;
-use deno_core::AsyncRefCell;
-use deno_core::JsBuffer;
-use deno_core::OpState;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::ToV8;
-use deno_core::convert::Uint8Array;
-use deno_core::op2;
-use deno_core::serde_json;
 use deno_error::JsErrorBox;
-use deno_io::ChildProcessStdio;
-use deno_io::ChildStderrResource;
-use deno_io::ChildStdinResource;
-use deno_io::ChildStdoutResource;
-use deno_io::IntoRawIoHandle;
-use deno_os::SignalError;
-use deno_permissions::PathQueryDescriptor;
-use deno_permissions::PermissionsContainer;
-use deno_permissions::RunQueryDescriptor;
+use ende_core::AsyncMutFuture;
+use ende_core::AsyncRefCell;
+use ende_core::JsBuffer;
+use ende_core::OpState;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::ToV8;
+use ende_core::convert::Uint8Array;
+use ende_core::op2;
+use ende_core::serde_json;
+use ende_io::ChildProcessStdio;
+use ende_io::ChildStderrResource;
+use ende_io::ChildStdinResource;
+use ende_io::ChildStdoutResource;
+use ende_io::IntoRawIoHandle;
+use ende_os::SignalError;
+use ende_permissions::PathQueryDescriptor;
+use ende_permissions::PermissionsContainer;
+use ende_permissions::RunQueryDescriptor;
 #[cfg(windows)]
-use deno_subprocess_windows::Child as AsyncChild;
+use ende_subprocess_windows::Child as AsyncChild;
 #[cfg(windows)]
-use deno_subprocess_windows::Command;
+use ende_subprocess_windows::Command;
 #[cfg(windows)]
-use deno_subprocess_windows::Stdio as StdStdio;
+use ende_subprocess_windows::Stdio as StdStdio;
 use serde::Deserialize;
 #[cfg(unix)]
 use tokio::process::Child as AsyncChild;
@@ -70,7 +70,7 @@ use ipc::IpcRefTracker;
 
 pub const UNSTABLE_FEATURE_NAME: &str = "process";
 #[cfg(unix)]
-use deno_io::DENO_EXTRA_STDIO_FDS_ENV_VAR;
+use ende_io::DENO_EXTRA_STDIO_FDS_ENV_VAR;
 
 #[cfg(unix)]
 fn clear_nonblocking(fd: i32) -> std::io::Result<()> {
@@ -323,10 +323,10 @@ impl StdioOrFd {
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type NpmProcessStateProviderRc =
-  deno_fs::sync::MaybeArc<dyn NpmProcessStateProvider>;
+  ende_fs::sync::MaybeArc<dyn NpmProcessStateProvider>;
 
 pub trait NpmProcessStateProvider:
-  std::fmt::Debug + deno_fs::sync::MaybeSend + deno_fs::sync::MaybeSync
+  std::fmt::Debug + ende_fs::sync::MaybeSend + ende_fs::sync::MaybeSync
 {
   /// Gets a string containing the serialized npm state of the process.
   ///
@@ -344,8 +344,8 @@ pub struct EmptyNpmProcessStateProvider;
 
 impl NpmProcessStateProvider for EmptyNpmProcessStateProvider {}
 
-deno_core::extension!(
-  deno_process,
+ende_core::extension!(
+  ende_process,
   ops = [
     op_spawn_child,
     op_node_spawn_child,
@@ -361,7 +361,7 @@ deno_core::extension!(
   lazy_loaded_js = ["40_process.js"],
   options = { get_npm_process_state: Option<NpmProcessStateProviderRc>  },
   state = |state, options| {
-    state.put::<NpmProcessStateProviderRc>(options.get_npm_process_state.unwrap_or(deno_fs::sync::MaybeArc::new(EmptyNpmProcessStateProvider)));
+    state.put::<NpmProcessStateProviderRc>(options.get_npm_process_state.unwrap_or(ende_fs::sync::MaybeArc::new(EmptyNpmProcessStateProvider)));
   },
 );
 
@@ -401,7 +401,7 @@ impl Drop for ChildResource {
       }
       #[cfg(windows)]
       {
-        let _ = deno_subprocess_windows::process_kill(
+        let _ = ende_subprocess_windows::process_kill(
           self.pid as i32,
           /* SIGTERM */ 15,
         );
@@ -530,19 +530,19 @@ pub enum ProcessError {
   FailedResolvingCwd(#[source] std::io::Error),
   #[class(inherit)]
   #[error(transparent)]
-  Permission(#[from] deno_permissions::PermissionCheckError),
+  Permission(#[from] ende_permissions::PermissionCheckError),
   #[class(inherit)]
   #[error(transparent)]
   RunPermission(#[from] CheckRunPermissionError),
   #[class(inherit)]
   #[error(transparent)]
-  Resource(deno_core::error::ResourceError),
+  Resource(ende_core::error::ResourceError),
   #[class(generic)]
   #[error(transparent)]
   BorrowMut(std::cell::BorrowMutError),
   #[class(generic)]
   #[error(transparent)]
-  Which(deno_permissions::which::Error),
+  Which(ende_permissions::which::Error),
   #[class(type)]
   #[error("Child process has already terminated.")]
   ChildProcessAlreadyTerminated,
@@ -607,7 +607,7 @@ impl TryFrom<ExitStatus> for ChildStatus {
         success: false,
         code: 128 + signal,
         #[cfg(unix)]
-        signal: Some(deno_signals::signal_int_to_str(signal)?.to_string()),
+        signal: Some(ende_signals::signal_int_to_str(signal)?.to_string()),
         #[cfg(not(unix))]
         signal: None,
       }
@@ -639,12 +639,12 @@ type CreateCommand = (
   Command,
   Option<ResourceId>,
   Vec<Option<i64>>,
-  Vec<deno_io::RawBiPipeHandle>,
+  Vec<ende_io::RawBiPipeHandle>,
 );
 
 pub fn npm_process_state_tempfile(
   contents: &[u8],
-) -> Result<deno_io::RawIoHandle, std::io::Error> {
+) -> Result<ende_io::RawIoHandle, std::io::Error> {
   let mut temp_file = tempfile::tempfile()?;
   temp_file.write_all(contents)?;
   let handle = temp_file.into_raw_io_handle();
@@ -841,7 +841,7 @@ fn create_command(
     if let Some(ipc) = args.ipc
       && ipc >= 0
     {
-      let (ipc_fd1, ipc_fd2) = deno_io::bi_pipe_pair_raw()?;
+      let (ipc_fd1, ipc_fd2) = ende_io::bi_pipe_pair_raw()?;
       fds_to_dup.push((ipc_fd2, ipc, false));
       fds_to_close.push(ipc_fd2);
       /* One end returned to parent process (this) */
@@ -878,7 +878,7 @@ fn create_command(
       let target_fd = (i + 3) as i32;
       match stdio {
         StdioOrFd::Stdio(Stdio::Piped) => {
-          let (fd1, fd2) = deno_io::bi_pipe_pair_raw()?;
+          let (fd1, fd2) = ende_io::bi_pipe_pair_raw()?;
           fds_to_dup.push((fd2, target_fd, false));
           fds_to_close.push(fd2);
           child_extra_stdio_fds.push(target_fd);
@@ -972,7 +972,7 @@ fn create_command(
     if let Some(ipc) = args.ipc
       && ipc >= 0
     {
-      let (hd1, hd2) = deno_io::bi_pipe_pair_raw()?;
+      let (hd1, hd2) = ende_io::bi_pipe_pair_raw()?;
 
       /* One end returned to parent process (this) */
       let pipe_rid = match args.serialization {
@@ -1011,7 +1011,7 @@ fn create_command(
       let target_fd = (i + 3) as i32;
       match stdio {
         StdioOrFd::Stdio(Stdio::Piped) => {
-          let (fd1, fd2) = match deno_io::bi_pipe_pair_raw() {
+          let (fd1, fd2) = match ende_io::bi_pipe_pair_raw() {
             Ok(fds) => fds,
             Err(e) => {
               log::warn!(
@@ -1214,8 +1214,8 @@ fn spawn_child(
     .map(|maybe_fd| {
       maybe_fd
         .map(|fd| {
-          let resource = deno_io::BiPipeResource::from_raw_handle(
-            fd as deno_io::RawBiPipeHandle,
+          let resource = ende_io::BiPipeResource::from_raw_handle(
+            fd as ende_io::RawBiPipeHandle,
           )?;
           Ok(state.resource_table.add(resource))
         })
@@ -1492,14 +1492,14 @@ fn resolve_cmd(cmd: &str, env: &RunEnv) -> Result<PathBuf, ProcessError> {
     // unqualified names that fall back to a cwd-relative search this is a
     // best-effort lookup that will simply miss when the parent's cwd has
     // been unlinked.
-    match deno_permissions::which::which_in(
+    match ende_permissions::which::which_in(
       sys_traits::impls::RealSys,
       cmd,
       path.cloned(),
       env.cwd.clone(),
     ) {
       Ok(cmd) => Ok(cmd),
-      Err(deno_permissions::which::Error::CannotFindBinaryPath) => {
+      Err(ende_permissions::which::Error::CannotFindBinaryPath) => {
         Err(std::io::Error::from(std::io::ErrorKind::NotFound).into())
       }
       Err(err) => Err(ProcessError::Which(err)),
@@ -1515,7 +1515,7 @@ fn resolve_path(path: &str, cwd: &Path) -> PathBuf {
 pub enum CheckRunPermissionError {
   #[class(inherit)]
   #[error(transparent)]
-  Permission(#[from] deno_permissions::PermissionCheckError),
+  Permission(#[from] ende_permissions::PermissionCheckError),
   #[class(inherit)]
   #[error("{0}")]
   Other(JsErrorBox),
@@ -1604,7 +1604,7 @@ fn op_spawn_child(
   )?;
   let child = spawn_child(state, command, pipe_rid, extra_pipe_fds, detached);
   for handle in handles_to_close {
-    deno_io::close_raw_handle(handle);
+    ende_io::close_raw_handle(handle);
   }
   #[cfg(unix)]
   if matches!(&child, Err(err) if err.is_enoexec()) {
@@ -1614,7 +1614,7 @@ fn op_spawn_child(
     )?;
     let child = spawn_child(state, command, pipe_rid, extra_pipe_fds, detached);
     for handle in handles_to_close {
-      deno_io::close_raw_handle(handle);
+      ende_io::close_raw_handle(handle);
     }
     return child;
   }
@@ -1641,7 +1641,7 @@ fn op_node_spawn_child(
   let child =
     spawn_child_node(state, command, pipe_rid, extra_pipe_fds, detached);
   for handle in handles_to_close {
-    deno_io::close_raw_handle(handle);
+    ende_io::close_raw_handle(handle);
   }
   #[cfg(unix)]
   if matches!(&child, Err(err) if err.is_enoexec()) {
@@ -1652,7 +1652,7 @@ fn op_node_spawn_child(
     let child =
       spawn_child_node(state, command, pipe_rid, extra_pipe_fds, detached);
     for handle in handles_to_close {
-      deno_io::close_raw_handle(handle);
+      ende_io::close_raw_handle(handle);
     }
     return child;
   }
@@ -1773,7 +1773,7 @@ fn op_spawn_sync(
   let kill_signal_int: i32 = match &kill_signal {
     Some(KillSignal::Number(n)) => *n,
     Some(KillSignal::String(s)) => {
-      deno_signals::signal_str_to_int(s).unwrap_or(libc::SIGTERM)
+      ende_signals::signal_str_to_int(s).unwrap_or(libc::SIGTERM)
     }
     None => libc::SIGTERM,
   };
@@ -2031,7 +2031,7 @@ fn op_spawn_kill(
 fn op_spawn_child_unref(
   state: &mut OpState,
   #[smi] rid: ResourceId,
-) -> Result<(), deno_core::error::ResourceError> {
+) -> Result<(), ende_core::error::ResourceError> {
   let resource = state.resource_table.get::<ChildResource>(rid)?;
   resource.kill_on_drop.set(false);
   Ok(())
@@ -2043,16 +2043,16 @@ fn op_spawn_child_unref(
 fn op_spawn_child_ref(
   state: &mut OpState,
   #[smi] rid: ResourceId,
-) -> Result<(), deno_core::error::ResourceError> {
+) -> Result<(), ende_core::error::ResourceError> {
   let resource = state.resource_table.get::<ChildResource>(rid)?;
   resource.kill_on_drop.set(true);
   Ok(())
 }
 
 mod deprecated {
-  use deno_core::FromV8;
+  use ende_core::FromV8;
   #[cfg(windows)]
-  use deno_subprocess_windows::Child;
+  use ende_subprocess_windows::Child;
   #[cfg(not(windows))]
   use tokio::process::Child;
 
@@ -2246,7 +2246,7 @@ mod deprecated {
   pub fn kill(pid: i32, signal: &SignalArg) -> Result<(), ProcessError> {
     let signo = match signal {
       SignalArg::Int(n) => *n,
-      SignalArg::String(s) => deno_signals::signal_str_to_int(s)
+      SignalArg::String(s) => ende_signals::signal_str_to_int(s)
         .map_err(SignalError::InvalidSignalStr)?,
     };
     use nix::sys::signal::Signal;
@@ -2315,7 +2315,7 @@ mod deprecated {
 
     let signo = match signal {
       SignalArg::Int(n) => *n,
-      SignalArg::String(s) => deno_signals::signal_str_to_int(s)
+      SignalArg::String(s) => ende_signals::signal_str_to_int(s)
         .map_err(SignalError::InvalidSignalStr)?,
     };
 
@@ -2333,7 +2333,7 @@ mod deprecated {
     // SIGABRT is 22 on Windows (CRT), unlike 6 on Unix.
     if !matches!(signo, 2 | 3 | 9 | 15 | 22) {
       return Err(
-        SignalError::InvalidSignalStr(deno_signals::InvalidSignalStrError(
+        SignalError::InvalidSignalStr(ende_signals::InvalidSignalStrError(
           format!("{signo}"),
         ))
         .into(),

@@ -1,11 +1,11 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_resolver::cjs::analyzer::DenoCjsAnalysis;
-use deno_resolver::cjs::analyzer::NodeAnalysisCache;
-use deno_resolver::cjs::analyzer::NodeAnalysisCacheSourceHash;
-use deno_runtime::deno_webstorage::rusqlite::params;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_resolver::cjs::analyzer::DenoCjsAnalysis;
+use ende_resolver::cjs::analyzer::NodeAnalysisCache;
+use ende_resolver::cjs::analyzer::NodeAnalysisCacheSourceHash;
+use ende_runtime::ende_webstorage::rusqlite::params;
 
 use super::CacheDBHash;
 use super::cache_db::CacheDB;
@@ -147,7 +147,7 @@ impl NodeAnalysisCacheInner {
 
 #[cfg(test)]
 mod test {
-  use deno_resolver::cjs::analyzer::ModuleExportsAndReExports;
+  use ende_resolver::cjs::analyzer::ModuleExportsAndReExports;
 
   use super::*;
 

@@ -17,8 +17,8 @@ use deno_lint::diagnostic::LintFix;
 use deno_lint::diagnostic::LintFixChange;
 use deno_lint::rules::LintRule;
 use deno_lint::tags;
-use deno_resolver::workspace::SloppyImportsResolutionReason;
-use deno_resolver::workspace::WorkspaceResolver;
+use ende_resolver::workspace::SloppyImportsResolutionReason;
+use ende_resolver::workspace::WorkspaceResolver;
 use text_lines::LineAndColumnIndex;
 
 use super::ExtendedLintRule;
@@ -187,17 +187,17 @@ impl deno_graph::source::Resolver for SloppyImportCaptureResolver<'_> {
         &referrer_range.specifier,
         match resolution_kind {
           ResolutionKind::Execution => {
-            deno_resolver::workspace::ResolutionKind::Execution
+            ende_resolver::workspace::ResolutionKind::Execution
           }
           ResolutionKind::Types => {
-            deno_resolver::workspace::ResolutionKind::Types
+            ende_resolver::workspace::ResolutionKind::Types
           }
         },
       )
       .map_err(|err| ResolveError::Other(JsErrorBox::from_err(err)))?;
 
     match resolution {
-      deno_resolver::workspace::MappedResolution::Normal {
+      ende_resolver::workspace::MappedResolution::Normal {
         specifier,
         sloppy_reason,
         ..
@@ -211,14 +211,14 @@ impl deno_graph::source::Resolver for SloppyImportCaptureResolver<'_> {
         }
         Ok(specifier)
       }
-      deno_resolver::workspace::MappedResolution::WorkspaceJsrPackage {
+      ende_resolver::workspace::MappedResolution::WorkspaceJsrPackage {
         ..
       }
-      | deno_resolver::workspace::MappedResolution::WorkspaceNpmPackage {
+      | ende_resolver::workspace::MappedResolution::WorkspaceNpmPackage {
         ..
       }
-      | deno_resolver::workspace::MappedResolution::PackageJson { .. }
-      | deno_resolver::workspace::MappedResolution::PackageJsonImport {
+      | ende_resolver::workspace::MappedResolution::PackageJson { .. }
+      | ende_resolver::workspace::MappedResolution::PackageJsonImport {
         ..
       } => {
         // this error is ignored

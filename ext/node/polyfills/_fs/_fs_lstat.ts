@@ -3,16 +3,16 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { denoErrorToNodeError } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 
 const lazyStatUtils = core.createLazyLoader(
-  "ext:deno_node/internal/fs/stat_utils.ts",
+  "ext:ende_node/internal/fs/stat_utils.ts",
 );
 const lazyFsUtils = core.createLazyLoader(
-  "ext:deno_node/internal/fs/utils.mjs",
+  "ext:ende_node/internal/fs/utils.mjs",
 );
-const { promisify } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+const { promisify } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 
 const {
   Error,

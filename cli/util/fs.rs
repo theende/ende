@@ -5,14 +5,14 @@ use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_config::glob::FileCollector;
-use deno_config::glob::FilePatterns;
-use deno_config::glob::PathOrPattern;
-use deno_config::glob::PathOrPatternSet;
-use deno_config::glob::WalkEntry;
-use deno_core::ModuleSpecifier;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
+use ende_config::glob::FileCollector;
+use ende_config::glob::FilePatterns;
+use ende_config::glob::PathOrPattern;
+use ende_config::glob::PathOrPatternSet;
+use ende_config::glob::WalkEntry;
+use ende_core::ModuleSpecifier;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
 use sys_traits::FsMetadataValue;
 use sys_traits::PathsInErrorsExt;
 

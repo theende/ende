@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 #![deny(warnings)]
-deno_ops_compile_test_runner::prelude!();
+ende_ops_compile_test_runner::prelude!();
 
 // Test w/ import pollution
 #[allow(unused)]
@@ -9,8 +9,8 @@ use std::borrow::Borrow;
 #[allow(unused)]
 use std::borrow::BorrowMut;
 
-use deno_core::OpState;
-use deno_core::v8;
+use ende_core::OpState;
+use ende_core::v8;
 
 #[op2(fast)]
 fn op_state_ref(_state: &OpState) {}

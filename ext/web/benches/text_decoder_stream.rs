@@ -2,24 +2,24 @@
 
 use std::sync::Arc;
 
-use deno_bench_util::bench_js_sync;
-use deno_bench_util::bench_or_profile;
-use deno_bench_util::bencher::Bencher;
-use deno_bench_util::bencher::benchmark_group;
-use deno_core::Extension;
-use deno_web::BlobStore;
+use ende_bench_util::bench_js_sync;
+use ende_bench_util::bench_or_profile;
+use ende_bench_util::bencher::Bencher;
+use ende_bench_util::bencher::benchmark_group;
+use ende_core::Extension;
+use ende_web::BlobStore;
 
 fn setup() -> Vec<Extension> {
   // 08_text_encoding.js exposes `TextDecoder` via `core.loadExtScript`, so the
   // source has to be registered as lazy-loaded.
-  deno_core::extension!(
+  ende_core::extension!(
     bench_setup,
     esm_entry_point = "ext:bench_setup/setup",
     esm = ["ext:bench_setup/setup" = {
       source = r#"
           const { TextDecoder } =
             __bootstrap.core.loadExtScript(
-              "ext:deno_web/08_text_encoding.js",
+              "ext:ende_web/08_text_encoding.js",
             );
 
           // 8 KB of ASCII bytes, the common shape of an HTTP/JSON stream
@@ -44,8 +44,8 @@ fn setup() -> Vec<Extension> {
   );
 
   vec![
-    deno_webidl::deno_webidl::init(),
-    deno_web::deno_web::init(
+    ende_webidl::ende_webidl::init(),
+    ende_web::ende_web::init(
       Arc::new(BlobStore::default()),
       None,
       Default::default(),

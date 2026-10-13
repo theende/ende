@@ -4,9 +4,9 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { validateInteger } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
-const _mod1 = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const _mod1 = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { ERR_INVALID_ARG_VALUE } = _mod1.codes;
 
 const {

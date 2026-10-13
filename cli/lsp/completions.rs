@@ -2,18 +2,18 @@
 
 use deno_ast::LineAndColumnIndex;
 use deno_ast::SourceTextInfo;
-use deno_core::ModuleSpecifier;
-use deno_core::resolve_path;
-use deno_core::resolve_url;
-use deno_core::serde::Deserialize;
-use deno_core::serde::Serialize;
-use deno_core::serde_json::json;
-use deno_core::url::Position;
 use deno_path_util::url_to_file_path;
-use deno_runtime::deno_node::SUPPORTED_BUILTIN_NODE_MODULES;
 use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageNv;
+use ende_core::ModuleSpecifier;
+use ende_core::resolve_path;
+use ende_core::resolve_url;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Serialize;
+use ende_core::serde_json::json;
+use ende_core::url::Position;
+use ende_runtime::ende_node::SUPPORTED_BUILTIN_NODE_MODULES;
 use import_map::ImportMap;
 use indexmap::IndexSet;
 use jsonc_parser::CollectOptions;
@@ -1128,8 +1128,8 @@ pub async fn get_deno_json_import_completions(
 mod tests {
   use std::collections::HashMap;
 
-  use deno_core::resolve_url;
-  use deno_resolver::deno_json::CompilerOptionsKey;
+  use ende_core::resolve_url;
+  use ende_resolver::deno_json::CompilerOptionsKey;
   use pretty_assertions::assert_eq;
   use test_util::TempDir;
 

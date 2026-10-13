@@ -51,10 +51,10 @@ jobs:
           } else {
             $SrcUrl = "https://dl.deno.land/canary/${{github.event.inputs.commitHash}}"
           }
-          Invoke-WebRequest -Uri "$SrcUrl/deno-${{ matrix.target }}.zip" -OutFile "deno-windows.zip"
-          Invoke-WebRequest -Uri "$SrcUrl/denort-${{ matrix.target }}.zip" -OutFile "denort-windows.zip"
-          Expand-Archive -Path "deno-windows.zip" -DestinationPath "."
-          Expand-Archive -Path "denort-windows.zip" -DestinationPath "."
+          Invoke-WebRequest -Uri "$SrcUrl/ende-${{ matrix.target }}.zip" -OutFile "ende-windows.zip"
+          Invoke-WebRequest -Uri "$SrcUrl/endert-${{ matrix.target }}.zip" -OutFile "endert-windows.zip"
+          Expand-Archive -Path "ende-windows.zip" -DestinationPath "."
+          Expand-Archive -Path "endert-windows.zip" -DestinationPath "."
       - name: Run patchver for Windows
         run: 'deno run -A --minimum-dependency-age=0 ./tools/release/promote_to_release_windows.ts ${{github.event.inputs.releaseKind}}'
       - name: Authenticate with Azure
@@ -64,7 +64,7 @@ jobs:
           tenant-id: '${{ secrets.AZURE_TENANT_ID }}'
           subscription-id: '${{ secrets.AZURE_SUBSCRIPTION_ID }}'
           enable-AzPSSession: true
-      - name: Code sign deno.exe
+      - name: Code sign ende.exe
         uses: Azure/artifact-signing-action@1d365fec12862c4aa68fcac418143d73f0cea293
         with:
           cache-dependencies: false
@@ -73,7 +73,7 @@ jobs:
           trusted-signing-account-name: deno-cli-code-signing
           certificate-profile-name: deno-cli-code-signing-cert
           files-folder: .
-          files-folder-filter: deno.exe
+          files-folder-filter: ende.exe
           file-digest: SHA256
           timestamp-rfc3161: 'http://timestamp.acs.microsoft.com'
           timestamp-digest: SHA256
@@ -89,18 +89,18 @@ jobs:
         run: |-
           $SignTool = Get-ChildItem -Path "C:\Program Files*\Windows Kits\*\bin\*\x64\signtool.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
           $SignToolPath = $SignTool.FullName
-          & $SignToolPath verify /pa /v "deno.exe"
+          & $SignToolPath verify /pa /v "ende.exe"
       - name: Create archives
         run: |-
-          Compress-Archive -Path "deno.exe" -DestinationPath "deno-${{ matrix.target }}.zip" -Force
-          Compress-Archive -Path "denort.exe" -DestinationPath "denort-${{ matrix.target }}.zip" -Force
+          Compress-Archive -Path "ende.exe" -DestinationPath "ende-${{ matrix.target }}.zip" -Force
+          Compress-Archive -Path "endert.exe" -DestinationPath "endert-${{ matrix.target }}.zip" -Force
       - name: Upload Windows archives
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: 'windows-binaries-${{ matrix.target }}'
           path: |-
-            deno-${{ matrix.target }}.zip
-            denort-${{ matrix.target }}.zip
+            ende-${{ matrix.target }}.zip
+            endert-${{ matrix.target }}.zip
   promote-to-release:
     name: Promote to Release
     needs:
@@ -146,10 +146,10 @@ jobs:
       - name: Create version file
         run: |-
           # Unzip a binary to get the version
-          unzip -o deno-x86_64-apple-darwin.zip
-          DENO_VERSION=$(./deno -V | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          unzip -o ende-x86_64-apple-darwin.zip
+          DENO_VERSION=$(./ende -V | cut -d ' ' -f 2 | cut -d '+' -f 1)
           echo "v${DENO_VERSION}" > release-${{github.event.inputs.releaseKind}}-latest.txt
-          rm -f ./deno
+          rm -f ./ende
       - name: Generate checksums
         run: |-
           # Re-stamping (patchver + re-sign) produces binaries that differ
@@ -157,11 +157,11 @@ jobs:
           # from, so the checksums change too. Regenerate the sidecars here;
           # otherwise the source release's stale *.sha256sum stays in the
           # bucket and no longer matches the promoted zip (see #36235).
-          for f in deno-*.zip denort-*.zip; do
+          for f in ende-*.zip endert-*.zip; do
             shasum -a 256 "$f" > "$f.sha256sum"
             tmp="$(mktemp -d)"
             unzip -o -q "$f" -d "$tmp"
-            ( cd "$tmp" && shasum -a 256 deno* ) > "${f%.zip}.sha256sum"
+            ( cd "$tmp" && shasum -a 256 ende* ) > "${f%.zip}.sha256sum"
             rm -rf "$tmp"
           done
       - name: Upload archives to dl.deno.land
@@ -176,7 +176,7 @@ jobs:
           # regenerated checksums. `aws s3 sync ./` walked the whole checkout
           # (submodules included), uploading stray *.zip test fixtures and
           # tripping over a broken symlink (exit 2).
-          for f in deno-*.zip denort-*.zip; do
+          for f in ende-*.zip endert-*.zip; do
             aws s3 cp "./$f" "s3://dl-deno-land/release/$VERSION/$f"
             aws s3 cp "./$f.sha256sum" "s3://dl-deno-land/release/$VERSION/$f.sha256sum"
             aws s3 cp "./${f%.zip}.sha256sum" "s3://dl-deno-land/release/$VERSION/${f%.zip}.sha256sum"

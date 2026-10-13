@@ -354,7 +354,7 @@ extern "C" fn test_uv_async_close_after_send(
 // uv_handle_*, uv_default_loop, uv_is_active/closing, uv_ref/unref). The
 // goal is to verify that the symbols are exported from the host binary and
 // behave like their libuv counterparts to the extent that the polyfills
-// promise. Timer callbacks are bridged onto deno_core's uv_compat loop;
+// promise. Timer callbacks are bridged onto ende_core's uv_compat loop;
 // here we synchronously start+stop the timer in the same napi callback so
 // the event loop has no opportunity to fire it, matching the original
 // no-op-stub-era assertion that the user callback is not invoked.

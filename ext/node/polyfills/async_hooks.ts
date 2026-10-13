@@ -6,7 +6,7 @@ const { core, primordials } = __bootstrap;
 const {
   validateFunction,
   validateObject,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   AsyncHook,
   emitAfter,
@@ -18,7 +18,7 @@ const {
   executionAsyncId: internalExecutionAsyncId,
   executionAsyncResource: internalExecutionAsyncResource,
   newAsyncId,
-} = core.loadExtScript("ext:deno_node/internal/async_hooks.ts");
+} = core.loadExtScript("ext:ende_node/internal/async_hooks.ts");
 
 const {
   ObjectDefineProperties,

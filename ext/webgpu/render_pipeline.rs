@@ -1,11 +1,11 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::GarbageCollected;
-use deno_core::WebIDL;
-use deno_core::cppgc::Ref;
-use deno_core::op2;
-use deno_core::webidl::Nullable;
-use deno_core::webidl::WebIdlInterfaceConverter;
+use ende_core::GarbageCollected;
+use ende_core::WebIDL;
+use ende_core::cppgc::Ref;
+use ende_core::op2;
+use ende_core::webidl::Nullable;
+use ende_core::webidl::WebIdlInterfaceConverter;
 use indexmap::IndexMap;
 
 use crate::Instance;
@@ -37,7 +37,7 @@ impl WebIdlInterfaceConverter for GPURenderPipeline {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for GPURenderPipeline {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"GPURenderPipeline"

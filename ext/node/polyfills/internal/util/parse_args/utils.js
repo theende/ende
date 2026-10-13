@@ -12,7 +12,7 @@ const {
 } = primordials;
 
 const { validateObject } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 
 // These are internal utilities to make the parsing logic easier to read, and

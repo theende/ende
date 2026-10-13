@@ -1,14 +1,14 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-import type { CallbackWithError } from "ext:deno_node/_fs/_fs_common.ts";
+import type { CallbackWithError } from "ext:ende_node/_fs/_fs_common.ts";
 import { type Buffer } from "node:buffer";
 import { core, primordials } from "ext:core/mod.js";
 import { op_node_lutimes, op_node_lutimes_sync } from "ext:core/ops";
-const { promisify } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+const { promisify } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 import {
   getValidatedPathToString,
   toUnixTimestamp,
-} from "ext:deno_node/internal/fs/utils.mjs";
+} from "ext:ende_node/internal/fs/utils.mjs";
 
 const {
   Error,

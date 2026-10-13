@@ -1,3 +1,3 @@
-# deno_resolver
+# ende_resolver
 
 Deno resolution algorithm.

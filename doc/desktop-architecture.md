@@ -9,14 +9,14 @@ and the lifecycle edges.
 
 The usual embedding has the app `dlopen` a UI lib. Desktop is inverted. The
 **executable is the native backend** (`laufey` for CEF, `laufey_webview` for the
-system WebView); the **Deno runtime is a cdylib** named `libdenort`
+system WebView); the **Deno runtime is a cdylib** named `libendert`
 (`crate-type = ["cdylib"]`, `cli/rt_desktop/`). The backend is launched with
 `--runtime <path-to-dylib>`, `dlopen`s it, and calls into it through a C ABI.
 
 Every launcher the packager writes is just that one invocation:
 
 ```
-exec "$DIR/laufey_webview" --runtime "$DIR/libdenort.so" "$@"   # desktop.rs:1407
+exec "$DIR/laufey_webview" --runtime "$DIR/libendert.so" "$@"   # desktop.rs:1407
 ```
 
 So the binary that owns `main()`, the event loop, and the window is _not_ Deno —
@@ -71,7 +71,7 @@ unsafe once threads exist:
    Vite `dist/`) resolve build output relative to cwd.
 
 Then `run_desktop` runs two futures concurrently under `tokio::select!`
-(`lib.rs:1848`): `denort::run::run_with_options(…)` (the Deno runtime, with
+(`lib.rs:1848`): `endert::run::run_with_options(…)` (the Deno runtime, with
 `auto_serve: true`, `serve_port`, `op_state_init`) and `laufey::run()` (the
 native event loop). A third spawned task, `navigate_fut`, bridges them.
 

@@ -3,26 +3,26 @@ use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::WebIDL;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::v8::cppgc::Visitor;
-use deno_core::webidl::UnrestrictedDouble;
 use deno_error::JsErrorBox;
-use deno_image::bitmap::ImageBitmap;
-use deno_image::image;
-use deno_image::image::ColorType;
-use deno_image::image::DynamicImage;
-use deno_image::image::GenericImageView;
-use deno_webgpu::canvas::ContextData;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::WebIDL;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::v8::cppgc::Visitor;
+use ende_core::webidl::UnrestrictedDouble;
+use ende_image::bitmap::ImageBitmap;
+use ende_image::image;
+use ende_image::image::ColorType;
+use ende_image::image::DynamicImage;
+use ende_image::image::GenericImageView;
+use ende_webgpu::canvas::ContextData;
 
 pub struct BlobHandle(pub v8::Global<v8::Function>);
 
 pub type CreateCanvasContext =
   for<'s> fn(
-    instance: Option<deno_webgpu::Instance>,
+    instance: Option<ende_webgpu::Instance>,
     canvas: v8::Global<v8::Object>,
     data: ContextData,
     scope: &mut v8::PinScope<'s, '_>,
@@ -125,7 +125,7 @@ impl OffscreenCanvas {
     if self.active_context.get().is_none() {
       let create_context: CreateCanvasContext = match context_id.as_str() {
         super::bitmaprenderer::CONTEXT_ID => super::bitmaprenderer::create as _,
-        deno_webgpu::canvas::CONTEXT_ID => deno_webgpu::canvas::create as _,
+        ende_webgpu::canvas::CONTEXT_ID => ende_webgpu::canvas::create as _,
         // https://html.spec.whatwg.org/multipage/canvas.html#dom-offscreencanvas-getcontext
         // step 1: if the user agent does not support the requested context,
         // then return null.
@@ -204,7 +204,7 @@ impl OffscreenCanvas {
         resolver.resolve(scope, blob.into()).unwrap();
       }
       Err(err) => {
-        let exception = deno_core::error::to_v8_error(scope, &err);
+        let exception = ende_core::error::to_v8_error(scope, &err);
         resolver.reject(scope, exception).unwrap();
       }
     }
@@ -311,9 +311,9 @@ pub enum Context {
     reason = "variant carries the bitmap renderer Ref so its lifetime is tied to the match"
   )]
   Bitmap(
-    deno_core::cppgc::Ref<crate::bitmaprenderer::ImageBitmapRenderingContext>,
+    ende_core::cppgc::Ref<crate::bitmaprenderer::ImageBitmapRenderingContext>,
   ),
-  WebGPU(deno_core::cppgc::Ref<deno_webgpu::canvas::GPUCanvasContext>),
+  WebGPU(ende_core::cppgc::Ref<ende_webgpu::canvas::GPUCanvasContext>),
 }
 
 pub fn get_context<'t>(
@@ -323,15 +323,15 @@ pub fn get_context<'t>(
 ) -> Context {
   match id {
     crate::bitmaprenderer::CONTEXT_ID => {
-      let ptr = deno_core::cppgc::try_unwrap_cppgc_persistent_object::<
+      let ptr = ende_core::cppgc::try_unwrap_cppgc_persistent_object::<
         crate::bitmaprenderer::ImageBitmapRenderingContext,
       >(scope, local)
       .unwrap();
       Context::Bitmap(ptr)
     }
-    deno_webgpu::canvas::CONTEXT_ID => {
-      let ptr = deno_core::cppgc::try_unwrap_cppgc_persistent_object::<
-        deno_webgpu::canvas::GPUCanvasContext,
+    ende_webgpu::canvas::CONTEXT_ID => {
+      let ptr = ende_core::cppgc::try_unwrap_cppgc_persistent_object::<
+        ende_webgpu::canvas::GPUCanvasContext,
       >(scope, local)
       .unwrap();
       Context::WebGPU(ptr)

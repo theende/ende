@@ -37,7 +37,7 @@ const {
   TypeError,
 } = primordials;
 
-const { URLPrototype } = core.loadExtScript("ext:deno_web/00_url.js");
+const { URLPrototype } = core.loadExtScript("ext:ende_web/00_url.js");
 
 const ASCII_DIGIT = ["\u0030-\u0039"];
 const ASCII_UPPER_ALPHA = ["\u0041-\u005A"];

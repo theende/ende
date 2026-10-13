@@ -6,15 +6,15 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use deno_core::ModuleSpecifier;
-use deno_core::OpState;
-use deno_core::op2;
-use deno_core::v8;
 use deno_error::JsErrorBox;
 use deno_path_util::url_to_file_path;
-use deno_runtime::deno_permissions::ChildPermissionsArg;
-use deno_runtime::deno_permissions::OpenAccessKind;
-use deno_runtime::deno_permissions::PermissionsContainer;
+use ende_core::ModuleSpecifier;
+use ende_core::OpState;
+use ende_core::op2;
+use ende_core::v8;
+use ende_runtime::ende_permissions::ChildPermissionsArg;
+use ende_runtime::ende_permissions::OpenAccessKind;
+use ende_runtime::ende_permissions::PermissionsContainer;
 use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
@@ -29,7 +29,7 @@ use crate::tools::test::TestSnapshotSummary;
 use crate::tools::test::TestStepDescription;
 use crate::tools::test::TestStepResult;
 
-deno_core::extension!(deno_test,
+ende_core::extension!(ende_test,
   ops = [
     op_pledge_test_permissions,
     op_restore_test_permissions,
@@ -84,7 +84,7 @@ struct PermissionsHolder(Uuid, PermissionsContainer);
 pub fn op_pledge_test_permissions(
   state: &mut OpState,
   #[serde] args: ChildPermissionsArg,
-) -> Result<Uuid, deno_runtime::deno_permissions::ChildPermissionError> {
+) -> Result<Uuid, ende_runtime::ende_permissions::ChildPermissionError> {
   let token = Uuid::new_v4();
   let parent_permissions = state.borrow_mut::<PermissionsContainer>();
   let worker_permissions = parent_permissions.create_child_permissions(args)?;

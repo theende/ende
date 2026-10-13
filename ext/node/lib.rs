@@ -11,15 +11,15 @@ use std::borrow::Cow;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_core::FastString;
-use deno_core::OpState;
-use deno_core::op2;
-use deno_core::url::Url;
-use deno_core::v8;
-use deno_core::v8::ExternalReference;
 use deno_error::JsErrorBox;
-use deno_permissions::OpenAccessKind;
-use deno_permissions::PermissionsContainer;
+use ende_core::FastString;
+use ende_core::OpState;
+use ende_core::op2;
+use ende_core::url::Url;
+use ende_core::v8;
+use ende_core::v8::ExternalReference;
+use ende_permissions::OpenAccessKind;
+use ende_permissions::PermissionsContainer;
 use node_resolver::DenoIsBuiltInNodeModuleChecker;
 use node_resolver::InNpmPackageChecker;
 use node_resolver::IsBuiltInNodeModuleChecker;
@@ -31,9 +31,9 @@ extern crate libz_sys as zlib;
 
 pub mod ops;
 
-use deno_dotenv::parse_env_content_hook;
-pub use deno_package_json::PackageJson;
-use deno_permissions::PermissionCheckError;
+use ende_dotenv::parse_env_content_hook;
+pub use ende_package_json::PackageJson;
+use ende_permissions::PermissionCheckError;
 pub use node_resolver::DENO_SUPPORTED_BUILTIN_NODE_MODULES as SUPPORTED_BUILTIN_NODE_MODULES;
 pub use node_resolver::PathClean;
 pub use ops::ipc::ChildPipeFd;
@@ -125,7 +125,7 @@ fn op_node_build_os() -> String {
 enum DotEnvLoadErr {
   #[class(inherit)]
   #[error("{0}")]
-  Fs(#[from] deno_io::fs::FsError),
+  Fs(#[from] ende_io::fs::FsError),
   #[class(inherit)]
   #[error(transparent)]
   Permission(
@@ -142,7 +142,7 @@ fn op_node_load_env_file(
   scope: &mut v8::PinScope<'_, '_>,
   #[string] path: &str,
 ) -> Result<(), DotEnvLoadErr> {
-  let fs = state.borrow::<deno_fs::FileSystemRc>().clone();
+  let fs = state.borrow::<ende_fs::FileSystemRc>().clone();
   let permissions = state.borrow::<PermissionsContainer>().clone();
   permissions
     .check_env_all()
@@ -156,7 +156,7 @@ fn op_node_load_env_file(
     .map_err(DotEnvLoadErr::Permission)?;
 
   let contents = fs.read_text_file_lossy_sync(&path)?;
-  let process_env = deno_os::ProcessEnvGuard::lock();
+  let process_env = ende_os::ProcessEnvGuard::lock();
   parse_env_content_hook(&contents, &mut |key, value| {
     // Follows Node.js behavior where null bytes are stripped from env keys and values
     let key = if let Some(null_pos) = key.find('\0') {
@@ -198,8 +198,8 @@ pub struct NodeExtInitServices<
   pub sys: TSys,
 }
 
-deno_core::extension!(deno_node,
-  deps = [ deno_io, deno_fs ],
+ende_core::extension!(ende_node,
+  deps = [ ende_io, ende_fs ],
   parameters = [TInNpmPackageChecker: InNpmPackageChecker, TNpmPackageFolderResolver: NpmPackageFolderResolver, TSys: ExtNodeSys],
   ops = [
     ops::assert::op_node_get_first_expression,
@@ -798,14 +798,14 @@ deno_core::extension!(deno_node,
     "path/mod.ts",
   ],
   synthetic_esm = [
-    "node:url" = "ext:deno_node/url.ts",
-    "node:util" = "ext:deno_node/util.ts",
-    "node:worker_threads" = "ext:deno_node/worker_threads.ts",
-    "node:zlib" = "ext:deno_node/zlib.js",
+    "node:url" = "ext:ende_node/url.ts",
+    "node:util" = "ext:ende_node/util.ts",
+    "node:worker_threads" = "ext:ende_node/worker_threads.ts",
+    "node:zlib" = "ext:ende_node/zlib.js",
   ],
   options = {
     maybe_init: Option<NodeExtInitServices<TInNpmPackageChecker, TNpmPackageFolderResolver, TSys>>,
-    fs: deno_fs::FileSystemRc,
+    fs: ende_fs::FileSystemRc,
   },
   state = |state, options| {
     state.put(options.fs.clone());
@@ -825,10 +825,10 @@ deno_core::extension!(deno_node,
     state.put(crate::ops::tls::NodeTlsState {
       custom_ca_certs: None,
       client_session_store: std::sync::Arc::new(
-        deno_tls::rustls::client::ClientSessionMemoryCache::new(256),
+        ende_tls::rustls::client::ClientSessionMemoryCache::new(256),
       ),
       client_session_store_insecure: std::sync::Arc::new(
-        deno_tls::rustls::client::ClientSessionMemoryCache::new(256),
+        ende_tls::rustls::client::ClientSessionMemoryCache::new(256),
       ),
       server_ticketer: None,
       cached_default_verifier: None,
@@ -837,7 +837,7 @@ deno_core::extension!(deno_node,
       cached_insecure_no_client_auth: None,
     });
   },
-  customizer = |ext: &mut deno_core::Extension| {
+  customizer = |ext: &mut ende_core::Extension| {
     let external_references = [
       vm::QUERY_MAP_FN.with(|query| {
         ExternalReference {
@@ -935,7 +935,7 @@ pub type NodeResolver<TInNpmPackageChecker, TNpmPackageFolderResolver, TSys> =
   >;
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type NodeResolverRc<TInNpmPackageChecker, TNpmPackageFolderResolver, TSys> =
-  deno_fs::sync::MaybeArc<
+  ende_fs::sync::MaybeArc<
     NodeResolver<TInNpmPackageChecker, TNpmPackageFolderResolver, TSys>,
   >;
 
@@ -958,9 +958,9 @@ pub fn create_host_defined_options<'s>(
 pub fn create_vm_dynamic_import_missing_host_defined_options<'s>(
   scope: &mut v8::PinScope<'s, '_>,
 ) -> v8::Local<'s, v8::Data> {
-  deno_core::create_host_defined_options_with_kind(
+  ende_core::create_host_defined_options_with_kind(
     scope,
-    deno_core::host_defined_options_kind::VM_DYNAMIC_IMPORT_MISSING,
+    ende_core::host_defined_options_kind::VM_DYNAMIC_IMPORT_MISSING,
   )
 }
 
@@ -968,9 +968,9 @@ pub fn create_vm_dynamic_import_callback_host_defined_options<'s>(
   scope: &mut v8::PinScope<'s, '_>,
   callback_id: u32,
 ) -> v8::Local<'s, v8::Data> {
-  deno_core::create_host_defined_options_with_kind_and_key(
+  ende_core::create_host_defined_options_with_kind_and_key(
     scope,
-    deno_core::host_defined_options_kind::VM_DYNAMIC_IMPORT_CALLBACK,
+    ende_core::host_defined_options_kind::VM_DYNAMIC_IMPORT_CALLBACK,
     callback_id,
   )
 }

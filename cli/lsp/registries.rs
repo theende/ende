@@ -5,20 +5,20 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_cache_dir::file_fetcher::CacheSetting;
-use deno_core::ModuleSpecifier;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::serde::Deserialize;
-use deno_core::serde_json;
-use deno_core::serde_json::json;
-use deno_core::url::ParseError;
-use deno_core::url::Position;
-use deno_core::url::Url;
 use deno_graph::Dependency;
-use deno_resolver::file_fetcher::FetchOptions;
-use deno_resolver::file_fetcher::FetchPermissionsOptionRef;
-use deno_resolver::loader::MemoryFilesRc;
+use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_core::ModuleSpecifier;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::serde::Deserialize;
+use ende_core::serde_json;
+use ende_core::serde_json::json;
+use ende_core::url::ParseError;
+use ende_core::url::Position;
+use ende_core::url::Url;
+use ende_resolver::file_fetcher::FetchOptions;
+use ende_resolver::file_fetcher::FetchPermissionsOptionRef;
+use ende_resolver::loader::MemoryFilesRc;
 use log::error;
 use once_cell::sync::Lazy;
 use serde::Serialize;
@@ -470,8 +470,8 @@ impl ModuleRegistry {
     let http_cache =
       Arc::new(GlobalHttpCache::new(CliSys::default(), location.clone()));
     let file_fetcher = create_cli_file_fetcher(
-      Arc::new(deno_runtime::deno_web::BlobStore::default())
-        as Arc<dyn deno_runtime::deno_web::BlobStoreTrait>,
+      Arc::new(ende_runtime::ende_web::BlobStore::default())
+        as Arc<dyn ende_runtime::ende_web::BlobStoreTrait>,
       http_cache.clone().into(),
       http_client_provider,
       MemoryFilesRc::default(),

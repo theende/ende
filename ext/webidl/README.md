@@ -1,4 +1,4 @@
-# deno_webidl
+# ende_webidl
 
 **This crate implements WebIDL for Deno. It consists of infrastructure to do
 ECMA -> WebIDL conversions.**
@@ -13,7 +13,7 @@ global scope:
 ```javascript
 import { core } from "ext:core/mod.js";
 
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 Object.defineProperty(globalThis, webidl.brand, {
   value: webidl.brand,
   enumerable: false,
@@ -22,5 +22,5 @@ Object.defineProperty(globalThis, webidl.brand, {
 });
 ```
 
-Then from rust, provide `deno_webidl::deno_webidl::init()` in the `extensions`
+Then from rust, provide `ende_webidl::ende_webidl::init()` in the `extensions`
 field of your `RuntimeOptions`

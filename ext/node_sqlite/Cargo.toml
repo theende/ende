@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_node_sqlite"
+name = "ende_node_sqlite"
 version = "0.29.0"
 authors.workspace = true
 edition.workspace = true
@@ -13,8 +13,8 @@ description = "Node sqlite compatibility for Deno"
 path = "lib.rs"
 
 [dependencies]
-deno_core.workspace = true
 deno_error.workspace = true
-deno_permissions.workspace = true
+ende_core.workspace = true
+ende_permissions.workspace = true
 rusqlite.workspace = true
 thiserror.workspace = true

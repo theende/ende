@@ -73,7 +73,7 @@ const {
   Number,
 } = primordials;
 
-const { InnerBody } = core.loadExtScript("ext:deno_fetch/22_body.js");
+const { InnerBody } = core.loadExtScript("ext:ende_fetch/22_body.js");
 const {
   dropServeNativeResponse,
   getInnerResponse,
@@ -90,15 +90,15 @@ const {
   SERVE_FAST_HEADER_NONE,
   toInnerResponse,
   wireHeaderList,
-} = core.loadExtScript("ext:deno_fetch/23_response.js");
+} = core.loadExtScript("ext:ende_fetch/23_response.js");
 const {
   abortRequest,
   cacheRequestHeaders,
   fromInnerRequest,
   requestHeadersExposed,
-} = core.loadExtScript("ext:deno_fetch/23_request.js");
+} = core.loadExtScript("ext:ende_fetch/23_request.js");
 const { AbortController } = core.loadExtScript(
-  "ext:deno_web/03_abort_signal.js",
+  "ext:ende_web/03_abort_signal.js",
 );
 const {
   getReadableStreamResourceBacking,
@@ -106,13 +106,13 @@ const {
   readableStreamForRid,
   ReadableStreamPrototype,
   resourceForReadableStream,
-} = core.loadExtScript("ext:deno_web/06_streams.js");
+} = core.loadExtScript("ext:ende_web/06_streams.js");
 const {
   listen,
   listenOptionApiName,
-} = core.loadExtScript("ext:deno_net/01_net.js");
+} = core.loadExtScript("ext:ende_net/01_net.js");
 const { hasTlsKeyPairOptions, listenTls } = core.loadExtScript(
-  "ext:deno_net/02_tls.js",
+  "ext:ende_net/02_tls.js",
 );
 const {
   otelState,
@@ -121,11 +121,11 @@ const {
   currentSnapshot,
   enterSpan,
   restoreSnapshot,
-} = core.loadExtScript("ext:deno_telemetry/telemetry.ts");
+} = core.loadExtScript("ext:ende_telemetry/telemetry.ts");
 const {
   updateSpanFromRequest,
   updateSpanFromServerResponse,
-} = core.loadExtScript("ext:deno_telemetry/util.ts");
+} = core.loadExtScript("ext:ende_telemetry/util.ts");
 
 const _upgraded = Symbol("_upgraded");
 

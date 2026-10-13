@@ -5,9 +5,9 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 
 use arc_swap::ArcSwap;
-use deno_runtime::deno_telemetry;
-use deno_runtime::deno_telemetry::OtelConfig;
-use deno_runtime::deno_telemetry::OtelConsoleConfig;
+use ende_runtime::ende_telemetry;
+use ende_runtime::ende_telemetry::OtelConfig;
+use ende_runtime::ende_telemetry::OtelConsoleConfig;
 
 struct CliLoggerInner {
   otel_console_config: OtelConsoleConfig,
@@ -41,10 +41,10 @@ impl log::Log for CliLogger {
         }
         OtelConsoleConfig::Capture => {
           self.inner.load().logger.log(record);
-          deno_telemetry::handle_log(record);
+          ende_telemetry::handle_log(record);
         }
         OtelConsoleConfig::Replace => {
-          deno_telemetry::handle_log(record);
+          ende_telemetry::handle_log(record);
         }
       }
 
@@ -82,7 +82,7 @@ pub fn init(options: InitLoggingOptions) {
   .filter_module("globset", log::LevelFilter::Error)
   // used to make available the lsp_debug which is then filtered out at runtime
   // in the cli logger
-  .filter_module("deno::lsp::performance", log::LevelFilter::Debug)
+  .filter_module("ende::lsp::performance", log::LevelFilter::Debug)
   .filter_module("rustls", log::LevelFilter::Off)
   // swc_ecma_codegen's `srcmap!` macro emits error-level spans only on debug
   // build:
@@ -113,7 +113,7 @@ pub fn init(options: InitLoggingOptions) {
       target.push_str(&line_no.to_string());
     }
     if record.level() <= log::Level::Info
-      || (record.target() == "deno::lsp::performance"
+      || (record.target() == "ende::lsp::performance"
         && record.level() == log::Level::Debug)
     {
       // Print ERROR, WARN, INFO and lsp_debug logs as they are

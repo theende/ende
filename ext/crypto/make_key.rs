@@ -12,8 +12,8 @@
 
 use std::cell::RefCell;
 
-use deno_core::cppgc::make_cppgc_object;
-use deno_core::v8;
+use ende_core::cppgc::make_cppgc_object;
+use ende_core::v8;
 
 use crate::crypto_key::CryptoKey;
 use crate::crypto_key::CryptoKeyType;

@@ -2,7 +2,7 @@
 (function () {
 const { core } = __bootstrap;
 const { ERR_INTERNAL_ASSERTION } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 
 function assert(value, message) {

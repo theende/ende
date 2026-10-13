@@ -8,12 +8,12 @@
 use std::borrow::Cow;
 
 use aws_lc_rs::digest;
-use deno_core::v8;
-use deno_core::webidl::ContextFn;
-use deno_core::webidl::WebIdlConverter;
-use deno_core::webidl::WebIdlError;
-use deno_core::webidl::WebIdlErrorKind;
 use deno_error::JsErrorBox;
+use ende_core::v8;
+use ende_core::webidl::ContextFn;
+use ende_core::webidl::WebIdlConverter;
+use ende_core::webidl::WebIdlError;
+use ende_core::webidl::WebIdlErrorKind;
 use serde::Deserialize;
 
 use crate::CryptoError;

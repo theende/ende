@@ -67,9 +67,9 @@ fn is_node_arg0(arg0: &OsString) -> bool {
   let Some(file_name) = Path::new(arg0).file_name() else {
     return false;
   };
-  // Never misfire on the deno binary itself.
-  if file_name.eq_ignore_ascii_case("deno")
-    || file_name.eq_ignore_ascii_case("deno.exe")
+  // Never misfire on the ende binary itself.
+  if file_name.eq_ignore_ascii_case("ende")
+    || file_name.eq_ignore_ascii_case("ende.exe")
   {
     return false;
   }
@@ -116,7 +116,7 @@ pub fn maybe_rewrite_node_arg0(args: Vec<OsString>) -> Vec<OsString> {
           eprintln!("Errors: {}", errors.join(", "));
         }
       }
-      deno_runtime::exit(1);
+      ende_runtime::exit(1);
     }
   };
 
@@ -317,8 +317,8 @@ mod tests {
     assert!(is_node_arg0(&OsString::from("/usr/local/bin/node")));
     assert!(!is_node_arg0(&OsString::from("anode")));
     assert!(!is_node_arg0(&OsString::from("/path/to/mynode")));
-    assert!(!is_node_arg0(&OsString::from("deno")));
-    assert!(!is_node_arg0(&OsString::from("/usr/bin/deno")));
+    assert!(!is_node_arg0(&OsString::from("ende")));
+    assert!(!is_node_arg0(&OsString::from("/usr/bin/ende")));
   }
 
   #[test]
@@ -326,7 +326,7 @@ mod tests {
   fn detects_node_exe_arg0_on_windows() {
     assert!(is_node_arg0(&OsString::from("node.exe")));
     assert!(is_node_arg0(&OsString::from("NODE.EXE")));
-    assert!(!is_node_arg0(&OsString::from("deno.exe")));
+    assert!(!is_node_arg0(&OsString::from("ende.exe")));
   }
 
   #[test]

@@ -8,52 +8,52 @@ import {
   op_runtime_memory_usage,
 } from "ext:core/ops";
 
-const timers = core.loadExtScript("ext:deno_web/02_timers.js");
-const httpClient = core.loadExtScript("ext:deno_fetch/22_http_client.js");
-const console = core.loadExtScript("ext:deno_web/01_console.js");
-const ffi = core.loadExtScript("ext:deno_ffi/00_ffi.js");
-const net = core.loadExtScript("ext:deno_net/01_net.js");
-const tls = core.loadExtScript("ext:deno_net/02_tls.js");
+const timers = core.loadExtScript("ext:ende_web/02_timers.js");
+const httpClient = core.loadExtScript("ext:ende_fetch/22_http_client.js");
+const console = core.loadExtScript("ext:ende_web/01_console.js");
+const ffi = core.loadExtScript("ext:ende_ffi/00_ffi.js");
+const net = core.loadExtScript("ext:ende_net/01_net.js");
+const tls = core.loadExtScript("ext:ende_net/02_tls.js");
 // `Deno.serve` is the eager loader chain into 22_body -> 06_streams (the
 // 208 KB web streams polyfill). Defer until first access so programs that
 // don't use Deno.serve don't pay the parse cost at startup.
 let _serveImpl;
 function lazyServe() {
   return _serveImpl ??
-    (_serveImpl = core.loadExtScript("ext:deno_http/00_serve.ts"));
+    (_serveImpl = core.loadExtScript("ext:ende_http/00_serve.ts"));
 }
 // Deno.serveHttp and Deno.upgradeWebSocket each chain through
 // 23_request -> 22_body -> 06_streams (208 KB). Defer both.
 let _httpImpl;
 function lazyHttp() {
   return _httpImpl ??
-    (_httpImpl = core.loadExtScript("ext:deno_http/01_http.js"));
+    (_httpImpl = core.loadExtScript("ext:ende_http/01_http.js"));
 }
 let _websocketImpl;
 function lazyWebsocket() {
   return _websocketImpl ??
-    (_websocketImpl = core.loadExtScript("ext:deno_http/02_websocket.ts"));
+    (_websocketImpl = core.loadExtScript("ext:ende_http/02_websocket.ts"));
 }
 const errors = core.loadExtScript("ext:runtime/01_errors.js");
 const version = core.loadExtScript("ext:runtime/01_version.ts");
 const permissions = core.loadExtScript("ext:runtime/10_permissions.js");
-const io = core.loadExtScript("ext:deno_io/12_io.js");
-const fs = core.loadExtScript("ext:deno_fs/30_fs.js");
-const os = core.loadExtScript("ext:deno_os/30_os.js");
+const io = core.loadExtScript("ext:ende_io/12_io.js");
+const fs = core.loadExtScript("ext:ende_fs/30_fs.js");
+const os = core.loadExtScript("ext:ende_os/30_os.js");
 const fsEvents = core.loadExtScript("ext:runtime/40_fs_events.js");
 // Deno.Command / Deno.run / etc.: 40_process.js extends ReadableStream at
 // module body, which pulls 06_streams.js (208 KB). Defer.
 let _processImpl;
 function lazyProcess() {
   return _processImpl ??
-    (_processImpl = core.loadExtScript("ext:deno_process/40_process.js"));
+    (_processImpl = core.loadExtScript("ext:ende_process/40_process.js"));
 }
-const signals = core.loadExtScript("ext:deno_os/40_signals.js");
+const signals = core.loadExtScript("ext:ende_os/40_signals.js");
 const tty = core.loadExtScript("ext:runtime/40_tty.js");
 // Deno.Kv is a niche API and pulls 06_streams. Defer.
 let _kvImpl;
 function lazyKv() {
-  return _kvImpl ?? (_kvImpl = core.loadExtScript("ext:deno_kv/01_db.ts"));
+  return _kvImpl ?? (_kvImpl = core.loadExtScript("ext:ende_kv/01_db.ts"));
 }
 // `Deno.cron`, `Deno.UnsafeWindowSurface`, `Deno.telemetry` are rarely used
 // and their backing modules (`01_cron.ts`, `02_surface.js`, `telemetry.ts`)
@@ -62,24 +62,24 @@ function lazyKv() {
 // only on first property access at runtime.
 let _cron;
 const lazyCron = () =>
-  _cron ?? (_cron = core.loadExtScript("ext:deno_cron/01_cron.ts"));
+  _cron ?? (_cron = core.loadExtScript("ext:ende_cron/01_cron.ts"));
 let _surface;
 const lazySurface = () =>
   _surface ??
-    (_surface = core.loadExtScript("ext:deno_canvas/02_surface.js"));
+    (_surface = core.loadExtScript("ext:ende_canvas/02_surface.js"));
 let _telemetry;
 const lazyTelemetry = () =>
   _telemetry ??
-    (_telemetry = core.loadExtScript("ext:deno_telemetry/telemetry.ts"));
-import { unstableIds } from "ext:deno_features/flags.js";
-const { loadWebGPU } = core.loadExtScript("ext:deno_webgpu/00_init.js");
-import { bundle } from "ext:deno_bundle_runtime/bundle.ts";
+    (_telemetry = core.loadExtScript("ext:ende_telemetry/telemetry.ts"));
+import { unstableIds } from "ext:ende_features/flags.js";
+const { loadWebGPU } = core.loadExtScript("ext:ende_webgpu/00_init.js");
+import { bundle } from "ext:ende_bundle_runtime/bundle.ts";
 
 const { ObjectDefineProperty, Float64Array } = primordials;
 
-const loadQuic = core.createLazyLoader("ext:deno_net/03_quic.js");
+const loadQuic = core.createLazyLoader("ext:ende_net/03_quic.js");
 const loadWebTransport = core.createLazyLoader(
-  "ext:deno_web/webtransport.js",
+  "ext:ende_web/webtransport.js",
 );
 
 // Each entry here is a property on `internals` (i.e. `Deno[Deno.internal]`)
@@ -116,28 +116,28 @@ function defineLazyInternal(name, specifier) {
   });
 }
 
-// `ext:deno_http/00_serve.ts` (registers serve internals at module body).
-defineLazyInternal("addTrailers", "ext:deno_http/00_serve.ts");
-defineLazyInternal("serveHttpOnListener", "ext:deno_http/00_serve.ts");
-defineLazyInternal("serveHttpOnConnection", "ext:deno_http/00_serve.ts");
-// `ext:deno_cron/01_cron.ts` registers `internals.formatToCronSchedule` /
+// `ext:ende_http/00_serve.ts` (registers serve internals at module body).
+defineLazyInternal("addTrailers", "ext:ende_http/00_serve.ts");
+defineLazyInternal("serveHttpOnListener", "ext:ende_http/00_serve.ts");
+defineLazyInternal("serveHttpOnConnection", "ext:ende_http/00_serve.ts");
+// `ext:ende_cron/01_cron.ts` registers `internals.formatToCronSchedule` /
 // `internals.parseScheduleToString` at module body. Now that cron is lazy
 // (see `lazyCron` below), expose these via the same accessor pattern so
 // `cron_test.ts` (which destructures them from `Deno[Deno.internal]`) and
 // any user code reaching in keep working.
-defineLazyInternal("formatToCronSchedule", "ext:deno_cron/01_cron.ts");
-defineLazyInternal("parseScheduleToString", "ext:deno_cron/01_cron.ts");
-// `ext:deno_http/02_websocket.ts`.
+defineLazyInternal("formatToCronSchedule", "ext:ende_cron/01_cron.ts");
+defineLazyInternal("parseScheduleToString", "ext:ende_cron/01_cron.ts");
+// `ext:ende_http/02_websocket.ts`.
 defineLazyInternal(
   "buildCaseInsensitiveCommaValueFinder",
-  "ext:deno_http/02_websocket.ts",
+  "ext:ende_http/02_websocket.ts",
 );
-// `ext:deno_fetch/23_request.js`.
-defineLazyInternal("getCachedAbortSignal", "ext:deno_fetch/23_request.js");
-// `ext:deno_process/40_process.js` (registers process internals at module body).
-defineLazyInternal("getExtraPipeRids", "ext:deno_process/40_process.js");
-defineLazyInternal("getIpcPipeRid", "ext:deno_process/40_process.js");
-defineLazyInternal("kExtraStdio", "ext:deno_process/40_process.js");
+// `ext:ende_fetch/23_request.js`.
+defineLazyInternal("getCachedAbortSignal", "ext:ende_fetch/23_request.js");
+// `ext:ende_process/40_process.js` (registers process internals at module body).
+defineLazyInternal("getExtraPipeRids", "ext:ende_process/40_process.js");
+defineLazyInternal("getIpcPipeRid", "ext:ende_process/40_process.js");
+defineLazyInternal("kExtraStdio", "ext:ende_process/40_process.js");
 
 // the out buffer for `cpuUsage` and `memoryUsage`
 const usageBuffer = new Float64Array(4);

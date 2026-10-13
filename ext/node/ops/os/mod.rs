@@ -2,11 +2,11 @@
 
 use std::mem::MaybeUninit;
 
-use deno_core::OpState;
-use deno_core::ToV8;
-use deno_core::op2;
-use deno_permissions::PermissionCheckError;
-use deno_permissions::PermissionsContainer;
+use ende_core::OpState;
+use ende_core::ToV8;
+use ende_core::op2;
+use ende_permissions::PermissionCheckError;
+use ende_permissions::PermissionsContainer;
 use sys_traits::EnvHomeDir;
 
 mod cpus;

@@ -11,39 +11,39 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use dashmap::DashMap;
-use deno_core::error::AnyError;
-use deno_core::futures::StreamExt;
-use deno_core::serde_json;
-use deno_core::url::Url;
 use deno_error::JsErrorBox;
-use deno_lib::version::DENO_VERSION_INFO;
-use deno_npm::NpmResolutionPackage;
-use deno_npm::registry::NpmPackageInfo;
-use deno_npm::registry::NpmPackageVersionInfosIterator;
-use deno_npm::resolution::NpmResolutionSnapshot;
-use deno_npm::resolution::NpmVersionResolver;
-use deno_npm_cache::NpmCacheHttpClientBytesResponse;
-use deno_npm_cache::NpmCacheHttpClientResponse;
-use deno_npm_installer::BinEntries;
-use deno_npm_installer::CachedNpmPackageExtraInfoProvider;
-use deno_npm_installer::ExpectedExtraInfo;
-use deno_npm_installer::lifecycle_scripts::LIFECYCLE_SCRIPTS_RUNNING_ENV_VAR;
-use deno_npm_installer::lifecycle_scripts::LifecycleScriptsExecutor;
-use deno_npm_installer::lifecycle_scripts::LifecycleScriptsExecutorOptions;
-use deno_npm_installer::lifecycle_scripts::PackageWithScript;
-use deno_npm_installer::lifecycle_scripts::ResolvePkgFolderFn;
-use deno_npm_installer::lifecycle_scripts::compute_lifecycle_script_layers;
-use deno_npm_installer::lifecycle_scripts::is_broken_default_install_script;
-use deno_npmrc::RegistryConfig;
-use deno_npmrc::ResolvedNpmRc;
-use deno_resolver::file_fetcher::FetchOptions;
-use deno_resolver::file_fetcher::FetchPermissionsOptionRef;
-use deno_resolver::npm::ByonmNpmResolverCreateOptions;
-use deno_resolver::npm::ManagedNpmResolverRc;
-use deno_runtime::deno_io::FromRawIoHandle;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
 use deno_task_shell::KillSignal;
+use ende_core::error::AnyError;
+use ende_core::futures::StreamExt;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_lib::version::DENO_VERSION_INFO;
+use ende_npm::NpmResolutionPackage;
+use ende_npm::registry::NpmPackageInfo;
+use ende_npm::registry::NpmPackageVersionInfosIterator;
+use ende_npm::resolution::NpmResolutionSnapshot;
+use ende_npm::resolution::NpmVersionResolver;
+use ende_npm_cache::NpmCacheHttpClientBytesResponse;
+use ende_npm_cache::NpmCacheHttpClientResponse;
+use ende_npm_installer::BinEntries;
+use ende_npm_installer::CachedNpmPackageExtraInfoProvider;
+use ende_npm_installer::ExpectedExtraInfo;
+use ende_npm_installer::lifecycle_scripts::LIFECYCLE_SCRIPTS_RUNNING_ENV_VAR;
+use ende_npm_installer::lifecycle_scripts::LifecycleScriptsExecutor;
+use ende_npm_installer::lifecycle_scripts::LifecycleScriptsExecutorOptions;
+use ende_npm_installer::lifecycle_scripts::PackageWithScript;
+use ende_npm_installer::lifecycle_scripts::ResolvePkgFolderFn;
+use ende_npm_installer::lifecycle_scripts::compute_lifecycle_script_layers;
+use ende_npm_installer::lifecycle_scripts::is_broken_default_install_script;
+use ende_npmrc::RegistryConfig;
+use ende_npmrc::ResolvedNpmRc;
+use ende_resolver::file_fetcher::FetchOptions;
+use ende_resolver::file_fetcher::FetchPermissionsOptionRef;
+use ende_resolver::npm::ByonmNpmResolverCreateOptions;
+use ende_resolver::npm::ManagedNpmResolverRc;
+use ende_runtime::ende_io::FromRawIoHandle;
 use sys_traits::PathsInErrorsExt;
 
 use crate::file_fetcher::CliFileFetcher;
@@ -53,30 +53,30 @@ use crate::task_runner::TaskStdio;
 use crate::util::progress_bar::ProgressBar;
 use crate::util::progress_bar::ProgressMessagePrompt;
 
-pub type CliNpmInstallerFactory = deno_npm_installer::NpmInstallerFactory<
+pub type CliNpmInstallerFactory = ende_npm_installer::NpmInstallerFactory<
   CliNpmCacheHttpClient,
   ProgressBar,
   CliSys,
 >;
 pub type CliNpmCacheServices =
-  deno_npm_installer::NpmCacheServices<CliNpmCacheHttpClient, CliSys>;
+  ende_npm_installer::NpmCacheServices<CliNpmCacheHttpClient, CliSys>;
 pub type CliNpmInstaller =
-  deno_npm_installer::NpmInstaller<CliNpmCacheHttpClient, CliSys>;
-pub type CliNpmCache = deno_npm_cache::NpmCache<CliSys>;
+  ende_npm_installer::NpmInstaller<CliNpmCacheHttpClient, CliSys>;
+pub type CliNpmCache = ende_npm_cache::NpmCache<CliSys>;
 pub type CliNpmRegistryInfoProvider =
-  deno_npm_cache::RegistryInfoProvider<CliNpmCacheHttpClient, CliSys>;
-pub type CliNpmResolver<TSys = CliSys> = deno_resolver::npm::NpmResolver<TSys>;
-pub type CliManagedNpmResolver = deno_resolver::npm::ManagedNpmResolver<CliSys>;
+  ende_npm_cache::RegistryInfoProvider<CliNpmCacheHttpClient, CliSys>;
+pub type CliNpmResolver<TSys = CliSys> = ende_resolver::npm::NpmResolver<TSys>;
+pub type CliManagedNpmResolver = ende_resolver::npm::ManagedNpmResolver<CliSys>;
 pub type CliNpmResolverCreateOptions =
-  deno_resolver::npm::NpmResolverCreateOptions<CliSys>;
+  ende_resolver::npm::NpmResolverCreateOptions<CliSys>;
 pub type CliByonmNpmResolverCreateOptions =
   ByonmNpmResolverCreateOptions<CliSys>;
-pub type CliNpmGraphResolver = deno_npm_installer::graph::NpmDenoGraphResolver<
+pub type CliNpmGraphResolver = ende_npm_installer::graph::NpmDenoGraphResolver<
   CliNpmCacheHttpClient,
   CliSys,
 >;
 
-pub use deno_npm_cache::NpmPackumentFormat;
+pub use ende_npm_cache::NpmPackumentFormat;
 
 /// `Accept` header sent when fetching npm package metadata. Mirrors the npm
 /// install path (`CliNpmCacheHttpClient`) so registries that content-negotiate
@@ -123,18 +123,18 @@ impl CliNpmCacheHttpClient {
 }
 
 #[async_trait::async_trait(?Send)]
-impl deno_npm_cache::NpmCacheHttpClient for CliNpmCacheHttpClient {
+impl ende_npm_cache::NpmCacheHttpClient for CliNpmCacheHttpClient {
   async fn download_with_retries_on_any_tokio_runtime(
     &self,
     url: Url,
     maybe_auth: Option<String>,
     maybe_etag: Option<String>,
     maybe_registry_config: Option<&RegistryConfig>,
-  ) -> Result<NpmCacheHttpClientResponse, deno_npm_cache::DownloadError> {
+  ) -> Result<NpmCacheHttpClientResponse, ende_npm_cache::DownloadError> {
     let guard = self.progress_bar.update(url.as_str());
     let client = self
       .get_or_create_http_client(maybe_registry_config)
-      .map_err(|err| deno_npm_cache::DownloadError {
+      .map_err(|err| ende_npm_cache::DownloadError {
         status_code: None,
         error: err,
       })?;
@@ -195,7 +195,7 @@ impl deno_npm_cache::NpmCacheHttpClient for CliNpmCacheHttpClient {
             Some(bad_response_error.status_code.as_u16())
           }
         };
-        deno_npm_cache::DownloadError {
+        ende_npm_cache::DownloadError {
           status_code,
           error: JsErrorBox::from_err(err),
         }
@@ -210,11 +210,11 @@ impl deno_npm_cache::NpmCacheHttpClient for CliNpmCacheHttpClient {
         {
           tokio::task::spawn_blocking(move || decompress_gzip(body))
             .await
-            .map_err(|e| deno_npm_cache::DownloadError {
+            .map_err(|e| ende_npm_cache::DownloadError {
               status_code: None,
               error: JsErrorBox::generic(e.to_string()),
             })?
-            .map_err(|e| deno_npm_cache::DownloadError {
+            .map_err(|e| ende_npm_cache::DownloadError {
               status_code: None,
               error: e,
             })?
@@ -293,7 +293,7 @@ impl NpmFetchResolver {
   /// Fill in the `exports` subpath keys of each package version when parsing
   /// registry metadata. Only the LSP needs them (for npm import-specifier
   /// completion); every other consumer leaves them off so nothing is retained.
-  /// See [`deno_npm::registry::NpmPackageInfo::fill_export_keys`].
+  /// See [`ende_npm::registry::NpmPackageInfo::fill_export_keys`].
   pub fn with_export_keys(mut self) -> Self {
     self.deserialize_export_keys = true;
     self
@@ -362,10 +362,10 @@ impl NpmFetchResolver {
     &self,
     name: &str,
   ) -> Result<NpmPackageInfo, String> {
-    let info_url = deno_npm_cache::get_package_url(&self.npmrc, name);
+    let info_url = ende_npm_cache::get_package_url(&self.npmrc, name);
     let registry_config = self.npmrc.get_registry_config(name);
     let maybe_auth_header =
-      deno_npm_cache::maybe_auth_header_value_for_npm_registry(registry_config)
+      ende_npm_cache::maybe_auth_header_value_for_npm_registry(registry_config)
         .map_err(AnyError::from)
         .and_then(|value| match value {
           Some(value) => Ok(Some((
@@ -468,7 +468,7 @@ pub enum DenoTaskLifecycleScriptsError {
 pub struct DenoTaskLifeCycleScriptsExecutor {
   progress_bar: ProgressBar,
   npm_resolver: ManagedNpmResolverRc<CliSys>,
-  system_info: deno_npm::NpmSystemInfo,
+  system_info: ende_npm::NpmSystemInfo,
 }
 
 struct PackageScriptResult<'a> {
@@ -530,7 +530,7 @@ impl LifecycleScriptsExecutor for DenoTaskLifeCycleScriptsExecutor {
       );
 
       let mut results =
-        deno_core::futures::stream::iter(layer.iter().map(|pkg| {
+        ende_core::futures::stream::iter(layer.iter().map(|pkg| {
           self.run_single_package_scripts(
             pkg,
             &env_vars,
@@ -587,7 +587,7 @@ impl DenoTaskLifeCycleScriptsExecutor {
   pub fn new(
     npm_resolver: ManagedNpmResolverRc<CliSys>,
     progress_bar: ProgressBar,
-    system_info: deno_npm::NpmSystemInfo,
+    system_info: ende_npm::NpmSystemInfo,
   ) -> Self {
     Self {
       npm_resolver,
@@ -625,7 +625,7 @@ impl DenoTaskLifeCycleScriptsExecutor {
     };
 
     // each concurrent package gets its own temp file to avoid fd races
-    let temp_file_fd = deno_runtime::deno_process::npm_process_state_tempfile(
+    let temp_file_fd = ende_runtime::ende_process::npm_process_state_tempfile(
       options.process_state.as_bytes(),
     )
     .map_err(DenoTaskLifecycleScriptsError::CreateNpmProcessState)?;
@@ -633,7 +633,7 @@ impl DenoTaskLifeCycleScriptsExecutor {
     let _temp_file = unsafe { std::fs::File::from_raw_io_handle(temp_file_fd) };
     let mut env_vars = env_vars.clone();
     env_vars.insert(
-      deno_runtime::deno_process::NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME.into(),
+      ende_runtime::ende_process::NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME.into(),
       (temp_file_fd as usize).to_string().into(),
     );
 

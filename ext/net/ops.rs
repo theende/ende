@@ -9,20 +9,20 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::time::Duration;
 
-use deno_core::AsyncRefCell;
-use deno_core::ByteString;
-use deno_core::CancelFuture;
-use deno_core::CancelHandle;
-use deno_core::CancelTryFuture;
-use deno_core::FromV8;
-use deno_core::JsBuffer;
-use deno_core::OpState;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::ToV8;
-use deno_core::op2;
-use deno_permissions::PermissionsContainer;
+use ende_core::AsyncRefCell;
+use ende_core::ByteString;
+use ende_core::CancelFuture;
+use ende_core::CancelHandle;
+use ende_core::CancelTryFuture;
+use ende_core::FromV8;
+use ende_core::JsBuffer;
+use ende_core::OpState;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::ToV8;
+use ende_core::op2;
+use ende_permissions::PermissionsContainer;
 use hickory_proto::ProtoError;
 use hickory_proto::ProtoErrorKind;
 use hickory_proto::op::ResponseCode;
@@ -135,10 +135,10 @@ pub enum NetError {
   AcceptTaskOngoing,
   #[class(inherit)]
   #[error(transparent)]
-  Permission(#[from] deno_permissions::PermissionCheckError),
+  Permission(#[from] ende_permissions::PermissionCheckError),
   #[class(inherit)]
   #[error("{0}")]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
   #[class(generic)]
   #[error("No resolved address found")]
   NoResolvedAddress,
@@ -150,7 +150,7 @@ pub enum NetError {
   Map(crate::io::MapError),
   #[class(inherit)]
   #[error("{0}")]
-  Canceled(#[from] deno_core::Canceled),
+  Canceled(#[from] ende_core::Canceled),
   #[class("NotFound")]
   #[error("{0}")]
   #[property("ares_code" = self.ares_code())]
@@ -186,10 +186,10 @@ pub enum NetError {
   TcpStreamBusy,
   #[class(generic)]
   #[error("{0}")]
-  Rustls(#[from] deno_tls::rustls::Error),
+  Rustls(#[from] ende_tls::rustls::Error),
   #[class(inherit)]
   #[error("{0}")]
-  Tls(#[from] deno_tls::TlsError),
+  Tls(#[from] ende_tls::TlsError),
   #[class("InvalidData")]
   #[error("Error creating TLS certificate: Deno.listenTls requires a key")]
   ListenTlsRequiresKey,
@@ -551,8 +551,8 @@ pub struct NetPermToken {
 }
 
 // SAFETY: we're sure `NetPermToken` can be GCed
-unsafe impl deno_core::GarbageCollected for NetPermToken {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for NetPermToken {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"NetPermToken"
@@ -869,7 +869,7 @@ pub async fn op_net_connect_vsock(
 ) -> Result<(ResourceId, (u32, u32), (u32, u32)), NetError> {
   use std::sync::Arc;
 
-  use deno_features::FeatureChecker;
+  use ende_features::FeatureChecker;
   use tokio_vsock::VsockAddr;
   use tokio_vsock::VsockStream;
 
@@ -922,7 +922,7 @@ pub fn op_net_listen_vsock(
 ) -> Result<(ResourceId, u32, u32), NetError> {
   use std::sync::Arc;
 
-  use deno_features::FeatureChecker;
+  use ende_features::FeatureChecker;
   use tokio_vsock::VsockAddr;
   use tokio_vsock::VsockListener;
 
@@ -1408,9 +1408,9 @@ mod tests {
   use std::net::ToSocketAddrs;
   use std::sync::Mutex;
 
-  use deno_core::JsRuntime;
-  use deno_core::RuntimeOptions;
-  use deno_core::futures::FutureExt;
+  use ende_core::JsRuntime;
+  use ende_core::RuntimeOptions;
+  use ende_core::futures::FutureExt;
   use hickory_proto::rr::Name;
   use hickory_proto::rr::rdata::NULL;
   use hickory_proto::rr::rdata::SOA;
@@ -1752,9 +1752,9 @@ mod tests {
 
     use std::sync::Arc;
 
-    use deno_permissions::RuntimePermissionDescriptorParser;
+    use ende_permissions::RuntimePermissionDescriptorParser;
 
-    deno_core::extension!(
+    ende_core::extension!(
       test_ext,
       state = |state| {
         let parser = Arc::new(RuntimePermissionDescriptorParser::new(
@@ -1815,9 +1815,9 @@ mod tests {
     use std::sync::Arc;
     use std::task::Poll;
 
-    use deno_permissions::RuntimePermissionDescriptorParser;
+    use ende_permissions::RuntimePermissionDescriptorParser;
 
-    deno_core::extension!(
+    ende_core::extension!(
       test_ext,
       state = |state| {
         let parser = Arc::new(RuntimePermissionDescriptorParser::new(

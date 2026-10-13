@@ -9,17 +9,17 @@ const {
   validateObject,
   validateString,
   validateStringArray,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { isMacOS, isWindows } = core.loadExtScript("ext:deno_node/_util/os.ts");
-const { kEmptyObject } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { isMacOS, isWindows } = core.loadExtScript("ext:ende_node/_util/os.ts");
+const { kEmptyObject } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 const lazyProcess = core.createLazyLoader("node:process");
 const lazyReaddir = core.createLazyLoader(
-  "ext:deno_node/_fs/_fs_readdir.ts",
+  "ext:ende_node/_fs/_fs_readdir.ts",
 );
 const {
   lstatPromise: lstat,
   lstatSync,
-} = core.loadExtScript("ext:deno_node/_fs/_fs_lstat.ts");
+} = core.loadExtScript("ext:ende_node/_fs/_fs_lstat.ts");
 
 const {
   basename,
@@ -27,22 +27,22 @@ const {
   isAbsolute,
   join,
   resolve,
-} = core.loadExtScript("ext:deno_node/path/mod.ts");
+} = core.loadExtScript("ext:ende_node/path/mod.ts");
 import {
   type Dirent,
   DirentFromStats,
-} from "ext:deno_node/internal/fs/utils.mjs";
+} from "ext:ende_node/internal/fs/utils.mjs";
 
 const {
   ERR_INVALID_ARG_TYPE,
   hideStackFrames,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
-const { default: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+const { default: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 
-import type { ErrnoException } from "ext:deno_node/_global.d.ts";
+import type { ErrnoException } from "ext:ende_node/_global.d.ts";
 const { toPathIfFileURL } = core.loadExtScript(
-  "ext:deno_node/internal/url.ts",
+  "ext:ende_node/internal/url.ts",
 );
 
 interface GlobOptionsBase {
@@ -121,7 +121,7 @@ const {
   ObjectPrototypeIsPrototypeOf,
 } = primordials;
 
-const lazyMinimatch = core.createLazyLoader("ext:deno_node/deps/minimatch.js");
+const lazyMinimatch = core.createLazyLoader("ext:ende_node/deps/minimatch.js");
 
 /**
  * @param {string} path

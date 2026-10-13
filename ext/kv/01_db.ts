@@ -46,7 +46,7 @@ const {
   TypedArrayPrototypeGetSymbolToStringTag,
 } = primordials;
 
-const { ReadableStream } = core.loadExtScript("ext:deno_web/06_streams.js");
+const { ReadableStream } = core.loadExtScript("ext:ende_web/06_streams.js");
 
 const cloneableDeserializers = core.getCloneableDeserializers();
 

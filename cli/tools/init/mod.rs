@@ -7,16 +7,16 @@ use std::path::Path;
 
 use color_print::cformat;
 use color_print::cstr;
-use deno_config::deno_json::NodeModulesDirMode;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::serde_json::json;
-use deno_lib::args::UnstableConfig;
-use deno_npm_installer::PackagesAllowedScripts;
-use deno_runtime::WorkerExecutionMode;
 use deno_semver::jsr::JsrPackageReqReference;
+use ende_config::deno_json::NodeModulesDirMode;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::serde_json::json;
+use ende_lib::args::UnstableConfig;
+use ende_npm_installer::PackagesAllowedScripts;
+use ende_runtime::WorkerExecutionMode;
 use log::info;
 
 use crate::args::DenoSubcommand;
@@ -519,9 +519,9 @@ fn jsr_name_to_create_script(name: &str) -> String {
 fn create_json_file(
   dir: &Path,
   filename: &str,
-  value: &deno_core::serde_json::Value,
+  value: &ende_core::serde_json::Value,
 ) -> Result<(), AnyError> {
-  let mut text = deno_core::serde_json::to_string_pretty(value)?;
+  let mut text = ende_core::serde_json::to_string_pretty(value)?;
   text.push('\n');
   create_file(dir, filename, &text)
 }

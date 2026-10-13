@@ -1,15 +1,15 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 import { core, primordials } from "ext:core/mod.js";
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 import {
   connectQuic,
   webtransportAccept,
   webtransportConnect,
-} from "ext:deno_net/03_quic.js";
-const { assert } = core.loadExtScript("ext:deno_web/00_infra.js");
-const { DOMException } = core.loadExtScript("ext:deno_web/01_dom_exception.js");
-const { URLPrototype } = core.loadExtScript("ext:deno_web/00_url.js");
+} from "ext:ende_net/03_quic.js";
+const { assert } = core.loadExtScript("ext:ende_web/00_infra.js");
+const { DOMException } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
+const { URLPrototype } = core.loadExtScript("ext:ende_web/00_url.js");
 const {
   getReadableStreamResourceBacking,
   getWritableStreamResourceBacking,
@@ -18,8 +18,8 @@ const {
   WritableStream,
   WritableStreamDefaultWriter,
   writableStreamForRid,
-} = core.loadExtScript("ext:deno_web/06_streams.js");
-const { getLocationHref } = core.loadExtScript("ext:deno_web/12_location.js");
+} = core.loadExtScript("ext:ende_web/06_streams.js");
+const { getLocationHref } = core.loadExtScript("ext:ende_web/12_location.js");
 
 const {
   ArrayBuffer,

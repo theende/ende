@@ -10,9 +10,9 @@ use std::path::PathBuf;
 
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use deno_npm::registry::NpmPackageVersionDistInfo;
-use deno_npm::registry::NpmPackageVersionDistInfoIntegrity;
 use deno_semver::package::PackageNv;
+use ende_npm::registry::NpmPackageVersionDistInfo;
+use ende_npm::registry::NpmPackageVersionDistInfoIntegrity;
 use flate2::read::GzDecoder;
 use sys_traits::FsCanonicalize;
 use sys_traits::FsCreateDirAll;

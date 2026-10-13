@@ -13,15 +13,15 @@ use std::sync::atomic;
 use std::sync::atomic::AtomicU32;
 use std::task::Poll;
 
-use deno_core::CancelFuture;
-use deno_core::CancelHandle;
-use deno_core::OpState;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::V8CrossThreadTaskSpawner;
-use deno_core::op2;
-use deno_core::v8;
-use deno_permissions::PermissionsContainer;
+use ende_core::CancelFuture;
+use ende_core::CancelHandle;
+use ende_core::OpState;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::V8CrossThreadTaskSpawner;
+use ende_core::op2;
+use ende_core::v8;
+use ende_permissions::PermissionsContainer;
 use libffi::middle::Cif;
 use serde::Deserialize;
 
@@ -38,10 +38,10 @@ thread_local! {
 pub enum CallbackError {
   #[class(inherit)]
   #[error(transparent)]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
   #[class(inherit)]
   #[error(transparent)]
-  Permission(#[from] deno_permissions::PermissionCheckError),
+  Permission(#[from] ende_permissions::PermissionCheckError),
   #[class(inherit)]
   #[error(transparent)]
   Other(#[from] deno_error::JsErrorBox),

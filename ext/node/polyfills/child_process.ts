@@ -19,7 +19,7 @@ const {
   stdioStringToArray,
   validateNullByteNotInArg,
   default: internalChildProcess,
-} = core.loadExtScript("ext:deno_node/internal/child_process.ts");
+} = core.loadExtScript("ext:ende_node/internal/child_process.ts");
 const {
   validateAbortSignal,
   validateFunction,
@@ -27,28 +27,28 @@ const {
   validateNumber,
   validateObject,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   ERR_CHILD_PROCESS_IPC_REQUIRED,
   ERR_CHILD_PROCESS_STDIO_MAXBUFFER,
   ERR_INVALID_ARG_TYPE,
   ERR_OUT_OF_RANGE,
   genericNodeError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { getSystemErrorName, promisify } = core.loadExtScript(
-  "ext:deno_node/util.ts",
+  "ext:ende_node/util.ts",
 );
 const lazyProcess = core.createLazyLoader("node:process");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const {
   convertToValidSignal,
   kEmptyObject,
-} = core.loadExtScript("ext:deno_node/internal/util.mjs");
+} = core.loadExtScript("ext:ende_node/internal/util.mjs");
 const { toPathIfFileURL } = core.loadExtScript(
-  "ext:deno_node/internal/url.ts",
+  "ext:ende_node/internal/url.ts",
 );
 const { kNeedsNpmProcessState } = core.loadExtScript(
-  "ext:deno_process/40_process.js",
+  "ext:ende_process/40_process.js",
 );
 
 const {

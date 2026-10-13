@@ -1,4 +1,4 @@
-# deno_kv
+# ende_kv
 
 This crate provides a key/value store for Deno. For an overview of Deno KV,
 please read the [manual](https://docs.deno.com/deploy/kv/manual).

@@ -11,8 +11,8 @@ use crossterm::event::KeyEvent;
 use crossterm::event::KeyEventKind;
 use crossterm::event::KeyModifiers;
 use crossterm::terminal;
-use deno_core::anyhow;
 use deno_terminal::colors;
+use ende_core::anyhow;
 use unicode_width::UnicodeWidthStr;
 
 use crate::util::console::HideCursorGuard;

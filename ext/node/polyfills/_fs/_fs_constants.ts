@@ -3,7 +3,7 @@
 const { core, primordials } = __bootstrap;
 const { ObjectAssign, ObjectCreate } = primordials;
 const { fs } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
 
 const {

@@ -12,19 +12,19 @@ const {
 } = primordials;
 
 const { Buffer, kMaxLength } = core.loadExtScript(
-  "ext:deno_node/internal/buffer.mjs",
+  "ext:ende_node/internal/buffer.mjs",
 );
 const { isAnyArrayBuffer, isArrayBufferView } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_OUT_OF_RANGE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   validateFunction,
   validateNumber,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 
 const kMaxInt32 = 2 ** 31 - 1;
 const kMaxPossibleLength = MathMin(kMaxLength, kMaxInt32);

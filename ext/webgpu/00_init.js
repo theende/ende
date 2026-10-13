@@ -3,7 +3,7 @@
 (function () {
 const { core } = __bootstrap;
 
-const loadWebGPU = core.createLazyLoader("ext:deno_webgpu/01_webgpu.js");
+const loadWebGPU = core.createLazyLoader("ext:ende_webgpu/01_webgpu.js");
 
 return { loadWebGPU };
 })();

@@ -15,12 +15,12 @@ use std::sync::OnceLock;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
-use deno_core::FromV8;
-use deno_core::OpState;
-use deno_core::ToV8;
-use deno_core::cppgc::SameObject;
-use deno_core::op2;
-use deno_core::v8;
+use ende_core::FromV8;
+use ende_core::OpState;
+use ende_core::ToV8;
+use ende_core::cppgc::SameObject;
+use ende_core::op2;
+use ende_core::v8;
 
 /// Thread-safe intermediate value type for crossing the WEF ↔ Deno boundary.
 /// Converts directly to V8 values without going through serde.
@@ -506,7 +506,7 @@ pub fn register_bind_call(
 }
 
 /// Trait for desktop window operations. Implemented by the desktop
-/// runtime (denort_desktop) to bridge to the laufey backend.
+/// runtime (endert_desktop) to bridge to the laufey backend.
 ///
 /// All per-window methods take a `window_id` identifying the target window.
 pub trait DesktopApi: Send + Sync + 'static {
@@ -717,7 +717,7 @@ pub struct DesktopAppName(pub String);
 struct BrowserWindow {
   api: Arc<dyn DesktopApi>,
   window_id: u32,
-  surface: SameObject<deno_canvas::byow::UnsafeWindowSurface>,
+  surface: SameObject<ende_canvas::byow::UnsafeWindowSurface>,
   /// Set when JS has taken a `getNativeWindow()` surface. Once a webgpu
   /// surface holds the underlying raw window handles, destroying the OS
   /// window underneath it would dangle those handles in wgpu-internal state
@@ -728,15 +728,15 @@ struct BrowserWindow {
 }
 
 // SAFETY: we're sure this can be GCed
-unsafe impl deno_core::GarbageCollected for BrowserWindow {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for BrowserWindow {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"BrowserWindow"
   }
 }
 
-impl deno_core::Resource for BrowserWindow {
+impl ende_core::Resource for BrowserWindow {
   fn name(&self) -> Cow<'_, str> {
     "BrowserWindow".into()
   }
@@ -832,7 +832,7 @@ impl BrowserWindow {
       surface: SameObject::new(),
       surface_taken: std::cell::Cell::new(false),
     };
-    let window = deno_core::cppgc::make_cppgc_object(scope, window);
+    let window = ende_core::cppgc::make_cppgc_object(scope, window);
     let event_target_setup = state.borrow::<EventTargetSetup>();
     let webidl_brand = v8::Local::new(scope, event_target_setup.brand.clone());
     window.set(scope, webidl_brand, webidl_brand);
@@ -1025,7 +1025,7 @@ impl BrowserWindow {
     scope: &mut v8::PinScope<'_, '_>,
   ) -> Result<v8::Global<v8::Object>, deno_error::JsErrorBox> {
     let instance = state
-      .try_borrow::<deno_webgpu::Instance>()
+      .try_borrow::<ende_webgpu::Instance>()
       .ok_or_else(|| {
         deno_error::JsErrorBox::type_error(
           "Cannot create surface outside of WebGPU context. Did you forget to call `navigator.gpu.requestAdapter()`?",
@@ -1058,9 +1058,9 @@ impl BrowserWindow {
           })?
       };
       let (width, height) = api.get_window_size(window_id);
-      Ok::<_, deno_error::JsErrorBox>(deno_canvas::byow::UnsafeWindowSurface {
+      Ok::<_, deno_error::JsErrorBox>(ende_canvas::byow::UnsafeWindowSurface {
         data: std::rc::Rc::new(RefCell::new(
-          deno_webgpu::canvas::SurfaceData {
+          ende_webgpu::canvas::SurfaceData {
             id: surface_id,
             width: width as u32,
             height: height as u32,
@@ -1456,7 +1456,7 @@ async fn op_desktop_alert_async(
     // keeps a caller in a loop from parking a thread per call.
     return;
   }
-  let dialog = deno_core::unsync::spawn_blocking(move || {
+  let dialog = ende_core::unsync::spawn_blocking(move || {
     let _guard = ErrorDialogGuard;
     api.alert(&title, &message);
   });
@@ -1498,10 +1498,10 @@ pub fn error_report_config() -> Option<(&'static str, Option<&'static str>)> {
 /// initializes error reporting and reuse it from both code paths. This
 /// keeps a single TLS configuration (the user's roots) — earlier the panic
 /// path constructed an ad-hoc `reqwest`/`fetch` client that bypassed it.
-static ERROR_REPORT_CLIENT: OnceLock<deno_fetch::Client> = OnceLock::new();
+static ERROR_REPORT_CLIENT: OnceLock<ende_fetch::Client> = OnceLock::new();
 
 /// Capture the OpState HTTP client for use by the panic hook.
-pub fn set_error_report_client(client: deno_fetch::Client) {
+pub fn set_error_report_client(client: ende_fetch::Client) {
   let _ = ERROR_REPORT_CLIENT.set(client);
 }
 
@@ -1519,7 +1519,7 @@ fn append_to_file(path: &Path, body: &str) {
     .and_then(|mut f| std::io::Write::write_all(&mut f, line.as_bytes()));
 }
 
-fn post_error_report(client: deno_fetch::Client, url: String, body: String) {
+fn post_error_report(client: ende_fetch::Client, url: String, body: String) {
   let _ = std::thread::spawn(move || {
     let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
       .enable_io()
@@ -1532,7 +1532,7 @@ fn post_error_report(client: deno_fetch::Client, url: String, body: String) {
       let Ok(uri) = url.parse::<http::Uri>() else {
         return;
       };
-      let mut req = http::Request::new(deno_fetch::ReqBody::full(body.into()));
+      let mut req = http::Request::new(ende_fetch::ReqBody::full(body.into()));
       *req.method_mut() = http::Method::POST;
       *req.uri_mut() = uri;
       req.headers_mut().insert(
@@ -1553,7 +1553,7 @@ fn post_error_report(client: deno_fetch::Client, url: String, body: String) {
 /// treated as a local file path, which let a malformed metadata field
 /// land error reports at an attacker-chosen location on disk.
 pub fn send_error_report(url: &str, body: &str) {
-  let Ok(parsed) = deno_core::url::Url::parse(url) else {
+  let Ok(parsed) = ende_core::url::Url::parse(url) else {
     log::warn!(
       "desktop: error_reporting_url is not a valid URL ({:?}); dropping report",
       url,
@@ -1610,7 +1610,7 @@ fn op_desktop_send_error_report(state: &mut OpState, #[string] body: &str) {
   // the one configured with the user's TLS roots/permissions, so we share
   // it across both code paths instead of creating an ad-hoc client.
   if ERROR_REPORT_CLIENT.get().is_none()
-    && let Ok(client) = deno_fetch::get_or_create_client_from_state(state)
+    && let Ok(client) = ende_fetch::get_or_create_client_from_state(state)
   {
     set_error_report_client(client);
   }
@@ -1701,7 +1701,7 @@ async fn op_desktop_read_clipboard_text(
   // A join error (a backend that panics mid-read) yields `None` too, rather
   // than leaving the caller's promise pending forever.
   let read =
-    deno_core::unsync::spawn_blocking(move || api.read_clipboard_text());
+    ende_core::unsync::spawn_blocking(move || api.read_clipboard_text());
   // Reject rather than resolve on either failure. Resolving would hand back
   // `""`, which is exactly what a genuinely empty clipboard returns, so a
   // caller could not tell "nothing was copied" from "the owning app is
@@ -1756,7 +1756,7 @@ async fn op_desktop_write_clipboard_text(
   let Some(api) = api else {
     return Ok(());
   };
-  let write = deno_core::unsync::spawn_blocking(move || {
+  let write = ende_core::unsync::spawn_blocking(move || {
     api.write_clipboard_text(&text);
   });
   // `writeText()`'s whole contract is that resolution means the write
@@ -1833,15 +1833,15 @@ struct Dock {
 }
 
 // SAFETY: we're sure this can be GCed
-unsafe impl deno_core::GarbageCollected for Dock {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for Dock {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"Dock"
   }
 }
 
-impl deno_core::Resource for Dock {
+impl ende_core::Resource for Dock {
   fn name(&self) -> Cow<'_, str> {
     "Dock".into()
   }
@@ -1860,7 +1860,7 @@ impl Dock {
       .clone();
 
     let dock = Dock { api };
-    let dock = deno_core::cppgc::make_cppgc_object(scope, dock);
+    let dock = ende_core::cppgc::make_cppgc_object(scope, dock);
     let event_target_setup = state.borrow::<EventTargetSetup>();
     let webidl_brand = v8::Local::new(scope, event_target_setup.brand.clone());
     dock.set(scope, webidl_brand, webidl_brand);
@@ -1900,15 +1900,15 @@ struct Tray {
 }
 
 // SAFETY: we're sure this can be GCed
-unsafe impl deno_core::GarbageCollected for Tray {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for Tray {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"Tray"
   }
 }
 
-impl deno_core::Resource for Tray {
+impl ende_core::Resource for Tray {
   fn name(&self) -> Cow<'_, str> {
     "Tray".into()
   }
@@ -1928,7 +1928,7 @@ impl Tray {
 
     let tray_id = api.create_tray();
     let tray = Tray { api, tray_id };
-    let tray = deno_core::cppgc::make_cppgc_object(scope, tray);
+    let tray = ende_core::cppgc::make_cppgc_object(scope, tray);
     let event_target_setup = state.borrow::<EventTargetSetup>();
     let webidl_brand = v8::Local::new(scope, event_target_setup.brand.clone());
     tray.set(scope, webidl_brand, webidl_brand);
@@ -2011,15 +2011,15 @@ struct Notification {
 }
 
 // SAFETY: we're sure this can be GCed
-unsafe impl deno_core::GarbageCollected for Notification {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for Notification {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"Notification"
   }
 }
 
-impl deno_core::Resource for Notification {
+impl ende_core::Resource for Notification {
   fn name(&self) -> Cow<'_, str> {
     "Notification".into()
   }
@@ -2093,7 +2093,7 @@ impl Notification {
       require_interaction: options.require_interaction.unwrap_or(false),
       data,
     };
-    let notification = deno_core::cppgc::make_cppgc_object(scope, notification);
+    let notification = ende_core::cppgc::make_cppgc_object(scope, notification);
     let event_target_setup = state.borrow::<EventTargetSetup>();
     let webidl_brand = v8::Local::new(scope, event_target_setup.brand.clone());
     notification.set(scope, webidl_brand, webidl_brand);
@@ -2184,8 +2184,8 @@ impl Notification {
   }
 }
 
-deno_core::extension!(
-  deno_desktop,
+ende_core::extension!(
+  ende_desktop,
   ops = [
     op_desktop_apply_patch,
     op_desktop_verify_ed25519,
@@ -2209,8 +2209,8 @@ deno_core::extension!(
 
 #[cfg(test)]
 mod tests {
-  use deno_core::serde_json;
-  use deno_core::serde_json::json;
+  use ende_core::serde_json;
+  use ende_core::serde_json::json;
 
   use super::BrowserWindow;
   use super::DesktopEvent;

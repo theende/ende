@@ -19,29 +19,29 @@ const {
   op_node_hash_update_str,
 } = core.ops;
 
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 
 const lazyStream = core.createLazyLoader("node:stream");
 
 const {
   forgivingBase64Encode: encodeToBase64,
-} = core.loadExtScript("ext:deno_web/00_infra.js");
+} = core.loadExtScript("ext:ende_web/00_infra.js");
 const {
   validateEncoding,
   validateString,
   validateUint32,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   prepareSecretKey,
-} = core.loadExtScript("ext:deno_node/internal/crypto/keys.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/keys.ts");
 const {
   ERR_CRYPTO_HASH_FINALIZED,
   ERR_INVALID_ARG_TYPE,
   NodeError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const lazyLazyTransform = core.createLazyLoader(
-  "ext:deno_node/internal/streams/lazy_transform.js",
+  "ext:ende_node/internal/streams/lazy_transform.js",
 );
 const lazyProcess = core.createLazyLoader("node:process");
 
@@ -49,11 +49,11 @@ const {
   getDefaultEncoding,
   getHashBlockSize,
   toBuf,
-} = core.loadExtScript("ext:deno_node/internal/crypto/util.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/util.ts");
 const {
   isAnyArrayBuffer,
   isArrayBufferView,
-} = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+} = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 
 const {
   FunctionPrototypeCall,

@@ -1,8 +1,8 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::serde_json::json;
-use deno_core::serde_json::{self};
-use deno_print::drop_println;
+use ende_core::serde_json::json;
+use ende_core::serde_json::{self};
+use ende_print::drop_println;
 use serde::Serialize;
 
 use super::common;

@@ -29,7 +29,7 @@ pub fn clone_dir_recursive<TSys: CloneDirRecursiveSys>(
   to: &Path,
 ) -> Result<(), std::io::Error> {
   let sys = sys.with_paths_in_errors();
-  deno_npm_cache::ensure_not_symlink(sys.as_ref(), to)?;
+  ende_npm_cache::ensure_not_symlink(sys.as_ref(), to)?;
   if cfg!(target_vendor = "apple") {
     if let Some(parent) = to.parent() {
       sys.fs_create_dir_all(parent)?;
@@ -52,7 +52,7 @@ pub fn clone_dir_recursive<TSys: CloneDirRecursiveSys>(
       copy_dir_recursive(sys.as_ref(), from, to)?;
     }
   } else if let Err(e) =
-    deno_npm_cache::hard_link_dir_recursive(sys.as_ref(), from, to)
+    ende_npm_cache::hard_link_dir_recursive(sys.as_ref(), from, to)
   {
     log::debug!("Failed to hard link dir {:?} to {:?}: {}", from, to, e);
     copy_dir_recursive(sys.as_ref(), from, to)?;
@@ -82,7 +82,7 @@ pub fn copy_dir_recursive<TSys: CopyDirRecursiveSys>(
   to: &Path,
 ) -> Result<(), std::io::Error> {
   let sys = sys.with_paths_in_errors();
-  deno_npm_cache::create_dir_all_no_symlink(sys.as_ref(), to)?;
+  ende_npm_cache::create_dir_all_no_symlink(sys.as_ref(), to)?;
   let read_dir = sys.fs_read_dir(from)?;
 
   for entry in read_dir {

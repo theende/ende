@@ -3,8 +3,8 @@
 // deno-lint-ignore-file no-console
 
 // Checks if any files changed relative to the base branch belong to
-// deno_core-related package directories (or root Cargo files). Used in CI
-// to decide whether to run deno_core tests.
+// ende_core-related package directories (or root Cargo files). Used in CI
+// to decide whether to run ende_core tests.
 //
 // Usage: deno run --allow-run=git check_deno_core_changes.js <base_sha>
 // Writes "skip_deno_core_test=true" or "skip_deno_core_test=false" to
@@ -35,7 +35,7 @@ const { code, stdout, stderr } = await Deno.spawnAndWait("git", [
 
 if (code !== 0) {
   console.error("git diff failed:", stderr);
-  console.log("Defaulting to running deno_core tests (skip=false)");
+  console.log("Defaulting to running ende_core tests (skip=false)");
   await writeOutput(false);
   Deno.exit(0);
 }

@@ -4,10 +4,10 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use deno_media_type::MediaType;
-use deno_resolver::workspace::PackageJsonDepResolution;
-use deno_runtime::deno_permissions::PermissionsOptions;
-use deno_runtime::deno_telemetry::OtelConfig;
 use deno_semver::Version;
+use ende_resolver::workspace::PackageJsonDepResolution;
+use ende_runtime::ende_permissions::PermissionsOptions;
+use ende_runtime::ende_telemetry::OtelConfig;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde::Serialize;

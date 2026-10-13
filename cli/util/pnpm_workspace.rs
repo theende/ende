@@ -16,9 +16,9 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
 use deno_terminal::colors;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
 use indexmap::IndexMap;
 use jsonc_parser::cst::CstInputValue;
 use jsonc_parser::cst::CstRootNode;
@@ -249,7 +249,7 @@ fn string_map_to_value(map: &IndexMap<String, String>) -> CstInputValue {
 
 fn parse_pnpm_workspace(text: &str) -> Result<PnpmWorkspace, AnyError> {
   let tree = yaml_parser::parse(text)
-    .map_err(|e| deno_core::anyhow::anyhow!("Invalid YAML: {e}"))?;
+    .map_err(|e| ende_core::anyhow::anyhow!("Invalid YAML: {e}"))?;
   let Some(root) = Root::cast(tree) else {
     return Ok(PnpmWorkspace::default());
   };

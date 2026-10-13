@@ -2,9 +2,9 @@
 
 use std::io::IsTerminal;
 
-use deno_core::anyhow;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
+use ende_core::anyhow;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
 
 pub enum AuthMethod {
   Interactive,

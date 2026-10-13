@@ -8,9 +8,9 @@ use deno_ast::SourceMapOption;
 use deno_ast::TranspileModuleOptions;
 use deno_ast::TranspileOptions;
 use deno_ast::TypeStripOptions;
-use deno_core::op2;
-use deno_core::url::Url;
 use deno_error::JsErrorBox;
+use ende_core::op2;
+use ende_core::url::Url;
 
 deno_error::js_error_wrapper!(
   deno_ast::ParseDiagnostic,

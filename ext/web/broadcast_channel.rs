@@ -5,12 +5,12 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use deno_core::JsBuffer;
-use deno_core::OpState;
-use deno_core::ResourceId;
-use deno_core::op2;
-use deno_core::parking_lot::Mutex;
-use deno_core::v8;
+use ende_core::JsBuffer;
+use ende_core::OpState;
+use ende_core::ResourceId;
+use ende_core::op2;
+use ende_core::parking_lot::Mutex;
+use ende_core::v8;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::SendError as BroadcastSendError;
 use tokio::sync::mpsc;
@@ -24,7 +24,7 @@ pub enum BroadcastChannelError {
   Resource(
     #[from]
     #[inherit]
-    deno_core::error::ResourceError,
+    ende_core::error::ResourceError,
   ),
   #[class(generic)]
   #[error(transparent)]
@@ -138,7 +138,7 @@ pub fn op_broadcast_serialize<'a>(
   // Must not hold an `OpState` borrow across this call: serializing a host
   // object (e.g. a Blob) re-enters JS and borrows `OpState` again.
   let (data, sabs) =
-    deno_core::serialize_broadcast(scope, value, error_callback)
+    ende_core::serialize_broadcast(scope, value, error_callback)
       .map_err(BroadcastChannelError::Serialize)?;
 
   let sab_id = if sabs.is_empty() {
@@ -185,7 +185,7 @@ pub fn op_broadcast_deserialize<'a>(
       .map(|sabs| sabs.lock().clone())
       .unwrap_or_default()
   };
-  deno_core::deserialize_broadcast(scope, &data, sabs, deserializers)
+  ende_core::deserialize_broadcast(scope, &data, sabs, deserializers)
     .map_err(BroadcastChannelError::Serialize)
 }
 
@@ -265,7 +265,7 @@ pub struct InMemoryBroadcastChannelResource {
   uuid: Uuid,
 }
 
-impl deno_core::Resource for InMemoryBroadcastChannelResource {}
+impl ende_core::Resource for InMemoryBroadcastChannelResource {}
 
 #[derive(Clone)]
 struct InMemoryChannelMessage {

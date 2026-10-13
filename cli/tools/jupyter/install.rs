@@ -6,11 +6,11 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::serde_json::json;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::serde_json::json;
 
 use crate::util::fs::canonicalize_path;
 
@@ -70,14 +70,14 @@ fn get_user_data_dir() -> Result<PathBuf, AnyError> {
   {
     let home = std::env::var_os("HOME")
       .map(PathBuf::from)
-      .ok_or_else(|| deno_core::anyhow::anyhow!("HOME not set"))?;
+      .ok_or_else(|| ende_core::anyhow::anyhow!("HOME not set"))?;
     Ok(home.join("Library").join("Jupyter"))
   }
   #[cfg(target_os = "windows")]
   {
     let appdata = std::env::var_os("APPDATA")
       .map(PathBuf::from)
-      .ok_or_else(|| deno_core::anyhow::anyhow!("APPDATA not set"))?;
+      .ok_or_else(|| ende_core::anyhow::anyhow!("APPDATA not set"))?;
     Ok(appdata.join("jupyter"))
   }
   #[cfg(not(any(target_os = "macos", target_os = "windows")))]
@@ -87,7 +87,7 @@ fn get_user_data_dir() -> Result<PathBuf, AnyError> {
     }
     let home = std::env::var_os("HOME")
       .map(PathBuf::from)
-      .ok_or_else(|| deno_core::anyhow::anyhow!("HOME not set"))?;
+      .ok_or_else(|| ende_core::anyhow::anyhow!("HOME not set"))?;
     Ok(home.join(".local").join("share").join("jupyter"))
   }
 }

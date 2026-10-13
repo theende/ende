@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 
-use deno_core::v8;
+use ende_core::v8;
 
 use super::quote;
 use super::width::get_string_width;

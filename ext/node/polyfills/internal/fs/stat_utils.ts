@@ -1,8 +1,8 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 import { core, primordials } from "ext:core/mod.js";
-import { BigIntStats, Stats } from "ext:deno_node/internal/fs/utils.mjs";
-const { isWindows } = core.loadExtScript("ext:deno_node/_util/os.ts");
+import { BigIntStats, Stats } from "ext:ende_node/internal/fs/utils.mjs";
+const { isWindows } = core.loadExtScript("ext:ende_node/_util/os.ts");
 
 const {
   BigInt,

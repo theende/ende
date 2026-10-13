@@ -36,7 +36,7 @@ export function denoBinary() {
   const ext = Deno.build.os === "windows" ? ".exe" : "";
   return join(
     ROOT_PATH,
-    `./target/${release ? "release" : "debug"}/deno${ext}`,
+    `./target/${release ? "release" : "debug"}/ende${ext}`,
   );
 }
 

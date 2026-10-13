@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { core } from "ext:core/mod.js";
-const mod = core.loadExtScript("ext:deno_node/fs.ts");
+const mod = core.loadExtScript("ext:ende_node/fs.ts");
 
 // Export all simple bindings first. `internal/fs/{handle,promises,streams}.ts`
 // access `lazyFs().<method>` at top-level when they're loaded, so every method

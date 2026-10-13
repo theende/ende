@@ -3,10 +3,10 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use deno_bundle_runtime as rt_bundle;
-use deno_bundle_runtime::BundleOptions as RtBundleOptions;
-use deno_bundle_runtime::BundleProvider;
-use deno_core::error::AnyError;
+use ende_bundle_runtime as rt_bundle;
+use ende_bundle_runtime::BundleOptions as RtBundleOptions;
+use ende_bundle_runtime::BundleProvider;
+use ende_core::error::AnyError;
 
 use crate::args::DenoSubcommand;
 use crate::args::Flags;
@@ -121,7 +121,7 @@ impl BundleProvider for CliBundleProvider {
   async fn bundle(
     &self,
     options: RtBundleOptions,
-    permissions: deno_runtime::deno_permissions::PermissionsContainer,
+    permissions: ende_runtime::ende_permissions::PermissionsContainer,
   ) -> Result<rt_bundle::BuildResponse, AnyError> {
     let mut flags_clone = (*self.flags).clone();
     flags_clone.type_check_mode = crate::args::TypeCheckMode::None;
@@ -131,7 +131,7 @@ impl BundleProvider for CliBundleProvider {
     flags_clone.subcommand = DenoSubcommand::Bundle(bundle_flags.clone());
     let (tx, rx) = tokio::sync::oneshot::channel();
     std::thread::spawn(move || {
-      deno_runtime::tokio_util::create_and_run_current_thread(async move {
+      ende_runtime::tokio_util::create_and_run_current_thread(async move {
         let flags = Arc::new(flags_clone);
         let bundler = match super::bundle_init(
           flags,

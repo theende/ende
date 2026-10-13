@@ -31,8 +31,8 @@ use std::fmt;
 use std::fmt::Write as _;
 use std::iter::Peekable;
 
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use regex::RegexBuilder;

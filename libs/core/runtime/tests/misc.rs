@@ -46,13 +46,13 @@ fn test_execute_script_return_value() {
   let mut runtime = JsRuntime::new(Default::default());
   let value_global = runtime.execute_script("a.js", "a = 1 + 2").unwrap();
   {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let value = value_global.open(scope);
     assert_eq!(value.integer_value(scope).unwrap(), 3);
   }
   let value_global = runtime.execute_script("b.js", "b = 'foobar'").unwrap();
   {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let value = value_global.open(scope);
     assert!(value.is_string());
     assert_eq!(
@@ -102,7 +102,7 @@ async fn test_wakers_for_async_ops() {
   let logging_waker = Arc::new(LoggingWaker::default());
   let waker = logging_waker.clone().into_waker();
 
-  deno_core::extension!(test_ext, ops = [op_async_sleep]);
+  ende_core::extension!(test_ext, ops = [op_async_sleep]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -171,7 +171,7 @@ async fn test_resolve_promise(
   let out = runtime
     .with_event_loop_promise(resolve, PollEventLoopOptions::default())
     .await;
-  deno_core::scope!(scope, runtime);
+  ende_core::scope!(scope, runtime);
   match result {
     Ok(value) => {
       let out = v8::Local::new(scope, out.expect("expected success"));
@@ -268,7 +268,7 @@ async fn test_resolve_value_generic(
   } else {
     unreachable!()
   };
-  deno_core::scope!(scope, runtime);
+  ende_core::scope!(scope, runtime);
 
   match output {
     Ok(None) => {
@@ -417,7 +417,7 @@ async fn wasm_streaming_op_invocation_in_import() {
                             "#).unwrap();
   #[allow(deprecated, reason = "test code")]
   let value = runtime.resolve_value(promise).await.unwrap();
-  deno_core::scope!(scope, runtime);
+  ende_core::scope!(scope, runtime);
   let val = value.open(scope);
   assert!(val.is_object());
 }
@@ -523,7 +523,7 @@ fn test_get_module_namespace() {
 
   let module_namespace = runtime.get_module_namespace(module_id).unwrap();
 
-  deno_core::scope!(scope, runtime);
+  ende_core::scope!(scope, runtime);
 
   let module_namespace = v8::Local::<v8::Object>::new(scope, module_namespace);
 
@@ -725,7 +725,7 @@ fn test_is_proxy() {
   "#,
     )
     .unwrap();
-  deno_core::scope!(scope, runtime);
+  ende_core::scope!(scope, runtime);
   let all_true = v8::Local::<v8::Value>::new(scope, &all_true);
   assert!(all_true.is_true());
 }
@@ -739,7 +739,7 @@ async fn test_set_macrotask_callback_set_next_tick_callback() {
     Ok(())
   }
 
-  deno_core::extension!(test_ext, ops = [op_async_sleep]);
+  ende_core::extension!(test_ext, ops = [op_async_sleep]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -801,7 +801,7 @@ async fn test_next_tick() {
     Ok(())
   }
 
-  deno_core::extension!(test_ext, ops = [op_next_tick, op_async_sleep]);
+  ende_core::extension!(test_ext, ops = [op_next_tick, op_async_sleep]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -854,7 +854,7 @@ async fn test_promise_rejection_nexttick_interleave() {
     Ok(())
   }
 
-  deno_core::extension!(test_ext, ops = [op_async_sleep]);
+  ende_core::extension!(test_ext, ops = [op_async_sleep]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -926,7 +926,7 @@ async fn test_next_tick_error_continues_drain() {
     Ok(())
   }
 
-  deno_core::extension!(test_ext, ops = [op_tick_count, op_async_sleep]);
+  ende_core::extension!(test_ext, ops = [op_tick_count, op_async_sleep]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -997,7 +997,7 @@ async fn test_promise_rejection_handler_generic(
   #[op2(fast)]
   fn op_breakpoint() {}
 
-  deno_core::extension!(test_ext, ops = [op_breakpoint]);
+  ende_core::extension!(test_ext, ops = [op_breakpoint]);
 
   // We don't test throw_ cases in non-module mode since those don't reject
   if !module && case.starts_with("throw_") {
@@ -1200,7 +1200,7 @@ async fn test_dynamic_import_module_error_stack() {
     tokio::time::sleep(std::time::Duration::from_millis(1)).await;
     Err(deno_error::JsErrorBox::type_error("foo"))
   }
-  deno_core::extension!(test_ext, ops = [op_async_error]);
+  ende_core::extension!(test_ext, ops = [op_async_error]);
   let loader = StaticModuleLoader::new([
     (
       Url::parse("file:///main.js").unwrap(),
@@ -1252,7 +1252,7 @@ async fn tla_in_esm_extensions_panics() {
     tokio::time::sleep(Duration::from_millis(ms as u64)).await
   }
 
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     ops = [op_wait],
     esm_entry_point = "mod:test",
@@ -1304,7 +1304,7 @@ async fn generic_in_extension_middleware() {
     "Goodbye!".to_string()
   }
 
-  deno_core::extension!(welcome_ext, parameters = [W: WelcomeWorld], ops = [say_greeting<W>, say_goodbye],
+  ende_core::extension!(welcome_ext, parameters = [W: WelcomeWorld], ops = [say_greeting<W>, say_goodbye],
     middleware = |op| {
         match op.name {
             "say_goodbye" => say_greeting::<W>(),
@@ -1338,7 +1338,7 @@ async fn generic_in_extension_middleware() {
     .unwrap();
 
   // Check the result
-  deno_core::scope!(scope, &mut runtime);
+  ende_core::scope!(scope, &mut runtime);
   let value = value_global.open(scope);
 
   let result = value.to_rust_string_lossy(scope);
@@ -1358,7 +1358,7 @@ async fn esm_extensions_throws() {
     tokio::time::sleep(Duration::from_millis(ms as u64)).await
   }
 
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     ops = [op_wait],
     esm_entry_point = "mod:test",
@@ -1496,7 +1496,7 @@ async fn terminate_execution_run_event_loop_js() {
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     Ok(())
   }
-  deno_core::extension!(test_ext, ops = [op_async_sleep]);
+  ende_core::extension!(test_ext, ops = [op_async_sleep]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -1594,7 +1594,7 @@ async fn global_template_middleware() {
     template
   }
 
-  deno_core::extension!(test_ext, global_template_middleware = gt_middleware);
+  ende_core::extension!(test_ext, global_template_middleware = gt_middleware);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -1792,7 +1792,7 @@ async fn test_nexttick_before_promise_then() {
     Ok(())
   }
 
-  deno_core::extension!(test_ext, ops = [op_async_sleep]);
+  ende_core::extension!(test_ext, ops = [op_async_sleep]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -1840,7 +1840,7 @@ async fn test_timer_return_protocol_keeps_timers_armed_from_promise_hook() {
     Ok(())
   }
 
-  deno_core::extension!(
+  ende_core::extension!(
     timer_return_protocol_ext,
     ops = [op_mark_timer_race_fired, op_async_sleep]
   );
@@ -1949,7 +1949,7 @@ async fn test_timer_return_protocol_keeps_timers_armed_from_run_next_ticks() {
     FIRED.store(true, Ordering::SeqCst);
   }
 
-  deno_core::extension!(
+  ende_core::extension!(
     timer_run_next_ticks_ext,
     ops = [op_mark_run_next_ticks_timer_fired]
   );
@@ -2016,7 +2016,7 @@ async fn test_nexttick_queue_drains_before_microtasks() {
     Ok(())
   }
 
-  deno_core::extension!(test_ext, ops = [op_async_sleep]);
+  ende_core::extension!(test_ext, ops = [op_async_sleep]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -2074,7 +2074,7 @@ async fn test_nexttick_ordering_after_await() {
     Ok(())
   }
 
-  deno_core::extension!(test_ext, ops = [op_async_sleep]);
+  ende_core::extension!(test_ext, ops = [op_async_sleep]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -2123,7 +2123,7 @@ async fn test_nexttick_before_queue_microtask() {
     Ok(())
   }
 
-  deno_core::extension!(test_ext, ops = [op_async_sleep]);
+  ende_core::extension!(test_ext, ops = [op_async_sleep]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()

@@ -5,11 +5,11 @@ use std::path::Path;
 use std::sync::Arc;
 
 use deno_error::JsErrorBox;
-use deno_npm::NpmPackageExtraInfo;
-use deno_npm::NpmResolutionPackage;
-use deno_npm::registry::NpmRegistryApi;
-use deno_resolver::workspace::WorkspaceNpmLinkPackagesRc;
 use deno_semver::package::PackageNv;
+use ende_npm::NpmPackageExtraInfo;
+use ende_npm::NpmResolutionPackage;
+use ende_npm::registry::NpmRegistryApi;
+use ende_resolver::workspace::WorkspaceNpmLinkPackagesRc;
 use parking_lot::RwLock;
 
 pub struct CachedNpmPackageExtraInfoProvider {
@@ -184,7 +184,7 @@ impl NpmPackageExtraInfoProvider {
       .version_info(package_nv, &self.workspace_link_packages.0)
     {
       Ok(version_info) => version_info,
-      Err(deno_npm::resolution::NpmPackageVersionNotFound { .. }) => {
+      Err(ende_npm::resolution::NpmPackageVersionNotFound { .. }) => {
         // Don't bother checking the return value of mark_force_reload to tell
         // whether to reload because we could race here with another task within
         // this method. That said, ideally this code would only reload the

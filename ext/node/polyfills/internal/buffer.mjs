@@ -97,14 +97,14 @@ const {
 } = core.ops;
 
 const { TextEncoder } = core.loadExtScript(
-  "ext:deno_web/08_text_encoding.js",
+  "ext:ende_web/08_text_encoding.js",
 );
-const { codes } = core.loadExtScript("ext:deno_node/internal/error_codes.ts");
+const { codes } = core.loadExtScript("ext:ende_node/internal/error_codes.ts");
 const { encodings } = core.loadExtScript(
-  "ext:deno_node/internal_binding/string_decoder.ts",
+  "ext:ende_node/internal_binding/string_decoder.ts",
 );
 const { indexOfBuffer, indexOfNumber } = core.loadExtScript(
-  "ext:deno_node/internal_binding/buffer.ts",
+  "ext:ende_node/internal_binding/buffer.ts",
 );
 const {
   asciiToBytes,
@@ -114,37 +114,37 @@ const {
   bytesToHex,
   hexToBytes,
   utf16leToBytes,
-} = core.loadExtScript("ext:deno_node/internal_binding/_utils.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/_utils.ts");
 const { inspect: utilInspect } = core.loadExtScript(
-  "ext:deno_node/internal/util/inspect.mjs",
+  "ext:ende_node/internal/util/inspect.mjs",
 );
 const { normalizeEncoding } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 const { ALL_PROPERTIES, getOwnNonIndexProperties, ONLY_ENUMERABLE } = core
-  .loadExtScript("ext:deno_node/internal_binding/util.ts");
+  .loadExtScript("ext:ende_node/internal_binding/util.ts");
 const {
   validateBuffer,
   validateInteger,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   isArrayBufferView,
   isUint8Array,
-} = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+} = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_STATE,
   genericNodeError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { getOptionValue } = core.loadExtScript(
-  "ext:deno_node/internal/options.ts",
+  "ext:ende_node/internal/options.ts",
 );
-const { atob, btoa } = core.loadExtScript("ext:deno_web/05_base64.js");
+const { atob, btoa } = core.loadExtScript("ext:ende_web/05_base64.js");
 const { Blob, blobFromObjectUrl, File } = core.loadExtScript(
-  "ext:deno_web/09_file.js",
+  "ext:ende_web/09_file.js",
 );
 const { untransferableSymbol } = core.loadExtScript(
-  "ext:deno_node/internal_binding/util.ts",
+  "ext:ende_node/internal_binding/util.ts",
 );
 
 const utf8Encoder = new TextEncoder();

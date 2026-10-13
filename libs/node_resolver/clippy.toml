@@ -42,5 +42,5 @@ disallowed-methods = [
   { path = "chrono::Utc::now", reason = "Time should be retrieved using sys_traits" },
 ]
 disallowed-types = [
-  { path = "std::sync::Arc", reason = "use deno_maybe_sync::MaybeArc instead" },
+  { path = "std::sync::Arc", reason = "use ende_maybe_sync::MaybeArc instead" },
 ]

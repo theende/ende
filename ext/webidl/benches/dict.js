@@ -5,7 +5,7 @@
 import {
   converters,
   createDictionaryConverter,
-} from "ext:deno_webidl/00_webidl.js";
+} from "ext:ende_webidl/00_webidl.js";
 
 const TextDecodeOptions = createDictionaryConverter(
   "TextDecodeOptions",

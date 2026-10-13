@@ -13,36 +13,36 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use deno_core::AsyncRefCell;
-use deno_core::AsyncResult;
-use deno_core::CancelHandle;
-use deno_core::CancelTryFuture;
-use deno_core::FromV8;
-use deno_core::OpState;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::futures::TryFutureExt;
-use deno_core::op2;
-use deno_core::v8;
 use deno_error::JsErrorBox;
-use deno_permissions::OpenAccessKind;
-use deno_permissions::PermissionsContainer;
-use deno_tls::ServerConfigProvider;
-use deno_tls::SocketUse;
-use deno_tls::TlsClientConfigOptions;
-use deno_tls::TlsKey;
-use deno_tls::TlsKeyLookup;
-use deno_tls::TlsKeys;
-use deno_tls::TlsKeysHolder;
-use deno_tls::create_client_config;
-use deno_tls::get_ssl_key_log;
-use deno_tls::load_certs;
-use deno_tls::load_private_keys;
-use deno_tls::new_resolver;
-use deno_tls::rustls::ClientConnection;
-use deno_tls::rustls::ServerConfig;
-use deno_tls::rustls::pki_types::ServerName;
+use ende_core::AsyncRefCell;
+use ende_core::AsyncResult;
+use ende_core::CancelHandle;
+use ende_core::CancelTryFuture;
+use ende_core::FromV8;
+use ende_core::OpState;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::futures::TryFutureExt;
+use ende_core::op2;
+use ende_core::v8;
+use ende_permissions::OpenAccessKind;
+use ende_permissions::PermissionsContainer;
+use ende_tls::ServerConfigProvider;
+use ende_tls::SocketUse;
+use ende_tls::TlsClientConfigOptions;
+use ende_tls::TlsKey;
+use ende_tls::TlsKeyLookup;
+use ende_tls::TlsKeys;
+use ende_tls::TlsKeysHolder;
+use ende_tls::create_client_config;
+use ende_tls::get_ssl_key_log;
+use ende_tls::load_certs;
+use ende_tls::load_private_keys;
+use ende_tls::new_resolver;
+use ende_tls::rustls::ClientConnection;
+use ende_tls::rustls::ServerConfig;
+use ende_tls::rustls::pki_types::ServerName;
 pub use rustls_tokio_stream::TlsStream;
 pub use rustls_tokio_stream::TlsStreamRead;
 pub use rustls_tokio_stream::TlsStreamWrite;
@@ -224,8 +224,8 @@ impl TlsStreamResource {
 }
 
 impl Resource for TlsStreamResource {
-  deno_core::impl_readable_byob!();
-  deno_core::impl_writable!();
+  ende_core::impl_readable_byob!();
+  ende_core::impl_writable!();
 
   fn name(&self) -> Cow<'_, str> {
     "tlsStream".into()
@@ -271,7 +271,7 @@ pub fn op_tls_key_null() -> TlsKeysHolder {
 pub fn op_tls_key_static(
   #[string] cert: &str,
   #[string] key: &str,
-) -> Result<TlsKeysHolder, deno_tls::TlsError> {
+) -> Result<TlsKeysHolder, ende_tls::TlsError> {
   let cert = load_certs(&mut BufReader::new(cert.as_bytes()))?;
   let key = load_private_keys(key.as_bytes())?
     .into_iter()
@@ -285,11 +285,11 @@ pub fn op_tls_cert_resolver_create<'s>(
   scope: &mut v8::PinScope<'s, '_>,
 ) -> v8::Local<'s, v8::Array> {
   let (resolver, lookup) = new_resolver();
-  let resolver = deno_core::cppgc::make_cppgc_object(
+  let resolver = ende_core::cppgc::make_cppgc_object(
     scope,
     TlsKeysHolder::from(TlsKeys::Resolver(resolver)),
   );
-  let lookup = deno_core::cppgc::make_cppgc_object(scope, lookup);
+  let lookup = ende_core::cppgc::make_cppgc_object(scope, lookup);
   v8::Array::new_with_elements(scope, &[resolver.into(), lookup.into()])
 }
 

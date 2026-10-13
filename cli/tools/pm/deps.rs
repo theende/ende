@@ -6,26 +6,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use deno_ast::ModuleSpecifier;
-use deno_config::deno_json::ConfigFile;
-use deno_config::deno_json::ConfigFileRc;
-use deno_config::workspace::Workspace;
-use deno_config::workspace::WorkspaceDirectory;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::futures::StreamExt;
-use deno_core::futures::future::try_join;
-use deno_core::futures::stream::FuturesOrdered;
-use deno_core::futures::stream::FuturesUnordered;
-use deno_core::serde_json;
-use deno_core::url::Url;
 use deno_graph::JsrPackageReqNotFoundError;
 use deno_graph::packages::JsrPackageVersionInfo;
-use deno_npm::resolution::NpmVersionResolver;
-use deno_package_json::PackageJsonDepsMap;
-use deno_package_json::PackageJsonRc;
-use deno_runtime::deno_permissions::PermissionsContainer;
 use deno_semver::StackString;
 use deno_semver::Version;
 use deno_semver::VersionReq;
@@ -35,6 +17,24 @@ use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
 use deno_semver::package::PackageReqReference;
+use ende_config::deno_json::ConfigFile;
+use ende_config::deno_json::ConfigFileRc;
+use ende_config::workspace::Workspace;
+use ende_config::workspace::WorkspaceDirectory;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::futures::StreamExt;
+use ende_core::futures::future::try_join;
+use ende_core::futures::stream::FuturesOrdered;
+use ende_core::futures::stream::FuturesUnordered;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_npm::resolution::NpmVersionResolver;
+use ende_package_json::PackageJsonDepsMap;
+use ende_package_json::PackageJsonRc;
+use ende_runtime::ende_permissions::PermissionsContainer;
 use import_map::ImportMap;
 use import_map::ImportMapWithDiagnostics;
 use import_map::SpecifierMapEntry;
@@ -394,10 +394,10 @@ fn add_deps_from_package_json(
         }
       };
       match v {
-        deno_package_json::PackageJsonDepValue::File(_) => {
+        ende_package_json::PackageJsonDepValue::File(_) => {
           // ignore
         }
-        deno_package_json::PackageJsonDepValue::Req(req) => {
+        ende_package_json::PackageJsonDepValue::Req(req) => {
           let alias = k.as_str();
           let alias = (alias != req.name).then(|| alias.to_string());
           if !filter.should_include(alias.as_deref(), req, DepKind::Npm) {
@@ -418,8 +418,8 @@ fn add_deps_from_package_json(
             alias,
           })
         }
-        deno_package_json::PackageJsonDepValue::Workspace { .. }
-        | deno_package_json::PackageJsonDepValue::Catalog(_) => continue,
+        ende_package_json::PackageJsonDepValue::Workspace { .. }
+        | ende_package_json::PackageJsonDepValue::Catalog(_) => continue,
       }
     }
   }
@@ -828,7 +828,7 @@ impl DepManager {
         &roots,
         crate::module_loader::PrepareModuleLoadOptions {
           is_dynamic: false,
-          lib: deno_config::workspace::TsTypeLib::DenoWindow,
+          lib: ende_config::workspace::TsTypeLib::DenoWindow,
           permissions: self.permissions_container.clone(),
           file_permission_api_name: None,
           ext_overwrite: None,

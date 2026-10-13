@@ -29,7 +29,7 @@ const SIGNATURE: usize = 0x1234567812345678;
 /// # Example
 ///
 /// ```rust
-/// # use deno_core::arena::RawArena;
+/// # use ende_core::arena::RawArena;
 /// // Create a RawArena with a capacity of 10 elements
 /// let arena = RawArena::<usize>::with_capacity(10);
 ///

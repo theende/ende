@@ -5,5 +5,5 @@ pub fn main() {
   // to run tests without building a binary on the CI.
   //
   // Prefer to keep this file simple and mostly empty.
-  denort::main()
+  endert::main()
 }

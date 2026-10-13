@@ -3,12 +3,12 @@
 use std::sync::Arc;
 
 use deno_ast::ModuleSpecifier;
-use deno_config::glob::FilePatterns;
-use deno_config::glob::PathOrPatternSet;
-use deno_core::error::AnyError;
-use deno_core::parking_lot::RwLock;
 use deno_graph::ModuleGraph;
-use deno_runtime::deno_permissions::PermissionsContainer;
+use ende_config::glob::FilePatterns;
+use ende_config::glob::PathOrPatternSet;
+use ende_core::error::AnyError;
+use ende_core::parking_lot::RwLock;
+use ende_runtime::ende_permissions::PermissionsContainer;
 
 use crate::args::CliOptions;
 use crate::module_loader::ModuleLoadPreparer;
@@ -41,7 +41,7 @@ pub struct MainModuleGraphContainer {
   // Allow only one request to update the graph data at a time,
   // but allow other requests to read from it at any time even
   // while another request is updating the data.
-  update_queue: Arc<deno_core::unsync::sync::TaskQueue>,
+  update_queue: Arc<ende_core::unsync::sync::TaskQueue>,
   inner: Arc<RwLock<Arc<ModuleGraph>>>,
   cli_options: Arc<CliOptions>,
   module_load_preparer: Arc<ModuleLoadPreparer>,
@@ -154,7 +154,7 @@ impl ModuleGraphContainer for MainModuleGraphContainer {
 /// everything looks fine, calling `.commit()` will store the
 /// new graph in the ModuleGraphContainer.
 pub struct MainModuleGraphUpdatePermit<'a> {
-  permit: deno_core::unsync::sync::TaskQueuePermit<'a>,
+  permit: ende_core::unsync::sync::TaskQueuePermit<'a>,
   inner: Arc<RwLock<Arc<ModuleGraph>>>,
   graph: ModuleGraph,
 }

@@ -2,7 +2,7 @@
 //!  This example shows you how to define ops in Rust and then call them from
 //!  JavaScript.
 
-use deno_core::*;
+use ende_core::*;
 
 /// An op for summing an array of numbers. The op-layer automatically
 /// deserializes inputs and serializes the returned Result & value.
@@ -15,7 +15,7 @@ fn op_sum(#[serde] nums: Vec<f64>) -> Result<f64, deno_error::JsErrorBox> {
 }
 
 fn main() {
-  // Build a deno_core::Extension providing custom ops
+  // Build a ende_core::Extension providing custom ops
   const DECL: OpDecl = op_sum();
   let ext = Extension {
     name: "my_ext",

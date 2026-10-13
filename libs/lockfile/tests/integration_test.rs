@@ -3,11 +3,11 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use deno_lockfile::Lockfile;
-use deno_lockfile::SetWorkspaceConfigOptions;
-use deno_lockfile::WorkspaceConfig;
-use deno_lockfile::WorkspaceMemberConfig;
 use deno_semver::jsr::JsrDepPackageReq;
+use ende_lockfile::Lockfile;
+use ende_lockfile::SetWorkspaceConfigOptions;
+use ende_lockfile::WorkspaceConfig;
+use ende_lockfile::WorkspaceMemberConfig;
 
 #[test]
 fn adding_workspace_does_not_cause_content_changes() {

@@ -34,32 +34,32 @@ const {
   StringPrototypeReplace,
 } = primordials;
 const { getOptionValue } = core.loadExtScript(
-  "ext:deno_node/internal/options.ts",
+  "ext:ende_node/internal/options.ts",
 );
 const {
   AI_ADDRCONFIG,
   AI_ALL,
   AI_V4MAPPED,
-} = core.loadExtScript("ext:deno_node/internal_binding/ares.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/ares.ts");
 const {
   ChannelWrap,
   DNS_ORDER_IPV4_FIRST,
   DNS_ORDER_IPV6_FIRST,
   DNS_ORDER_VERBATIM,
   strerror,
-} = core.loadExtScript("ext:deno_node/internal_binding/cares_wrap.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/cares_wrap.ts");
 const {
   ERR_DNS_SET_SERVERS_FAILED,
   ERR_INVALID_ARG_VALUE,
   ERR_INVALID_IP_ADDRESS,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   validateArray,
   validateInt32,
   validateOneOf,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { isIP } = core.loadExtScript("ext:deno_node/internal/net.ts");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { isIP } = core.loadExtScript("ext:ende_node/internal/net.ts");
 
 interface LookupOptions {
   family?: number | undefined;

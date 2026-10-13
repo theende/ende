@@ -13,16 +13,16 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Mutex;
 
-use deno_core::unsync::spawn_blocking;
-use deno_io::StdFileResourceInner;
-use deno_io::fs::File;
-use deno_io::fs::FsError;
-use deno_io::fs::FsResult;
-use deno_io::fs::FsStat;
-use deno_io::fs::FsStatFs;
-use deno_maybe_sync::new_rc;
-use deno_permissions::CheckedPath;
-use deno_permissions::CheckedPathBuf;
+use ende_core::unsync::spawn_blocking;
+use ende_io::StdFileResourceInner;
+use ende_io::fs::File;
+use ende_io::fs::FsError;
+use ende_io::fs::FsResult;
+use ende_io::fs::FsStat;
+use ende_io::fs::FsStatFs;
+use ende_maybe_sync::new_rc;
+use ende_permissions::CheckedPath;
+use ende_permissions::CheckedPathBuf;
 
 use crate::FileSystem;
 use crate::OpenOptions;
@@ -937,7 +937,7 @@ fn stat(path: &Path) -> FsResult<FsStat> {
   let file = open_for_stat_windows(path, false)?;
   let metadata = file.metadata()?;
   let mut fsstat = FsStat::from_std(metadata);
-  deno_io::stat_extra(&file, &mut fsstat)?;
+  ende_io::stat_extra(&file, &mut fsstat)?;
   Ok(fsstat)
 }
 
@@ -952,7 +952,7 @@ fn lstat(path: &Path) -> FsResult<FsStat> {
   let file = open_for_stat_windows(path, true)?;
   let metadata = file.metadata()?;
   let mut fsstat = FsStat::from_std(metadata);
-  deno_io::stat_extra(&file, &mut fsstat)?;
+  ende_io::stat_extra(&file, &mut fsstat)?;
   Ok(fsstat)
 }
 

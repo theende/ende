@@ -7,17 +7,17 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_cache_dir::file_fetcher::CacheSetting;
-use deno_cache_dir::npm::NpmCacheDir;
 use deno_error::JsErrorBox;
-use deno_npm::NpmPackageCacheFolderId;
-use deno_npm::fast_registry_json;
-use deno_npmrc::RegistryConfig;
-use deno_npmrc::ResolvedNpmRc;
 use deno_path_util::fs::atomic_write_file_with_retries;
 use deno_semver::StackString;
 use deno_semver::Version;
 use deno_semver::package::PackageNv;
+use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_cache_dir::npm::NpmCacheDir;
+use ende_npm::NpmPackageCacheFolderId;
+use ende_npm::fast_registry_json;
+use ende_npmrc::RegistryConfig;
+use ende_npmrc::ResolvedNpmRc;
 use parking_lot::Mutex;
 use serde_json::value::RawValue;
 use sys_traits::FsCanonicalize;
@@ -339,7 +339,7 @@ impl<TSys: NpmCacheSys> NpmCache<TSys> {
 
     spawn_blocking(move || {
       let (info, cache_metadata) =
-        deno_npm::registry::NpmPackageInfo::from_packument_bytes_with_cache_info(
+        ende_npm::registry::NpmPackageInfo::from_packument_bytes_with_cache_info(
           file_bytes.into_owned(),
         )
         .map_err(|err| serde_json::Error::io(std::io::Error::other(err)))?;
@@ -806,10 +806,10 @@ mod tests {
     }"#;
 
     let original =
-      deno_npm::registry::NpmPackageInfo::from_packument_slice(input).unwrap();
+      ende_npm::registry::NpmPackageInfo::from_packument_slice(input).unwrap();
     let output = slim_package_info_bytes(input, Some("etag"), true).unwrap();
     let reparsed =
-      deno_npm::registry::NpmPackageInfo::from_packument_slice(&output)
+      ende_npm::registry::NpmPackageInfo::from_packument_slice(&output)
         .unwrap();
     let version = Version::parse_from_npm("1.0.0").unwrap();
     let mut expected = original.versions.get(&version).unwrap().clone();
@@ -849,7 +849,7 @@ mod tests {
     let value: serde_json::Value = serde_json::from_slice(&output).unwrap();
     assert!(value.get("_deno.packumentFormat").is_none());
     let (_, cache_metadata) =
-      deno_npm::registry::NpmPackageInfo::from_packument_bytes_with_cache_info(
+      ende_npm::registry::NpmPackageInfo::from_packument_bytes_with_cache_info(
         output,
       )
       .unwrap();
@@ -862,7 +862,7 @@ mod tests {
     let value: serde_json::Value = serde_json::from_slice(&output).unwrap();
     assert_eq!(value["_deno.packumentFormat"], "full");
     let (info, cache_metadata) =
-      deno_npm::registry::NpmPackageInfo::from_packument_bytes_with_cache_info(
+      ende_npm::registry::NpmPackageInfo::from_packument_bytes_with_cache_info(
         output,
       )
       .unwrap();
@@ -876,7 +876,7 @@ mod tests {
       "versions":{"1.0.0":{"version":"1.0.0","_deno.packumentFormat":"full"}}
     }"#;
     let (_, cache_metadata) =
-      deno_npm::registry::NpmPackageInfo::from_packument_bytes_with_cache_info(
+      ende_npm::registry::NpmPackageInfo::from_packument_bytes_with_cache_info(
         nested.to_vec(),
       )
       .unwrap();
@@ -908,6 +908,6 @@ mod tests {
     assert_eq!(value["versions"]["1.0.2"]["hasInstallScript"], true);
 
     // the whole packument still parses back into an NpmPackageInfo
-    deno_npm::registry::NpmPackageInfo::from_packument_bytes(output).unwrap();
+    ende_npm::registry::NpmPackageInfo::from_packument_bytes(output).unwrap();
   }
 }

@@ -6,15 +6,15 @@ use std::num::NonZero;
 #[cfg(target_vendor = "apple")]
 use std::sync::OnceLock;
 
-use deno_core::GarbageCollected;
-use deno_core::WebIDL;
-use deno_core::cppgc::Ref;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::webidl::IntOptions;
-use deno_core::webidl::WebIdlConverter;
-use deno_core::webidl::WebIdlError;
 use deno_error::JsErrorBox;
+use ende_core::GarbageCollected;
+use ende_core::WebIDL;
+use ende_core::cppgc::Ref;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::webidl::IntOptions;
+use ende_core::webidl::WebIdlConverter;
+use ende_core::webidl::WebIdlError;
 use wgpu_core::command::PassChannel;
 use wgpu_types::BufferAddress;
 use wgpu_types::TexelCopyBufferInfo;
@@ -49,7 +49,7 @@ impl Drop for GPUCommandEncoder {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for GPUCommandEncoder {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"GPUCommandEncoder"

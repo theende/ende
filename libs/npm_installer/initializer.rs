@@ -6,14 +6,14 @@ use std::sync::Arc;
 use boxed_error::Boxed;
 use deno_error::JsError;
 use deno_error::JsErrorBox;
-use deno_npm::resolution::NpmResolutionSnapshot;
-use deno_npm::resolution::ValidSerializedNpmResolutionSnapshot;
-use deno_npmrc::ResolvedNpmRc;
-use deno_resolver::lockfile::LockfileLock;
-use deno_resolver::lockfile::LockfileSys;
-use deno_resolver::npm::managed::NpmResolutionCell;
-use deno_resolver::workspace::WorkspaceNpmLinkPackagesRc;
 use deno_unsync::sync::TaskQueue;
+use ende_npm::resolution::NpmResolutionSnapshot;
+use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
+use ende_npmrc::ResolvedNpmRc;
+use ende_resolver::lockfile::LockfileLock;
+use ende_resolver::lockfile::LockfileSys;
+use ende_resolver::npm::managed::NpmResolutionCell;
+use ende_resolver::workspace::WorkspaceNpmLinkPackagesRc;
 use parking_lot::Mutex;
 use thiserror::Error;
 use url::Url;
@@ -25,7 +25,7 @@ pub enum NpmResolverManagedSnapshotOption<TSys: LockfileSys> {
     /// Whether to dedupe equivalent peer-dep variants when loading the
     /// snapshot. Safe to enable on any path — it's an in-memory
     /// normalization. See
-    /// [`deno_npm::resolution::SnapshotFromLockfileParams`].
+    /// [`ende_npm::resolution::SnapshotFromLockfileParams`].
     dedup_equivalent_peer_variants: bool,
   },
   Specified(Option<ValidSerializedNpmResolutionSnapshot>),
@@ -184,7 +184,7 @@ fn resolve_snapshot<TSys: LockfileSys>(
 pub enum SnapshotFromLockfileError {
   #[error(transparent)]
   #[class(inherit)]
-  SnapshotFromLockfile(#[from] deno_npm::resolution::SnapshotFromLockfileError),
+  SnapshotFromLockfile(#[from] ende_npm::resolution::SnapshotFromLockfileError),
 }
 
 struct SnapshotWithPending {
@@ -194,7 +194,7 @@ struct SnapshotWithPending {
 
 struct NpmRcDefaultTarballUrlProvider<'a>(&'a ResolvedNpmRc);
 
-impl deno_npm::resolution::DefaultTarballUrlProvider
+impl ende_npm::resolution::DefaultTarballUrlProvider
   for NpmRcDefaultTarballUrlProvider<'_>
 {
   fn default_tarball_url(
@@ -202,7 +202,7 @@ impl deno_npm::resolution::DefaultTarballUrlProvider
     nv: &deno_semver::package::PackageNv,
   ) -> String {
     let default_url =
-      deno_npm::resolution::NpmRegistryDefaultTarballUrlProvider
+      ende_npm::resolution::NpmRegistryDefaultTarballUrlProvider
         .default_tarball_url(nv);
     self
       .0
@@ -227,8 +227,8 @@ fn snapshot_from_lockfile<TSys: LockfileSys>(
 ) -> Result<SnapshotWithPending, SnapshotFromLockfileError> {
   let lockfile = lockfile.lock();
   let default_tarball_url = NpmRcDefaultTarballUrlProvider(npmrc);
-  let snapshot = deno_npm::resolution::snapshot_from_lockfile(
-    deno_npm::resolution::SnapshotFromLockfileParams {
+  let snapshot = ende_npm::resolution::snapshot_from_lockfile(
+    ende_npm::resolution::SnapshotFromLockfileParams {
       link_packages: &link_packages.0,
       lockfile: &lockfile,
       default_tarball_url: &default_tarball_url,
@@ -244,11 +244,11 @@ fn snapshot_from_lockfile<TSys: LockfileSys>(
 
 #[cfg(test)]
 mod tests {
-  use deno_npm::resolution::DefaultTarballUrlProvider;
-  use deno_npmrc::NPM_DEFAULT_REGISTRY;
-  use deno_npmrc::NpmRc;
-  use deno_npmrc::NpmRegistryUrl;
   use deno_semver::package::PackageNv;
+  use ende_npm::resolution::DefaultTarballUrlProvider;
+  use ende_npmrc::NPM_DEFAULT_REGISTRY;
+  use ende_npmrc::NpmRc;
+  use ende_npmrc::NpmRegistryUrl;
   use sys_traits::impls::InMemorySys;
 
   use super::*;

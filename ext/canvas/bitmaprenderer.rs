@@ -1,25 +1,25 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-use deno_core::GarbageCollected;
-use deno_core::WebIDL;
-use deno_core::cppgc::Ref;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::v8::cppgc::Visitor;
-use deno_core::webidl::Nullable;
-use deno_core::webidl::WebIdlConverter;
 use deno_error::JsErrorBox;
-use deno_image::bitmap::ImageBitmap;
-use deno_image::image;
-use deno_image::image::DynamicImage;
-use deno_image::image::GenericImageView;
-use deno_webgpu::canvas::ContextData;
-use deno_webgpu::error::GPUError;
-use deno_webgpu::wgpu_core;
-use deno_webgpu::wgpu_types;
+use ende_core::GarbageCollected;
+use ende_core::WebIDL;
+use ende_core::cppgc::Ref;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::v8::cppgc::Visitor;
+use ende_core::webidl::Nullable;
+use ende_core::webidl::WebIdlConverter;
+use ende_image::bitmap::ImageBitmap;
+use ende_image::image;
+use ende_image::image::DynamicImage;
+use ende_image::image::GenericImageView;
+use ende_webgpu::canvas::ContextData;
+use ende_webgpu::error::GPUError;
+use ende_webgpu::wgpu_core;
+use ende_webgpu::wgpu_types;
 
 #[derive(Clone)]
 pub struct SurfaceBitmap {
-  pub instance: deno_webgpu::Instance,
+  pub instance: ende_webgpu::Instance,
   pub adapter: wgpu_core::id::AdapterId,
   pub device: wgpu_core::id::DeviceId,
   pub queue: wgpu_core::id::QueueId,
@@ -398,7 +398,7 @@ impl ImageBitmapRenderingContext {
       unreachable!()
     };
 
-    let deno_webgpu::canvas::SurfaceData {
+    let ende_webgpu::canvas::SurfaceData {
       id, width, height, ..
     } = &*surface_data.borrow();
 
@@ -447,7 +447,7 @@ const INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 pub const CONTEXT_ID: &str = "bitmaprenderer";
 
 pub fn create<'s>(
-  instance: Option<deno_webgpu::Instance>,
+  instance: Option<ende_webgpu::Instance>,
   canvas: v8::Global<v8::Object>,
   data: ContextData,
   scope: &mut v8::PinScope<'s, '_>,
@@ -465,7 +465,7 @@ pub fn create<'s>(
   .map_err(JsErrorBox::from_err)?;
 
   let surface_only = if let ContextData::Surface(surface_data) = &data {
-    let deno_webgpu::canvas::SurfaceData {
+    let ende_webgpu::canvas::SurfaceData {
       id, width, height, ..
     } = &*surface_data.borrow();
     let instance = instance.unwrap();
@@ -742,7 +742,7 @@ pub fn create<'s>(
     None
   };
 
-  let obj = deno_core::cppgc::make_cppgc_object(
+  let obj = ende_core::cppgc::make_cppgc_object(
     scope,
     ImageBitmapRenderingContext {
       alpha: settings.alpha,

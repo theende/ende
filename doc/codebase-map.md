@@ -9,9 +9,9 @@ first. For the conceptual layering behind this layout, see
 | Directory      | What lives here                                             |
 | -------------- | ----------------------------------------------------------- |
 | `cli/`         | The `deno` binary: subcommands, tooling, LSP, module loader |
-| `runtime/`     | `deno_runtime`: assembles the JS runtime and workers        |
+| `runtime/`     | `ende_runtime`: assembles the JS runtime and workers        |
 | `ext/`         | Extensions — native capabilities exposed to JavaScript      |
-| `libs/`        | `deno_core` and the supporting resolution/packaging crates  |
+| `libs/`        | `ende_core` and the supporting resolution/packaging crates  |
 | `tests/`       | All test suites (see [`testing.md`](./testing.md))          |
 | `tools/`       | Dev scripts: `format.js`, `lint.js`, CI helpers, releases   |
 | `third_party/` | Vendored dependencies and test fixtures                     |
@@ -54,7 +54,7 @@ load order (`00_*.js`, `01_*.js`, …).
 
 ## Inside `libs/`
 
-The `deno_core` foundation and the crates the CLI composes for resolution and
+The `ende_core` foundation and the crates the CLI composes for resolution and
 packaging:
 
 - **Core/V8 bridge:** `core`, `core_testing`, `ops`, `serde_v8`, `dcore`.

@@ -1,8 +1,8 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::GarbageCollected;
-use deno_core::WebIDL;
-use deno_core::op2;
+use ende_core::GarbageCollected;
+use ende_core::WebIDL;
+use ende_core::op2;
 
 use crate::Instance;
 use crate::error::GPUGenericError;
@@ -19,13 +19,13 @@ impl Drop for GPUCommandBuffer {
   }
 }
 
-impl deno_core::webidl::WebIdlInterfaceConverter for GPUCommandBuffer {
+impl ende_core::webidl::WebIdlInterfaceConverter for GPUCommandBuffer {
   const NAME: &'static str = "GPUCommandBuffer";
 }
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for GPUCommandBuffer {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"GPUCommandBuffer"
   }

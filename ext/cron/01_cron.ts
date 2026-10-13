@@ -15,9 +15,9 @@ const {
   ContextManager,
   enterSpan,
   exitSpan,
-} = core.loadExtScript("ext:deno_telemetry/telemetry.ts");
+} = core.loadExtScript("ext:ende_telemetry/telemetry.ts");
 const { updateSpanFromError } = core.loadExtScript(
-  "ext:deno_telemetry/util.ts",
+  "ext:ende_telemetry/util.ts",
 );
 
 function formatToCronSchedule(

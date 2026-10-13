@@ -4,14 +4,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_cache_dir::GlobalOrLocalHttpCache;
-use deno_cache_dir::file_fetcher::CacheSetting;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::futures::StreamExt;
-use deno_core::serde_json;
 use deno_path_util::url_to_file_path;
 use deno_semver::StackString;
 use deno_semver::Version;
@@ -21,6 +13,14 @@ use deno_semver::package::PackageName;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
 use deps::KeyPath;
+use ende_cache_dir::GlobalOrLocalHttpCache;
+use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::futures::StreamExt;
+use ende_core::serde_json;
 use jsonc_parser::cst::CstObject;
 use jsonc_parser::cst::CstObjectProp;
 use jsonc_parser::cst::CstRootNode;
@@ -579,7 +579,7 @@ pub async fn add(
   let http_client = cli_factory.http_client_provider();
   let deps_http_cache = cli_factory.global_http_cache()?;
   let deps_file_fetcher = create_cli_file_fetcher(
-    deno_runtime::deno_web::BlobStore::default_arc(),
+    ende_runtime::ende_web::BlobStore::default_arc(),
     GlobalOrLocalHttpCache::Global(deps_http_cache.clone()),
     http_client.clone(),
     cli_factory.memory_files().clone(),
@@ -696,7 +696,7 @@ pub async fn add(
     })
     .collect::<Vec<_>>();
 
-  let stream_of_futures = deno_core::futures::stream::iter(package_futures);
+  let stream_of_futures = ende_core::futures::stream::iter(package_futures);
   let mut buffered = stream_of_futures.buffered(10);
 
   while let Some(package_and_version_result) = buffered.next().await {
@@ -771,7 +771,7 @@ pub async fn add(
         "{}@{}",
         selected_package.package_name, selected_package.version_req
       );
-      match deno_core::url::Url::parse(&specifier) {
+      match ende_core::url::Url::parse(&specifier) {
         Ok(url) => additional_roots.push(url),
         Err(err) => {
           bail!("Failed to parse package specifier '{specifier}': {err}")
@@ -1253,7 +1253,7 @@ pub(crate) async fn create_dep_manager_and_resolvers(
   let http_client = factory.http_client_provider();
   let deps_http_cache = factory.global_http_cache()?;
   let file_fetcher = create_cli_file_fetcher(
-    deno_runtime::deno_web::BlobStore::default_arc(),
+    ende_runtime::ende_web::BlobStore::default_arc(),
     GlobalOrLocalHttpCache::Global(deps_http_cache.clone()),
     http_client.clone(),
     factory.memory_files().clone(),
@@ -1440,7 +1440,7 @@ fn load_deno_config_for_link(
     let (cli_factory, _force_package_json, _npm_config, deno_config) =
       load_configs(flags, || true, false, false)?;
     let deno_config = deno_config.ok_or_else(|| {
-      deno_core::anyhow::anyhow!("Could not load or create deno.json")
+      ende_core::anyhow::anyhow!("Could not load or create deno.json")
     })?;
     return Ok((cli_factory, deno_config));
   }
@@ -1470,7 +1470,7 @@ pub async fn link(
     .path
     .parent()
     .ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "Could not determine directory of '{}'",
         deno_config.path.display()
       )
@@ -1564,7 +1564,7 @@ pub async fn unlink(
     .path
     .parent()
     .ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "Could not determine directory of '{}'",
         deno_config.path.display()
       )

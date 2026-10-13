@@ -9,49 +9,49 @@ use std::sync::Arc;
 
 use dashmap::DashMap;
 use deno_ast::MediaType;
-use deno_cache_dir::HttpCache;
-use deno_cache_dir::npm::NpmCacheDir;
-use deno_core::parking_lot::Mutex;
-use deno_core::url::Url;
 use deno_error::JsErrorBox;
 use deno_graph::ModuleSpecifier;
 use deno_graph::Range;
-use deno_npm::NpmSystemInfo;
-use deno_npm::resolution::NpmVersionResolver;
-use deno_npm_cache::TarballCache;
-use deno_npm_installer::LifecycleScriptsConfig;
-use deno_npm_installer::initializer::NpmResolutionInitializer;
-use deno_npm_installer::initializer::NpmResolverManagedSnapshotOption;
-use deno_npm_installer::lifecycle_scripts::NullLifecycleScriptsExecutor;
-use deno_npm_installer::package_json::NpmInstallDepsProvider;
-use deno_npm_installer::resolution::NpmResolutionInstaller;
 use deno_path_util::url_to_file_path;
-use deno_resolver::DenoResolverOptions;
-use deno_resolver::NodeAndNpmResolvers;
-use deno_resolver::cjs::IsCjsResolutionMode;
-use deno_resolver::deno_json::CompilerOptionsModuleResolution;
-use deno_resolver::deno_json::CompilerOptionsResolver;
-use deno_resolver::deno_json::JsxImportSourceConfig;
-use deno_resolver::factory::npm_overrides_from_workspace;
-use deno_resolver::graph::FoundPackageJsonDepFlag;
-use deno_resolver::npm::CreateInNpmPkgCheckerOptions;
-use deno_resolver::npm::DenoInNpmPackageChecker;
-use deno_resolver::npm::NpmReqResolverOptions;
-use deno_resolver::npm::managed::ManagedInNpmPkgCheckerCreateOptions;
-use deno_resolver::npm::managed::ManagedNpmResolverCreateOptions;
-use deno_resolver::npm::managed::NpmResolutionCell;
-use deno_resolver::npmrc::create_default_npmrc;
-use deno_resolver::workspace::CreateResolverOptions;
-use deno_resolver::workspace::FsCacheOptions;
-use deno_resolver::workspace::PackageJsonDepResolution;
-use deno_resolver::workspace::SloppyImportsOptions;
-use deno_resolver::workspace::WorkspaceNpmLinkPackagesRc;
-use deno_resolver::workspace::WorkspaceResolver;
-use deno_runtime::tokio_util::create_basic_runtime;
 use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
+use ende_cache_dir::HttpCache;
+use ende_cache_dir::npm::NpmCacheDir;
+use ende_core::parking_lot::Mutex;
+use ende_core::url::Url;
+use ende_npm::NpmSystemInfo;
+use ende_npm::resolution::NpmVersionResolver;
+use ende_npm_cache::TarballCache;
+use ende_npm_installer::LifecycleScriptsConfig;
+use ende_npm_installer::initializer::NpmResolutionInitializer;
+use ende_npm_installer::initializer::NpmResolverManagedSnapshotOption;
+use ende_npm_installer::lifecycle_scripts::NullLifecycleScriptsExecutor;
+use ende_npm_installer::package_json::NpmInstallDepsProvider;
+use ende_npm_installer::resolution::NpmResolutionInstaller;
+use ende_resolver::DenoResolverOptions;
+use ende_resolver::NodeAndNpmResolvers;
+use ende_resolver::cjs::IsCjsResolutionMode;
+use ende_resolver::deno_json::CompilerOptionsModuleResolution;
+use ende_resolver::deno_json::CompilerOptionsResolver;
+use ende_resolver::deno_json::JsxImportSourceConfig;
+use ende_resolver::factory::npm_overrides_from_workspace;
+use ende_resolver::graph::FoundPackageJsonDepFlag;
+use ende_resolver::npm::CreateInNpmPkgCheckerOptions;
+use ende_resolver::npm::DenoInNpmPackageChecker;
+use ende_resolver::npm::NpmReqResolverOptions;
+use ende_resolver::npm::managed::ManagedInNpmPkgCheckerCreateOptions;
+use ende_resolver::npm::managed::ManagedNpmResolverCreateOptions;
+use ende_resolver::npm::managed::NpmResolutionCell;
+use ende_resolver::npmrc::create_default_npmrc;
+use ende_resolver::workspace::CreateResolverOptions;
+use ende_resolver::workspace::FsCacheOptions;
+use ende_resolver::workspace::PackageJsonDepResolution;
+use ende_resolver::workspace::SloppyImportsOptions;
+use ende_resolver::workspace::WorkspaceNpmLinkPackagesRc;
+use ende_resolver::workspace::WorkspaceResolver;
+use ende_runtime::tokio_util::create_basic_runtime;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use node_resolver::DenoIsBuiltInNodeModuleChecker;
@@ -282,7 +282,7 @@ impl LspScopedResolver {
                 npm_resolution: factory.services.npm_resolution.clone(),
                 npm_system_info: NpmSystemInfo::default(),
                 linker_mode:
-                  deno_config::deno_json::NodeModulesLinkerMode::default(),
+                  ende_config::deno_json::NodeModulesLinkerMode::default(),
               }
             })
           }
@@ -1060,7 +1060,7 @@ impl<'a> ResolverFactory<'a> {
         // user do an explicit "cache" command and prevent
         // the cache from being filled with lots of packages while
         // the user is typing.
-        deno_npm_cache::NpmCacheSetting::Only,
+        ende_npm_cache::NpmCacheSetting::Only,
         npmrc.clone(),
       ));
       let pb = ProgressBar::new(ProgressBarStyle::TextOnly);
@@ -1140,11 +1140,11 @@ impl<'a> ResolverFactory<'a> {
         &pb,
         sys.clone(),
         tarball_cache.clone(),
-        deno_npm_installer::NpmInstallerOptions {
+        ende_npm_installer::NpmInstallerOptions {
           clean_on_install: false,
           maybe_lockfile,
           maybe_node_modules_path: maybe_node_modules_path.clone(),
-          linker_mode: deno_config::deno_json::NodeModulesLinkerMode::default(),
+          linker_mode: ende_config::deno_json::NodeModulesLinkerMode::default(),
           lifecycle_scripts: Arc::new(LifecycleScriptsConfig::default()),
           system_info: NpmSystemInfo::default(),
           workspace_link_packages: link_packages,
@@ -1165,7 +1165,7 @@ impl<'a> ResolverFactory<'a> {
         npmrc,
         npm_resolution: self.services.npm_resolution.clone(),
         npm_system_info: NpmSystemInfo::default(),
-        linker_mode: deno_config::deno_json::NodeModulesLinkerMode::default(),
+        linker_mode: ende_config::deno_json::NodeModulesLinkerMode::default(),
       })
     };
     self.set_npm_resolver(CliNpmResolver::<CliSys>::new(options));
@@ -1187,7 +1187,7 @@ impl<'a> ResolverFactory<'a> {
     self.services.cli_resolver.get_or_init(|| {
       let npm_req_resolver = self.npm_pkg_req_resolver().cloned();
       let deno_resolver =
-        Arc::new(deno_resolver::RawDenoResolver::new(DenoResolverOptions {
+        Arc::new(ende_resolver::RawDenoResolver::new(DenoResolverOptions {
           in_npm_pkg_checker: self.in_npm_pkg_checker().clone(),
           node_and_req_resolver: match (
             self.node_resolver(),
@@ -1361,7 +1361,7 @@ impl<'a> ResolverFactory<'a> {
             conditions: Default::default(),
             typescript_version: Some(
               deno_semver::Version::parse_standard(
-                deno_lib::version::DENO_VERSION_INFO.typescript,
+                ende_lib::version::DENO_VERSION_INFO.typescript,
               )
               .unwrap(),
             ),
@@ -1611,7 +1611,7 @@ impl AddNpmReqsThread {
         while let Some((npm_installer, reqs, response_tx)) =
           request_rx.recv().await
         {
-          deno_core::unsync::spawn(async move {
+          ende_core::unsync::spawn(async move {
             let result = npm_installer.add_package_reqs_no_cache(&reqs).await;
             response_tx.send(result).unwrap();
           });

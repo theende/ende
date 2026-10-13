@@ -285,7 +285,7 @@ You can also run tests with cargo directly:
 cargo test -vv
 
 # Run tests in a specific package:
-cargo test -p deno_core
+cargo test -p ende_core
 ```
 
 ### Working with Multiple Crates
@@ -297,7 +297,7 @@ to one another. For example:
 ```shell
 - denoland/
   - deno/
-  - deno_core/
+  - ende_core/
   - deno_ast/
   - ...
 ```

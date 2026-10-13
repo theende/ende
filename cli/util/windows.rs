@@ -147,7 +147,7 @@ fn is_deno_exe(path: &std::path::Path) -> bool {
   path
     .file_stem()
     .and_then(|stem| stem.to_str())
-    .is_some_and(|stem| stem.eq_ignore_ascii_case("deno"))
+    .is_some_and(|stem| stem.eq_ignore_ascii_case("ende"))
 }
 
 /// Resolves the full image path for a process id, or `None` if it cannot be

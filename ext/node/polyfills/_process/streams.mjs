@@ -13,28 +13,28 @@ const {
   ObjectPrototypeIsPrototypeOf,
 } = primordials;
 
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const {
   clearLine,
   clearScreenDown,
   cursorTo,
   moveCursor,
-} = core.loadExtScript("ext:deno_node/internal/readline/callbacks.mjs");
-const { nextTick } = core.loadExtScript("ext:deno_node/_next_tick.ts");
+} = core.loadExtScript("ext:ende_node/internal/readline/callbacks.mjs");
+const { nextTick } = core.loadExtScript("ext:ende_node/_next_tick.ts");
 const lazyStream = core.createLazyLoader("node:stream");
 // `node:tty`'s module body calls `setReadStream(...)` to register the TTY
 // ReadStream class with this file. We used to rely on `node:tty` being
 // loaded eagerly at snapshot from 01_require.js; now it's lazy, so the TTY
 // branch of `initStdin` has to force-load it before using `readStream`.
 const lazyTty = core.createLazyLoader("node:tty");
-const io = core.loadExtScript("ext:deno_io/12_io.js");
+const io = core.loadExtScript("ext:ende_io/12_io.js");
 const { guessHandleType } = core.loadExtScript(
-  "ext:deno_node/internal_binding/util.ts",
+  "ext:ende_node/internal_binding/util.ts",
 );
-const { codeMap } = core.loadExtScript("ext:deno_node/internal_binding/uv.ts");
+const { codeMap } = core.loadExtScript("ext:ende_node/internal_binding/uv.ts");
 import { op_bootstrap_color_depth } from "ext:core/ops";
 const { validateInteger } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 
 // https://github.com/nodejs/node/blob/00738314828074243c9a52a228ab4c68b04259ef/lib/internal/bootstrap/switches/is_main_thread.js#L41

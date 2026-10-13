@@ -4,16 +4,16 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const lazyProcess = core.createLazyLoader("node:process");
-const imported1 = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const imported1 = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { kEmptyObject, once } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 const {
   validateAbortSignal,
   validateBoolean,
   validateFunction,
   validateObject,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 
 const {
   isClosed,
@@ -31,10 +31,10 @@ const {
   isWritableStream,
   kIsClosedPromise,
   willEmitClose: _willEmitClose,
-} = core.loadExtScript("ext:deno_node/internal/streams/utils.js");
+} = core.loadExtScript("ext:ende_node/internal/streams/utils.js");
 
 const _mod2 = core.loadExtScript(
-  "ext:deno_node/internal/events/abort_listener.mjs",
+  "ext:ende_node/internal/events/abort_listener.mjs",
 );
 
 const {

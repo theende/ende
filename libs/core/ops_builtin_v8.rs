@@ -1418,7 +1418,7 @@ pub fn wasm_streaming_callback<'a>(
   let Some(cb_handle) = maybe_cb_handle else {
     // The JS handler is registered while the runtime bootstraps, before any
     // user code can trigger wasm streaming. Reaching this without a handler
-    // means deno_core was misconfigured.
+    // means ende_core was misconfigured.
     panic!("wasm streaming callback invoked before the JS handler was set");
   };
 

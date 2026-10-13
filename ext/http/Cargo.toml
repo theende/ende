@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_http"
+name = "ende_http"
 version = "0.257.0"
 authors.workspace = true
 edition.workspace = true
@@ -29,12 +29,12 @@ aws-lc-rs.workspace = true
 base64.workspace = true
 brotli.workspace = true
 bytes.workspace = true
-deno_core.workspace = true
 deno_error.workspace = true
-deno_http_h1.workspace = true
-deno_net.workspace = true
-deno_telemetry.workspace = true
-deno_websocket.workspace = true
+ende_core.workspace = true
+ende_http_h1.workspace = true
+ende_net.workspace = true
+ende_telemetry.workspace = true
+ende_websocket.workspace = true
 flate2.workspace = true
 http.workspace = true
 http-body-util = { workspace = true, features = ["channel"] }

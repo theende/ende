@@ -28,24 +28,24 @@ const {
   Immediate,
   kDestroy,
   Timeout,
-} = core.loadExtScript("ext:deno_node/internal/timers.mjs");
+} = core.loadExtScript("ext:ende_node/internal/timers.mjs");
 const {
   validateAbortSignal,
   validateBoolean,
   validateFunction,
   validateNumber,
   validateObject,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const { kEmptyObject, promisify } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 const {
   AbortError,
   ERR_ILLEGAL_CONSTRUCTOR,
   ERR_INVALID_THIS,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const lazyEventTarget = core.createLazyLoader(
-  "ext:deno_node/internal/event_target.mjs",
+  "ext:ende_node/internal/event_target.mjs",
 );
 
 interface TimerOptions {

@@ -5,7 +5,7 @@
 const { core, primordials } = __bootstrap;
 const lazyPath = core.createLazyLoader("node:path");
 const lazyFsPromises = core.createLazyLoader(
-  "ext:deno_node/internal/fs/promises.ts",
+  "ext:ende_node/internal/fs/promises.ts",
 );
 const lazyConstants = core.createLazyLoader("node:constants");
 const {
@@ -19,7 +19,7 @@ const {
   ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY,
   ERR_FS_CP_UNKNOWN,
   ERR_FS_EISDIR,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   op_node_cp_check_paths_recursive,
   op_node_cp_fast,

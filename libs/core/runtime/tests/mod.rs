@@ -67,7 +67,7 @@ async fn op_test(
 
 fn setup(mode: Mode) -> (JsRuntime, Arc<AtomicUsize>) {
   let dispatch_count = Arc::new(AtomicUsize::new(0));
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     ops = [op_test],
     options = {

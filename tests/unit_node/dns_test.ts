@@ -6,7 +6,7 @@ import dnsPromises, {
   lookup as lookupPromise,
   lookupService as lookupServicePromise,
 } from "node:dns/promises";
-import { ErrnoException } from "ext:deno_node/_global.d.ts";
+import { ErrnoException } from "ext:ende_node/_global.d.ts";
 
 interface LookupServiceResult {
   hostname: string;

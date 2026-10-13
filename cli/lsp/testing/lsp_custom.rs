@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::serde::Deserialize;
-use deno_core::serde::Serialize;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Serialize;
 use tower_lsp::lsp_types as lsp;
 
 pub const TEST_RUN_CANCEL_REQUEST: &str = "deno/testRunCancel";

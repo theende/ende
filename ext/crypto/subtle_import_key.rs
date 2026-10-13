@@ -33,12 +33,12 @@ const BASE64_JWK_FORGIVING: base64::engine::general_purpose::GeneralPurpose =
       .with_decode_allow_trailing_bits(true)
       .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent),
   );
-use deno_core::v8;
-use deno_core::webidl::ContextFn;
-use deno_core::webidl::WebIdlConverter;
-use deno_core::webidl::WebIdlError;
-use deno_core::webidl::WebIdlErrorKind;
 use deno_error::JsErrorBox;
+use ende_core::v8;
+use ende_core::webidl::ContextFn;
+use ende_core::webidl::WebIdlConverter;
+use ende_core::webidl::WebIdlError;
+use ende_core::webidl::WebIdlErrorKind;
 
 use crate::CryptoError;
 use crate::crypto_key::CryptoKeyType;

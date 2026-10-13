@@ -539,8 +539,8 @@ inventory::collect!(InheritanceEdge);
 mod tests {
   use std::any::TypeId;
 
-  use deno_ops::CppgcBase;
-  use deno_ops::CppgcInherits;
+  use ende_ops::CppgcBase;
+  use ende_ops::CppgcInherits;
 
   use super::*;
 

@@ -4,15 +4,15 @@ use std::error::Error;
 use std::fmt;
 
 use deno_ast::ModuleSpecifier;
-use deno_core::serde::Deserialize;
-use deno_core::serde::Deserializer;
-use deno_core::serde::Serialize;
-use deno_core::serde::Serializer;
-use deno_core::sourcemap::SourceMap;
 use deno_graph::ModuleGraph;
 use deno_graph::ResolutionError;
-use deno_resolver::graph::enhanced_resolution_error_message;
 use deno_terminal::colors;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Deserializer;
+use ende_core::serde::Serialize;
+use ende_core::serde::Serializer;
+use ende_core::sourcemap::SourceMap;
+use ende_resolver::graph::enhanced_resolution_error_message;
 
 use crate::graph_util::resolution_error_for_tsc_diagnostic;
 
@@ -178,7 +178,7 @@ pub struct Diagnostic {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub reports_unnecessary: Option<bool>,
   #[serde(flatten)]
-  pub other: deno_core::serde_json::Map<String, deno_core::serde_json::Value>,
+  pub other: ende_core::serde_json::Map<String, ende_core::serde_json::Value>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub missing_specifier: Option<String>,
 }
@@ -544,8 +544,8 @@ impl Error for Diagnostics {}
 
 #[cfg(test)]
 mod tests {
-  use deno_core::serde_json;
-  use deno_core::serde_json::json;
+  use ende_core::serde_json;
+  use ende_core::serde_json::json;
   use test_util::strip_ansi_codes;
 
   use super::*;

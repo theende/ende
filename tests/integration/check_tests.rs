@@ -1,8 +1,8 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_lockfile::NewLockfileOptions;
-use deno_lockfile::NpmPackageInfoProvider;
 use deno_semver::jsr::JsrDepPackageReq;
+use ende_lockfile::NewLockfileOptions;
+use ende_lockfile::NpmPackageInfoProvider;
 use test_util as util;
 use util::TestContext;
 use util::TestContextBuilder;
@@ -194,7 +194,7 @@ impl NpmPackageInfoProvider for TestNpmPackageInfoProvider {
     &self,
     values: &[deno_semver::package::PackageNv],
   ) -> Result<
-    Vec<deno_lockfile::Lockfile5NpmInfo>,
+    Vec<ende_lockfile::Lockfile5NpmInfo>,
     Box<dyn std::error::Error + Send + Sync>,
   > {
     Ok(values.iter().map(|_| Default::default()).collect())
@@ -223,7 +223,7 @@ async fn npm_module_check_then_error() {
     .run()
     .skip_output_check();
   let lockfile_path = temp_dir.path().join("deno.lock");
-  let mut lockfile = deno_lockfile::Lockfile::new(
+  let mut lockfile = ende_lockfile::Lockfile::new(
     NewLockfileOptions {
       file_path: lockfile_path.to_path_buf(),
       content: &lockfile_path.read_to_string(),

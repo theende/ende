@@ -1,38 +1,38 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "denort_desktop"
+name = "endert_desktop"
 version = "2.7.4"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
 repository.workspace = true
-description = "Provides libdenort shared library for laufey desktop apps"
+description = "Provides libendert shared library for laufey desktop apps"
 
 [lib]
-name = "denort"
+name = "endert"
 path = "lib.rs"
 crate-type = ["cdylib"]
 
 [features]
 default = ["v8"]
-quickjs = ["deno_core/quickjs", "denort/quickjs", "v8/quickjs"]
-v8 = ["deno_core/v8", "denort/v8", "v8/v8"]
+quickjs = ["ende_core/quickjs", "endert/quickjs", "v8/quickjs"]
+v8 = ["ende_core/v8", "endert/v8", "v8/v8"]
 
 [build-dependencies]
-deno_runtime.workspace = true
-deno_core.workspace = true
+ende_runtime.workspace = true
+ende_core.workspace = true
 v8.workspace = true
 
 [dependencies]
-deno_core.workspace = true
 deno_error.workspace = true
-deno_lib.workspace = true
-deno_runtime.workspace = true
-deno_snapshots.workspace = true
 deno_terminal.workspace = true
-denort = { path = "../rt", default-features = false }
+ende_core.workspace = true
+ende_lib.workspace = true
+ende_runtime.workspace = true
+ende_snapshots.workspace = true
+endert = { path = "../rt", default-features = false }
 laufey = "0.7.0"
 libsui.workspace = true
 

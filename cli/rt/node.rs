@@ -3,13 +3,13 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use deno_core::url::Url;
 use deno_error::JsErrorBox;
-use deno_lib::standalone::binary::CjsExportAnalysisEntry;
 use deno_media_type::MediaType;
-use deno_resolver::loader::NpmModuleLoader;
-use deno_resolver::npm::DenoInNpmPackageChecker;
-use deno_resolver::npm::NpmReqResolver;
+use ende_core::url::Url;
+use ende_lib::standalone::binary::CjsExportAnalysisEntry;
+use ende_resolver::loader::NpmModuleLoader;
+use ende_resolver::npm::DenoInNpmPackageChecker;
+use ende_resolver::npm::NpmReqResolver;
 use node_resolver::DenoIsBuiltInNodeModuleChecker;
 use node_resolver::analyze::CjsAnalysis;
 use node_resolver::analyze::CjsAnalysisExports;
@@ -20,8 +20,8 @@ use crate::binary::StandaloneModules;
 use crate::file_system::DenoRtSys;
 
 pub type DenoRtCjsTracker =
-  deno_resolver::cjs::CjsTracker<DenoInNpmPackageChecker, DenoRtSys>;
-pub type DenoRtNpmResolver = deno_resolver::npm::NpmResolver<DenoRtSys>;
+  ende_resolver::cjs::CjsTracker<DenoInNpmPackageChecker, DenoRtSys>;
+pub type DenoRtNpmResolver = ende_resolver::npm::NpmResolver<DenoRtSys>;
 pub type DenoRtNpmModuleLoader = NpmModuleLoader<
   CjsCodeAnalyzer,
   DenoInNpmPackageChecker,
@@ -36,7 +36,7 @@ pub type DenoRtNodeCodeTranslator = NodeCodeTranslator<
   DenoRtNpmResolver,
   DenoRtSys,
 >;
-pub type DenoRtNodeResolver = deno_runtime::deno_node::NodeResolver<
+pub type DenoRtNodeResolver = ende_runtime::ende_node::NodeResolver<
   DenoInNpmPackageChecker,
   DenoRtNpmResolver,
   DenoRtSys,

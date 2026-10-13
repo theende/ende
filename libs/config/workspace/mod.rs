@@ -10,12 +10,6 @@ use std::sync::OnceLock;
 
 use boxed_error::Boxed;
 use deno_error::JsError;
-use deno_maybe_sync::new_rc;
-use deno_package_json::PackageJson;
-use deno_package_json::PackageJsonDepValue;
-use deno_package_json::PackageJsonDepWorkspaceReq;
-use deno_package_json::PackageJsonLoadError;
-use deno_package_json::PackageJsonRc;
 use deno_path_util::url_from_directory_path;
 use deno_path_util::url_parent;
 use deno_path_util::url_to_file_path;
@@ -30,6 +24,12 @@ use discovery::ConfigFileDiscovery;
 use discovery::ConfigFolder;
 use discovery::DenoOrPkgJson;
 use discovery::discover_workspace_config_files;
+use ende_maybe_sync::new_rc;
+use ende_package_json::PackageJson;
+use ende_package_json::PackageJsonDepValue;
+use ende_package_json::PackageJsonDepWorkspaceReq;
+use ende_package_json::PackageJsonLoadError;
+use ende_package_json::PackageJsonRc;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use sys_traits::FsMetadata;
@@ -78,11 +78,11 @@ use crate::glob::PathOrPatternSet;
 mod discovery;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type UrlRc = deno_maybe_sync::MaybeArc<Url>;
+pub type UrlRc = ende_maybe_sync::MaybeArc<Url>;
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type WorkspaceRc = deno_maybe_sync::MaybeArc<Workspace>;
+pub type WorkspaceRc = ende_maybe_sync::MaybeArc<Workspace>;
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type WorkspaceDirectoryRc = deno_maybe_sync::MaybeArc<WorkspaceDirectory>;
+pub type WorkspaceDirectoryRc = ende_maybe_sync::MaybeArc<WorkspaceDirectory>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolverWorkspaceJsrPackage {
@@ -184,7 +184,7 @@ impl NpmPackageConfig {
 /// Unlike [`VersionReq::matches`], a tag requirement never matches here (rather
 /// than panicking), since a local package has no dist-tags to compare against.
 ///
-/// `deno_npm`'s `link_version_req_satisfies` keeps an identical copy of this
+/// `ende_npm`'s `link_version_req_satisfies` keeps an identical copy of this
 /// fallback for the npm graph resolver (it can't depend on this crate). Keep
 /// the two in sync.
 pub fn version_req_matches_including_pre(
@@ -480,7 +480,7 @@ pub struct WorkspaceDiscoverOptions<'a> {
   /// A cache for deno.json files. This is mostly only useful in the LSP where
   /// workspace discovery may occur multiple times.
   pub deno_json_cache: Option<&'a dyn crate::deno_json::DenoJsonCache>,
-  pub pkg_json_cache: Option<&'a dyn deno_package_json::PackageJsonCache>,
+  pub pkg_json_cache: Option<&'a dyn ende_package_json::PackageJsonCache>,
   /// A cache for workspaces. This is mostly only useful in the LSP where
   /// workspace discovery may occur multiple times.
   pub workspace_cache: Option<&'a dyn WorkspaceCache>,
@@ -533,7 +533,7 @@ pub struct LintConfigError;
 
 #[derive(Debug, Default)]
 struct WorkspaceCachedValues {
-  dirs: deno_maybe_sync::MaybeDashMap<UrlRc, WorkspaceDirectoryRc>,
+  dirs: ende_maybe_sync::MaybeDashMap<UrlRc, WorkspaceDirectoryRc>,
 }
 
 #[derive(Debug)]
@@ -1856,9 +1856,9 @@ impl Workspace {
 #[derive(Debug, Clone)]
 struct WorkspaceDirConfig<T> {
   #[allow(clippy::disallowed_types, reason = "field uses MaybeArc")]
-  member: Option<deno_maybe_sync::MaybeArc<T>>,
+  member: Option<ende_maybe_sync::MaybeArc<T>>,
   #[allow(clippy::disallowed_types, reason = "field uses MaybeArc")]
-  root: Option<deno_maybe_sync::MaybeArc<T>>,
+  root: Option<ende_maybe_sync::MaybeArc<T>>,
 }
 
 impl<T> WorkspaceDirConfig<T> {
@@ -3207,10 +3207,10 @@ pub mod test {
   use std::cell::RefCell;
   use std::collections::HashMap;
 
-  use deno_package_json::PackageJsonCacheResult;
   use deno_path_util::normalize_path;
   use deno_path_util::url_from_directory_path;
   use deno_path_util::url_from_file_path;
+  use ende_package_json::PackageJsonCacheResult;
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use sys_traits::impls::InMemorySys;
@@ -6987,7 +6987,7 @@ pub mod test {
   #[derive(Default)]
   struct PkgJsonMemCache(RefCell<HashMap<PathBuf, PackageJsonRc>>);
 
-  impl deno_package_json::PackageJsonCache for PkgJsonMemCache {
+  impl ende_package_json::PackageJsonCache for PkgJsonMemCache {
     fn get(&self, path: &Path) -> PackageJsonCacheResult {
       match self.0.borrow().get(path).cloned() {
         Some(value) => PackageJsonCacheResult::Hit(Some(value)),

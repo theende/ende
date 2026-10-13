@@ -9,7 +9,7 @@ declare var domIterable: {
   DomIterableMixin(base: any, dataSymbol: symbol): any;
 };
 
-declare module "ext:deno_fetch/20_headers.js" {
+declare module "ext:ende_fetch/20_headers.js" {
   class Headers {
   }
   type HeaderList = [string, string][];
@@ -33,7 +33,7 @@ declare module "ext:deno_fetch/20_headers.js" {
   ): "immutable" | "request" | "request-no-cors" | "response" | "none";
 }
 
-declare module "ext:deno_fetch/21_formdata.js" {
+declare module "ext:ende_fetch/21_formdata.js" {
   type FormData = typeof FormData;
   function formDataToBlob(
     formData: FormData,
@@ -45,7 +45,7 @@ declare module "ext:deno_fetch/21_formdata.js" {
   function formDataFromEntries(entries: FormDataEntry[]): FormData;
 }
 
-declare module "ext:deno_fetch/22_body.js" {
+declare module "ext:ende_fetch/22_body.js" {
   function mixinBody(
     prototype: any,
     bodySymbol: symbol,
@@ -66,7 +66,7 @@ declare module "ext:deno_fetch/22_body.js" {
   };
 }
 
-declare module "ext:deno_fetch/23_response.js" {
+declare module "ext:ende_fetch/23_response.js" {
   function redirectStatus(status: number): boolean;
   function nullBodyStatus(status: number): boolean;
   function newInnerResponse(
@@ -88,7 +88,7 @@ declare module "ext:deno_fetch/23_response.js" {
   function networkError(error: string): InnerResponse;
 }
 
-declare module "ext:deno_fetch/26_fetch.js" {
+declare module "ext:ende_fetch/26_fetch.js" {
   function toInnerRequest(request: Request): InnerRequest;
   function fromInnerRequest(
     inner: InnerRequest,

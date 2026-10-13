@@ -8,7 +8,7 @@ use deno_ast::SourceTextInfo;
 use deno_ast::swc::ast;
 use deno_ast::swc::ecma_visit::Visit;
 use deno_ast::swc::ecma_visit::VisitWith;
-use deno_core::ModuleSpecifier;
+use ende_core::ModuleSpecifier;
 use lsp::Range;
 use tower_lsp::lsp_types as lsp;
 
@@ -652,7 +652,7 @@ impl Visit for TestCollector {
 
 #[cfg(test)]
 pub mod tests {
-  use deno_core::resolve_url;
+  use ende_core::resolve_url;
   use lsp::Position;
   use pretty_assertions::assert_eq;
 

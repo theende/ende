@@ -56,17 +56,17 @@ const {
   op_http2_callbacks,
 } = core.ops;
 const { enqueueNodePerformanceEntry } = core.loadExtScript(
-  "ext:deno_node/perf_hooks.js",
+  "ext:ende_node/perf_hooks.js",
 );
 const { performance: webPerformance } = core.loadExtScript(
-  "ext:deno_web/15_performance.js",
+  "ext:ende_web/15_performance.js",
 );
 const lazyNet = core.createLazyLoader("node:net");
 const net = lazyNet().default;
-const { default: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+const { default: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 const lazyHttp = core.createLazyLoader("node:http");
 const http = lazyHttp().default;
-const { AsyncResource } = core.loadExtScript("ext:deno_node/async_hooks.ts");
+const { AsyncResource } = core.loadExtScript("ext:ende_node/async_hooks.ts");
 const {
   _connectionListener: httpConnectionListener,
   applyAddressOverride,
@@ -84,44 +84,44 @@ const {
 const { Duplex } = core.createLazyLoader("node:stream")();
 const lazyTls = core.createLazyLoader("node:tls");
 const tls = lazyTls().default;
-const { deprecate } = core.loadExtScript("ext:deno_node/util.ts");
-const dc = core.loadExtScript("ext:deno_node/diagnostics_channel.js").default;
-const { utcDate } = core.loadExtScript("ext:deno_node/internal/http.ts");
+const { deprecate } = core.loadExtScript("ext:ende_node/util.ts");
+const dc = core.loadExtScript("ext:ende_node/diagnostics_channel.js").default;
+const { utcDate } = core.loadExtScript("ext:ende_node/internal/http.ts");
 const {
   kBytesWritten,
   kLastWriteWasAsync,
   ShutdownWrap,
   streamBaseState,
-} = core.loadExtScript("ext:deno_node/internal_binding/stream_wrap.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/stream_wrap.ts");
 const {
   Http2Session: BindingHttp2Session,
   Http2Stream: BindingHttp2Stream,
-} = core.loadExtScript("ext:deno_node/internal_binding/http2.ts");
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+} = core.loadExtScript("ext:ende_node/internal_binding/http2.ts");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 const {
   defaultTriggerAsyncIdScope,
   symbols,
-} = core.loadExtScript("ext:deno_node/internal/async_hooks.ts");
+} = core.loadExtScript("ext:ende_node/internal/async_hooks.ts");
 const { async_id_symbol } = symbols;
 const { kTimeout } = core.loadExtScript(
-  "ext:deno_node/internal/timers.mjs",
+  "ext:ende_node/internal/timers.mjs",
 );
 // Use node:timers' setTimeout/clearTimeout so the returned Timeout object
 // supports unref() -- globalThis.setTimeout returns a plain number.
 const lazyTimers = core.createLazyLoader("node:timers");
 const { clearTimeout, setTimeout } = lazyTimers();
 const { addAbortListener } = core.loadExtScript(
-  "ext:deno_node/internal/events/abort_listener.mjs",
+  "ext:ende_node/internal/events/abort_listener.mjs",
 );
 const lazyFs = core.createLazyLoader("node:fs");
 const fs = lazyFs().default;
 const { FileHandle: FsFileHandle } = core.createLazyLoader(
-  "ext:deno_node/internal/fs/handle.ts",
+  "ext:ende_node/internal/fs/handle.ts",
 )();
 const { JSStreamSocket } = core.loadExtScript(
-  "ext:deno_node/internal/js_stream_socket.js",
+  "ext:ende_node/internal/js_stream_socket.js",
 );
-const { format, inspect } = core.loadExtScript("ext:deno_node/util.ts");
+const { format, inspect } = core.loadExtScript("ext:ende_node/util.ts");
 const {
   isUint32,
   validateAbortSignal,
@@ -135,10 +135,10 @@ const {
   validateObject,
   validateString,
   validateUint32,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { promisify } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { promisify } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 const { customInspectSymbol: kInspect } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 const {
   AbortError,
@@ -186,7 +186,7 @@ const {
   ERR_SOCKET_CLOSED,
   ERR_TLS_ALPN_CALLBACK_WITH_PROTOCOLS,
   hideStackFrames,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   kAfterAsyncWrite,
   kBoundSession,
@@ -198,7 +198,7 @@ const {
   setStreamTimeout,
   writeGeneric,
   writevGeneric,
-} = core.loadExtScript("ext:deno_node/internal/stream_base_commons.ts");
+} = core.loadExtScript("ext:ende_node/internal/stream_base_commons.ts");
 const {
   assertIsArray,
   assertIsObject,
@@ -229,24 +229,24 @@ const {
   toHeaderObject,
   updateOptionsBuffer,
   updateSettingsBuffer,
-} = core.loadExtScript("ext:deno_node/internal/http2/util.ts");
+} = core.loadExtScript("ext:ende_node/internal/http2/util.ts");
 const { ownerSymbol: owner_symbol } = core.loadExtScript(
-  "ext:deno_node/internal_binding/symbols.ts",
+  "ext:ende_node/internal_binding/symbols.ts",
 );
 const {
   Http2ServerRequest,
   Http2ServerResponse,
   onServerStream,
-} = core.loadExtScript("ext:deno_node/internal/http2/compat.js");
+} = core.loadExtScript("ext:ende_node/internal/http2/compat.js");
 const { updateSpanFromError } = core.loadExtScript(
-  "ext:deno_telemetry/util.ts",
+  "ext:ende_telemetry/util.ts",
 );
 const {
   otelState,
   builtinTracer,
   ContextManager,
   SPAN_KEY,
-} = core.loadExtScript("ext:deno_telemetry/telemetry.ts");
+} = core.loadExtScript("ext:ende_telemetry/telemetry.ts");
 const onClientStreamCreatedChannel = dc.channel("http2.client.stream.created");
 const onClientStreamStartChannel = dc.channel("http2.client.stream.start");
 const onClientStreamErrorChannel = dc.channel("http2.client.stream.error");
@@ -265,7 +265,7 @@ const onServerStreamFinishChannel = dc.channel("http2.server.stream.finish");
 const onServerStreamCloseChannel = dc.channel("http2.server.stream.close");
 
 const { debuglog } = core.loadExtScript(
-  "ext:deno_node/internal/util/debuglog.ts",
+  "ext:ende_node/internal/util/debuglog.ts",
 );
 const lazyConsole = core.createLazyLoader("node:console");
 const console = lazyConsole().default;
@@ -418,7 +418,7 @@ function flushDeferredHttp2Writes(session) {
 // HTTP2 Constants
 
 const constants = core.loadExtScript(
-  "ext:deno_node/internal/http2/constants.ts",
+  "ext:ende_node/internal/http2/constants.ts",
 );
 const {
   NGHTTP2_CANCEL,

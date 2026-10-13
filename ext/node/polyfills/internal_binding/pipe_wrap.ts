@@ -33,16 +33,16 @@
 const { core, primordials } = __bootstrap;
 const { op_node_create_pipe, PipeWrap } = core.ops;
 const { AsyncWrap, providerType } = core.loadExtScript(
-  "ext:deno_node/internal_binding/async_wrap.ts",
+  "ext:ende_node/internal_binding/async_wrap.ts",
 );
 const { ceilPowOf2 } = core.loadExtScript(
-  "ext:deno_node/internal_binding/_listen.ts",
+  "ext:ende_node/internal_binding/_listen.ts",
 );
 const { codeMap } = core.loadExtScript(
-  "ext:deno_node/internal_binding/uv.ts",
+  "ext:ende_node/internal_binding/uv.ts",
 );
 const { fs } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
 
 const { FunctionPrototypeCall, MapPrototypeGet } = primordials;

@@ -19,26 +19,26 @@ use std::sync::Arc;
 use anyhow::Error as AnyError;
 use async_trait::async_trait;
 use deno_error::JsErrorBox;
-use deno_npm::NpmPackageExtraInfo;
-use deno_npm::NpmPackageId;
-use deno_npm::NpmPackageIdPeerDependencies;
-use deno_npm::NpmResolutionPackage;
-use deno_npm::NpmResolutionPackageSystemInfo;
-use deno_npm::NpmSystemInfo;
-use deno_npm::resolution::NpmResolutionSnapshot;
-use deno_npm_cache::NpmCache;
-use deno_npm_cache::NpmCacheHttpClient;
-use deno_npm_cache::NpmCacheSys;
-use deno_npm_cache::TarballCache;
-use deno_npm_cache::create_dir_all_no_symlink;
-use deno_npm_cache::ensure_not_symlink;
-use deno_npm_cache::hard_link_file;
 use deno_path_util::fs::atomic_write_file_with_retries;
-use deno_resolver::npm::get_package_folder_id_folder_name;
-use deno_resolver::npm::managed::NpmResolutionCell;
 use deno_semver::StackString;
 use deno_semver::package::PackageNv;
 use deno_terminal::colors;
+use ende_npm::NpmPackageExtraInfo;
+use ende_npm::NpmPackageId;
+use ende_npm::NpmPackageIdPeerDependencies;
+use ende_npm::NpmResolutionPackage;
+use ende_npm::NpmResolutionPackageSystemInfo;
+use ende_npm::NpmSystemInfo;
+use ende_npm::resolution::NpmResolutionSnapshot;
+use ende_npm_cache::NpmCache;
+use ende_npm_cache::NpmCacheHttpClient;
+use ende_npm_cache::NpmCacheSys;
+use ende_npm_cache::TarballCache;
+use ende_npm_cache::create_dir_all_no_symlink;
+use ende_npm_cache::ensure_not_symlink;
+use ende_npm_cache::hard_link_file;
+use ende_resolver::npm::get_package_folder_id_folder_name;
+use ende_resolver::npm::managed::NpmResolutionCell;
 use futures::FutureExt;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
@@ -2030,7 +2030,7 @@ pub(crate) fn join_package_name(
 /// Calculates a hash of the current package set for change detection.
 /// This allows us to detect when npm packages have been added, removed, or changed.
 fn calculate_packages_hash(
-  package_partitions: &deno_npm::resolution::NpmPackagesPartitioned,
+  package_partitions: &ende_npm::resolution::NpmPackagesPartitioned,
   root_folder_names: &BTreeSet<String>,
 ) -> u64 {
   use std::hash::Hash;
@@ -2105,7 +2105,7 @@ fn cleanup_unused_packages<TSys: LocalNpmInstallSys>(
   sys: &TSys,
   root_node_modules_dir: &Path,
   deno_local_registry_dir: &Path,
-  package_partitions: &deno_npm::resolution::NpmPackagesPartitioned,
+  package_partitions: &ende_npm::resolution::NpmPackagesPartitioned,
   root_folder_names: &BTreeSet<String>,
   setup_cache: &mut LocalSetupCache<TSys>,
 ) {
@@ -2348,14 +2348,14 @@ mod test {
       BTreeSet::from(["package-a".to_string(), "package-b".to_string()]);
 
     let hash = calculate_packages_hash(
-      &deno_npm::resolution::NpmPackagesPartitioned {
+      &ende_npm::resolution::NpmPackagesPartitioned {
         packages,
         copy_packages: Vec::new(),
       },
       &root_folder_names,
     );
     let reversed_hash = calculate_packages_hash(
-      &deno_npm::resolution::NpmPackagesPartitioned {
+      &ende_npm::resolution::NpmPackagesPartitioned {
         packages: reversed_packages,
         copy_packages: Vec::new(),
       },

@@ -1,10 +1,10 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::convert::Uint8Array;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::v8_static_strings;
 use deno_error::JsErrorBox;
+use ende_core::convert::Uint8Array;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::v8_static_strings;
 
 #[op2(fast)]
 pub fn op_mark_as_untransferable(

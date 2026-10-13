@@ -9,12 +9,12 @@ pub enum ChildIpcSerialization {
 }
 
 impl std::str::FromStr for ChildIpcSerialization {
-  type Err = deno_core::anyhow::Error;
+  type Err = ende_core::anyhow::Error;
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     match s {
       "json" => Ok(ChildIpcSerialization::Json),
       "advanced" => Ok(ChildIpcSerialization::Advanced),
-      _ => Err(deno_core::anyhow::anyhow!(
+      _ => Err(ende_core::anyhow::anyhow!(
         "Invalid serialization type: {}",
         s
       )),
@@ -30,25 +30,25 @@ mod impl_ {
   use std::io;
   use std::rc::Rc;
 
-  use deno_core::CancelFuture;
-  use deno_core::OpState;
-  use deno_core::RcRef;
-  use deno_core::ResourceId;
-  use deno_core::ToV8;
-  use deno_core::op2;
-  use deno_core::serde;
-  use deno_core::serde::Serializer;
-  use deno_core::serde_json;
-  use deno_core::v8;
-  use deno_core::v8::ValueDeserializerHelper;
-  use deno_core::v8::ValueSerializerHelper;
   use deno_error::JsErrorBox;
-  pub use deno_process::ipc::INITIAL_CAPACITY;
-  use deno_process::ipc::IpcAdvancedStreamError;
-  use deno_process::ipc::IpcAdvancedStreamResource;
-  use deno_process::ipc::IpcJsonStreamError;
-  pub use deno_process::ipc::IpcJsonStreamResource;
-  pub use deno_process::ipc::IpcRefTracker;
+  use ende_core::CancelFuture;
+  use ende_core::OpState;
+  use ende_core::RcRef;
+  use ende_core::ResourceId;
+  use ende_core::ToV8;
+  use ende_core::op2;
+  use ende_core::serde;
+  use ende_core::serde::Serializer;
+  use ende_core::serde_json;
+  use ende_core::v8;
+  use ende_core::v8::ValueDeserializerHelper;
+  use ende_core::v8::ValueSerializerHelper;
+  pub use ende_process::ipc::INITIAL_CAPACITY;
+  use ende_process::ipc::IpcAdvancedStreamError;
+  use ende_process::ipc::IpcAdvancedStreamResource;
+  use ende_process::ipc::IpcJsonStreamError;
+  pub use ende_process::ipc::IpcJsonStreamResource;
+  pub use ende_process::ipc::IpcRefTracker;
   use serde::Serialize;
 
   use crate::ChildPipeFd;
@@ -88,10 +88,10 @@ mod impl_ {
         ser.serialize_f64(num_value)
       }
     } else if value.is_string() {
-      let str = deno_core::serde_v8::to_utf8(value.try_into().unwrap(), scope);
+      let str = ende_core::serde_v8::to_utf8(value.try_into().unwrap(), scope);
       ser.serialize_str(&str)
     } else if value.is_string_object() {
-      let str = deno_core::serde_v8::to_utf8(
+      let str = ende_core::serde_v8::to_utf8(
         value.to_string(scope).ok_or_else(|| {
           S::Error::custom(deno_error::JsErrorBox::generic(
             "toString on string object failed",
@@ -225,7 +225,7 @@ mod impl_ {
   pub enum IpcError {
     #[class(inherit)]
     #[error(transparent)]
-    Resource(#[from] deno_core::error::ResourceError),
+    Resource(#[from] ende_core::error::ResourceError),
     #[class(inherit)]
     #[error(transparent)]
     IpcAdvancedStream(#[from] IpcAdvancedStreamError),
@@ -234,7 +234,7 @@ mod impl_ {
     IpcJsonStream(#[from] IpcJsonStreamError),
     #[class(inherit)]
     #[error(transparent)]
-    Canceled(#[from] deno_core::Canceled),
+    Canceled(#[from] ende_core::Canceled),
     #[class(inherit)]
     #[error("failed to serialize json value: {0}")]
     SerdeJson(serde_json::Error),
@@ -783,7 +783,7 @@ mod impl_ {
     obj.into()
   }
 
-  impl<'a> deno_core::ToV8<'a> for AdvancedIpcReadResult {
+  impl<'a> ende_core::ToV8<'a> for AdvancedIpcReadResult {
     type Error = IpcError;
     fn to_v8(
       self,
@@ -851,13 +851,13 @@ mod impl_ {
     raw_fd: Option<i32>,
   }
 
-  impl<'a> deno_core::ToV8<'a> for IpcJsonReadResult {
+  impl<'a> ende_core::ToV8<'a> for IpcJsonReadResult {
     type Error = IpcError;
     fn to_v8(
       self,
       scope: &mut v8::PinScope<'a, '_>,
     ) -> Result<v8::Local<'a, v8::Value>, Self::Error> {
-      let msg = deno_core::serde_v8::to_v8(scope, self.msg)
+      let msg = ende_core::serde_v8::to_v8(scope, self.msg)
         .expect("serde_json::Value to_v8");
       Ok(make_msg_with_fd_array(scope, msg, self.raw_fd))
     }
@@ -888,7 +888,7 @@ mod impl_ {
     state: &mut OpState,
     #[smi] rid: ResourceId,
     serialization_json: bool,
-  ) -> Result<(), deno_core::error::ResourceError> {
+  ) -> Result<(), ende_core::error::ResourceError> {
     if serialization_json {
       let stream = state.resource_table.get::<IpcJsonStreamResource>(rid)?;
       stream.ref_tracker.ref_();
@@ -905,7 +905,7 @@ mod impl_ {
     state: &mut OpState,
     #[smi] rid: ResourceId,
     serialization_json: bool,
-  ) -> Result<(), deno_core::error::ResourceError> {
+  ) -> Result<(), ende_core::error::ResourceError> {
     if serialization_json {
       let stream = state.resource_table.get::<IpcJsonStreamResource>(rid)?;
       stream.ref_tracker.unref();
@@ -919,11 +919,11 @@ mod impl_ {
 
   #[cfg(test)]
   mod tests {
-    use deno_core::JsRuntime;
-    use deno_core::RuntimeOptions;
-    use deno_core::v8;
+    use ende_core::JsRuntime;
+    use ende_core::RuntimeOptions;
+    use ende_core::v8;
 
-    deno_core::extension!(
+    ende_core::extension!(
       test_ipc_ops,
       ops = [super::op_node_ipc_ref, super::op_node_ipc_unref],
     );
@@ -934,10 +934,10 @@ mod impl_ {
 
     fn serialize_js_to_json(runtime: &mut JsRuntime, js: String) -> String {
       let val = runtime.execute_script("", js).unwrap();
-      deno_core::scope!(scope, runtime);
+      ende_core::scope!(scope, runtime);
       let val = v8::Local::new(scope, val);
       let mut buf = Vec::new();
-      let mut ser = deno_core::serde_json::Serializer::new(&mut buf);
+      let mut ser = ende_core::serde_json::Serializer::new(&mut buf);
       super::serialize_v8_value(scope, val, &mut ser).unwrap();
       String::from_utf8(buf).unwrap()
     }

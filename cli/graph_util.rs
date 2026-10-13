@@ -7,14 +7,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use deno_ast::MediaType;
-use deno_config::deno_json;
-use deno_config::deno_json::CompilerOptionTypesDeserializeError;
-use deno_config::deno_json::NodeModulesDirMode;
-use deno_config::workspace::JsrPackageConfig;
-use deno_core::ModuleSpecifier;
-use deno_core::error::AnyError;
-use deno_core::parking_lot::Mutex;
-use deno_core::serde_json;
 use deno_error::JsErrorBox;
 use deno_error::JsErrorClass;
 use deno_graph::CheckJsOption;
@@ -31,27 +23,35 @@ use deno_graph::WorkspaceFastCheckOption;
 use deno_graph::packages::JsrVersionResolver;
 use deno_graph::source::Loader;
 use deno_graph::source::ResolveError;
-use deno_lib::util::result::downcast_ref_deno_resolve_error;
-use deno_npm_installer::PackageCaching;
-use deno_npm_installer::format_unmet_peer_dep_warning;
-use deno_npm_installer::graph::NpmCachingStrategy;
 use deno_path_util::url_to_file_path;
-use deno_resolver::cache::ParsedSourceCache;
-use deno_resolver::deno_json::CompilerOptionsResolver;
-use deno_resolver::deno_json::JsxImportSourceConfigResolver;
-use deno_resolver::deno_json::ToMaybeJsxImportSourceConfigError;
-use deno_resolver::file_fetcher::GraphLoaderReporterRc;
-use deno_resolver::graph::EnhanceGraphErrorMode;
-use deno_resolver::graph::EnhancedGraphError;
-use deno_resolver::graph::NpmTypesResolutionMode;
-use deno_resolver::graph::enhance_graph_error;
-use deno_resolver::graph::enhanced_integrity_error_message;
-use deno_resolver::graph::format_deno_graph_error;
-use deno_resolver::npm::DenoInNpmPackageChecker;
-use deno_runtime::deno_permissions::PermissionsContainer;
 use deno_semver::SmallStackString;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_config::deno_json;
+use ende_config::deno_json::CompilerOptionTypesDeserializeError;
+use ende_config::deno_json::NodeModulesDirMode;
+use ende_config::workspace::JsrPackageConfig;
+use ende_core::ModuleSpecifier;
+use ende_core::error::AnyError;
+use ende_core::parking_lot::Mutex;
+use ende_core::serde_json;
+use ende_lib::util::result::downcast_ref_deno_resolve_error;
+use ende_npm_installer::PackageCaching;
+use ende_npm_installer::format_unmet_peer_dep_warning;
+use ende_npm_installer::graph::NpmCachingStrategy;
+use ende_resolver::cache::ParsedSourceCache;
+use ende_resolver::deno_json::CompilerOptionsResolver;
+use ende_resolver::deno_json::JsxImportSourceConfigResolver;
+use ende_resolver::deno_json::ToMaybeJsxImportSourceConfigError;
+use ende_resolver::file_fetcher::GraphLoaderReporterRc;
+use ende_resolver::graph::EnhanceGraphErrorMode;
+use ende_resolver::graph::EnhancedGraphError;
+use ende_resolver::graph::NpmTypesResolutionMode;
+use ende_resolver::graph::enhance_graph_error;
+use ende_resolver::graph::enhanced_integrity_error_message;
+use ende_resolver::graph::format_deno_graph_error;
+use ende_resolver::npm::DenoInNpmPackageChecker;
+use ende_runtime::ende_permissions::PermissionsContainer;
 use import_map::ImportMapErrorKind;
 use node_resolver::errors::NodeJsErrorCode;
 use sys_traits::FsMetadata;
@@ -401,7 +401,7 @@ pub fn graph_exit_integrity_errors(graph: &ModuleGraph) {
 fn exit_for_integrity_error(err: &ModuleError) {
   if let Some(err_message) = enhanced_integrity_error_message(err) {
     log::error!("{} {}", colors::red("error:"), err_message);
-    deno_runtime::exit(10);
+    ende_runtime::exit(10);
   }
 }
 
@@ -930,7 +930,7 @@ impl ModuleGraphBuilder {
           unstable_css_imports: self.cli_options.unstable_raw_imports(),
           unstable_config_imports: false,
           prefer_cached_jsr_versions: self.cli_options.cache_setting()
-            == deno_cache_dir::file_fetcher::CacheSetting::Only,
+            == ende_cache_dir::file_fetcher::CacheSetting::Only,
         }
       };
     }
@@ -1193,7 +1193,7 @@ impl ModuleGraphBuilder {
       self.global_http_cache.clone(),
       self.in_npm_pkg_checker.clone(),
       self.sys.clone(),
-      deno_resolver::file_fetcher::DenoGraphLoaderOptions {
+      ende_resolver::file_fetcher::DenoGraphLoaderOptions {
         file_header_overrides: self.cli_options.resolve_file_header_overrides(),
         permissions: Some(permissions),
         file_permission_api_name,

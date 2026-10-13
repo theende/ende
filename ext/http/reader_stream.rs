@@ -8,7 +8,7 @@ use std::task::Context;
 use std::task::Poll;
 
 use bytes::Bytes;
-use deno_core::futures::Stream;
+use ende_core::futures::Stream;
 use pin_project::pin_project;
 use tokio::io::AsyncRead;
 use tokio_util::io::ReaderStream;
@@ -67,7 +67,7 @@ impl<R: AsyncRead> Stream for ExternallyAbortableReaderStream<R> {
 #[cfg(test)]
 mod tests {
   use bytes::Bytes;
-  use deno_core::futures::StreamExt;
+  use ende_core::futures::StreamExt;
   use tokio::io::AsyncWriteExt;
 
   use super::*;

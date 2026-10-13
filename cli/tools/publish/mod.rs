@@ -12,24 +12,24 @@ use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use deno_ast::ModuleSpecifier;
 use deno_ast::SourceTextInfo;
-use deno_config::deno_json::ConfigFile;
-use deno_config::workspace::JsrPackageConfig;
-use deno_config::workspace::Workspace;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::futures::StreamExt;
-use deno_core::futures::future::LocalBoxFuture;
-use deno_core::futures::stream::FuturesUnordered;
-use deno_core::serde_json;
-use deno_core::serde_json::Value;
-use deno_core::serde_json::json;
-use deno_core::url::Url;
-use deno_resolver::collections::FolderScopedMap;
-use deno_runtime::deno_fetch;
 use deno_semver::Version;
 use deno_terminal::colors;
+use ende_config::deno_json::ConfigFile;
+use ende_config::workspace::JsrPackageConfig;
+use ende_config::workspace::Workspace;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::futures::StreamExt;
+use ende_core::futures::future::LocalBoxFuture;
+use ende_core::futures::stream::FuturesUnordered;
+use ende_core::serde_json;
+use ende_core::serde_json::Value;
+use ende_core::serde_json::json;
+use ende_core::url::Url;
+use ende_resolver::collections::FolderScopedMap;
+use ende_runtime::ende_fetch;
 use http_body_util::BodyExt;
 use serde::Deserialize;
 use serde::Serialize;
@@ -242,7 +242,7 @@ fn validate_publish_configs(
 
     let version =
       config.config_file.json.version.as_deref().ok_or_else(|| {
-        deno_core::anyhow::anyhow!(
+        ende_core::anyhow::anyhow!(
           "{} is missing 'version' field",
           config.config_file.specifier
         )
@@ -284,7 +284,7 @@ async fn filter_out_published_packages(
     )
     .await
   });
-  let results = deno_core::futures::future::join_all(checks).await;
+  let results = ende_core::futures::future::join_all(checks).await;
 
   let mut remaining = Vec::with_capacity(publish_configs.len());
   for (config, already_published) in publish_configs.into_iter().zip(results) {
@@ -384,7 +384,7 @@ impl PublishPreparer {
         .boxed()
       })
       .collect::<Vec<_>>();
-    let results = deno_core::futures::future::join_all(results).await;
+    let results = ende_core::futures::future::join_all(results).await;
     for result in results {
       let (package_name, package) = result?;
       package_by_name.insert(package_name, package);
@@ -400,7 +400,7 @@ impl PublishPreparer {
     allow_slow_types: bool,
     diagnostics_collector: &PublishDiagnosticsCollector,
     package_configs: &[JsrPackageConfig],
-  ) -> Result<Arc<deno_graph::ModuleGraph>, deno_core::anyhow::Error> {
+  ) -> Result<Arc<deno_graph::ModuleGraph>, ende_core::anyhow::Error> {
     let build_fast_check_graph = !allow_slow_types;
     let graph = self
       .module_graph_creator
@@ -520,7 +520,7 @@ impl PublishPreparer {
     let config_path = deno_json.specifier.to_file_path().unwrap();
     let root_dir = config_path.parent().unwrap().to_path_buf();
     let version = deno_json.json.version.clone().ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "{} is missing 'version' field",
         deno_json.specifier
       )
@@ -528,7 +528,7 @@ impl PublishPreparer {
     let (scope, name_no_scope) = registry::parse_package_name(&package.name)?;
     let file_patterns = package.member_dir.to_publish_config()?.files;
 
-    let tarball = deno_core::unsync::spawn_blocking({
+    let tarball = ende_core::unsync::spawn_blocking({
       let diagnostics_collector = diagnostics_collector.clone();
       let module_content_provider = self.module_content_provider.clone();
       let cli_options = self.cli_options.clone();
@@ -1086,7 +1086,7 @@ fn combine_publish_errors(mut errors: Vec<AnyError>) -> AnyError {
     // "Failed to publish @scope/name: <cause>").
     message.push_str(&format!("\n\n* {:#}", err));
   }
-  deno_core::anyhow::anyhow!(message)
+  ende_core::anyhow::anyhow!(message)
 }
 
 async fn publish_package(
@@ -1114,7 +1114,7 @@ async fn publish_package(
     Some(&config_path),
   )?;
 
-  let body = deno_fetch::ReqBody::full(package.tarball.bytes.clone());
+  let body = ende_fetch::ReqBody::full(package.tarball.bytes.clone());
   let response = http_client
     .post(url, body)?
     .header(
@@ -1498,7 +1498,7 @@ fn verify_version_manifest(
 
   for (specifier, expected) in &manifest.exports {
     let actual = package.exports.get(specifier).ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "Export {} not found in the package",
         specifier
       )

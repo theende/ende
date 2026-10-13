@@ -55,23 +55,23 @@ const osErrorRegExp = new SafeRegExp(/os error (40|90|10040)/);
 const {
   AsyncWrap,
   providerType,
-} = core.loadExtScript("ext:deno_node/internal_binding/async_wrap.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/async_wrap.ts");
 const { HandleWrap } = core.loadExtScript(
-  "ext:deno_node/internal_binding/handle_wrap.ts",
+  "ext:ende_node/internal_binding/handle_wrap.ts",
 );
 const { ownerSymbol } = core.loadExtScript(
-  "ext:deno_node/internal_binding/symbols.ts",
+  "ext:ende_node/internal_binding/symbols.ts",
 );
 const { codeMap, errorMap } = core.loadExtScript(
-  "ext:deno_node/internal_binding/uv.ts",
+  "ext:ende_node/internal_binding/uv.ts",
 );
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { isIP } = core.loadExtScript("ext:deno_node/internal/net.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { isIP } = core.loadExtScript("ext:ende_node/internal/net.ts");
 const { isLinux, isWindows } = core.loadExtScript(
-  "ext:deno_node/_util/os.ts",
+  "ext:ende_node/_util/os.ts",
 );
 const { os } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
 
 type MessageType = string | Uint8Array | Buffer | DataView;

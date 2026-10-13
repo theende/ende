@@ -8,10 +8,10 @@ use std::sync::atomic::Ordering;
 
 use color_print::cformat;
 use color_print::cstr;
-use deno_core::error::JsError;
-use deno_core::error::format_frame;
-use deno_core::url::Url;
 use deno_terminal::colors;
+use ende_core::error::JsError;
+use ende_core::error::format_frame;
+use ende_core::url::Url;
 
 /// Set to `true` when user code assigns to `Object.prototype.__proto__` while
 /// the accessor is disabled (the default, unless `--unsafe-proto`).
@@ -103,16 +103,16 @@ impl<'a> FixSuggestion<'a> {
 
 struct AnsiColors;
 
-impl deno_core::error::ErrorFormat for AnsiColors {
+impl ende_core::error::ErrorFormat for AnsiColors {
   fn fmt_element(
-    element: deno_core::error::ErrorElement,
+    element: ende_core::error::ErrorElement,
     in_extension_code: bool,
     s: &str,
   ) -> std::borrow::Cow<'_, str> {
     if in_extension_code {
       return colors::dimmed_gray(s).to_string().into();
     }
-    use deno_core::error::ErrorElement::*;
+    use ende_core::error::ErrorElement::*;
     match element {
       Anonymous | NativeFrame | FileName | EvalOrigin => {
         colors::cyan(s).to_string().into()
@@ -258,7 +258,7 @@ fn format_aggregated_error(
   s
 }
 
-fn stack_frame_is_ext(frame: &deno_core::error::JsStackFrame) -> bool {
+fn stack_frame_is_ext(frame: &ende_core::error::JsStackFrame) -> bool {
   frame
     .file_name
     .as_ref()

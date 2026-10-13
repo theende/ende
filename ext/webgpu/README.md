@@ -1,4 +1,4 @@
-# deno_webgpu
+# ende_webgpu
 
 This op crate implements the WebGPU API as defined in
 https://gpuweb.github.io/gpuweb/ in Deno. The implementation targets the spec

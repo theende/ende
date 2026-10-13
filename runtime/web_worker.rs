@@ -11,55 +11,55 @@ use std::sync::atomic::Ordering;
 use std::task::Context;
 use std::task::Poll;
 
-use deno_cache::CacheImpl;
-use deno_cache::CreateCache;
-use deno_cache::SqliteBackedCache;
-use deno_core::CancelHandle;
-use deno_core::CompiledWasmModuleStore;
-use deno_core::DetachedBuffer;
-use deno_core::Extension;
-use deno_core::FromV8;
-use deno_core::JsRuntime;
-use deno_core::ModuleCodeString;
-use deno_core::ModuleId;
-use deno_core::ModuleLoader;
-use deno_core::ModuleSpecifier;
-use deno_core::PollEventLoopOptions;
-use deno_core::RuntimeOptions;
-use deno_core::SharedArrayBufferStore;
-use deno_core::ToV8;
-use deno_core::error::CoreError;
-use deno_core::error::CoreErrorKind;
-use deno_core::futures::channel::mpsc;
-use deno_core::futures::future::poll_fn;
-use deno_core::futures::stream::StreamExt;
-use deno_core::futures::task::AtomicWaker;
-use deno_core::located_script_name;
-use deno_core::serde::Deserialize;
-use deno_core::serde::Serialize;
-use deno_core::serde_json::json;
-use deno_core::v8;
-use deno_cron::CronHandlerImpl;
 use deno_error::JsErrorClass;
-use deno_fs::FileSystem;
-use deno_io::Stdio;
-use deno_kv::dynamic::MultiBackendDbHandler;
-use deno_napi::DenoRtNativeAddonLoaderRc;
-use deno_node::ExtNodeSys;
-use deno_node::NodeExtInitServices;
-use deno_permissions::PermissionsContainer;
-use deno_process::NpmProcessStateProviderRc;
 use deno_terminal::colors;
-use deno_tls::RootCertStoreProvider;
-use deno_tls::TlsKeys;
-use deno_web::Blob;
-use deno_web::BlobStoreTrait;
-use deno_web::InMemoryBroadcastChannel;
-use deno_web::JsMessageData;
-use deno_web::MessagePort;
-use deno_web::Transferable;
-use deno_web::create_entangled_message_port;
-use deno_web::serialize_transferables;
+use ende_cache::CacheImpl;
+use ende_cache::CreateCache;
+use ende_cache::SqliteBackedCache;
+use ende_core::CancelHandle;
+use ende_core::CompiledWasmModuleStore;
+use ende_core::DetachedBuffer;
+use ende_core::Extension;
+use ende_core::FromV8;
+use ende_core::JsRuntime;
+use ende_core::ModuleCodeString;
+use ende_core::ModuleId;
+use ende_core::ModuleLoader;
+use ende_core::ModuleSpecifier;
+use ende_core::PollEventLoopOptions;
+use ende_core::RuntimeOptions;
+use ende_core::SharedArrayBufferStore;
+use ende_core::ToV8;
+use ende_core::error::CoreError;
+use ende_core::error::CoreErrorKind;
+use ende_core::futures::channel::mpsc;
+use ende_core::futures::future::poll_fn;
+use ende_core::futures::stream::StreamExt;
+use ende_core::futures::task::AtomicWaker;
+use ende_core::located_script_name;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Serialize;
+use ende_core::serde_json::json;
+use ende_core::v8;
+use ende_cron::CronHandlerImpl;
+use ende_fs::FileSystem;
+use ende_io::Stdio;
+use ende_kv::dynamic::MultiBackendDbHandler;
+use ende_napi::DenoRtNativeAddonLoaderRc;
+use ende_node::ExtNodeSys;
+use ende_node::NodeExtInitServices;
+use ende_permissions::PermissionsContainer;
+use ende_process::NpmProcessStateProviderRc;
+use ende_tls::RootCertStoreProvider;
+use ende_tls::TlsKeys;
+use ende_web::Blob;
+use ende_web::BlobStoreTrait;
+use ende_web::InMemoryBroadcastChannel;
+use ende_web::JsMessageData;
+use ende_web::MessagePort;
+use ende_web::Transferable;
+use ende_web::create_entangled_message_port;
+use ende_web::serialize_transferables;
 use log::debug;
 use node_resolver::InNpmPackageChecker;
 use node_resolver::NpmPackageFolderResolver;
@@ -69,7 +69,7 @@ use crate::FeatureChecker;
 use crate::coverage::CoverageCollector;
 use crate::cpu_profiler::CpuProfiler;
 use crate::cpu_profiler::CpuProfilerConfig;
-use crate::deno_inspector_server::MainInspectorSessionChannel;
+use crate::ende_inspector_server::MainInspectorSessionChannel;
 use crate::ops;
 use crate::shared::runtime;
 use crate::worker::FormatJsErrorFn;
@@ -130,7 +130,7 @@ pub enum WorkerControlEvent {
   Close(i32),
 }
 
-use deno_core::serde::Serializer;
+use ende_core::serde::Serializer;
 
 impl Serialize for WorkerControlEvent {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -388,7 +388,7 @@ pub struct WebWorkerServiceOptions<
   pub permissions: PermissionsContainer,
   pub root_cert_store_provider: Option<Arc<dyn RootCertStoreProvider>>,
   pub shared_array_buffer_store: Option<SharedArrayBufferStore>,
-  pub bundle_provider: Option<Arc<dyn deno_bundle_runtime::BundleProvider>>,
+  pub bundle_provider: Option<Arc<dyn ende_bundle_runtime::BundleProvider>>,
 }
 
 pub struct WebWorkerOptions {
@@ -506,12 +506,12 @@ impl WebWorker {
         if elems.len() == 2 {
           let endpoint = elems[0];
           let token = elems[1];
-          use deno_cache::CacheShard;
+          use ende_cache::CacheShard;
 
           let shard =
             Rc::new(CacheShard::new(endpoint.to_string(), token.to_string()));
           let create_cache_fn = move || {
-            let x = deno_cache::LscBackend::default();
+            let x = ende_cache::LscBackend::default();
             x.set_shard(shard.clone());
 
             Ok(CacheImpl::Lsc(x))
@@ -541,43 +541,43 @@ impl WebWorker {
     // `runtime/worker.rs`, `runtime/web_worker.rs`, `runtime/snapshot_info.rs`
     // and `runtime/snapshot.rs`!
     let mut extensions = vec![
-      deno_telemetry::deno_telemetry::init(),
+      ende_telemetry::ende_telemetry::init(),
       // Web APIs
-      deno_webidl::deno_webidl::init(),
-      deno_web::deno_web::init(
+      ende_webidl::ende_webidl::init(),
+      ende_web::ende_web::init(
         services.blob_store,
         Some(options.main_module.clone()),
         Default::default(),
         services.broadcast_channel,
       ),
-      deno_webgpu::deno_webgpu::init(),
-      deno_image::deno_image::init(),
-      deno_canvas::deno_canvas::init(),
-      deno_fetch::deno_fetch::init(deno_fetch::Options {
+      ende_webgpu::ende_webgpu::init(),
+      ende_image::ende_image::init(),
+      ende_canvas::ende_canvas::init(),
+      ende_fetch::ende_fetch::init(ende_fetch::Options {
         user_agent: options.bootstrap.user_agent.clone(),
         root_cert_store_provider: services.root_cert_store_provider.clone(),
         unsafely_ignore_certificate_errors: options
           .unsafely_ignore_certificate_errors
           .clone(),
-        file_fetch_handler: Rc::new(deno_fetch::FsFetchHandler),
+        file_fetch_handler: Rc::new(ende_fetch::FsFetchHandler),
         request_builder_hook: Some(request_builder_hook),
         ..Default::default()
       }),
-      deno_cache::deno_cache::init(create_cache),
-      deno_websocket::deno_websocket::init(),
-      deno_webstorage::deno_webstorage::init(None).disable(),
-      deno_crypto::deno_crypto::init(options.seed),
-      deno_ffi::deno_ffi::init(services.deno_rt_native_addon_loader.clone()),
-      deno_net::deno_net::init(
+      ende_cache::ende_cache::init(create_cache),
+      ende_websocket::ende_websocket::init(),
+      ende_webstorage::ende_webstorage::init(None).disable(),
+      ende_crypto::ende_crypto::init(options.seed),
+      ende_ffi::ende_ffi::init(services.deno_rt_native_addon_loader.clone()),
+      ende_net::ende_net::init(
         services.root_cert_store_provider.clone(),
         options.unsafely_ignore_certificate_errors.clone(),
       ),
-      deno_tls::deno_tls::init(),
-      deno_kv::deno_kv::init(
+      ende_tls::ende_tls::init(),
+      ende_kv::ende_kv::init(
         Box::new(MultiBackendDbHandler::remote_or_sqlite(
           None,
           options.seed,
-          deno_kv::remote::HttpOptions {
+          ende_kv::remote::HttpOptions {
             user_agent: options.bootstrap.user_agent.clone(),
             root_cert_store_provider: services.root_cert_store_provider,
             unsafely_ignore_certificate_errors: options
@@ -587,43 +587,43 @@ impl WebWorker {
             proxy: None,
           },
         )),
-        deno_kv::KvConfig::builder().build(),
+        ende_kv::KvConfig::builder().build(),
       ),
-      deno_cron::deno_cron::init(Box::new(CronHandlerImpl::create_from_env())),
-      deno_napi::deno_napi::init(services.deno_rt_native_addon_loader.clone()),
-      deno_http::deno_http::init(deno_http::Options {
+      ende_cron::ende_cron::init(Box::new(CronHandlerImpl::create_from_env())),
+      ende_napi::ende_napi::init(services.deno_rt_native_addon_loader.clone()),
+      ende_http::ende_http::init(ende_http::Options {
         no_legacy_abort: options.bootstrap.no_legacy_abort,
         ..Default::default()
       }),
-      deno_io::deno_io::init(Some(options.stdio)),
-      deno_fs::deno_fs::init(services.fs.clone()),
-      deno_os::deno_os::init(Some(deno_os::ExitCode::default())),
-      deno_process::deno_process::init(services.npm_process_state_provider),
-      deno_node_crypto::deno_node_crypto::init(),
-      deno_node_sqlite::deno_node_sqlite::init(),
-      deno_node::deno_node::init::<
+      ende_io::ende_io::init(Some(options.stdio)),
+      ende_fs::ende_fs::init(services.fs.clone()),
+      ende_os::ende_os::init(Some(ende_os::ExitCode::default())),
+      ende_process::ende_process::init(services.npm_process_state_provider),
+      ende_node_crypto::ende_node_crypto::init(),
+      ende_node_sqlite::ende_node_sqlite::init(),
+      ende_node::ende_node::init::<
         TInNpmPackageChecker,
         TNpmPackageFolderResolver,
         TExtNodeSys,
       >(services.node_services, services.fs),
       // Runtime ops that are always initialized for WebWorkers
-      ops::runtime::deno_runtime::init(options.main_module.clone()),
-      ops::worker_host::deno_worker_host::init(
+      ops::runtime::ende_runtime::init(options.main_module.clone()),
+      ops::worker_host::ende_worker_host::init(
         options.create_web_worker_cb,
         options.format_js_error_fn,
       ),
-      ops::fs_events::deno_fs_events::init(),
-      ops::permissions::deno_permissions::init(),
-      ops::tty::deno_tty::init(),
-      ops::http::deno_http_runtime::init(),
-      deno_bundle_runtime::deno_bundle_runtime::init(services.bundle_provider),
-      ops::desktop::deno_desktop::init(),
-      ops::bootstrap::deno_bootstrap::init(
+      ops::fs_events::ende_fs_events::init(),
+      ops::permissions::ende_permissions::init(),
+      ops::tty::ende_tty::init(),
+      ops::http::ende_http_runtime::init(),
+      ende_bundle_runtime::ende_bundle_runtime::init(services.bundle_provider),
+      ops::desktop::ende_desktop::init(),
+      ops::bootstrap::ende_bootstrap::init(
         options.startup_snapshot.and_then(|_| Default::default()),
         false,
       ),
       runtime::init(),
-      ops::web_worker::deno_web_worker::init(),
+      ops::web_worker::ende_web_worker::init(),
     ];
 
     for extension in &mut extensions {
@@ -693,7 +693,7 @@ impl WebWorker {
 
     if let Some(main_session_tx) = services.main_inspector_session_tx.get() {
       let (main_proxy, worker_proxy) =
-        deno_core::create_worker_inspector_session_pair(
+        ende_core::create_worker_inspector_session_pair(
           options.main_module.to_string(),
         );
 
@@ -727,9 +727,9 @@ impl WebWorker {
       let op_state = js_runtime.op_state();
       let mut op_state = op_state.borrow_mut();
       if options.worker_type == WorkerThreadType::Node {
-        deno_web::locks::set_lock_client_id(
+        ende_web::locks::set_lock_client_id(
           &mut op_state,
-          deno_web::locks::worker_lock_client_id(options.worker_id.as_u32()),
+          ende_web::locks::worker_lock_client_id(options.worker_id.as_u32()),
         );
       }
       op_state.put(internal_handle.clone());
@@ -741,7 +741,7 @@ impl WebWorker {
 
     let bootstrap_fn_global = {
       let context = js_runtime.main_context();
-      deno_core::scope!(scope, &mut js_runtime);
+      ende_core::scope!(scope, &mut js_runtime);
       let context_local = v8::Local::new(scope, context);
       let global_obj = context_local.global(scope);
       let bootstrap_str =
@@ -794,7 +794,7 @@ impl WebWorker {
     // Instead of using name for log we use `worker-${id}` because
     // WebWorkers can have empty string as name.
     {
-      deno_core::scope!(scope, &mut self.js_runtime);
+      ende_core::scope!(scope, &mut self.js_runtime);
       v8::tc_scope!(scope, scope);
       let args = options.as_v8(scope);
       let bootstrap_fn = self.bootstrap_fn_global.take().unwrap();
@@ -811,7 +811,7 @@ impl WebWorker {
           transferables: js_transferables,
         };
         worker_data =
-          deno_core::serde_v8::to_v8(scope, js_message_data).unwrap();
+          ende_core::serde_v8::to_v8(scope, js_message_data).unwrap();
       }
       let name_str: v8::Local<v8::Value> =
         v8::String::new(scope, &self.name).unwrap().into();
@@ -833,7 +833,7 @@ impl WebWorker {
         let error: CoreError = match scope.exception() {
           Some(exception) => {
             let js_error =
-              deno_core::error::JsError::from_v8_exception(scope, exception);
+              ende_core::error::JsError::from_v8_exception(scope, exception);
             CoreError::from(js_error)
           }
           None => CoreError::from(deno_error::JsErrorBox::generic(
@@ -926,7 +926,7 @@ impl WebWorker {
       .js_runtime
       .op_state()
       .borrow()
-      .borrow::<deno_core::V8CrossThreadTaskSpawner>()
+      .borrow::<ende_core::V8CrossThreadTaskSpawner>()
       .clone();
 
     let memory_trim_handle = tokio::spawn(async move {
@@ -944,7 +944,7 @@ impl WebWorker {
     self.memory_trim_handle = Some(memory_trim_handle);
   }
 
-  /// See [JsRuntime::execute_script](deno_core::JsRuntime::execute_script)
+  /// See [JsRuntime::execute_script](ende_core::JsRuntime::execute_script)
   pub fn execute_script(
     &mut self,
     name: &'static str,
@@ -1078,7 +1078,7 @@ impl WebWorker {
   // Starts polling for messages from worker host from JavaScript.
   fn start_polling_for_messages(&mut self) {
     let poll_for_messages_fn = self.poll_for_messages_fn.take().unwrap();
-    deno_core::scope!(scope, &mut self.js_runtime);
+    ende_core::scope!(scope, &mut self.js_runtime);
     let poll_for_messages =
       v8::Local::<v8::Value>::new(scope, poll_for_messages_fn);
     let fn_ = v8::Local::<v8::Function>::try_from(poll_for_messages).unwrap();
@@ -1090,7 +1090,7 @@ impl WebWorker {
   fn has_message_event_listener(&mut self) -> bool {
     let has_message_event_listener_fn =
       self.has_message_event_listener_fn.as_ref().unwrap();
-    deno_core::scope!(scope, &mut self.js_runtime);
+    ende_core::scope!(scope, &mut self.js_runtime);
     let has_message_event_listener =
       v8::Local::<v8::Value>::new(scope, has_message_event_listener_fn);
     let fn_ =
@@ -1115,7 +1115,7 @@ fn print_worker_error(
       let err = match error.as_kind() {
         CoreErrorKind::Js(js_error) => js_error,
         CoreErrorKind::JsBox(err) => {
-          err.get_ref().downcast_ref::<deno_core::error::JsError>()?
+          err.get_ref().downcast_ref::<ende_core::error::JsError>()?
         }
         _ => return None,
       };
@@ -1266,7 +1266,7 @@ pub async fn run_web_worker(
         .js_runtime
         .op_state()
         .borrow()
-        .try_borrow::<deno_os::ExitCode>()
+        .try_borrow::<ende_os::ExitCode>()
         .map(|e| e.get())
         .unwrap_or(1)
     } else {
@@ -1337,7 +1337,7 @@ pub async fn run_web_worker(
       .js_runtime
       .op_state()
       .borrow()
-      .try_borrow::<deno_os::ExitCode>()
+      .try_borrow::<ende_os::ExitCode>()
       .map(|e| e.get())
       .unwrap_or(0);
     let _ = internal_handle.post_event(WorkerControlEvent::Close(exit_code));

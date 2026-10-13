@@ -5,8 +5,8 @@
 // Copyright (c) 2017 Matteo Collina
 
 import { core, primordials } from "ext:core/mod.js";
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 // Lazy node:fs import: this module is loaded via the fs.Utf8Stream getter,
 // which runs during node:fs's own body evaluation. A static `import * as fs
 // from "node:fs"` here re-enters the still-loading node:fs namespace, whose
@@ -20,7 +20,7 @@ const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
   ERR_INVALID_STATE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   validateBoolean,
   validateFunction,
@@ -28,7 +28,7 @@ const {
   validateOneOf,
   validateString,
   validateUint32,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 
 const {
   ArrayPrototypePush,

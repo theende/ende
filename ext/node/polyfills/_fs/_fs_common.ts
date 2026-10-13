@@ -4,11 +4,11 @@
 const { core, primordials } = __bootstrap;
 const { ReflectApply } = primordials;
 const { validateFunction } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 
 const lazyFsUtils = core.createLazyLoader(
-  "ext:deno_node/internal/fs/utils.mjs",
+  "ext:ende_node/internal/fs/utils.mjs",
 );
 
 function isFileOptions(
@@ -61,7 +61,7 @@ function getSignal(optOrCallback) {
 }
 
 const __reexport = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const isFd = __reexport.isUint32;
 

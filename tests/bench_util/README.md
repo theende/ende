@@ -1,13 +1,13 @@
-# Benching utility for `deno_core` op system
+# Benching utility for `ende_core` op system
 
 Example:
 
 ```rust
-use deno_bench_util::bench_js_sync;
-use deno_bench_util::bench_or_profile;
-use deno_bench_util::bencher::Bencher;
-use deno_bench_util::bencher::benchmark_group;
-use deno_core::Extension;
+use ende_bench_util::bench_js_sync;
+use ende_bench_util::bench_or_profile;
+use ende_bench_util::bencher::Bencher;
+use ende_bench_util::bencher::benchmark_group;
+use ende_core::Extension;
 
 #[op2]
 #[number]

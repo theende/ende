@@ -3,10 +3,10 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::futures::future::Shared;
-use deno_resolver::deno_json::CompilerOptionsKey;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::futures::future::Shared;
+use ende_resolver::deno_json::CompilerOptionsKey;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use lsp_types::Uri;

@@ -4,10 +4,10 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use deno_error::JsErrorBox;
-use deno_maybe_sync::MaybeDashMap;
-use deno_maybe_sync::MaybeSend;
-use deno_maybe_sync::MaybeSync;
 use deno_media_type::MediaType;
+use ende_maybe_sync::MaybeDashMap;
+use ende_maybe_sync::MaybeSend;
+use ende_maybe_sync::MaybeSync;
 use node_resolver::analyze::CjsAnalysis as ExtNodeCjsAnalysis;
 use node_resolver::analyze::CjsAnalysisExports;
 use node_resolver::analyze::CjsCodeAnalyzer;
@@ -60,7 +60,7 @@ pub enum DenoCjsAnalysis {
 pub struct NodeAnalysisCacheSourceHash(pub u64);
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type NodeAnalysisCacheRc = deno_maybe_sync::MaybeArc<dyn NodeAnalysisCache>;
+pub type NodeAnalysisCacheRc = ende_maybe_sync::MaybeArc<dyn NodeAnalysisCache>;
 
 pub trait NodeAnalysisCache: MaybeSend + MaybeSync {
   fn compute_source_hash(&self, source: &str) -> NodeAnalysisCacheSourceHash;
@@ -123,7 +123,7 @@ pub trait ModuleForExportAnalysis {
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type ModuleExportAnalyzerRc =
-  deno_maybe_sync::MaybeArc<dyn ModuleExportAnalyzer>;
+  ende_maybe_sync::MaybeArc<dyn ModuleExportAnalyzer>;
 
 #[allow(
   clippy::disallowed_types,
@@ -156,13 +156,13 @@ impl ModuleExportAnalyzer for NotImplementedModuleExportAnalyzer {
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type DenoCjsCodeAnalyzerRc<TSys> =
-  deno_maybe_sync::MaybeArc<DenoCjsCodeAnalyzer<TSys>>;
+  ende_maybe_sync::MaybeArc<DenoCjsCodeAnalyzer<TSys>>;
 
 type MemberPropsMap = BTreeMap<String, Vec<String>>;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-type MemberPropsCache = deno_maybe_sync::MaybeArc<
-  MaybeDashMap<(Url, u64), deno_maybe_sync::MaybeArc<MemberPropsMap>>,
+type MemberPropsCache = ende_maybe_sync::MaybeArc<
+  MaybeDashMap<(Url, u64), ende_maybe_sync::MaybeArc<MemberPropsMap>>,
 >;
 
 /// Whether a source should skip CJS export analysis (treated as ESM) instead of
@@ -382,7 +382,7 @@ impl<TSys: DenoCjsCodeAnalyzerSys> CjsCodeAnalyzer
     let map = analyze()?;
 
     #[allow(clippy::disallowed_types, reason = "definition")]
-    let map = deno_maybe_sync::MaybeArc::new(map);
+    let map = ende_maybe_sync::MaybeArc::new(map);
     let result = map.get(member).cloned();
     self.member_props_cache.insert(cache_key, map);
     Ok(result)

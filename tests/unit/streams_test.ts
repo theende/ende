@@ -8,7 +8,7 @@ import {
 } from "./test_util.ts";
 
 // `resourceForReadableStream` is registered on the internals object only when
-// `ext:deno_web/06_streams.js` first evaluates, which is now lazy. Touch the
+// `ext:ende_web/06_streams.js` first evaluates, which is now lazy. Touch the
 // lazy `ReadableStream` global so the polyfill loads before we read it below.
 const { ReadableStream: _ReadableStream } = globalThis;
 const {

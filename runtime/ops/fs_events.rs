@@ -12,19 +12,19 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 
-use deno_core::AsyncRefCell;
-use deno_core::CancelFuture;
-use deno_core::CancelHandle;
-use deno_core::OpState;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::ToV8;
-use deno_core::op2;
-use deno_core::parking_lot::Mutex;
 use deno_error::JsErrorClass;
 use deno_error::builtin_classes::GENERIC_ERROR;
-use deno_permissions::PermissionsContainer;
+use ende_core::AsyncRefCell;
+use ende_core::CancelFuture;
+use ende_core::CancelHandle;
+use ende_core::OpState;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::ToV8;
+use ende_core::op2;
+use ende_core::parking_lot::Mutex;
+use ende_permissions::PermissionsContainer;
 use notify::Error as NotifyError;
 use notify::EventKind;
 use notify::RecommendedWatcher;
@@ -37,8 +37,8 @@ use notify::event::ModifyKind;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TrySendError;
 
-deno_core::extension!(
-  deno_fs_events,
+ende_core::extension!(
+  ende_fs_events,
   ops = [op_fs_events_open, op_fs_events_poll],
 );
 
@@ -343,16 +343,16 @@ deno_error::js_error_wrapper!(NotifyError, JsNotifyError, |err| {
 pub enum FsEventsError {
   #[class(inherit)]
   #[error(transparent)]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
   #[class(inherit)]
   #[error(transparent)]
-  Permission(#[from] deno_permissions::PermissionCheckError),
+  Permission(#[from] ende_permissions::PermissionCheckError),
   #[class(inherit)]
   #[error(transparent)]
   Notify(JsNotifyError),
   #[class(inherit)]
   #[error(transparent)]
-  Canceled(#[from] deno_core::Canceled),
+  Canceled(#[from] ende_core::Canceled),
 }
 
 fn make_watch_sender(
@@ -513,7 +513,7 @@ fn op_fs_events_open(
       let checked = permissions_container
         .check_open(
           Cow::Owned(PathBuf::from(path)),
-          deno_permissions::OpenAccessKind::ReadNoFollow,
+          ende_permissions::OpenAccessKind::ReadNoFollow,
           Some("Deno.watchFs()"),
         )?
         .into_owned_path();
@@ -523,7 +523,7 @@ fn op_fs_events_open(
       let checked = permissions_container
         .check_open(
           Cow::Owned(PathBuf::from(path)),
-          deno_permissions::OpenAccessKind::ReadNoFollow,
+          ende_permissions::OpenAccessKind::ReadNoFollow,
           Some("Deno.watchFs()"),
         )?
         .into_owned_path();

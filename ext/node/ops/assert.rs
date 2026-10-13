@@ -4,9 +4,9 @@ use deno_ast::MediaType;
 use deno_ast::TokenOrComment;
 use deno_ast::swc::parser::token::Token;
 use deno_ast::swc::parser::token::Word;
-use deno_core::op2;
-use deno_core::v8;
 use deno_error::JsErrorBox;
+use ende_core::op2;
+use ende_core::v8;
 
 #[op2]
 pub fn op_node_get_first_expression<'s>(

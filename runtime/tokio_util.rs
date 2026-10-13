@@ -2,7 +2,7 @@
 use std::fmt::Debug;
 use std::str::FromStr;
 
-use deno_core::unsync::MaskFutureAsSend;
+use ende_core::unsync::MaskFutureAsSend;
 #[cfg(tokio_unstable)]
 use tokio_metrics::RuntimeMonitor;
 

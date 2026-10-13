@@ -5,23 +5,23 @@
 const { core, primordials } = __bootstrap;
 const lazyProcess = core.createLazyLoader("node:process");
 const process = lazyProcess().default;
-const { EventEmitter: EE } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { EventEmitter: EE } = core.loadExtScript("ext:ende_node/_events.mjs");
 const {
   prependListener,
   Stream,
-} = core.loadExtScript("ext:deno_node/internal/streams/legacy.js");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+} = core.loadExtScript("ext:ende_node/internal/streams/legacy.js");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const { addAbortSignal } = core.loadExtScript(
-  "ext:deno_node/internal/streams/add-abort-signal.js",
+  "ext:ende_node/internal/streams/add-abort-signal.js",
 );
 const eos =
-  core.loadExtScript("ext:deno_node/internal/streams/end-of-stream.js").default;
+  core.loadExtScript("ext:ende_node/internal/streams/end-of-stream.js").default;
 const destroyImpl =
-  core.loadExtScript("ext:deno_node/internal/streams/destroy.js").default;
+  core.loadExtScript("ext:ende_node/internal/streams/destroy.js").default;
 const {
   getDefaultHighWaterMark,
   getHighWaterMark,
-} = core.loadExtScript("ext:deno_node/internal/streams/state.js");
+} = core.loadExtScript("ext:ende_node/internal/streams/state.js");
 
 const {
   kAutoDestroy,
@@ -35,19 +35,19 @@ const {
   kObjectMode,
   kOnConstructed,
   kState,
-} = core.loadExtScript("ext:deno_node/internal/streams/utils.js");
+} = core.loadExtScript("ext:ende_node/internal/streams/utils.js");
 
-const imported1 = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const imported1 = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { validateObject } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
-const { StringDecoder } = core.loadExtScript("ext:deno_node/string_decoder.ts");
+const { StringDecoder } = core.loadExtScript("ext:ende_node/string_decoder.ts");
 const lazyFrom = core.createLazyLoader(
-  "ext:deno_node/internal/streams/from.js",
+  "ext:ende_node/internal/streams/from.js",
 );
-const _mod2 = core.loadExtScript("ext:deno_node/internal/util/debuglog.ts");
+const _mod2 = core.loadExtScript("ext:ende_node/internal/util/debuglog.ts");
 const webStreamsAdaptersSpecifier =
-  "ext:deno_node/internal/webstreams/adapters.js";
+  "ext:ende_node/internal/webstreams/adapters.js";
 
 const {
   AbortError,

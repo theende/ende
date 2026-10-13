@@ -33,20 +33,20 @@ const {
   PromisePrototypeThen,
   TypedArrayPrototypeGetBuffer,
 } = primordials;
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const { op_node_scrypt_async, op_node_scrypt_sync } = core.ops;
 const {
   validateFunction,
   validateInt32,
   validateInteger,
   validateUint32,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   ERR_CRYPTO_INVALID_SCRYPT_PARAMS,
   ERR_INCOMPATIBLE_OPTION_PAIR,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { getArrayBufferOrView } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/keys.ts",
+  "ext:ende_node/internal/crypto/keys.ts",
 );
 
 function scryptSync(

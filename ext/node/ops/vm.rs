@@ -9,12 +9,12 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use deno_core::JsBuffer;
-use deno_core::ToV8;
-use deno_core::convert::FromV8 as ConvertFromV8;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::v8::MapFnTo;
+use ende_core::JsBuffer;
+use ende_core::ToV8;
+use ende_core::convert::FromV8 as ConvertFromV8;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::v8::MapFnTo;
 
 use crate::create_vm_dynamic_import_callback_host_defined_options;
 use crate::create_vm_dynamic_import_missing_host_defined_options;
@@ -46,7 +46,7 @@ pub fn op_vm_dynamic_import_callback_register(
   scope: &mut v8::PinScope<'_, '_>,
   callback: v8::Local<v8::Function>,
 ) -> u32 {
-  deno_core::register_vm_dynamic_import_callback(scope, callback)
+  ende_core::register_vm_dynamic_import_callback(scope, callback)
 }
 
 pub const PRIVATE_SYMBOL_NAME: v8::OneByteConst =
@@ -160,7 +160,7 @@ impl ContextifyScript {
     };
 
     let script = v8::TracedReference::new(scope, unbound_script);
-    let this = deno_core::cppgc::make_cppgc_object(scope, Self { script });
+    let this = ende_core::cppgc::make_cppgc_object(scope, Self { script });
 
     Some(CompileResult {
       value: this.into(),
@@ -251,7 +251,7 @@ impl ContextifyScript {
     let result = if timeout != -1 {
       let timed_out = timed_out.clone();
       let (tx, rx) = std::sync::mpsc::channel();
-      deno_core::unsync::spawn_blocking(move || {
+      ende_core::unsync::spawn_blocking(move || {
         if rx
           .recv_timeout(Duration::from_millis(timeout as _))
           .is_err()
@@ -360,7 +360,7 @@ pub struct ContextifyContext {
 }
 
 // SAFETY: we're sure this can be GCed
-unsafe impl deno_core::GarbageCollected for ContextifyContext {
+unsafe impl ende_core::GarbageCollected for ContextifyContext {
   fn trace(&self, visitor: &mut v8::cppgc::Visitor) {
     visitor.trace(&self.context);
     visitor.trace(&self.sandbox);
@@ -404,7 +404,7 @@ extern "C" fn allow_wasm_code_gen(
   _source: v8::Local<v8::String>,
 ) -> bool {
   // Verify this is a contextified context by checking the tag slot. Reading
-  // raw embedder data from a non-contextified context (such as deno_core's
+  // raw embedder data from a non-contextified context (such as ende_core's
   // main context) would otherwise return arbitrary bytes — V8 stores SMI-
   // tagged values in unused slots, which are misaligned when interpreted as
   // pointers.
@@ -484,20 +484,20 @@ impl ContextifyContext {
     );
 
     let context_state = main_context.get_aligned_pointer_from_embedder_data(
-      deno_core::CONTEXT_STATE_SLOT_INDEX,
+      ende_core::CONTEXT_STATE_SLOT_INDEX,
     );
     let module_map = main_context
-      .get_aligned_pointer_from_embedder_data(deno_core::MODULE_MAP_SLOT_INDEX);
+      .get_aligned_pointer_from_embedder_data(ende_core::MODULE_MAP_SLOT_INDEX);
 
     context.set_security_token(main_context.get_security_token(scope));
     // SAFETY: set embedder data from the creation context
     unsafe {
       context.set_aligned_pointer_in_embedder_data(
-        deno_core::CONTEXT_STATE_SLOT_INDEX,
+        ende_core::CONTEXT_STATE_SLOT_INDEX,
         context_state,
       );
       context.set_aligned_pointer_in_embedder_data(
-        deno_core::MODULE_MAP_SLOT_INDEX,
+        ende_core::MODULE_MAP_SLOT_INDEX,
         module_map,
       );
     }
@@ -508,7 +508,7 @@ impl ContextifyContext {
     let wrapper = {
       let context = v8::TracedReference::new(scope, context);
       let sandbox = v8::TracedReference::new(scope, sandbox_obj);
-      deno_core::cppgc::make_cppgc_object(
+      ende_core::cppgc::make_cppgc_object(
         scope,
         Self {
           context,
@@ -519,7 +519,7 @@ impl ContextifyContext {
       )
     };
     let ptr =
-      deno_core::cppgc::try_unwrap_cppgc_object::<Self>(scope, wrapper.into());
+      ende_core::cppgc::try_unwrap_cppgc_object::<Self>(scope, wrapper.into());
 
     // SAFETY: We are storing a pointer to the ContextifyContext in the
     // embedder data of the v8::Context. `keep_wrapper_alive` (called below)
@@ -594,20 +594,20 @@ impl ContextifyContext {
     };
 
     let context_state = main_context.get_aligned_pointer_from_embedder_data(
-      deno_core::CONTEXT_STATE_SLOT_INDEX,
+      ende_core::CONTEXT_STATE_SLOT_INDEX,
     );
     let module_map = main_context
-      .get_aligned_pointer_from_embedder_data(deno_core::MODULE_MAP_SLOT_INDEX);
+      .get_aligned_pointer_from_embedder_data(ende_core::MODULE_MAP_SLOT_INDEX);
 
     context.set_security_token(main_context.get_security_token(scope));
     // SAFETY: set embedder data from the creation context
     unsafe {
       context.set_aligned_pointer_in_embedder_data(
-        deno_core::CONTEXT_STATE_SLOT_INDEX,
+        ende_core::CONTEXT_STATE_SLOT_INDEX,
         context_state,
       );
       context.set_aligned_pointer_in_embedder_data(
-        deno_core::MODULE_MAP_SLOT_INDEX,
+        ende_core::MODULE_MAP_SLOT_INDEX,
         module_map,
       );
     }
@@ -622,7 +622,7 @@ impl ContextifyContext {
     let wrapper = {
       let context = v8::TracedReference::new(scope, context);
       let sandbox = v8::TracedReference::new(scope, sandbox_obj);
-      deno_core::cppgc::make_cppgc_object(
+      ende_core::cppgc::make_cppgc_object(
         scope,
         Self {
           context,
@@ -633,7 +633,7 @@ impl ContextifyContext {
       )
     };
     let ptr =
-      deno_core::cppgc::try_unwrap_cppgc_object::<Self>(scope, wrapper.into());
+      ende_core::cppgc::try_unwrap_cppgc_object::<Self>(scope, wrapper.into());
 
     // SAFETY: We are storing a pointer to the ContextifyContext in the
     // embedder data of the v8::Context. `keep_wrapper_alive` (called below)
@@ -676,7 +676,7 @@ impl ContextifyContext {
     sandbox_obj
       .get_private(scope, private_symbol)
       .and_then(|wrapper| {
-        deno_core::cppgc::try_unwrap_cppgc_object::<Self>(scope, wrapper)
+        ende_core::cppgc::try_unwrap_cppgc_object::<Self>(scope, wrapper)
           // SAFETY: the lifetime of the scope does not actually bind to
           // the lifetime of this reference at all, but the object we read
           // it from does, so it will be alive at least that long.
@@ -1721,7 +1721,7 @@ thread_local! {
     RefCell::new(HashMap::new());
 }
 
-/// Hook registered with deno_core so V8's host-initialize-import-meta
+/// Hook registered with ende_core so V8's host-initialize-import-meta
 /// callback can drive `import.meta` for `node:vm` modules. Like Node's
 /// `vm.SourceTextModule`, `import.meta` is left entirely under the user's
 /// control: this only invokes the user's `initializeImportMeta(meta)`
@@ -1748,7 +1748,7 @@ fn external_import_meta_hook<'s, 'i, 'm, 'o>(
   }
 }
 
-/// Register the import-meta hook with deno_core. Called on each vm module
+/// Register the import-meta hook with ende_core. Called on each vm module
 /// creation so it's wired up by the time V8 fires the
 /// host-initialize-import-meta callback. The per-isolate callback slot is a
 /// `Cell<Option<fn>>`, so re-registering just stores the same fn pointer
@@ -1756,7 +1756,7 @@ fn external_import_meta_hook<'s, 'i, 'm, 'o>(
 fn ensure_external_import_meta_hook_registered(
   scope: &mut v8::PinScope<'_, '_>,
 ) {
-  deno_core::register_external_module_import_meta_cb(
+  ende_core::register_external_module_import_meta_cb(
     scope,
     external_import_meta_hook,
   );
@@ -2020,7 +2020,7 @@ pub fn op_vm_module_link<'a>(
       scope.throw_exception(exception);
       return false;
     };
-    let other = deno_core::cppgc::try_unwrap_cppgc_object::<ContextifyModule>(
+    let other = ende_core::cppgc::try_unwrap_cppgc_object::<ContextifyModule>(
       scope,
       module_obj.into(),
     );
@@ -2081,7 +2081,7 @@ fn collect_link_graph<'s>(
   };
 
   for (spec, obj) in &children {
-    let Some(child) = deno_core::cppgc::try_unwrap_cppgc_object::<
+    let Some(child) = ende_core::cppgc::try_unwrap_cppgc_object::<
       ContextifyModule,
     >(scope, (*obj).into()) else {
       continue;

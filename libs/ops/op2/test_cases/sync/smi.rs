@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 #![deny(warnings)]
-deno_ops_compile_test_runner::prelude!();
+ende_ops_compile_test_runner::prelude!();
 
 pub type Int16 = i16;
 pub type Int32 = i32;

@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 // Forked from https://github.com/DefinitelyTyped/DefinitelyTyped/blob/d9df51e34526f48bef4e2546a006157b391ad96c/types/node/fs.d.ts
 
-import { BufferEncoding, ErrnoException } from "ext:deno_node/_global.d.ts";
+import { BufferEncoding, ErrnoException } from "ext:ende_node/_global.d.ts";
 
 /**
  * Write `buffer` to the file specified by `fd`. If `buffer` is a normal object, it

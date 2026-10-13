@@ -3,7 +3,7 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { getStringWidth } = core.loadExtScript(
-  "ext:deno_node/internal/util/inspect.mjs",
+  "ext:ende_node/internal/util/inspect.mjs",
 );
 const {
   ArrayPrototypeJoin,

@@ -51,7 +51,7 @@ pub type ModuleId = usize;
 pub(crate) type ModuleLoadId = i32;
 
 /// The actual source code returned from the loader. Most embedders should
-/// try to return bytes and let deno_core interpret if the module should be
+/// try to return bytes and let ende_core interpret if the module should be
 /// converted to a string or not.
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum ModuleSourceCode {
@@ -380,7 +380,7 @@ pub(crate) fn get_requested_module_type_from_attributes(
 
 /// A type of module to be executed.
 ///
-/// `deno_core` supports loading and executing JavaScript, Wasm and JSON modules,
+/// `ende_core` supports loading and executing JavaScript, Wasm and JSON modules,
 /// by default, but embedders can customize it further by providing
 /// [`CustomModuleEvaluationCb`].
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]

@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::task::Context;
 use std::task::Poll;
 
-use deno_core::error::CoreError;
+use ende_core::error::CoreError;
 use futures::StreamExt;
 use futures::future::FutureExt;
 use v8::Function;

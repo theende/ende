@@ -5,10 +5,10 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { fs: fsConstants } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
 const { codeMap } = core.loadExtScript(
-  "ext:deno_node/internal_binding/uv.ts",
+  "ext:ende_node/internal_binding/uv.ts",
 );
 type BinaryOptionsArgument = any;
 type CallbackWithError = any;
@@ -22,66 +22,66 @@ const {
   isFileOptions,
   makeCallback,
   maybeCallback,
-} = core.loadExtScript("ext:deno_node/_fs/_fs_common.ts");
+} = core.loadExtScript("ext:ende_node/_fs/_fs_common.ts");
 type Encodings = any;
 const {
   AbortError,
   denoErrorToNodeError,
   denoWriteFileErrorToNodeError,
   ERR_FS_FILE_TOO_LARGE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
-const constants = core.loadExtScript("ext:deno_node/_fs/_fs_constants.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
+const constants = core.loadExtScript("ext:ende_node/_fs/_fs_constants.ts");
 const {
   CFISBIS,
   convertFileInfoToBigIntStats,
   convertFileInfoToStats,
-} = core.createLazyLoader("ext:deno_node/internal/fs/stat_utils.ts")();
+} = core.createLazyLoader("ext:ende_node/internal/fs/stat_utils.ts")();
 type statCallback = any;
 type statCallbackBigInt = any;
 type statOptions = any;
 const { copyFile, copyFileSync } = core.createLazyLoader(
-  "ext:deno_node/_fs/_fs_copy.ts",
+  "ext:ende_node/_fs/_fs_copy.ts",
 )();
-const { cp, cpSync } = core.loadExtScript("ext:deno_node/_fs/_fs_cp.ts");
+const { cp, cpSync } = core.loadExtScript("ext:ende_node/_fs/_fs_cp.ts");
 const { default: Dir } = core.createLazyLoader(
-  "ext:deno_node/_fs/_fs_dir.ts",
+  "ext:ende_node/_fs/_fs_dir.ts",
 )();
 const { exists, existsSync } = core.createLazyLoader(
-  "ext:deno_node/_fs/_fs_exists.ts",
+  "ext:ende_node/_fs/_fs_exists.ts",
 )();
 const { fstat, fstatSync } = core.loadExtScript(
-  "ext:deno_node/_fs/_fs_fstat.ts",
+  "ext:ende_node/_fs/_fs_fstat.ts",
 );
 const { lstat, lstatSync } = core.loadExtScript(
-  "ext:deno_node/_fs/_fs_lstat.ts",
+  "ext:ende_node/_fs/_fs_lstat.ts",
 );
 const { lutimes, lutimesSync } = core.createLazyLoader(
-  "ext:deno_node/_fs/_fs_lutimes.ts",
+  "ext:ende_node/_fs/_fs_lutimes.ts",
 )();
 const { read, readSync } = core.createLazyLoader(
-  "ext:deno_node/_fs/_fs_read.ts",
+  "ext:ende_node/_fs/_fs_read.ts",
 )();
 const { readdir, readdirSync } = core.createLazyLoader(
-  "ext:deno_node/_fs/_fs_readdir.ts",
+  "ext:ende_node/_fs/_fs_readdir.ts",
 )();
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 const lazyTimers = core.createLazyLoader("node:timers");
 const { clearTimeout, setTimeout } = lazyTimers();
-const { notImplemented } = core.loadExtScript("ext:deno_node/_utils.ts");
+const { notImplemented } = core.loadExtScript("ext:ende_node/_utils.ts");
 type MaybeEmpty<T> = T | null | undefined;
-const { deprecate, promisify } = core.loadExtScript("ext:deno_node/util.ts");
+const { deprecate, promisify } = core.loadExtScript("ext:ende_node/util.ts");
 // internal/fs/{promises,streams,handle}.ts call `lazyFs()` at top-level to
 // build promisified wrappers around members of `node:fs`. Loading them
 // eagerly from inside fs.ts would re-enter the partially-loaded `node:fs`
 // namespace and hit a TDZ error. Defer to first access of `fs.promises` etc.
 const lazyInternalPromises = core.createLazyLoader(
-  "ext:deno_node/internal/fs/promises.ts",
+  "ext:ende_node/internal/fs/promises.ts",
 );
 const lazyInternalStreams = core.createLazyLoader(
-  "ext:deno_node/internal/fs/streams.mjs",
+  "ext:ende_node/internal/fs/streams.mjs",
 );
 const lazyInternalHandle = core.createLazyLoader(
-  "ext:deno_node/internal/fs/handle.ts",
+  "ext:ende_node/internal/fs/handle.ts",
 );
 // Backing storage so the lazy getters below can be paired with setters;
 // some packages monkey-patch these on the `node:fs` namespace.
@@ -91,13 +91,13 @@ let _ReadStream: any;
 let _WriteStream: any;
 let _promises: any;
 const { default: SyncWriteStream } = core.loadExtScript(
-  "ext:deno_node/internal/fs/sync_write_stream.js",
+  "ext:ende_node/internal/fs/sync_write_stream.js",
 );
 // Utf8Stream is only re-exported, never used at module body. Keep this as
 // a thunk so loading fs.ts doesn't immediately pull fast-utf8-stream.js
 // (which statically imports node:fs and triggers the whole stream subtree).
 const lazyUtf8Stream = core.createLazyLoader(
-  "ext:deno_node/internal/streams/fast-utf8-stream.js",
+  "ext:ende_node/internal/streams/fast-utf8-stream.js",
 );
 const {
   arrayBufferViewToUint8Array,
@@ -121,14 +121,14 @@ const {
   validateRmOptionsSync,
   validateStringAfterArrayBufferView,
   warnOnNonPortableTemplate,
-} = core.createLazyLoader("ext:deno_node/internal/fs/utils.mjs")();
+} = core.createLazyLoader("ext:ende_node/internal/fs/utils.mjs")();
 const { glob, globSync } = core.createLazyLoader(
-  "ext:deno_node/_fs/_fs_glob.ts",
+  "ext:ende_node/_fs/_fs_glob.ts",
 )();
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const lazyProcess = core.createLazyLoader("node:process");
 const { isIterable } = core.loadExtScript(
-  "ext:deno_node/internal/streams/utils.js",
+  "ext:ende_node/internal/streams/utils.js",
 );
 type FileHandle = any;
 type ErrnoException = any;
@@ -172,15 +172,15 @@ const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
   uvException,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { isMacOS, isWindows } = core.loadExtScript(
-  "ext:deno_node/_util/os.ts",
+  "ext:ende_node/_util/os.ts",
 );
 const {
   customPromisifyArgs,
   kEmptyObject,
   normalizeEncoding,
-} = core.loadExtScript("ext:deno_node/internal/util.mjs");
+} = core.loadExtScript("ext:ende_node/internal/util.mjs");
 const lazyPath = core.createLazyLoader("node:path");
 const pathModule = lazyPath();
 const { basename, relative, resolve, toNamespacedPath } = pathModule;
@@ -196,19 +196,19 @@ const {
   validateObject,
   validateOneOf,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const { isArrayBufferView } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 const { Blob, markFileBackedBlob } = core.loadExtScript(
-  "ext:deno_web/09_file.js",
+  "ext:ende_web/09_file.js",
 );
 // Re-exported under both names for tests.
 const _toUnixTimestamp = toUnixTimestamp;
 const {
   createFSReqCallback,
   unregisterActiveRequest,
-} = core.loadExtScript("ext:deno_node/internal/process/active_resources.ts");
+} = core.loadExtScript("ext:ende_node/internal/process/active_resources.ts");
 
 const {
   ArrayBufferIsView,
@@ -248,11 +248,11 @@ const {
 } = primordials;
 
 const { TextEncoder } = core.loadExtScript(
-  "ext:deno_web/08_text_encoding.js",
+  "ext:ende_web/08_text_encoding.js",
 );
-const abortSignal = core.loadExtScript("ext:deno_web/03_abort_signal.js");
-const { pathFromURL } = core.loadExtScript("ext:deno_web/00_infra.js");
-const { URLPrototype } = core.loadExtScript("ext:deno_web/00_url.js");
+const abortSignal = core.loadExtScript("ext:ende_web/03_abort_signal.js");
+const { pathFromURL } = core.loadExtScript("ext:ende_web/00_infra.js");
+const { URLPrototype } = core.loadExtScript("ext:ende_web/00_url.js");
 
 const {
   kIoMaxLength,
@@ -3348,7 +3348,7 @@ type IgnoreOption =
 
 let _lazyMinimatch: any = null;
 function getMinimatch() {
-  _lazyMinimatch ??= core.createLazyLoader("ext:deno_node/deps/minimatch.js");
+  _lazyMinimatch ??= core.createLazyLoader("ext:ende_node/deps/minimatch.js");
   return _lazyMinimatch();
 }
 

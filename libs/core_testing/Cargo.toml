@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_core_testing"
+name = "ende_core_testing"
 version = "0.0.0"
 authors.workspace = true
 edition.workspace = true
@@ -16,9 +16,9 @@ path = "./lib.rs"
 [dependencies]
 anyhow.workspace = true
 deno_ast.workspace = true
-deno_core.workspace = true
-deno_core.features = ["unsafe_use_unprotected_platform", "snapshot_flags_eager_parse"]
 deno_error.workspace = true
+ende_core.workspace = true
+ende_core.features = ["unsafe_use_unprotected_platform", "snapshot_flags_eager_parse"]
 futures.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
@@ -27,8 +27,8 @@ url.workspace = true
 [dev-dependencies]
 anyhow.workspace = true
 deno_ast.workspace = true
-deno_core.workspace = true
-deno_core.features = ["unsafe_use_unprotected_platform"]
+ende_core.workspace = true
+ende_core.features = ["unsafe_use_unprotected_platform"]
 futures.workspace = true
 pretty_assertions.workspace = true
 tokio.workspace = true

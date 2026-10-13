@@ -12,18 +12,18 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_cache_dir::file_fetcher::CacheSetting;
-use deno_config::deno_json::NodeModulesDirMode;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::anyhow;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::url::Url;
-use deno_npm_installer::PackagesAllowedScripts;
 use deno_path_util::resolve_url_or_path;
 use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_config::deno_json::NodeModulesDirMode;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::anyhow;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_npm_installer::PackagesAllowedScripts;
 use jsonc_parser::cst::CstInputValue;
 use log::Level;
 use once_cell::sync::Lazy;
@@ -64,9 +64,9 @@ pub async fn install_global(
   let deps_http_cache = factory.global_http_cache()?;
   let create_deps_file_fetcher = |download_log_level: log::Level| {
     Arc::new(create_cli_file_fetcher(
-      Arc::new(deno_runtime::deno_web::BlobStore::default())
-        as Arc<dyn deno_runtime::deno_web::BlobStoreTrait>,
-      deno_cache_dir::GlobalOrLocalHttpCache::Global(deps_http_cache.clone()),
+      Arc::new(ende_runtime::ende_web::BlobStore::default())
+        as Arc<dyn ende_runtime::ende_web::BlobStoreTrait>,
+      ende_cache_dir::GlobalOrLocalHttpCache::Global(deps_http_cache.clone()),
       http_client.clone(),
       factory.memory_files().clone(),
       factory.sys(),
@@ -605,7 +605,7 @@ async fn setup_config_dir(
 /// members resolve via `node_modules`, which is unaffected by stripping the
 /// `workspace` field, so they don't need an entry here.
 fn workspace_member_import_entries(
-  workspace: &deno_config::workspace::Workspace,
+  workspace: &ende_config::workspace::Workspace,
 ) -> Vec<(String, String)> {
   let mut entries = Vec::new();
   for pkg in workspace.resolver_jsr_pkgs() {
@@ -636,7 +636,7 @@ fn workspace_member_import_entries(
 /// running the entrypoint directly. See
 /// https://github.com/denoland/deno/issues/26412.
 fn package_json_dep_import_entries(module_url: &Url) -> Vec<(String, String)> {
-  use deno_package_json::PackageJsonDepValue;
+  use ende_package_json::PackageJsonDepValue;
 
   let Ok(file_path) = deno_path_util::url_to_file_path(module_url) else {
     return Vec::new();
@@ -644,7 +644,7 @@ fn package_json_dep_import_entries(module_url: &Url) -> Vec<(String, String)> {
   let sys = crate::sys::CliSys::default();
   let mut maybe_dir = file_path.parent();
   while let Some(dir) = maybe_dir {
-    let pkg_json = match deno_package_json::PackageJson::load_from_path(
+    let pkg_json = match ende_package_json::PackageJson::load_from_path(
       &sys,
       None,
       &dir.join("package.json"),
@@ -708,7 +708,7 @@ fn package_json_dep_import_entries(module_url: &Url) -> Vec<(String, String)> {
 ///
 /// `deno install -g -c deno.json` copies the supplied config into a per-binary
 /// directory. Relative specifiers / scope prefixes get resolved relative to
-/// that new directory by `deno_config`, so without rewriting them they end up
+/// that new directory by `ende_config`, so without rewriting them they end up
 /// pointing at non-existent paths under the install dir. See
 /// https://github.com/denoland/deno/issues/20390.
 fn rewrite_relative_import_map_paths(
@@ -807,7 +807,7 @@ fn resolve_native_binary_path(
     node_modules_pkg_dir.join(sub_path)
   } else {
     // Primary entry: resolve the bin script via package.json.
-    let pkg_json = deno_package_json::PackageJson::load_from_path(
+    let pkg_json = ende_package_json::PackageJson::load_from_path(
       &sys,
       None,
       &node_modules_pkg_dir.join("package.json"),
@@ -815,7 +815,7 @@ fn resolve_native_binary_path(
     .ok()
     .flatten()?;
     let bins = pkg_json.resolve_bins().ok()?;
-    let deno_package_json::PackageJsonBins::Bins(bins) = bins else {
+    let ende_package_json::PackageJsonBins::Bins(bins) = bins else {
       return None;
     };
     // For a string bin field, `resolve_bins` keys the entry by the
@@ -925,7 +925,7 @@ fn resolve_shim_data(
     executable_args.push("--location".to_string());
     executable_args.push(url.to_string());
   }
-  if let Some(deno_lib::args::CaData::File(ca_file)) = &flags.ca_data {
+  if let Some(ende_lib::args::CaData::File(ca_file)) = &flags.ca_data {
     executable_args.push("--cert".to_string());
     executable_args.push(ca_file.to_owned())
   }
@@ -1072,7 +1072,7 @@ impl BinaryNameAndUrl {
       None => {
         return Err(anyhow!(
           "An executable name was not provided. One could not be inferred from the URL. Aborting.\n  {} {}",
-          deno_runtime::colors::cyan("hint:"),
+          ende_runtime::colors::cyan("hint:"),
           "provide one with the `--name` flag"
         ));
       }
@@ -1362,8 +1362,8 @@ fn is_in_path(dir: &Path) -> bool {
 struct JsrLockfileFetcher<'a> {
   jsr_resolver: Arc<JsrFetchResolver>,
   file_fetcher: Arc<CliFileFetcher>,
-  npmrc: Arc<deno_npmrc::ResolvedNpmRc>,
-  npm_package_info_provider: &'a dyn deno_lockfile::NpmPackageInfoProvider,
+  npmrc: Arc<ende_npmrc::ResolvedNpmRc>,
+  npm_package_info_provider: &'a dyn ende_lockfile::NpmPackageInfoProvider,
 }
 
 impl JsrLockfileFetcher<'_> {
@@ -1395,8 +1395,8 @@ impl JsrLockfileFetcher<'_> {
     };
 
     // Parse and upgrade the lockfile to v5
-    let lockfile = match deno_lockfile::Lockfile::new(
-      deno_lockfile::NewLockfileOptions {
+    let lockfile = match ende_lockfile::Lockfile::new(
+      ende_lockfile::NewLockfileOptions {
         file_path: std::path::PathBuf::from("deno.lock"),
         content,
         overwrite: false,
@@ -1437,13 +1437,13 @@ impl JsrLockfileFetcher<'_> {
 /// configured npm registries (or the default registry.npmjs.org).
 /// Returns `Err(bad_url)` on the first tarball from an unknown registry.
 fn validate_npm_tarball_urls(
-  content: &deno_lockfile::LockfileContent,
-  npmrc: &deno_npmrc::ResolvedNpmRc,
+  content: &ende_lockfile::LockfileContent,
+  npmrc: &ende_npmrc::ResolvedNpmRc,
 ) -> Result<(), String> {
   let mut allowed_registries = npmrc.get_all_known_registries_urls();
   // always allow the default npm registry
   let default_npm_registry =
-    Url::parse(deno_npmrc::NPM_DEFAULT_REGISTRY).unwrap();
+    Url::parse(ende_npmrc::NPM_DEFAULT_REGISTRY).unwrap();
   if !allowed_registries.contains(&default_npm_registry) {
     allowed_registries.push(default_npm_registry);
   }
@@ -1492,8 +1492,8 @@ fn tarball_url_matches_registry(tarball_url: &Url, registry_url: &Url) -> bool {
 mod tests {
   use std::process::Command;
 
-  use deno_lib::args::UnstableConfig;
-  use deno_npm::resolution::NpmVersionResolver;
+  use ende_lib::args::UnstableConfig;
+  use ende_npm::resolution::NpmVersionResolver;
   use test_util::TempDir;
   use test_util::testdata_path;
 
@@ -1512,7 +1512,7 @@ mod tests {
     let _http_server_guard = test_util::http_server();
     let cwd = resolve_cwd(None).unwrap();
     let http_client = HttpClientProvider::new(None, None);
-    let registry_api = deno_npm::registry::TestNpmRegistryApi::default();
+    let registry_api = ende_npm::registry::TestNpmRegistryApi::default();
     let npm_version_resolver = NpmVersionResolver::default();
     let resolver =
       BinNameResolver::new(&http_client, &registry_api, &npm_version_resolver);
@@ -1561,7 +1561,7 @@ mod tests {
     let _http_server_guard = test_util::http_server();
     let cwd = resolve_cwd(None).unwrap();
     let http_client = HttpClientProvider::new(None, None);
-    let registry_api = deno_npm::registry::TestNpmRegistryApi::default();
+    let registry_api = ende_npm::registry::TestNpmRegistryApi::default();
     let npm_version_resolver = NpmVersionResolver::default();
     let resolver =
       BinNameResolver::new(&http_client, &registry_api, &npm_version_resolver);
@@ -2475,10 +2475,10 @@ mod tests {
   fn create_npmrc_with_registries(
     default_url: &str,
     scope_urls: &[(&str, &str)],
-  ) -> Arc<deno_npmrc::ResolvedNpmRc> {
-    use deno_npmrc::RegistryConfig;
-    use deno_npmrc::RegistryConfigWithUrl;
-    use deno_npmrc::ResolvedNpmRc;
+  ) -> Arc<ende_npmrc::ResolvedNpmRc> {
+    use ende_npmrc::RegistryConfig;
+    use ende_npmrc::RegistryConfigWithUrl;
+    use ende_npmrc::ResolvedNpmRc;
 
     let mut scopes = std::collections::HashMap::new();
     for (scope, url) in scope_urls {
@@ -2507,9 +2507,9 @@ mod tests {
 
   fn create_lockfile_content_with_npm(
     packages: &[(&str, Option<&str>)],
-  ) -> deno_lockfile::LockfileContent {
-    use deno_lockfile::NpmPackageInfo;
-    let mut content = deno_lockfile::LockfileContent::default();
+  ) -> ende_lockfile::LockfileContent {
+    use ende_lockfile::NpmPackageInfo;
+    let mut content = ende_lockfile::LockfileContent::default();
     for (id, tarball) in packages {
       content.packages.npm.insert(
         (*id).into(),

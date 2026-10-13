@@ -1,20 +1,20 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_bench_util::bench_js_sync;
-use deno_bench_util::bench_or_profile;
-use deno_bench_util::bencher::Bencher;
-use deno_bench_util::bencher::benchmark_group;
-use deno_core::Extension;
+use ende_bench_util::bench_js_sync;
+use ende_bench_util::bench_or_profile;
+use ende_bench_util::bencher::Bencher;
+use ende_bench_util::bencher::benchmark_group;
+use ende_core::Extension;
 
 fn setup() -> Vec<Extension> {
-  deno_core::extension!(
+  ende_core::extension!(
     bench_setup,
     esm_entry_point = "ext:bench_setup/setup",
     esm = [
-      "ext:deno_fetch/20_headers.js" = "20_headers.js",
+      "ext:ende_fetch/20_headers.js" = "20_headers.js",
       "ext:bench_setup/setup" = {
         source = r#"
-          import { Headers } from "ext:deno_fetch/20_headers.js";
+          import { Headers } from "ext:ende_fetch/20_headers.js";
           globalThis.Headers = Headers;
           globalThis.makeHeaders = () => new Headers({
             "content-type": "application/json",
@@ -32,9 +32,9 @@ fn setup() -> Vec<Extension> {
   );
 
   vec![
-    deno_webidl::deno_webidl::init(),
-    deno_web::deno_web::init(
-      deno_web::BlobStore::default_arc(),
+    ende_webidl::ende_webidl::init(),
+    ende_web::ende_web::init(
+      ende_web::BlobStore::default_arc(),
       None,
       Default::default(),
       Default::default(),

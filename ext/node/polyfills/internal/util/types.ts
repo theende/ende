@@ -24,9 +24,9 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const bindingTypes = core.loadExtScript(
-  "ext:deno_node/internal_binding/types.ts",
+  "ext:ende_node/internal_binding/types.ts",
 );
-const cryptoKeys = core.loadExtScript("ext:deno_node/internal/crypto/_keys.ts");
+const cryptoKeys = core.loadExtScript("ext:ende_node/internal/crypto/_keys.ts");
 const {
   ArrayBufferIsView,
   TypedArrayPrototypeGetSymbolToStringTag,

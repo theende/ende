@@ -30,7 +30,7 @@ const {
   indirectEval,
 } = primordials;
 
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 
 // Map numeric timer IDs to internal core timer objects so clearTimeout /
 // clearInterval / refTimer / unrefTimer can look them up by id.

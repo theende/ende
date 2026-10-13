@@ -2,11 +2,11 @@
 
 use std::path::PathBuf;
 
-use deno_core::error::AnyError;
-use deno_core::url::Url;
-use deno_npm::registry::NpmRegistryApi;
-use deno_npm::resolution::NpmVersionResolver;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_core::error::AnyError;
+use ende_core::url::Url;
+use ende_npm::registry::NpmRegistryApi;
+use ende_npm::resolution::NpmVersionResolver;
 
 use crate::http_util::HttpClientProvider;
 
@@ -57,7 +57,7 @@ impl<'a> BinNameResolver<'a> {
         Err(err) => {
           log::warn!(
             "{} Failed resolving npm specifier information. {:#}",
-            deno_runtime::colors::yellow("Warning"),
+            ende_runtime::colors::yellow("Warning"),
             err
           );
         }
@@ -133,12 +133,12 @@ impl<'a> BinNameResolver<'a> {
       return Ok(None);
     };
     match bin_entries {
-      deno_npm::registry::NpmPackageVersionBinEntry::String(script) => {
+      ende_npm::registry::NpmPackageVersionBinEntry::String(script) => {
         let name = &npm_ref.req().name;
         let bin_name = name.rsplit('/').next().unwrap_or(name.as_str());
         Ok(Some(vec![(bin_name.to_string(), script.clone())]))
       }
-      deno_npm::registry::NpmPackageVersionBinEntry::Map(data) => Ok(Some(
+      ende_npm::registry::NpmPackageVersionBinEntry::Map(data) => Ok(Some(
         data.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
       )),
     }
@@ -195,9 +195,9 @@ impl<'a> BinNameResolver<'a> {
 mod test {
   use std::collections::HashMap;
 
-  use deno_core::url::Url;
-  use deno_npm::registry::TestNpmRegistryApi;
-  use deno_npm::resolution::NpmVersionResolver;
+  use ende_core::url::Url;
+  use ende_npm::registry::TestNpmRegistryApi;
+  use ende_npm::resolution::NpmVersionResolver;
 
   use super::BinNameResolver;
   use crate::http_util::HttpClientProvider;
@@ -207,7 +207,7 @@ mod test {
     let http_client = HttpClientProvider::new(None, None);
     let registry_api = TestNpmRegistryApi::default();
     registry_api.with_version_info(("@example/foo-cli", "1.0.0"), |info| {
-      info.bin = Some(deno_npm::registry::NpmPackageVersionBinEntry::Map(
+      info.bin = Some(ende_npm::registry::NpmPackageVersionBinEntry::Map(
         HashMap::from([("foo".to_string(), "./bin.js".to_string())]),
       ))
     });
@@ -366,7 +366,7 @@ mod test {
     let http_client = HttpClientProvider::new(None, None);
     let registry_api = TestNpmRegistryApi::default();
     registry_api.with_version_info(("pyright", "1.0.0"), |info| {
-      info.bin = Some(deno_npm::registry::NpmPackageVersionBinEntry::Map(
+      info.bin = Some(ende_npm::registry::NpmPackageVersionBinEntry::Map(
         HashMap::from([
           ("pyright".to_string(), "index.js".to_string()),
           (
@@ -394,7 +394,7 @@ mod test {
     let http_client = HttpClientProvider::new(None, None);
     let registry_api = TestNpmRegistryApi::default();
     registry_api.with_version_info(("@denotest/multi-bin", "1.0.0"), |info| {
-      info.bin = Some(deno_npm::registry::NpmPackageVersionBinEntry::Map(
+      info.bin = Some(ende_npm::registry::NpmPackageVersionBinEntry::Map(
         HashMap::from([
           ("multi-bin".to_string(), "./cli.mjs".to_string()),
           ("multi-bin-server".to_string(), "./server.mjs".to_string()),
@@ -418,7 +418,7 @@ mod test {
     let http_client = HttpClientProvider::new(None, None);
     let registry_api = TestNpmRegistryApi::default();
     registry_api.with_version_info(("pyright", "1.0.0"), |info| {
-      info.bin = Some(deno_npm::registry::NpmPackageVersionBinEntry::Map(
+      info.bin = Some(ende_npm::registry::NpmPackageVersionBinEntry::Map(
         HashMap::from([
           ("pyright".to_string(), "index.js".to_string()),
           (

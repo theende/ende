@@ -17,7 +17,7 @@ pub use builtin_modules::DenoIsBuiltInNodeModuleChecker;
 pub use builtin_modules::IsBuiltInNodeModuleChecker;
 pub use cache::NodeResolutionCache;
 pub use cache::NodeResolutionCacheRc;
-pub use deno_package_json::PackageJson;
+pub use ende_package_json::PackageJson;
 pub use npm::InNpmPackageChecker;
 pub use npm::NpmPackageFolderResolver;
 pub use package_json::PackageJsonCacheRc;

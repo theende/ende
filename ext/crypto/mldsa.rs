@@ -246,7 +246,7 @@ pub struct MlDsaSeedBytes {
 
 /// Rust-side callable view of [`op_crypto_mldsa_from_pkcs8`]; returns the
 /// triple as plain `Vec<u8>` for use by the Rust-native importKey
-/// dispatcher (no `Uint8Array` allocation through deno_core).
+/// dispatcher (no `Uint8Array` allocation through ende_core).
 pub fn from_pkcs8_native(
   variant: u8,
   pkcs8: &[u8],

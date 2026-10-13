@@ -4,10 +4,10 @@ use std::fmt::Write as FmtWrite;
 use std::io::Write;
 
 use bytes::Bytes;
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
-use deno_core::url::Url;
 use deno_graph::ModuleGraph;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_core::url::Url;
 use sha2::Digest;
 use tar::Header;
 

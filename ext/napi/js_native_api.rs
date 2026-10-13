@@ -1413,7 +1413,7 @@ struct ExternalStringFinalizer {
   callback: napi_finalize,
   data: usize,
   hint: usize,
-  sender: deno_core::V8CrossThreadTaskSpawner,
+  sender: ende_core::V8CrossThreadTaskSpawner,
   ready: bool,
 }
 
@@ -4121,7 +4121,7 @@ fn napi_resolve_deferred(
   let success = resolver.resolve(scope, result.unwrap()).unwrap_or(false);
 
   // Restore policy. The runtime runs with the Explicit microtask policy (see
-  // `deno_core` isolate setup); microtasks are drained deliberately on event
+  // `ende_core` isolate setup); microtasks are drained deliberately on event
   // loop turns. This used to restore `Auto` (V8's old isolate default), which
   // permanently flipped the whole isolate to Auto and let V8 auto-drain
   // microtasks mid-callback - the trigger for #33924.

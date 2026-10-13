@@ -7,7 +7,7 @@
 import "node:stream";
 import "node:dns";
 import { core } from "ext:core/mod.js";
-const mod = core.loadExtScript("ext:deno_node/net.ts");
+const mod = core.loadExtScript("ext:ende_node/net.ts");
 
 export const BlockList = mod.BlockList;
 export const isIP = mod.isIP;

@@ -40,16 +40,16 @@ const {
   enabledHooksExist,
   executionAsyncId,
   newAsyncId: nextAsyncId,
-} = core.loadExtScript("ext:deno_node/internal/async_hooks.ts");
+} = core.loadExtScript("ext:ende_node/internal/async_hooks.ts");
 const { inspect } = core.loadExtScript(
-  "ext:deno_node/internal/util/inspect.mjs",
+  "ext:ende_node/internal/util/inspect.mjs",
 );
 const {
   validateFunction,
   validateNumber,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const { ERR_OUT_OF_RANGE } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 const lazyProcess = core.createLazyLoader("node:process");
 

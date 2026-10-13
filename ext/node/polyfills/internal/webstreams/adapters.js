@@ -3,38 +3,38 @@
 (function () {
 const { core } = __bootstrap;
 const { destroy, destroyer } = core.loadExtScript(
-  "ext:deno_node/internal/streams/destroy.js",
+  "ext:ende_node/internal/streams/destroy.js",
 );
 const finished =
-  core.loadExtScript("ext:deno_node/internal/streams/end-of-stream.js").default;
+  core.loadExtScript("ext:ende_node/internal/streams/end-of-stream.js").default;
 const {
   isDestroyed,
   isReadable,
   isReadableEnded,
   isWritable,
   isWritableEnded,
-} = core.loadExtScript("ext:deno_node/internal/streams/utils.js");
+} = core.loadExtScript("ext:ende_node/internal/streams/utils.js");
 const { ReadableStream, WritableStream } = core.loadExtScript(
-  "ext:deno_node/stream/web.js",
+  "ext:ende_node/stream/web.js",
 );
 const {
   validateBoolean,
   validateObject,
   validateOneOf,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   kEmptyObject,
   normalizeEncoding,
-} = core.loadExtScript("ext:deno_node/internal/util.mjs");
+} = core.loadExtScript("ext:ende_node/internal/util.mjs");
 const {
   AbortError,
   ERR_INVALID_ARG_VALUE,
   ERR_INVALID_ARG_TYPE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const lazyProcess = core.createLazyLoader("node:process");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const { isAnyArrayBuffer } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 const lazyStream = core.createLazyLoader("node:stream");
 

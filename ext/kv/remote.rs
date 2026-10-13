@@ -7,20 +7,20 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use bytes::Bytes;
-use deno_core::OpState;
-use deno_core::futures::Stream;
 use deno_error::JsErrorBox;
-use deno_fetch::CreateHttpClientOptions;
-use deno_fetch::create_http_client;
-use deno_permissions::PermissionsContainer;
-use deno_tls::Proxy;
-use deno_tls::RootCertStoreProvider;
-use deno_tls::TlsKeys;
-use deno_tls::rustls::RootCertStore;
 use denokv_remote::MetadataEndpoint;
 use denokv_remote::Remote;
 use denokv_remote::RemoteResponse;
 use denokv_remote::RemoteTransport;
+use ende_core::OpState;
+use ende_core::futures::Stream;
+use ende_fetch::CreateHttpClientOptions;
+use ende_fetch::create_http_client;
+use ende_permissions::PermissionsContainer;
+use ende_tls::Proxy;
+use ende_tls::RootCertStoreProvider;
+use ende_tls::TlsKeys;
+use ende_tls::rustls::RootCertStore;
 use http_body_util::BodyExt;
 use url::Url;
 
@@ -77,8 +77,8 @@ impl denokv_remote::RemotePermissions for PermissionChecker {
 }
 
 #[derive(Clone)]
-pub struct FetchClient(deno_fetch::Client);
-pub struct FetchResponse(http::Response<deno_fetch::ResBody>);
+pub struct FetchClient(ende_fetch::Client);
+pub struct FetchResponse(http::Response<ende_fetch::ResBody>);
 
 impl RemoteTransport for FetchClient {
   type Response = FetchResponse;
@@ -88,7 +88,7 @@ impl RemoteTransport for FetchClient {
     headers: http::HeaderMap,
     body: Bytes,
   ) -> Result<(Url, http::StatusCode, Self::Response), JsErrorBox> {
-    let body = deno_fetch::ReqBody::full(body);
+    let body = ende_fetch::ReqBody::full(body);
     let mut req = http::Request::new(body);
     *req.method_mut() = http::Method::POST;
     *req.uri_mut() =

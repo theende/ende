@@ -41,22 +41,22 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use args::TaskFlags;
-use deno_config::glob::FilePatterns;
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::unsync::JoinHandle;
-use deno_lib::util::result::any_and_jserrorbox_downcast_ref;
-use deno_lib::util::result::js_error_downcast_ref;
-use deno_lib::worker::LibWorkerFactoryRoots;
-use deno_resolver::npm::ByonmResolvePkgFolderFromDenoReqError;
-use deno_resolver::npm::ResolvePkgFolderFromDenoReqError;
-use deno_runtime::UnconfiguredRuntime;
-use deno_runtime::WorkerExecutionMode;
-use deno_runtime::fmt_errors::format_js_error;
-use deno_runtime::tokio_util::create_and_run_current_thread_with_maybe_metrics;
-use deno_telemetry::OtelConfig;
 use deno_terminal::colors;
+use ende_config::glob::FilePatterns;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::unsync::JoinHandle;
+use ende_lib::util::result::any_and_jserrorbox_downcast_ref;
+use ende_lib::util::result::js_error_downcast_ref;
+use ende_lib::worker::LibWorkerFactoryRoots;
+use ende_resolver::npm::ByonmResolvePkgFolderFromDenoReqError;
+use ende_resolver::npm::ResolvePkgFolderFromDenoReqError;
+use ende_runtime::UnconfiguredRuntime;
+use ende_runtime::WorkerExecutionMode;
+use ende_runtime::fmt_errors::format_js_error;
+use ende_runtime::tokio_util::create_and_run_current_thread_with_maybe_metrics;
+use ende_telemetry::OtelConfig;
 use factory::CliFactory;
 use util::fs::canonicalize_path;
 
@@ -116,7 +116,7 @@ fn spawn_subcommand<F: Future<Output = T> + 'static, T: SubcommandOutput>(
   f: F,
 ) -> JoinHandle<Result<i32, AnyError>> {
   // the boxed_local() is important in order to get windows to not blow the stack in debug
-  deno_core::unsync::spawn(
+  ende_core::unsync::spawn(
     async move { f.map(|r| r.output()).await }.boxed_local(),
   )
 }
@@ -352,7 +352,7 @@ async fn run_subcommand(
               let mut flags = flags.deref().clone();
               let watch = flags.watch.clone();
               flags.node_modules_dir =
-                Some(deno_config::deno_json::NodeModulesDirMode::None);
+                Some(ende_config::deno_json::NodeModulesDirMode::None);
               // use the current lockfile, but don't write it out
               if flags.frozen_lockfile.is_none() {
                 flags.internal.lockfile_skip_write = true;
@@ -370,7 +370,7 @@ async fn run_subcommand(
             let script_err_msg = script_err.to_string();
             if should_fallback_on_run_error(script_err_msg.as_str()) {
               if run_flags.bare {
-                let command_names = deno_cli_parser::defs::DENO_ROOT
+                let command_names = ende_cli_parser::defs::DENO_ROOT
                   .subcommands
                   .iter()
                   .map(|command| command.name)
@@ -389,8 +389,8 @@ async fn run_subcommand(
                     format!("some similar subcommands exist: {quoted}")
                   };
                   Err(unrecognized_subcommand_error(
-                    &deno_cli_parser::CliError::new(
-                      deno_cli_parser::CliErrorKind::UnknownSubcommand,
+                    &ende_cli_parser::CliError::new(
+                      ende_cli_parser::CliErrorKind::UnknownSubcommand,
                       format!("unrecognized subcommand '{}'", run_flags.script),
                     )
                     .with_suggestion(tip),
@@ -477,7 +477,7 @@ async fn run_subcommand(
       spawn_subcommand(async move {
         match completions_flags {
           CompletionsFlags::Static(buf) => {
-            deno_print::drop_write_stdout(&buf);
+            ende_print::drop_write_stdout(&buf);
             Ok::<_, AnyError>(())
           }
           CompletionsFlags::Dynamic { shell } => {
@@ -489,7 +489,7 @@ async fn run_subcommand(
     }
     DenoSubcommand::Types => spawn_subcommand(async move {
       let types = tsc::get_types_declaration_file_text();
-      deno_print::drop_write_stdout(types.as_bytes());
+      ende_print::drop_write_stdout(types.as_bytes());
       Ok::<_, AnyError>(())
     }),
     #[cfg(feature = "upgrade")]
@@ -587,7 +587,7 @@ fn setup_panic_hook() {
     // process exiting. Exit silently rather than emitting the bug-report
     // banner. https://github.com/denoland/deno/issues/16308
     if is_broken_pipe_print_panic(panic_info) {
-      deno_runtime::exit(1);
+      ende_runtime::exit(1);
     }
 
     // Worker thread creation failures are not bugs in Deno — they typically
@@ -615,10 +615,10 @@ fn setup_panic_hook() {
       eprintln!("PID limit. Try increasing the limit (e.g. --pids-limit=40).");
       eprintln!();
       eprintln!("Platform: {} {}", env::consts::OS, env::consts::ARCH);
-      eprintln!("Version: {}", deno_lib::version::DENO_VERSION_INFO.deno);
+      eprintln!("Version: {}", ende_lib::version::DENO_VERSION_INFO.deno);
       eprintln!("Args: {:?}", env::args().collect::<Vec<_>>());
       eprintln!();
-      deno_runtime::exit(1);
+      ende_runtime::exit(1);
     }
 
     eprintln!("\n============================================================");
@@ -644,17 +644,17 @@ fn setup_panic_hook() {
     );
     eprintln!();
     eprintln!("Platform: {} {}", env::consts::OS, env::consts::ARCH);
-    eprintln!("Version: {}", deno_lib::version::DENO_VERSION_INFO.deno);
+    eprintln!("Version: {}", ende_lib::version::DENO_VERSION_INFO.deno);
     eprintln!("Args: {:?}", env::args().collect::<Vec<_>>());
     eprintln!();
 
     // Panic traces are not supported for custom/development builds.
     #[cfg(feature = "panic-trace")]
     {
-      let info = &deno_lib::version::DENO_VERSION_INFO;
+      let info = &ende_lib::version::DENO_VERSION_INFO;
       let version =
-        if info.release_channel == deno_lib::shared::ReleaseChannel::Canary {
-          format!("{}+{}", deno_lib::version::DENO_VERSION, info.git_hash)
+        if info.release_channel == ende_lib::shared::ReleaseChannel::Canary {
+          format!("{}+{}", ende_lib::version::DENO_VERSION, info.git_hash)
         } else {
           info.deno.to_string()
         };
@@ -681,7 +681,7 @@ fn setup_panic_hook() {
     }
 
     orig_hook(panic_info);
-    deno_runtime::exit(1);
+    ende_runtime::exit(1);
   }));
 
   fn error_handler(file: &str, line: i32, message: &str) {
@@ -701,7 +701,7 @@ fn setup_panic_hook() {
     panic!("Fatal error in {file}:{line}: {message}");
   }
 
-  deno_core::v8::V8::set_fatal_error_handler(error_handler);
+  ende_core::v8::V8::set_fatal_error_handler(error_handler);
 }
 
 /// Returns `true` if `panic_info` is a panic from `std`'s print macros caused
@@ -736,7 +736,7 @@ fn exit_with_message(message: &str, code: i32) -> ! {
     colors::red_bold("error"),
     message.trim_start_matches("error: ")
   );
-  deno_runtime::exit(code);
+  ende_runtime::exit(code);
 }
 
 /// Render the "unrecognized subcommand" suggestion for the terminal.
@@ -745,7 +745,7 @@ fn exit_with_message(message: &str, code: i32) -> ! {
 /// produced for it. Ordinary flag errors are rendered without it (they went
 /// through `clap::Error::raw`, which appended nothing), so they keep using
 /// `CliError`'s plain `Display`.
-fn unrecognized_subcommand_error(err: &deno_cli_parser::CliError) -> AnyError {
+fn unrecognized_subcommand_error(err: &ende_cli_parser::CliError) -> AnyError {
   AnyError::msg(format!("{err}\n"))
 }
 
@@ -815,7 +815,7 @@ pub(crate) fn unstable_exit_cb(feature: &str, api_name: &str) {
     "Unstable API '{api_name}'. The `--unstable-{}` flag must be provided.",
     feature
   );
-  deno_runtime::exit(70);
+  ende_runtime::exit(70);
 }
 
 fn maybe_setup_permission_broker() {
@@ -827,8 +827,8 @@ fn maybe_setup_permission_broker() {
     colors::yellow("Warning")
   );
   let broker =
-    deno_runtime::deno_permissions::broker::PermissionBroker::new(socket_path);
-  deno_runtime::deno_permissions::broker::set_broker(broker);
+    ende_runtime::ende_permissions::broker::PermissionBroker::new(socket_path);
+  ende_runtime::ende_permissions::broker::set_broker(broker);
 }
 
 #[inline(always)]
@@ -866,10 +866,10 @@ pub fn main() {
   util::windows::ensure_stdio_open();
   #[cfg(windows)]
   {
-    deno_subprocess_windows::disable_stdio_inheritance();
+    ende_subprocess_windows::disable_stdio_inheritance();
     colors::enable_ansi(); // For Windows 10
   }
-  deno_runtime::deno_permissions::prompter::set_prompt_callbacks(
+  ende_runtime::ende_permissions::prompter::set_prompt_callbacks(
     Box::new(util::draw_thread::DrawThread::hide),
     Box::new(util::draw_thread::DrawThread::show),
   );
@@ -951,7 +951,7 @@ pub fn main() {
   drop(profiler);
 
   match result {
-    Ok(exit_code) => deno_runtime::exit(exit_code),
+    Ok(exit_code) => ende_runtime::exit(exit_code),
     Err(err) => exit_for_error(err, initial_cwd.as_deref()),
   }
 }
@@ -965,7 +965,7 @@ async fn resolve_flags_and_init(
   if std::env::var("COMPLETE").is_ok() {
     let cwd = resolve_cwd(initial_cwd.as_deref())?;
     crate::args::handle_shell_completion(&cwd)?;
-    deno_runtime::exit(0);
+    ende_runtime::exit(0);
   }
 
   boot_phase("before flag parse");
@@ -979,12 +979,12 @@ async fn resolve_flags_and_init(
         boot_phase("after flag parse");
         flags
       }
-      Err(err) if err.kind == deno_cli_parser::CliErrorKind::DisplayVersion => {
+      Err(err) if err.kind == ende_cli_parser::CliErrorKind::DisplayVersion => {
         boot_phase("flag parse (version exit)");
         let version = crate::args::render_version(wants_long_version);
         // drop_write_stdout ignores BrokenPipe etc.
-        deno_print::drop_write_stdout(version.as_bytes());
-        deno_runtime::exit(0);
+        ende_print::drop_write_stdout(version.as_bytes());
+        ende_runtime::exit(0);
       }
       Err(err) => exit_for_error(AnyError::from(err), initial_cwd.as_deref()),
     };
@@ -1016,9 +1016,9 @@ async fn resolve_flags_and_init(
   // for subcommands that execute user code, so unrelated commands (`fmt`,
   // `lint`, `check`, `lsp`, ...) don't pay for the `node` PATH scan on startup.
   if node_compat_shim::subcommand_may_spawn_node(&flags.subcommand) {
-    match deno_cache_dir::resolve_deno_dir(
+    match ende_cache_dir::resolve_deno_dir(
       &sys,
-      deno_cache_dir::ResolveDenoDirOptions {
+      ende_cache_dir::ResolveDenoDirOptions {
         maybe_initial_cwd: initial_cwd.as_deref(),
         maybe_custom_root: None,
       },
@@ -1035,7 +1035,7 @@ async fn resolve_flags_and_init(
     }
   }
 
-  if deno_lib::args::has_flag_env_var(&sys, "DENO_CONNECTED") {
+  if ende_lib::args::has_flag_env_var(&sys, "DENO_CONNECTED") {
     flags.tunnel = true;
   }
 
@@ -1068,9 +1068,9 @@ async fn resolve_flags_and_init(
 
   let otel_config = flags.otel_config();
   init_logging(flags.log_level, Some(otel_config.clone()));
-  deno_telemetry::init(
+  ende_telemetry::init(
     &sys,
-    deno_lib::version::otel_runtime_config(),
+    ende_lib::version::otel_runtime_config(),
     otel_config.clone(),
   )?;
 
@@ -1090,7 +1090,7 @@ async fn resolve_flags_and_init(
   }
 
   if let Ok(audit_target) = std::env::var("DENO_AUDIT_PERMISSIONS") {
-    use deno_runtime::deno_permissions::AuditSink;
+    use ende_runtime::ende_permissions::AuditSink;
 
     let sink = if audit_target == "otel" {
       AuditSink::Otel(|permission, value, stack| {
@@ -1100,7 +1100,7 @@ async fn resolve_flags_and_init(
           ("deno.permission.value", value),
           ("deno.permission.stack", stack.as_str()),
         ]);
-        deno_telemetry::handle_log(
+        ende_telemetry::handle_log(
           &log::Record::builder()
             .level(log::Level::Info)
             .target("deno.permission.access")
@@ -1110,12 +1110,12 @@ async fn resolve_flags_and_init(
         );
       })
     } else {
-      AuditSink::File(deno_core::parking_lot::Mutex::new(
+      AuditSink::File(ende_core::parking_lot::Mutex::new(
         std::fs::File::create(audit_target)?,
       ))
     };
 
-    let result = deno_runtime::deno_permissions::AUDIT_SINK.set(sink);
+    let result = ende_runtime::ende_permissions::AUDIT_SINK.set(sink);
     if result.is_err() {
       log::warn!("⚠️  {}", colors::yellow("Audit sink is already set"));
     }
@@ -1142,19 +1142,19 @@ fn init_v8(flags: &Flags) {
     .any(|flag| flag == "--single-threaded");
   init_v8_flags(&default_v8_flags, &flags.v8_flags, env_v8_flags);
   let v8_platform = if is_single_threaded {
-    Some(::deno_core::v8::Platform::new_single_threaded(true).make_shared())
+    Some(::ende_core::v8::Platform::new_single_threaded(true).make_shared())
   } else {
     None
   };
 
-  deno_core::JsRuntime::init_platform(v8_platform);
+  ende_core::JsRuntime::init_platform(v8_platform);
 }
 
 fn init_logging(
   maybe_level: Option<log::Level>,
   otel_config: Option<OtelConfig>,
 ) {
-  deno_lib::util::logger::init(deno_lib::util::logger::InitLoggingOptions {
+  ende_lib::util::logger::init(ende_lib::util::logger::InitLoggingOptions {
     maybe_level,
     otel_config,
     // it was considered to hold the draw thread's internal lock
@@ -1179,7 +1179,7 @@ fn wait_for_start(
     >,
   > + use<>,
 > {
-  let startup_snapshot = deno_snapshots::CLI_SNAPSHOT?;
+  let startup_snapshot = ende_snapshots::CLI_SNAPSHOT?;
   let addr = std::env::var("DENO_UNSTABLE_CONTROL_SOCK").ok()?;
 
   // SAFETY: single-threaded at this point in startup
@@ -1209,15 +1209,15 @@ fn wait_for_start(
 
     init_v8(&Flags::default());
 
-    let unconfigured = deno_runtime::UnconfiguredRuntime::new::<
-      deno_resolver::npm::DenoInNpmPackageChecker,
+    let unconfigured = ende_runtime::UnconfiguredRuntime::new::<
+      ende_resolver::npm::DenoInNpmPackageChecker,
       crate::npm::CliNpmResolver,
       crate::sys::CliSys,
-    >(deno_runtime::UnconfiguredRuntimeOptions {
+    >(ende_runtime::UnconfiguredRuntimeOptions {
       startup_snapshot,
-      residual_lazy_js_sources: deno_snapshots::RESIDUAL_LAZY_JS,
-      residual_lazy_esm_sources: deno_snapshots::RESIDUAL_LAZY_ESM,
-      create_params: deno_lib::worker::create_isolate_create_params(
+      residual_lazy_js_sources: ende_snapshots::RESIDUAL_LAZY_JS,
+      residual_lazy_esm_sources: ende_snapshots::RESIDUAL_LAZY_ESM,
+      create_params: ende_lib::worker::create_isolate_create_params(
         &crate::sys::CliSys::default(),
       ),
       shared_array_buffer_store: Some(roots.shared_array_buffer_store.clone()),
@@ -1246,7 +1246,7 @@ fn wait_for_start(
       ))]
       Some(("vsock", addr)) => {
         let Some((cid, port)) = addr.split_once(':') else {
-          deno_core::anyhow::bail!("invalid vsock addr");
+          ende_core::anyhow::bail!("invalid vsock addr");
         };
         let cid = if cid == "-1" { u32::MAX } else { cid.parse()? };
         let port = port.parse()?;
@@ -1257,7 +1257,7 @@ fn wait_for_start(
         (Box::new(rx), Box::new(tx))
       }
       _ => {
-        deno_core::anyhow::bail!("invalid control sock");
+        ende_core::anyhow::bail!("invalid control sock");
       }
     };
 
@@ -1265,9 +1265,9 @@ fn wait_for_start(
     BufReader::new(rx).read_until(b'\n', &mut buf).await?;
 
     tokio::spawn(async move {
-      deno_runtime::deno_http::SERVE_NOTIFIER.notified().await;
+      ende_runtime::ende_http::SERVE_NOTIFIER.notified().await;
 
-      #[derive(deno_core::serde::Serialize)]
+      #[derive(ende_core::serde::Serialize)]
       enum Event {
         Serving {
           #[serde(skip_serializing_if = "Option::is_none")]
@@ -1275,22 +1275,22 @@ fn wait_for_start(
         },
       }
 
-      let mut buf = deno_core::serde_json::to_vec(&Event::Serving {
-        kind: deno_runtime::deno_http::serving_server_kind(),
+      let mut buf = ende_core::serde_json::to_vec(&Event::Serving {
+        kind: ende_runtime::ende_http::serving_server_kind(),
       })
       .unwrap();
       buf.push(b'\n');
       let _ = tx.write_all(&buf).await;
     });
 
-    #[derive(deno_core::serde::Deserialize)]
+    #[derive(ende_core::serde::Deserialize)]
     struct Start {
       cwd: String,
       args: Vec<String>,
       env: Vec<(String, String)>,
     }
 
-    let cmd: Start = deno_core::serde_json::from_slice(&buf)?;
+    let cmd: Start = ende_core::serde_json::from_slice(&buf)?;
 
     std::env::set_current_dir(&cmd.cwd)?;
 
@@ -1318,7 +1318,7 @@ struct AuthTunnelOutput {
 async fn auth_tunnel(
   no_config: bool,
   env_token: Option<String>,
-) -> Result<AuthTunnelOutput, deno_core::anyhow::Error> {
+) -> Result<AuthTunnelOutput, ende_core::anyhow::Error> {
   let file = tempfile::NamedTempFile::new()?;
 
   let mut args = vec![];
@@ -1340,18 +1340,18 @@ async fn auth_tunnel(
   let out = child.wait().await?;
 
   if !out.success() {
-    deno_runtime::exit(1);
+    ende_runtime::exit(1);
   }
 
   let contents = tokio::fs::read(file.path()).await?;
-  let output: AuthTunnelOutput = deno_core::serde_json::from_slice(&contents)?;
+  let output: AuthTunnelOutput = ende_core::serde_json::from_slice(&contents)?;
 
   Ok(output)
 }
 
 async fn initialize_tunnel(
   flags: &Flags,
-) -> Result<(), deno_core::anyhow::Error> {
+) -> Result<(), ende_core::anyhow::Error> {
   let factory = CliFactory::from_flags(Arc::new(flags.clone()));
   let cli_options = factory.cli_options()?;
   let start_dir = &cli_options.start_dir;
@@ -1401,21 +1401,21 @@ async fn initialize_tunnel(
   let cert_store_provider = factory.root_cert_store_provider();
   let root_cert_store = cert_store_provider.get_or_try_init()?.clone();
 
-  let tls_config = deno_runtime::deno_tls::create_client_config(
-    deno_runtime::deno_tls::TlsClientConfigOptions {
+  let tls_config = ende_runtime::ende_tls::create_client_config(
+    ende_runtime::ende_tls::TlsClientConfigOptions {
       root_cert_store: Some(root_cert_store),
       ca_certs: vec![],
       unsafely_ignore_certificate_errors: None,
       unsafely_disable_hostname_verification: false,
-      cert_chain_and_key: deno_runtime::deno_tls::TlsKeys::Null,
-      socket_use: deno_runtime::deno_tls::SocketUse::GeneralSsl,
+      cert_chain_and_key: ende_runtime::ende_tls::TlsKeys::Null,
+      socket_use: ende_runtime::ende_tls::SocketUse::GeneralSsl,
     },
   )?;
 
   let mut metadata = HashMap::new();
   metadata.insert(
     "hostname".into(),
-    deno_runtime::deno_os::sys_info::hostname(),
+    ende_runtime::ende_os::sys_info::hostname(),
   );
   match &flags.subcommand {
     DenoSubcommand::Run(run_flags) => {
@@ -1442,7 +1442,7 @@ async fn initialize_tunnel(
   }
 
   let on_event = |event| {
-    use deno_runtime::deno_net::tunnel::Event;
+    use ende_runtime::ende_net::tunnel::Event;
     match event {
       Event::Routed(addr) => {
         let endpoint = if addr.port() == 443 {
@@ -1485,11 +1485,11 @@ async fn initialize_tunnel(
     }
   };
 
-  let tunnel = match deno_runtime::deno_net::tunnel::TunnelConnection::connect(
+  let tunnel = match ende_runtime::ende_net::tunnel::TunnelConnection::connect(
     addr,
     hostname.to_owned(),
     tls_config.clone(),
-    deno_runtime::deno_net::tunnel::Authentication::App {
+    ende_runtime::ende_net::tunnel::Authentication::App {
       token,
       org: org.clone(),
       app: app.clone(),
@@ -1500,17 +1500,17 @@ async fn initialize_tunnel(
   .await
   {
     Ok(res) => res,
-    Err(deno_runtime::deno_net::tunnel::Error::Unauthorized) => {
+    Err(ende_runtime::ende_net::tunnel::Error::Unauthorized) => {
       if let Ok(e) = tools::deploy::get_token_entry() {
         let _ = e.delete_credential();
       }
 
       let output = auth_tunnel(no_config, env_token).await?;
-      deno_runtime::deno_net::tunnel::TunnelConnection::connect(
+      ende_runtime::ende_net::tunnel::TunnelConnection::connect(
         addr,
         hostname.to_owned(),
         tls_config,
-        deno_runtime::deno_net::tunnel::Authentication::App {
+        ende_runtime::ende_net::tunnel::Authentication::App {
           token: output.token,
           org: output.org,
           app: output.app,
@@ -1532,7 +1532,7 @@ async fn initialize_tunnel(
     }
   }
 
-  deno_runtime::deno_net::tunnel::set_tunnel(tunnel);
+  ende_runtime::ende_net::tunnel::set_tunnel(tunnel);
 
   Ok(())
 }

@@ -6,9 +6,9 @@ const { core } = __bootstrap;
 const {
   denoErrorToNodeError,
   ERR_INVALID_RETURN_VALUE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { op_node_cp_sync } = core.ops;
-const { throwCpError } = core.loadExtScript("ext:deno_node/_fs/cp/cp.ts");
+const { throwCpError } = core.loadExtScript("ext:ende_node/_fs/cp/cp.ts");
 
 const {
   isPromise,

@@ -3,14 +3,14 @@
 use std::sync::Arc;
 
 use dashmap::DashMap;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_npm::resolution::NpmVersionResolver;
-use deno_npmrc::NpmRc;
-use deno_npmrc::NpmRegistryUrl;
 use deno_semver::Version;
 use deno_semver::package::PackageNv;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_npm::resolution::NpmVersionResolver;
+use ende_npmrc::NpmRc;
+use ende_npmrc::NpmRegistryUrl;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
@@ -71,7 +71,7 @@ impl PackageSearchApi for CliNpmSearchApi {
       .query_pairs_mut()
       .append_pair("text", &format!("{} boost-exact:false", query));
     let file_fetcher = self.file_fetcher.clone();
-    let file = deno_core::unsync::spawn(async move {
+    let file = ende_core::unsync::spawn(async move {
       let file = file_fetcher.fetch_bypass_permissions(&search_url).await?;
       TextDecodedFile::decode(file)
     })

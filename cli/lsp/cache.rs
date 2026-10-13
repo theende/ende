@@ -6,10 +6,10 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use deno_cache_dir::ResolveDenoDirOptions;
-use deno_core::ModuleSpecifier;
-use deno_core::url::Url;
 use deno_path_util::url_to_file_path;
+use ende_cache_dir::ResolveDenoDirOptions;
+use ende_core::ModuleSpecifier;
+use ende_core::url::Url;
 
 use crate::cache::DenoDir;
 use crate::cache::GlobalHttpCache;
@@ -60,7 +60,7 @@ impl LspCache {
         .ok()
     });
     let sys = CliSys::default();
-    let deno_dir_root = deno_cache_dir::resolve_deno_dir(
+    let deno_dir_root = ende_cache_dir::resolve_deno_dir(
       &sys,
       ResolveDenoDirOptions {
         maybe_custom_root: global_cache_path.as_deref(),

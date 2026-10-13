@@ -22,10 +22,10 @@
 
 (function () {
 const { core, primordials } = __bootstrap;
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { uvException } = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { uvException } = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { writeBuffer } = core.loadExtScript(
-  "ext:deno_node/internal_binding/node_file.ts",
+  "ext:ende_node/internal_binding/node_file.ts",
 );
 
 const { RegExpPrototypeTest, SafeRegExp, Symbol } = primordials;

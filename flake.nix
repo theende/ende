@@ -1,4 +1,4 @@
-# This provides a Nix dev shell and Nix build for deno and denort binaries.
+# This provides a Nix dev shell and Nix build for ende and endert binaries.
 {
   description = "Deno";
 
@@ -92,10 +92,10 @@
       in
       {
         packages = {
-          deno = buildDenoBin { pname = "deno"; };
-          denort = buildDenoBin { pname = "denort"; };
+          ende = buildDenoBin { pname = "ende"; };
+          endert = buildDenoBin { pname = "endert"; };
 
-          default = self.packages.${system}.deno;
+          default = self.packages.${system}.ende;
         };
 
         apps.nix-update-rusty-v8 = {

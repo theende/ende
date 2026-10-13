@@ -7,7 +7,7 @@
 //!
 use std::sync::LazyLock;
 
-use deno_core::serde_json::json;
+use ende_core::serde_json::json;
 use tower_lsp::lsp_types::*;
 
 use super::refactor::ALL_KNOWN_REFACTOR_ACTION_KINDS;

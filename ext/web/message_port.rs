@@ -5,17 +5,17 @@ use std::cell::RefCell;
 use std::future::poll_fn;
 use std::rc::Rc;
 
-use deno_core::CancelFuture;
-use deno_core::CancelHandle;
-use deno_core::DetachedBuffer;
-use deno_core::JsBuffer;
-use deno_core::OpState;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::TransferredResource;
-use deno_core::op2;
 use deno_error::JsErrorBox;
+use ende_core::CancelFuture;
+use ende_core::CancelHandle;
+use ende_core::DetachedBuffer;
+use ende_core::JsBuffer;
+use ende_core::OpState;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::TransferredResource;
+use ende_core::op2;
 use serde::Deserialize;
 use serde::Serialize;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -36,10 +36,10 @@ pub enum MessagePortError {
   TransferSelf,
   #[class(inherit)]
   #[error(transparent)]
-  Canceled(#[from] deno_core::Canceled),
+  Canceled(#[from] ende_core::Canceled),
   #[class(inherit)]
   #[error(transparent)]
-  Resource(deno_core::error::ResourceError),
+  Resource(ende_core::error::ResourceError),
   #[class(inherit)]
   #[error(transparent)]
   Generic(JsErrorBox),
@@ -290,7 +290,7 @@ pub fn serialize_transferables(
 // magic serde_v8 conversion via `#[to_v8(serde)]`. `Deserialize` is kept for the
 // post-message ops (which take `JsMessageData` as an input argument) and
 // `Serialize` for the one-shot worker-metadata bootstrap in `web_worker.rs`.
-#[derive(Deserialize, Serialize, deno_core::ToV8)]
+#[derive(Deserialize, Serialize, ende_core::ToV8)]
 pub struct JsMessageData {
   #[to_v8(serde)]
   pub data: DetachedBuffer,
@@ -312,18 +312,18 @@ pub enum RecvMessageData {
   Full(JsMessageData),
 }
 
-impl<'a> deno_core::ToV8<'a> for RecvMessageData {
+impl<'a> ende_core::ToV8<'a> for RecvMessageData {
   type Error = JsErrorBox;
 
   fn to_v8<'i>(
     self,
-    scope: &mut deno_core::v8::PinScope<'a, 'i>,
-  ) -> Result<deno_core::v8::Local<'a, deno_core::v8::Value>, Self::Error> {
+    scope: &mut ende_core::v8::PinScope<'a, 'i>,
+  ) -> Result<ende_core::v8::Local<'a, ende_core::v8::Value>, Self::Error> {
     match self {
       RecvMessageData::Raw(buffer) => {
         // Reuse serde_v8's DetachedBuffer conversion (produces a Uint8Array),
         // matching what `JsMessageData::data` yields via `#[to_v8(serde)]`.
-        deno_core::serde_v8::to_v8(scope, buffer)
+        ende_core::serde_v8::to_v8(scope, buffer)
           .map_err(|e| JsErrorBox::generic(e.to_string()))
       }
       RecvMessageData::Full(data) => data

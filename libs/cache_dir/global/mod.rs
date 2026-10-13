@@ -5,8 +5,8 @@ use std::time::Duration;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use deno_maybe_sync::MaybeSend;
-use deno_maybe_sync::MaybeSync;
+use ende_maybe_sync::MaybeSend;
+use ende_maybe_sync::MaybeSync;
 use serde::Deserialize;
 use sys_traits::FsCreateDirAll;
 use sys_traits::FsMetadata;
@@ -51,7 +51,7 @@ pub trait GlobalHttpCacheSys:
 
 #[allow(clippy::disallowed_types, reason = "arc wrapper type")]
 pub type GlobalHttpCacheRc<TSys> =
-  deno_maybe_sync::MaybeArc<GlobalHttpCache<TSys>>;
+  ende_maybe_sync::MaybeArc<GlobalHttpCache<TSys>>;
 
 #[derive(Debug)]
 pub struct GlobalHttpCache<Sys: GlobalHttpCacheSys> {

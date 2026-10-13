@@ -1,8 +1,8 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 #![deny(warnings)]
-deno_ops_compile_test_runner::prelude!();
-use deno_core::GarbageCollected;
-use deno_core::v8;
+ende_ops_compile_test_runner::prelude!();
+use ende_core::GarbageCollected;
+use ende_core::v8;
 
 struct Wrap;
 

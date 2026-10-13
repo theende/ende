@@ -22,20 +22,20 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use deno_error::JsErrorBox;
-use deno_npm::NpmPackageExtraInfo;
-use deno_npm::NpmPackageId;
-use deno_npm::NpmPackageIdPeerDependencies;
-use deno_npm::NpmResolutionPackage;
-use deno_npm::NpmResolutionPackageSystemInfo;
-use deno_npm::NpmSystemInfo;
-use deno_npm::resolution::NpmResolutionSnapshot;
-use deno_npm_cache::NpmCache;
-use deno_npm_cache::NpmCacheHttpClient;
-use deno_npm_cache::TarballCache;
-use deno_resolver::npm::managed::NpmResolutionCell;
 use deno_semver::StackString;
 use deno_semver::package::PackageNv;
 use deno_terminal::colors;
+use ende_npm::NpmPackageExtraInfo;
+use ende_npm::NpmPackageId;
+use ende_npm::NpmPackageIdPeerDependencies;
+use ende_npm::NpmResolutionPackage;
+use ende_npm::NpmResolutionPackageSystemInfo;
+use ende_npm::NpmSystemInfo;
+use ende_npm::resolution::NpmResolutionSnapshot;
+use ende_npm_cache::NpmCache;
+use ende_npm_cache::NpmCacheHttpClient;
+use ende_npm_cache::TarballCache;
+use ende_resolver::npm::managed::NpmResolutionCell;
 use futures::FutureExt;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
@@ -881,7 +881,7 @@ impl<
   async fn clone_package<'a>(
     &'a self,
     package: &'a NpmResolutionPackage,
-    dist: &'a deno_npm::registry::NpmPackageVersionDistInfo,
+    dist: &'a ende_npm::registry::NpmPackageVersionDistInfo,
     package_path: PathBuf,
     install_reporter: Option<Arc<dyn crate::InstallReporter>>,
     extra_info_provider: Arc<CachedNpmPackageExtraInfoProvider>,

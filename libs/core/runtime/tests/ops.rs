@@ -41,7 +41,7 @@ async fn test_async_opstate_borrow() {
     Ok(())
   }
 
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     ops = [op_async_borrow],
     state = |state| state.put(InnerState(42))
@@ -74,7 +74,7 @@ async fn test_sync_op_serialize_object_with_numbers_as_keys() {
     Ok(())
   }
 
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     ops = [op_sync_serialize_object_with_numbers_as_keys]
   );
@@ -116,7 +116,7 @@ async fn test_async_op_serialize_object_with_numbers_as_keys() {
     Ok(())
   }
 
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     ops = [op_async_serialize_object_with_numbers_as_keys]
   );
@@ -155,7 +155,7 @@ fn test_op_return_serde_v8_error() {
     Ok([(1, 2), (3, 4)].into_iter().collect()) // Maps can't have non-string keys in serde_v8
   }
 
-  deno_core::extension!(test_ext, ops = [op_err]);
+  ende_core::extension!(test_ext, ops = [op_err]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -184,7 +184,7 @@ fn test_op_high_arity() {
     Ok(x1 + x2 + x3 + x4)
   }
 
-  deno_core::extension!(test_ext, ops = [op_add_4]);
+  ende_core::extension!(test_ext, ops = [op_add_4]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -192,7 +192,7 @@ fn test_op_high_arity() {
   let r = runtime
     .execute_script("test.js", "Deno.core.ops.op_add_4(1, 2, 3, 4)")
     .unwrap();
-  deno_core::scope!(scope, runtime);
+  ende_core::scope!(scope, runtime);
   assert_eq!(r.open(scope).integer_value(scope), Some(10));
 }
 
@@ -209,7 +209,7 @@ fn test_op_disabled() {
     vec![op_foo().disable()]
   }
 
-  deno_core::extension!(test_ext, ops_fn = ops);
+  ende_core::extension!(test_ext, ops_fn = ops);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -238,7 +238,7 @@ fn test_op_detached_buffer() {
     Ok(b)
   }
 
-  deno_core::extension!(test_ext, ops = [op_sum_take, op_boomerang]);
+  ende_core::extension!(test_ext, ops = [op_sum_take, op_boomerang]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -321,7 +321,7 @@ fn duplicate_op_names() {
     Ok(String::from("Test"))
   }
 
-  deno_core::extension!(test_ext, ops = [a::op_test, op_test]);
+  ende_core::extension!(test_ext, ops = [a::op_test, op_test]);
   JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -343,7 +343,7 @@ fn ops_in_js_have_proper_names() {
     Ok(String::from("Test"))
   }
 
-  deno_core::extension!(test_ext, ops = [op_test_sync, op_test_async]);
+  ende_core::extension!(test_ext, ops = [op_test_sync, op_test_async]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -491,7 +491,7 @@ pub async fn test_top_level_await() {
     tokio::time::sleep(Duration::MAX).await
   }
 
-  deno_core::extension!(testing, ops = [op_sleep_forever]);
+  ende_core::extension!(testing, ops = [op_sleep_forever]);
 
   let loader = StaticModuleLoader::new([
     (
@@ -603,7 +603,7 @@ pub async fn op_async_arg_error(_: u32) {
   panic!("Should never be called")
 }
 
-deno_core::extension!(
+ende_core::extension!(
   test_ext,
   ops = [
     op_async,

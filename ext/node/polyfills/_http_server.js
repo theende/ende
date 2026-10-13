@@ -57,8 +57,8 @@ const {
 } = primordials;
 
 import net from "node:net";
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { ok: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { ok: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 import {
   _checkInvalidHeaderChar as checkInvalidHeaderChar,
   chunkExpression,
@@ -78,7 +78,7 @@ import {
   validateHeaderValue,
 } from "node:_http_outgoing";
 const { kNeedDrain, kOutHeaders } = core.loadExtScript(
-  "ext:deno_node/internal/http.ts",
+  "ext:ende_node/internal/http.ts",
 );
 import { IncomingMessage } from "node:_http_incoming";
 const {
@@ -89,42 +89,42 @@ const {
   ERR_INVALID_ARG_VALUE,
   ERR_INVALID_CHAR,
   ERR_OUT_OF_RANGE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
-const { kEmptyObject } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
+const { kEmptyObject } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 const {
   kDestroy,
   kTimeout,
   suspendTimeout,
-} = core.loadExtScript("ext:deno_node/internal/timers.mjs");
+} = core.loadExtScript("ext:ende_node/internal/timers.mjs");
 const {
   validateBoolean,
   validateFunction,
   validateInteger,
   validateLinkHeaderValue,
   validateObject,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { nextTick } = core.loadExtScript("ext:deno_node/_next_tick.ts");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { nextTick } = core.loadExtScript("ext:ende_node/_next_tick.ts");
 const {
   enterAsyncResourceIfActive,
   exitAsyncResourceIfActive,
-} = core.loadExtScript("ext:deno_node/internal/async_hooks.ts");
+} = core.loadExtScript("ext:ende_node/internal/async_hooks.ts");
 const { enqueueNodePerformanceEntry, hasNodeObserverForType } = core
   .loadExtScript(
-    "ext:deno_node/perf_hooks.js",
+    "ext:ende_node/perf_hooks.js",
   );
 import {
   applyAddressOverride,
   notifyAddressOverrideServing,
   SERVER_KIND_NODE_HTTP2,
   startOverrideListener,
-} from "ext:deno_node/internal/http/address_override.js";
+} from "ext:ende_node/internal/http/address_override.js";
 const {
   otelState,
   builtinTracer,
   ContextManager,
   telemetry,
-} = core.loadExtScript("ext:deno_telemetry/telemetry.ts");
-const { channel } = core.loadExtScript("ext:deno_node/diagnostics_channel.js");
+} = core.loadExtScript("ext:ende_telemetry/telemetry.ts");
+const { channel } = core.loadExtScript("ext:ende_node/diagnostics_channel.js");
 
 const onServerRequestStartChannel = channel("http.server.request.start");
 const onServerResponseCreatedChannel = channel("http.server.response.created");
@@ -1378,7 +1378,7 @@ function Server(options, requestListener) {
   this[kUniqueHeaders] = parseUniqueHeadersOption(options.uniqueHeaders);
 }
 
-// Wraps a deno_core system interval ID so the stored handle exposes a
+// Wraps a ende_core system interval ID so the stored handle exposes a
 // Node-compatible `_destroyed` flag. Tests (and Node user code) read
 // `server[kConnectionsCheckingInterval]._destroyed` to confirm the
 // interval was cleared.

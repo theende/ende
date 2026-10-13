@@ -8,11 +8,11 @@ of the `deno` binary. From the top down:
 +-----------------------------------------------------------+
 |  cli/            the `deno` binary: subcommands, tooling   |
 +-----------------------------------------------------------+
-|  runtime/        deno_runtime: assembles the JS runtime    |
+|  runtime/        ende_runtime: assembles the JS runtime    |
 +-----------------------------------------------------------+
 |  ext/*           extensions: native capabilities for JS    |
 +-----------------------------------------------------------+
-|  libs/*          deno_core + supporting crates (V8 bridge) |
+|  libs/*          ende_core + supporting crates (V8 bridge) |
 +-----------------------------------------------------------+
 |  V8 + Tokio      JavaScript engine and async runtime       |
 +-----------------------------------------------------------+
@@ -41,8 +41,8 @@ into it.
 
 ## The runtime layer (`runtime/`)
 
-The `deno_runtime` crate assembles a working JavaScript runtime out of
-`deno_core` plus a curated set of extensions. It is the piece embedders use when
+The `ende_runtime` crate assembles a working JavaScript runtime out of
+`ende_core` plus a curated set of extensions. It is the piece embedders use when
 they want "Deno the runtime" without "Deno the CLI".
 
 Key files:
@@ -84,14 +84,14 @@ crate; do not reach into the runtime or CLI for it.
 
 ## The core layer (`libs/*`)
 
-`libs/` holds `deno_core` and the crates merged in from the former standalone
-`deno_core` repository. This is the bridge between Rust and V8: it owns the op
+`libs/` holds `ende_core` and the crates merged in from the former standalone
+`ende_core` repository. This is the bridge between Rust and V8: it owns the op
 infrastructure, the module loader trait, the snapshotting machinery, the
 JsRuntime event loop, and the `serde_v8` serialization layer.
 
 Notable members:
 
-- `libs/core` — `deno_core` itself: `JsRuntime`, op registration, the module
+- `libs/core` — `ende_core` itself: `JsRuntime`, op registration, the module
   map, the inspector integration.
 - `libs/ops` — the `#[op2]` proc-macro that generates the Rust/V8 glue.
 - `libs/serde_v8` — zero-copy-ish serialization between Rust types and V8
@@ -113,7 +113,7 @@ isolation and reused by other tools.
 - **Workers** are isolated JavaScript execution contexts (the main worker and
   Web Workers); each has its own V8 isolate.
 - **Resources** are managed handles (open files, sockets, readers) tracked by
-  `deno_core` and passed across the Rust/JS boundary by integer id.
+  `ende_core` and passed across the Rust/JS boundary by integer id.
 - **Permissions** are enforced in Rust at the op boundary. A capability that is
   not granted causes the op to error before doing any work.
 

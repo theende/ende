@@ -10,12 +10,12 @@ use deno_ast::SourceRangedForSpanned;
 use deno_ast::swc::ast;
 use deno_ast::swc::ecma_visit::Visit;
 use deno_ast::swc::ecma_visit::VisitWith;
-use deno_core::ModuleSpecifier;
-use deno_core::error::AnyError;
-use deno_core::serde::Deserialize;
-use deno_core::serde::Serialize;
-use deno_core::serde_json;
-use deno_core::serde_json::json;
+use ende_core::ModuleSpecifier;
+use ende_core::error::AnyError;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Serialize;
+use ende_core::serde_json;
+use ende_core::serde_json::json;
 use lazy_regex::lazy_regex;
 use lsp_types::Uri;
 use once_cell::sync::Lazy;
@@ -744,7 +744,7 @@ pub fn collect_tsc(
 #[cfg(test)]
 mod tests {
   use deno_ast::MediaType;
-  use deno_core::resolve_url;
+  use ende_core::resolve_url;
 
   use super::*;
 

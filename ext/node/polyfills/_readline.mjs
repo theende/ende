@@ -39,16 +39,16 @@ const {
   clearScreenDown,
   cursorTo,
   moveCursor,
-} = core.loadExtScript("ext:deno_node/internal/readline/callbacks.mjs");
+} = core.loadExtScript("ext:ende_node/internal/readline/callbacks.mjs");
 const { emitKeypressEvents } = core.loadExtScript(
-  "ext:deno_node/internal/readline/emitKeypressEvents.mjs",
+  "ext:ende_node/internal/readline/emitKeypressEvents.mjs",
 );
-import promises from "ext:deno_node/readline/promises.ts";
+import promises from "ext:ende_node/readline/promises.ts";
 const { validateAbortSignal } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
-const { promisify } = core.loadExtScript("ext:deno_node/internal/util.mjs");
-const { AbortError } = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const { promisify } = core.loadExtScript("ext:ende_node/internal/util.mjs");
+const { AbortError } = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const {
   Interface: _Interface,
@@ -86,7 +86,7 @@ const {
   kWordLeft,
   kWordRight,
   kWriteToOutput,
-} = core.loadExtScript("ext:deno_node/internal/readline/interface.mjs");
+} = core.loadExtScript("ext:ende_node/internal/readline/interface.mjs");
 
 function Interface(input, output, completer, terminal) {
   if (!ObjectPrototypeIsPrototypeOf(Interface.prototype, this)) {

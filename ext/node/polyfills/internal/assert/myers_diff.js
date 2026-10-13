@@ -3,9 +3,9 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { ERR_OUT_OF_RANGE } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
-const colors = core.loadExtScript("ext:deno_node/internal/util/colors.ts");
+const colors = core.loadExtScript("ext:ende_node/internal/util/colors.ts");
 
 const {
   ArrayPrototypePush,

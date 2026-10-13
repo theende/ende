@@ -118,16 +118,16 @@ pub(crate) fn generate_dispatch_async(
     let lazy = config.async_lazy;
     let deferred = config.async_deferred;
     output.extend(gs_quote!(generator_state(promise_id, fn_args, result, opctx, scope) => {
-      let #promise_id = deno_core::_ops::to_i32_option(&#fn_args.get(0)).unwrap_or_default();
+      let #promise_id = ende_core::_ops::to_i32_option(&#fn_args.get(0)).unwrap_or_default();
       // Lazy and deferred results will always return None
-      deno_core::_ops::#mapper(#opctx, #lazy, #deferred, #promise_id, #result, |#scope, #result| {
+      ende_core::_ops::#mapper(#opctx, #lazy, #deferred, #promise_id, #result, |#scope, #result| {
         #return_value
       });
     }));
   } else {
     output.extend(gs_quote!(generator_state(promise_id, fn_args, result, opctx, scope) => {
-      let #promise_id = deno_core::_ops::to_i32_option(&#fn_args.get(0)).unwrap_or_default();
-      if let Some(#result) = deno_core::_ops::#mapper(#opctx, false, false, #promise_id, #result, |#scope, #result| {
+      let #promise_id = ende_core::_ops::to_i32_option(&#fn_args.get(0)).unwrap_or_default();
+      if let Some(#result) = ende_core::_ops::#mapper(#opctx, false, false, #promise_id, #result, |#scope, #result| {
         #return_value
       }) {
         // Eager poll returned a value
@@ -193,10 +193,10 @@ pub(crate) fn generate_dispatch_async(
   };
 
   Ok(gs_quote!(generator_state(info, slow_function) => {
-    fn slow_function_impl<'s>(info: *const deno_core::v8::FunctionCallbackInfo) -> usize {
+    fn slow_function_impl<'s>(info: *const ende_core::v8::FunctionCallbackInfo) -> usize {
       let info: &'s _ = unsafe { &*info };
       #[cfg(debug_assertions)]
-      let _reentrancy_check_guard = deno_core::_ops::reentrancy_check(&<Self as deno_core::_ops::Op>::DECL);
+      let _reentrancy_check_guard = ende_core::_ops::reentrancy_check(&<Self as ende_core::_ops::Op>::DECL);
 
       #with_parts_ts
       #with_scope
@@ -211,7 +211,7 @@ pub(crate) fn generate_dispatch_async(
       #output
     }
 
-    extern "C" fn #slow_function(#info: *const deno_core::v8::FunctionCallbackInfo) {
+    extern "C" fn #slow_function(#info: *const ende_core::v8::FunctionCallbackInfo) {
       Self::slow_function_impl(#info);
     }
   }))

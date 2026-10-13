@@ -2,10 +2,10 @@
 (function () {
 const { core, internals, primordials } = __bootstrap;
 const { isArrayBufferView } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 const { TextDecoder } = core.loadExtScript(
-  "ext:deno_web/08_text_encoding.js",
+  "ext:ende_web/08_text_encoding.js",
 );
 
 const {

@@ -17,19 +17,19 @@ const {
   op_node_pbkdf2_validate,
 } = core.ops;
 
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const {
   validateFunction,
   validateString,
   validateUint32,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const { getArrayBufferOrView } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/keys.ts",
+  "ext:ende_node/internal/crypto/keys.ts",
 );
 const {
   ERR_CRYPTO_INVALID_DIGEST,
   ERR_OUT_OF_RANGE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   emitAfter,
   emitBefore,
@@ -37,7 +37,7 @@ const {
   emitInit,
   executionAsyncId,
   newAsyncId,
-} = core.loadExtScript("ext:deno_node/internal/async_hooks.ts");
+} = core.loadExtScript("ext:ende_node/internal/async_hooks.ts");
 
 const lazyProcess = core.createLazyLoader("node:process");
 

@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_print::drop_print;
-use deno_print::drop_println;
+use ende_print::drop_print;
+use ende_print::drop_println;
 
 use super::common;
 use super::fmt::to_relative_path_or_remote_url;

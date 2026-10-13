@@ -2357,11 +2357,11 @@
     "parallel/test-inspector-connect-to-main-thread.js": {},
 
     // TODO(bartlomieju): mismatch in name of the default context,
-    // requires changes to `deno_core`.
+    // requires changes to `ende_core`.
     // "parallel/test-inspector-contexts.js": {},
 
     // TODO(bartlomieju): mismatch in name of the eval context,
-    // requires changes to `deno_core`.
+    // requires changes to `ende_core`.
     // "parallel/test-inspect-async-hook-setup-at-inspect.js": {},
 
     "parallel/test-inspector-enabled.js": {},

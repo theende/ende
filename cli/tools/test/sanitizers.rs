@@ -4,14 +4,14 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use deno_core::error::CoreError;
-use deno_core::stats::RuntimeActivity;
-use deno_core::stats::RuntimeActivityDiff;
-use deno_core::stats::RuntimeActivityStats;
-use deno_core::stats::RuntimeActivityStatsFactory;
-use deno_core::stats::RuntimeActivityStatsFilter;
-use deno_core::stats::RuntimeActivityType;
-use deno_runtime::worker::MainWorker;
+use ende_core::error::CoreError;
+use ende_core::stats::RuntimeActivity;
+use ende_core::stats::RuntimeActivityDiff;
+use ende_core::stats::RuntimeActivityStats;
+use ende_core::stats::RuntimeActivityStatsFactory;
+use ende_core::stats::RuntimeActivityStatsFilter;
+use ende_core::stats::RuntimeActivityType;
+use ende_runtime::worker::MainWorker;
 
 use super::poll_event_loop;
 

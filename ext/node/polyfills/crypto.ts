@@ -11,19 +11,19 @@ const {
   StringPrototypeToLowerCase,
 } = primordials;
 const { ERR_CRYPTO_FIPS_FORCED } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 const { crypto: constants } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
 const { getOptionValue } = core.loadExtScript(
-  "ext:deno_node/internal/options.ts",
+  "ext:ende_node/internal/options.ts",
 );
 const {
   getFipsCrypto,
   setFipsCrypto,
   timingSafeEqual,
-} = core.loadExtScript("ext:deno_node/internal_binding/crypto.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/crypto.ts");
 const {
   checkPrime,
   checkPrimeSync,
@@ -34,34 +34,34 @@ const {
   randomFillSync,
   randomInt,
   randomUUID,
-} = core.loadExtScript("ext:deno_node/internal/crypto/random.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/random.ts");
 const { pbkdf2, pbkdf2Sync } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/pbkdf2.ts",
+  "ext:ende_node/internal/crypto/pbkdf2.ts",
 );
 const { scrypt, scryptSync } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/scrypt.ts",
+  "ext:ende_node/internal/crypto/scrypt.ts",
 );
 const { hkdf, hkdfSync } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/hkdf.ts",
+  "ext:ende_node/internal/crypto/hkdf.ts",
 );
 const {
   generateKey,
   generateKeyPair,
   generateKeyPairSync,
   generateKeySync,
-} = core.loadExtScript("ext:deno_node/internal/crypto/keygen.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/keygen.ts");
 const {
   createPrivateKey,
   createPublicKey,
   createSecretKey,
   KeyObject,
-} = core.loadExtScript("ext:deno_node/internal/crypto/keys.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/keys.ts");
 const {
   DiffieHellman,
   diffieHellman,
   DiffieHellmanGroup,
   ECDH,
-} = core.loadExtScript("ext:deno_node/internal/crypto/diffiehellman.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/diffiehellman.ts");
 const {
   Cipheriv,
   Decipheriv,
@@ -69,25 +69,25 @@ const {
   privateEncrypt,
   publicDecrypt,
   publicEncrypt,
-} = core.loadExtScript("ext:deno_node/internal/crypto/cipher.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/cipher.ts");
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   Sign,
   signOneShot,
   Verify,
   verifyOneShot,
-} = core.loadExtScript("ext:deno_node/internal/crypto/sig.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/sig.ts");
 const {
   createHash,
   getHashes,
   Hash: Hash_,
   Hmac: Hmac_,
-} = core.loadExtScript("ext:deno_node/internal/crypto/hash.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/hash.ts");
 const { X509Certificate } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/x509.ts",
+  "ext:ende_node/internal/crypto/x509.ts",
 );
 const {
   getCipherInfo,
@@ -95,23 +95,23 @@ const {
   getCurves,
   secureHeapUsed,
   setEngine,
-} = core.loadExtScript("ext:deno_node/internal/crypto/util.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/util.ts");
 const { default: Certificate } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/certificate.ts",
+  "ext:ende_node/internal/crypto/certificate.ts",
 );
 const { normalizeEncoding } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 const { isArrayBufferView } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 const { validateString } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const { crypto: webcrypto } = core.loadExtScript(
-  "ext:deno_crypto/00_crypto.js",
+  "ext:ende_crypto/00_crypto.js",
 );
-const { deprecate } = core.loadExtScript("ext:deno_node/util.ts");
+const { deprecate } = core.loadExtScript("ext:ende_node/util.ts");
 
 const subtle = webcrypto.subtle;
 const fipsForced = getOptionValue("--force-fips");

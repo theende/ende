@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_napi"
+name = "ende_napi"
 version = "0.190.0"
 authors.workspace = true
 edition.workspace = true
@@ -14,11 +14,11 @@ description = "NAPI implementation for Deno"
 path = "lib.rs"
 
 [dependencies]
-deno_core.workspace = true
 deno_error.workspace = true
-deno_node.workspace = true
-deno_permissions.workspace = true
-denort_helper.workspace = true
+ende_core.workspace = true
+ende_node.workspace = true
+ende_permissions.workspace = true
+endert_helper.workspace = true
 libc.workspace = true
 libloading.workspace = true
 libuv-sys-lite.workspace = true

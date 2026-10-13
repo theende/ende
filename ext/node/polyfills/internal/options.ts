@@ -22,7 +22,7 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { getExecArgvOptions, getOptions } = core.loadExtScript(
-  "ext:deno_node/internal_binding/node_options.ts",
+  "ext:ende_node/internal_binding/node_options.ts",
 );
 const {
   MapPrototypeGet,

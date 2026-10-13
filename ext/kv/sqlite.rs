@@ -11,14 +11,14 @@ use std::sync::Mutex;
 use std::sync::OnceLock;
 
 use async_trait::async_trait;
-use deno_core::OpState;
-use deno_core::unsync::spawn_blocking;
 use deno_error::JsErrorBox;
-use deno_permissions::OpenAccessKind;
-use deno_permissions::PermissionsContainer;
 pub use denokv_sqlite::SqliteBackendError;
 use denokv_sqlite::SqliteConfig;
 use denokv_sqlite::SqliteNotifier;
+use ende_core::OpState;
+use ende_core::unsync::spawn_blocking;
+use ende_permissions::OpenAccessKind;
+use ende_permissions::PermissionsContainer;
 use rand::SeedableRng;
 use rusqlite::OpenFlags;
 

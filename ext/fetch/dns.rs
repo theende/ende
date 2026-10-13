@@ -10,7 +10,7 @@ use std::task::Poll;
 use std::task::{self};
 use std::vec;
 
-use deno_permissions::PermissionsContainer;
+use ende_permissions::PermissionsContainer;
 use hickory_resolver::name_server::TokioConnectionProvider;
 use http::Uri;
 use http::uri::Scheme;

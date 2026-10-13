@@ -4,11 +4,11 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use deno_package_json::parse_jsr_dep_value;
 use deno_semver::StackString;
 use deno_semver::Version;
 use deno_semver::VersionReq;
 use deno_semver::package::PackageName;
+use ende_package_json::parse_jsr_dep_value;
 use indexmap::IndexMap;
 use thiserror::Error;
 

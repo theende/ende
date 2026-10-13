@@ -28,7 +28,7 @@ use crate::source_map::SourceMapApplication;
 use crate::url::Url;
 
 /// A generic wrapper that can encapsulate any concrete error type.
-// TODO(ry) Deprecate AnyError and encourage deno_core::anyhow::Error instead.
+// TODO(ry) Deprecate AnyError and encourage ende_core::anyhow::Error instead.
 pub type AnyError = anyhow::Error;
 
 deno_error::js_error_wrapper!(v8::DataError, DataError, TYPE_ERROR);
@@ -488,8 +488,8 @@ pub(crate) fn call_site_evals_key<'s, 'i>(
   Clone,
   serde::Deserialize,
   serde::Serialize,
-  deno_ops::FromV8,
-  deno_ops::ToV8,
+  ende_ops::FromV8,
+  ende_ops::ToV8,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct JsError {
@@ -601,8 +601,8 @@ impl JsErrorClass for JsError {
   Clone,
   serde::Deserialize,
   serde::Serialize,
-  deno_ops::FromV8,
-  deno_ops::ToV8,
+  ende_ops::FromV8,
+  ende_ops::ToV8,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct JsStackFrame {
@@ -1723,8 +1723,8 @@ v8_static_strings::v8_static_strings! {
   GET_PROMISE_INDEX = "getPromiseIndex",
   TO_STRING = "toString",
   PREPARE_STACK_TRACE = "prepareStackTrace",
-  ORIGINAL = "deno_core::original_call_site",
-  SOURCE_MAPPED_INFO = "deno_core::source_mapped_call_site_info",
+  ORIGINAL = "ende_core::original_call_site",
+  SOURCE_MAPPED_INFO = "ende_core::source_mapped_call_site_info",
   ERROR_RECEIVER_IS_NOT_VALID_CALLSITE_OBJECT = "The receiver is not a valid callsite object.",
 }
 
@@ -2345,7 +2345,7 @@ pub enum ErrorElement {
 ///
 /// This is to allow the `deno` crate to reuse `format_frame` and
 /// `format_location` but apply ANSI colors for terminal output,
-/// without adding extra dependencies to `deno_core`.
+/// without adding extra dependencies to `ende_core`.
 pub trait ErrorFormat {
   fn fmt_element(
     element: ErrorElement,
@@ -2537,13 +2537,13 @@ pub fn throw_error_one_byte<'s, 'i>(
   scope: &mut v8::PinCallbackScope<'s, 'i>,
   message: &str,
 ) {
-  let msg = deno_core::v8::String::new_from_one_byte(
+  let msg = ende_core::v8::String::new_from_one_byte(
     scope,
     message.as_bytes(),
-    deno_core::v8::NewStringType::Normal,
+    ende_core::v8::NewStringType::Normal,
   )
   .unwrap();
-  let exc = deno_core::v8::Exception::type_error(scope, msg);
+  let exc = ende_core::v8::Exception::type_error(scope, msg);
   scope.throw_exception(exc);
 }
 
@@ -2564,24 +2564,24 @@ pub fn throw_invalid_this_error_one_byte<'s, 'i>(
   scope: &mut v8::PinCallbackScope<'s, 'i>,
   message: &str,
 ) {
-  let msg = deno_core::v8::String::new_from_one_byte(
+  let msg = ende_core::v8::String::new_from_one_byte(
     scope,
     message.as_bytes(),
-    deno_core::v8::NewStringType::Normal,
+    ende_core::v8::NewStringType::Normal,
   )
   .unwrap();
-  let exc = deno_core::v8::Exception::type_error(scope, msg);
+  let exc = ende_core::v8::Exception::type_error(scope, msg);
   if let Some(exc_obj) = exc.to_object(scope) {
-    let code_key = deno_core::v8::String::new_from_one_byte(
+    let code_key = ende_core::v8::String::new_from_one_byte(
       scope,
       b"code",
-      deno_core::v8::NewStringType::Normal,
+      ende_core::v8::NewStringType::Normal,
     )
     .unwrap();
-    let code_val = deno_core::v8::String::new_from_one_byte(
+    let code_val = ende_core::v8::String::new_from_one_byte(
       scope,
       b"ERR_INVALID_THIS",
-      deno_core::v8::NewStringType::Normal,
+      ende_core::v8::NewStringType::Normal,
     )
     .unwrap();
     exc_obj.set(scope, code_key.into(), code_val.into());
@@ -2597,7 +2597,7 @@ mod tests {
   #[test]
   fn test_js_error_from_v8_exception_handles_cyclic_aggregate_error() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let exception: v8::Local<v8::Object> = JsRuntime::eval(
       scope,
@@ -2622,7 +2622,7 @@ mod tests {
   #[test]
   fn test_js_error_from_v8_exception_handles_crossed_aggregate_cycle() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let exception: v8::Local<v8::Object> = JsRuntime::eval(
       scope,
@@ -2646,7 +2646,7 @@ mod tests {
   #[test]
   fn test_js_error_from_v8_exception_truncates_deep_cause_chain() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let exception: v8::Local<v8::Object> = JsRuntime::eval(
       scope,
@@ -2677,7 +2677,7 @@ mod tests {
   #[test]
   fn test_js_error_from_v8_exception_bounds_shared_aggregate_graph() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let exception: v8::Local<v8::Object> = JsRuntime::eval(
       scope,
@@ -2735,7 +2735,7 @@ mod tests {
   #[test]
   fn test_js_error_from_v8_exception_handles_throwing_aggregate_element() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let exception: v8::Local<v8::Object> = JsRuntime::eval(
       scope,
@@ -2769,7 +2769,7 @@ mod tests {
   fn test_js_error_from_v8_exception_handles_throwing_aggregate_errors_getter()
   {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let exception: v8::Local<v8::Object> = JsRuntime::eval(
       scope,
@@ -2802,7 +2802,7 @@ mod tests {
   #[test]
   fn test_is_aggregate_error_recognizes_builtin() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let exception: v8::Local<v8::Object> = JsRuntime::eval(
       scope,
@@ -2822,7 +2822,7 @@ mod tests {
   #[test]
   fn test_is_aggregate_error_handles_malformed_constructors() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     for constructor in ["null", "undefined", "42", "'AggregateError'"] {
       let exception: v8::Local<v8::Object> = JsRuntime::eval(
@@ -2849,7 +2849,7 @@ mod tests {
   #[test]
   fn test_is_aggregate_error_handles_throwing_accessors() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     for source in [
       "(() => { const error = new Error('constructor getter'); Object.defineProperty(error, 'constructor', { get() { throw new Error('constructor lookup failed'); } }); return error; })()",
@@ -3033,7 +3033,7 @@ mod tests {
   fn test_to_v8_error_handles_null_builder_exception() {
     let mut runtime = JsRuntime::new(Default::default());
 
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let throw_null_fn: v8::Local<v8::Function> =
       JsRuntime::eval(scope, "(function () { throw null; })").unwrap();
@@ -3061,7 +3061,7 @@ mod tests {
   fn test_to_v8_error_handles_stack_overflow_in_builder() {
     let mut runtime = JsRuntime::new(Default::default());
 
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     // Simulate the error builder throwing RangeError (as happens during
     // stack overflow when the builder callback itself exceeds the call
@@ -3097,7 +3097,7 @@ mod tests {
     use crate::convert::ToV8;
 
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let frame = JsStackFrame {
       type_name: Some("Foo".to_string()),

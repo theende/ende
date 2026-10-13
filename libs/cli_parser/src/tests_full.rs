@@ -5098,9 +5098,9 @@ fn compile_and_desktop_engine() {
 
 #[test]
 fn compile_target_aarch64_windows() {
-  // The denort runtime for Windows arm64 is built and published by CI, so
+  // The endert runtime for Windows arm64 is built and published by CI, so
   // `--target aarch64-pc-windows-msvc` must be accepted. This is the
-  // regression guard for the clap -> deno_cli_parser cutover: the new parser
+  // regression guard for the clap -> ende_cli_parser cutover: the new parser
   // validates `--target` against its own SUPPORTED_OS list, so the triple has
   // to be present here too (not just in clap's list).
   let r = flags_from_vec(svec![

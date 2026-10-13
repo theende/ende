@@ -2,11 +2,11 @@
 
 use std::sync::OnceLock;
 
-use deno_core::GarbageCollected;
-use deno_core::WebIDL;
-use deno_core::op2;
-use deno_core::webidl::WebIdlInterfaceConverter;
 use deno_error::JsErrorBox;
+use ende_core::GarbageCollected;
+use ende_core::WebIDL;
+use ende_core::op2;
+use ende_core::webidl::WebIdlInterfaceConverter;
 use wgpu_types::AstcBlock;
 use wgpu_types::AstcChannel;
 use wgpu_types::Extent3d;
@@ -100,7 +100,7 @@ impl WebIdlInterfaceConverter for GPUTexture {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for GPUTexture {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"GPUTexture"
@@ -290,7 +290,7 @@ impl WebIdlInterfaceConverter for GPUTextureView {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for GPUTextureView {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"GPUTextureView"
@@ -730,7 +730,7 @@ impl WebIdlInterfaceConverter for GPUExternalTexture {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for GPUExternalTexture {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"GPUExternalTexture"

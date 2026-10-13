@@ -14,46 +14,46 @@ use std::sync::Arc;
 
 use deno_ast::MediaType;
 use deno_ast::ModuleSpecifier;
-use deno_cache_dir::file_fetcher::CacheSetting;
-pub use deno_config::deno_json::BenchConfig;
-pub use deno_config::deno_json::CompilerOptions;
-pub use deno_config::deno_json::ConfigFile;
-pub use deno_config::deno_json::CoverageThresholds;
-use deno_config::deno_json::FmtConfig;
-pub use deno_config::deno_json::FmtOptionsConfig;
-pub use deno_config::deno_json::LintRulesConfig;
-use deno_config::deno_json::PermissionConfigValue;
-use deno_config::deno_json::PermissionsObjectWithBase;
-pub use deno_config::deno_json::ProseWrap;
-use deno_config::deno_json::TestConfig;
-pub use deno_config::glob::FilePatterns;
-pub use deno_config::workspace::TsTypeLib;
-use deno_config::workspace::Workspace;
-use deno_config::workspace::WorkspaceDirLintConfig;
-use deno_config::workspace::WorkspaceDirectory;
-use deno_config::workspace::WorkspaceDirectoryRc;
-use deno_config::workspace::WorkspaceLintConfig;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
 use deno_graph::GraphKind;
-use deno_lib::args::has_flag_env_var;
-use deno_lib::args::npm_pkg_req_ref_to_binary_command;
-use deno_lib::args::npm_process_state;
-use deno_lib::version::DENO_VERSION_INFO;
-use deno_lib::worker::StorageKeyResolver;
-use deno_npm::NpmSystemInfo;
-use deno_npm_installer::LifecycleScriptsConfig;
-use deno_npm_installer::graph::NpmCachingStrategy;
-use deno_resolver::factory::resolve_jsr_url;
-use deno_runtime::deno_node::ops::ipc::ChildIpcSerialization;
-use deno_runtime::deno_permissions::AllowRunDescriptor;
-use deno_runtime::deno_permissions::PathDescriptor;
-use deno_runtime::deno_permissions::PermissionsOptions;
 use deno_semver::StackString;
 use deno_semver::npm::NpmPackageReqReference;
-use deno_telemetry::OtelConfig;
 use deno_terminal::colors;
+use ende_cache_dir::file_fetcher::CacheSetting;
+pub use ende_config::deno_json::BenchConfig;
+pub use ende_config::deno_json::CompilerOptions;
+pub use ende_config::deno_json::ConfigFile;
+pub use ende_config::deno_json::CoverageThresholds;
+use ende_config::deno_json::FmtConfig;
+pub use ende_config::deno_json::FmtOptionsConfig;
+pub use ende_config::deno_json::LintRulesConfig;
+use ende_config::deno_json::PermissionConfigValue;
+use ende_config::deno_json::PermissionsObjectWithBase;
+pub use ende_config::deno_json::ProseWrap;
+use ende_config::deno_json::TestConfig;
+pub use ende_config::glob::FilePatterns;
+pub use ende_config::workspace::TsTypeLib;
+use ende_config::workspace::Workspace;
+use ende_config::workspace::WorkspaceDirLintConfig;
+use ende_config::workspace::WorkspaceDirectory;
+use ende_config::workspace::WorkspaceDirectoryRc;
+use ende_config::workspace::WorkspaceLintConfig;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_lib::args::has_flag_env_var;
+use ende_lib::args::npm_pkg_req_ref_to_binary_command;
+use ende_lib::args::npm_process_state;
+use ende_lib::version::DENO_VERSION_INFO;
+use ende_lib::worker::StorageKeyResolver;
+use ende_npm::NpmSystemInfo;
+use ende_npm_installer::LifecycleScriptsConfig;
+use ende_npm_installer::graph::NpmCachingStrategy;
+use ende_resolver::factory::resolve_jsr_url;
+use ende_runtime::ende_node::ops::ipc::ChildIpcSerialization;
+use ende_runtime::ende_permissions::AllowRunDescriptor;
+use ende_runtime::ende_permissions::PathDescriptor;
+use ende_runtime::ende_permissions::PermissionsOptions;
+use ende_telemetry::OtelConfig;
 pub use flags::*;
 use once_cell::sync::Lazy;
 use thiserror::Error;
@@ -62,7 +62,7 @@ use crate::sys::CliSys;
 use crate::util::fs::canonicalize_path;
 use crate::util::path::resolve_url_or_path_normalized;
 
-pub type CliLockfile = deno_resolver::lockfile::LockfileLock<CliSys>;
+pub type CliLockfile = ende_resolver::lockfile::LockfileLock<CliSys>;
 
 pub fn jsr_url() -> &'static Url {
   static JSR_URL: Lazy<Url> = Lazy::new(|| resolve_jsr_url(&CliSys::default()));
@@ -398,14 +398,14 @@ fn resolve_lint_rules_options(
 }
 
 pub struct WorkspaceMainModuleResolver {
-  workspace_resolver: Arc<deno_resolver::workspace::WorkspaceResolver<CliSys>>,
+  workspace_resolver: Arc<ende_resolver::workspace::WorkspaceResolver<CliSys>>,
   node_resolver: Arc<crate::node::CliNodeResolver>,
 }
 
 impl WorkspaceMainModuleResolver {
   pub fn new(
     workspace_resolver: Arc<
-      deno_resolver::workspace::WorkspaceResolver<CliSys>,
+      ende_resolver::workspace::WorkspaceResolver<CliSys>,
     >,
     node_resolver: Arc<crate::node::CliNodeResolver>,
   ) -> Self {
@@ -424,17 +424,17 @@ impl WorkspaceMainModuleResolver {
     let resolution = self.workspace_resolver.resolve(
       specifier,
       cwd,
-      deno_resolver::workspace::ResolutionKind::Execution,
+      ende_resolver::workspace::ResolutionKind::Execution,
     )?;
     let url = match resolution {
-      deno_resolver::workspace::MappedResolution::Normal {
+      ende_resolver::workspace::MappedResolution::Normal {
         specifier, ..
       } => specifier,
-      deno_resolver::workspace::MappedResolution::WorkspaceJsrPackage {
+      ende_resolver::workspace::MappedResolution::WorkspaceJsrPackage {
         specifier,
         ..
       } => specifier,
-      deno_resolver::workspace::MappedResolution::WorkspaceNpmPackage {
+      ende_resolver::workspace::MappedResolution::WorkspaceNpmPackage {
         target_pkg_json,
         sub_path,
         ..
@@ -448,7 +448,7 @@ impl WorkspaceMainModuleResolver {
           node_resolver::NodeResolutionKind::Execution,
         )?
         .into_url()?,
-      deno_resolver::workspace::MappedResolution::PackageJson {
+      ende_resolver::workspace::MappedResolution::PackageJson {
         sub_path,
         dep_result,
         alias,
@@ -456,20 +456,20 @@ impl WorkspaceMainModuleResolver {
       } => {
         let result = dep_result
           .as_ref()
-          .map_err(|e| deno_core::anyhow::anyhow!("{e}"))?;
+          .map_err(|e| ende_core::anyhow::anyhow!("{e}"))?;
         match result {
-          deno_package_json::PackageJsonDepValue::File(file) => {
+          ende_package_json::PackageJsonDepValue::File(file) => {
             let cwd_path = deno_path_util::url_to_file_path(cwd)?;
             deno_path_util::resolve_path(file, &cwd_path)?
           }
-          deno_package_json::PackageJsonDepValue::Req(package_req) => {
+          ende_package_json::PackageJsonDepValue::Req(package_req) => {
             ModuleSpecifier::parse(&format!(
               "npm:{}{}",
               package_req,
               sub_path.map(|s| format!("/{}", s)).unwrap_or_default()
             ))?
           }
-          deno_package_json::PackageJsonDepValue::Workspace {
+          ende_package_json::PackageJsonDepValue::Workspace {
             name,
             version_req,
           } => {
@@ -490,7 +490,7 @@ impl WorkspaceMainModuleResolver {
               )?
               .into_url()?
           }
-          deno_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
+          ende_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
             match self
               .workspace_resolver
               .resolve_catalog_dep(alias, catalog_name)
@@ -501,7 +501,7 @@ impl WorkspaceMainModuleResolver {
                 sub_path.map(|s| format!("/{}", s)).unwrap_or_default()
               ))?,
               None => {
-                return Err(deno_core::anyhow::anyhow!(
+                return Err(ende_core::anyhow::anyhow!(
                   "Package '{}' not found in catalog",
                   alias
                 ));
@@ -510,7 +510,7 @@ impl WorkspaceMainModuleResolver {
           }
         }
       }
-      deno_resolver::workspace::MappedResolution::PackageJsonImport {
+      ende_resolver::workspace::MappedResolution::PackageJsonImport {
         pkg_json,
       } => self
         .node_resolver
@@ -679,7 +679,7 @@ impl CliOptions {
     &self,
     sys: &CliSys,
   ) -> Result<Option<(i64, ChildIpcSerialization)>, AnyError> {
-    deno_lib::args::node_ipc_init(sys)
+    ende_lib::args::node_ipc_init(sys)
   }
 
   pub fn serve_port(&self) -> Option<u16> {
@@ -748,7 +748,7 @@ impl CliOptions {
     self
       .env_file_names()
       .flat_map(|env_file| {
-        deno_dotenv::candidate_paths(&self.initial_cwd, env_file)
+        ende_dotenv::candidate_paths(&self.initial_cwd, env_file)
       })
       .filter_map(|p| canonicalize_path(&p).ok())
   }
@@ -901,7 +901,7 @@ impl CliOptions {
         })
       })
       .as_ref()
-      .map_err(|err| deno_core::anyhow::anyhow!("{}", err))
+      .map_err(|err| ende_core::anyhow::anyhow!("{}", err))
   }
 
   pub fn resolve_main_module(&self) -> Result<&ModuleSpecifier, AnyError> {
@@ -954,7 +954,7 @@ impl CliOptions {
     &self,
   ) -> Result<
     Option<NodeModulesDirMode>,
-    deno_config::deno_json::NodeModulesDirParseError,
+    ende_config::deno_json::NodeModulesDirParseError,
   > {
     if let Some(flag) = self.flags.node_modules_dir {
       return Ok(Some(flag));
@@ -1490,7 +1490,7 @@ impl CliOptions {
       .collect::<Vec<_>>();
 
     if !unstable_features.is_empty() {
-      let all_valid_unstable_flags: Vec<&str> = deno_runtime::UNSTABLE_FEATURES
+      let all_valid_unstable_flags: Vec<&str> = ende_runtime::UNSTABLE_FEATURES
         .iter()
         .map(|feature| feature.name)
         .chain(["fmt-component", "fmt-sql", "npm-lazy-caching"])
@@ -1520,7 +1520,7 @@ impl CliOptions {
   /// "unexpected argument".
   pub fn unstable_args(&self) -> Vec<String> {
     let cli_flag_names: std::collections::HashSet<&str> =
-      deno_runtime::UNSTABLE_FEATURES
+      ende_runtime::UNSTABLE_FEATURES
         .iter()
         .map(|f| f.name)
         .collect();
@@ -1982,9 +1982,9 @@ fn augment_permissions_with_serve_flags(
 
 #[cfg(test)]
 mod test {
-  use deno_config::deno_json::AllowDenyIgnorePermissionConfig;
-  use deno_config::deno_json::AllowDenyPermissionConfig;
-  use deno_config::deno_json::PermissionsObject;
+  use ende_config::deno_json::AllowDenyIgnorePermissionConfig;
+  use ende_config::deno_json::AllowDenyPermissionConfig;
+  use ende_config::deno_json::PermissionsObject;
   use pretty_assertions::assert_eq;
 
   use super::*;

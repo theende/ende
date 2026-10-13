@@ -4,14 +4,14 @@ use criterion::Criterion;
 use criterion::black_box;
 use criterion::criterion_group;
 use criterion::criterion_main;
-use deno_http_h1::Header;
-use deno_http_h1::MAX_HEADERS;
-use deno_http_h1::ResponseHeader;
-use deno_http_h1::Version;
-use deno_http_h1::append_chunk;
-use deno_http_h1::append_chunked_end;
-use deno_http_h1::parse_request_head;
-use deno_http_h1::write_response_head;
+use ende_http_h1::Header;
+use ende_http_h1::MAX_HEADERS;
+use ende_http_h1::ResponseHeader;
+use ende_http_h1::Version;
+use ende_http_h1::append_chunk;
+use ende_http_h1::append_chunked_end;
+use ende_http_h1::parse_request_head;
+use ende_http_h1::write_response_head;
 
 fn bench_parse(c: &mut Criterion) {
   c.bench_function("parse_static_get_head", |b| {

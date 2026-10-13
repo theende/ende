@@ -20,39 +20,39 @@ use std::thread;
 
 use dashmap::DashMap;
 use deno_ast::MediaType;
-use deno_config::deno_json::CompilerOptions;
-use deno_core::JsRuntime;
-use deno_core::ModuleSpecifier;
-use deno_core::OpState;
-use deno_core::RuntimeOptions;
-use deno_core::anyhow::anyhow;
-use deno_core::convert::Number;
-use deno_core::convert::Smi;
-use deno_core::convert::ToV8;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::op2;
-use deno_core::parking_lot::Mutex;
-use deno_core::resolve_url;
-use deno_core::serde::Deserialize;
-use deno_core::serde::Serialize;
-use deno_core::serde::de;
-use deno_core::serde_json;
-use deno_core::serde_json::Value;
-use deno_core::serde_json::json;
-use deno_core::serde_v8;
-use deno_core::url::Url;
-use deno_core::v8;
 use deno_error::JsErrorBox;
 use deno_graph::source::Resolver;
-use deno_lib::util::result::InfallibleResultExt;
-use deno_lib::worker::create_isolate_create_params;
 use deno_path_util::url_to_file_path;
-use deno_resolver::deno_json::CompilerOptionsKey;
-use deno_runtime::deno_inspector_server::InspectPublishUid;
-use deno_runtime::deno_inspector_server::InspectorServer;
-use deno_runtime::deno_node::SUPPORTED_BUILTIN_NODE_MODULES;
-use deno_runtime::tokio_util::create_basic_runtime;
+use ende_config::deno_json::CompilerOptions;
+use ende_core::JsRuntime;
+use ende_core::ModuleSpecifier;
+use ende_core::OpState;
+use ende_core::RuntimeOptions;
+use ende_core::anyhow::anyhow;
+use ende_core::convert::Number;
+use ende_core::convert::Smi;
+use ende_core::convert::ToV8;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::op2;
+use ende_core::parking_lot::Mutex;
+use ende_core::resolve_url;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Serialize;
+use ende_core::serde::de;
+use ende_core::serde_json;
+use ende_core::serde_json::Value;
+use ende_core::serde_json::json;
+use ende_core::serde_v8;
+use ende_core::url::Url;
+use ende_core::v8;
+use ende_lib::util::result::InfallibleResultExt;
+use ende_lib::worker::create_isolate_create_params;
+use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_runtime::ende_inspector_server::InspectPublishUid;
+use ende_runtime::ende_inspector_server::InspectorServer;
+use ende_runtime::ende_node::SUPPORTED_BUILTIN_NODE_MODULES;
+use ende_runtime::tokio_util::create_basic_runtime;
 use indexmap::IndexSet;
 use lazy_regex::lazy_regex;
 use lsp_types::Uri;
@@ -2279,7 +2279,7 @@ fn virtual_document_file_path(
   snapshot: &StateSnapshot,
 ) -> Option<PathBuf> {
   let checksum =
-    deno_lib::util::checksum::r#gen(&[target_module.uri.as_str().as_bytes()]);
+    ende_lib::util::checksum::r#gen(&[target_module.uri.as_str().as_bytes()]);
   let mut file_name = target_module
     .uri
     .path()
@@ -4953,7 +4953,7 @@ impl TscSpecifierMap {
   pub fn normalize<S: AsRef<str>>(
     &self,
     specifier: S,
-  ) -> Result<ModuleSpecifier, deno_core::url::ParseError> {
+  ) -> Result<ModuleSpecifier, ende_core::url::ParseError> {
     let original = specifier.as_ref();
     if let Some(specifier) = self.normalized_specifiers.get(original) {
       return Ok(specifier.clone());
@@ -5081,13 +5081,13 @@ fn op_libs() -> Vec<String> {
 enum LoadError {
   #[error("{0}")]
   #[class(inherit)]
-  UrlParse(#[from] deno_core::url::ParseError),
+  UrlParse(#[from] ende_core::url::ParseError),
   #[error("{0}")]
   #[class(inherit)]
   JsErrorBox(#[from] deno_error::JsErrorBox),
 }
 
-#[derive(Debug, deno_core::ToV8)]
+#[derive(Debug, ende_core::ToV8)]
 struct LoadResponse {
   data: DocumentText,
   script_kind: i32,
@@ -5149,7 +5149,7 @@ fn op_load<'s>(
 fn op_release(
   state: &mut OpState,
   #[string] specifier: &str,
-) -> Result<(), deno_core::url::ParseError> {
+) -> Result<(), ende_core::url::ParseError> {
   let _span = super::logging::lsp_tracing_info_span!("op_release").entered();
   let state = state.borrow_mut::<State>();
   let mark = state
@@ -5171,7 +5171,7 @@ fn op_resolve(
   state: &mut OpState,
   #[string] base: &str,
   #[scoped] specifiers: Vec<(bool, String)>,
-) -> Result<Vec<Option<(String, Option<String>)>>, deno_core::url::ParseError> {
+) -> Result<Vec<Option<(String, Option<String>)>>, ende_core::url::ParseError> {
   let _span = super::logging::lsp_tracing_info_span!("op_resolve").entered();
   op_resolve_inner(state, ResolveArgs { base, specifiers })
 }
@@ -5195,7 +5195,7 @@ impl<'a> ToV8<'a> for TscRequestArray {
 
     let (method_name, args) = self.request.into_server_request(scope)?;
 
-    let method_name = deno_core::FastString::from_static(method_name)
+    let method_name = ende_core::FastString::from_static(method_name)
       .v8_string(scope)
       .unwrap()
       .into();
@@ -5352,7 +5352,7 @@ async fn op_poll_requests(
 fn op_resolve_inner(
   state: &mut OpState,
   args: ResolveArgs,
-) -> Result<Vec<Option<(String, Option<String>)>>, deno_core::url::ParseError> {
+) -> Result<Vec<Option<(String, Option<String>)>>, ende_core::url::ParseError> {
   let state = state.borrow_mut::<State>();
   let mark = state.performance.mark_with_args("tsc.op.op_resolve", &args);
   let referrer = state.specifier_map.normalize(args.base)?;
@@ -5431,7 +5431,7 @@ struct TracingSpan(
   #[allow(dead_code, reason = "unsupported")] Option<super::trace::EnteredSpan>,
 );
 
-deno_core::external!(TracingSpan, "lsp::TracingSpan");
+ende_core::external!(TracingSpan, "lsp::TracingSpan");
 
 fn span_with_context(
   _state: &State,
@@ -5491,7 +5491,7 @@ fn op_make_span(
 ) -> *const c_void {
   let state = op_state.borrow_mut::<State>();
   if !state.tracing_enabled() {
-    return deno_core::ExternalPointer::new(TracingSpan(None)).into_raw();
+    return ende_core::ExternalPointer::new(TracingSpan(None)).into_raw();
   }
   let sp = super::logging::lsp_tracing_info_span!(
     "js",
@@ -5502,7 +5502,7 @@ fn op_make_span(
   } else {
     sp.entered()
   };
-  deno_core::ExternalPointer::new(TracingSpan(Some(span))).into_raw()
+  ende_core::ExternalPointer::new(TracingSpan(Some(span))).into_raw()
 }
 
 #[op2(fast)]
@@ -5515,7 +5515,7 @@ fn op_log_event(op_state: &OpState, #[string] _msg: &str) {
 
 #[op2(fast)]
 fn op_exit_span(op_state: &mut OpState, span: *const c_void, root: bool) {
-  let ptr = deno_core::ExternalPointer::<TracingSpan>::from_raw(span);
+  let ptr = ende_core::ExternalPointer::<TracingSpan>::from_raw(span);
   // SAFETY: trust me
   let _span = unsafe { ptr.unsafely_take().0 };
   let state = op_state.borrow_mut::<State>();
@@ -5823,7 +5823,7 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
 fn op_script_version(
   state: &mut OpState,
   #[string] specifier: &str,
-) -> Result<Option<String>, deno_core::url::ParseError> {
+) -> Result<Option<String>, ende_core::url::ParseError> {
   let state = state.borrow_mut::<State>();
   let mark = state.performance.mark("tsc.op.op_script_version");
   let specifier = state.specifier_map.normalize(specifier)?;
@@ -5856,7 +5856,7 @@ impl TscRuntime {
   fn new(mut js_runtime: JsRuntime) -> Self {
     let server_main_loop_fn_global = {
       let context = js_runtime.main_context();
-      deno_core::scope!(scope, &mut js_runtime);
+      ende_core::scope!(scope, &mut js_runtime);
       let context_local = v8::Local::new(scope, context);
       let global_obj = context_local.global(scope);
       let server_main_loop_fn_str =
@@ -5891,8 +5891,8 @@ fn run_tsc_thread(
   // keeps this updated with the in-flight request's cancellation token.
   let request_cancellation: Arc<Mutex<CancellationToken>> = Default::default();
   let mut extensions =
-    deno_runtime::snapshot_info::get_extensions_in_snapshot();
-  extensions.push(deno_tsc::init(
+    ende_runtime::snapshot_info::get_extensions_in_snapshot();
+  extensions.push(ende_tsc::init(
     performance,
     specifier_map,
     request_rx,
@@ -5902,12 +5902,12 @@ fn run_tsc_thread(
   let mut tsc_runtime = JsRuntime::new(RuntimeOptions {
     extensions,
     create_params: create_isolate_create_params(&crate::sys::CliSys::default()),
-    startup_snapshot: deno_snapshots::CLI_SNAPSHOT,
+    startup_snapshot: ende_snapshots::CLI_SNAPSHOT,
     inspector: has_inspector_server,
     // See cli/tsc/js.rs: the LSP TSC isolate shares CLI_SNAPSHOT and needs
     // the residual lazy-ESM/JS sources for node:* lookups (e.g. `process`).
-    residual_lazy_esm_sources: deno_snapshots::RESIDUAL_LAZY_ESM,
-    residual_lazy_js_sources: deno_snapshots::RESIDUAL_LAZY_JS,
+    residual_lazy_esm_sources: ende_snapshots::RESIDUAL_LAZY_ESM,
+    residual_lazy_js_sources: ende_snapshots::RESIDUAL_LAZY_JS,
     ..Default::default()
   });
 
@@ -5951,7 +5951,7 @@ fn run_tsc_thread(
 
   if let Some(server) = maybe_inspector_server {
     server.register_inspector(
-      "ext:deno_tsc/99_main_compiler.js".to_string(),
+      "ext:ende_tsc/99_main_compiler.js".to_string(),
       tsc_runtime.inspector(),
       false,
     );
@@ -5986,7 +5986,7 @@ fn run_tsc_thread(
       let mut runtime = tsc_runtime.lock().await;
       let main_loop = runtime.server_main_loop_fn_global.clone();
       let args = {
-        deno_core::scope!(scope, &mut runtime.js_runtime);
+        ende_core::scope!(scope, &mut runtime.js_runtime);
         let enable_debug_local =
           v8::Local::<v8::Value>::from(v8::Boolean::new(scope, enable_debug));
         [v8::Global::new(scope, enable_debug_local)]
@@ -6010,7 +6010,7 @@ fn run_tsc_thread(
   runtime.block_on(tsc_future)
 }
 
-deno_core::extension!(deno_tsc,
+ende_core::extension!(ende_tsc,
   ops = [
     op_is_cancelled,
     op_is_node_file,
@@ -6046,13 +6046,13 @@ deno_core::extension!(deno_tsc,
       options.request_cancellation,
     ));
   },
-  customizer = |ext: &mut deno_core::Extension| {
-    use deno_core::ExtensionFileSource;
-    ext.esm_files.to_mut().push(ExtensionFileSource::new_computed("ext:deno_tsc/99_main_compiler.js", crate::tsc::MAIN_COMPILER_SOURCE.as_str().into()));
-    ext.esm_files.to_mut().push(ExtensionFileSource::new_computed("ext:deno_tsc/97_ts_host.js", crate::tsc::TS_HOST_SOURCE.as_str().into()));
-    ext.esm_files.to_mut().push(ExtensionFileSource::new_computed("ext:deno_tsc/98_lsp.js", crate::tsc::LSP_SOURCE.as_str().into()));
-    ext.js_files.to_mut().push(ExtensionFileSource::new_computed("ext:deno_cli_tsc/00_typescript.js", crate::tsc::TYPESCRIPT_SOURCE.as_str().into()));
-    ext.esm_entry_point = Some("ext:deno_tsc/99_main_compiler.js");
+  customizer = |ext: &mut ende_core::Extension| {
+    use ende_core::ExtensionFileSource;
+    ext.esm_files.to_mut().push(ExtensionFileSource::new_computed("ext:ende_tsc/99_main_compiler.js", crate::tsc::MAIN_COMPILER_SOURCE.as_str().into()));
+    ext.esm_files.to_mut().push(ExtensionFileSource::new_computed("ext:ende_tsc/97_ts_host.js", crate::tsc::TS_HOST_SOURCE.as_str().into()));
+    ext.esm_files.to_mut().push(ExtensionFileSource::new_computed("ext:ende_tsc/98_lsp.js", crate::tsc::LSP_SOURCE.as_str().into()));
+    ext.js_files.to_mut().push(ExtensionFileSource::new_computed("ext:ende_cli_tsc/00_typescript.js", crate::tsc::TYPESCRIPT_SOURCE.as_str().into()));
+    ext.esm_entry_point = Some("ext:ende_tsc/99_main_compiler.js");
   }
 );
 
@@ -6333,7 +6333,7 @@ impl UserPreferences {
 // `Serialize` is retained because the whole `TscRequest` is serialized to a
 // JSON performance-trace via `Performance::mark_with_args`; `ToV8` is what
 // actually crosses the V8 boundary in `into_server_request`.
-#[derive(Debug, Clone, Serialize, deno_core::ToV8)]
+#[derive(Debug, Clone, Serialize, ende_core::ToV8)]
 #[serde(rename_all = "camelCase")]
 pub struct SignatureHelpItemsOptions {
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -6341,7 +6341,7 @@ pub struct SignatureHelpItemsOptions {
   pub trigger_reason: Option<SignatureHelpTriggerReason>,
 }
 
-#[derive(Debug, Clone, Serialize, deno_core::ToV8)]
+#[derive(Debug, Clone, Serialize, ende_core::ToV8)]
 pub enum SignatureHelpTriggerKind {
   #[serde(rename = "characterTyped")]
   CharacterTyped,
@@ -6364,7 +6364,7 @@ impl From<lsp::SignatureHelpTriggerKind> for SignatureHelpTriggerKind {
   }
 }
 
-#[derive(Debug, Clone, Serialize, deno_core::ToV8)]
+#[derive(Debug, Clone, Serialize, ende_core::ToV8)]
 #[serde(rename_all = "camelCase")]
 pub struct SignatureHelpTriggerReason {
   pub kind: SignatureHelpTriggerKind,
@@ -6775,7 +6775,7 @@ mod tests {
     config
       .tree
       .inject_config_file(
-        deno_config::deno_json::ConfigFile::new(
+        ende_config::deno_json::ConfigFile::new(
           &deno_json_content.to_string(),
           temp_dir.url().join("deno.json").unwrap(),
         )

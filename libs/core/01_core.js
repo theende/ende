@@ -593,7 +593,7 @@
   }
 
   // Some "extensions" rely on "BadResource", "Interrupted", "NotCapable"
-  // errors in the JS code (eg. "deno_net") so they are provided in "Deno.core"
+  // errors in the JS code (eg. "ende_net") so they are provided in "Deno.core"
   // but later reexported on "Deno.errors"
   class BadResource extends Error {
     constructor(msg, options) {
@@ -778,7 +778,7 @@
 
   // Minimal console implementation, that uses `Deno.core.print` under the hood.
   // It's not fully fledged and is meant to make debugging slightly easier when working with
-  // only `deno_core` crate.
+  // only `ende_core` crate.
   class CoreConsole {
     log = (...args) => {
       op_print(`${consoleStringify(...args)}\n`, false);

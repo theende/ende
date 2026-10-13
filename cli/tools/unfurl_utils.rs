@@ -71,7 +71,7 @@ fn javascript_literal_content(
     return None;
   }
 
-  let serialized = deno_core::serde_json::to_string(replacement).ok()?;
+  let serialized = ende_core::serde_json::to_string(replacement).ok()?;
   let mut content = serialized
     .get(1..serialized.len().checked_sub(1)?)?
     .to_string();

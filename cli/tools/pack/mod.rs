@@ -8,14 +8,14 @@ use std::sync::Arc;
 use deno_ast::MediaType;
 use deno_ast::ModuleSpecifier;
 use deno_ast::diagnostics::Diagnostic;
-use deno_config::glob::FileCollector;
-use deno_config::workspace::JsrPackageConfig;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
 use deno_graph::Module;
 use deno_graph::ModuleGraph;
 use deno_terminal::colors;
+use ende_config::glob::FileCollector;
+use ende_config::workspace::JsrPackageConfig;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
 
 use crate::args::CliOptions;
 use crate::args::Flags;
@@ -300,7 +300,7 @@ fn collect_graph_modules(
       if specifier.scheme() == "file"
         && let Ok(path) = specifier.to_file_path()
         && path.starts_with(package_dir)
-        && file_patterns.matches_path(&path, deno_config::glob::PathKind::File)
+        && file_patterns.matches_path(&path, ende_config::glob::PathKind::File)
         && !is_excluded_path(&path, package_dir)
       {
         let relative = path.strip_prefix(package_dir).unwrap();
@@ -525,7 +525,7 @@ fn collect_asset_files(
   for path in collected {
     if excluded.contains(&path)
       || is_excluded_path(&path, &package_dir)
-      || !cli_patterns.matches_path(&path, deno_config::glob::PathKind::File)
+      || !cli_patterns.matches_path(&path, ende_config::glob::PathKind::File)
     {
       continue;
     }
@@ -596,7 +596,7 @@ fn split_shebang(source: &str) -> (Option<&str>, &str) {
 
 /// Create transpile options from deno.json compiler options
 fn create_transpile_options(
-  config_file: &deno_config::deno_json::ConfigFile,
+  config_file: &ende_config::deno_json::ConfigFile,
 ) -> Result<deno_ast::TranspileOptions, AnyError> {
   // Get compiler options from deno.json
   let compiler_options = config_file.json.compiler_options.as_ref();
@@ -674,9 +674,9 @@ fn create_transpile_options(
 fn process_modules(
   graph: &ModuleGraph,
   paths: &[CollectedPath],
-  parsed_source_cache: &deno_resolver::cache::ParsedSourceCache,
+  parsed_source_cache: &ende_resolver::cache::ParsedSourceCache,
   pack_flags: &PackFlags,
-  config_file: &deno_config::deno_json::ConfigFile,
+  config_file: &ende_config::deno_json::ConfigFile,
 ) -> Result<Vec<ProcessedFile>, AnyError> {
   let mut processed = Vec::new();
 
@@ -707,7 +707,7 @@ fn process_single_module(
   graph: &ModuleGraph,
   js_module: &deno_graph::JsModule,
   path: &CollectedPath,
-  parsed_source_cache: &deno_resolver::cache::ParsedSourceCache,
+  parsed_source_cache: &ende_resolver::cache::ParsedSourceCache,
   pack_flags: &PackFlags,
   transpile_options: &deno_ast::TranspileOptions,
 ) -> Result<ProcessedFile, AnyError> {

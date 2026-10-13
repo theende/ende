@@ -1,4 +1,4 @@
-# deno_io
+# ende_io
 
 **This crate provides IO primitives for other Deno extensions, this includes
 stdio streams and abstraction over File System files.**
@@ -10,16 +10,16 @@ From javascript, include the extension's source:
 ```javascript
 import { core } from "ext:core/mod.js";
 
-const io = core.loadExtScript("ext:deno_io/12_io.js");
+const io = core.loadExtScript("ext:ende_io/12_io.js");
 ```
 
-Then from rust, provide: `deno_io::deno_io::init(Option<deno_io::Stdio>)` in the
+Then from rust, provide: `ende_io::ende_io::init(Option<ende_io::Stdio>)` in the
 `extensions` field of your `RuntimeOptions`
 
-Where `deno_io::Stdio` implements `Default`, and can therefore be provided as
-`Some(deno_io::Stdio::default())`
+Where `ende_io::Stdio` implements `Default`, and can therefore be provided as
+`Some(ende_io::Stdio::default())`
 
 ## Dependencies
 
-- **deno_web**: Provided by the `deno_web` crate
-- **deno_tty**: Provided in `deno/runtime/ops/tty.rs`
+- **ende_web**: Provided by the `ende_web` crate
+- **ende_tty**: Provided in `deno/runtime/ops/tty.rs`

@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_os"
+name = "ende_os"
 version = "0.76.0"
 authors.workspace = true
 edition.workspace = true
@@ -14,11 +14,11 @@ description = "OS specific APIs for Deno"
 path = "lib.rs"
 
 [dependencies]
-deno_core.workspace = true
 deno_error.workspace = true
 deno_path_util.workspace = true
-deno_permissions.workspace = true
-deno_signals.workspace = true
+ende_core.workspace = true
+ende_permissions.workspace = true
+ende_signals.workspace = true
 libc.workspace = true
 netif.workspace = true
 thiserror.workspace = true

@@ -1,14 +1,14 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use ::deno_permissions::PermissionState;
-use ::deno_permissions::PermissionsContainer;
-use deno_core::FromV8;
-use deno_core::OpState;
-use deno_core::ToV8;
-use deno_core::op2;
+use ::ende_permissions::PermissionState;
+use ::ende_permissions::PermissionsContainer;
+use ende_core::FromV8;
+use ende_core::OpState;
+use ende_core::ToV8;
+use ende_core::op2;
 
-deno_core::extension!(
-  deno_permissions,
+ende_core::extension!(
+  ende_permissions,
   ops = [
     op_query_permission,
     op_revoke_permission,
@@ -54,16 +54,16 @@ pub enum PermissionError {
   InvalidPermissionName(String),
   #[class(inherit)]
   #[error("{0}")]
-  PathResolve(#[from] ::deno_permissions::PathResolveError),
+  PathResolve(#[from] ::ende_permissions::PathResolveError),
   #[class(uri)]
   #[error("{0}")]
-  NetDescriptorParse(#[from] ::deno_permissions::NetDescriptorParseError),
+  NetDescriptorParse(#[from] ::ende_permissions::NetDescriptorParseError),
   #[class(inherit)]
   #[error("{0}")]
-  SysDescriptorParse(#[from] ::deno_permissions::SysDescriptorParseError),
+  SysDescriptorParse(#[from] ::ende_permissions::SysDescriptorParseError),
   #[class(inherit)]
   #[error("{0}")]
-  RunDescriptorParse(#[from] ::deno_permissions::RunDescriptorParseError),
+  RunDescriptorParse(#[from] ::ende_permissions::RunDescriptorParseError),
 }
 
 #[op2]

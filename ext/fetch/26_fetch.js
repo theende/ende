@@ -34,8 +34,8 @@ const {
   TypedArrayPrototypeGetSymbolToStringTag,
 } = primordials;
 
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
-const { byteLowerCase } = core.loadExtScript("ext:deno_web/00_infra.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
+const { byteLowerCase } = core.loadExtScript("ext:ende_web/00_infra.js");
 const {
   acquireReadableStreamDefaultReader,
   errorReadableStream,
@@ -47,12 +47,12 @@ const {
   readableStreamForRid,
   ReadableStreamPrototype,
   resourceForReadableStream,
-} = core.loadExtScript("ext:deno_web/06_streams.js");
+} = core.loadExtScript("ext:ende_web/06_streams.js");
 const { extractBody, InnerBody } = core.loadExtScript(
-  "ext:deno_fetch/22_body.js",
+  "ext:ende_fetch/22_body.js",
 );
 const { processUrlList, Request, toInnerRequest } = core.loadExtScript(
-  "ext:deno_fetch/23_request.js",
+  "ext:ende_fetch/23_request.js",
 );
 const {
   abortedNetworkError,
@@ -61,18 +61,18 @@ const {
   nullBodyStatus,
   redirectStatus,
   toInnerResponse,
-} = core.loadExtScript("ext:deno_fetch/23_response.js");
-const abortSignal = core.loadExtScript("ext:deno_web/03_abort_signal.js");
+} = core.loadExtScript("ext:ende_fetch/23_response.js");
+const abortSignal = core.loadExtScript("ext:ende_web/03_abort_signal.js");
 // Make sure both telemetry modules are loaded before destructuring their
 // `internals` slots. 99_main.js / 90_deno_ns.js used to load `telemetry.ts`
 // unconditionally at snapshot time, but now defer it to actual telemetry
 // use. Fetch is the one always-on caller that depends on `__telemetry` and
 // `__telemetryUtil`, so it loads both modules on first use.
 if (!internals.__telemetry) {
-  core.loadExtScript("ext:deno_telemetry/telemetry.ts");
+  core.loadExtScript("ext:ende_telemetry/telemetry.ts");
 }
 if (!internals.__telemetryUtil) {
-  core.loadExtScript("ext:deno_telemetry/util.ts");
+  core.loadExtScript("ext:ende_telemetry/util.ts");
 }
 const {
   builtinTracer,

@@ -9,8 +9,8 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
-use deno_core::parking_lot::Mutex;
-use deno_core::uv_compat;
+use ende_core::parking_lot::Mutex;
+use ende_core::uv_compat;
 
 use crate::util::SendPtr;
 use crate::*;
@@ -363,8 +363,8 @@ unsafe extern "C" fn _napi_uv_close(
 //   trivial libuv behavior.
 // * `uv_cpu_info` returns an error so callers degrade gracefully (the
 //   profiler skips per-tick CPU stats but still produces a valid profile).
-// * `uv_timer_*` is bridged onto deno_core's libuv-compat layer (see
-//   `deno_core::uv_compat`). That layer is the same one driving Node's
+// * `uv_timer_*` is bridged onto ende_core's libuv-compat layer (see
+//   `ende_core::uv_compat`). That layer is the same one driving Node's
 //   timer/idle/check/prepare handles on top of tokio, so timers scheduled
 //   by a NAPI addon (e.g. the Sentry profiler's measurement ticker) fire
 //   on the Deno event loop. We keep our own libuv-ABI `uv_timer_t` so the
@@ -388,7 +388,7 @@ const UV_TIMER_SIZE: usize = 160;
 
 type uv_timer_cb = Option<unsafe extern "C" fn(handle: *mut uv_timer_t)>;
 
-// The deno_core uv_compat loop the current JsRuntime is using. Populated by
+// The ende_core uv_compat loop the current JsRuntime is using. Populated by
 // `register_default_uv_loop` on each `op_napi_open` call so that
 // `uv_default_loop()` (called from native addons) and `uv_timer_init` with
 // a null loop fall back to a real, tokio-backed loop. Per-thread because
@@ -1377,7 +1377,7 @@ type uv_thread_cb = unsafe extern "C" fn(arg: *mut c_void);
 
 struct SemInner {
   count: Mutex<i64>,
-  cond: deno_core::parking_lot::Condvar,
+  cond: ende_core::parking_lot::Condvar,
 }
 
 static SEMS: OnceLock<
@@ -1410,7 +1410,7 @@ unsafe extern "C" fn uv_sem_init(
   let id = SEM_NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
   let inner = std::sync::Arc::new(SemInner {
     count: Mutex::new(value as i64),
-    cond: deno_core::parking_lot::Condvar::new(),
+    cond: ende_core::parking_lot::Condvar::new(),
   });
   sems().lock().insert(id, inner);
   unsafe {
@@ -1577,7 +1577,7 @@ const UV_ETIMEDOUT: c_int = {
 
 struct CondInner {
   mutex: Mutex<()>,
-  condvar: deno_core::parking_lot::Condvar,
+  condvar: ende_core::parking_lot::Condvar,
 }
 
 static CONDS: OnceLock<
@@ -1607,7 +1607,7 @@ unsafe extern "C" fn uv_cond_init(cond: *mut u32) -> c_int {
   let id = COND_NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
   let inner = std::sync::Arc::new(CondInner {
     mutex: Mutex::new(()),
-    condvar: deno_core::parking_lot::Condvar::new(),
+    condvar: ende_core::parking_lot::Condvar::new(),
   });
   conds().lock().insert(id, inner);
   unsafe {

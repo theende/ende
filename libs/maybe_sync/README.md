@@ -1,4 +1,4 @@
-# `deno_maybe_sync`
+# `ende_maybe_sync`
 
 Optionally `Sync` structures used in Deno.
 

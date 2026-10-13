@@ -2,15 +2,15 @@
 
 use std::sync::Arc;
 
-use deno_config::deno_json::NewestDependencyDate;
-use deno_config::deno_json::NodeModulesDirMode;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::url::Url;
 use deno_graph::packages::JsrPackageInfo;
 use deno_path_util::ResolveUrlOrPathError;
-use deno_runtime::WorkerExecutionMode;
-use deno_runtime::deno_permissions::PermissionsContainer;
+use ende_config::deno_json::NewestDependencyDate;
+use ende_config::deno_json::NodeModulesDirMode;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_runtime::WorkerExecutionMode;
+use ende_runtime::ende_permissions::PermissionsContainer;
 
 use crate::args::ConfigFlag;
 use crate::args::DeployFlags;
@@ -61,13 +61,13 @@ pub async fn deploy(
       .file_fetcher()?
       .fetch_with_options(
         &registry_url.join("@deno/deploy/meta.json").unwrap(),
-        deno_resolver::file_fetcher::FetchPermissionsOptionRef::AllowAll,
-        deno_resolver::file_fetcher::FetchOptions {
+        ende_resolver::file_fetcher::FetchPermissionsOptionRef::AllowAll,
+        ende_resolver::file_fetcher::FetchOptions {
           // jsr.io serves meta.json with `cache-control: max-age=60`, so
           // respect those headers rather than pinning the first cached copy
           // forever (see denoland/deno#35736).
           maybe_cache_setting: Some(
-            &deno_cache_dir::file_fetcher::CacheSetting::RespectHeaders,
+            &ende_cache_dir::file_fetcher::CacheSetting::RespectHeaders,
           ),
           ..Default::default()
         },
@@ -92,7 +92,7 @@ pub async fn deploy(
       PermissionsContainer::allow_all(
         factory.permission_desc_parser()?.clone(),
       ),
-      vec![ops::deploy::deno_deploy::init()],
+      vec![ops::deploy::ende_deploy::init()],
       Default::default(),
       None,
     )

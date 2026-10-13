@@ -4,16 +4,16 @@
 import process from "node:process";
 import { core, primordials } from "ext:core/mod.js";
 const eos =
-  core.loadExtScript("ext:deno_node/internal/streams/end-of-stream.js").default;
-const { once } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+  core.loadExtScript("ext:ende_node/internal/streams/end-of-stream.js").default;
+const { once } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 const destroyImpl =
-  core.loadExtScript("ext:deno_node/internal/streams/destroy.js").default;
+  core.loadExtScript("ext:ende_node/internal/streams/destroy.js").default;
 import Duplex from "node:_stream_duplex";
-const imported1 = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const imported1 = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   validateAbortSignal,
   validateFunction,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 
 const {
   isIterable,
@@ -24,14 +24,14 @@ const {
   isReadableStream,
   isTransformStream,
   isWebStream,
-} = core.loadExtScript("ext:deno_node/internal/streams/utils.js");
+} = core.loadExtScript("ext:ende_node/internal/streams/utils.js");
 
 const { AbortController } = core.loadExtScript(
-  "ext:deno_web/03_abort_signal.js",
+  "ext:ende_web/03_abort_signal.js",
 );
 import _mod3 from "node:_stream_readable";
 const _mod4 = core.loadExtScript(
-  "ext:deno_node/internal/events/abort_listener.mjs",
+  "ext:ende_node/internal/events/abort_listener.mjs",
 );
 import _mod5 from "node:_stream_passthrough";
 

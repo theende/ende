@@ -17,9 +17,9 @@ use deno_ast::swc::ecma_visit::VisitMut;
 use deno_ast::swc::ecma_visit::VisitWith as _;
 use deno_ast::swc::ecma_visit::visit_mut_pass;
 use deno_ast::swc::utils as swc_utils;
-use deno_cache_dir::file_fetcher::File;
-use deno_core::ModuleSpecifier;
-use deno_core::error::AnyError;
+use ende_cache_dir::file_fetcher::File;
+use ende_core::ModuleSpecifier;
+use ende_core::error::AnyError;
 use regex::Regex;
 
 use crate::args::PermissionFlags;
@@ -498,7 +498,7 @@ fn extract_file_from_block(
       HashMap::from([("content-type".to_string(), content_type.to_string())])
     }),
     source: file_source.into_bytes().into(),
-    loaded_from: deno_cache_dir::file_fetcher::LoadedFrom::Local,
+    loaded_from: ende_cache_dir::file_fetcher::LoadedFrom::Local,
   };
   Some(TestOrSnippet {
     file,
@@ -1003,7 +1003,7 @@ fn generate_pseudo_file(
       HashMap::from([("content-type".to_string(), content_type.to_string())])
     }),
     source: source.into_bytes().into(),
-    loaded_from: deno_cache_dir::file_fetcher::LoadedFrom::Local,
+    loaded_from: ende_cache_dir::file_fetcher::LoadedFrom::Local,
   })
 }
 
@@ -2382,7 +2382,7 @@ Deno.test("file:///main.ts#2-8.ts", async ()=>{
         maybe_headers: None,
         mtime: None,
         source: test.input.source.as_bytes().into(),
-        loaded_from: deno_cache_dir::file_fetcher::LoadedFrom::Local,
+        loaded_from: ende_cache_dir::file_fetcher::LoadedFrom::Local,
       };
       let got_decoded = extract_doc_tests(file)
         .unwrap()
@@ -2620,7 +2620,7 @@ add('1', '2');
         maybe_headers: None,
         mtime: None,
         source: test.input.source.as_bytes().into(),
-        loaded_from: deno_cache_dir::file_fetcher::LoadedFrom::Local,
+        loaded_from: ende_cache_dir::file_fetcher::LoadedFrom::Local,
       };
       let got_decoded = extract_snippet_files(file)
         .unwrap()

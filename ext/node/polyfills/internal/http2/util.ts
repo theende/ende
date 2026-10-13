@@ -31,7 +31,7 @@ const { op_http2_error_string, op_http2_http_state } = core.ops;
 const lazyHttpCommon = core.createLazyLoader("node:_http_common");
 const lazyProcess = core.createLazyLoader("node:process");
 const { codes, hideStackFrames } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 const {
   HTTP2_HEADER_ACCESS_CONTROL_ALLOW_CREDENTIALS,
@@ -91,7 +91,7 @@ const {
   NGHTTP2_NV_FLAG_NONE,
   NGHTTP2_SESSION_CLIENT,
   NGHTTP2_SESSION_SERVER,
-} = core.loadExtScript("ext:deno_node/internal/http2/constants.ts");
+} = core.loadExtScript("ext:ende_node/internal/http2/constants.ts");
 
 const {
   ERR_HTTP2_CONNECT_AUTHORITY,

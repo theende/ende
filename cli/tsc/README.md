@@ -54,7 +54,7 @@ write messages over stdin/stdout (similar to the Language Server Protocol). The
 format is a mixture of binary data (for the header and other protocol level
 details) followed by json encoded values for RPC calls. The rust implementation
 of the IPC protocol is in the
-[deno_typescript_go_client_rust crate](../libs/typescript_go_client/src/lib.rs).
+[ende_typescript_go_client_rust crate](../libs/typescript_go_client/src/lib.rs).
 
 We currently maintain a
 [fork of typescript-go](https://github.com/denoland/typescript-go) with the

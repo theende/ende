@@ -3,15 +3,15 @@
 
 (function () {
 const { core, primordials } = __bootstrap;
-const { notImplemented } = core.loadExtScript("ext:deno_node/_utils.ts");
+const { notImplemented } = core.loadExtScript("ext:ende_node/_utils.ts");
 const { getExecArgvOptionValue, getOptionValue } = core.loadExtScript(
-  "ext:deno_node/internal/options.ts",
+  "ext:ende_node/internal/options.ts",
 );
 const { convertALPNProtocols } = core.loadExtScript(
-  "ext:deno_node/internal/tls_common.js",
+  "ext:ende_node/internal/tls_common.js",
 );
 const { X509Certificate } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/x509.ts",
+  "ext:ende_node/internal/crypto/x509.ts",
 );
 const {
   op_get_env_no_permission_check,
@@ -22,12 +22,12 @@ const {
 const {
   validateOneOf,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const { isArrayBufferView } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 const { ERR_INVALID_ARG_TYPE } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 
 const { isTypedArray } = core;

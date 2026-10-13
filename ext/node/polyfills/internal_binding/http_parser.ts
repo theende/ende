@@ -25,8 +25,8 @@
 (function () {
 const { core } = __bootstrap;
 const { HTTPParser: NativeHTTPParser } = core.ops;
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { AsyncResource } = core.loadExtScript("ext:deno_node/async_hooks.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { AsyncResource } = core.loadExtScript("ext:ende_node/async_hooks.ts");
 
 // Method names indexed by llhttp method enum values.
 // Order must match llhttp_method_t in llhttp.h.

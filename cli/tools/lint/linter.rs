@@ -11,10 +11,6 @@ use deno_ast::MediaType;
 use deno_ast::ModuleSpecifier;
 use deno_ast::ParsedSource;
 use deno_ast::SourceTextInfo;
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt as _;
-use deno_core::parking_lot::Mutex;
 use deno_graph::ModuleGraph;
 use deno_lint::diagnostic::LintDiagnostic;
 use deno_lint::linter::ExternalLinterCb;
@@ -24,7 +20,11 @@ use deno_lint::linter::LintFileOptions;
 use deno_lint::linter::Linter as DenoLintLinter;
 use deno_lint::linter::LinterOptions;
 use deno_path_util::fs::atomic_write_file_with_retries;
-use deno_runtime::tokio_util;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt as _;
+use ende_core::parking_lot::Mutex;
+use ende_runtime::tokio_util;
 
 use super::ConfiguredRules;
 use super::plugins;
@@ -174,7 +174,7 @@ impl CliLinter {
     source_code: String,
     file_path: &Path,
     external_linter_container: ExternalLinterContainer,
-  ) -> Result<(ParsedSource, Vec<LintDiagnostic>), deno_core::anyhow::Error> {
+  ) -> Result<(ParsedSource, Vec<LintDiagnostic>), ende_core::anyhow::Error> {
     // initial lint
     let (source, diagnostics) = self.linter.lint_file(LintFileOptions {
       specifier: specifier.clone(),

@@ -41,9 +41,9 @@ impl ImageError {
   }
 }
 
-deno_core::extension!(
-  deno_image,
-  deps = [deno_webidl, deno_web, deno_webgpu],
+ende_core::extension!(
+  ende_image,
+  deps = [ende_webidl, ende_web, ende_webgpu],
   ops = [bitmap::op_create_image_bitmap],
   objects = [bitmap::ImageBitmap],
   lazy_loaded_esm = ["01_image.js"],

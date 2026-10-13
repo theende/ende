@@ -10,21 +10,21 @@ use std::sync::Arc;
 
 use deno_ast::MediaType;
 use deno_ast::ModuleSpecifier;
-use deno_config::deno_json::CompilerOptionTypesDeserializeError;
-use deno_core::url::Url;
 use deno_error::JsErrorBox;
 use deno_graph::Module;
 use deno_graph::ModuleGraph;
 use deno_graph::ResolutionError;
-use deno_lib::util::hash::FastInsecureHasher;
-use deno_resolver::deno_json::CompilerOptionsData;
-use deno_resolver::deno_json::CompilerOptionsParseError;
-use deno_resolver::deno_json::CompilerOptionsResolver;
-use deno_resolver::deno_json::JsxImportSourceConfigResolver;
-use deno_resolver::deno_json::ToMaybeJsxImportSourceConfigError;
-use deno_resolver::graph::maybe_additional_sloppy_imports_message;
 use deno_semver::npm::NpmPackageReqReference;
 use deno_terminal::colors;
+use ende_config::deno_json::CompilerOptionTypesDeserializeError;
+use ende_core::url::Url;
+use ende_lib::util::hash::FastInsecureHasher;
+use ende_resolver::deno_json::CompilerOptionsData;
+use ende_resolver::deno_json::CompilerOptionsParseError;
+use ende_resolver::deno_json::CompilerOptionsResolver;
+use ende_resolver::deno_json::JsxImportSourceConfigResolver;
+use ende_resolver::deno_json::ToMaybeJsxImportSourceConfigError;
+use ende_resolver::graph::maybe_additional_sloppy_imports_message;
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -179,19 +179,19 @@ impl TypeChecker {
 
     // Merge declaration-specific options into the base compiler options
     let mut config_value =
-      deno_core::serde_json::to_value(base_compiler_options.as_ref())
+      ende_core::serde_json::to_value(base_compiler_options.as_ref())
         .map_err(|e| CheckErrorKind::Other(JsErrorBox::from_err(e)))?;
     if let Some(config_obj) = config_value.as_object_mut() {
       config_obj.insert(
         "declaration".into(),
-        deno_core::serde_json::Value::Bool(true),
+        ende_core::serde_json::Value::Bool(true),
       );
       config_obj.insert(
         "emitDeclarationOnly".into(),
-        deno_core::serde_json::Value::Bool(true),
+        ende_core::serde_json::Value::Bool(true),
       );
       config_obj
-        .insert("noEmit".into(), deno_core::serde_json::Value::Bool(false));
+        .insert("noEmit".into(), ende_core::serde_json::Value::Bool(false));
     }
 
     let compiler_options = Arc::new(CompilerOptions::new(config_value));
@@ -675,7 +675,7 @@ impl DiagnosticsByFolderRealIterator<'_> {
       .write_hashable(&compiler_options)
       .finish();
     let code_cache = self.code_cache.as_ref().map(|c| {
-      let c: Arc<dyn deno_runtime::code_cache::CodeCache> = c.clone();
+      let c: Arc<dyn ende_runtime::code_cache::CodeCache> = c.clone();
       c
     });
     let response = tsc::exec(

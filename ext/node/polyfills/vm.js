@@ -11,8 +11,8 @@ const { core, primordials } = __bootstrap;
 // the first instantiation can happen from a sandbox realm. Loader is
 // memoized; repeat calls are cheap.
 core.createLazyLoader("node:process")();
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { notImplemented } = core.loadExtScript("ext:deno_node/_utils.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { notImplemented } = core.loadExtScript("ext:ende_node/_utils.ts");
 const {
   op_vm_compile_function,
   op_vm_create_context,
@@ -45,7 +45,7 @@ const {
   validateString,
   validateStringArray,
   validateUint32,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
@@ -54,7 +54,7 @@ const {
   ERR_VM_MODULE_DIFFERENT_CONTEXT,
   ERR_VM_MODULE_NOT_MODULE,
   ERR_VM_MODULE_STATUS,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const {
   ArrayIsArray,

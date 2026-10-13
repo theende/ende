@@ -2,26 +2,26 @@
 
 use std::sync::Arc;
 
-use deno_cache_dir::npm::NpmCacheDir;
-use deno_npm::resolution::PackageIdNotFoundError;
-use deno_npm::resolution::ValidSerializedNpmResolutionSnapshot;
-use deno_npm_cache::NpmCache;
-use deno_npm_cache::NpmCacheHttpClient;
-use deno_npm_cache::NpmCacheSetting;
-use deno_npm_cache::NpmCacheSys;
-use deno_npm_cache::NpmPackumentFormat;
-use deno_npm_cache::RegistryInfoProvider;
-use deno_npm_cache::TarballCache;
-use deno_npm_cache::TarballCacheReporter;
-use deno_npmrc::ResolvedNpmRc;
-use deno_resolver::factory::ResolverFactory;
-use deno_resolver::factory::WorkspaceFactory;
-use deno_resolver::factory::WorkspaceFactorySys;
-use deno_resolver::lockfile::LockfileLock;
-use deno_resolver::lockfile::LockfileNpmPackageInfoApiAdapter;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::package::PackageKind;
 use deno_semver::package::PackageReq;
+use ende_cache_dir::npm::NpmCacheDir;
+use ende_npm::resolution::PackageIdNotFoundError;
+use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
+use ende_npm_cache::NpmCache;
+use ende_npm_cache::NpmCacheHttpClient;
+use ende_npm_cache::NpmCacheSetting;
+use ende_npm_cache::NpmCacheSys;
+use ende_npm_cache::NpmPackumentFormat;
+use ende_npm_cache::RegistryInfoProvider;
+use ende_npm_cache::TarballCache;
+use ende_npm_cache::TarballCacheReporter;
+use ende_npmrc::ResolvedNpmRc;
+use ende_resolver::factory::ResolverFactory;
+use ende_resolver::factory::WorkspaceFactory;
+use ende_resolver::factory::WorkspaceFactorySys;
+use ende_resolver::lockfile::LockfileLock;
+use ende_resolver::lockfile::LockfileNpmPackageInfoApiAdapter;
 use futures::FutureExt;
 
 use crate::LifecycleScriptsConfig;
@@ -72,17 +72,17 @@ pub struct NpmInstallerFactoryOptions {
 }
 
 pub trait InstallReporter:
-  deno_npm::resolution::Reporter
+  ende_npm::resolution::Reporter
   + deno_graph::source::Reporter
-  + deno_npm_cache::TarballCacheReporter
+  + ende_npm_cache::TarballCacheReporter
   + crate::InstallProgressReporter
 {
 }
 
 impl<
-  T: deno_npm::resolution::Reporter
+  T: ende_npm::resolution::Reporter
     + deno_graph::source::Reporter
-    + deno_npm_cache::TarballCacheReporter
+    + ende_npm_cache::TarballCacheReporter
     + crate::InstallProgressReporter,
 > InstallReporter for T
 {
@@ -312,10 +312,10 @@ impl<
             PackagesAllowedScripts::Some(package_reqs.clone())
           }
           PackagesAllowedScripts::None => match allow_scripts.allow {
-            deno_config::deno_json::AllowScriptsValueConfig::All => {
+            ende_config::deno_json::AllowScriptsValueConfig::All => {
               PackagesAllowedScripts::All
             }
-            deno_config::deno_json::AllowScriptsValueConfig::Limited(deps) => {
+            ende_config::deno_json::AllowScriptsValueConfig::Limited(deps) => {
               let reqs = jsr_deps_to_reqs(deps);
               if reqs.is_empty() {
                 PackagesAllowedScripts::None
@@ -450,7 +450,7 @@ impl<
           self
             .install_reporter
             .as_ref()
-            .map(|r| r.clone() as Arc<dyn deno_npm::resolution::Reporter>),
+            .map(|r| r.clone() as Arc<dyn ende_npm::resolution::Reporter>),
           self.resolver_factory.npm_resolution().clone(),
           self.maybe_lockfile().await?.cloned(),
         )))
@@ -563,7 +563,7 @@ impl<
         self
           .install_reporter
           .as_ref()
-          .map(|r| r.clone() as Arc<dyn deno_npm_cache::TarballCacheReporter>),
+          .map(|r| r.clone() as Arc<dyn ende_npm_cache::TarballCacheReporter>),
       ))
     })
   }

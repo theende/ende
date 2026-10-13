@@ -6,7 +6,7 @@ use std::sync::atomic::Ordering;
 mod async_flag;
 
 pub use async_flag::AsyncFlag;
-pub use deno_core::unsync::sync::AtomicFlag;
+pub use ende_core::unsync::sync::AtomicFlag;
 
 #[derive(Debug, Default)]
 pub struct RelaxedAtomicCounter {

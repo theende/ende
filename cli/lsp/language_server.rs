@@ -15,33 +15,33 @@ use std::sync::Arc;
 
 use dashmap::DashMap;
 use deno_ast::MediaType;
-use deno_cache_dir::GlobalOrLocalHttpCache;
-use deno_cache_dir::file_fetcher::CacheSetting;
-use deno_core::ModuleSpecifier;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::parking_lot::Mutex;
-use deno_core::serde_json;
-use deno_core::serde_json::Value;
-use deno_core::serde_json::json;
-use deno_core::unsync::spawn;
-use deno_core::url;
-use deno_core::url::Url;
 use deno_graph::CheckJsOption;
 use deno_graph::GraphKind;
 use deno_graph::Resolution;
-use deno_lib::args::CaData;
-use deno_lib::args::get_root_cert_store;
-use deno_lib::version::DENO_VERSION_INFO;
-use deno_npm::resolution::NpmVersionResolver;
-use deno_npm_installer::graph::NpmCachingStrategy;
 use deno_path_util::url_to_file_path;
-use deno_resolver::deno_json::CompilerOptionsKey;
-use deno_resolver::loader::MemoryFilesRc;
-use deno_runtime::deno_tls::RootCertStoreProvider;
-use deno_runtime::deno_tls::rustls::RootCertStore;
 use deno_semver::jsr::JsrPackageReqReference;
+use ende_cache_dir::GlobalOrLocalHttpCache;
+use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_core::ModuleSpecifier;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::parking_lot::Mutex;
+use ende_core::serde_json;
+use ende_core::serde_json::Value;
+use ende_core::serde_json::json;
+use ende_core::unsync::spawn;
+use ende_core::url;
+use ende_core::url::Url;
+use ende_lib::args::CaData;
+use ende_lib::args::get_root_cert_store;
+use ende_lib::version::DENO_VERSION_INFO;
+use ende_npm::resolution::NpmVersionResolver;
+use ende_npm_installer::graph::NpmCachingStrategy;
+use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_resolver::loader::MemoryFilesRc;
+use ende_runtime::ende_tls::RootCertStoreProvider;
+use ende_runtime::ende_tls::rustls::RootCertStore;
 use indexmap::IndexSet;
 use log::error;
 use serde::Deserialize;
@@ -1222,8 +1222,8 @@ impl Inner {
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
   async fn refresh_config_tree(&mut self, reason: &str) {
     let file_fetcher = create_cli_file_fetcher(
-      Arc::new(deno_runtime::deno_web::BlobStore::default())
-        as Arc<dyn deno_runtime::deno_web::BlobStoreTrait>,
+      Arc::new(ende_runtime::ende_web::BlobStore::default())
+        as Arc<dyn ende_runtime::ende_web::BlobStoreTrait>,
       GlobalOrLocalHttpCache::Global(self.cache.global().clone()),
       self.http_client_provider.clone(),
       MemoryFilesRc::default(),
@@ -1900,7 +1900,7 @@ impl Inner {
       })?;
 
     // spawn a blocking task to allow doing other work while this is occurring
-    let text_edits = deno_core::unsync::spawn_blocking({
+    let text_edits = ende_core::unsync::spawn_blocking({
       let mut fmt_options = fmt_config.options.clone();
       let config_data = self.config.tree.data_for_specifier(&module.specifier);
       #[allow(

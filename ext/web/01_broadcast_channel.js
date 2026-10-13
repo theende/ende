@@ -23,18 +23,18 @@ const {
   Uint8Array,
 } = primordials;
 
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const { createFilteredInspectProxy } = core.loadExtScript(
-  "ext:deno_web/01_console.js",
+  "ext:ende_web/01_console.js",
 );
 const {
   defineEventHandler,
   EventTarget,
   setIsTrusted,
   setTarget,
-} = core.loadExtScript("ext:deno_web/02_event.js");
-const { defer } = core.loadExtScript("ext:deno_web/02_timers.js");
-const { DOMException } = core.loadExtScript("ext:deno_web/01_dom_exception.js");
+} = core.loadExtScript("ext:ende_web/02_event.js");
+const { defer } = core.loadExtScript("ext:ende_web/02_timers.js");
+const { DOMException } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
 
 const _name = Symbol("[[name]]");
 const _closed = Symbol("[[closed]]");

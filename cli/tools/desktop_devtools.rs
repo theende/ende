@@ -67,17 +67,17 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use deno_core::anyhow::Context;
-use deno_core::anyhow::anyhow;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::serde_json::Value;
-use deno_core::serde_json::json;
-use deno_core::url::Host;
-use deno_core::url::Url;
-use deno_runtime::deno_inspector_server::ValidatedHost;
-use deno_runtime::deno_inspector_server::validated_host_header;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::anyhow;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::serde_json::Value;
+use ende_core::serde_json::json;
+use ende_core::url::Host;
+use ende_core::url::Url;
+use ende_runtime::ende_inspector_server::ValidatedHost;
+use ende_runtime::ende_inspector_server::validated_host_header;
 use fastwebsockets::Frame;
 use fastwebsockets::OpCode;
 use fastwebsockets::WebSocket;
@@ -124,7 +124,7 @@ pub struct MuxHandle {
   _shutdown_tx: oneshot::Sender<()>,
 }
 
-pub use deno_lib::util::net::allocate_random_port;
+pub use ende_lib::util::net::allocate_random_port;
 
 /// Spawn the mux on a background task. Returns once the listener is
 /// bound — connection handling continues in the spawned task. The
@@ -473,7 +473,7 @@ fn json_version(
   let body = json!({
     "Browser": format!("deno-desktop/{}", env!("CARGO_PKG_VERSION")),
     "Protocol-Version": "1.3",
-    "V8-Version": deno_core::v8::VERSION_STRING,
+    "V8-Version": ende_core::v8::VERSION_STRING,
     // Advertise one of the two upstream WS URLs as the "browser" URL.
     // DevTools' `chrome://inspect` uses this to drive auto-attach; the
     // CEF upstream exposes the richer Target.* domain.

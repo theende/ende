@@ -2,11 +2,11 @@
 
 (function () {
 const { core, primordials } = __bootstrap;
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const {
   ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH,
   ERR_INVALID_ARG_TYPE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const {
   isAnyArrayBuffer,

@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! Desktop runtime for Deno (libdenort).
+//! Desktop runtime for Deno (libendert).
 //!
 //! This is a cdylib that exports the Laufey C ABI (laufey_runtime_init,
 //! laufey_runtime_start, laufey_runtime_shutdown) and boots the full Deno
@@ -25,17 +25,17 @@ use std::sync::Mutex;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::v8;
-use deno_lib::util::net::allocate_random_port;
-use deno_lib::util::result::js_error_downcast_ref;
-use deno_lib::version::otel_runtime_config;
-use deno_runtime::fmt_errors::format_js_error;
 use deno_terminal::colors;
-use denort::desktop::DesktopApi;
-use denort::run::RunOptions;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::v8;
+use ende_lib::util::net::allocate_random_port;
+use ende_lib::util::result::js_error_downcast_ref;
+use ende_lib::version::otel_runtime_config;
+use ende_runtime::fmt_errors::format_js_error;
+use endert::desktop::DesktopApi;
+use endert::run::RunOptions;
 
 /// Compile-time check: the laufey crate we're linking against must use the
 /// same C ABI version as the prebuilt backend we ship. If laufey bumps
@@ -48,10 +48,10 @@ const _: () = assert!(
   "LAUFEY_API_VERSION mismatch: update this assert and the prebuilt backend release pin in cli/tools/desktop.rs when laufey bumps its API version",
 );
 
-/// Laufey-backed implementation of [`denort::desktop::DesktopApi`].
+/// Laufey-backed implementation of [`endert::desktop::DesktopApi`].
 struct WefDesktopApi {
-  event_tx: deno_runtime::ops::desktop::DesktopEventTx,
-  pending_responses: deno_runtime::ops::desktop::PendingBindResponses,
+  event_tx: ende_runtime::ops::desktop::DesktopEventTx,
+  pending_responses: ende_runtime::ops::desktop::PendingBindResponses,
   closed_windows: Arc<Mutex<HashSet<u32>>>,
   /// IDs of every window currently displayed. Shared with the HMR reload
   /// callback so it can refresh all windows, not just the initial one.
@@ -88,7 +88,7 @@ impl WefDesktopApi {
     window
       .on_keyboard_event(move |ev| {
         let _ = kb_tx.try_send(
-          deno_runtime::ops::desktop::DesktopEvent::KeyboardEvent {
+          ende_runtime::ops::desktop::DesktopEvent::KeyboardEvent {
             window_id: ev.window_id,
             r#type: match ev.state {
               laufey::KeyState::Pressed => "keydown".to_string(),
@@ -106,7 +106,7 @@ impl WefDesktopApi {
       })
       .on_mouse_click(move |ev| {
         let _ = mouse_click_tx.try_send(
-          deno_runtime::ops::desktop::DesktopEvent::MouseClick {
+          ende_runtime::ops::desktop::DesktopEvent::MouseClick {
             window_id: ev.window_id,
             state: match ev.state {
               laufey::MouseButtonState::Pressed => "pressed".to_string(),
@@ -132,7 +132,7 @@ impl WefDesktopApi {
       })
       .on_mouse_move(move |ev| {
         let _ = mouse_move_tx.try_send(
-          deno_runtime::ops::desktop::DesktopEvent::MouseMove {
+          ende_runtime::ops::desktop::DesktopEvent::MouseMove {
             window_id: ev.window_id,
             client_x: ev.x,
             client_y: ev.y,
@@ -145,7 +145,7 @@ impl WefDesktopApi {
       })
       .on_wheel(move |ev| {
         let _ =
-          wheel_tx.try_send(deno_runtime::ops::desktop::DesktopEvent::Wheel {
+          wheel_tx.try_send(ende_runtime::ops::desktop::DesktopEvent::Wheel {
             window_id: ev.window_id,
             delta_x: ev.delta_x,
             delta_y: ev.delta_y,
@@ -164,7 +164,7 @@ impl WefDesktopApi {
       })
       .on_cursor_enter_leave(move |ev| {
         let _ = cursor_tx.try_send(
-          deno_runtime::ops::desktop::DesktopEvent::CursorEnterLeave {
+          ende_runtime::ops::desktop::DesktopEvent::CursorEnterLeave {
             window_id: ev.window_id,
             entered: ev.entered,
             client_x: ev.x,
@@ -178,7 +178,7 @@ impl WefDesktopApi {
       })
       .on_focused(move |ev| {
         let _ = focus_tx.try_send(
-          deno_runtime::ops::desktop::DesktopEvent::FocusChanged {
+          ende_runtime::ops::desktop::DesktopEvent::FocusChanged {
             window_id: ev.window_id,
             focused: ev.focused,
           },
@@ -186,7 +186,7 @@ impl WefDesktopApi {
       })
       .on_resize(move |ev| {
         let _ = resize_tx.try_send(
-          deno_runtime::ops::desktop::DesktopEvent::WindowResize {
+          ende_runtime::ops::desktop::DesktopEvent::WindowResize {
             window_id: ev.window_id,
             width: ev.width,
             height: ev.height,
@@ -195,7 +195,7 @@ impl WefDesktopApi {
       })
       .on_move(move |ev| {
         let _ = move_tx.try_send(
-          deno_runtime::ops::desktop::DesktopEvent::WindowMove {
+          ende_runtime::ops::desktop::DesktopEvent::WindowMove {
             window_id: ev.window_id,
             x: ev.x,
             y: ev.y,
@@ -207,7 +207,7 @@ impl WefDesktopApi {
           laufey::Window::from_id(ev.window_id).show();
         }
         let _ = page_load_tx.try_send(
-          deno_runtime::ops::desktop::DesktopEvent::PageLoad {
+          ende_runtime::ops::desktop::DesktopEvent::PageLoad {
             window_id: ev.window_id,
           },
         );
@@ -216,7 +216,7 @@ impl WefDesktopApi {
         closed_windows.lock().unwrap().insert(ev.window_id);
         open_windows_on_close.lock().unwrap().remove(&ev.window_id);
         let _ = close_tx.try_send(
-          deno_runtime::ops::desktop::DesktopEvent::CloseRequested {
+          ende_runtime::ops::desktop::DesktopEvent::CloseRequested {
             window_id: ev.window_id,
           },
         );
@@ -259,7 +259,7 @@ impl WefDesktopApi {
   }
 }
 
-impl denort::desktop::DesktopApi for WefDesktopApi {
+impl endert::desktop::DesktopApi for WefDesktopApi {
   fn create_window(
     &self,
     width: i32,
@@ -397,8 +397,8 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
     callback: Box<
       dyn FnOnce(
           Result<
-            deno_runtime::ops::desktop::DesktopValue,
-            deno_runtime::ops::desktop::DesktopValue,
+            ende_runtime::ops::desktop::DesktopValue,
+            ende_runtime::ops::desktop::DesktopValue,
           >,
         ) + Send
         + 'static,
@@ -411,10 +411,10 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
         // rejection rather than taken as a successful result.
         callback(match result {
           Ok(val) => laufey_value_to_desktop_value(val)
-            .map_err(deno_runtime::ops::desktop::DesktopValue::String),
+            .map_err(ende_runtime::ops::desktop::DesktopValue::String),
           Err(err) => Err(
             laufey_value_to_desktop_value(err)
-              .unwrap_or_else(deno_runtime::ops::desktop::DesktopValue::String),
+              .unwrap_or_else(ende_runtime::ops::desktop::DesktopValue::String),
           ),
         });
       }),
@@ -452,8 +452,8 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
           };
           let (resp_tx, resp_rx) = tokio::sync::oneshot::channel();
           let call_id =
-            deno_runtime::ops::desktop::register_bind_call(&responses, resp_tx);
-          let event = deno_runtime::ops::desktop::DesktopEvent::BindCall {
+            ende_runtime::ops::desktop::register_bind_call(&responses, resp_tx);
+          let event = ende_runtime::ops::desktop::DesktopEvent::BindCall {
             // Attribute the call to the window the binding was registered on,
             // not to `js_call.window_id`. The backend's per-call renderer id
             // can drift from the id `bind()` recorded the callback under (seen
@@ -511,7 +511,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
   fn set_application_menu(
     &self,
     window_id: u32,
-    menu: Vec<denort::desktop::MenuItem>,
+    menu: Vec<endert::desktop::MenuItem>,
   ) {
     let menu = menu
       .into_iter()
@@ -520,7 +520,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
     let tx = self.event_tx.clone();
     laufey::Window::from_id(window_id).set_menu(&menu, move |id: &str| {
       let _ =
-        tx.try_send(deno_runtime::ops::desktop::DesktopEvent::AppMenuClick {
+        tx.try_send(ende_runtime::ops::desktop::DesktopEvent::AppMenuClick {
           window_id,
           id: id.to_string(),
         });
@@ -532,7 +532,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
     window_id: u32,
     x: i32,
     y: i32,
-    menu: Vec<denort::desktop::MenuItem>,
+    menu: Vec<endert::desktop::MenuItem>,
   ) {
     let menu = menu
       .into_iter()
@@ -545,7 +545,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
       &menu,
       move |id: &str| {
         let _ = tx.try_send(
-          deno_runtime::ops::desktop::DesktopEvent::ContextMenuClick {
+          ende_runtime::ops::desktop::DesktopEvent::ContextMenuClick {
             window_id,
             id: id.to_string(),
           },
@@ -658,7 +658,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
     });
   }
 
-  fn set_dock_menu(&self, menu: Option<Vec<denort::desktop::MenuItem>>) {
+  fn set_dock_menu(&self, menu: Option<Vec<endert::desktop::MenuItem>>) {
     match menu {
       Some(menu) => {
         let menu = menu
@@ -668,7 +668,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
         let tx = self.event_tx.clone();
         laufey::set_dock_menu(&menu, move |id: &str| {
           let _ = tx.try_send(
-            deno_runtime::ops::desktop::DesktopEvent::DockMenuClick {
+            ende_runtime::ops::desktop::DesktopEvent::DockMenuClick {
               id: id.to_string(),
             },
           );
@@ -691,13 +691,13 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
     let click_tx = self.event_tx.clone();
     let tray = tray.on_click(move || {
       let _ = click_tx.try_send(
-        deno_runtime::ops::desktop::DesktopEvent::TrayClick { tray_id },
+        ende_runtime::ops::desktop::DesktopEvent::TrayClick { tray_id },
       );
     });
     let dblclick_tx = self.event_tx.clone();
     tray.set_double_click_handler(move || {
       let _ = dblclick_tx.try_send(
-        deno_runtime::ops::desktop::DesktopEvent::TrayDoubleClick { tray_id },
+        ende_runtime::ops::desktop::DesktopEvent::TrayDoubleClick { tray_id },
       );
     });
     self.trays.lock().unwrap().insert(tray_id, tray);
@@ -729,7 +729,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
   fn set_tray_menu(
     &self,
     tray_id: u32,
-    menu: Option<Vec<denort::desktop::MenuItem>>,
+    menu: Option<Vec<endert::desktop::MenuItem>>,
   ) {
     let trays = self.trays.lock().unwrap();
     let Some(tray) = trays.get(&tray_id) else {
@@ -744,7 +744,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
         let tx = self.event_tx.clone();
         tray.set_menu(&menu, move |id: &str| {
           let _ = tx.try_send(
-            deno_runtime::ops::desktop::DesktopEvent::TrayMenuClick {
+            ende_runtime::ops::desktop::DesktopEvent::TrayMenuClick {
               tray_id,
               id: id.to_string(),
             },
@@ -803,24 +803,24 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
       use laufey::NotificationEvent;
       let desktop_event = match event {
         NotificationEvent::Shown => {
-          deno_runtime::ops::desktop::DesktopEvent::NotificationShow {
+          ende_runtime::ops::desktop::DesktopEvent::NotificationShow {
             notification_id: nid,
           }
         }
         NotificationEvent::Clicked => {
-          deno_runtime::ops::desktop::DesktopEvent::NotificationClick {
+          ende_runtime::ops::desktop::DesktopEvent::NotificationClick {
             notification_id: nid,
           }
         }
         NotificationEvent::Closed => {
-          deno_runtime::ops::desktop::DesktopEvent::NotificationClose {
+          ende_runtime::ops::desktop::DesktopEvent::NotificationClose {
             notification_id: nid,
           }
         }
         // The Web Notification API has no "action" event in window context;
         // surface action button clicks as a click event for compatibility.
         NotificationEvent::Action(_) => {
-          deno_runtime::ops::desktop::DesktopEvent::NotificationClick {
+          ende_runtime::ops::desktop::DesktopEvent::NotificationClick {
             notification_id: nid,
           }
         }
@@ -837,7 +837,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
       // Backend doesn't support notifications. Emit a synthetic error
       // event so the user can observe the failure.
       let _ = self.event_tx.try_send(
-        deno_runtime::ops::desktop::DesktopEvent::NotificationError {
+        ende_runtime::ops::desktop::DesktopEvent::NotificationError {
           notification_id: 0,
         },
       );
@@ -859,7 +859,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
   fn request_notification_permission(
     &self,
     cb: Box<
-      dyn FnOnce(deno_runtime::ops::desktop::PermissionState) + Send + 'static,
+      dyn FnOnce(ende_runtime::ops::desktop::PermissionState) + Send + 'static,
     >,
   ) {
     laufey::request_permission(
@@ -871,7 +871,7 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
   fn query_notification_permission(
     &self,
     cb: Box<
-      dyn FnOnce(deno_runtime::ops::desktop::PermissionState) + Send + 'static,
+      dyn FnOnce(ende_runtime::ops::desktop::PermissionState) + Send + 'static,
     >,
   ) {
     laufey::query_permission(
@@ -883,8 +883,8 @@ impl denort::desktop::DesktopApi for WefDesktopApi {
 
 fn map_permission_status(
   status: laufey::PermissionStatus,
-) -> deno_runtime::ops::desktop::PermissionState {
-  use deno_runtime::ops::desktop::PermissionState;
+) -> ende_runtime::ops::desktop::PermissionState {
+  use ende_runtime::ops::desktop::PermissionState;
   match status {
     laufey::PermissionStatus::Granted => PermissionState::Granted,
     laufey::PermissionStatus::Denied => PermissionState::Denied,
@@ -894,10 +894,10 @@ fn map_permission_status(
 }
 
 fn desktop_menu_item_to_laufey_menu_item(
-  item: denort::desktop::MenuItem,
+  item: endert::desktop::MenuItem,
 ) -> laufey::MenuItem {
   match item {
-    denort::desktop::MenuItem::Item {
+    endert::desktop::MenuItem::Item {
       label,
       id,
       accelerator,
@@ -914,7 +914,7 @@ fn desktop_menu_item_to_laufey_menu_item(
       icon,
       tooltip,
     },
-    denort::desktop::MenuItem::Submenu { label, items } => {
+    endert::desktop::MenuItem::Submenu { label, items } => {
       laufey::MenuItem::Submenu {
         label,
         items: items
@@ -923,8 +923,8 @@ fn desktop_menu_item_to_laufey_menu_item(
           .collect(),
       }
     }
-    denort::desktop::MenuItem::Separator => laufey::MenuItem::Separator,
-    denort::desktop::MenuItem::Role { role } => laufey::MenuItem::Role { role },
+    endert::desktop::MenuItem::Separator => laufey::MenuItem::Separator,
+    endert::desktop::MenuItem::Role { role } => laufey::MenuItem::Role { role },
   }
 }
 
@@ -1263,8 +1263,8 @@ laufey::main!(|| {
     let orig_hook = std::panic::take_hook();
     #[allow(clippy::print_stderr, reason = "panic hook")]
     std::panic::set_hook(Box::new(move |panic_info| {
-      use deno_runtime::ops::desktop::error_report_config;
-      use deno_runtime::ops::desktop::send_error_report;
+      use ende_runtime::ops::desktop::error_report_config;
+      use ende_runtime::ops::desktop::send_error_report;
 
       if let Some((url, app_version)) = error_report_config() {
         let message = if let Some(s) =
@@ -1281,7 +1281,7 @@ laufey::main!(|| {
           .location()
           .map(|l| format!("at {}:{}:{}", l.file(), l.line(), l.column()));
 
-        let body = deno_core::serde_json::json!({
+        let body = ende_core::serde_json::json!({
           "version": 1,
           "message": message,
           "stack": location,
@@ -1302,13 +1302,13 @@ laufey::main!(|| {
       eprintln!();
 
       orig_hook(panic_info);
-      deno_runtime::exit(1);
+      ende_runtime::exit(1);
     }));
   }
 
-  denort::init_logging(None, None);
+  endert::init_logging(None, None);
 
-  deno_runtime::deno_permissions::mark_standalone();
+  ende_runtime::ende_permissions::mark_standalone();
 
   rustls::crypto::aws_lc_rs::default_provider()
     .install_default()
@@ -1345,7 +1345,7 @@ laufey::main!(|| {
   // worker / async tasks it spawns) would race with code that resolves
   // relative paths.
   let args: Vec<_> = env::args_os().collect();
-  let data = match denort::binary::extract_standalone_with_finder(
+  let data = match endert::binary::extract_standalone_with_finder(
     Cow::Owned(args),
     find_section_in_dylib,
   ) {
@@ -1357,7 +1357,7 @@ laufey::main!(|| {
   };
   if data.metadata.self_extracting.is_some() {
     if let Err(e) =
-      denort::binary::extract_vfs_to_disk(&data.vfs, &data.root_path)
+      endert::binary::extract_vfs_to_disk(&data.vfs, &data.root_path)
     {
       log::error!("[desktop] failed to extract VFS: {:?}", e);
       return;
@@ -1379,7 +1379,7 @@ laufey::main!(|| {
   // dedicated thread with a real stack; the loader thread just parks in
   // `join` (inside `run_on_runtime_thread`) until the app exits.
   run_on_runtime_thread(move || {
-    let rt = deno_runtime::tokio_util::create_basic_runtime();
+    let rt = ende_runtime::tokio_util::create_basic_runtime();
 
     rt.block_on(async {
       log::debug!("[desktop] run_desktop starting");
@@ -1388,9 +1388,9 @@ laufey::main!(|| {
         Err(error) => {
           // A failure raised while the app's main module was still loading or
           // first evaluating is tagged `DesktopStartupError` (see
-          // `denort::run`). It carries its own pre-formatted message.
+          // `endert::run`). It carries its own pre-formatted message.
           let startup =
-            error.downcast_ref::<denort::run::DesktopStartupError>();
+            error.downcast_ref::<endert::run::DesktopStartupError>();
           let error_string = match startup {
             Some(startup) => startup.message.clone(),
             None => match js_error_downcast_ref(&error) {
@@ -1452,20 +1452,20 @@ fn run_on_runtime_thread<F: FnOnce() + Send + 'static>(f: F) {
   if thread.join().is_err() {
     // The runtime thread panicked. The panic hook normally exits the
     // process itself; this is a backstop in case it returned.
-    deno_runtime::exit(1);
+    ende_runtime::exit(1);
   }
 }
 
 /// Run as a headless worker (no Laufey window). Used when a framework dev
 /// server forks child processes that re-execute this dylib.
 fn run_headless_worker() {
-  denort::init_logging(None, None);
-  deno_runtime::deno_permissions::mark_standalone();
+  endert::init_logging(None, None);
+  ende_runtime::ende_permissions::mark_standalone();
   rustls::crypto::aws_lc_rs::default_provider()
     .install_default()
     .unwrap();
 
-  let rt = deno_runtime::tokio_util::create_basic_runtime();
+  let rt = ende_runtime::tokio_util::create_basic_runtime();
 
   rt.block_on(async {
     let args: Vec<_> = env::args_os().collect();
@@ -1484,7 +1484,7 @@ fn run_headless_worker() {
     let fork_module = extract_fork_script_path(&args);
     log::debug!("[worker] fork_module: {:?}", fork_module);
 
-    let data = match denort::binary::extract_standalone_with_finder(
+    let data = match endert::binary::extract_standalone_with_finder(
       Cow::Owned(args),
       find_section_in_dylib,
     ) {
@@ -1495,7 +1495,7 @@ fn run_headless_worker() {
       }
     };
 
-    denort::load_env_vars(&data.metadata.env_vars_from_env_file);
+    endert::load_env_vars(&data.metadata.env_vars_from_env_file);
 
     let sys = if data.metadata.self_extracting.is_some() {
       // VFS should already be extracted by the parent process.
@@ -1508,19 +1508,19 @@ fn run_headless_worker() {
       {
         let _ = std::env::set_current_dir(&data.root_path);
       }
-      denort::file_system::DenoRtSys::new_self_extracting(data.vfs.clone())
+      endert::file_system::DenoRtSys::new_self_extracting(data.vfs.clone())
     } else {
-      denort::file_system::DenoRtSys::new(data.vfs.clone())
+      endert::file_system::DenoRtSys::new(data.vfs.clone())
     };
 
-    let options = denort::run::RunOptions {
+    let options = endert::run::RunOptions {
       override_main_module: fork_module,
       ..Default::default()
     };
 
     log::debug!("[worker] starting run_with_options");
 
-    match denort::run::run_with_options(
+    match endert::run::run_with_options(
       Arc::new(sys.clone()),
       sys,
       data,
@@ -1559,7 +1559,7 @@ fn run_headless_worker() {
 /// This function finds the script path (first non-flag arg after "run").
 fn extract_fork_script_path(
   args: &[std::ffi::OsString],
-) -> Option<deno_core::url::Url> {
+) -> Option<ende_core::url::Url> {
   let args: Vec<String> = args
     .iter()
     .filter_map(|a| a.to_str().map(String::from))
@@ -1582,12 +1582,12 @@ fn extract_fork_script_path(
     } else {
       #[allow(
         clippy::disallowed_methods,
-        reason = "denort_desktop has no resolve_cwd helper; resolves a relative fork-script path"
+        reason = "endert_desktop has no resolve_cwd helper; resolves a relative fork-script path"
       )]
       let cwd = env::current_dir().ok()?;
       cwd.join(path)
     };
-    return deno_core::url::Url::from_file_path(path).ok();
+    return ende_core::url::Url::from_file_path(path).ok();
   }
   None
 }
@@ -1595,7 +1595,7 @@ fn extract_fork_script_path(
 /// Convert a laufey::Value to a DesktopValue for direct V8 conversion.
 fn laufey_value_to_desktop_value(
   v: laufey::Value,
-) -> Result<deno_runtime::ops::desktop::DesktopValue, String> {
+) -> Result<ende_runtime::ops::desktop::DesktopValue, String> {
   laufey_value_to_desktop_value_at(v, 0)
 }
 
@@ -1613,8 +1613,8 @@ fn laufey_value_to_desktop_value(
 fn laufey_value_to_desktop_value_at(
   v: laufey::Value,
   depth: usize,
-) -> Result<deno_runtime::ops::desktop::DesktopValue, String> {
-  use deno_runtime::ops::desktop::DesktopValue;
+) -> Result<ende_runtime::ops::desktop::DesktopValue, String> {
+  use ende_runtime::ops::desktop::DesktopValue;
   Ok(match v {
     laufey::Value::Null => DesktopValue::Null,
     laufey::Value::Bool(b) => DesktopValue::Bool(b),
@@ -1644,7 +1644,7 @@ fn laufey_value_to_desktop_value_at(
 }
 
 fn nested_depth(depth: usize) -> Result<usize, String> {
-  use deno_runtime::ops::desktop::MAX_DEPTH;
+  use ende_runtime::ops::desktop::MAX_DEPTH;
   match depth.checked_add(1).filter(|d| *d <= MAX_DEPTH) {
     Some(d) => Ok(d),
     None => Err(format!(
@@ -1658,9 +1658,9 @@ fn nested_depth(depth: usize) -> Result<usize, String> {
 /// `laufey::Value::Binary` so binding results carrying byte data arrive in
 /// the webview as a `Uint8Array` (denoland/deno#36498).
 fn desktop_value_to_laufey_value(
-  v: deno_runtime::ops::desktop::DesktopValue,
+  v: ende_runtime::ops::desktop::DesktopValue,
 ) -> laufey::Value {
-  use deno_runtime::ops::desktop::DesktopValue;
+  use ende_runtime::ops::desktop::DesktopValue;
   match v {
     DesktopValue::Null => laufey::Value::Null,
     DesktopValue::Bool(b) => laufey::Value::Bool(b),
@@ -1695,11 +1695,11 @@ fn find_section_in_dylib() -> Result<&'static [u8], AnyError> {
 async fn run_desktop(
   update_rolled_back: bool,
   desktop_serve_port: u16,
-  data: denort::binary::StandaloneData,
+  data: endert::binary::StandaloneData,
 ) -> Result<(), AnyError> {
   // Make the error reporting URL available to the panic hook.
   if let Some(ref url) = data.metadata.error_reporting_url {
-    deno_runtime::ops::desktop::set_error_report_config(
+    ende_runtime::ops::desktop::set_error_report_config(
       url.clone(),
       data.metadata.app_version.clone(),
     );
@@ -1709,21 +1709,21 @@ async fn run_desktop(
   // `laufey::main!` before the tokio runtime is built — chdir is
   // process-wide and isn't safe to do once async tasks are running.
   let sys = if data.metadata.self_extracting.is_some() {
-    denort::file_system::DenoRtSys::new_self_extracting(data.vfs.clone())
+    endert::file_system::DenoRtSys::new_self_extracting(data.vfs.clone())
   } else {
-    denort::file_system::DenoRtSys::new(data.vfs.clone())
+    endert::file_system::DenoRtSys::new(data.vfs.clone())
   };
 
-  deno_runtime::deno_telemetry::init(
+  ende_runtime::ende_telemetry::init(
     &sys,
     otel_runtime_config(),
     data.metadata.otel_config.clone(),
   )?;
-  denort::init_logging(
+  endert::init_logging(
     data.metadata.log_level,
     Some(data.metadata.otel_config.clone()),
   );
-  denort::load_env_vars(&data.metadata.env_vars_from_env_file);
+  endert::load_env_vars(&data.metadata.env_vars_from_env_file);
 
   // Wire up the Deno-side inspector when launched under
   // `deno desktop --inspect[-brk|-wait]`. The parent process binds the
@@ -1749,12 +1749,12 @@ async fn run_desktop(
   let inspect_brk = env::var("DENO_DESKTOP_INSPECT_BRK").is_ok();
   let inspect_wait = env::var("DENO_DESKTOP_INSPECT_WAIT").is_ok();
   if let Some(addr) = inspect_internal_port {
-    deno_runtime::deno_inspector_server::create_inspector_server(
+    ende_runtime::ende_inspector_server::create_inspector_server(
       addr,
       "deno-desktop",
       // Don't print the ws:// URL ourselves — DevTools attaches via the
       // parent mux's user-visible port.
-      deno_runtime::deno_inspector_server::InspectPublishUid {
+      ende_runtime::ende_inspector_server::InspectPublishUid {
         console: false,
         http: true,
       },
@@ -1802,7 +1802,7 @@ async fn run_desktop(
   let open_windows_for_api = open_windows.clone();
   let open_windows_for_hmr = open_windows.clone();
 
-  let hmr_on_reload: Option<denort::hmr::HmrReloadCallback> =
+  let hmr_on_reload: Option<endert::hmr::HmrReloadCallback> =
     if hmr_watch_dir.is_some() && !is_framework_dev {
       Some(Box::new(move || {
         let ids: Vec<u32> = open_windows_for_hmr
@@ -1826,14 +1826,14 @@ async fn run_desktop(
   // Desktop extension: provides Deno.desktop.* APIs + auto-update
   #[cfg(unix)]
   let auto_update_state = get_dylib_path().map(|p| {
-    denort::desktop::AutoUpdateState {
+    endert::desktop::AutoUpdateState {
       dylib_path: p,
       app_version: data.metadata.app_version.clone(),
       rolled_back: update_rolled_back, // from laufey::main! startup check
     }
   });
   #[cfg(not(unix))]
-  let auto_update_state: Option<denort::desktop::AutoUpdateState> = {
+  let auto_update_state: Option<endert::desktop::AutoUpdateState> = {
     // Auto-update rollback is only wired up on unix; consume the flag so the
     // parameter isn't flagged as unused on other platforms.
     let _ = update_rolled_back;
@@ -1862,8 +1862,8 @@ async fn run_desktop(
     hmr_on_reload,
     op_state_init: Some(Box::new(move |state| {
       let (event_tx, event_rx) =
-        denort::desktop::create_desktop_event_channel();
-      let pending_responses = denort::desktop::PendingBindResponses::new();
+        endert::desktop::create_desktop_event_channel();
+      let pending_responses = endert::desktop::PendingBindResponses::new();
       let api = WefDesktopApi {
         event_tx: event_tx.0.clone(),
         pending_responses: pending_responses.clone(),
@@ -1881,7 +1881,7 @@ async fn run_desktop(
         let reopen_tx = event_tx.0.clone();
         laufey::on_dock_reopen(move |has_visible_windows| {
           let _ = reopen_tx.try_send(
-            deno_runtime::ops::desktop::DesktopEvent::DockReopen {
+            ende_runtime::ops::desktop::DesktopEvent::DockReopen {
               has_visible_windows,
             },
           );
@@ -1903,7 +1903,7 @@ async fn run_desktop(
         api.set_title(window_id, name);
       }
 
-      denort::desktop::init_desktop_state(
+      endert::desktop::init_desktop_state(
         state,
         Box::new(api),
         auto_update_state,
@@ -1911,11 +1911,11 @@ async fn run_desktop(
       state.put(event_rx);
       state.put(event_tx);
       state.put(pending_responses);
-      state.put(denort::desktop::InitialWindowId(std::sync::Mutex::new(
+      state.put(endert::desktop::InitialWindowId(std::sync::Mutex::new(
         Some(window_id),
       )));
       if let Some(name) = app_name.filter(|n| !n.is_empty()) {
-        state.put(deno_runtime::ops::desktop::DesktopAppName(name));
+        state.put(ende_runtime::ops::desktop::DesktopAppName(name));
       }
     })),
     override_main_module: None,
@@ -1936,7 +1936,7 @@ async fn run_desktop(
     .unwrap_or_else(|| format!("http://127.0.0.1:{}", desktop_serve_port));
   log::debug!("[desktop] starting runtime and laufey event loop");
   let run_fut =
-    denort::run::run_with_options(Arc::new(sys.clone()), sys, data, run_opts);
+    endert::run::run_with_options(Arc::new(sys.clone()), sys, data, run_opts);
   let laufey_fut = laufey::run();
 
   // Wait for the server to be ready, then navigate the initial window.
@@ -2058,7 +2058,7 @@ async fn run_desktop(
 mod tests {
   use std::ffi::OsString;
 
-  use deno_runtime::ops::desktop::PermissionState;
+  use ende_runtime::ops::desktop::PermissionState;
 
   use super::desktop_menu_item_to_laufey_menu_item;
   use super::desktop_value_to_laufey_value;
@@ -2185,7 +2185,7 @@ mod tests {
 
   #[test]
   fn menu_item_conversion_preserves_fields() {
-    let item = denort::desktop::MenuItem::Item {
+    let item = endert::desktop::MenuItem::Item {
       label: "Save".into(),
       id: Some("file.save".into()),
       accelerator: Some("CmdOrCtrl+S".into()),
@@ -2218,10 +2218,10 @@ mod tests {
 
   #[test]
   fn menu_item_conversion_recurses_into_submenus() {
-    let item = denort::desktop::MenuItem::Submenu {
+    let item = endert::desktop::MenuItem::Submenu {
       label: "File".into(),
       items: vec![
-        denort::desktop::MenuItem::Item {
+        endert::desktop::MenuItem::Item {
           label: "Open".into(),
           id: Some("open".into()),
           accelerator: None,
@@ -2230,8 +2230,8 @@ mod tests {
           icon: None,
           tooltip: None,
         },
-        denort::desktop::MenuItem::Separator,
-        denort::desktop::MenuItem::Role {
+        endert::desktop::MenuItem::Separator,
+        endert::desktop::MenuItem::Role {
           role: "quit".into(),
         },
       ],
@@ -2260,7 +2260,7 @@ mod tests {
 
   #[test]
   fn laufey_value_to_desktop_value_covers_every_variant() {
-    use deno_runtime::ops::desktop::DesktopValue;
+    use ende_runtime::ops::desktop::DesktopValue;
     let conv = |v| laufey_value_to_desktop_value(v).unwrap();
     assert!(matches!(conv(laufey::Value::Null), DesktopValue::Null));
     assert!(matches!(
@@ -2284,7 +2284,7 @@ mod tests {
 
   #[test]
   fn laufey_value_to_desktop_value_recurses() {
-    use deno_runtime::ops::desktop::DesktopValue;
+    use ende_runtime::ops::desktop::DesktopValue;
     let v = laufey::Value::List(vec![
       laufey::Value::Int(1),
       laufey::Value::List(vec![laufey::Value::String("nested".into())]),
@@ -2305,7 +2305,7 @@ mod tests {
 
   #[test]
   fn laufey_value_to_desktop_value_bounds_renderer_depth() {
-    use deno_runtime::ops::desktop::MAX_DEPTH;
+    use ende_runtime::ops::desktop::MAX_DEPTH;
     // Binding arguments come from the renderer, so their nesting is whatever
     // the page sent. This conversion recurses per level and `to_v8` recurses
     // over the result again, so an unbounded value would walk the runtime
@@ -2515,7 +2515,7 @@ mod tests {
 
   #[test]
   fn desktop_value_to_laufey_handles_nested_arrays_and_objects() {
-    use deno_runtime::ops::desktop::DesktopValue;
+    use ende_runtime::ops::desktop::DesktopValue;
     let dv = DesktopValue::Dict(vec![
       (
         "list".into(),

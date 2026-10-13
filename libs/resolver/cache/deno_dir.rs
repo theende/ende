@@ -3,8 +3,8 @@
 use std::env;
 use std::path::PathBuf;
 
-use deno_cache_dir::DenoDirResolutionError;
-use deno_cache_dir::ResolveDenoDirSys;
+use ende_cache_dir::DenoDirResolutionError;
+use ende_cache_dir::ResolveDenoDirSys;
 
 use super::DiskCache;
 use super::DiskCacheSys;
@@ -20,7 +20,7 @@ pub trait DenoDirSys: DiskCacheSys + ResolveDenoDirSys + Clone {}
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type DenoDirProviderRc<TSys> =
-  deno_maybe_sync::MaybeArc<DenoDirProvider<TSys>>;
+  ende_maybe_sync::MaybeArc<DenoDirProvider<TSys>>;
 
 /// Lazily creates the deno dir which might be useful in scenarios
 /// where functionality wants to continue if the DENO_DIR can't be created.
@@ -43,9 +43,9 @@ impl<TSys: DenoDirSys> DenoDirProvider<TSys> {
     &self,
   ) -> Result<&DenoDir<TSys>, DenoDirResolutionError> {
     self.deno_dir_cell.get_or_try_init(|| {
-      let path = deno_cache_dir::resolve_deno_dir(
+      let path = ende_cache_dir::resolve_deno_dir(
         &self.sys,
-        deno_cache_dir::ResolveDenoDirOptions {
+        ende_cache_dir::ResolveDenoDirOptions {
           maybe_custom_root: self.options.maybe_custom_root.as_deref(),
           maybe_initial_cwd: self.options.maybe_initial_cwd.as_deref(),
         },

@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_ffi"
+name = "ende_ffi"
 version = "0.246.0"
 authors.workspace = true
 edition.workspace = true
@@ -16,11 +16,11 @@ path = "lib.rs"
 [dependencies]
 cranelift.workspace = true
 cranelift-native.workspace = true
-deno_core.workspace = true
 deno_error.workspace = true
-deno_permissions.workspace = true
-denort_helper.workspace = true
 dlopen2.workspace = true
+ende_core.workspace = true
+ende_permissions.workspace = true
+endert_helper.workspace = true
 libffi.workspace = true
 log.workspace = true
 memmap2.workspace = true

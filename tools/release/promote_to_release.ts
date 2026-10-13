@@ -16,8 +16,8 @@ const SUPPORTED_TARGETS = [
 ];
 
 const DENO_BINARIES = [
-  "deno",
-  "denort",
+  "ende",
+  "endert",
 ];
 
 // Target platform filtering
@@ -141,7 +141,7 @@ async function runRcodesign(
   binaryName: string,
   commitHash: string,
 ) {
-  if (!target.includes("apple") || binaryName.includes("denort")) {
+  if (!target.includes("apple") || binaryName.includes("endert")) {
     return;
   }
   $.logStep(`Codesign ${binaryName}`);
@@ -164,7 +164,7 @@ async function runRcodesign(
     );
     Deno.exit(1);
   }
-  await $`codesign -dv --verbose=4 ./deno`;
+  await $`codesign -dv --verbose=4 ./ende`;
 }
 
 async function removeExistingSignature(target: string, binaryName: string) {
@@ -266,8 +266,8 @@ async function promoteBinariesToRc(commitHash: string) {
 
 async function dumpRcVersion() {
   $.logStep("Compute version");
-  await unzipArchive(getArchiveName("deno", Deno.build.target), "deno");
-  const output = await $`./deno -V`.stdout("piped");
+  await unzipArchive(getArchiveName("ende", Deno.build.target), "ende");
+  const output = await $`./ende -V`.stdout("piped");
   const denoVersion = output.stdout.slice(5).split("+")[0];
   $.logStep("Computed version", denoVersion);
   await Deno.writeTextFile(

@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_core"
+name = "ende_core"
 version = "0.412.0"
 authors.workspace = true
 edition.workspace = true
@@ -37,9 +37,9 @@ bytes.workspace = true
 cooked-waker.workspace = true
 deno_core_icudata = { workspace = true, optional = true }
 deno_error = { workspace = true, features = ["serde_json", "serde", "url", "tokio"] }
-deno_ops.workspace = true
 deno_path_util.workspace = true
 deno_unsync = { workspace = true, features = ["tokio"] }
+ende_ops.workspace = true
 futures.workspace = true
 indexmap.workspace = true
 inventory = "0.3.21"

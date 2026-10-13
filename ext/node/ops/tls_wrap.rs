@@ -34,25 +34,25 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 
-use deno_core::CppgcInherits;
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::ToJsBuffer;
-use deno_core::V8TaskSpawner;
-use deno_core::op2;
-use deno_core::uv_compat;
-use deno_core::uv_compat::UV_EBADF;
-use deno_core::uv_compat::UV_ECANCELED;
-use deno_core::uv_compat::UV_EOF;
-use deno_core::uv_compat::uv_buf_t;
-use deno_core::uv_compat::uv_stream_t;
-use deno_core::uv_compat::uv_write_t;
-use deno_core::v8;
-use deno_core::v8_static_strings;
-use deno_node_crypto::x509::Certificate;
-use deno_node_crypto::x509::CertificateObject;
-use deno_tls::rustls;
-use deno_tls::rustls_pemfile;
+use ende_core::CppgcInherits;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::ToJsBuffer;
+use ende_core::V8TaskSpawner;
+use ende_core::op2;
+use ende_core::uv_compat;
+use ende_core::uv_compat::UV_EBADF;
+use ende_core::uv_compat::UV_ECANCELED;
+use ende_core::uv_compat::UV_EOF;
+use ende_core::uv_compat::uv_buf_t;
+use ende_core::uv_compat::uv_stream_t;
+use ende_core::uv_compat::uv_write_t;
+use ende_core::v8;
+use ende_core::v8_static_strings;
+use ende_node_crypto::x509::Certificate;
+use ende_node_crypto::x509::CertificateObject;
+use ende_tls::rustls;
+use ende_tls::rustls_pemfile;
 
 use crate::ops::handle_wrap::AsyncWrap;
 use crate::ops::handle_wrap::HandleWrap;
@@ -3192,7 +3192,7 @@ impl TLSWrap {
     // We borrow op_state in a limited scope so it is released before
     // any reentrant V8 calls (cycle / do_emit_error) which may trigger
     // prepare_stack_trace_callback, which also borrows op_state.
-    let op_state_rc = deno_core::JsRuntime::op_state_from(scope);
+    let op_state_rc = ende_core::JsRuntime::op_state_from(scope);
     let (mut server_config, client_cert_verify_error) = {
       let mut op_state = op_state_rc.borrow_mut();
       match build_server_config(scope, context, &mut op_state) {
@@ -3409,7 +3409,7 @@ impl TLSWrap {
           &ctx,
           onread.as_ref(),
           state.as_ref(),
-          deno_core::uv_compat::UV_EOF as isize,
+          ende_core::uv_compat::UV_EOF as isize,
           None,
         );
       }
@@ -4142,9 +4142,9 @@ fn build_client_config(
   op_state: &mut OpState,
   allow_resumption: Arc<AtomicBool>,
 ) -> Option<(rustls::ClientConfig, VerifyErrorStore)> {
-  use deno_net::DefaultTlsOptions;
-  use deno_tls::TlsKeys;
-  use deno_tls::TlsKeysHolder;
+  use ende_net::DefaultTlsOptions;
+  use ende_tls::TlsKeys;
+  use ende_tls::TlsKeysHolder;
 
   let reject_unauthorized =
     get_js_bool(scope, context, "rejectUnauthorized", true);
@@ -4221,7 +4221,7 @@ fn build_client_config(
         .flatten();
 
     if let Some(private_key) = private_key {
-      TlsKeysHolder::from(TlsKeys::Static(deno_tls::TlsKey(certs, private_key)))
+      TlsKeysHolder::from(TlsKeys::Static(ende_tls::TlsKey(certs, private_key)))
     } else {
       TlsKeysHolder::from(TlsKeys::Null)
     }
@@ -4229,11 +4229,11 @@ fn build_client_config(
     TlsKeysHolder::from(TlsKeys::Null)
   };
 
-  // Fall back to the default Mozilla root cert store (same as deno_tls's
+  // Fall back to the default Mozilla root cert store (same as ende_tls's
   // own `create_client_config`).  The old `RootCertStore::empty()` caused
   // every TLS connection without explicit CA options to fail verification.
   let mut root_cert_store =
-    root_cert_store.unwrap_or_else(deno_tls::create_default_root_cert_store);
+    root_cert_store.unwrap_or_else(ende_tls::create_default_root_cert_store);
   let empty_explicit_ca = !use_default_ca && ca_certs.is_empty();
 
   // Collect raw DER bytes of root certs so NodeServerCertVerifier can
@@ -4285,7 +4285,7 @@ fn build_client_config(
       .with_root_certificates(root_cert_store.clone());
 
   let mut config = match maybe_cert_chain_and_key {
-    TlsKeys::Static(deno_tls::TlsKey(cert_chain, private_key)) => {
+    TlsKeys::Static(ende_tls::TlsKey(cert_chain, private_key)) => {
       // `with_client_auth_cert` internally calls `CertifiedKey::keys_match()`
       // which parses the end-entity cert via webpki and rejects X.509v1 certs
       // with `UnsupportedCertVersion`.  Node uses OpenSSL, which accepts v1
@@ -4391,7 +4391,7 @@ fn build_client_config(
   } else {
     let store: VerifyErrorStore = Default::default();
     let verifier_root_store = if empty_explicit_ca {
-      deno_tls::create_default_root_cert_store()
+      ende_tls::create_default_root_cert_store()
     } else {
       root_cert_store.clone()
     };

@@ -21,22 +21,22 @@ use deno_ast::MediaType;
 use deno_ast::ParsedSource;
 use deno_ast::SourceTextInfo;
 use deno_ast::swc::ecma_visit::VisitWith;
-use deno_core::ModuleSpecifier;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::futures::future;
-use deno_core::futures::future::Shared;
-use deno_core::parking_lot::RwLock;
-use deno_core::resolve_url;
-use deno_core::url::Position;
-use deno_core::url::Url;
 use deno_error::JsErrorBox;
 use deno_graph::TypesDependency;
 use deno_path_util::url_to_file_path;
-use deno_resolver::deno_json::CompilerOptionsKey;
-use deno_runtime::deno_node;
 use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_core::ModuleSpecifier;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::futures::future;
+use ende_core::futures::future::Shared;
+use ende_core::parking_lot::RwLock;
+use ende_core::resolve_url;
+use ende_core::url::Position;
+use ende_core::url::Url;
+use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_runtime::ende_node;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use lsp_types::Uri;
@@ -190,7 +190,7 @@ fn data_url_to_uri(url: &Url) -> Option<Uri> {
   } else {
     media_type.as_ts_extension()
   };
-  let hash = deno_lib::util::checksum::r#gen(&[url.as_str().as_bytes()]);
+  let hash = ende_lib::util::checksum::r#gen(&[url.as_str().as_bytes()]);
   let mut encoded_path =
     fluent_uri::pct_enc::EString::<fluent_uri::pct_enc::encoder::Path>::new();
   encoded_path.encode_str::<fluent_uri::pct_enc::encoder::Path>("/");
@@ -207,7 +207,7 @@ fn data_url_to_uri(url: &Url) -> Option<Uri> {
   Some(uri)
 }
 
-#[derive(Debug, Clone, deno_core::ToV8)]
+#[derive(Debug, Clone, ende_core::ToV8)]
 #[to_v8(untagged)]
 pub enum DocumentText {
   Static(&'static str),
@@ -1934,7 +1934,7 @@ impl DocumentModules {
     compiler_options_key: Option<&CompilerOptionsKey>,
   ) -> Option<(Url, MediaType, Option<Arc<Uri>>)> {
     if let Some(module_name) = specifier.as_str().strip_prefix("node:")
-      && deno_node::is_builtin_node_module(module_name)
+      && ende_node::is_builtin_node_module(module_name)
     {
       // Don't resolve node: specifiers because during type checking we resolve
       // to the ambient modules in the @types/node package.
@@ -2372,9 +2372,9 @@ fn bytes_to_content(
 
 #[cfg(test)]
 mod tests {
-  use deno_config::deno_json::ConfigFile;
-  use deno_core::serde_json;
-  use deno_core::serde_json::json;
+  use ende_config::deno_json::ConfigFile;
+  use ende_core::serde_json;
+  use ende_core::serde_json::json;
   use pretty_assertions::assert_eq;
   use test_util::TempDir;
 

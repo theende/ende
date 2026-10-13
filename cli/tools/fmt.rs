@@ -21,16 +21,16 @@ use std::sync::atomic::Ordering;
 
 use async_trait::async_trait;
 use deno_ast::ParsedSource;
-use deno_config::deno_json::NewLineKind;
-use deno_config::glob::FileCollector;
-use deno_config::glob::FilePatterns;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::anyhow;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::futures;
-use deno_core::parking_lot::Mutex;
-use deno_core::unsync::spawn_blocking;
+use ende_config::deno_json::NewLineKind;
+use ende_config::glob::FileCollector;
+use ende_config::glob::FilePatterns;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::anyhow;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::futures;
+use ende_core::parking_lot::Mutex;
+use ende_core::unsync::spawn_blocking;
 use log::debug;
 use log::info;
 use log::warn;
@@ -580,7 +580,7 @@ fn create_external_formatter_for_typescript(
   &str,
   String,
   &dprint_plugin_typescript::configuration::Configuration,
-) -> deno_core::anyhow::Result<Option<String>>
+) -> ende_core::anyhow::Result<Option<String>>
 + use<> {
   let unstable_sql = unstable_options.sql;
   move |lang, text, config| match lang {
@@ -611,7 +611,7 @@ fn create_external_formatter_for_typescript(
 fn format_embedded_css(
   text: &str,
   config: &dprint_plugin_typescript::configuration::Configuration,
-) -> deno_core::anyhow::Result<Option<String>> {
+) -> ende_core::anyhow::Result<Option<String>> {
   let lax_css_config = lax_css::configuration::Configuration {
     line_width: config.line_width,
     use_tabs: config.use_tabs,
@@ -652,7 +652,7 @@ fn format_embedded_html(
   _lang: &str,
   text: &str,
   config: &dprint_plugin_typescript::configuration::Configuration,
-) -> deno_core::anyhow::Result<Option<String>> {
+) -> ende_core::anyhow::Result<Option<String>> {
   let markup_config = lax_markup::configuration::Configuration {
     line_width: config.line_width,
     use_tabs: config.use_tabs,
@@ -727,7 +727,7 @@ fn dedent_embedded(text: &str) -> String {
 fn format_embedded_sql(
   text: &str,
   config: &dprint_plugin_typescript::configuration::Configuration,
-) -> deno_core::anyhow::Result<Option<String>> {
+) -> ende_core::anyhow::Result<Option<String>> {
   let sql_config = get_resolved_lax_sql_config(
     config.line_width,
     config.use_tabs,
@@ -998,7 +998,7 @@ impl Formatter for CheckFormatter {
             }
             let _g = output_lock.lock();
             let diff =
-              deno_resolver::display::diff(&file.text, &formatted_text);
+              ende_resolver::display::diff(&file.text, &formatted_text);
             info!("");
             info!("{} {}:", colors::bold("from"), file_path.display());
             if file.had_bom {
@@ -1285,8 +1285,8 @@ fn files_str(len: usize) -> &'static str {
 fn get_typescript_config_builder(
   options: &FmtOptionsConfig,
 ) -> dprint_plugin_typescript::configuration::ConfigurationBuilder {
-  use deno_config::deno_json::*;
   use dprint_plugin_typescript::configuration as dprint_config;
+  use ende_config::deno_json::*;
 
   let mut builder =
     dprint_plugin_typescript::configuration::ConfigurationBuilder::new();
@@ -1549,8 +1549,8 @@ fn get_resolved_markdown_config(
 fn get_resolved_json_config(
   options: &FmtOptionsConfig,
 ) -> dprint_plugin_json::configuration::Configuration {
-  use deno_config::deno_json::JsonTrailingCommaKind;
   use dprint_plugin_json::configuration::TrailingCommaKind;
+  use ende_config::deno_json::JsonTrailingCommaKind;
 
   let mut builder =
     dprint_plugin_json::configuration::ConfigurationBuilder::new();
@@ -1768,7 +1768,7 @@ fn is_supported_ext_fmt(path: &Path) -> bool {
 
 #[cfg(test)]
 mod test {
-  use deno_config::deno_json::JsonTrailingCommaKind;
+  use ende_config::deno_json::JsonTrailingCommaKind;
   use test_util::assert_starts_with;
 
   use super::*;

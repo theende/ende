@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::error::AnyError;
+use ende_core::error::AnyError;
 use imara_diff::Algorithm;
 use imara_diff::Diff;
 use imara_diff::InternedInput;

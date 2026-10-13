@@ -1,4 +1,4 @@
-# `deno_lockfile`
+# `ende_lockfile`
 
 [![](https://img.shields.io/crates/v/deno_lockfile.svg)](https://crates.io/crates/deno_lockfile)
 

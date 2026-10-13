@@ -24,37 +24,37 @@ use std::time::Duration;
 use std::time::Instant;
 
 use deno_ast::MediaType;
-use deno_cache_dir::file_fetcher::File;
-use deno_config::glob::FilePatterns;
-use deno_config::glob::WalkEntry;
-use deno_core::ModuleSpecifier;
-use deno_core::OpState;
-use deno_core::PollEventLoopOptions;
-use deno_core::anyhow;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::error::CoreError;
-use deno_core::error::CoreErrorKind;
-use deno_core::error::JsError;
-use deno_core::futures::StreamExt;
-use deno_core::futures::future;
-use deno_core::futures::stream;
-use deno_core::located_script_name;
-use deno_core::unsync::spawn;
-use deno_core::unsync::spawn_blocking;
-use deno_core::url::Url;
-use deno_core::v8;
 use deno_error::JsErrorBox;
-use deno_npm_installer::graph::NpmCachingStrategy;
-use deno_runtime::WorkerExecutionMode;
-use deno_runtime::coverage::CoverageCollector;
-use deno_runtime::deno_io::Stdio;
-use deno_runtime::deno_io::StdioPipe;
-use deno_runtime::deno_permissions::Permissions;
-use deno_runtime::deno_permissions::PermissionsContainer;
-use deno_runtime::permissions::RuntimePermissionDescriptorParser;
-use deno_runtime::tokio_util::create_and_run_current_thread;
-use deno_runtime::worker::MainWorker;
+use ende_cache_dir::file_fetcher::File;
+use ende_config::glob::FilePatterns;
+use ende_config::glob::WalkEntry;
+use ende_core::ModuleSpecifier;
+use ende_core::OpState;
+use ende_core::PollEventLoopOptions;
+use ende_core::anyhow;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::error::CoreError;
+use ende_core::error::CoreErrorKind;
+use ende_core::error::JsError;
+use ende_core::futures::StreamExt;
+use ende_core::futures::future;
+use ende_core::futures::stream;
+use ende_core::located_script_name;
+use ende_core::unsync::spawn;
+use ende_core::unsync::spawn_blocking;
+use ende_core::url::Url;
+use ende_core::v8;
+use ende_npm_installer::graph::NpmCachingStrategy;
+use ende_runtime::WorkerExecutionMode;
+use ende_runtime::coverage::CoverageCollector;
+use ende_runtime::ende_io::Stdio;
+use ende_runtime::ende_io::StdioPipe;
+use ende_runtime::ende_permissions::Permissions;
+use ende_runtime::ende_permissions::PermissionsContainer;
+use ende_runtime::permissions::RuntimePermissionDescriptorParser;
+use ende_runtime::tokio_util::create_and_run_current_thread;
+use ende_runtime::worker::MainWorker;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use log::Level;
@@ -512,7 +512,7 @@ impl TestFailure {
 }
 
 #[allow(clippy::derive_partial_eq_without_eq, reason = "not important")]
-#[derive(Debug, Clone, PartialEq, deno_core::FromV8)]
+#[derive(Debug, Clone, PartialEq, ende_core::FromV8)]
 pub enum TestResult {
   Ok,
   Ignored,
@@ -771,8 +771,8 @@ async fn configure_main_worker(
       require_modules,
       permissions_container,
       vec![
-        ops::testing::deno_test::init(worker_sender.sender),
-        ops::lint::deno_lint_ext_for_test::init(),
+        ops::testing::ende_test::init(worker_sender.sender),
+        ops::lint::ende_lint_ext_for_test::init(),
         ops::jupyter::deno_jupyter_for_test::init(
           sender,
           // deno test does not service stdin requests; supplying a sender keeps
@@ -1051,7 +1051,7 @@ pub fn worker_prepare_for_test(worker: &mut MainWorker) {
     .js_runtime
     .op_state()
     .borrow_mut()
-    .try_take::<deno_runtime::deno_fetch::Client>();
+    .try_take::<ende_runtime::ende_fetch::Client>();
 }
 
 /// Yields to tokio to allow async work to process, and then polls
@@ -1107,7 +1107,7 @@ enum WatchdogState {
 }
 
 impl TestWatchdog {
-  fn new(js_runtime: &mut deno_core::JsRuntime) -> Self {
+  fn new(js_runtime: &mut ende_core::JsRuntime) -> Self {
     let isolate_handle = js_runtime.v8_isolate().thread_safe_handle();
     let shared = std::sync::Arc::new(WatchdogShared {
       mutex: std::sync::Mutex::new(WatchdogState::Idle),
@@ -1409,10 +1409,10 @@ async fn invoke_test_function(
 
   match raced.unwrap() {
     Ok(r) => {
-      deno_core::scope!(scope, &mut worker.js_runtime);
+      ende_core::scope!(scope, &mut worker.js_runtime);
       let result = v8::Local::new(scope, r);
       Ok(AttemptInvocation::Completed(
-        <TestResult as deno_core::FromV8>::from_v8(scope, result)?,
+        <TestResult as ende_core::FromV8>::from_v8(scope, result)?,
       ))
     }
     Err(error) => match error.into_kind() {
@@ -1744,7 +1744,7 @@ async fn test_specifiers(
 
   let mut cancel_sender = test_event_sender_factory.weak_sender();
   let sigint_handler_handle = spawn(async move {
-    deno_signals::ctrl_c().await.unwrap();
+    ende_signals::ctrl_c().await.unwrap();
     cancel_sender.send(TestEvent::Sigint).ok();
   });
   HAS_TEST_RUN_SIGINT_HANDLER.store(true, Ordering::Relaxed);
@@ -1921,7 +1921,7 @@ pub async fn report_tests(
         }
         #[allow(
           clippy::disallowed_methods,
-          reason = "TODO: why is this not using deno_runtime::exit?"
+          reason = "TODO: why is this not using ende_runtime::exit?"
         )]
         std::process::exit(130);
       }
@@ -2523,11 +2523,11 @@ pub async fn run_tests_with_watch(
   // once a user adds one.
   spawn(async move {
     loop {
-      deno_signals::ctrl_c().await.unwrap();
+      ende_signals::ctrl_c().await.unwrap();
       if !HAS_TEST_RUN_SIGINT_HANDLER.load(Ordering::Relaxed) {
         #[allow(
           clippy::disallowed_methods,
-          reason = "TODO: why is this not using deno_runtime::exit?"
+          reason = "TODO: why is this not using ende_runtime::exit?"
         )]
         std::process::exit(130);
       }

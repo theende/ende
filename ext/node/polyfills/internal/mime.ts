@@ -16,7 +16,7 @@ const {
   SymbolIterator,
 } = primordials;
 const { ERR_INVALID_MIME_SYNTAX } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 
 const NOT_HTTP_TOKEN_CODE_POINT = new SafeRegExp(

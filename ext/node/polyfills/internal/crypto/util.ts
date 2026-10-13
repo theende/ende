@@ -10,28 +10,28 @@ const {
   SafeArrayIterator,
   SafeMap,
 } = primordials;
-const { notImplemented } = core.loadExtScript("ext:deno_node/_utils.ts");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { notImplemented } = core.loadExtScript("ext:ende_node/_utils.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const {
   ERR_CRYPTO_INVALID_DIGEST,
   ERR_INVALID_ARG_TYPE,
   hideStackFrames,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   isAnyArrayBuffer,
   isArrayBufferView,
-} = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+} = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 const { crypto: constants } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
 const {
   validateInt32,
   validateObject,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   kHandle,
   kKeyObject,
-} = core.loadExtScript("ext:deno_node/internal/crypto/constants.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/constants.ts");
 
 type EllipticCurve = {
   name: string;

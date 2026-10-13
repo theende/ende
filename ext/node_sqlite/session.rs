@@ -5,11 +5,11 @@ use std::cell::RefCell;
 use std::ffi::c_void;
 use std::rc::Rc;
 
-use deno_core::FromV8;
-use deno_core::GarbageCollected;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::v8_static_strings;
+use ende_core::FromV8;
+use ende_core::GarbageCollected;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::v8_static_strings;
 use rusqlite::ffi;
 
 use super::SqliteError;
@@ -98,7 +98,7 @@ pub(crate) type InnerSessionPtr = Rc<Cell<Option<*mut ffi::sqlite3_session>>>;
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for Session {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"Session"

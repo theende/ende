@@ -3,13 +3,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use deno_cache_dir::GlobalOrLocalHttpCache;
-use deno_cache_dir::file_fetcher::CacheSetting;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
 use deno_semver::package::PackageKind;
 use deno_semver::package::PackageReq;
 use deno_terminal::colors;
+use ende_cache_dir::GlobalOrLocalHttpCache;
+use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
 
 use super::deps::DepKind;
 use super::deps::DepManager;
@@ -59,7 +59,7 @@ struct DepGraph {
 }
 
 impl DepGraph {
-  fn from_lockfile_content(content: &deno_lockfile::PackagesContent) -> Self {
+  fn from_lockfile_content(content: &ende_lockfile::PackagesContent) -> Self {
     let mut forward: HashMap<PkgId, Vec<PkgId>> = HashMap::new();
     let mut npm_by_base: HashMap<String, String> = HashMap::new();
 

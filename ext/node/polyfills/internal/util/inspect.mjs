@@ -59,17 +59,17 @@ const {
   validateObject,
   validateOneOf,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { codes } = core.loadExtScript("ext:deno_node/internal/error_codes.ts");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { codes } = core.loadExtScript("ext:ende_node/internal/error_codes.ts");
 const { shouldColorize } = core.loadExtScript(
-  "ext:deno_node/internal/util/colorize.mjs",
+  "ext:ende_node/internal/util/colorize.mjs",
 );
 const {
   createStylizeWithColor,
   formatBigInt,
   formatNumber,
   formatValue,
-} = core.loadExtScript("ext:deno_web/01_console.js");
+} = core.loadExtScript("ext:ende_web/01_console.js");
 
 // Set Graphics Rendition https://en.wikipedia.org/wiki/ANSI_escape_code#graphics
 // Each color consists of an array with the color code as first entry and the

@@ -5,20 +5,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use boxed_error::Boxed;
-use deno_cache_dir::GlobalHttpCacheRc;
-use deno_cache_dir::GlobalHttpCacheSys;
-use deno_cache_dir::HttpCacheRc;
-use deno_cache_dir::file_fetcher::AuthTokens;
-use deno_cache_dir::file_fetcher::BlobStore;
-use deno_cache_dir::file_fetcher::CacheSetting;
-use deno_cache_dir::file_fetcher::CachedOrRedirect;
-use deno_cache_dir::file_fetcher::FetchCachedError;
-use deno_cache_dir::file_fetcher::File;
-use deno_cache_dir::file_fetcher::FileFetcherSys;
-use deno_cache_dir::file_fetcher::FileOrRedirect;
-use deno_cache_dir::file_fetcher::HttpClient;
-use deno_cache_dir::file_fetcher::TooManyRedirectsError;
-use deno_cache_dir::file_fetcher::UnsupportedSchemeError;
 use deno_error::JsError;
 use deno_error::JsErrorBox;
 use deno_graph::source::CacheInfo;
@@ -27,9 +13,23 @@ use deno_graph::source::LoadFuture;
 use deno_graph::source::LoadResponse;
 use deno_graph::source::Loader;
 use deno_graph::source::LoaderChecksum;
-use deno_permissions::CheckSpecifierKind;
-use deno_permissions::PermissionCheckError;
-use deno_permissions::PermissionsContainer;
+use ende_cache_dir::GlobalHttpCacheRc;
+use ende_cache_dir::GlobalHttpCacheSys;
+use ende_cache_dir::HttpCacheRc;
+use ende_cache_dir::file_fetcher::AuthTokens;
+use ende_cache_dir::file_fetcher::BlobStore;
+use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_cache_dir::file_fetcher::CachedOrRedirect;
+use ende_cache_dir::file_fetcher::FetchCachedError;
+use ende_cache_dir::file_fetcher::File;
+use ende_cache_dir::file_fetcher::FileFetcherSys;
+use ende_cache_dir::file_fetcher::FileOrRedirect;
+use ende_cache_dir::file_fetcher::HttpClient;
+use ende_cache_dir::file_fetcher::TooManyRedirectsError;
+use ende_cache_dir::file_fetcher::UnsupportedSchemeError;
+use ende_permissions::CheckSpecifierKind;
+use ende_permissions::PermissionCheckError;
+use ende_permissions::PermissionsContainer;
 use futures::FutureExt;
 use futures::future::LocalBoxFuture;
 use http::header;
@@ -60,7 +60,7 @@ pub struct FetchNoFollowError(pub Box<FetchNoFollowErrorKind>);
 pub enum FetchNoFollowErrorKind {
   #[error(transparent)]
   #[class(inherit)]
-  FetchNoFollow(#[from] deno_cache_dir::file_fetcher::FetchNoFollowError),
+  FetchNoFollow(#[from] ende_cache_dir::file_fetcher::FetchNoFollowError),
   #[error(transparent)]
   #[class(generic)]
   PermissionCheck(#[from] PermissionCheckError),
@@ -75,10 +75,10 @@ pub struct GetCachedSourceOrLocalError(
 pub enum GetCachedSourceOrLocalErrorKind {
   #[error(transparent)]
   #[class(inherit)]
-  FetchLocal(#[from] deno_cache_dir::file_fetcher::FetchLocalError),
+  FetchLocal(#[from] ende_cache_dir::file_fetcher::FetchLocalError),
   #[error(transparent)]
   #[class(inherit)]
-  FetchCached(#[from] deno_cache_dir::file_fetcher::FetchCachedError),
+  FetchCached(#[from] ende_cache_dir::file_fetcher::FetchCachedError),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -100,7 +100,7 @@ pub struct FetchOptions<'a> {
   pub maybe_cache_setting: Option<&'a CacheSetting>,
 }
 
-pub type FetchLocalOptions = deno_cache_dir::file_fetcher::FetchLocalOptions;
+pub type FetchLocalOptions = ende_cache_dir::file_fetcher::FetchLocalOptions;
 
 pub struct FetchNoFollowOptions<'a> {
   pub local: FetchLocalOptions,
@@ -113,13 +113,13 @@ pub struct FetchNoFollowOptions<'a> {
 impl<'a> FetchNoFollowOptions<'a> {
   fn into_deno_cache_dir_options(
     self,
-  ) -> deno_cache_dir::file_fetcher::FetchNoFollowOptions<'a> {
-    deno_cache_dir::file_fetcher::FetchNoFollowOptions {
+  ) -> ende_cache_dir::file_fetcher::FetchNoFollowOptions<'a> {
+    ende_cache_dir::file_fetcher::FetchNoFollowOptions {
       local: self.local,
       maybe_auth: self.maybe_auth,
       maybe_checksum: self
         .maybe_checksum
-        .map(|c| deno_cache_dir::Checksum::new(c.as_str())),
+        .map(|c| ende_cache_dir::Checksum::new(c.as_str())),
       maybe_accept: self.maybe_accept,
       maybe_cache_setting: self.maybe_cache_setting,
     }
@@ -134,7 +134,7 @@ pub trait PermissionedFileFetcherSys:
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 type PermissionedFileFetcherRc<TBlobStore, TSys, THttpClient> =
-  deno_maybe_sync::MaybeArc<
+  ende_maybe_sync::MaybeArc<
     PermissionedFileFetcher<TBlobStore, TSys, THttpClient>,
   >;
 
@@ -151,7 +151,7 @@ pub struct PermissionedFileFetcher<
   THttpClient: HttpClient,
 > {
   file_fetcher:
-    deno_cache_dir::file_fetcher::FileFetcher<TBlobStore, TSys, THttpClient>,
+    ende_cache_dir::file_fetcher::FileFetcher<TBlobStore, TSys, THttpClient>,
   memory_files: MemoryFilesRc,
 }
 
@@ -170,13 +170,13 @@ impl<
     options: PermissionedFileFetcherOptions,
   ) -> Self {
     let auth_tokens = AuthTokens::new_from_sys(&sys);
-    let file_fetcher = deno_cache_dir::file_fetcher::FileFetcher::new(
+    let file_fetcher = ende_cache_dir::file_fetcher::FileFetcher::new(
       blob_store,
       sys,
       http_cache,
       http_client,
       memory_files.clone(),
-      deno_cache_dir::file_fetcher::FileFetcherOptions {
+      ende_cache_dir::file_fetcher::FileFetcherOptions {
         allow_remote: options.allow_remote,
         cache_setting: options.cache_setting,
         auth_tokens,
@@ -369,7 +369,7 @@ impl<
           })?;
         let checked_path = permissions.check_open(
           Cow::Owned(path),
-          deno_permissions::OpenAccessKind::Read,
+          ende_permissions::OpenAccessKind::Read,
           Some(file_api_name),
         )?;
         let checked_specifier =
@@ -434,14 +434,14 @@ pub trait GraphLoaderReporter: Send + Sync {
   fn on_load(
     &self,
     specifier: &Url,
-    loaded_from: deno_cache_dir::file_fetcher::LoadedFrom,
+    loaded_from: ende_cache_dir::file_fetcher::LoadedFrom,
   ) {
   }
 }
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type GraphLoaderReporterRc =
-  deno_maybe_sync::MaybeArc<dyn GraphLoaderReporter>;
+  ende_maybe_sync::MaybeArc<dyn GraphLoaderReporter>;
 
 pub struct DenoGraphLoaderOptions {
   pub file_header_overrides: HashMap<Url, HashMap<String, String>>,
@@ -625,7 +625,7 @@ impl<
           let err = err.into_kind();
           match err {
             FetchNoFollowErrorKind::FetchNoFollow(err) => {
-              use deno_cache_dir::file_fetcher::FetchNoFollowErrorKind::*;
+              use ende_cache_dir::file_fetcher::FetchNoFollowErrorKind::*;
               let err = err.into_kind();
               match err {
                 NotFound(_) => Ok(None),
@@ -892,7 +892,7 @@ fn load_error(err: JsErrorBox) -> deno_graph::source::LoadError {
 }
 
 fn validate_scheme(specifier: &Url) -> Result<(), UnsupportedSchemeError> {
-  match deno_cache_dir::file_fetcher::is_valid_scheme(specifier.scheme()) {
+  match ende_cache_dir::file_fetcher::is_valid_scheme(specifier.scheme()) {
     true => Ok(()),
     false => Err(UnsupportedSchemeError {
       scheme: specifier.scheme().to_string(),
@@ -906,13 +906,13 @@ mod test {
   use std::collections::HashMap;
   use std::path::PathBuf;
 
-  use deno_cache_dir::file_fetcher::CacheSetting;
-  use deno_cache_dir::file_fetcher::NullBlobStore;
-  use deno_cache_dir::file_fetcher::SendError;
-  use deno_cache_dir::file_fetcher::SendResponse;
   use deno_graph::source::CacheSetting as LoaderCacheSetting;
   use deno_graph::source::LoadResponse;
   use deno_graph::source::Loader;
+  use ende_cache_dir::file_fetcher::CacheSetting;
+  use ende_cache_dir::file_fetcher::NullBlobStore;
+  use ende_cache_dir::file_fetcher::SendError;
+  use ende_cache_dir::file_fetcher::SendResponse;
   use sys_traits::impls::InMemorySys;
   use url::Url;
 
@@ -925,7 +925,7 @@ mod test {
   struct TestHttpClient;
 
   #[async_trait::async_trait(?Send)]
-  impl deno_cache_dir::file_fetcher::HttpClient for TestHttpClient {
+  impl ende_cache_dir::file_fetcher::HttpClient for TestHttpClient {
     async fn send_no_follow(
       &self,
       _url: &Url,
@@ -950,10 +950,10 @@ mod test {
     );
     let global_http_cache = factory.global_http_cache().unwrap().clone();
     let memory_files =
-      deno_maybe_sync::new_rc(crate::loader::MemoryFiles::default());
-    let file_fetcher = deno_maybe_sync::new_rc(PermissionedFileFetcher::new(
+      ende_maybe_sync::new_rc(crate::loader::MemoryFiles::default());
+    let file_fetcher = ende_maybe_sync::new_rc(PermissionedFileFetcher::new(
       NullBlobStore,
-      deno_maybe_sync::new_rc(deno_cache_dir::GlobalOrLocalHttpCache::from(
+      ende_maybe_sync::new_rc(ende_cache_dir::GlobalOrLocalHttpCache::from(
         global_http_cache.clone(),
       )),
       TestHttpClient,

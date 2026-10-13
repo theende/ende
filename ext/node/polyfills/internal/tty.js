@@ -29,20 +29,20 @@ const {
   ERR_INVALID_FD,
   ERR_TTY_INIT_FAILED,
   errnoException,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { validateInteger } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 import { op_tty_check_fd_permission, TTY } from "ext:core/ops";
-const { isatty } = core.loadExtScript("ext:deno_node/tty.js");
+const { isatty } = core.loadExtScript("ext:ende_node/tty.js");
 const lazyNet = core.createLazyLoader("node:net");
 const {
   clearLine,
   clearScreenDown,
   cursorTo,
   moveCursor,
-} = core.loadExtScript("ext:deno_node/internal/readline/callbacks.mjs");
-const { release } = core.loadExtScript("ext:deno_node/os.ts");
+} = core.loadExtScript("ext:ende_node/internal/readline/callbacks.mjs");
+const { release } = core.loadExtScript("ext:ende_node/os.ts");
 
 // Color depth constants
 const COLORS_2 = 1;

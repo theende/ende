@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use deno_core::serde_json;
-use deno_core::unsync::spawn;
+use ende_core::serde_json;
+use ende_core::unsync::spawn;
 use once_cell::unsync::OnceCell;
 use serde::Deserialize;
 use serde::Serialize;
@@ -25,7 +25,7 @@ use crate::cron::Schedule;
 pub struct SocketCronHandler {
   socket_addr: String,
   socket_task_tx: mpsc::Sender<SocketTaskCommand>,
-  socket_task_handle: deno_core::unsync::JoinHandle<()>,
+  socket_task_handle: ende_core::unsync::JoinHandle<()>,
   socket_task_exit_error: Rc<OnceCell<CronError>>,
   reject_reason: Rc<OnceCell<String>>,
 }

@@ -246,7 +246,7 @@ function createStylizeWithColor(styles, colors) {
 let _URLPrototype;
 function getURLPrototype() {
   if (!_URLPrototype) {
-    _URLPrototype = core.loadExtScript("ext:deno_web/00_url.js").URLPrototype;
+    _URLPrototype = core.loadExtScript("ext:ende_web/00_url.js").URLPrototype;
   }
   return _URLPrototype;
 }

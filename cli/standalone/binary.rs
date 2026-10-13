@@ -17,50 +17,50 @@ use capacity_builder::BytesAppendable;
 use deno_ast::MediaType;
 use deno_ast::ModuleKind;
 use deno_ast::ModuleSpecifier;
-use deno_cache_dir::CACHE_PERM;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::url::Url;
 use deno_graph::ModuleGraph;
-use deno_lib::args::CaData;
-use deno_lib::args::UnstableConfig;
-use deno_lib::shared::ReleaseChannel;
-use deno_lib::standalone::binary::CjsExportAnalysisEntry;
-use deno_lib::standalone::binary::MAGIC_BYTES;
-use deno_lib::standalone::binary::Metadata;
-use deno_lib::standalone::binary::NodeModules;
-use deno_lib::standalone::binary::RemoteModuleEntry;
-use deno_lib::standalone::binary::SerializedResolverWorkspaceJsrPackage;
-use deno_lib::standalone::binary::SerializedWorkspaceResolver;
-use deno_lib::standalone::binary::SerializedWorkspaceResolverImportMap;
-use deno_lib::standalone::binary::SpecifierDataStore;
-use deno_lib::standalone::binary::SpecifierId;
-use deno_lib::standalone::virtual_fs::BuiltVfs;
-use deno_lib::standalone::virtual_fs::DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME;
-use deno_lib::standalone::virtual_fs::OffsetWithLength;
-use deno_lib::standalone::virtual_fs::VfsBuilder;
-use deno_lib::standalone::virtual_fs::VfsEntry;
-use deno_lib::standalone::virtual_fs::VirtualDirectory;
-use deno_lib::standalone::virtual_fs::VirtualDirectoryEntries;
-use deno_lib::standalone::virtual_fs::WindowsSystemRootablePath;
-use deno_lib::util::hash::FastInsecureHasher;
-use deno_lib::util::text_encoding::is_valid_utf8;
-use deno_lib::util::v8::construct_v8_flags;
-use deno_lib::version::DENO_VERSION_INFO;
-use deno_npm::NpmSystemInfo;
-use deno_npm::resolution::SerializedNpmResolutionSnapshot;
-use deno_npm::resolution::ValidSerializedNpmResolutionSnapshot;
 use deno_path_util::fs::atomic_write_file_with_retries;
 use deno_path_util::url_from_directory_path;
 use deno_path_util::url_to_file_path;
-use deno_resolver::file_fetcher::FetchLocalOptions;
-use deno_resolver::file_fetcher::FetchOptions;
-use deno_resolver::file_fetcher::FetchPermissionsOptionRef;
-use deno_resolver::loader::GraphCjsAnalysisSourceProvider;
-use deno_resolver::workspace::WorkspaceResolver;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_cache_dir::CACHE_PERM;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_lib::args::CaData;
+use ende_lib::args::UnstableConfig;
+use ende_lib::shared::ReleaseChannel;
+use ende_lib::standalone::binary::CjsExportAnalysisEntry;
+use ende_lib::standalone::binary::MAGIC_BYTES;
+use ende_lib::standalone::binary::Metadata;
+use ende_lib::standalone::binary::NodeModules;
+use ende_lib::standalone::binary::RemoteModuleEntry;
+use ende_lib::standalone::binary::SerializedResolverWorkspaceJsrPackage;
+use ende_lib::standalone::binary::SerializedWorkspaceResolver;
+use ende_lib::standalone::binary::SerializedWorkspaceResolverImportMap;
+use ende_lib::standalone::binary::SpecifierDataStore;
+use ende_lib::standalone::binary::SpecifierId;
+use ende_lib::standalone::virtual_fs::BuiltVfs;
+use ende_lib::standalone::virtual_fs::DENO_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME;
+use ende_lib::standalone::virtual_fs::OffsetWithLength;
+use ende_lib::standalone::virtual_fs::VfsBuilder;
+use ende_lib::standalone::virtual_fs::VfsEntry;
+use ende_lib::standalone::virtual_fs::VirtualDirectory;
+use ende_lib::standalone::virtual_fs::VirtualDirectoryEntries;
+use ende_lib::standalone::virtual_fs::WindowsSystemRootablePath;
+use ende_lib::util::hash::FastInsecureHasher;
+use ende_lib::util::text_encoding::is_valid_utf8;
+use ende_lib::util::v8::construct_v8_flags;
+use ende_lib::version::DENO_VERSION_INFO;
+use ende_npm::NpmSystemInfo;
+use ende_npm::resolution::SerializedNpmResolutionSnapshot;
+use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
+use ende_resolver::file_fetcher::FetchLocalOptions;
+use ende_resolver::file_fetcher::FetchOptions;
+use ende_resolver::file_fetcher::FetchPermissionsOptionRef;
+use ende_resolver::loader::GraphCjsAnalysisSourceProvider;
+use ende_resolver::workspace::WorkspaceResolver;
 use indexmap::IndexMap;
 use node_resolver::analyze::CjsAnalysisSourceProvider;
 use node_resolver::analyze::ResolvedCjsAnalysis;
@@ -465,19 +465,19 @@ impl<'a> DenoCompileBinaryWriter<'a> {
     if let Some(path) = get_dev_binary_path() {
       if compile_flags.engine == JavaScriptEngine::QuickJs {
         log::warn!(
-          "--engine quickjs is ignored when using the development denort at {}",
+          "--engine quickjs is ignored when using the development endert at {}",
           path.to_string_lossy()
         );
       }
-      log::debug!("Resolved denort: {}", path.to_string_lossy());
+      log::debug!("Resolved endert: {}", path.to_string_lossy());
       return std::fs::read(&path).with_context(|| {
-        format!("Could not find denort at '{}'", path.to_string_lossy())
+        format!("Could not find endert at '{}'", path.to_string_lossy())
       });
     }
 
     let target = resolve_compile_target(compile_flags);
     let binary_name =
-      runtime_archive_name("denort", &compile_flags.engine, &target);
+      runtime_archive_name("endert", &compile_flags.engine, &target);
 
     let binary_path_suffix = match DENO_VERSION_INFO.release_channel {
       ReleaseChannel::Canary => {
@@ -490,7 +490,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
 
     let download_directory = self.deno_dir.dl_folder_path();
     let binary_path = download_directory.join(&binary_path_suffix);
-    log::debug!("Resolved denort: {}", binary_path.display());
+    log::debug!("Resolved endert: {}", binary_path.display());
 
     let read_file = |path: &Path| -> Result<Vec<u8>, AnyError> {
       std::fs::read(path).with_context(|| format!("Reading {}", path.display()))
@@ -506,9 +506,9 @@ impl<'a> DenoCompileBinaryWriter<'a> {
     let temp_dir = tempfile::TempDir::new()?;
     let base_binary_path = archive::unpack_into_dir(archive::UnpackArgs {
       exe_name: if target.contains("windows") {
-        "denort.exe"
+        "endert.exe"
       } else {
-        "denort"
+        "endert"
       },
       archive_name: &binary_name,
       archive_data: &archive_data,
@@ -524,17 +524,17 @@ impl<'a> DenoCompileBinaryWriter<'a> {
     compile_flags: &CompileFlags,
   ) -> Result<Vec<u8>, AnyError> {
     // For development: check DENORT_DESKTOP_BIN env var or look
-    // for libdenort next to the deno executable.
+    // for libendert next to the deno executable.
     if let Some(path) = get_dev_desktop_binary_path() {
       if compile_flags.engine == JavaScriptEngine::QuickJs {
         log::warn!(
-          "--engine quickjs is ignored when using the development libdenort at {}",
+          "--engine quickjs is ignored when using the development libendert at {}",
           path.to_string_lossy()
         );
       }
-      log::debug!("Resolved libdenort: {}", path.to_string_lossy());
+      log::debug!("Resolved libendert: {}", path.to_string_lossy());
       return std::fs::read(&path).with_context(|| {
-        format!("Could not find libdenort at '{}'", path.to_string_lossy())
+        format!("Could not find libendert at '{}'", path.to_string_lossy())
       });
     }
 
@@ -547,12 +547,12 @@ impl<'a> DenoCompileBinaryWriter<'a> {
       "so"
     };
     let lib_name = if target.contains("windows") {
-      format!("denort.{lib_ext}")
+      format!("endert.{lib_ext}")
     } else {
-      format!("libdenort.{lib_ext}")
+      format!("libendert.{lib_ext}")
     };
     let binary_name =
-      runtime_archive_name("libdenort", &compile_flags.engine, &target);
+      runtime_archive_name("libendert", &compile_flags.engine, &target);
 
     let binary_path_suffix = match DENO_VERSION_INFO.release_channel {
       ReleaseChannel::Canary => {
@@ -565,7 +565,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
 
     let download_directory = self.deno_dir.dl_folder_path();
     let binary_path = download_directory.join(&binary_path_suffix);
-    log::debug!("Resolved libdenort: {}", binary_path.display());
+    log::debug!("Resolved libendert: {}", binary_path.display());
 
     let read_file = |path: &Path| -> Result<Vec<u8>, AnyError> {
       std::fs::read(path).with_context(|| format!("Reading {}", path.display()))
@@ -836,7 +836,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
           vfs
             .add_file_with_data(
               &file_path,
-              deno_lib::standalone::virtual_fs::AddFileDataOptions {
+              ende_lib::standalone::virtual_fs::AddFileDataOptions {
                 data: original_source.to_vec(),
                 maybe_transpiled,
                 maybe_source_map,
@@ -1067,7 +1067,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
     let env_vars_from_env_file = {
       let mut aggregated_env_vars = IndexMap::new();
       for env_file_name in self.cli_options.env_file_names().rev() {
-        match deno_dotenv::find_path_and_content(
+        match ende_dotenv::find_path_and_content(
           &CliSys::default(),
           self.cli_options.initial_cwd(),
           env_file_name,
@@ -1274,8 +1274,8 @@ impl<'a> DenoCompileBinaryWriter<'a> {
     &self,
     specifier: &ModuleSpecifier,
   ) -> Result<
-    deno_cache_dir::file_fetcher::File,
-    deno_resolver::file_fetcher::FetchError,
+    ende_cache_dir::file_fetcher::File,
+    ende_resolver::file_fetcher::FetchError,
   > {
     self
       .file_fetcher
@@ -1289,7 +1289,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
           maybe_auth: None,
           maybe_accept: None,
           maybe_cache_setting: Some(
-            &deno_cache_dir::file_fetcher::CacheSetting::Use,
+            &ende_cache_dir::file_fetcher::CacheSetting::Use,
           ),
         },
       )
@@ -1308,7 +1308,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
   /// reached: the rewriter recorded every absolute path it pointed at,
   /// and we map each path back to its owning npm package and walk that
   /// closure. The full resolution snapshot still goes in the metadata
-  /// so denort can resolve packages by name at runtime.
+  /// so endert can resolve packages by name at runtime.
   fn fill_bundle_native_addon_vfs(
     &self,
     builder: &mut VfsBuilder,
@@ -1502,7 +1502,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
         let global_cache_root_path = npm_resolver.global_cache_root_path();
 
         // Flatten all the registries folders into a single ".deno_compile_node_modules/localhost" folder
-        // that will be used by denort when loading the npm cache. This avoids us exposing
+        // that will be used by endert when loading the npm cache. This avoids us exposing
         // the user's private registry information and means we don't have to bother
         // serializing all the different registry config into the binary.
         //
@@ -1777,13 +1777,13 @@ fn serialize_npm_snapshot(
 }
 
 fn get_denort_path(deno_exe: PathBuf) -> Option<OsString> {
-  let mut denort = deno_exe;
-  denort.set_file_name(if cfg!(windows) {
-    "denort.exe"
+  let mut endert = deno_exe;
+  endert.set_file_name(if cfg!(windows) {
+    "endert.exe"
   } else {
-    "denort"
+    "endert"
   });
-  denort.exists().then(|| denort.into_os_string())
+  endert.exists().then(|| endert.into_os_string())
 }
 
 fn runtime_archive_name(
@@ -1810,15 +1810,15 @@ fn get_dev_binary_path() -> Option<OsString> {
 }
 
 fn get_libdenort_path(deno_exe: PathBuf) -> Option<OsString> {
-  let mut libdenort = deno_exe;
+  let mut libendert = deno_exe;
   if cfg!(target_os = "macos") {
-    libdenort.set_file_name("libdenort.dylib");
+    libendert.set_file_name("libendert.dylib");
   } else if cfg!(windows) {
-    libdenort.set_file_name("denort.dll");
+    libendert.set_file_name("endert.dll");
   } else {
-    libdenort.set_file_name("libdenort.so");
+    libendert.set_file_name("libendert.so");
   }
-  libdenort.exists().then(|| libdenort.into_os_string())
+  libendert.exists().then(|| libendert.into_os_string())
 }
 
 fn get_dev_desktop_binary_path() -> Option<OsString> {
@@ -1828,11 +1828,11 @@ fn get_dev_desktop_binary_path() -> Option<OsString> {
         .components()
         .any(|component| component == Component::Normal("target".as_ref()))
       {
-        // Prefer release libdenort (optimized) over debug.
+        // Prefer release libendert (optimized) over debug.
         let target_dir = exec_path.parent().and_then(|p| p.parent());
         target_dir
           .and_then(|d| {
-            get_libdenort_path(d.join("release").join("libdenort.dylib"))
+            get_libdenort_path(d.join("release").join("libendert.dylib"))
           })
           .or_else(|| get_libdenort_path(exec_path.clone()))
       } else {
@@ -1846,9 +1846,9 @@ fn get_dev_desktop_binary_path() -> Option<OsString> {
 /// in the passed environment file.
 fn get_file_env_vars(
   content: &str,
-) -> Result<IndexMap<String, String>, deno_dotenv::ParseError> {
+) -> Result<IndexMap<String, String>, ende_dotenv::ParseError> {
   let mut file_env_vars = IndexMap::new();
-  for item in deno_dotenv::from_content_sanitized_iter_with_substitution(
+  for item in ende_dotenv::from_content_sanitized_iter_with_substitution(
     &CliSys::default(),
     content,
   )? {
@@ -1909,16 +1909,16 @@ mod tests {
   fn runtime_archive_names_include_engine_suffix() {
     let target = "aarch64-apple-darwin";
     assert_eq!(
-      runtime_archive_name("denort", &JavaScriptEngine::V8, target),
-      "denort-aarch64-apple-darwin.zip"
+      runtime_archive_name("endert", &JavaScriptEngine::V8, target),
+      "endert-aarch64-apple-darwin.zip"
     );
     assert_eq!(
-      runtime_archive_name("denort", &JavaScriptEngine::QuickJs, target),
-      "denort-quickjs-aarch64-apple-darwin.zip"
+      runtime_archive_name("endert", &JavaScriptEngine::QuickJs, target),
+      "endert-quickjs-aarch64-apple-darwin.zip"
     );
     assert_eq!(
-      runtime_archive_name("libdenort", &JavaScriptEngine::QuickJs, target),
-      "libdenort-quickjs-aarch64-apple-darwin.zip"
+      runtime_archive_name("libendert", &JavaScriptEngine::QuickJs, target),
+      "libendert-quickjs-aarch64-apple-darwin.zip"
     );
   }
 

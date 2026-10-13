@@ -8,33 +8,33 @@ use std::future::Future;
 use std::rc::Rc;
 
 use bytes::Bytes;
-use deno_core::AsyncMutFuture;
-use deno_core::AsyncRefCell;
-use deno_core::CancelFuture;
-use deno_core::CancelHandle;
-use deno_core::CancelTryFuture;
-use deno_core::OpState;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::convert::ByteString;
-use deno_core::convert::Uint8Array;
-use deno_core::futures::TryFutureExt;
-use deno_core::op2;
-use deno_core::unsync::spawn;
-use deno_core::url;
 use deno_error::JsErrorBox;
-use deno_fetch::ClientConnectError;
-use deno_fetch::CreateHttpClientOptions;
-use deno_fetch::HttpClientCreateError;
-use deno_fetch::HttpClientResource;
-use deno_fetch::Options as FetchOptions;
-use deno_fetch::create_http_client;
-use deno_fetch::get_or_create_client_from_state;
-use deno_net::raw::NetworkStream;
-use deno_permissions::PermissionCheckError;
-use deno_permissions::PermissionsContainer;
-use deno_tls::SocketUse;
+use ende_core::AsyncMutFuture;
+use ende_core::AsyncRefCell;
+use ende_core::CancelFuture;
+use ende_core::CancelHandle;
+use ende_core::CancelTryFuture;
+use ende_core::OpState;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::convert::ByteString;
+use ende_core::convert::Uint8Array;
+use ende_core::futures::TryFutureExt;
+use ende_core::op2;
+use ende_core::unsync::spawn;
+use ende_core::url;
+use ende_fetch::ClientConnectError;
+use ende_fetch::CreateHttpClientOptions;
+use ende_fetch::HttpClientCreateError;
+use ende_fetch::HttpClientResource;
+use ende_fetch::Options as FetchOptions;
+use ende_fetch::create_http_client;
+use ende_fetch::get_or_create_client_from_state;
+use ende_net::raw::NetworkStream;
+use ende_permissions::PermissionCheckError;
+use ende_permissions::PermissionsContainer;
+use ende_tls::SocketUse;
 use fastwebsockets::CloseCode;
 use fastwebsockets::FragmentCollectorRead;
 use fastwebsockets::Frame;
@@ -85,7 +85,7 @@ pub enum WebsocketError {
   Permission(#[from] PermissionCheckError),
   #[class(inherit)]
   #[error(transparent)]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
   #[class(generic)]
   #[error(transparent)]
   Uri(#[from] http::uri::InvalidUri),
@@ -103,7 +103,7 @@ pub enum WebsocketError {
   ConnectionFailed(#[from] HandshakeError),
   #[class(inherit)]
   #[error(transparent)]
-  Canceled(#[from] deno_core::Canceled),
+  Canceled(#[from] ende_core::Canceled),
 }
 
 pub struct WsCancelResource(Rc<CancelHandle>);
@@ -144,7 +144,7 @@ pub fn op_ws_check_permission_and_cancel_handle(
   }
 }
 
-#[derive(deno_core::ToV8)]
+#[derive(ende_core::ToV8)]
 pub struct CreateResponse {
   rid: ResourceId,
   protocol: String,
@@ -186,7 +186,7 @@ pub enum HandshakeError {
   NoH2Alpn,
   #[class(generic)]
   #[error(transparent)]
-  Rustls(#[from] deno_tls::rustls::Error),
+  Rustls(#[from] ende_tls::rustls::Error),
   #[class(inherit)]
   #[error(transparent)]
   Io(#[from] std::io::Error),
@@ -201,7 +201,7 @@ pub enum HandshakeError {
   RootStoreError(JsErrorBox),
   #[class(inherit)]
   #[error(transparent)]
-  Tls(deno_tls::TlsError),
+  Tls(ende_tls::TlsError),
   #[class(type)]
   #[error(transparent)]
   HeaderName(#[from] http::header::InvalidHeaderName),
@@ -211,7 +211,7 @@ pub enum HandshakeError {
 }
 
 async fn handshake_websocket(
-  client: deno_fetch::Client,
+  client: ende_fetch::Client,
   allow_host: bool,
   uri: Uri,
   protocols: &str,
@@ -256,7 +256,7 @@ async fn handshake_websocket(
 }
 
 async fn handshake_http1(
-  client: deno_fetch::Client,
+  client: ende_fetch::Client,
   allow_host: bool,
   scheme: &str,
   authority: &http::uri::Authority,
@@ -315,7 +315,7 @@ async fn handshake_http1(
 
 #[allow(clippy::too_many_arguments, reason = "TODO: improve")]
 async fn handshake_http2(
-  client: deno_fetch::Client,
+  client: ende_fetch::Client,
   allow_host: bool,
   uri: Uri,
   protocols: &str,
@@ -416,7 +416,7 @@ fn create_client_from_websocket_options(
   permissions: PermissionsContainer,
   ca_certs: Vec<String>,
   unsafely_ignore_certificate_errors: bool,
-) -> Result<deno_fetch::Client, HttpClientCreateError> {
+) -> Result<ende_fetch::Client, HttpClientCreateError> {
   create_http_client(
     &options.user_agent,
     CreateHttpClientOptions {
@@ -678,7 +678,7 @@ impl ServerWebSocket {
     }
     let ws = self.clone();
     let lock = self.reserve_lock();
-    deno_core::unsync::spawn(async move {
+    ende_core::unsync::spawn(async move {
       const GOING_AWAY: &[u8] = b"Server shutting down";
       let frame = Frame::close(1001, GOING_AWAY);
       let _ = ws.write_frame(lock, frame).await;
@@ -788,7 +788,7 @@ fn send_binary(state: &mut OpState, rid: ResourceId, data: &[u8]) {
   let len = data.len();
   resource.buffered.set(resource.buffered.get() + len);
   let lock = resource.reserve_lock();
-  deno_core::unsync::spawn(async move {
+  ende_core::unsync::spawn(async move {
     match resource
       .write_frame(lock, Frame::new(true, OpCode::Binary, None, data.into()))
       .await
@@ -831,7 +831,7 @@ pub fn op_ws_send_text(
   let len = data.len();
   resource.buffered.set(resource.buffered.get() + len);
   let lock = resource.reserve_lock();
-  deno_core::unsync::spawn(async move {
+  ende_core::unsync::spawn(async move {
     match resource
       .write_frame(
         lock,
@@ -1075,9 +1075,9 @@ pub async fn op_ws_next_event(
   }
 }
 
-deno_core::extension!(
-  deno_websocket,
-  deps = [deno_web, deno_webidl],
+ende_core::extension!(
+  ende_websocket,
+  deps = [ende_web, ende_webidl],
   ops = [
     op_ws_check_permission_and_cancel_handle,
     op_ws_create,
@@ -1107,7 +1107,7 @@ where
   Fut::Output: 'static,
 {
   fn execute(&self, fut: Fut) {
-    deno_core::unsync::spawn(fut);
+    ende_core::unsync::spawn(fut);
   }
 }
 

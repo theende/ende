@@ -3,8 +3,8 @@
 use std::cell::Cell;
 use std::cell::RefCell;
 
-use deno_core::GarbageCollected;
-use deno_core::op2;
+use ende_core::GarbageCollected;
+use ende_core::op2;
 use hdrhistogram::Histogram;
 
 const EMPTY_HISTOGRAM_MIN: u64 = i64::MAX as u64;
@@ -26,7 +26,7 @@ pub struct EldHistogram {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for EldHistogram {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"EldHistogram"
@@ -169,7 +169,7 @@ pub struct BaseHistogram {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for BaseHistogram {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"BaseHistogram"

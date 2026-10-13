@@ -2,7 +2,7 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { Encodings } = core.loadExtScript(
-  "ext:deno_node/internal_binding/_node.ts",
+  "ext:ende_node/internal_binding/_node.ts",
 );
 
 const {

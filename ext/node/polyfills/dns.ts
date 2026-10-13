@@ -22,9 +22,9 @@
 
 (function () {
 const { core, primordials } = __bootstrap;
-const { nextTick } = core.loadExtScript("ext:deno_node/_next_tick.ts");
+const { nextTick } = core.loadExtScript("ext:ende_node/_next_tick.ts");
 const { customPromisifyArgs } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 const {
   validateBoolean,
@@ -33,10 +33,10 @@ const {
   validateOneOf,
   validatePort,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { isIP } = core.loadExtScript("ext:deno_node/internal/net.ts");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { isIP } = core.loadExtScript("ext:ende_node/internal/net.ts");
 const dnsUtilsNs = core.loadExtScript(
-  "ext:deno_node/internal/dns/utils.ts",
+  "ext:ende_node/internal/dns/utils.ts",
 );
 const {
   dnsOrderToNumber,
@@ -53,28 +53,28 @@ const {
 } = dnsUtilsNs;
 const CallbackResolver = dnsUtilsNs.Resolver;
 const promisesBase =
-  core.loadExtScript("ext:deno_node/internal/dns/promises.ts").default;
+  core.loadExtScript("ext:ende_node/internal/dns/promises.ts").default;
 const {
   dnsException,
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
   ERR_MISSING_ARGS,
   handleDnsError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   AI_ADDRCONFIG: ADDRCONFIG,
   AI_ALL: ALL,
   AI_V4MAPPED: V4MAPPED,
-} = core.loadExtScript("ext:deno_node/internal_binding/ares.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/ares.ts");
 const {
   default: cares,
   GetAddrInfoReqWrap,
   GetNameInfoReqWrap,
   QueryReqWrap,
   kPermTokenSink,
-} = core.loadExtScript("ext:deno_node/internal_binding/cares_wrap.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/cares_wrap.ts");
 const { toASCII } = core.loadExtScript(
-  "ext:deno_node/internal/idna.ts",
+  "ext:ende_node/internal/idna.ts",
 );
 
 const {

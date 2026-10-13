@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use std::io::Write;
 
 use console_static_text::ansi::strip_ansi_codes;
-use deno_core::anyhow::Context;
+use ende_core::anyhow::Context;
 
 use super::fmt::to_relative_path_or_remote_url;
 use super::*;
@@ -619,7 +619,7 @@ impl From<TestStepDescription> for TestNameTreeNode {
 
 #[cfg(test)]
 mod tests {
-  use deno_core::error::JsStackFrame;
+  use ende_core::error::JsStackFrame;
 
   use super::*;
 

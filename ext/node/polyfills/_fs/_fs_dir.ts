@@ -4,12 +4,12 @@ import { core, primordials } from "ext:core/mod.js";
 import {
   type Dirent,
   direntFromDeno,
-} from "ext:deno_node/internal/fs/utils.mjs";
-const { default: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+} from "ext:ende_node/internal/fs/utils.mjs";
+const { default: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 const { ERR_MISSING_ARGS, ERR_DIR_CLOSED } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
-const { TextDecoder } = core.loadExtScript("ext:deno_web/08_text_encoding.js");
+const { TextDecoder } = core.loadExtScript("ext:ende_web/08_text_encoding.js");
 
 const {
   Promise,

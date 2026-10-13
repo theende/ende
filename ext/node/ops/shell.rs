@@ -7,7 +7,7 @@
 //! pipes, boolean operators, etc.). The suffix is preserved verbatim
 //! so it can be passed through to the shell unchanged.
 
-use deno_core::op2;
+use ende_core::op2;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]

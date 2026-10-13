@@ -8,12 +8,12 @@ use std::rc::Rc;
 use std::task::Context;
 use std::task::Poll;
 
-use deno_core::AsyncRefCell;
-use deno_core::AsyncResult;
-use deno_core::CancelHandle;
-use deno_core::CancelTryFuture;
-use deno_core::RcRef;
-use deno_core::Resource;
+use ende_core::AsyncRefCell;
+use ende_core::AsyncResult;
+use ende_core::CancelHandle;
+use ende_core::CancelTryFuture;
+use ende_core::RcRef;
+use ende_core::Resource;
 use tokio::io::AsyncRead;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWrite;
@@ -151,8 +151,8 @@ impl NamedPipe {
 }
 
 impl Resource for NamedPipe {
-  deno_core::impl_readable_byob!();
-  deno_core::impl_writable!();
+  ende_core::impl_readable_byob!();
+  ende_core::impl_writable!();
 
   fn name(&self) -> Cow<'_, str> {
     Cow::Borrowed("namedPipe")

@@ -6,17 +6,17 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use deno_ast::MediaType;
-use deno_config::deno_json::CompilerOptions;
-use deno_config::glob::FilePatterns;
-use deno_config::glob::WalkEntry;
-use deno_config::workspace::TsTypeLib;
-use deno_core::url::Url;
-use deno_resolver::deno_json::CompilerOptionsKey;
-use deno_resolver::deno_json::CompilerOptionsResolver;
-use deno_resolver::deno_json::CompilerOptionsType;
-use deno_resolver::deno_json::JsxImportSourceConfig;
-use deno_resolver::deno_json::TsConfigFile;
-use deno_resolver::deno_json::get_base_compiler_options_for_emit;
+use ende_config::deno_json::CompilerOptions;
+use ende_config::glob::FilePatterns;
+use ende_config::glob::WalkEntry;
+use ende_config::workspace::TsTypeLib;
+use ende_core::url::Url;
+use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_resolver::deno_json::CompilerOptionsResolver;
+use ende_resolver::deno_json::CompilerOptionsType;
+use ende_resolver::deno_json::JsxImportSourceConfig;
+use ende_resolver::deno_json::TsConfigFile;
+use ende_resolver::deno_json::get_base_compiler_options_for_emit;
 
 use crate::lsp::config::Config;
 use crate::lsp::logging::lsp_warn;

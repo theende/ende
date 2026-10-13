@@ -11,50 +11,50 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use deno_ast::MediaType;
-use deno_config::deno_json::DenoJsonCache;
-use deno_config::deno_json::FmtConfig;
-use deno_config::deno_json::FmtOptionsConfig;
-use deno_config::deno_json::NodeModulesDirMode;
-use deno_config::deno_json::TestConfig;
-use deno_config::glob::FilePatterns;
-use deno_config::glob::PathOrPatternSet;
-use deno_config::workspace::UrlRc;
-use deno_config::workspace::VendorEnablement;
-use deno_config::workspace::Workspace;
-use deno_config::workspace::WorkspaceCache;
-use deno_config::workspace::WorkspaceDirectory;
-use deno_config::workspace::WorkspaceDirectoryEmptyOptions;
-use deno_config::workspace::WorkspaceDiscoverOptions;
-use deno_config::workspace::WorkspaceRc;
-use deno_core::ModuleSpecifier;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::parking_lot::Mutex;
-use deno_core::serde::Deserialize;
-use deno_core::serde::Serialize;
-use deno_core::serde::de::DeserializeOwned;
-use deno_core::serde_json;
-use deno_core::serde_json::Value;
-use deno_core::url::Url;
-use deno_lib::args::has_flag_env_var;
-use deno_lib::util::hash::FastInsecureHasher;
-use deno_npm_cache::NpmCacheSetting;
-use deno_npm_installer::LifecycleScriptsConfig;
-use deno_npm_installer::NpmInstallerFactory;
-use deno_npm_installer::NpmInstallerFactoryOptions;
-use deno_npm_installer::graph::NpmCachingStrategy;
-use deno_npm_installer::lifecycle_scripts::NullLifecycleScriptsExecutor;
-use deno_npmrc::ResolvedNpmRc;
-use deno_package_json::PackageJsonCache;
-use deno_package_json::PackageJsonCacheResult;
 use deno_path_util::url_to_file_path;
-use deno_resolver::factory::ConfigDiscoveryOption;
-use deno_resolver::factory::ResolverFactory;
-use deno_resolver::factory::ResolverFactoryOptions;
-use deno_resolver::factory::WorkspaceFactory;
-use deno_resolver::factory::WorkspaceFactoryOptions;
-use deno_resolver::workspace::SpecifiedImportMap;
-use deno_runtime::deno_node::PackageJson;
+use ende_config::deno_json::DenoJsonCache;
+use ende_config::deno_json::FmtConfig;
+use ende_config::deno_json::FmtOptionsConfig;
+use ende_config::deno_json::NodeModulesDirMode;
+use ende_config::deno_json::TestConfig;
+use ende_config::glob::FilePatterns;
+use ende_config::glob::PathOrPatternSet;
+use ende_config::workspace::UrlRc;
+use ende_config::workspace::VendorEnablement;
+use ende_config::workspace::Workspace;
+use ende_config::workspace::WorkspaceCache;
+use ende_config::workspace::WorkspaceDirectory;
+use ende_config::workspace::WorkspaceDirectoryEmptyOptions;
+use ende_config::workspace::WorkspaceDiscoverOptions;
+use ende_config::workspace::WorkspaceRc;
+use ende_core::ModuleSpecifier;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::parking_lot::Mutex;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Serialize;
+use ende_core::serde::de::DeserializeOwned;
+use ende_core::serde_json;
+use ende_core::serde_json::Value;
+use ende_core::url::Url;
+use ende_lib::args::has_flag_env_var;
+use ende_lib::util::hash::FastInsecureHasher;
+use ende_npm_cache::NpmCacheSetting;
+use ende_npm_installer::LifecycleScriptsConfig;
+use ende_npm_installer::NpmInstallerFactory;
+use ende_npm_installer::NpmInstallerFactoryOptions;
+use ende_npm_installer::graph::NpmCachingStrategy;
+use ende_npm_installer::lifecycle_scripts::NullLifecycleScriptsExecutor;
+use ende_npmrc::ResolvedNpmRc;
+use ende_package_json::PackageJsonCache;
+use ende_package_json::PackageJsonCacheResult;
+use ende_resolver::factory::ConfigDiscoveryOption;
+use ende_resolver::factory::ResolverFactory;
+use ende_resolver::factory::ResolverFactoryOptions;
+use ende_resolver::factory::WorkspaceFactory;
+use ende_resolver::factory::WorkspaceFactoryOptions;
+use ende_resolver::workspace::SpecifiedImportMap;
+use ende_runtime::ende_node::PackageJson;
 use indexmap::IndexSet;
 use lsp_types::ClientCapabilities;
 use lsp_types::Uri;
@@ -1122,7 +1122,7 @@ impl Config {
     if let Some(data) = &data
       && let Ok(path) = specifier.to_file_path()
     {
-      // deno_config's exclusion checks exclude vendor dirs invariably. We
+      // ende_config's exclusion checks exclude vendor dirs invariably. We
       // don't want that behavior here.
       if data.exclude_files.matches_path(&path)
         && !data
@@ -1320,7 +1320,7 @@ impl WorkspaceConfigData {
         // these default options are fine because we don't use this for
         // anything other than resolving the lockfile at the moment
         allow_json_imports:
-          deno_resolver::loader::AllowJsonImports::WithAttribute,
+          ende_resolver::loader::AllowJsonImports::WithAttribute,
         compiler_options_overrides: Default::default(),
         is_cjs_resolution_mode: Default::default(),
         on_mapped_resolution_diagnostic: None,
@@ -1462,12 +1462,12 @@ impl ConfigData {
           &CliSys::default(),
           match specified_config {
             Some(config_path) => {
-              deno_config::workspace::WorkspaceDiscoverStart::ConfigFile(
+              ende_config::workspace::WorkspaceDiscoverStart::ConfigFile(
                 config_path,
               )
             }
             None => {
-              deno_config::workspace::WorkspaceDiscoverStart::Paths(&paths)
+              ende_config::workspace::WorkspaceDiscoverStart::Paths(&paths)
             }
           },
           &WorkspaceDiscoverOptions {
@@ -1769,11 +1769,11 @@ impl ConfigData {
 
   pub fn maybe_deno_json(
     &self,
-  ) -> Option<&Arc<deno_config::deno_json::ConfigFile>> {
+  ) -> Option<&Arc<ende_config::deno_json::ConfigFile>> {
     self.member_dir.member_or_root_deno_json()
   }
 
-  pub fn maybe_pkg_json(&self) -> Option<&Arc<deno_package_json::PackageJson>> {
+  pub fn maybe_pkg_json(&self) -> Option<&Arc<ende_package_json::PackageJson>> {
     self.member_dir.member_or_root_pkg_json()
   }
 
@@ -2055,8 +2055,8 @@ impl ConfigTree {
     memory_sys.fs_write(&config_path, json_text).unwrap();
     let workspace_dir = WorkspaceDirectory::discover(
       &memory_sys,
-      deno_config::workspace::WorkspaceDiscoverStart::ConfigFile(&config_path),
-      &deno_config::workspace::WorkspaceDiscoverOptions {
+      ende_config::workspace::WorkspaceDiscoverStart::ConfigFile(&config_path),
+      &ende_config::workspace::WorkspaceDiscoverOptions {
         ..Default::default()
       },
     )
@@ -2106,7 +2106,7 @@ fn resolve_node_modules_dir_mode(
 #[derive(Default)]
 struct DenoJsonMemCache(Mutex<HashMap<PathBuf, Arc<ConfigFile>>>);
 
-impl deno_config::deno_json::DenoJsonCache for DenoJsonMemCache {
+impl ende_config::deno_json::DenoJsonCache for DenoJsonMemCache {
   fn get(&self, path: &Path) -> Option<Arc<ConfigFile>> {
     self.0.lock().get(path).cloned()
   }
@@ -2119,7 +2119,7 @@ impl deno_config::deno_json::DenoJsonCache for DenoJsonMemCache {
 #[derive(Debug, Default)]
 struct PackageJsonMemCache(Mutex<HashMap<PathBuf, Arc<PackageJson>>>);
 
-impl deno_package_json::PackageJsonCache for PackageJsonMemCache {
+impl ende_package_json::PackageJsonCache for PackageJsonMemCache {
   fn get(&self, path: &Path) -> PackageJsonCacheResult {
     self
       .0
@@ -2141,7 +2141,7 @@ impl deno_package_json::PackageJsonCache for PackageJsonMemCache {
 #[derive(Default)]
 struct WorkspaceMemCache(Mutex<HashMap<PathBuf, Arc<Workspace>>>);
 
-impl deno_config::workspace::WorkspaceCache for WorkspaceMemCache {
+impl ende_config::workspace::WorkspaceCache for WorkspaceMemCache {
   fn get(&self, dir_path: &Path) -> Option<Arc<Workspace>> {
     self.0.lock().get(dir_path).cloned()
   }
@@ -2153,9 +2153,9 @@ impl deno_config::workspace::WorkspaceCache for WorkspaceMemCache {
 
 #[cfg(test)]
 mod tests {
-  use deno_core::resolve_url;
-  use deno_core::serde_json;
-  use deno_core::serde_json::json;
+  use ende_core::resolve_url;
+  use ende_core::serde_json;
+  use ende_core::serde_json::json;
   use pretty_assertions::assert_eq;
 
   use super::*;

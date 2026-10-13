@@ -4,31 +4,31 @@
 import { core, primordials } from "ext:core/mod.js";
 const { Promise } = primordials;
 const { Readline } = core.loadExtScript(
-  "ext:deno_node/internal/readline/promises.mjs",
+  "ext:ende_node/internal/readline/promises.mjs",
 );
 
 const {
   Interface: _Interface,
   kQuestion,
   kQuestionCancel,
-} = core.loadExtScript("ext:deno_node/internal/readline/interface.mjs");
-const { AbortError } = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/readline/interface.mjs");
+const { AbortError } = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { validateAbortSignal } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 
-const { kEmptyObject } = core.loadExtScript("ext:deno_node/internal/util.mjs");
-import type { Abortable } from "ext:deno_node/_events.d.ts";
+const { kEmptyObject } = core.loadExtScript("ext:ende_node/internal/util.mjs");
+import type { Abortable } from "ext:ende_node/_events.d.ts";
 import type {
   AsyncCompleter,
   Completer,
   ReadLineOptions,
-} from "ext:deno_node/_readline_shared_types.d.ts";
+} from "ext:ende_node/_readline_shared_types.d.ts";
 
 import type {
   ReadableStream,
   WritableStream,
-} from "ext:deno_node/_global.d.ts";
+} from "ext:ende_node/_global.d.ts";
 
 /**
  * The `readline/promise` module provides an API for reading lines of input from a Readable stream one line at a time.

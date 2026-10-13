@@ -21,28 +21,28 @@ use deno_ast::swc::common::comments::CommentKind;
 use deno_ast::swc::ecma_visit::Visit;
 use deno_ast::swc::ecma_visit::VisitWith;
 use deno_ast::swc::ecma_visit::noop_visit_type;
-use deno_core::LocalInspectorSession;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::error::CoreError;
-use deno_core::futures::FutureExt;
-use deno_core::futures::StreamExt;
-use deno_core::futures::channel::mpsc::UnboundedReceiver;
-use deno_core::futures::channel::mpsc::UnboundedSender;
-use deno_core::futures::channel::mpsc::unbounded;
-use deno_core::parking_lot::Mutex as SyncMutex;
-use deno_core::serde_json;
-use deno_core::serde_json::Value;
-use deno_core::unsync::spawn;
-use deno_core::url::Url;
 use deno_error::JsErrorBox;
 use deno_graph::Position;
 use deno_graph::PositionRange;
 use deno_graph::analysis::SpecifierWithRange;
-use deno_lib::util::result::any_and_jserrorbox_downcast_ref;
-use deno_resolver::deno_json::CompilerOptionsResolver;
-use deno_runtime::worker::MainWorker;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_core::LocalInspectorSession;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::error::CoreError;
+use ende_core::futures::FutureExt;
+use ende_core::futures::StreamExt;
+use ende_core::futures::channel::mpsc::UnboundedReceiver;
+use ende_core::futures::channel::mpsc::UnboundedSender;
+use ende_core::futures::channel::mpsc::unbounded;
+use ende_core::parking_lot::Mutex as SyncMutex;
+use ende_core::serde_json;
+use ende_core::serde_json::Value;
+use ende_core::unsync::spawn;
+use ende_core::url::Url;
+use ende_lib::util::result::any_and_jserrorbox_downcast_ref;
+use ende_resolver::deno_json::CompilerOptionsResolver;
+use ende_runtime::worker::MainWorker;
 use node_resolver::NodeResolutionKind;
 use node_resolver::ResolutionMode;
 use once_cell::sync::Lazy;
@@ -215,8 +215,8 @@ impl ReplSessionState {
     })))
   }
 
-  fn callback(&self, msg: deno_core::InspectorMsg) {
-    let deno_core::InspectorMsgKind::Message(msg_id) = msg.kind else {
+  fn callback(&self, msg: ende_core::InspectorMsg) {
+    let ende_core::InspectorMsgKind::Message(msg_id) = msg.kind else {
       if let Ok(value) = serde_json::from_str(&msg.content) {
         let _ = self.0.lock().notification_tx.unbounded_send(value);
       }
@@ -346,7 +346,7 @@ impl ReplSession {
     assert_ne!(context_id, 0);
 
     let referrer =
-      deno_core::resolve_path("./$deno$repl.mts", cli_options.initial_cwd())
+      ende_core::resolve_path("./$deno$repl.mts", cli_options.initial_cwd())
         .unwrap();
 
     let cwd_url =
@@ -467,7 +467,7 @@ impl ReplSession {
         .perform_microtask_checkpoint();
       let poll_result = self.worker.js_runtime.poll_event_loop(
         cx,
-        deno_core::PollEventLoopOptions {
+        ende_core::PollEventLoopOptions {
           wait_for_inspector: true,
         },
       );
@@ -793,7 +793,7 @@ impl ReplSession {
     // `<string>x` is misread as JSX in `.tsx`).
     let needs_ts_fallback = match &tsx_result {
       Ok(parsed) => {
-        deno_resolver::emit::invalid_syntax_parse_diagnostics(parsed).is_some()
+        ende_resolver::emit::invalid_syntax_parse_diagnostics(parsed).is_some()
       }
       Err(_) => true,
     };
@@ -818,7 +818,7 @@ impl ReplSession {
     // transpiling to `<invalid>` and letting V8 report a misleading
     // `Unexpected token '<'`. See denoland/deno#19457.
     if let Some(diagnostics) =
-      deno_resolver::emit::invalid_syntax_parse_diagnostics(&parsed_source)
+      ende_resolver::emit::invalid_syntax_parse_diagnostics(&parsed_source)
     {
       return Err(diagnostics.into());
     }
@@ -849,7 +849,7 @@ impl ReplSession {
           remove_comments: false,
         },
       )
-      .map_err(deno_resolver::emit::dedupe_transpile_error)?
+      .map_err(ende_resolver::emit::dedupe_transpile_error)?
       .into_source()
       .text;
 

@@ -568,7 +568,7 @@ mod tests {
   /// For slower tests. Doesn't guarantee a JIT.
   pub const JIT_SLOW_ITERATIONS: usize = 500;
 
-  deno_core::extension!(
+  ende_core::extension!(
     testing,
     ops = [
       op_test_fail,

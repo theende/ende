@@ -14,11 +14,11 @@ use std::borrow::Cow;
 use aes_kw::KekAes128;
 use aes_kw::KekAes192;
 use aes_kw::KekAes256;
-use deno_core::v8;
-use deno_core::webidl::ContextFn;
-use deno_core::webidl::WebIdlConverter;
-use deno_core::webidl::WebIdlError;
 use deno_error::JsErrorBox;
+use ende_core::v8;
+use ende_core::webidl::ContextFn;
+use ende_core::webidl::WebIdlConverter;
+use ende_core::webidl::WebIdlError;
 
 use crate::CryptoError;
 use crate::crypto_key::CryptoKeyType;
@@ -231,7 +231,7 @@ pub fn run_unwrap_key<'s>(
   // CryptoKey (an internal invariant violation -- `run_import_key`
   // always returns a make_crypto_key result), surface a `TypeError`
   // rather than silently skipping the check.
-  let key_type = deno_core::cppgc::try_unwrap_cppgc_object::<
+  let key_type = ende_core::cppgc::try_unwrap_cppgc_object::<
     crate::crypto_key::CryptoKey,
   >(scope, key.into())
   .map(|p| p.key_type())

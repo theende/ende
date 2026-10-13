@@ -1426,7 +1426,7 @@ pub extern "C" fn host_initialize_import_meta_object_callback(
 
   let module_global = v8::Global::new(scope, module);
   let Some(name) = module_map.get_name_by_module(&module_global) else {
-    // The module is not tracked by deno_core's module map. This is the
+    // The module is not tracked by ende_core's module map. This is the
     // happy path for `node:vm` `SourceTextModule`, whose v8::Module is
     // created directly by the `node:vm` op and never registered. Delegate
     // to the external hook (set by `node:vm`) if one is registered; if

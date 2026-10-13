@@ -1,3 +1,3 @@
-# `deno_telemetry`
+# `ende_telemetry`
 
 This crate implements telemetry for Deno using OpenTelemetry.

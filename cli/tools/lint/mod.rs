@@ -13,25 +13,25 @@ use std::sync::Arc;
 
 use deno_ast::ModuleSpecifier;
 use deno_ast::ParsedSource;
-use deno_config::deno_json::LintRulesConfig;
-use deno_config::glob::FileCollector;
-use deno_config::glob::FilePatterns;
-use deno_config::workspace::WorkspaceDirectory;
-use deno_config::workspace::WorkspaceDirectoryRc;
-use deno_core::anyhow::anyhow;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::futures::future::LocalBoxFuture;
-use deno_core::parking_lot::Mutex;
-use deno_core::serde_json;
-use deno_core::unsync::future::LocalFutureExt;
-use deno_core::unsync::future::SharedLocal;
 use deno_graph::ModuleGraph;
-use deno_lib::util::hash::FastInsecureHasher;
 use deno_lint::diagnostic::LintDiagnostic;
-use deno_print::drop_println;
-use deno_resolver::deno_json::CompilerOptionsResolver;
+use ende_config::deno_json::LintRulesConfig;
+use ende_config::glob::FileCollector;
+use ende_config::glob::FilePatterns;
+use ende_config::workspace::WorkspaceDirectory;
+use ende_config::workspace::WorkspaceDirectoryRc;
+use ende_core::anyhow::anyhow;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::futures::future::LocalBoxFuture;
+use ende_core::parking_lot::Mutex;
+use ende_core::serde_json;
+use ende_core::unsync::future::LocalFutureExt;
+use ende_core::unsync::future::SharedLocal;
+use ende_lib::util::hash::FastInsecureHasher;
+use ende_print::drop_println;
+use ende_resolver::deno_json::CompilerOptionsResolver;
 use log::debug;
 use reporters::LintReporter;
 use reporters::create_reporter;
@@ -129,7 +129,7 @@ pub async fn lint(
     linter.finish()
   };
   if !success {
-    deno_runtime::exit(1);
+    ende_runtime::exit(1);
   }
 
   Ok(())
@@ -423,7 +423,7 @@ impl WorkspaceLinter {
         future.await?;
       }
     } else {
-      deno_core::futures::future::try_join_all(futures).await?;
+      ende_core::futures::future::try_join_all(futures).await?;
     }
 
     if let Some(incremental_cache) = &maybe_incremental_cache {

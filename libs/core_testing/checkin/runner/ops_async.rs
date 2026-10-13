@@ -8,12 +8,12 @@ use std::future::Future;
 use std::future::poll_fn;
 use std::rc::Rc;
 
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::V8TaskSpawner;
-use deno_core::op2;
-use deno_core::v8;
 use deno_error::JsErrorBox;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::V8TaskSpawner;
+use ende_core::op2;
+use ende_core::v8;
 
 use super::Output;
 use super::TestData;

@@ -8,14 +8,14 @@ use deno_ast::EmitOptions;
 use deno_ast::MediaType;
 use deno_ast::SourceMapOption;
 use deno_ast::TranspileModuleOptions;
-use deno_core::ModuleSpecifier;
-use deno_core::anyhow;
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
 use deno_graph::GraphKind;
 use deno_graph::ModuleGraph;
-use deno_resolver::emit::patch_public_decorator_access_has;
 use deno_terminal::colors;
+use ende_core::ModuleSpecifier;
+use ende_core::anyhow;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_resolver::emit::patch_public_decorator_access_has;
 use sys_traits::PathsInErrorsExt;
 
 use crate::args::Flags;
@@ -190,7 +190,7 @@ pub async fn transpile(
     // Determine output path
     if is_stdout_mode {
       // Single file, no output specified: print to stdout
-      deno_print::drop_write_stdout(js_text.as_bytes());
+      ende_print::drop_write_stdout(js_text.as_bytes());
     } else {
       let output_path = maybe_output_path.unwrap();
 

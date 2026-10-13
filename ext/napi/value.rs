@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::os::raw::c_void;
 use std::ptr::NonNull;
 
-use deno_core::v8;
+use ende_core::v8;
 
 /// An FFI-opaque, nullable wrapper around v8::Local<v8::Value>.
 /// rusty_v8 Local handle cannot be empty but napi_value can be.

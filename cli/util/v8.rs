@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_lib::util::v8::construct_v8_flags;
+use ende_lib::util::v8::construct_v8_flags;
 
 pub mod convert;
 
@@ -30,7 +30,7 @@ pub fn init_v8_flags(
     .any(|flag| flag == "-help" || flag == "--help");
   // Keep in sync with `standalone.rs`.
   let v8_flags = construct_v8_flags(default_v8_flags, v8_flags, env_v8_flags);
-  let unrecognized_v8_flags = deno_core::v8_set_flags(v8_flags)
+  let unrecognized_v8_flags = ende_core::v8_set_flags(v8_flags)
     .into_iter()
     .skip(1)
     .collect::<Vec<_>>();
@@ -40,9 +40,9 @@ pub fn init_v8_flags(
       log::error!("error: V8 did not recognize flag '{f}'");
     }
     log::error!("\nFor a list of V8 flags, use '--v8-flags=--help'");
-    deno_runtime::exit(1);
+    ende_runtime::exit(1);
   }
   if v8_flags_includes_help {
-    deno_runtime::exit(0);
+    ende_runtime::exit(0);
   }
 }

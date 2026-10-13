@@ -1,12 +1,12 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::op2;
 use deno_error::JsErrorBox;
+use ende_core::op2;
 
 use crate::tools::deploy::get_token_entry;
 
-deno_core::extension!(
-  deno_deploy,
+ende_core::extension!(
+  ende_deploy,
   ops = [
     op_deploy_token_get,
     op_deploy_token_set,

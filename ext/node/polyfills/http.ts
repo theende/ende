@@ -24,7 +24,7 @@ const {
 } = core.createLazyLoader("node:_http_server")();
 const { methods, parsers } = core.createLazyLoader("node:_http_common")();
 const { validateInteger } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const METHODS = ArrayPrototypeSort(ArrayPrototypeSlice(methods));
 

@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_fetch"
+name = "ende_fetch"
 version = "0.283.0"
 authors.workspace = true
 edition.workspace = true
@@ -18,13 +18,13 @@ async-compression = { workspace = true, features = ["tokio", "brotli", "gzip"] }
 base64.workspace = true
 bytes.workspace = true
 data-url.workspace = true
-deno_core.workspace = true
 deno_error.workspace = true
-deno_fs.workspace = true
-deno_io.workspace = true
 deno_path_util.workspace = true
-deno_permissions.workspace = true
-deno_tls.workspace = true
+ende_core.workspace = true
+ende_fs.workspace = true
+ende_io.workspace = true
+ende_permissions.workspace = true
+ende_tls.workspace = true
 error_reporter.workspace = true
 h2.workspace = true
 hickory-resolver.workspace = true
@@ -49,9 +49,9 @@ tower-service.workspace = true
 tokio-vsock.workspace = true
 
 [dev-dependencies]
-deno_bench_util.workspace = true
-deno_web.workspace = true
-deno_webidl.workspace = true
+ende_bench_util.workspace = true
+ende_web.workspace = true
+ende_webidl.workspace = true
 fast-socks5.workspace = true
 rustls.workspace = true
 sys_traits = { workspace = true, features = ["libc", "real", "winapi"] }

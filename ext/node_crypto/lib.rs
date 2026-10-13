@@ -7,14 +7,14 @@ use std::future::Future;
 use std::rc::Rc;
 
 use aws_lc_rs::signature::Ed25519KeyPair;
-use deno_core::JsBuffer;
-use deno_core::OpState;
-use deno_core::StringOrBuffer;
-use deno_core::convert::Uint8Array;
-use deno_core::op2;
-use deno_core::unsync::spawn_blocking;
 use deno_error::JsErrorBox;
 use elliptic_curve::sec1::ToEncodedPoint;
+use ende_core::JsBuffer;
+use ende_core::OpState;
+use ende_core::StringOrBuffer;
+use ende_core::convert::Uint8Array;
+use ende_core::op2;
+use ende_core::unsync::spawn_blocking;
 use hkdf::Hkdf;
 use keys::AsymmetricPrivateKey;
 use keys::AsymmetricPublicKey;
@@ -54,8 +54,8 @@ pub mod x509;
 
 use self::digest::match_fixed_digest_with_eager_block_buffer;
 
-deno_core::extension!(
-  deno_node_crypto,
+ende_core::extension!(
+  ende_node_crypto,
   ops = [
     op_node_check_prime_async,
     op_node_check_prime_bytes_async,
@@ -1807,7 +1807,7 @@ pub fn op_node_diffie_hellman(
       AsymmetricPrivateKey::X448(private),
       AsymmetricPublicKey::X448(public),
     ) => {
-      let shared = deno_crypto_provider::x448::x448(private, public);
+      let shared = ende_crypto_provider::x448::x448(private, public);
       if shared.iter().all(|b| *b == 0) {
         return Err(DiffieHellmanError::FailedDuringDerivation);
       }
@@ -2001,7 +2001,7 @@ pub fn op_node_verify_spkac(
     return Err(SpkacError::BufferOutOfRange);
   }
 
-  Ok(deno_crypto_provider::spki::verify_spkac(spkac))
+  Ok(ende_crypto_provider::spki::verify_spkac(spkac))
 }
 
 #[op2]
@@ -2012,7 +2012,7 @@ pub fn op_node_cert_export_public_key(
     return Err(SpkacError::BufferOutOfRange);
   }
 
-  Ok(deno_crypto_provider::spki::export_public_key(spkac).map(Into::into))
+  Ok(ende_crypto_provider::spki::export_public_key(spkac).map(Into::into))
 }
 
 #[op2]
@@ -2023,5 +2023,5 @@ pub fn op_node_cert_export_challenge(
     return Err(SpkacError::BufferOutOfRange);
   }
 
-  Ok(deno_crypto_provider::spki::export_challenge(spkac).map(Into::into))
+  Ok(ende_crypto_provider::spki::export_challenge(spkac).map(Into::into))
 }

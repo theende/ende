@@ -2,7 +2,7 @@
 #[cfg(target_family = "windows")]
 use std::sync::Once;
 
-use deno_core::ToV8;
+use ende_core::ToV8;
 
 type LoadAvg = (f64, f64, f64);
 const DEFAULT_LOADAVG: LoadAvg = (0.0, 0.0, 0.0);

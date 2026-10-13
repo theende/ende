@@ -4,14 +4,14 @@ mod permission_checker;
 
 use std::sync::Arc;
 
-use deno_npm_installer::process_state::NpmProcessState;
-use deno_npm_installer::process_state::NpmProcessStateKind;
-use deno_npm_installer::process_state::NpmProcessStateLinkerMode;
-use deno_resolver::npm::ByonmNpmResolver;
-use deno_resolver::npm::ManagedNpmResolverRc;
-use deno_resolver::npm::NpmResolver;
-use deno_runtime::deno_process::NpmProcessStateProvider;
-use deno_runtime::deno_process::NpmProcessStateProviderRc;
+use ende_npm_installer::process_state::NpmProcessState;
+use ende_npm_installer::process_state::NpmProcessStateKind;
+use ende_npm_installer::process_state::NpmProcessStateLinkerMode;
+use ende_resolver::npm::ByonmNpmResolver;
+use ende_resolver::npm::ManagedNpmResolverRc;
+use ende_resolver::npm::NpmResolver;
+use ende_runtime::ende_process::NpmProcessStateProvider;
+use ende_runtime::ende_process::NpmProcessStateProviderRc;
 pub use permission_checker::NpmRegistryReadPermissionChecker;
 pub use permission_checker::NpmRegistryReadPermissionCheckerMode;
 

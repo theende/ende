@@ -23,25 +23,25 @@ use deno_ast::diagnostics::DiagnosticSourceRange;
 use deno_ast::swc::ecma_visit::Visit;
 use deno_ast::swc::ecma_visit::VisitWith;
 use deno_ast::swc::ecma_visit::noop_visit_type;
-use deno_config::workspace::WorkspaceDirectory;
-use deno_core::ModuleSpecifier;
-use deno_core::anyhow;
 use deno_graph::analysis::DependencyDescriptor;
 use deno_graph::analysis::DynamicTemplatePart;
 use deno_graph::analysis::StaticDependencyKind;
 use deno_graph::analysis::TypeScriptReference;
-use deno_package_json::PackageJsonDepValue;
-use deno_package_json::PackageJsonDepValueParseErrorKind;
-use deno_package_json::PackageJsonDepWorkspaceReq;
-use deno_resolver::npm::NpmResolverSys;
-use deno_resolver::workspace::MappedResolution;
-use deno_resolver::workspace::PackageJsonDepResolution;
-use deno_resolver::workspace::WorkspaceResolver;
-use deno_runtime::deno_node::is_builtin_node_module;
 use deno_semver::Version;
 use deno_semver::VersionReq;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_config::workspace::WorkspaceDirectory;
+use ende_core::ModuleSpecifier;
+use ende_core::anyhow;
+use ende_package_json::PackageJsonDepValue;
+use ende_package_json::PackageJsonDepValueParseErrorKind;
+use ende_package_json::PackageJsonDepWorkspaceReq;
+use ende_resolver::npm::NpmResolverSys;
+use ende_resolver::workspace::MappedResolution;
+use ende_resolver::workspace::PackageJsonDepResolution;
+use ende_resolver::workspace::WorkspaceResolver;
+use ende_runtime::ende_node::is_builtin_node_module;
 use node_resolver::NodeResolverSys;
 
 use crate::node::CliNodeResolver;
@@ -364,7 +364,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
     &self,
     referrer: &ModuleSpecifier,
     specifier: &str,
-    resolution_kind: deno_resolver::workspace::ResolutionKind,
+    resolution_kind: ende_resolver::workspace::ResolutionKind,
     text_info: &SourceTextInfo,
     range: PositionOrSourceRangeRef<'_>,
     diagnostic_reporter: &mut dyn FnMut(SpecifierUnfurlerDiagnostic),
@@ -422,7 +422,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
     &self,
     referrer: &ModuleSpecifier,
     specifier: &str,
-    resolution_kind: deno_resolver::workspace::ResolutionKind,
+    resolution_kind: ende_resolver::workspace::ResolutionKind,
   ) -> Result<Option<String>, UnfurlSpecifierError> {
     let resolved = match self.workspace_resolver.resolve(
       specifier,
@@ -738,7 +738,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
 
     // check the import map for the types package
     if let Some(import_map) = self.workspace_resolver.maybe_import_map() {
-      let deps = deno_config::import_map::import_map_deps(import_map);
+      let deps = ende_config::import_map::import_map_deps(import_map);
       for dep in deps {
         if let Some(version_req) = check_dep(dep) {
           return Some(version_req);
@@ -824,7 +824,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
         let maybe_unfurled = self.unfurl_specifier_reporting_diagnostic(
           module_url,
           specifier,
-          deno_resolver::workspace::ResolutionKind::Execution, // dynamic imports are always execution
+          ende_resolver::workspace::ResolutionKind::Execution, // dynamic imports are always execution
           text_info,
           PositionOrSourceRangeRef::PositionRange(&dep.argument_range),
           diagnostic_reporter,
@@ -862,7 +862,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
             let unfurled = self.unfurl_specifier_reporting_diagnostic(
               module_url,
               specifier,
-              deno_resolver::workspace::ResolutionKind::Execution, // dynamic imports are always execution
+              ende_resolver::workspace::ResolutionKind::Execution, // dynamic imports are always execution
               text_info,
               PositionOrSourceRangeRef::PositionRange(&dep.argument_range),
               diagnostic_reporter,
@@ -914,7 +914,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
     let analyze_specifier =
       |specifier: &str,
        range: PositionOrSourceRangeRef,
-       resolution_kind: deno_resolver::workspace::ResolutionKind,
+       resolution_kind: ende_resolver::workspace::ResolutionKind,
        context: SpecifierTextContext,
        text_changes: &mut Vec<deno_ast::TextChange>,
        diagnostic_reporter: &mut dyn FnMut(SpecifierUnfurlerDiagnostic)| {
@@ -950,7 +950,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
       match dep {
         DependencyDescriptor::Static(dep) => {
           let resolution_kind = if parsed_source.media_type().is_declaration() {
-            deno_resolver::workspace::ResolutionKind::Types
+            ende_resolver::workspace::ResolutionKind::Types
           } else {
             match dep.kind {
               StaticDependencyKind::Export
@@ -959,12 +959,12 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
               | StaticDependencyKind::ImportSource
               | StaticDependencyKind::ExportEquals
               | StaticDependencyKind::ImportEquals => {
-                deno_resolver::workspace::ResolutionKind::Execution
+                ende_resolver::workspace::ResolutionKind::Execution
               }
               StaticDependencyKind::ExportType
               | StaticDependencyKind::ImportType
               | StaticDependencyKind::MaybeTsModuleAugmentation => {
-                deno_resolver::workspace::ResolutionKind::Types
+                ende_resolver::workspace::ResolutionKind::Types
               }
             }
           };
@@ -974,7 +974,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
             && let Ok(Some(unfurled)) = self.unfurl_specifier(
               url,
               &dep.specifier,
-              deno_resolver::workspace::ResolutionKind::Types,
+              ende_resolver::workspace::ResolutionKind::Types,
             )
             && let Some(types_specifier) =
               self.get_types_package_specifier(&unfurled, url)
@@ -1043,7 +1043,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
       analyze_specifier(
         &specifier_with_range.text,
         PositionOrSourceRangeRef::PositionRange(&specifier_with_range.range),
-        deno_resolver::workspace::ResolutionKind::Types,
+        ende_resolver::workspace::ResolutionKind::Types,
         SpecifierTextContext::QuotedComment,
         text_changes,
         diagnostic_reporter,
@@ -1053,7 +1053,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
       analyze_specifier(
         &jsdoc.specifier.text,
         PositionOrSourceRangeRef::PositionRange(&jsdoc.specifier.range),
-        deno_resolver::workspace::ResolutionKind::Types,
+        ende_resolver::workspace::ResolutionKind::Types,
         SpecifierTextContext::QuotedComment,
         text_changes,
         diagnostic_reporter,
@@ -1063,7 +1063,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
       analyze_specifier(
         &specifier_with_range.text,
         PositionOrSourceRangeRef::PositionRange(&specifier_with_range.range),
-        deno_resolver::workspace::ResolutionKind::Execution,
+        ende_resolver::workspace::ResolutionKind::Execution,
         SpecifierTextContext::UnquotedComment,
         text_changes,
         diagnostic_reporter,
@@ -1073,7 +1073,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
       analyze_specifier(
         &specifier_with_range.text,
         PositionOrSourceRangeRef::PositionRange(&specifier_with_range.range),
-        deno_resolver::workspace::ResolutionKind::Types,
+        ende_resolver::workspace::ResolutionKind::Types,
         SpecifierTextContext::UnquotedComment,
         text_changes,
         diagnostic_reporter,
@@ -1086,7 +1086,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
       analyze_specifier(
         &specifier,
         PositionOrSourceRangeRef::SourceRange(range),
-        deno_resolver::workspace::ResolutionKind::Execution,
+        ende_resolver::workspace::ResolutionKind::Execution,
         SpecifierTextContext::JavaScript,
         text_changes,
         diagnostic_reporter,
@@ -1177,13 +1177,13 @@ mod tests {
 
   use deno_ast::MediaType;
   use deno_ast::ModuleSpecifier;
-  use deno_core::serde_json::json;
-  use deno_core::url::Url;
   use deno_graph::ast::ParserModuleAnalyzer;
-  use deno_resolver::factory::ResolverFactory;
-  use deno_resolver::factory::ResolverFactoryOptions;
-  use deno_resolver::factory::WorkspaceFactory;
-  use deno_resolver::factory::WorkspaceFactoryOptions;
+  use ende_core::serde_json::json;
+  use ende_core::url::Url;
+  use ende_resolver::factory::ResolverFactory;
+  use ende_resolver::factory::ResolverFactoryOptions;
+  use ende_resolver::factory::WorkspaceFactory;
+  use ende_resolver::factory::WorkspaceFactoryOptions;
   use pretty_assertions::assert_eq;
   use sys_traits::EnvCurrentDir;
   use sys_traits::impls::InMemorySys;
@@ -1867,7 +1867,7 @@ export * from "jsr:@std/semver@1";
       workspace_factory,
       ResolverFactoryOptions {
         package_json_dep_resolution: Some(
-          deno_resolver::workspace::PackageJsonDepResolution::Enabled,
+          ende_resolver::workspace::PackageJsonDepResolution::Enabled,
         ),
         unstable_sloppy_imports: true,
         ..Default::default()

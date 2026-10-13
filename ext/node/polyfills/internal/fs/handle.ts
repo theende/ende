@@ -3,7 +3,7 @@
 // deno-lint-ignore-file no-explicit-any no-node-globals
 
 import { core, primordials } from "ext:core/mod.js";
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 const lazyFs = core.createLazyLoader("node:fs");
 const lazyReadline = core.createLazyLoader("node:readline");
 const lazyBuffer = core.createLazyLoader("node:buffer");
@@ -12,7 +12,7 @@ import type {
   BinaryOptionsArgument,
   FileOptionsArgument,
   TextOptionsArgument,
-} from "ext:deno_node/_fs/_fs_common.ts";
+} from "ext:ende_node/_fs/_fs_common.ts";
 // writev loaded lazily from node:fs via lazyFs
 
 export interface WriteVResult {
@@ -33,27 +33,27 @@ function writevPromise(
   });
 }
 // readvPromise loaded lazily from node:fs via lazyFs
-const { fstatPromise } = core.loadExtScript("ext:deno_node/_fs/_fs_fstat.ts");
+const { fstatPromise } = core.loadExtScript("ext:ende_node/_fs/_fs_fstat.ts");
 // fchown, ftruncate, futimes loaded lazily from node:fs via lazyFs
 const { kEmptyObject, promisify } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 
 // CreateReadStreamOptions, CreateWriteStreamOptions types from node:fs/promises
-const { default: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+const { default: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 const {
   denoErrorToNodeError,
   ERR_INVALID_STATE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { readableStreamCancel } = core.loadExtScript(
-  "ext:deno_web/06_streams.js",
+  "ext:ende_web/06_streams.js",
 );
 const {
   validateBoolean,
   validateObject,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const { isDataView } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 const lazyProcess = core.createLazyLoader("node:process");
 

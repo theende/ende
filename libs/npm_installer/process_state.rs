@@ -8,14 +8,14 @@ use std::io::Seek;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_npm::resolution::ValidSerializedNpmResolutionSnapshot;
+use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
 use serde::Deserialize;
 use serde::Serialize;
 use sys_traits::BoxableFsFile;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum NpmProcessStateKind {
-  Snapshot(deno_npm::resolution::SerializedNpmResolutionSnapshot),
+  Snapshot(ende_npm::resolution::SerializedNpmResolutionSnapshot),
   Byonm,
 }
 

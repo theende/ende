@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use deno_ast::MediaType;
 use deno_ast::TextLines;
 use deno_ast::swc::common::comments::CommentKind;
-use deno_core::url::Url;
+use ende_core::url::Url;
 
 static COVERAGE_IGNORE_START_DIRECTIVE: &str = "deno-coverage-ignore-start";
 static COVERAGE_IGNORE_STOP_DIRECTIVE: &str = "deno-coverage-ignore-stop";

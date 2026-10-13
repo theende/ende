@@ -452,19 +452,19 @@ impl Arg {
 
   /// Convert the [`Arg`] into a [`TokenStream`] representing the fully-qualified type.
   #[allow(unused, reason = "unused for now but keeping")]
-  pub fn type_token(&self, deno_core: &TokenStream) -> TokenStream {
+  pub fn type_token(&self, ende_core: &TokenStream) -> TokenStream {
     match self {
-      Arg::V8Ref(RefType::Ref, v8) => quote!(&deno_core::v8::#v8),
-      Arg::V8Ref(RefType::Mut, v8) => quote!(&mut deno_core::v8::#v8),
-      Arg::V8Local(v8) => quote!(deno_core::v8::Local<deno_core::v8::#v8>),
+      Arg::V8Ref(RefType::Ref, v8) => quote!(&ende_core::v8::#v8),
+      Arg::V8Ref(RefType::Mut, v8) => quote!(&mut ende_core::v8::#v8),
+      Arg::V8Local(v8) => quote!(ende_core::v8::Local<ende_core::v8::#v8>),
       Arg::OptionV8Ref(RefType::Ref, v8) => {
-        quote!(::std::option::Option<&deno_core::v8::#v8>)
+        quote!(::std::option::Option<&ende_core::v8::#v8>)
       }
       Arg::OptionV8Ref(RefType::Mut, v8) => {
-        quote!(::std::option::Option<&mut deno_core::v8::#v8>)
+        quote!(::std::option::Option<&mut ende_core::v8::#v8>)
       }
       Arg::OptionV8Local(v8) => {
-        quote!(::std::option::Option<deno_core::v8::Local<deno_core::v8::#v8>>)
+        quote!(::std::option::Option<ende_core::v8::Local<ende_core::v8::#v8>>)
       }
       _ => todo!(),
     }
@@ -498,7 +498,7 @@ impl Arg {
     })
   }
 
-  /// This must be kept in sync with the `RustToV8`/`RustToV8Fallible` implementations in `deno_core`. If
+  /// This must be kept in sync with the `RustToV8`/`RustToV8Fallible` implementations in `ende_core`. If
   /// this falls out of sync, you will see compile errors.
   pub fn slow_retval(&self) -> ArgSlowRetval {
     match self.some_type() {
@@ -943,7 +943,7 @@ pub enum ArgError {
   #[error("Type is not allowed in this position")]
   NotAllowedInThisPosition(Span),
   #[error(
-    "Invalid deno_core:: prefix for type. Try adding `use deno_core::{1}` at the top of the file and specifying `{2}` in this position."
+    "Invalid ende_core:: prefix for type. Try adding `use ende_core::{1}` at the top of the file and specifying `{2}` in this position."
   )]
   InvalidDenoCorePrefix(Span, String, String),
   #[error("Expected a reference. Use '#[cppgc] &{1}' instead.")]
@@ -1537,8 +1537,8 @@ fn parse_type_path(
             _ => Ok(CUnknown(Type::Path(tp.clone()), matches!(attrs.primary, Some(AttributeModifier::Scoped)))),
           }
         }
-        deno_core::$next::$any? => {
-          // Stylistically it makes more sense just to import deno_core::v8 and other types at the top of the file
+        ende_core::$next::$any? => {
+          // Stylistically it makes more sense just to import ende_core::v8 and other types at the top of the file
           let next = stringify_token(next);
           let any = any.map(|any| format!("::{}", any.into_token_stream())).unwrap_or_default();
           let instead = format!("{next}{any}");
@@ -2331,7 +2331,7 @@ mod tests {
         "v8::Function".into()
       )
     ),
-    fn f(a: &deno_core::v8::Function) {}
+    fn f(a: &ende_core::v8::Function) {}
   );
   expect_fail!(
     op_extra_deno_core_opstate,
@@ -2343,7 +2343,7 @@ mod tests {
         "OpState".into()
       )
     ),
-    fn f(a: &deno_core::OpState) {}
+    fn f(a: &ende_core::OpState) {}
   );
 
   // Generics

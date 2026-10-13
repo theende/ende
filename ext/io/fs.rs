@@ -11,19 +11,19 @@ use std::rc::Rc;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use deno_core::BufMutView;
-use deno_core::BufView;
-use deno_core::CancelHandle;
-use deno_core::CancelTryFuture;
-use deno_core::Canceled;
-use deno_core::OpState;
-use deno_core::ResourceHandleFd;
-use deno_core::ResourceId;
-use deno_core::error::ResourceError;
 use deno_error::JsErrorBox;
-use deno_permissions::PermissionCheckError;
+use ende_core::BufMutView;
+use ende_core::BufView;
+use ende_core::CancelHandle;
+use ende_core::CancelTryFuture;
+use ende_core::Canceled;
+use ende_core::OpState;
+use ende_core::ResourceHandleFd;
+use ende_core::ResourceId;
+use ende_core::error::ResourceError;
+use ende_permissions::PermissionCheckError;
 #[cfg(windows)]
-use deno_subprocess_windows::Stdio as StdStdio;
+use ende_subprocess_windows::Stdio as StdStdio;
 use tokio::task::JoinError;
 
 #[derive(Debug, deno_error::JsError)]
@@ -268,7 +268,7 @@ pub trait File {
   async fn write(
     self: Rc<Self>,
     buf: BufView,
-  ) -> FsResult<deno_core::WriteOutcome>;
+  ) -> FsResult<ende_core::WriteOutcome>;
 
   fn write_all_sync(self: Rc<Self>, buf: &[u8]) -> FsResult<()>;
   async fn write_all(self: Rc<Self>, buf: BufView) -> FsResult<()>;
@@ -420,12 +420,12 @@ impl FileResource {
   }
 }
 
-impl deno_core::Resource for FileResource {
+impl ende_core::Resource for FileResource {
   fn name(&self) -> Cow<'_, str> {
     Cow::Borrowed(&self.name)
   }
 
-  fn read(self: Rc<Self>, limit: usize) -> deno_core::AsyncResult<BufView> {
+  fn read(self: Rc<Self>, limit: usize) -> ende_core::AsyncResult<BufView> {
     let cancel_handle = self.cancel_handle();
     Box::pin(async move {
       self
@@ -441,7 +441,7 @@ impl deno_core::Resource for FileResource {
   fn read_byob(
     self: Rc<Self>,
     buf: BufMutView,
-  ) -> deno_core::AsyncResult<(usize, BufMutView)> {
+  ) -> ende_core::AsyncResult<(usize, BufMutView)> {
     let cancel_handle = self.cancel_handle();
     Box::pin(async move {
       self
@@ -457,7 +457,7 @@ impl deno_core::Resource for FileResource {
   fn write(
     self: Rc<Self>,
     buf: BufView,
-  ) -> deno_core::AsyncResult<deno_core::WriteOutcome> {
+  ) -> ende_core::AsyncResult<ende_core::WriteOutcome> {
     Box::pin(async move {
       self
         .file
@@ -468,7 +468,7 @@ impl deno_core::Resource for FileResource {
     })
   }
 
-  fn write_all(self: Rc<Self>, buf: BufView) -> deno_core::AsyncResult<()> {
+  fn write_all(self: Rc<Self>, buf: BufView) -> ende_core::AsyncResult<()> {
     Box::pin(async move {
       self
         .file

@@ -41,7 +41,7 @@ async function denoWebgpuVersion() {
   const coreCargo = join(ROOT_PATH, "Cargo.toml");
   const contents = await Deno.readTextFile(coreCargo);
   return contents.match(
-    /^deno_webgpu = { version = "(\d+\.\d+\.\d+)", path = ".\/ext\/webgpu" }$/m,
+    /^ende_webgpu = { version = "(\d+\.\d+\.\d+)", path = ".\/ext\/webgpu" }$/m,
   )[1];
 }
 

@@ -6,13 +6,13 @@
 
 (function () {
 const { core, primordials } = __bootstrap;
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { codes } = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { codes } = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   isArrayBufferView,
   isTypedArray,
   isUint8Array,
-} = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+} = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 
 const {
   Array,

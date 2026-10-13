@@ -5,9 +5,9 @@ use std::path::Path;
 
 use deno_ast::MediaType;
 use deno_ast::ModuleSpecifier;
-use deno_config::glob::PathGlobMatch;
-use deno_config::glob::PathOrPattern;
-use deno_config::glob::PathOrPatternSet;
+use ende_config::glob::PathGlobMatch;
+use ende_config::glob::PathOrPattern;
+use ende_config::glob::PathOrPatternSet;
 
 /// Checks if the path has an extension Deno supports for script execution.
 pub fn is_script_ext(path: &Path) -> bool {

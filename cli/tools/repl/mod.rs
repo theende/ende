@@ -4,12 +4,12 @@ use std::io;
 use std::io::Write;
 use std::sync::Arc;
 
-use deno_core::error::AnyError;
-use deno_core::futures::StreamExt;
-use deno_core::serde_json;
-use deno_core::unsync::spawn_blocking;
-use deno_lib::version::DENO_VERSION_INFO;
-use deno_runtime::WorkerExecutionMode;
+use ende_core::error::AnyError;
+use ende_core::futures::StreamExt;
+use ende_core::serde_json;
+use ende_core::unsync::spawn_blocking;
+use ende_lib::version::DENO_VERSION_INFO;
+use ende_runtime::WorkerExecutionMode;
 use rustyline::error::ReadlineError;
 
 use crate::args::CliOptions;
@@ -176,7 +176,7 @@ pub async fn run(
       // `deno repl` doesn't support require modules
       vec![],
       permissions.clone(),
-      vec![crate::ops::testing::deno_test::init(test_event_sender)],
+      vec![crate::ops::testing::ende_test::init(test_event_sender)],
       Default::default(),
       None,
     )
@@ -278,7 +278,7 @@ pub async fn run(
 async fn run_json(mut repl_session: ReplSession) -> Result<i32, AnyError> {
   use bytes::Buf;
   use bytes::Bytes;
-  use deno_runtime::deno_io::BiPipe;
+  use ende_runtime::ende_io::BiPipe;
   use tokio::io::AsyncReadExt;
   use tokio::io::AsyncWriteExt;
   use tokio::io::BufReader;

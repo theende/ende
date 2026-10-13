@@ -27,7 +27,7 @@
 // The full set of Windows error constants was stripped to reduce compile times.
 // Original source: https://raw.githubusercontent.com/mic101/windows/master/WRK-v1.2/public/sdk/inc/winerror.h
 
-use deno_core::op2;
+use ende_core::op2;
 
 #[op2]
 #[string]

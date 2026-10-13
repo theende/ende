@@ -5,7 +5,7 @@ const { op_read_line_prompt } = core.ops;
 const { ArrayPrototypePush, StringPrototypeCharCodeAt, Uint8Array } =
   primordials;
 
-const { stdin } = core.loadExtScript("ext:deno_io/12_io.js");
+const { stdin } = core.loadExtScript("ext:ende_io/12_io.js");
 
 const LF = StringPrototypeCharCodeAt("\n", 0);
 const CR = StringPrototypeCharCodeAt("\r", 0);

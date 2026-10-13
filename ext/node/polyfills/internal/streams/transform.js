@@ -67,12 +67,12 @@
 const { core, primordials } = __bootstrap;
 const lazyProcess = core.createLazyLoader("node:process");
 const process = lazyProcess().default;
-const _mod1 = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const _mod1 = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const Duplex = core.loadExtScript(
-  "ext:deno_node/internal/streams/duplex.js",
+  "ext:ende_node/internal/streams/duplex.js",
 ).default;
 const { getHighWaterMark } = core.loadExtScript(
-  "ext:deno_node/internal/streams/state.js",
+  "ext:ende_node/internal/streams/state.js",
 );
 
 const {

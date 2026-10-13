@@ -1,15 +1,15 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 import { core, primordials } from "ext:core/mod.js";
-import type { CallbackWithError } from "ext:deno_node/_fs/_fs_common.ts";
+import type { CallbackWithError } from "ext:ende_node/_fs/_fs_common.ts";
 const { makeCallback } = core.loadExtScript(
-  "ext:deno_node/_fs/_fs_common.ts",
+  "ext:ende_node/_fs/_fs_common.ts",
 );
 import type { Buffer } from "node:buffer";
 import {
   getValidatedPathToString,
   getValidMode,
-} from "ext:deno_node/internal/fs/utils.mjs";
+} from "ext:ende_node/internal/fs/utils.mjs";
 
 const {
   Error,
@@ -17,10 +17,10 @@ const {
   PromisePrototypeThen,
 } = primordials;
 const { fs } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
-const { codeMap } = core.loadExtScript("ext:deno_node/internal_binding/uv.ts");
-const { promisify } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+const { codeMap } = core.loadExtScript("ext:ende_node/internal_binding/uv.ts");
+const { promisify } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 
 export function copyFile(
   src: string | Buffer | URL,

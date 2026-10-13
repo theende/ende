@@ -400,7 +400,7 @@ async function clippy() {
     "--deny",
     "clippy::unused_async",
     // the std print macros panic on broken pipes (ex. `deno test | head`);
-    // prefer the `log` crate for diagnostics and deno_print's drop_println!
+    // prefer the `log` crate for diagnostics and ende_print's drop_println!
     // macros for stdout output, or ignore these print_* rules if necessary
     "--deny",
     "clippy::print_stderr",
@@ -434,7 +434,7 @@ async function clippy() {
         "\nhint: the std print macros panic when the output pipe is closed (ex. `deno test | head`).",
       );
       console.error(
-        "      use deno_print's drop_println!/drop_eprintln! macros for command output or the `log` crate for diagnostics.",
+        "      use ende_print's drop_println!/drop_eprintln! macros for command output or the `log` crate for diagnostics.",
       );
     }
     if (code > 0) {
@@ -444,7 +444,7 @@ async function clippy() {
 
   // Cargo's --all-features cannot represent mutually exclusive engine
   // backends. Enable every workspace feature explicitly except QuickJS and
-  // platform-specific V8 modes, then check deno_core separately below.
+  // platform-specific V8 modes, then check ende_core separately below.
   {
     const metadataCommand = new Deno.Command("cargo", {
       cwd: ROOT_PATH,
@@ -461,13 +461,13 @@ async function clippy() {
     );
     const workspaceMembers = new Set(metadata.workspace_members);
     const workspaceFeatures = metadata.packages
-      .filter((pkg) => workspaceMembers.has(pkg.id) && pkg.name !== "deno_core")
+      .filter((pkg) => workspaceMembers.has(pkg.id) && pkg.name !== "ende_core")
       .flatMap((pkg) =>
         Object.keys(pkg.features).map((feature) => `${pkg.name}/${feature}`)
       )
       .filter((feature) =>
         !feature.endsWith("/quickjs") &&
-        !feature.startsWith("deno_v8/v8_enable_")
+        !feature.startsWith("ende_v8/v8_enable_")
       )
       .sort();
 
@@ -479,7 +479,7 @@ async function clippy() {
       "--locked",
       "--workspace",
       "--exclude",
-      "deno_core",
+      "ende_core",
     ];
 
     if (currentBuildMode != "debug") {
@@ -489,7 +489,7 @@ async function clippy() {
     await runClippy([...cmd, ...clippyDenyFlags], "clippy failed");
   }
 
-  // Run clippy for deno_core with specific features, matching the invocation
+  // Run clippy for ende_core with specific features, matching the invocation
   // from https://github.com/denoland/deno_core/blob/main/tools/lint.ts
   {
     const DENO_CORE_CLIPPY_FEATURES = [
@@ -502,7 +502,7 @@ async function clippy() {
     const cmd = [
       "clippy",
       "-p",
-      "deno_core",
+      "ende_core",
       "--all-targets",
       "--locked",
       "--features",
@@ -515,7 +515,7 @@ async function clippy() {
 
     await runClippy(
       [...cmd, ...clippyDenyFlags],
-      "clippy failed for deno_core",
+      "clippy failed for ende_core",
     );
   }
 }

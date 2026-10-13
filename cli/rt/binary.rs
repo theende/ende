@@ -9,33 +9,33 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::OnceLock;
 
-use deno_core::FastString;
-use deno_core::ModuleCodeBytes;
-use deno_core::ModuleSourceCode;
-use deno_core::ModuleType;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::url::Url;
 use deno_error::JsError;
 use deno_error::JsErrorBox;
-use deno_lib::standalone::binary::DenoRtDeserializable;
-use deno_lib::standalone::binary::MAGIC_BYTES;
-use deno_lib::standalone::binary::Metadata;
-use deno_lib::standalone::binary::RemoteModuleEntry;
-use deno_lib::standalone::binary::SpecifierDataStore;
-use deno_lib::standalone::binary::SpecifierId;
-use deno_lib::standalone::virtual_fs::VfsEntry;
-use deno_lib::standalone::virtual_fs::VirtualDirectory;
-use deno_lib::standalone::virtual_fs::VirtualDirectoryEntries;
 use deno_media_type::MediaType;
-use deno_npm::NpmPackageId;
-use deno_npm::resolution::SerializedNpmResolutionSnapshot;
-use deno_npm::resolution::SerializedNpmResolutionSnapshotPackage;
-use deno_npm::resolution::ValidSerializedNpmResolutionSnapshot;
 use deno_semver::StackString;
 use deno_semver::package::PackageReq;
+use ende_core::FastString;
+use ende_core::ModuleCodeBytes;
+use ende_core::ModuleSourceCode;
+use ende_core::ModuleType;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_lib::standalone::binary::DenoRtDeserializable;
+use ende_lib::standalone::binary::MAGIC_BYTES;
+use ende_lib::standalone::binary::Metadata;
+use ende_lib::standalone::binary::RemoteModuleEntry;
+use ende_lib::standalone::binary::SpecifierDataStore;
+use ende_lib::standalone::binary::SpecifierId;
+use ende_lib::standalone::virtual_fs::VfsEntry;
+use ende_lib::standalone::virtual_fs::VirtualDirectory;
+use ende_lib::standalone::virtual_fs::VirtualDirectoryEntries;
+use ende_npm::NpmPackageId;
+use ende_npm::resolution::SerializedNpmResolutionSnapshot;
+use ende_npm::resolution::SerializedNpmResolutionSnapshotPackage;
+use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
 use indexmap::IndexMap;
 use sys_traits::FsCanonicalize;
 use sys_traits::FsRead;
@@ -1032,7 +1032,7 @@ impl RemoteModulesStore {
         Cow::Borrowed(data) => Cow::Borrowed(data),
         Cow::Owned(data) => {
           // this variant should never happen because the data
-          // should always be borrowed static in denort
+          // should always be borrowed static in endert
           debug_assert!(false);
           Cow::Owned(data.clone())
         }
@@ -1150,7 +1150,7 @@ fn deserialize_npm_snapshot(
     data_ids_to_npm_ids
       .get(id)
       .cloned()
-      .ok_or_else(|| deno_core::anyhow::anyhow!("Invalid npm package id"))
+      .ok_or_else(|| ende_core::anyhow::anyhow!("Invalid npm package id"))
   };
 
   let (input, root_packages_len) = read_u32_as_usize(input)?;

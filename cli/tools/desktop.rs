@@ -5,12 +5,12 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_config::deno_json::DesktopConfig;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::url::Url;
 use deno_terminal::colors;
+use ende_config::deno_json::DesktopConfig;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::url::Url;
 use sha2::Digest;
 
 use crate::args::CliOptions;
@@ -118,7 +118,7 @@ fn apply_desktop_config_to_flags(
     if let Some(icons) = app_config.icons
       && desktop_flags.icon.is_none()
     {
-      use deno_config::deno_json::DesktopIconValue;
+      use ende_config::deno_json::DesktopIconValue;
       let platform_icon = if cfg!(target_os = "macos") {
         icons.macos
       } else if cfg!(target_os = "windows") {
@@ -687,7 +687,7 @@ fn make_self_extracting(
 fn validate_url_scheme(scheme: &str) -> Result<(), AnyError> {
   let reserved = ["http", "https", "file", "ftp", "ws", "wss"];
   let bail = |reason: &str| {
-    Err(deno_core::anyhow::anyhow!(
+    Err(ende_core::anyhow::anyhow!(
       "Invalid deep-link scheme {scheme:?}: {reason}."
     ))
   };
@@ -818,7 +818,7 @@ fn register_deep_links_linux(
     .filter_map(|e| e.ok().map(|e| e.path()))
     .find(|p| p.extension().is_some_and(|e| e == "desktop"))
     .ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "no .desktop file found in {}",
         bundle_path.display()
       )
@@ -1162,15 +1162,15 @@ fn resolve_hmr_icon_path(
   let icon_path = match icon {
     crate::args::IconConfig::Single(p) => initial_cwd.join(p),
     crate::args::IconConfig::Set(_) => {
-      deno_core::anyhow::bail!("icon sets are not supported in --hmr mode yet")
+      ende_core::anyhow::bail!("icon sets are not supported in --hmr mode yet")
     }
   };
   if !icon_path.exists() {
-    deno_core::anyhow::bail!("icon '{}' not found", icon_path.display());
+    ende_core::anyhow::bail!("icon '{}' not found", icon_path.display());
   }
   match icon_path.extension().and_then(|e| e.to_str()) {
     Some("icns") | Some("png") => {}
-    _ => deno_core::anyhow::bail!(
+    _ => ende_core::anyhow::bail!(
       "icon '{}' must be .icns or .png",
       icon_path.display()
     ),
@@ -1209,7 +1209,7 @@ async fn spawn_framework_dev_server(
     })?;
 
   let stdout = child.stdout.take().ok_or_else(|| {
-    deno_core::anyhow::anyhow!("failed to capture HMR dev server stdout")
+    ende_core::anyhow::anyhow!("failed to capture HMR dev server stdout")
   })?;
   let mut lines = BufReader::new(stdout).lines();
 
@@ -1223,11 +1223,11 @@ async fn spawn_framework_dev_server(
         return Ok(url);
       }
     }
-    deno_core::anyhow::bail!("dev server exited without printing a URL")
+    ende_core::anyhow::bail!("dev server exited without printing a URL")
   })
   .await
   .map_err(|_| {
-    deno_core::anyhow::anyhow!(
+    ende_core::anyhow::anyhow!(
       "{name} dev server with HMR did not start within 15s"
     )
   })??;
@@ -1658,7 +1658,7 @@ async fn package_windows_app_dir(
     let _ = std::fs::remove_file(&cache_file);
   }
 
-  // Copy the compiled dylib (denort.dll) alongside the backend binary.
+  // Copy the compiled dylib (endert.dll) alongside the backend binary.
   //
   // No `linux_colocated_runtime_name` equivalent is needed here: the Windows
   // launcher is `<app>.exe`, so the same chop-at-the-last-dot lookup removes a
@@ -1752,7 +1752,7 @@ async fn package_linux_app_dir(
   laufey_resolver: &LaufeyBackendResolver,
 ) -> Result<PathBuf, AnyError> {
   let parts = dylib_parts(dylib_path)?;
-  // `file_stem` on "libdenort.so" returns "libdenort" — strip the "lib" prefix
+  // `file_stem` on "libendert.so" returns "libendert" — strip the "lib" prefix
   // so the app directory is named after the app, not the runtime library.
   let app_name = parts
     .app_name
@@ -1950,7 +1950,7 @@ impl LaufeyBackendResolver {
     // bumps, so this is the trust anchor. That the lock file's pinned version
     // matches LAUFEY_VERSION is asserted at build time (see cli/build.rs).
     let expected = parse_sha256sum(LAUFEY_PINNED_SUMS, &archive).ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "no pinned SHA-256 for {archive} in cli/laufey_sums.lock \
          (regenerate when bumping LAUFEY_VERSION to v{LAUFEY_VERSION}; \
          laufey v{LAUFEY_VERSION} release may not include backend '{backend}' for target '{target}')"
@@ -1983,7 +1983,7 @@ impl LaufeyBackendResolver {
       .with_context(|| format!("failed to download {url}"))?;
     let data = response
       .into_maybe_bytes()?
-      .ok_or_else(|| deno_core::anyhow::anyhow!("empty response from {url}"))?;
+      .ok_or_else(|| ende_core::anyhow::anyhow!("empty response from {url}"))?;
 
     let actual =
       faster_hex::hex_string(&sha2::Sha256::digest(&data)).to_lowercase();
@@ -1997,7 +1997,7 @@ impl LaufeyBackendResolver {
     }
 
     let parent = dir.parent().ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "LAUFEY cache dir has no parent: {}",
         dir.display()
       )
@@ -2046,7 +2046,7 @@ impl LaufeyBackendResolver {
       if marker.exists() {
         return Ok(dir);
       }
-      return Err(deno_core::anyhow::anyhow!(
+      return Err(ende_core::anyhow::anyhow!(
         "failed to atomic-rename LAUFEY cache to {}: {e}",
         dir.display(),
       ));
@@ -2087,7 +2087,7 @@ impl LaufeyBackendResolver {
     if let Some(dev_dir) = laufey_dev_dir() {
       let binary =
         locate_dev_backend_binary(&dev_dir, backend).ok_or_else(|| {
-          deno_core::anyhow::anyhow!(
+          ende_core::anyhow::anyhow!(
             "could not find '{backend}' backend binary under {} (set via {})",
             dev_dir.display(),
             LAUFEY_DEV_DIR_ENV
@@ -2112,7 +2112,7 @@ impl LaufeyBackendResolver {
 
     let dir = self.ensure_downloaded(backend, target).await?;
     locate_backend_binary(&dir, backend, target).ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "could not find '{backend}' backend binary inside {}",
         dir.display()
       )
@@ -2127,7 +2127,7 @@ impl LaufeyBackendResolver {
   ) -> Result<PathBuf, AnyError> {
     if let Some(dev_dir) = laufey_dev_dir() {
       return locate_dev_app_bundle(&dev_dir, backend).ok_or_else(|| {
-        deno_core::anyhow::anyhow!(
+        ende_core::anyhow::anyhow!(
           "could not find '{backend}' .app bundle under {} (set via {})",
           dev_dir.display(),
           LAUFEY_DEV_DIR_ENV
@@ -2137,7 +2137,7 @@ impl LaufeyBackendResolver {
 
     let dir = self.ensure_downloaded(backend, target).await?;
     locate_app_bundle(&dir, backend).ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "could not find '{backend}' .app bundle inside {} (backend may not ship as an app for target '{target}')",
         dir.display()
       )
@@ -2153,7 +2153,7 @@ impl LaufeyBackendResolver {
   ) -> Result<PathBuf, AnyError> {
     let binary = self.find_binary(backend, target).await?;
     let parent = binary.parent().ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "LAUFEY backend binary has no parent directory: {}",
         binary.display()
       )
@@ -2549,7 +2549,7 @@ fn rewrite_helper_plist_identifier(
     .get("CFBundleIdentifier")
     .and_then(|v| v.as_string())
     .ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "helper plist {} has no CFBundleIdentifier",
         plist_path.display()
       )
@@ -2809,7 +2809,7 @@ fn harmonize_cached_laufey_identifiers(
 ) -> Result<(), AnyError> {
   let laufey_app = locate_laufey_app_in_install(install_dir, backend)
     .ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "could not find laufey.app under {} to re-sign",
         install_dir.display()
       )
@@ -3002,13 +3002,13 @@ struct DylibParts<'a> {
 
 fn dylib_parts(dylib_path: &Path) -> Result<DylibParts<'_>, AnyError> {
   let parent = dylib_path.parent().ok_or_else(|| {
-    deno_core::anyhow::anyhow!(
+    ende_core::anyhow::anyhow!(
       "invalid --output: dylib path has no parent dir: {}",
       dylib_path.display()
     )
   })?;
   let file_name = dylib_path.file_name().ok_or_else(|| {
-    deno_core::anyhow::anyhow!(
+    ende_core::anyhow::anyhow!(
       "invalid --output: dylib path has no file name: {}",
       dylib_path.display()
     )
@@ -3016,7 +3016,7 @@ fn dylib_parts(dylib_path: &Path) -> Result<DylibParts<'_>, AnyError> {
   let app_name = dylib_path
     .file_stem()
     .ok_or_else(|| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "invalid --output: dylib path has no file stem: {}",
         dylib_path.display()
       )
@@ -3491,7 +3491,7 @@ fn create_macos_dmg(
   let staged_app = staging.path().join(
     app_bundle
       .file_name()
-      .ok_or_else(|| deno_core::anyhow::anyhow!("app bundle has no name"))?,
+      .ok_or_else(|| ende_core::anyhow::anyhow!("app bundle has no name"))?,
   );
   crate::tools::compile::copy_dir_all(app_bundle, &staged_app)?;
   #[cfg(unix)]
@@ -4584,7 +4584,7 @@ fn version_core_fields(version: &str) -> Vec<&str> {
 ///   <AppName>.bat          (launcher)
 ///   laufey.exe             (CEF backend)
 ///   libcef.dll, ...        (CEF support files)
-///   denort.dll             (compiled runtime + user code)
+///   endert.dll             (compiled runtime + user code)
 ///   ...                    (nested dirs preserved)
 /// ```
 fn create_windows_msi(
@@ -5288,7 +5288,7 @@ fn msi_sort_tables_by_string_id(msi_path: &Path) -> Result<(), AnyError> {
   // The string-pool header's top bit selects 3-byte string references; tiny
   // databases use 2-byte refs, but honor the flag to stay correct at any size.
   let pool_raw = find_raw("_StringPool").ok_or_else(|| {
-    deno_core::anyhow::anyhow!("malformed .msi: no _StringPool stream")
+    ende_core::anyhow::anyhow!("malformed .msi: no _StringPool stream")
   })?;
   let pool = read_stream(&mut comp, &pool_raw)?;
   let str_w: usize = if pool.len() >= 4 && (pool[3] & 0x80) != 0 {
@@ -5300,7 +5300,7 @@ fn msi_sort_tables_by_string_id(msi_path: &Path) -> Result<(), AnyError> {
   // Map every string-pool id to its text so data-table streams (named by table
   // text) can be matched to their column schema (keyed by table string id).
   let data_raw = find_raw("_StringData").ok_or_else(|| {
-    deno_core::anyhow::anyhow!("malformed .msi: no _StringData stream")
+    ende_core::anyhow::anyhow!("malformed .msi: no _StringData stream")
   })?;
   let str_data = read_stream(&mut comp, &data_raw)?;
   let mut strings = vec![String::new()]; // 1-based; index 0 is unused.
@@ -5341,7 +5341,7 @@ fn msi_sort_tables_by_string_id(msi_path: &Path) -> Result<(), AnyError> {
   // Parse the (now sorted) `_Columns` table to recover every persistent table's
   // column widths and which columns are primary keys.
   let columns_raw = find_raw("_Columns").ok_or_else(|| {
-    deno_core::anyhow::anyhow!("malformed .msi: no _Columns stream")
+    ende_core::anyhow::anyhow!("malformed .msi: no _Columns stream")
   })?;
   let columns = read_stream(&mut comp, &columns_raw)?;
   let col_row_w = str_w + 2 + str_w + 2; // Table, Number, Name, Type
@@ -5449,7 +5449,7 @@ fn build_msi_cabinet(files: &[MsiFile]) -> Result<Vec<u8>, AnyError> {
   {
     let name = file_writer.file_name().to_string();
     let f = by_key.get(name.as_str()).ok_or_else(|| {
-      deno_core::anyhow::anyhow!("cabinet file {name} missing")
+      ende_core::anyhow::anyhow!("cabinet file {name} missing")
     })?;
     let data = std::fs::read(&f.abs_path).with_context(|| {
       format!("failed to read {} for .msi cabinet", f.abs_path.display())
@@ -5516,7 +5516,7 @@ fn convert_icon_set_to_icns(
   cwd: &Path,
   entries: &[crate::args::IconSetEntry],
   icns_path: &Path,
-) -> Result<(), deno_core::error::AnyError> {
+) -> Result<(), ende_core::error::AnyError> {
   use std::io::Write;
 
   let mut icons: Vec<(&'static [u8; 4], Vec<u8>)> = Vec::new();
@@ -5533,7 +5533,7 @@ fn convert_icon_set_to_icns(
   }
 
   if icons.is_empty() {
-    deno_core::anyhow::bail!("No valid icon images found for .icns");
+    ende_core::anyhow::bail!("No valid icon images found for .icns");
   }
 
   // File header (8 bytes) + for each icon: 4-byte OSType + 4-byte length + payload.
@@ -5588,7 +5588,7 @@ pub fn convert_icon_set_to_ico(
   cwd: &Path,
   entries: &[crate::args::IconSetEntry],
   ico_path: &Path,
-) -> Result<(), deno_core::error::AnyError> {
+) -> Result<(), ende_core::error::AnyError> {
   use std::io::Write;
 
   let mut images: Vec<(u32, Vec<u8>)> = Vec::new();
@@ -5603,7 +5603,7 @@ pub fn convert_icon_set_to_ico(
   }
 
   if images.is_empty() {
-    deno_core::anyhow::bail!("No valid icon images found for .ico");
+    ende_core::anyhow::bail!("No valid icon images found for .ico");
   }
 
   let count = images.len() as u16;
@@ -6158,12 +6158,12 @@ def456  other.zip
     // .so on Linux carries the `lib` prefix in the file stem; the
     // resulting bundle name shouldn't include it (the user typed
     // `--output myapp`, not `libmyapp`).
-    let p = std::path::PathBuf::from("/tmp/libdenort.so");
+    let p = std::path::PathBuf::from("/tmp/libendert.so");
     let parts = dylib_parts(&p).expect("parts");
     // dylib_parts itself doesn't strip; that's downstream. But the
     // pieces should at least round-trip cleanly.
-    assert_eq!(parts.file_name, "libdenort.so");
-    assert_eq!(parts.app_name, "libdenort");
+    assert_eq!(parts.file_name, "libendert.so");
+    assert_eq!(parts.app_name, "libendert");
   }
 
   #[test]

@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use deno_core::error::CoreError;
+use ende_core::error::CoreError;
 use futures::FutureExt;
 use futures::future::Either;
 use tokio::sync::oneshot;

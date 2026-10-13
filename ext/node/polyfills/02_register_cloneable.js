@@ -18,15 +18,15 @@ const { core } = __bootstrap;
 let keysMod;
 const lazyKeys = () =>
   keysMod ??
-    (keysMod = core.loadExtScript("ext:deno_node/internal/crypto/keys.ts"));
+    (keysMod = core.loadExtScript("ext:ende_node/internal/crypto/keys.ts"));
 let x509Mod;
 const lazyX509 = () =>
   x509Mod ??
-    (x509Mod = core.loadExtScript("ext:deno_node/internal/crypto/x509.ts"));
+    (x509Mod = core.loadExtScript("ext:ende_node/internal/crypto/x509.ts"));
 let perfHooksMod;
 const lazyPerfHooks = () =>
   perfHooksMod ??
-    (perfHooksMod = core.loadExtScript("ext:deno_node/perf_hooks.js"));
+    (perfHooksMod = core.loadExtScript("ext:ende_node/perf_hooks.js"));
 
 core.registerCloneableResource(
   "NodeCryptoKeyObject",

@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { core } from "ext:core/mod.js";
-const mod = core.loadExtScript("ext:deno_node/vm.js");
+const mod = core.loadExtScript("ext:ende_node/vm.js");
 
 export const {
   Module,

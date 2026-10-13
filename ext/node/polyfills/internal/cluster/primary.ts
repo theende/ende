@@ -12,23 +12,23 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const { op_get_env_no_permission_check } = core.ops;
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 const lazyChildProcess = core.createLazyLoader("node:child_process");
 const lazyPath = core.createLazyLoader("node:path");
 const lazyProcess = core.createLazyLoader("node:process");
-const { isWindows } = core.loadExtScript("ext:deno_node/_util/os.ts");
+const { isWindows } = core.loadExtScript("ext:ende_node/_util/os.ts");
 
 const { Worker } = core.loadExtScript(
-  "ext:deno_node/internal/cluster/worker.ts",
+  "ext:ende_node/internal/cluster/worker.ts",
 );
 const { internal, sendHelper } = core.loadExtScript(
-  "ext:deno_node/internal/cluster/utils.ts",
+  "ext:ende_node/internal/cluster/utils.ts",
 );
 const { RoundRobinHandle } = core.loadExtScript(
-  "ext:deno_node/internal/cluster/round_robin_handle.ts",
+  "ext:ende_node/internal/cluster/round_robin_handle.ts",
 );
 const { SharedHandle } = core.loadExtScript(
-  "ext:deno_node/internal/cluster/shared_handle.ts",
+  "ext:ende_node/internal/cluster/shared_handle.ts",
 );
 
 const {

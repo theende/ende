@@ -12,13 +12,13 @@
 
 use std::borrow::Cow;
 
-use deno_core::ToV8;
-use deno_core::unsync::spawn_blocking;
-use deno_core::v8;
-use deno_core::webidl::ContextFn;
-use deno_core::webidl::WebIdlConverter;
-use deno_core::webidl::WebIdlError;
 use deno_error::JsErrorBox;
+use ende_core::ToV8;
+use ende_core::unsync::spawn_blocking;
+use ende_core::v8;
+use ende_core::webidl::ContextFn;
+use ende_core::webidl::WebIdlConverter;
+use ende_core::webidl::WebIdlError;
 
 use crate::CryptoError;
 use crate::crypto_key::CryptoKeyType;

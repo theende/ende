@@ -3,13 +3,13 @@
 
 (function () {
 const { core, primordials } = __bootstrap;
-const { TextDecoder } = core.loadExtScript("ext:deno_web/08_text_encoding.js");
-const { Blob } = core.loadExtScript("ext:deno_web/09_file.js");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { TextDecoder } = core.loadExtScript("ext:ende_web/08_text_encoding.js");
+const { Blob } = core.loadExtScript("ext:ende_web/09_file.js");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_STATE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const {
   ArrayBufferIsView,

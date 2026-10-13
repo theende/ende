@@ -98,18 +98,18 @@ const {
 } = primordials;
 
 const { read, readSync, write, writeSync } = core.loadExtScript(
-  "ext:deno_io/12_io.js",
+  "ext:ende_io/12_io.js",
 );
-const abortSignal = core.loadExtScript("ext:deno_web/03_abort_signal.js");
+const abortSignal = core.loadExtScript("ext:ende_web/03_abort_signal.js");
 // Defer loading the 208 KB `06_streams.js` polyfill: these helpers are only
 // used inside File class methods and writeFile-family functions, so pay
 // the parse cost on first use rather than at every startup.
 let _streamsImpl;
 function lazyStreams() {
   return _streamsImpl ??
-    (_streamsImpl = core.loadExtScript("ext:deno_web/06_streams.js"));
+    (_streamsImpl = core.loadExtScript("ext:ende_web/06_streams.js"));
 }
-const { pathFromURL } = core.loadExtScript("ext:deno_web/00_infra.js");
+const { pathFromURL } = core.loadExtScript("ext:ende_web/00_infra.js");
 
 const fsFileConstructorKey = Symbol("Deno.internal.FsFile");
 

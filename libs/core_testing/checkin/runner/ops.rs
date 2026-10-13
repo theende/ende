@@ -3,19 +3,19 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use deno_core::CppgcBase;
-use deno_core::CppgcInherits;
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::op2;
-use deno_core::stats::RuntimeActivityDiff;
-use deno_core::stats::RuntimeActivitySnapshot;
-use deno_core::stats::RuntimeActivityStats;
-use deno_core::stats::RuntimeActivityStatsFactory;
-use deno_core::stats::RuntimeActivityStatsFilter;
-use deno_core::v8;
-use deno_core::v8::cppgc::GcCell;
 use deno_error::JsErrorBox;
+use ende_core::CppgcBase;
+use ende_core::CppgcInherits;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::op2;
+use ende_core::stats::RuntimeActivityDiff;
+use ende_core::stats::RuntimeActivitySnapshot;
+use ende_core::stats::RuntimeActivityStats;
+use ende_core::stats::RuntimeActivityStatsFactory;
+use ende_core::stats::RuntimeActivityStatsFilter;
+use ende_core::v8;
+use ende_core::v8::cppgc::GcCell;
 
 use super::Output;
 use super::TestData;

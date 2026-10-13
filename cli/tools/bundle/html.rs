@@ -6,10 +6,10 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use capacity_builder::StringBuilder;
-use deno_core::anyhow;
-use deno_core::error::AnyError;
-use deno_runtime::deno_permissions::OpenAccessKind;
-use deno_runtime::deno_permissions::PermissionsContainer;
+use ende_core::anyhow;
+use ende_core::error::AnyError;
+use ende_runtime::ende_permissions::OpenAccessKind;
+use ende_runtime::ende_permissions::PermissionsContainer;
 
 use crate::tools::bundle::OutputFile;
 
@@ -718,8 +718,8 @@ fn inject_scripts_and_css(
 mod tests {
   use std::sync::Arc;
 
-  use deno_runtime::deno_permissions::Permissions;
-  use deno_runtime::permissions::RuntimePermissionDescriptorParser;
+  use ende_runtime::ende_permissions::Permissions;
+  use ende_runtime::permissions::RuntimePermissionDescriptorParser;
 
   use super::*;
 

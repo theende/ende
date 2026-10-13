@@ -1,11 +1,11 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::ModuleSpecifier;
-use deno_core::OpState;
-use deno_core::op2;
+use ende_core::ModuleSpecifier;
+use ende_core::OpState;
+use ende_core::op2;
 
-deno_core::extension!(
-  deno_runtime,
+ende_core::extension!(
+  ende_runtime,
   ops = [op_main_module, op_ppid, op_internal_log],
   options = { main_module: ModuleSpecifier },
   state = |state, options| {

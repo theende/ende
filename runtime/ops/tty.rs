@@ -9,17 +9,17 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 
-use deno_core::OpState;
-#[cfg(unix)]
-use deno_core::ResourceId;
-use deno_core::op2;
-#[cfg(windows)]
-use deno_core::parking_lot::Mutex;
 use deno_error::JsErrorBox;
 use deno_error::JsErrorClass;
 use deno_error::builtin_classes::GENERIC_ERROR;
+use ende_core::OpState;
+#[cfg(unix)]
+use ende_core::ResourceId;
+use ende_core::op2;
 #[cfg(windows)]
-use deno_io::WinTtyState;
+use ende_core::parking_lot::Mutex;
+#[cfg(windows)]
+use ende_io::WinTtyState;
 #[cfg(unix)]
 use nix::sys::termios;
 use rustyline::Cmd;
@@ -57,12 +57,12 @@ impl TtyModeStore {
 }
 
 #[cfg(unix)]
-use deno_process::JsNixError;
+use ende_process::JsNixError;
 #[cfg(windows)]
 use windows_sys::Win32::System::Console as wincon;
 
-deno_core::extension!(
-  deno_tty,
+ende_core::extension!(
+  ende_tty,
   ops = [op_set_raw, op_console_size, op_read_line_prompt],
   state = |state| {
     #[cfg(unix)]
@@ -79,7 +79,7 @@ pub enum TtyError {
   Resource(
     #[from]
     #[inherit]
-    deno_core::error::ResourceError,
+    ende_core::error::ResourceError,
   ),
   #[class(inherit)]
   #[error("{0}")]
@@ -496,7 +496,7 @@ pub fn op_read_line_prompt(
   #[string] prompt_text: &str,
   #[string] default_value: &str,
 ) -> Result<Option<String>, JsReadlineError> {
-  let _terminal_input_guard = deno_permissions::prompter::lock_terminal_input();
+  let _terminal_input_guard = ende_permissions::prompter::lock_terminal_input();
   let mut editor = Editor::<(), rustyline::history::DefaultHistory>::new()
     .expect("Failed to create editor.");
 

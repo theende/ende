@@ -26,11 +26,11 @@ On a pull request the workflow runs, roughly:
 - **`pre-build`** — a fast gating job. It decides whether downstream jobs should
   run at all and exposes the decision through job outputs.
 - **`build`** (per platform) and **`build libs`** — compile Deno and the
-  `deno_core` libraries.
+  `ende_core` libraries.
 - **`test`** (per platform, sharded) — the spec, unit, node-compat and WPT
   suites, depending on `build`.
 - **`bench`** — benchmarks.
-- **`deno-core-test`** and **`deno-core-miri`** — the `deno_core` / `libs/*`
+- **`deno-core-test`** and **`deno-core-miri`** — the `ende_core` / `libs/*`
   crate tests (the latter under Miri).
 - **`lint`** — formatting check, jsdoc check, and `tools/lint.js` (Rust + JS).
 - **`ci-status`** — an aggregator that the branch protection rule keys on. It
@@ -43,9 +43,9 @@ On a pull request the workflow runs, roughly:
 downstream jobs read in their `if:` conditions:
 
 - `skip_build` — set when a draft PR has not opted into CI. When true, the
-  build, test, lint, bench and `deno_core` jobs are all skipped.
-- `skip_deno_core_test` — set when no `deno_core`-related files changed, so the
-  `deno_core` crate tests can be skipped (`tools/check_deno_core_changes.js`).
+  build, test, lint, bench and `ende_core` jobs are all skipped.
+- `skip_deno_core_test` — set when no `ende_core`-related files changed, so the
+  `ende_core` crate tests can be skipped (`tools/check_deno_core_changes.js`).
 - `docs_only` — set when the PR only touches the `doc/` directory
   (`tools/check_docs_only_changes.js`).
 

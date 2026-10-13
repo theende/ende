@@ -35,7 +35,7 @@
 const { core, primordials } = __bootstrap;
 const { TCPWrap } = core.ops;
 const { AsyncWrap, providerType } = core.loadExtScript(
-  "ext:deno_node/internal_binding/async_wrap.ts",
+  "ext:ende_node/internal_binding/async_wrap.ts",
 );
 const { FunctionPrototypeCall } = primordials;
 

@@ -5,9 +5,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use console_static_text::ConsoleStaticText;
-use deno_core::parking_lot::Mutex;
-use deno_core::unsync::spawn_blocking;
-use deno_runtime::ops::tty::ConsoleSize;
+use ende_core::parking_lot::Mutex;
+use ende_core::unsync::spawn_blocking;
+use ende_runtime::ops::tty::ConsoleSize;
 use once_cell::sync::Lazy;
 
 use super::console::new_console_static_text;

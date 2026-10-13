@@ -807,7 +807,7 @@ dependencies = [
 name = "build-your-own-js-snapshot"
 version = "0.1.0"
 dependencies = [
- "deno_core",
+ "ende_core",
  "tokio",
 ]
 
@@ -1843,23 +1843,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dcore"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "deno_core",
- "deno_core_testing",
- "fastwebsockets 0.10.0",
- "http",
- "http-body-util",
- "hyper",
- "hyper-util",
- "serde_json",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "debugid"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1892,159 +1875,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "deno"
-version = "2.9.7"
-dependencies = [
- "anstream",
- "async-trait",
- "aws-lc-rs",
- "backhand",
- "base64 0.22.1",
- "bincode",
- "boxed_error",
- "bsdiff",
- "bytes",
- "cab",
- "capacity_builder",
- "cfb",
- "chrono",
- "color-print",
- "console_static_text",
- "criterion",
- "crossterm",
- "dashmap",
- "deno_ast",
- "deno_bundle_runtime",
- "deno_cache_dir",
- "deno_cli_parser",
- "deno_config",
- "deno_core",
- "deno_doc",
- "deno_dotenv",
- "deno_error",
- "deno_graph",
- "deno_lib",
- "deno_lint",
- "deno_lockfile",
- "deno_media_type",
- "deno_npm",
- "deno_npm_cache",
- "deno_npm_installer",
- "deno_npmrc",
- "deno_os",
- "deno_package_json",
- "deno_panic",
- "deno_path_util",
- "deno_print",
- "deno_resolver",
- "deno_runtime",
- "deno_semver",
- "deno_signals",
- "deno_snapshots",
- "deno_subprocess_windows",
- "deno_task_shell",
- "deno_telemetry",
- "deno_terminal",
- "deno_tower_lsp",
- "deno_v8",
- "dhat",
- "dprint-core",
- "dprint-plugin-json",
- "dprint-plugin-jupyter",
- "dprint-plugin-markdown",
- "dprint-plugin-typescript",
- "esbuild_client",
- "eszip",
- "faster-hex",
- "fastwebsockets 0.8.1",
- "flate2",
- "fluent-uri",
- "glob",
- "http",
- "http-body",
- "http-body-util",
- "hyper",
- "hyper-util",
- "imara-diff",
- "import_map",
- "indexmap",
- "jsonc-parser",
- "keyring",
- "lax-css",
- "lax-markup",
- "lax-sql",
- "lazy-regex",
- "libc",
- "liblzma",
- "libsui",
- "libz-sys",
- "locked-tripwire",
- "log",
- "ls-types",
- "memchr",
- "msi",
- "nix 0.30.1",
- "node_resolver",
- "node_shim",
- "notify",
- "once_cell",
- "open",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry-semantic-conventions",
- "opentelemetry_sdk",
- "p256",
- "pathdiff",
- "percent-encoding",
- "phf 0.11.2",
- "plist",
- "pretty_assertions",
- "pretty_yaml",
- "rand 0.8.5",
- "regex",
- "rpm",
- "rustc-hash 2.1.1",
- "rustls",
- "rustyline",
- "rustyline-derive",
- "same-file",
- "serde",
- "serde_json",
- "serde_repr",
- "sha2",
- "shlex",
- "spki 0.7.3",
- "strsim",
- "sys_traits",
- "tar",
- "tempfile",
- "test_util",
- "text-size",
- "text_lines",
- "thiserror 2.0.12",
- "tokio",
- "tokio-util",
- "tokio-vsock",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "twox-hash 2.1.2",
- "typed-arena",
- "unicode-general-category",
- "unicode-width 0.1.13",
- "uuid",
- "walkdir",
- "wasm_dep_analyzer",
- "wasmparser",
- "which 8.0.0",
- "windows-sys 0.59.0",
- "winres",
- "yaml_parser",
- "zip",
- "zstd",
 ]
 
 [[package]]
@@ -2102,277 +1932,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno_bench_util"
-version = "0.253.0"
-dependencies = [
- "bencher",
- "deno_core",
- "tokio",
-]
-
-[[package]]
-name = "deno_bundle_runtime"
-version = "0.46.0"
-dependencies = [
- "async-trait",
- "deno_core",
- "deno_error",
- "deno_permissions",
- "regex",
- "serde",
-]
-
-[[package]]
-name = "deno_cache"
-version = "0.192.0"
-dependencies = [
- "async-stream",
- "base64 0.22.1",
- "bytes",
- "chrono",
- "deno_core",
- "deno_error",
- "futures",
- "http",
- "http-body",
- "http-body-util",
- "hyper",
- "hyper-util",
- "log",
- "rusqlite",
- "sha2",
- "slab",
- "tempfile",
- "thiserror 2.0.12",
- "tokio",
- "tokio-util",
-]
-
-[[package]]
-name = "deno_cache_dir"
-version = "0.51.0"
-dependencies = [
- "async-trait",
- "base64 0.22.1",
- "boxed_error",
- "chrono",
- "data-url",
- "deno_error",
- "deno_maybe_sync",
- "deno_media_type",
- "deno_path_util",
- "http",
- "log",
- "once_cell",
- "parking_lot",
- "pretty_assertions",
- "serde",
- "serde_json",
- "sha2",
- "sys_traits",
- "tempfile",
- "thiserror 2.0.12",
- "tokio",
- "url",
-]
-
-[[package]]
-name = "deno_canvas"
-version = "0.121.0"
-dependencies = [
- "bytemuck",
- "deno_core",
- "deno_error",
- "deno_image",
- "deno_permissions",
- "deno_webgpu",
- "raw-window-handle",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "deno_cli_parser"
-version = "0.9.0"
-dependencies = [
- "criterion",
- "deno_bundle_runtime",
- "deno_config",
- "deno_core",
- "deno_lib",
- "deno_npm_installer",
- "deno_permissions",
- "deno_runtime",
- "deno_semver",
- "log",
- "pretty_assertions",
- "serde",
- "sys_traits",
-]
-
-[[package]]
-name = "deno_config"
-version = "0.109.0"
-dependencies = [
- "boxed_error",
- "capacity_builder",
- "chrono",
- "deno_error",
- "deno_maybe_sync",
- "deno_package_json",
- "deno_path_util",
- "deno_semver",
- "glob",
- "ignore",
- "import_map",
- "indexmap",
- "jsonc-parser",
- "log",
- "pretty_assertions",
- "serde",
- "serde_json",
- "sys_traits",
- "tempfile",
- "thiserror 2.0.12",
- "url",
-]
-
-[[package]]
-name = "deno_core"
-version = "0.412.0"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "bencher",
- "bit-set 0.8.0",
- "bit-vec 0.8.0",
- "boxed_error",
- "bytes",
- "cooked-waker",
- "criterion",
- "deno_ast",
- "deno_core_icudata",
- "deno_error",
- "deno_ops",
- "deno_path_util",
- "deno_unsync",
- "deno_v8",
- "futures",
- "indexmap",
- "inventory",
- "libc",
- "num-bigint",
- "parking_lot",
- "paste",
- "percent-encoding",
- "pin-project",
- "pretty_assertions",
- "rstest",
- "serde",
- "serde_json",
- "serde_v8",
- "smallvec",
- "sourcemap",
- "static_assertions",
- "sys_traits",
- "thiserror 2.0.12",
- "tokio",
- "twox-hash 2.1.2",
- "unicycle",
- "url",
- "uuid",
- "wasm_dep_analyzer",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "deno_core_icudata"
 version = "0.77.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9efff8990a82c1ae664292507e1a5c6749ddd2312898cdf9cd7cb1fd4bc64c6"
-
-[[package]]
-name = "deno_core_testing"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "deno_ast",
- "deno_core",
- "deno_error",
- "futures",
- "pretty_assertions",
- "thiserror 2.0.12",
- "tokio",
- "url",
-]
-
-[[package]]
-name = "deno_cron"
-version = "0.139.0"
-dependencies = [
- "async-trait",
- "chrono",
- "deno_core",
- "deno_error",
- "deno_features",
- "once_cell",
- "serde",
- "thiserror 2.0.12",
- "tokio",
- "tokio-vsock",
-]
-
-[[package]]
-name = "deno_crypto"
-version = "0.273.0"
-dependencies = [
- "aes",
- "aes-gcm",
- "aes-kw",
- "argon2",
- "aws-lc-rs",
- "base64 0.22.1",
- "cbc",
- "const-oid 0.9.6",
- "ctr",
- "curve25519-dalek",
- "deno_core",
- "deno_crypto_provider",
- "deno_error",
- "ecdsa",
- "elliptic-curve 0.13.8",
- "fips203",
- "fips205",
- "hmac",
- "num-traits",
- "ocb3",
- "once_cell",
- "p256",
- "p384",
- "p521",
- "rand 0.8.5",
- "rsa",
- "serde",
- "serde_bytes",
- "sha1",
- "sha2",
- "sha3 0.10.8",
- "signature 2.2.0",
- "spki 0.7.3",
- "subtle",
- "thiserror 2.0.12",
- "tiny-keccak",
- "tokio",
- "uuid",
- "x25519-dalek",
-]
-
-[[package]]
-name = "deno_crypto_provider"
-version = "0.53.0"
-dependencies = [
- "aws-lc-sys",
- "ed448-goldilocks",
-]
 
 [[package]]
 name = "deno_doc"
@@ -2405,15 +1968,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno_dotenv"
-version = "0.28.0"
-dependencies = [
- "deno_path_util",
- "sys_traits",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "deno_error"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2436,104 +1990,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "deno_features"
-version = "0.56.0"
-dependencies = [
- "deno_core",
-]
-
-[[package]]
-name = "deno_fetch"
-version = "0.283.0"
-dependencies = [
- "async-compression",
- "base64 0.22.1",
- "bytes",
- "data-url",
- "deno_bench_util",
- "deno_core",
- "deno_error",
- "deno_fs",
- "deno_io",
- "deno_path_util",
- "deno_permissions",
- "deno_tls",
- "deno_web",
- "deno_webidl",
- "error_reporter",
- "fast-socks5",
- "h2",
- "hickory-resolver",
- "http",
- "http-body-util",
- "hyper",
- "hyper-rustls",
- "hyper-util",
- "ipnet",
- "percent-encoding",
- "rustls",
- "rustls-webpki",
- "serde_json",
- "sys_traits",
- "thiserror 2.0.12",
- "tokio",
- "tokio-rustls",
- "tokio-socks",
- "tokio-util",
- "tokio-vsock",
- "tower",
- "tower-service",
-]
-
-[[package]]
-name = "deno_ffi"
-version = "0.246.0"
-dependencies = [
- "cranelift",
- "cranelift-native",
- "deno_core",
- "deno_error",
- "deno_permissions",
- "denort_helper",
- "dlopen2",
- "libffi",
- "log",
- "memmap2",
- "num-bigint",
- "serde",
- "serde_json",
- "sys_traits",
- "thiserror 2.0.12",
- "tokio",
- "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "deno_fs"
-version = "0.169.0"
-dependencies = [
- "async-trait",
- "boxed_error",
- "deno_core",
- "deno_error",
- "deno_io",
- "deno_maybe_sync",
- "deno_path_util",
- "deno_permissions",
- "filetime",
- "junction",
- "libc",
- "nix 0.30.1",
- "rand 0.8.5",
- "rayon",
- "same-file",
- "serde",
- "thiserror 2.0.12",
- "tokio",
- "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2571,180 +2027,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno_http"
-version = "0.257.0"
-dependencies = [
- "async-compression",
- "async-trait",
- "aws-lc-rs",
- "base64 0.22.1",
- "bencher",
- "brotli",
- "bytes",
- "deno_core",
- "deno_error",
- "deno_http_h1",
- "deno_net",
- "deno_telemetry",
- "deno_websocket",
- "flate2",
- "http",
- "http-body-util",
- "httpdate",
- "hyper",
- "hyper-util",
- "itertools 0.14.0",
- "log",
- "mime",
- "once_cell",
- "percent-encoding",
- "phf 0.11.2",
- "pin-project",
- "rand 0.8.5",
- "scopeguard",
- "smallvec",
- "thiserror 2.0.12",
- "tokio",
- "tokio-util",
- "tokio-vsock",
-]
-
-[[package]]
-name = "deno_http_h1"
-version = "0.10.0"
-dependencies = [
- "criterion",
- "httparse",
- "memchr",
- "thiserror 2.0.12",
- "tokio",
-]
-
-[[package]]
-name = "deno_image"
-version = "0.35.0"
-dependencies = [
- "bytemuck",
- "deno_core",
- "deno_error",
- "image",
- "lcms2",
- "num-traits",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "deno_inspector_server"
-version = "0.33.0"
-dependencies = [
- "deno_core",
- "deno_error",
- "fastwebsockets 0.8.1",
- "http",
- "http-body-util",
- "hyper",
- "hyper-util",
- "log",
- "thiserror 2.0.12",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "deno_io"
-version = "0.169.0"
-dependencies = [
- "async-trait",
- "deno_core",
- "deno_error",
- "deno_permissions",
- "deno_subprocess_windows",
- "filetime",
- "libc",
- "log",
- "nix 0.30.1",
- "os_pipe",
- "parking_lot",
- "pin-project",
- "rand 0.8.5",
- "tokio",
- "uuid",
- "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "deno_kv"
-version = "0.167.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "base64 0.22.1",
- "boxed_error",
- "bytes",
- "chrono",
- "deno_core",
- "deno_error",
- "deno_features",
- "deno_fetch",
- "deno_path_util",
- "deno_permissions",
- "deno_tls",
- "denokv_proto",
- "denokv_remote",
- "denokv_sqlite",
- "faster-hex",
- "http",
- "http-body-util",
- "log",
- "num-bigint",
- "rand 0.8.5",
- "rusqlite",
- "serde",
- "serde_json",
- "sys_traits",
- "thiserror 2.0.12",
- "tokio",
- "url",
-]
-
-[[package]]
-name = "deno_lib"
-version = "0.77.0"
-dependencies = [
- "arc-swap",
- "aws-lc-rs",
- "base64 0.22.1",
- "boxed_error",
- "capacity_builder",
- "deno_bundle_runtime",
- "deno_error",
- "deno_fs",
- "deno_media_type",
- "deno_node",
- "deno_npm",
- "deno_npm_installer",
- "deno_path_util",
- "deno_resolver",
- "deno_runtime",
- "deno_semver",
- "deno_terminal",
- "env_logger",
- "faster-hex",
- "indexmap",
- "libc",
- "libsui",
- "log",
- "node_resolver",
- "parking_lot",
- "serde",
- "serde_json",
- "sys_traits",
- "thiserror 2.0.12",
- "twox-hash 2.1.2",
- "url",
-]
-
-[[package]]
 name = "deno_lint"
 version = "0.84.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2764,30 +2046,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno_lockfile"
-version = "0.61.0"
-dependencies = [
- "async-executor",
- "async-trait",
- "deno_semver",
- "file_test_runner",
- "futures",
- "futures-lite",
- "pretty_assertions",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "deno_maybe_sync"
-version = "0.46.0"
-dependencies = [
- "dashmap",
- "rustc-hash 2.1.1",
-]
-
-[[package]]
 name = "deno_media_type"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2797,25 +2055,6 @@ dependencies = [
  "encoding_rs",
  "serde",
  "url",
-]
-
-[[package]]
-name = "deno_napi"
-version = "0.190.0"
-dependencies = [
- "deno_core",
- "deno_error",
- "deno_node",
- "deno_permissions",
- "denort_helper",
- "libc",
- "libloading 0.7.4",
- "libuv-sys-lite",
- "log",
- "napi_sym",
- "object",
- "thiserror 2.0.12",
- "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2829,349 +2068,6 @@ dependencies = [
  "once_cell",
  "rustls-native-certs",
  "rustls-pemfile",
-]
-
-[[package]]
-name = "deno_net"
-version = "0.251.0"
-dependencies = [
- "deno_core",
- "deno_error",
- "deno_features",
- "deno_permissions",
- "deno_signals",
- "deno_tls",
- "deno_tunnel",
- "hickory-proto",
- "hickory-resolver",
- "libc",
- "log",
- "pin-project",
- "quinn",
- "rustls-tokio-stream",
- "serde",
- "sha2",
- "socket2 0.5.5",
- "sys_traits",
- "thiserror 2.0.12",
- "tokio",
- "tokio-vsock",
- "url",
- "web-transport-proto",
- "x509-parser",
-]
-
-[[package]]
-name = "deno_node"
-version = "0.197.0"
-dependencies = [
- "base64 0.22.1",
- "boxed_error",
- "brotli",
- "bytes",
- "cc",
- "deno_ast",
- "deno_core",
- "deno_dotenv",
- "deno_error",
- "deno_fs",
- "deno_inspector_server",
- "deno_io",
- "deno_native_certs",
- "deno_net",
- "deno_node_crypto",
- "deno_os",
- "deno_package_json",
- "deno_path_util",
- "deno_permissions",
- "deno_process",
- "deno_resolver",
- "deno_subprocess_windows",
- "deno_tls",
- "deno_whoami",
- "errno",
- "filetime",
- "hdrhistogram",
- "idna",
- "ipnet",
- "libc",
- "libnghttp2",
- "libz-sys",
- "log",
- "nix 0.30.1",
- "node_resolver",
- "node_shim",
- "rand 0.8.5",
- "rustls-tokio-stream",
- "rustls-webpki",
- "serde",
- "smallvec",
- "socket2 0.5.5",
- "sys_traits",
- "thiserror 2.0.12",
- "tokio",
- "tokio-eld",
- "url",
- "webpki-root-certs",
- "windows-sys 0.59.0",
- "zstd",
-]
-
-[[package]]
-name = "deno_node_crypto"
-version = "0.29.0"
-dependencies = [
- "aead-gcm-stream",
- "aes",
- "aws-lc-rs",
- "aws-lc-sys",
- "base64 0.22.1",
- "blake2 0.10.6",
- "cbc",
- "const-oid 0.9.6",
- "ctr",
- "data-encoding",
- "deno_core",
- "deno_crypto_provider",
- "deno_error",
- "der 0.7.9",
- "des",
- "digest 0.10.7",
- "dsa",
- "ecb",
- "ecdsa",
- "ed25519-dalek",
- "ed448-goldilocks",
- "elliptic-curve 0.13.8",
- "faster-hex",
- "hkdf",
- "hmac",
- "k256",
- "md-5",
- "md4",
- "num-bigint",
- "num-bigint-dig",
- "num-integer",
- "num-traits",
- "p12",
- "p224",
- "p256",
- "p384",
- "p521",
- "pbkdf2",
- "pkcs8 0.10.2",
- "rand 0.8.5",
- "ripemd",
- "rsa",
- "sec1 0.7.3",
- "serde",
- "sha1",
- "sha2",
- "sha3 0.10.8",
- "sm3",
- "spki 0.7.3",
- "subtle",
- "thiserror 2.0.12",
- "tokio",
- "x25519-dalek",
- "x509-parser",
- "yasna",
- "yoke 0.7.4",
-]
-
-[[package]]
-name = "deno_node_sqlite"
-version = "0.29.0"
-dependencies = [
- "deno_core",
- "deno_error",
- "deno_permissions",
- "rusqlite",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "deno_npm"
-version = "0.71.0"
-dependencies = [
- "async-trait",
- "bytemuck",
- "capacity_builder",
- "chrono",
- "deno_error",
- "deno_lockfile",
- "deno_package_json",
- "deno_semver",
- "divan",
- "futures",
- "hex",
- "indexmap",
- "log",
- "monch",
- "paste",
- "pretty_assertions",
- "reqwest",
- "rustc-hash 2.1.1",
- "serde",
- "serde_json",
- "sha2",
- "thiserror 2.0.12",
- "tokio",
- "url",
- "wide",
-]
-
-[[package]]
-name = "deno_npm_cache"
-version = "0.78.0"
-dependencies = [
- "async-trait",
- "aws-lc-rs",
- "base64 0.22.1",
- "deno_cache_dir",
- "deno_error",
- "deno_npm",
- "deno_npmrc",
- "deno_path_util",
- "deno_semver",
- "deno_unsync",
- "faster-hex",
- "flate2",
- "futures",
- "libdeflater",
- "log",
- "parking_lot",
- "percent-encoding",
- "serde",
- "serde_json",
- "sha1",
- "sha2",
- "sys_traits",
- "tar",
- "tempfile",
- "thiserror 2.0.12",
- "tokio",
- "url",
-]
-
-[[package]]
-name = "deno_npm_installer"
-version = "0.54.0"
-dependencies = [
- "anyhow",
- "async-once-cell",
- "async-trait",
- "bincode",
- "boxed_error",
- "capacity_builder",
- "deno_cache_dir",
- "deno_config",
- "deno_error",
- "deno_graph",
- "deno_lockfile",
- "deno_npm",
- "deno_npm_cache",
- "deno_npmrc",
- "deno_package_json",
- "deno_path_util",
- "deno_resolver",
- "deno_semver",
- "deno_terminal",
- "deno_unsync",
- "futures",
- "lazy-regex",
- "libc",
- "log",
- "once_cell",
- "parking_lot",
- "pathdiff",
- "rustc-hash 2.1.1",
- "serde",
- "serde_json",
- "sys_traits",
- "test_util",
- "thiserror 2.0.12",
- "tokio",
- "twox-hash 2.1.2",
- "url",
- "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "deno_npmrc"
-version = "0.20.0"
-dependencies = [
- "log",
- "monch",
- "pretty_assertions",
- "sys_traits",
- "thiserror 2.0.12",
- "url",
-]
-
-[[package]]
-name = "deno_ops"
-version = "0.288.0"
-dependencies = [
- "indexmap",
- "pretty_assertions",
- "prettyplease",
- "proc-macro2",
- "quote",
- "stringcase",
- "strum",
- "strum_macros",
- "syn 2.0.117",
- "syn-match",
- "testing_macros",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "deno_ops_compile_test_runner"
-version = "0.2.0"
-dependencies = [
- "bytes",
- "deno_core",
- "deno_error",
- "deno_ops",
- "serde",
- "trybuild",
-]
-
-[[package]]
-name = "deno_os"
-version = "0.76.0"
-dependencies = [
- "deno_core",
- "deno_error",
- "deno_path_util",
- "deno_permissions",
- "deno_signals",
- "libc",
- "netif",
- "thiserror 2.0.12",
- "tokio",
- "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "deno_package_json"
-version = "0.61.0"
-dependencies = [
- "boxed_error",
- "capacity_builder",
- "deno_error",
- "deno_maybe_sync",
- "deno_path_util",
- "deno_semver",
- "indexmap",
- "pretty_assertions",
- "serde",
- "serde_json",
- "sys_traits",
- "thiserror 2.0.12",
- "url",
 ]
 
 [[package]]
@@ -3197,190 +2093,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno_permissions"
-version = "0.118.0"
-dependencies = [
- "capacity_builder",
- "chrono",
- "deno_error",
- "deno_path_util",
- "deno_terminal",
- "deno_unsync",
- "dunce",
- "fqdn",
- "ipnet",
- "libc",
- "log",
- "nix 0.30.1",
- "once_cell",
- "parking_lot",
- "proptest",
- "serde",
- "serde_json",
- "sys_traits",
- "thiserror 2.0.12",
- "unicode-normalization",
- "url",
- "which 8.0.0",
- "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "deno_print"
-version = "0.7.0"
-
-[[package]]
-name = "deno_process"
-version = "0.74.0"
-dependencies = [
- "deno_core",
- "deno_error",
- "deno_fs",
- "deno_io",
- "deno_os",
- "deno_path_util",
- "deno_permissions",
- "deno_signals",
- "deno_subprocess_windows",
- "libc",
- "log",
- "memchr",
- "nix 0.30.1",
- "rand 0.8.5",
- "serde",
- "sys_traits",
- "tempfile",
- "thiserror 2.0.12",
- "tokio",
- "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "deno_resolver"
-version = "0.90.0"
-dependencies = [
- "anyhow",
- "async-once-cell",
- "async-trait",
- "boxed_error",
- "capacity_builder",
- "chrono",
- "dashmap",
- "deno_ast",
- "deno_cache_dir",
- "deno_config",
- "deno_error",
- "deno_graph",
- "deno_lockfile",
- "deno_maybe_sync",
- "deno_media_type",
- "deno_npm",
- "deno_npmrc",
- "deno_package_json",
- "deno_path_util",
- "deno_permissions",
- "deno_semver",
- "deno_terminal",
- "deno_unsync",
- "futures",
- "http",
- "imara-diff",
- "import_map",
- "indexmap",
- "jsonc-parser",
- "log",
- "node_resolver",
- "once_cell",
- "parking_lot",
- "phf 0.11.2",
- "rustc-hash 2.1.1",
- "serde",
- "serde_json",
- "sys_traits",
- "test_util",
- "thiserror 2.0.12",
- "twox-hash 2.1.2",
- "url",
- "yaml_parser",
-]
-
-[[package]]
-name = "deno_runtime"
-version = "0.267.0"
-dependencies = [
- "async-trait",
- "base64 0.22.1",
- "boxed_error",
- "color-print",
- "deno_ast",
- "deno_bundle_runtime",
- "deno_cache",
- "deno_canvas",
- "deno_core",
- "deno_cron",
- "deno_crypto",
- "deno_error",
- "deno_features",
- "deno_fetch",
- "deno_ffi",
- "deno_fs",
- "deno_http",
- "deno_image",
- "deno_inspector_server",
- "deno_io",
- "deno_kv",
- "deno_napi",
- "deno_net",
- "deno_node",
- "deno_node_crypto",
- "deno_node_sqlite",
- "deno_os",
- "deno_path_util",
- "deno_permissions",
- "deno_process",
- "deno_resolver",
- "deno_signals",
- "deno_telemetry",
- "deno_terminal",
- "deno_tls",
- "deno_web",
- "deno_webgpu",
- "deno_webidl",
- "deno_websocket",
- "deno_webstorage",
- "ed25519-dalek",
- "encoding_rs",
- "faster-hex",
- "fastwebsockets 0.8.1",
- "http",
- "http-body-util",
- "hyper",
- "libc",
- "log",
- "nix 0.30.1",
- "node_resolver",
- "notify",
- "once_cell",
- "qbsdiff",
- "raw-window-handle",
- "regex",
- "rustyline",
- "same-file",
- "serde",
- "serde_bytes",
- "sha2",
- "sys_traits",
- "test_util",
- "thiserror 2.0.12",
- "tokio",
- "tokio-metrics",
- "twox-hash 2.1.2",
- "unicode-normalization",
- "uuid",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "deno_semver"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3395,35 +2107,6 @@ dependencies = [
  "serde",
  "thiserror 2.0.12",
  "url",
-]
-
-[[package]]
-name = "deno_signals"
-version = "0.50.0"
-dependencies = [
- "libc",
- "signal-hook",
- "thiserror 2.0.12",
- "tokio",
- "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "deno_snapshots"
-version = "0.74.0"
-dependencies = [
- "deno_runtime",
-]
-
-[[package]]
-name = "deno_subprocess_windows"
-version = "0.54.0"
-dependencies = [
- "futures-channel",
- "libc",
- "pretty_assertions",
- "rand 0.8.5",
- "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3447,40 +2130,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno_telemetry"
-version = "0.81.0"
-dependencies = [
- "async-trait",
- "deno_core",
- "deno_error",
- "deno_net",
- "deno_signals",
- "deno_terminal",
- "deno_tls",
- "flate2",
- "http-body-util",
- "hyper",
- "hyper-rustls",
- "hyper-util",
- "log",
- "once_cell",
- "opentelemetry",
- "opentelemetry-http",
- "opentelemetry-otlp",
- "opentelemetry-proto",
- "opentelemetry-semantic-conventions",
- "opentelemetry_sdk",
- "pin-project",
- "prost",
- "serde",
- "sys_traits",
- "thiserror 2.0.12",
- "tokio",
- "tokio-vsock",
- "tower-service",
-]
-
-[[package]]
 name = "deno_terminal"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3488,24 +2137,6 @@ checksum = "f3ba8041ae7319b3ca6a64c399df4112badcbbe0868b4517637647614bede4be"
 dependencies = [
  "once_cell",
  "termcolor",
-]
-
-[[package]]
-name = "deno_tls"
-version = "0.246.0"
-dependencies = [
- "deno_core",
- "deno_error",
- "deno_native_certs",
- "log",
- "rustls",
- "rustls-pemfile",
- "rustls-tokio-stream",
- "rustls-webpki",
- "serde",
- "thiserror 2.0.12",
- "tokio",
- "webpki-roots",
 ]
 
 [[package]]
@@ -3548,19 +2179,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "deno_typescript_go_client_rust"
-version = "0.29.0"
-dependencies = [
- "indexmap",
- "log",
- "rmp",
- "serde",
- "serde_json",
- "serde_repr",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "deno_unsync"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3569,99 +2187,6 @@ dependencies = [
  "futures-util",
  "parking_lot",
  "tokio",
-]
-
-[[package]]
-name = "deno_url"
-version = "0.222.0"
-
-[[package]]
-name = "deno_v8"
-version = "0.4.0"
-dependencies = [
- "v8",
- "v8x",
-]
-
-[[package]]
-name = "deno_web"
-version = "0.290.0"
-dependencies = [
- "approx",
- "async-trait",
- "brotli",
- "bytes",
- "cssparser",
- "deno_bench_util",
- "deno_core",
- "deno_error",
- "deno_webidl",
- "encoding_rs",
- "flate2",
- "futures",
- "serde",
- "thiserror 2.0.12",
- "tokio",
- "unicode-normalization",
- "urlpattern",
- "uuid",
-]
-
-[[package]]
-name = "deno_webgpu"
-version = "0.226.0"
-dependencies = [
- "deno_core",
- "deno_error",
- "deno_image",
- "indexmap",
- "raw-window-handle",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
- "tokio",
- "wgpu-core",
- "wgpu-types",
-]
-
-[[package]]
-name = "deno_webidl"
-version = "0.259.0"
-dependencies = [
- "deno_bench_util",
- "deno_core",
-]
-
-[[package]]
-name = "deno_websocket"
-version = "0.264.0"
-dependencies = [
- "bytes",
- "deno_core",
- "deno_error",
- "deno_fetch",
- "deno_net",
- "deno_permissions",
- "deno_tls",
- "fastwebsockets 0.8.1",
- "h2",
- "http",
- "http-body-util",
- "hyper",
- "hyper-util",
- "once_cell",
- "thiserror 2.0.12",
- "tokio",
-]
-
-[[package]]
-name = "deno_webstorage"
-version = "0.254.0"
-dependencies = [
- "deno_core",
- "deno_error",
- "rusqlite",
- "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -3739,86 +2264,6 @@ dependencies = [
  "tokio-stream",
  "uuid",
  "v8_valueserializer",
-]
-
-[[package]]
-name = "denort"
-version = "2.9.7"
-dependencies = [
- "async-trait",
- "bincode",
- "deno_ast",
- "deno_cache_dir",
- "deno_config",
- "deno_core",
- "deno_error",
- "deno_lib",
- "deno_media_type",
- "deno_node",
- "deno_npm",
- "deno_npmrc",
- "deno_package_json",
- "deno_path_util",
- "deno_resolver",
- "deno_runtime",
- "deno_semver",
- "deno_snapshots",
- "deno_subprocess_windows",
- "deno_terminal",
- "deno_v8",
- "import_map",
- "indexmap",
- "jsonc-parser",
- "junction",
- "libsui",
- "log",
- "memmap2",
- "node_resolver",
- "notify",
- "rustls",
- "serde",
- "serde_json",
- "sys_traits",
- "test_util",
- "thiserror 2.0.12",
- "tokio",
- "url",
-]
-
-[[package]]
-name = "denort_desktop"
-version = "2.7.4"
-dependencies = [
- "deno_core",
- "deno_error",
- "deno_lib",
- "deno_runtime",
- "deno_snapshots",
- "deno_terminal",
- "deno_v8",
- "denort",
- "laufey",
- "libc",
- "libsui",
- "log",
- "raw-window-handle",
- "rustls",
- "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "denort_helper"
-version = "0.57.0"
-dependencies = [
- "deno_error",
- "deno_path_util",
- "libc",
- "sys_traits",
- "tempfile",
- "thiserror 2.0.12",
- "twox-hash 2.1.2",
 ]
 
 [[package]]
@@ -4292,6 +2737,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecore"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ende_core",
+ "ende_core_testing",
+ "fastwebsockets 0.10.0",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "serde_json",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "ecow"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4414,6 +2876,1544 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75030f3c4f45dafd7586dd6780965a8c7e8e285a5ecb86713e63a79c5b2766f3"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "ende"
+version = "2.9.7"
+dependencies = [
+ "anstream",
+ "async-trait",
+ "aws-lc-rs",
+ "backhand",
+ "base64 0.22.1",
+ "bincode",
+ "boxed_error",
+ "bsdiff",
+ "bytes",
+ "cab",
+ "capacity_builder",
+ "cfb",
+ "chrono",
+ "color-print",
+ "console_static_text",
+ "criterion",
+ "crossterm",
+ "dashmap",
+ "deno_ast",
+ "deno_doc",
+ "deno_error",
+ "deno_graph",
+ "deno_lint",
+ "deno_media_type",
+ "deno_panic",
+ "deno_path_util",
+ "deno_semver",
+ "deno_task_shell",
+ "deno_terminal",
+ "deno_tower_lsp",
+ "dhat",
+ "dprint-core",
+ "dprint-plugin-json",
+ "dprint-plugin-jupyter",
+ "dprint-plugin-markdown",
+ "dprint-plugin-typescript",
+ "ende_bundle_runtime",
+ "ende_cache_dir",
+ "ende_cli_parser",
+ "ende_config",
+ "ende_core",
+ "ende_dotenv",
+ "ende_lib",
+ "ende_lockfile",
+ "ende_npm",
+ "ende_npm_cache",
+ "ende_npm_installer",
+ "ende_npmrc",
+ "ende_os",
+ "ende_package_json",
+ "ende_print",
+ "ende_resolver",
+ "ende_runtime",
+ "ende_signals",
+ "ende_snapshots",
+ "ende_subprocess_windows",
+ "ende_telemetry",
+ "ende_v8",
+ "esbuild_client",
+ "eszip",
+ "faster-hex",
+ "fastwebsockets 0.8.1",
+ "flate2",
+ "fluent-uri",
+ "glob",
+ "http",
+ "http-body",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "imara-diff",
+ "import_map",
+ "indexmap",
+ "jsonc-parser",
+ "keyring",
+ "lax-css",
+ "lax-markup",
+ "lax-sql",
+ "lazy-regex",
+ "libc",
+ "liblzma",
+ "libsui",
+ "libz-sys",
+ "locked-tripwire",
+ "log",
+ "ls-types",
+ "memchr",
+ "msi",
+ "nix 0.30.1",
+ "node_resolver",
+ "node_shim",
+ "notify",
+ "once_cell",
+ "open",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "opentelemetry_sdk",
+ "p256",
+ "pathdiff",
+ "percent-encoding",
+ "phf 0.11.2",
+ "plist",
+ "pretty_assertions",
+ "pretty_yaml",
+ "rand 0.8.5",
+ "regex",
+ "rpm",
+ "rustc-hash 2.1.1",
+ "rustls",
+ "rustyline",
+ "rustyline-derive",
+ "same-file",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "sha2",
+ "shlex",
+ "spki 0.7.3",
+ "strsim",
+ "sys_traits",
+ "tar",
+ "tempfile",
+ "test_util",
+ "text-size",
+ "text_lines",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
+ "tokio-vsock",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "twox-hash 2.1.2",
+ "typed-arena",
+ "unicode-general-category",
+ "unicode-width 0.1.13",
+ "uuid",
+ "walkdir",
+ "wasm_dep_analyzer",
+ "wasmparser",
+ "which 8.0.0",
+ "windows-sys 0.59.0",
+ "winres",
+ "yaml_parser",
+ "zip",
+ "zstd",
+]
+
+[[package]]
+name = "ende_bench_util"
+version = "0.253.0"
+dependencies = [
+ "bencher",
+ "ende_core",
+ "tokio",
+]
+
+[[package]]
+name = "ende_bundle_runtime"
+version = "0.46.0"
+dependencies = [
+ "async-trait",
+ "deno_error",
+ "ende_core",
+ "ende_permissions",
+ "regex",
+ "serde",
+]
+
+[[package]]
+name = "ende_cache"
+version = "0.192.0"
+dependencies = [
+ "async-stream",
+ "base64 0.22.1",
+ "bytes",
+ "chrono",
+ "deno_error",
+ "ende_core",
+ "futures",
+ "http",
+ "http-body",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "log",
+ "rusqlite",
+ "sha2",
+ "slab",
+ "tempfile",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
+name = "ende_cache_dir"
+version = "0.51.0"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "boxed_error",
+ "chrono",
+ "data-url",
+ "deno_error",
+ "deno_media_type",
+ "deno_path_util",
+ "ende_maybe_sync",
+ "http",
+ "log",
+ "once_cell",
+ "parking_lot",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sys_traits",
+ "tempfile",
+ "thiserror 2.0.12",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "ende_canvas"
+version = "0.121.0"
+dependencies = [
+ "bytemuck",
+ "deno_error",
+ "ende_core",
+ "ende_image",
+ "ende_permissions",
+ "ende_webgpu",
+ "raw-window-handle",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "ende_cli_parser"
+version = "0.9.0"
+dependencies = [
+ "criterion",
+ "deno_semver",
+ "ende_bundle_runtime",
+ "ende_config",
+ "ende_core",
+ "ende_lib",
+ "ende_npm_installer",
+ "ende_permissions",
+ "ende_runtime",
+ "log",
+ "pretty_assertions",
+ "serde",
+ "sys_traits",
+]
+
+[[package]]
+name = "ende_config"
+version = "0.109.0"
+dependencies = [
+ "boxed_error",
+ "capacity_builder",
+ "chrono",
+ "deno_error",
+ "deno_path_util",
+ "deno_semver",
+ "ende_maybe_sync",
+ "ende_package_json",
+ "glob",
+ "ignore",
+ "import_map",
+ "indexmap",
+ "jsonc-parser",
+ "log",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "sys_traits",
+ "tempfile",
+ "thiserror 2.0.12",
+ "url",
+]
+
+[[package]]
+name = "ende_core"
+version = "0.412.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "bencher",
+ "bit-set 0.8.0",
+ "bit-vec 0.8.0",
+ "boxed_error",
+ "bytes",
+ "cooked-waker",
+ "criterion",
+ "deno_ast",
+ "deno_core_icudata",
+ "deno_error",
+ "deno_path_util",
+ "deno_unsync",
+ "ende_ops",
+ "ende_v8",
+ "futures",
+ "indexmap",
+ "inventory",
+ "libc",
+ "num-bigint",
+ "parking_lot",
+ "paste",
+ "percent-encoding",
+ "pin-project",
+ "pretty_assertions",
+ "rstest",
+ "serde",
+ "serde_json",
+ "serde_v8",
+ "smallvec",
+ "sourcemap",
+ "static_assertions",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "tokio",
+ "twox-hash 2.1.2",
+ "unicycle",
+ "url",
+ "uuid",
+ "wasm_dep_analyzer",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_core_testing"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "deno_ast",
+ "deno_error",
+ "ende_core",
+ "futures",
+ "pretty_assertions",
+ "thiserror 2.0.12",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "ende_cron"
+version = "0.139.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "deno_error",
+ "ende_core",
+ "ende_features",
+ "once_cell",
+ "serde",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-vsock",
+]
+
+[[package]]
+name = "ende_crypto"
+version = "0.273.0"
+dependencies = [
+ "aes",
+ "aes-gcm",
+ "aes-kw",
+ "argon2",
+ "aws-lc-rs",
+ "base64 0.22.1",
+ "cbc",
+ "const-oid 0.9.6",
+ "ctr",
+ "curve25519-dalek",
+ "deno_error",
+ "ecdsa",
+ "elliptic-curve 0.13.8",
+ "ende_core",
+ "ende_crypto_provider",
+ "fips203",
+ "fips205",
+ "hmac",
+ "num-traits",
+ "ocb3",
+ "once_cell",
+ "p256",
+ "p384",
+ "p521",
+ "rand 0.8.5",
+ "rsa",
+ "serde",
+ "serde_bytes",
+ "sha1",
+ "sha2",
+ "sha3 0.10.8",
+ "signature 2.2.0",
+ "spki 0.7.3",
+ "subtle",
+ "thiserror 2.0.12",
+ "tiny-keccak",
+ "tokio",
+ "uuid",
+ "x25519-dalek",
+]
+
+[[package]]
+name = "ende_crypto_provider"
+version = "0.53.0"
+dependencies = [
+ "aws-lc-sys",
+ "ed448-goldilocks",
+]
+
+[[package]]
+name = "ende_dotenv"
+version = "0.28.0"
+dependencies = [
+ "deno_path_util",
+ "sys_traits",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "ende_features"
+version = "0.56.0"
+dependencies = [
+ "ende_core",
+]
+
+[[package]]
+name = "ende_fetch"
+version = "0.283.0"
+dependencies = [
+ "async-compression",
+ "base64 0.22.1",
+ "bytes",
+ "data-url",
+ "deno_error",
+ "deno_path_util",
+ "ende_bench_util",
+ "ende_core",
+ "ende_fs",
+ "ende_io",
+ "ende_permissions",
+ "ende_tls",
+ "ende_web",
+ "ende_webidl",
+ "error_reporter",
+ "fast-socks5",
+ "h2",
+ "hickory-resolver",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
+ "ipnet",
+ "percent-encoding",
+ "rustls",
+ "rustls-webpki",
+ "serde_json",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-rustls",
+ "tokio-socks",
+ "tokio-util",
+ "tokio-vsock",
+ "tower",
+ "tower-service",
+]
+
+[[package]]
+name = "ende_ffi"
+version = "0.246.0"
+dependencies = [
+ "cranelift",
+ "cranelift-native",
+ "deno_error",
+ "dlopen2",
+ "ende_core",
+ "ende_permissions",
+ "endert_helper",
+ "libffi",
+ "log",
+ "memmap2",
+ "num-bigint",
+ "serde",
+ "serde_json",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "tokio",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_fs"
+version = "0.169.0"
+dependencies = [
+ "async-trait",
+ "boxed_error",
+ "deno_error",
+ "deno_path_util",
+ "ende_core",
+ "ende_io",
+ "ende_maybe_sync",
+ "ende_permissions",
+ "filetime",
+ "junction",
+ "libc",
+ "nix 0.30.1",
+ "rand 0.8.5",
+ "rayon",
+ "same-file",
+ "serde",
+ "thiserror 2.0.12",
+ "tokio",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_http"
+version = "0.257.0"
+dependencies = [
+ "async-compression",
+ "async-trait",
+ "aws-lc-rs",
+ "base64 0.22.1",
+ "bencher",
+ "brotli",
+ "bytes",
+ "deno_error",
+ "ende_core",
+ "ende_http_h1",
+ "ende_net",
+ "ende_telemetry",
+ "ende_websocket",
+ "flate2",
+ "http",
+ "http-body-util",
+ "httpdate",
+ "hyper",
+ "hyper-util",
+ "itertools 0.14.0",
+ "log",
+ "mime",
+ "once_cell",
+ "percent-encoding",
+ "phf 0.11.2",
+ "pin-project",
+ "rand 0.8.5",
+ "scopeguard",
+ "smallvec",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
+ "tokio-vsock",
+]
+
+[[package]]
+name = "ende_http_h1"
+version = "0.10.0"
+dependencies = [
+ "criterion",
+ "httparse",
+ "memchr",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "ende_image"
+version = "0.35.0"
+dependencies = [
+ "bytemuck",
+ "deno_error",
+ "ende_core",
+ "image",
+ "lcms2",
+ "num-traits",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "ende_inspector_server"
+version = "0.33.0"
+dependencies = [
+ "deno_error",
+ "ende_core",
+ "fastwebsockets 0.8.1",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "log",
+ "thiserror 2.0.12",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "ende_io"
+version = "0.169.0"
+dependencies = [
+ "async-trait",
+ "deno_error",
+ "ende_core",
+ "ende_permissions",
+ "ende_subprocess_windows",
+ "filetime",
+ "libc",
+ "log",
+ "nix 0.30.1",
+ "os_pipe",
+ "parking_lot",
+ "pin-project",
+ "rand 0.8.5",
+ "tokio",
+ "uuid",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_kv"
+version = "0.167.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.22.1",
+ "boxed_error",
+ "bytes",
+ "chrono",
+ "deno_error",
+ "deno_path_util",
+ "denokv_proto",
+ "denokv_remote",
+ "denokv_sqlite",
+ "ende_core",
+ "ende_features",
+ "ende_fetch",
+ "ende_permissions",
+ "ende_tls",
+ "faster-hex",
+ "http",
+ "http-body-util",
+ "log",
+ "num-bigint",
+ "rand 0.8.5",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "ende_lib"
+version = "0.77.0"
+dependencies = [
+ "arc-swap",
+ "aws-lc-rs",
+ "base64 0.22.1",
+ "boxed_error",
+ "capacity_builder",
+ "deno_error",
+ "deno_media_type",
+ "deno_path_util",
+ "deno_semver",
+ "deno_terminal",
+ "ende_bundle_runtime",
+ "ende_fs",
+ "ende_node",
+ "ende_npm",
+ "ende_npm_installer",
+ "ende_resolver",
+ "ende_runtime",
+ "env_logger",
+ "faster-hex",
+ "indexmap",
+ "libc",
+ "libsui",
+ "log",
+ "node_resolver",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "twox-hash 2.1.2",
+ "url",
+]
+
+[[package]]
+name = "ende_lockfile"
+version = "0.61.0"
+dependencies = [
+ "async-executor",
+ "async-trait",
+ "deno_semver",
+ "file_test_runner",
+ "futures",
+ "futures-lite",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "ende_maybe_sync"
+version = "0.46.0"
+dependencies = [
+ "dashmap",
+ "rustc-hash 2.1.1",
+]
+
+[[package]]
+name = "ende_napi"
+version = "0.190.0"
+dependencies = [
+ "deno_error",
+ "ende_core",
+ "ende_node",
+ "ende_permissions",
+ "endert_helper",
+ "libc",
+ "libloading 0.7.4",
+ "libuv-sys-lite",
+ "log",
+ "napi_sym",
+ "object",
+ "thiserror 2.0.12",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_net"
+version = "0.251.0"
+dependencies = [
+ "deno_error",
+ "deno_tunnel",
+ "ende_core",
+ "ende_features",
+ "ende_permissions",
+ "ende_signals",
+ "ende_tls",
+ "hickory-proto",
+ "hickory-resolver",
+ "libc",
+ "log",
+ "pin-project",
+ "quinn",
+ "rustls-tokio-stream",
+ "serde",
+ "sha2",
+ "socket2 0.5.5",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-vsock",
+ "url",
+ "web-transport-proto",
+ "x509-parser",
+]
+
+[[package]]
+name = "ende_node"
+version = "0.197.0"
+dependencies = [
+ "base64 0.22.1",
+ "boxed_error",
+ "brotli",
+ "bytes",
+ "cc",
+ "deno_ast",
+ "deno_error",
+ "deno_native_certs",
+ "deno_path_util",
+ "deno_whoami",
+ "ende_core",
+ "ende_dotenv",
+ "ende_fs",
+ "ende_inspector_server",
+ "ende_io",
+ "ende_net",
+ "ende_node_crypto",
+ "ende_os",
+ "ende_package_json",
+ "ende_permissions",
+ "ende_process",
+ "ende_resolver",
+ "ende_subprocess_windows",
+ "ende_tls",
+ "errno",
+ "filetime",
+ "hdrhistogram",
+ "idna",
+ "ipnet",
+ "libc",
+ "libnghttp2",
+ "libz-sys",
+ "log",
+ "nix 0.30.1",
+ "node_resolver",
+ "node_shim",
+ "rand 0.8.5",
+ "rustls-tokio-stream",
+ "rustls-webpki",
+ "serde",
+ "smallvec",
+ "socket2 0.5.5",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-eld",
+ "url",
+ "webpki-root-certs",
+ "windows-sys 0.59.0",
+ "zstd",
+]
+
+[[package]]
+name = "ende_node_crypto"
+version = "0.29.0"
+dependencies = [
+ "aead-gcm-stream",
+ "aes",
+ "aws-lc-rs",
+ "aws-lc-sys",
+ "base64 0.22.1",
+ "blake2 0.10.6",
+ "cbc",
+ "const-oid 0.9.6",
+ "ctr",
+ "data-encoding",
+ "deno_error",
+ "der 0.7.9",
+ "des",
+ "digest 0.10.7",
+ "dsa",
+ "ecb",
+ "ecdsa",
+ "ed25519-dalek",
+ "ed448-goldilocks",
+ "elliptic-curve 0.13.8",
+ "ende_core",
+ "ende_crypto_provider",
+ "faster-hex",
+ "hkdf",
+ "hmac",
+ "k256",
+ "md-5",
+ "md4",
+ "num-bigint",
+ "num-bigint-dig",
+ "num-integer",
+ "num-traits",
+ "p12",
+ "p224",
+ "p256",
+ "p384",
+ "p521",
+ "pbkdf2",
+ "pkcs8 0.10.2",
+ "rand 0.8.5",
+ "ripemd",
+ "rsa",
+ "sec1 0.7.3",
+ "serde",
+ "sha1",
+ "sha2",
+ "sha3 0.10.8",
+ "sm3",
+ "spki 0.7.3",
+ "subtle",
+ "thiserror 2.0.12",
+ "tokio",
+ "x25519-dalek",
+ "x509-parser",
+ "yasna",
+ "yoke 0.7.4",
+]
+
+[[package]]
+name = "ende_node_sqlite"
+version = "0.29.0"
+dependencies = [
+ "deno_error",
+ "ende_core",
+ "ende_permissions",
+ "rusqlite",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "ende_npm"
+version = "0.71.0"
+dependencies = [
+ "async-trait",
+ "bytemuck",
+ "capacity_builder",
+ "chrono",
+ "deno_error",
+ "deno_semver",
+ "divan",
+ "ende_lockfile",
+ "ende_package_json",
+ "futures",
+ "hex",
+ "indexmap",
+ "log",
+ "monch",
+ "paste",
+ "pretty_assertions",
+ "reqwest",
+ "rustc-hash 2.1.1",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.12",
+ "tokio",
+ "url",
+ "wide",
+]
+
+[[package]]
+name = "ende_npm_cache"
+version = "0.78.0"
+dependencies = [
+ "async-trait",
+ "aws-lc-rs",
+ "base64 0.22.1",
+ "deno_error",
+ "deno_path_util",
+ "deno_semver",
+ "deno_unsync",
+ "ende_cache_dir",
+ "ende_npm",
+ "ende_npmrc",
+ "faster-hex",
+ "flate2",
+ "futures",
+ "libdeflater",
+ "log",
+ "parking_lot",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "sys_traits",
+ "tar",
+ "tempfile",
+ "thiserror 2.0.12",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "ende_npm_installer"
+version = "0.54.0"
+dependencies = [
+ "anyhow",
+ "async-once-cell",
+ "async-trait",
+ "bincode",
+ "boxed_error",
+ "capacity_builder",
+ "deno_error",
+ "deno_graph",
+ "deno_path_util",
+ "deno_semver",
+ "deno_terminal",
+ "deno_unsync",
+ "ende_cache_dir",
+ "ende_config",
+ "ende_lockfile",
+ "ende_npm",
+ "ende_npm_cache",
+ "ende_npmrc",
+ "ende_package_json",
+ "ende_resolver",
+ "futures",
+ "lazy-regex",
+ "libc",
+ "log",
+ "once_cell",
+ "parking_lot",
+ "pathdiff",
+ "rustc-hash 2.1.1",
+ "serde",
+ "serde_json",
+ "sys_traits",
+ "test_util",
+ "thiserror 2.0.12",
+ "tokio",
+ "twox-hash 2.1.2",
+ "url",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_npmrc"
+version = "0.20.0"
+dependencies = [
+ "log",
+ "monch",
+ "pretty_assertions",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "url",
+]
+
+[[package]]
+name = "ende_ops"
+version = "0.288.0"
+dependencies = [
+ "indexmap",
+ "pretty_assertions",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "stringcase",
+ "strum",
+ "strum_macros",
+ "syn 2.0.117",
+ "syn-match",
+ "testing_macros",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "ende_ops_compile_test_runner"
+version = "0.2.0"
+dependencies = [
+ "bytes",
+ "deno_error",
+ "ende_core",
+ "ende_ops",
+ "serde",
+ "trybuild",
+]
+
+[[package]]
+name = "ende_os"
+version = "0.76.0"
+dependencies = [
+ "deno_error",
+ "deno_path_util",
+ "ende_core",
+ "ende_permissions",
+ "ende_signals",
+ "libc",
+ "netif",
+ "thiserror 2.0.12",
+ "tokio",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_package_json"
+version = "0.61.0"
+dependencies = [
+ "boxed_error",
+ "capacity_builder",
+ "deno_error",
+ "deno_path_util",
+ "deno_semver",
+ "ende_maybe_sync",
+ "indexmap",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "url",
+]
+
+[[package]]
+name = "ende_permissions"
+version = "0.118.0"
+dependencies = [
+ "capacity_builder",
+ "chrono",
+ "deno_error",
+ "deno_path_util",
+ "deno_terminal",
+ "deno_unsync",
+ "dunce",
+ "fqdn",
+ "ipnet",
+ "libc",
+ "log",
+ "nix 0.30.1",
+ "once_cell",
+ "parking_lot",
+ "proptest",
+ "serde",
+ "serde_json",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "unicode-normalization",
+ "url",
+ "which 8.0.0",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_print"
+version = "0.7.0"
+
+[[package]]
+name = "ende_process"
+version = "0.74.0"
+dependencies = [
+ "deno_error",
+ "deno_path_util",
+ "ende_core",
+ "ende_fs",
+ "ende_io",
+ "ende_os",
+ "ende_permissions",
+ "ende_signals",
+ "ende_subprocess_windows",
+ "libc",
+ "log",
+ "memchr",
+ "nix 0.30.1",
+ "rand 0.8.5",
+ "serde",
+ "sys_traits",
+ "tempfile",
+ "thiserror 2.0.12",
+ "tokio",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_resolver"
+version = "0.90.0"
+dependencies = [
+ "anyhow",
+ "async-once-cell",
+ "async-trait",
+ "boxed_error",
+ "capacity_builder",
+ "chrono",
+ "dashmap",
+ "deno_ast",
+ "deno_error",
+ "deno_graph",
+ "deno_media_type",
+ "deno_path_util",
+ "deno_semver",
+ "deno_terminal",
+ "deno_unsync",
+ "ende_cache_dir",
+ "ende_config",
+ "ende_lockfile",
+ "ende_maybe_sync",
+ "ende_npm",
+ "ende_npmrc",
+ "ende_package_json",
+ "ende_permissions",
+ "futures",
+ "http",
+ "imara-diff",
+ "import_map",
+ "indexmap",
+ "jsonc-parser",
+ "log",
+ "node_resolver",
+ "once_cell",
+ "parking_lot",
+ "phf 0.11.2",
+ "rustc-hash 2.1.1",
+ "serde",
+ "serde_json",
+ "sys_traits",
+ "test_util",
+ "thiserror 2.0.12",
+ "twox-hash 2.1.2",
+ "url",
+ "yaml_parser",
+]
+
+[[package]]
+name = "ende_runtime"
+version = "0.267.0"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "boxed_error",
+ "color-print",
+ "deno_ast",
+ "deno_error",
+ "deno_path_util",
+ "deno_terminal",
+ "ed25519-dalek",
+ "encoding_rs",
+ "ende_bundle_runtime",
+ "ende_cache",
+ "ende_canvas",
+ "ende_core",
+ "ende_cron",
+ "ende_crypto",
+ "ende_features",
+ "ende_fetch",
+ "ende_ffi",
+ "ende_fs",
+ "ende_http",
+ "ende_image",
+ "ende_inspector_server",
+ "ende_io",
+ "ende_kv",
+ "ende_napi",
+ "ende_net",
+ "ende_node",
+ "ende_node_crypto",
+ "ende_node_sqlite",
+ "ende_os",
+ "ende_permissions",
+ "ende_process",
+ "ende_resolver",
+ "ende_signals",
+ "ende_telemetry",
+ "ende_tls",
+ "ende_web",
+ "ende_webgpu",
+ "ende_webidl",
+ "ende_websocket",
+ "ende_webstorage",
+ "faster-hex",
+ "fastwebsockets 0.8.1",
+ "http",
+ "http-body-util",
+ "hyper",
+ "libc",
+ "log",
+ "nix 0.30.1",
+ "node_resolver",
+ "notify",
+ "once_cell",
+ "qbsdiff",
+ "raw-window-handle",
+ "regex",
+ "rustyline",
+ "same-file",
+ "serde",
+ "serde_bytes",
+ "sha2",
+ "sys_traits",
+ "test_util",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-metrics",
+ "twox-hash 2.1.2",
+ "unicode-normalization",
+ "uuid",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_signals"
+version = "0.50.0"
+dependencies = [
+ "libc",
+ "signal-hook",
+ "thiserror 2.0.12",
+ "tokio",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_snapshots"
+version = "0.74.0"
+dependencies = [
+ "ende_runtime",
+]
+
+[[package]]
+name = "ende_subprocess_windows"
+version = "0.54.0"
+dependencies = [
+ "futures-channel",
+ "libc",
+ "pretty_assertions",
+ "rand 0.8.5",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ende_telemetry"
+version = "0.81.0"
+dependencies = [
+ "async-trait",
+ "deno_error",
+ "deno_terminal",
+ "ende_core",
+ "ende_net",
+ "ende_signals",
+ "ende_tls",
+ "flate2",
+ "http-body-util",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
+ "log",
+ "once_cell",
+ "opentelemetry",
+ "opentelemetry-http",
+ "opentelemetry-otlp",
+ "opentelemetry-proto",
+ "opentelemetry-semantic-conventions",
+ "opentelemetry_sdk",
+ "pin-project",
+ "prost",
+ "serde",
+ "sys_traits",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-vsock",
+ "tower-service",
+]
+
+[[package]]
+name = "ende_tls"
+version = "0.246.0"
+dependencies = [
+ "deno_error",
+ "deno_native_certs",
+ "ende_core",
+ "log",
+ "rustls",
+ "rustls-pemfile",
+ "rustls-tokio-stream",
+ "rustls-webpki",
+ "serde",
+ "thiserror 2.0.12",
+ "tokio",
+ "webpki-roots",
+]
+
+[[package]]
+name = "ende_typescript_go_client_rust"
+version = "0.29.0"
+dependencies = [
+ "indexmap",
+ "log",
+ "rmp",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "ende_url"
+version = "0.222.0"
+
+[[package]]
+name = "ende_v8"
+version = "0.4.0"
+dependencies = [
+ "v8",
+ "v8x",
+]
+
+[[package]]
+name = "ende_web"
+version = "0.290.0"
+dependencies = [
+ "approx",
+ "async-trait",
+ "brotli",
+ "bytes",
+ "cssparser",
+ "deno_error",
+ "encoding_rs",
+ "ende_bench_util",
+ "ende_core",
+ "ende_webidl",
+ "flate2",
+ "futures",
+ "serde",
+ "thiserror 2.0.12",
+ "tokio",
+ "unicode-normalization",
+ "urlpattern",
+ "uuid",
+]
+
+[[package]]
+name = "ende_webgpu"
+version = "0.226.0"
+dependencies = [
+ "deno_error",
+ "ende_core",
+ "ende_image",
+ "indexmap",
+ "raw-window-handle",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tokio",
+ "wgpu-core",
+ "wgpu-types",
+]
+
+[[package]]
+name = "ende_webidl"
+version = "0.259.0"
+dependencies = [
+ "ende_bench_util",
+ "ende_core",
+]
+
+[[package]]
+name = "ende_websocket"
+version = "0.264.0"
+dependencies = [
+ "bytes",
+ "deno_error",
+ "ende_core",
+ "ende_fetch",
+ "ende_net",
+ "ende_permissions",
+ "ende_tls",
+ "fastwebsockets 0.8.1",
+ "h2",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "once_cell",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "ende_webstorage"
+version = "0.254.0"
+dependencies = [
+ "deno_error",
+ "ende_core",
+ "rusqlite",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "endert"
+version = "2.9.7"
+dependencies = [
+ "async-trait",
+ "bincode",
+ "deno_ast",
+ "deno_error",
+ "deno_media_type",
+ "deno_path_util",
+ "deno_semver",
+ "deno_terminal",
+ "ende_cache_dir",
+ "ende_config",
+ "ende_core",
+ "ende_lib",
+ "ende_node",
+ "ende_npm",
+ "ende_npmrc",
+ "ende_package_json",
+ "ende_resolver",
+ "ende_runtime",
+ "ende_snapshots",
+ "ende_subprocess_windows",
+ "ende_v8",
+ "import_map",
+ "indexmap",
+ "jsonc-parser",
+ "junction",
+ "libsui",
+ "log",
+ "memmap2",
+ "node_resolver",
+ "notify",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sys_traits",
+ "test_util",
+ "thiserror 2.0.12",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "endert_desktop"
+version = "2.7.4"
+dependencies = [
+ "deno_error",
+ "deno_terminal",
+ "ende_core",
+ "ende_lib",
+ "ende_runtime",
+ "ende_snapshots",
+ "ende_v8",
+ "endert",
+ "laufey",
+ "libc",
+ "libsui",
+ "log",
+ "raw-window-handle",
+ "rustls",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "endert_helper"
+version = "0.57.0"
+dependencies = [
+ "deno_error",
+ "deno_path_util",
+ "libc",
+ "sys_traits",
+ "tempfile",
+ "thiserror 2.0.12",
+ "twox-hash 2.1.2",
 ]
 
 [[package]]
@@ -4542,8 +4542,8 @@ dependencies = [
  "deno_ast",
  "deno_error",
  "deno_graph",
- "deno_npm",
  "deno_semver",
+ "ende_npm",
  "futures",
  "hashlink 0.8.4",
  "import_map",
@@ -6102,11 +6102,11 @@ dependencies = [
  "async-trait",
  "bytes",
  "chrono",
- "deno_cache_dir",
- "deno_lockfile",
  "deno_semver",
  "deno_tower_lsp",
  "deno_unsync",
+ "ende_cache_dir",
+ "ende_lockfile",
  "fastwebsockets 0.8.1",
  "file_test_runner",
  "futures",
@@ -7062,11 +7062,11 @@ dependencies = [
  "capacity_builder",
  "deno_error",
  "deno_graph",
- "deno_maybe_sync",
  "deno_media_type",
- "deno_package_json",
  "deno_path_util",
  "deno_semver",
+ "ende_maybe_sync",
+ "ende_package_json",
  "futures",
  "lazy-regex",
  "log",
@@ -9307,7 +9307,7 @@ name = "serde_v8"
 version = "0.321.0"
 dependencies = [
  "deno_error",
- "deno_v8",
+ "ende_v8",
  "num-bigint",
  "serde",
  "serde_bytes",
@@ -9321,7 +9321,7 @@ dependencies = [
 name = "serde_v8_utilities"
 version = "0.28.0"
 dependencies = [
- "deno_v8",
+ "ende_v8",
 ]
 
 [[package]]

@@ -71,10 +71,10 @@ fn get_internalized_string(
   }
 
   Ok(quote::quote! {
-    ::deno_core::v8::String::new_from_one_byte(
+    ::ende_core::v8::String::new_from_one_byte(
       __scope,
       #name_str.as_bytes(),
-      ::deno_core::v8::NewStringType::Internalized,
+      ::ende_core::v8::NewStringType::Internalized,
     )
     .unwrap()
     .into()
@@ -102,7 +102,7 @@ mod infra {
     const PRELUDE: &str = r"// Copyright 2018-2026 the Deno authors. MIT license.
 
 #![deny(warnings)]
-deno_ops_compile_test_runner::prelude!();";
+ende_ops_compile_test_runner::prelude!();";
 
     if !source.starts_with(PRELUDE) {
       panic!("Source does not start with expected prelude:]n{PRELUDE}");

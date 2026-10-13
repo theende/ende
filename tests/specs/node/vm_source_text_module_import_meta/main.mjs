@@ -1,7 +1,7 @@
 // Regression test for https://github.com/denoland/deno/issues/35372 —
 // `vm.SourceTextModule` with `import.meta` used to panic at
 // `host_initialize_import_meta_object_callback` (libs/core/runtime/bindings.rs)
-// because vm-created v8::Modules aren't registered in deno_core's module map.
+// because vm-created v8::Modules aren't registered in ende_core's module map.
 // The runtime now falls back to a hook registered by `node:vm`, which invokes
 // the user-supplied `initializeImportMeta` callback (if any). Like Node's
 // `vm.SourceTextModule`, `import.meta` is otherwise left empty — `url` is

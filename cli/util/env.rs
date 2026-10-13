@@ -113,7 +113,7 @@ struct WatchEnvTrackerInner {
 impl WatchEnvTrackerInner {
   fn new() -> Self {
     // Capture the original environment state
-    let process_env = deno_os::ProcessEnvGuard::lock();
+    let process_env = ende_os::ProcessEnvGuard::lock();
     let original_env: HashMap<OsString, OsString> =
       process_env.vars_os().into_iter().collect();
 
@@ -149,7 +149,7 @@ impl WatchEnvTracker {
     log_level: Option<log::Level>,
     inner: &mut WatchEnvTrackerInner,
   ) {
-    let (file_path, content) = match deno_dotenv::find_path_and_content(
+    let (file_path, content) = match ende_dotenv::find_path_and_content(
       &CliSys::default(),
       cwd,
       env_file,
@@ -167,8 +167,8 @@ impl WatchEnvTracker {
 
     // Keep substitutions and the mutations they produce consistent with each
     // other while allowing file I/O to proceed without the process-env lock.
-    let process_env = deno_os::ProcessEnvGuard::lock();
-    match deno_dotenv::from_content_sanitized_iter_with_substitution(
+    let process_env = ende_os::ProcessEnvGuard::lock();
+    match ende_dotenv::from_content_sanitized_iter_with_substitution(
       &CliSys::default(),
       &content,
     ) {
@@ -252,7 +252,7 @@ impl WatchEnvTracker {
     &self,
     inner: &mut WatchEnvTrackerInner,
     log_level: Option<log::Level>,
-    process_env: &deno_os::ProcessEnvGuard,
+    process_env: &ende_os::ProcessEnvGuard,
   ) {
     for var_name in inner.unused_variables.iter() {
       // As with loading watched env values, cleanup runs before the
@@ -301,7 +301,7 @@ impl WatchEnvTracker {
       self.load_env_file_inner(cwd, env_file_path, log_level, &mut inner);
     }
 
-    let process_env = deno_os::ProcessEnvGuard::lock();
+    let process_env = ende_os::ProcessEnvGuard::lock();
     self._cleanup_removed_variables(&mut inner, log_level, &process_env);
   }
 }
@@ -312,7 +312,7 @@ pub fn load_env_variables_from_env_files(
   flags_log_level: Option<log::Level>,
 ) {
   let original_env_keys: HashSet<OsString> = {
-    let process_env = deno_os::ProcessEnvGuard::lock();
+    let process_env = ende_os::ProcessEnvGuard::lock();
     process_env
       .vars_os()
       .into_iter()
@@ -322,7 +322,7 @@ pub fn load_env_variables_from_env_files(
   let mut loaded_keys = HashSet::new();
 
   for env_file_name in env_file_names.iter().rev() {
-    let (env_file_path, content) = match deno_dotenv::find_path_and_content(
+    let (env_file_path, content) = match ende_dotenv::find_path_and_content(
       &CliSys::default(),
       cwd,
       env_file_name,
@@ -339,8 +339,8 @@ pub fn load_env_variables_from_env_files(
     };
     // Keep substitutions and the mutations they produce consistent with each
     // other while allowing file I/O to proceed without the process-env lock.
-    let process_env = deno_os::ProcessEnvGuard::lock();
-    let iter = match deno_dotenv::from_content_sanitized_iter_with_substitution(
+    let process_env = ende_os::ProcessEnvGuard::lock();
+    let iter = match ende_dotenv::from_content_sanitized_iter_with_substitution(
       &sys_traits::impls::RealSys,
       &content,
     ) {
@@ -377,7 +377,7 @@ pub fn load_env_variables_from_env_files(
 }
 
 pub fn handle_dotenv_error(
-  error: &deno_dotenv::ParseError,
+  error: &ende_dotenv::ParseError,
   file_path: &Path,
   log_level: Option<log::Level>,
 ) {
@@ -394,7 +394,7 @@ pub fn handle_dotenv_error(
 }
 
 pub fn handle_dotenv_io_error(
-  error: &deno_dotenv::FindPathAndContentError,
+  error: &ende_dotenv::FindPathAndContentError,
   log_level: Option<log::Level>,
 ) {
   #[allow(clippy::print_stderr, reason = "can't use log crate yet")]

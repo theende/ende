@@ -298,8 +298,8 @@ impl ShimData {
 
 pub fn set_up_bin_shim<'a>(
   sys: &(impl FsOpen + FsWrite + FsMetadata),
-  package: &'a deno_npm::NpmResolutionPackage,
-  extra: &'a deno_npm::NpmPackageExtraInfo,
+  package: &'a ende_npm::NpmResolutionPackage,
+  extra: &'a ende_npm::NpmPackageExtraInfo,
   bin_name: &'a str,
   bin_script: &'a str,
   package_path: &'a Path,

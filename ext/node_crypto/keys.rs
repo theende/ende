@@ -4,17 +4,17 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use base64::Engine;
-use deno_core::FromV8;
-use deno_core::GarbageCollected;
-use deno_core::ToV8;
-use deno_core::convert::Uint8Array;
-use deno_core::op2;
-use deno_core::unsync::spawn_blocking;
 use deno_error::JsErrorBox;
 use digest::Digest;
 use digest::FixedOutputReset;
 use ed25519_dalek::pkcs8::BitStringRef;
 use elliptic_curve::JwkEcKey;
+use ende_core::FromV8;
+use ende_core::GarbageCollected;
+use ende_core::ToV8;
+use ende_core::convert::Uint8Array;
+use ende_core::op2;
+use ende_core::unsync::spawn_blocking;
 use hmac::Hmac;
 use hmac::Mac;
 use num_bigint::BigInt;
@@ -75,7 +75,7 @@ pub enum KeyObjectHandle {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for KeyObjectHandle {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"KeyObjectHandle"
@@ -245,9 +245,9 @@ impl AsymmetricPrivateKey {
         AsymmetricPublicKey::Ed25519(key.verifying_key())
       }
       AsymmetricPrivateKey::X448(key) => {
-        let point = deno_crypto_provider::x448::x448(
+        let point = ende_crypto_provider::x448::x448(
           key,
-          &deno_crypto_provider::x448::BASE_POINT,
+          &ende_crypto_provider::x448::BASE_POINT,
         );
         AsymmetricPublicKey::X448(point)
       }
@@ -2036,15 +2036,15 @@ pub enum AsymmetricPublicKeyDerError {
 impl AsymmetricPublicKey {
   fn export_jwk(
     &self,
-  ) -> Result<deno_core::serde_json::Value, AsymmetricPublicKeyJwkError> {
+  ) -> Result<ende_core::serde_json::Value, AsymmetricPublicKeyJwkError> {
     match self {
       AsymmetricPublicKey::Ec(key) => {
         let jwk = key.to_jwk()?;
-        Ok(deno_core::serde_json::json!(jwk))
+        Ok(ende_core::serde_json::json!(jwk))
       }
       AsymmetricPublicKey::X25519(key) => {
         let bytes = key.as_bytes();
-        let jwk = deno_core::serde_json::json!({
+        let jwk = ende_core::serde_json::json!({
             "kty": "OKP",
             "crv": "X25519",
             "x": bytes_to_b64(bytes),
@@ -2053,7 +2053,7 @@ impl AsymmetricPublicKey {
       }
       AsymmetricPublicKey::Ed25519(key) => {
         let bytes = key.to_bytes();
-        let jwk = deno_core::serde_json::json!({
+        let jwk = ende_core::serde_json::json!({
             "kty": "OKP",
             "crv": "Ed25519",
             "x": bytes_to_b64(&bytes),
@@ -2061,7 +2061,7 @@ impl AsymmetricPublicKey {
         Ok(jwk)
       }
       AsymmetricPublicKey::X448(key) => {
-        let jwk = deno_core::serde_json::json!({
+        let jwk = ende_core::serde_json::json!({
             "kty": "OKP",
             "crv": "X448",
             "x": bytes_to_b64(key),
@@ -2070,7 +2070,7 @@ impl AsymmetricPublicKey {
       }
       AsymmetricPublicKey::Ed448(key) => {
         let bytes = key.to_bytes();
-        let jwk = deno_core::serde_json::json!({
+        let jwk = ende_core::serde_json::json!({
             "kty": "OKP",
             "crv": "Ed448",
             "x": bytes_to_b64(&bytes),
@@ -2081,7 +2081,7 @@ impl AsymmetricPublicKey {
         let n = key.n();
         let e = key.e();
 
-        let jwk = deno_core::serde_json::json!({
+        let jwk = ende_core::serde_json::json!({
             "kty": "RSA",
             "n": bytes_to_b64(&n.to_bytes_be()),
             "e": bytes_to_b64(&e.to_bytes_be()),
@@ -2305,7 +2305,7 @@ pub enum AsymmetricPrivateKeyDerError {
 }
 
 // https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.2
-fn rsa_private_to_jwk(key: &RsaPrivateKey) -> deno_core::serde_json::Value {
+fn rsa_private_to_jwk(key: &RsaPrivateKey) -> ende_core::serde_json::Value {
   let n = key.n();
   let e = key.e();
   let d = key.d();
@@ -2316,7 +2316,7 @@ fn rsa_private_to_jwk(key: &RsaPrivateKey) -> deno_core::serde_json::Value {
   let qi = key.crt_coefficient();
   let oth = &key.primes()[2..];
 
-  let mut obj = deno_core::serde_json::json!({
+  let mut obj = ende_core::serde_json::json!({
       "kty": "RSA",
       "n": bytes_to_b64(&n.to_bytes_be()),
       "e": bytes_to_b64(&e.to_bytes_be()),
@@ -2329,7 +2329,7 @@ fn rsa_private_to_jwk(key: &RsaPrivateKey) -> deno_core::serde_json::Value {
   });
 
   if !oth.is_empty() {
-    obj["oth"] = deno_core::serde_json::json!(
+    obj["oth"] = ende_core::serde_json::json!(
       oth.iter().map(|o| o.to_bytes_be()).collect::<Vec<_>>()
     );
   }
@@ -2340,7 +2340,7 @@ fn rsa_private_to_jwk(key: &RsaPrivateKey) -> deno_core::serde_json::Value {
 impl AsymmetricPrivateKey {
   fn export_jwk(
     &self,
-  ) -> Result<deno_core::serde_json::Value, AsymmetricPrivateKeyJwkError> {
+  ) -> Result<ende_core::serde_json::Value, AsymmetricPrivateKeyJwkError> {
     match self {
       AsymmetricPrivateKey::Rsa(key) => Ok(rsa_private_to_jwk(key)),
       AsymmetricPrivateKey::RsaPss(_) => {
@@ -2348,7 +2348,7 @@ impl AsymmetricPrivateKey {
       }
       AsymmetricPrivateKey::Ec(key) => {
         let jwk = key.to_jwk()?;
-        Ok(deno_core::serde_json::json!(jwk))
+        Ok(ende_core::serde_json::json!(jwk))
       }
       AsymmetricPrivateKey::X25519(static_secret) => {
         let bytes = static_secret.to_bytes();
@@ -2357,7 +2357,7 @@ impl AsymmetricPrivateKey {
           unreachable!();
         };
 
-        Ok(deno_core::serde_json::json!({
+        Ok(ende_core::serde_json::json!({
             "crv": "X25519",
             "x": bytes_to_b64(x.as_bytes()),
             "d": bytes_to_b64(&bytes),
@@ -2370,7 +2370,7 @@ impl AsymmetricPrivateKey {
           unreachable!();
         };
 
-        Ok(deno_core::serde_json::json!({
+        Ok(ende_core::serde_json::json!({
             "crv": "Ed25519",
             "x": bytes_to_b64(x.as_bytes()),
             "d": bytes_to_b64(&bytes),
@@ -2382,7 +2382,7 @@ impl AsymmetricPrivateKey {
           unreachable!();
         };
 
-        Ok(deno_core::serde_json::json!({
+        Ok(ende_core::serde_json::json!({
             "crv": "X448",
             "x": bytes_to_b64(&x),
             "d": bytes_to_b64(&key[..56]),
@@ -2396,7 +2396,7 @@ impl AsymmetricPrivateKey {
         };
         let x_bytes = x.to_bytes();
 
-        Ok(deno_core::serde_json::json!({
+        Ok(ende_core::serde_json::json!({
             "crv": "Ed448",
             "x": bytes_to_b64(&x_bytes),
             "d": bytes_to_b64(&bytes),
@@ -2724,11 +2724,11 @@ pub fn op_node_get_asymmetric_key_type(
 pub enum AsymmetricKeyDetails {
   Rsa {
     modulus_length: usize,
-    public_exponent: deno_core::convert::BigInt,
+    public_exponent: ende_core::convert::BigInt,
   },
   RsaPss {
     modulus_length: usize,
-    public_exponent: deno_core::convert::BigInt,
+    public_exponent: ende_core::convert::BigInt,
     hash_algorithm: &'static str,
     mgf1_hash_algorithm: &'static str,
     salt_length: u32,
@@ -2736,7 +2736,7 @@ pub enum AsymmetricKeyDetails {
   #[to_v8(rename = "rsaPss")]
   RsaPssBasic {
     modulus_length: usize,
-    public_exponent: deno_core::convert::BigInt,
+    public_exponent: ende_core::convert::BigInt,
   },
   Dsa {
     modulus_length: usize,
@@ -2920,7 +2920,7 @@ struct KeyObjectHandlePair {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for KeyObjectHandlePair {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"KeyObjectHandlePair"
@@ -3577,7 +3577,7 @@ pub fn op_node_export_secret_key_b64url(
 #[serde]
 pub fn op_node_export_public_key_jwk(
   #[cppgc] handle: &KeyObjectHandle,
-) -> Result<deno_core::serde_json::Value, AsymmetricPublicKeyJwkError> {
+) -> Result<ende_core::serde_json::Value, AsymmetricPublicKeyJwkError> {
   let public_key = handle
     .as_public_key()
     .ok_or(AsymmetricPublicKeyJwkError::KeyIsNotAsymmetricPublicKey)?;
@@ -4118,7 +4118,7 @@ pub enum ExportPrivateKeyJwkError {
 #[serde]
 pub fn op_node_export_private_key_jwk(
   #[cppgc] handle: &KeyObjectHandle,
-) -> Result<deno_core::serde_json::Value, ExportPrivateKeyJwkError> {
+) -> Result<ende_core::serde_json::Value, ExportPrivateKeyJwkError> {
   let private_key = handle
     .as_private_key()
     .ok_or(AsymmetricPrivateKeyJwkError::KeyIsNotAsymmetricPrivateKey)?;

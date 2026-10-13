@@ -7,8 +7,8 @@ use std::time::Instant;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use deno_core::OpState;
-use deno_core::op2;
+use ende_core::OpState;
+use ende_core::op2;
 
 pub struct StartTime(Instant);
 

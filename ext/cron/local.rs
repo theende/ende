@@ -10,10 +10,10 @@ use std::rc::Weak;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use deno_core::futures;
-use deno_core::futures::FutureExt;
-use deno_core::unsync::JoinHandle;
-use deno_core::unsync::spawn;
+use ende_core::futures;
+use ende_core::futures::FutureExt;
+use ende_core::unsync::JoinHandle;
+use ende_core::unsync::spawn;
 use tokio::sync::OwnedSemaphorePermit;
 use tokio::sync::Semaphore;
 use tokio::sync::mpsc;

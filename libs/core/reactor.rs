@@ -17,7 +17,7 @@ use std::task::Poll;
 use std::time::Duration;
 
 /// Abstraction over the async I/O reactor (tokio, mio, io_uring, custom).
-/// This is the only seam between deno_core and the underlying async runtime.
+/// This is the only seam between ende_core and the underlying async runtime.
 pub trait Reactor: 'static {
   type Timer: ReactorTimer;
   type Instant: ReactorInstant;

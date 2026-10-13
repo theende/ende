@@ -5,9 +5,9 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
 
 fn unzip_with_shell(
   archive_path: &Path,
@@ -73,7 +73,7 @@ fn unzip(
 
 pub struct UnpackArgs<'a> {
   /// The full file name of the file expected to be produced by unpacking the
-  /// archive (e.g. `deno`, `deno.exe`, `libdenort.dylib`).
+  /// archive (e.g. `deno`, `deno.exe`, `libendert.dylib`).
   pub exe_name: &'a str,
   pub archive_name: &'a str,
   pub archive_data: &'a [u8],
@@ -139,15 +139,15 @@ mod tests {
   #[test]
   fn unpacks_library_with_extension() {
     let temp_dir = tempfile::TempDir::new().unwrap();
-    let data = make_zip("libdenort.dylib", b"fake dylib");
+    let data = make_zip("libendert.dylib", b"fake dylib");
     let path = unpack_into_dir(UnpackArgs {
-      exe_name: "libdenort.dylib",
-      archive_name: "libdenort-aarch64-apple-darwin.zip",
+      exe_name: "libendert.dylib",
+      archive_name: "libendert-aarch64-apple-darwin.zip",
       archive_data: &data,
       dest_path: temp_dir.path(),
     })
     .unwrap();
-    assert_eq!(path, temp_dir.path().join("libdenort.dylib"));
+    assert_eq!(path, temp_dir.path().join("libendert.dylib"));
     assert_eq!(std::fs::read(&path).unwrap(), b"fake dylib");
   }
 

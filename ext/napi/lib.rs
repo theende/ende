@@ -41,19 +41,19 @@ pub use std::ptr;
 use std::rc::Rc;
 use std::thread_local;
 
-use deno_core::ExternalOpsTracker;
-use deno_core::OpState;
-use deno_core::V8CrossThreadTaskSpawner;
-use deno_core::V8TaskSpawner;
-use deno_core::op2;
-use deno_core::parking_lot::RwLock;
-use deno_core::url::Url;
+use ende_core::ExternalOpsTracker;
+use ende_core::OpState;
+use ende_core::V8CrossThreadTaskSpawner;
+use ende_core::V8TaskSpawner;
+use ende_core::op2;
+use ende_core::parking_lot::RwLock;
+use ende_core::url::Url;
 // Expose common stuff for ease of use.
-// `use deno_napi::*`
-pub use deno_core::v8;
-use deno_permissions::PermissionCheckError;
-pub use denort_helper::DenoRtNativeAddonLoader;
-pub use denort_helper::DenoRtNativeAddonLoaderRc;
+// `use ende_napi::*`
+pub use ende_core::v8;
+use ende_permissions::PermissionCheckError;
+pub use endert_helper::DenoRtNativeAddonLoader;
+pub use endert_helper::DenoRtNativeAddonLoaderRc;
 #[cfg(unix)]
 use libloading::os::unix::*;
 #[cfg(windows)]
@@ -88,7 +88,7 @@ pub enum NApiError {
   InvalidPath,
   #[class(type)]
   #[error(transparent)]
-  DenoRtLoad(#[from] denort_helper::LoadError),
+  DenoRtLoad(#[from] endert_helper::LoadError),
   #[class(type)]
   // libloading's `Display` for a failed load is opaque (e.g. just
   // `LoadLibraryExW failed` on Windows). Surface the underlying OS error via
@@ -881,7 +881,7 @@ fn report_finalizer_exception(
   );
 }
 
-deno_core::extension!(deno_napi,
+ende_core::extension!(ende_napi,
   ops = [
     op_napi_open
   ],
@@ -940,7 +940,7 @@ fn op_napi_open<'scope>(
   ) = {
     let mut op_state = op_state.borrow_mut();
     let permissions =
-      op_state.borrow_mut::<deno_permissions::PermissionsContainer>();
+      op_state.borrow_mut::<ende_permissions::PermissionsContainer>();
     let path = permissions.check_ffi(Cow::Borrowed(Path::new(path)))?;
     let napi_state = op_state.borrow::<NapiState>();
     (
@@ -962,10 +962,10 @@ fn op_napi_open<'scope>(
   {
     let op_state = op_state.borrow();
     if let Some(uv_loop) =
-      op_state.try_borrow::<Box<deno_core::uv_compat::UvLoop>>()
+      op_state.try_borrow::<Box<ende_core::uv_compat::UvLoop>>()
     {
       let loop_ptr =
-        &**uv_loop as *const deno_core::uv_compat::UvLoop as *mut _;
+        &**uv_loop as *const ende_core::uv_compat::UvLoop as *mut _;
       crate::uv::register_default_uv_loop(loop_ptr);
     }
   }

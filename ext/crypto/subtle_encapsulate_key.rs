@@ -7,9 +7,9 @@
 //! [`crate::subtle_import_key::run`] (`raw-secret` form) so the shared
 //! `CryptoKey` is minted entirely from Rust.
 
-use deno_core::ToV8;
-use deno_core::v8;
 use deno_error::JsErrorBox;
+use ende_core::ToV8;
+use ende_core::v8;
 
 use crate::CryptoError;
 use crate::crypto_key::CryptoKeyType;
@@ -173,7 +173,7 @@ fn key_type_of<'s>(
   scope: &mut v8::PinScope<'s, '_>,
   key: v8::Local<'s, v8::Object>,
 ) -> Result<CryptoKeyType, CryptoError> {
-  let ptr = deno_core::cppgc::try_unwrap_cppgc_object::<
+  let ptr = ende_core::cppgc::try_unwrap_cppgc_object::<
     crate::crypto_key::CryptoKey,
   >(scope, key.into())
   .ok_or_else(|| {

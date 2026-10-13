@@ -33,22 +33,22 @@ const {
   Uint8Array,
 } = primordials;
 
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const { createFilteredInspectProxy } = core.loadExtScript(
-  "ext:deno_web/01_console.js",
+  "ext:ende_web/01_console.js",
 );
 const { forgivingBase64Encode } = core.loadExtScript(
-  "ext:deno_web/00_infra.js",
+  "ext:ende_web/00_infra.js",
 );
 const { EventTarget, ProgressEvent } = core.loadExtScript(
-  "ext:deno_web/02_event.js",
+  "ext:ende_web/02_event.js",
 );
 const { decode, TextDecoder } = core.loadExtScript(
-  "ext:deno_web/08_text_encoding.js",
+  "ext:ende_web/08_text_encoding.js",
 );
-const { parseMimeType } = core.loadExtScript("ext:deno_web/01_mimesniff.js");
-const { DOMException } = core.loadExtScript("ext:deno_web/01_dom_exception.js");
-const { setTimeout } = core.loadExtScript("ext:deno_web/02_timers.js");
+const { parseMimeType } = core.loadExtScript("ext:ende_web/01_mimesniff.js");
+const { DOMException } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
+const { setTimeout } = core.loadExtScript("ext:ende_web/02_timers.js");
 
 const state = Symbol("[[state]]");
 const result = Symbol("[[result]]");

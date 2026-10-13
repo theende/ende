@@ -57,7 +57,7 @@ APIs. Run on Linux in CI.
 
 ## Rust tests
 
-Standard `cargo test`, plus `cargo nextest` for the `deno_core` / `libs/*`
+Standard `cargo test`, plus `cargo nextest` for the `ende_core` / `libs/*`
 crates in CI. Lower-layer crates under `libs/` are designed to be testable in
 isolation; some need a sibling crate co-selected to compile.
 
@@ -77,7 +77,7 @@ the appropriate `tools/lint.js` invocation (`--js` when only JS/TS changed).
 ## What CI runs
 
 On a pull request, CI builds Deno across the supported platforms and runs the
-spec, unit, node-compat and WPT suites, plus the `deno_core` crate tests and
+spec, unit, node-compat and WPT suites, plus the `ende_core` crate tests and
 lint. The exception is a PR that only edits `doc/`: it runs the `lint` job alone
 and skips the rest, since Markdown changes cannot affect the binary. See
 [`ci.md`](./ci.md) for how that decision is made.

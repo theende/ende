@@ -28,7 +28,7 @@ const {
   validateString,
   validateStringArray,
   validateUnion,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 
 const {
   findLongOptionForShort,
@@ -42,9 +42,9 @@ const {
   objectGetOwn,
   optionsGetOwn,
   useDefaultValueOption,
-} = core.loadExtScript("ext:deno_node/internal/util/parse_args/utils.js");
+} = core.loadExtScript("ext:ende_node/internal/util/parse_args/utils.js");
 
-const { codes } = core.loadExtScript("ext:deno_node/internal/error_codes.ts");
+const { codes } = core.loadExtScript("ext:ende_node/internal/error_codes.ts");
 const {
   ERR_INVALID_ARG_VALUE,
   ERR_PARSE_ARGS_INVALID_OPTION_VALUE,

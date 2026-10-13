@@ -1,15 +1,15 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 #![deny(warnings)]
-deno_ops_compile_test_runner::prelude!();
+ende_ops_compile_test_runner::prelude!();
 
 use std::cell::RefCell;
 use std::future::Future;
 use std::rc::Rc;
 
-use deno_core::JsBuffer;
-use deno_core::OpState;
 use deno_error::JsErrorBox;
+use ende_core::JsBuffer;
+use ende_core::OpState;
 
 // Collect a few examples that we'll smoke test when not running on the CI.
 

@@ -408,7 +408,7 @@ fn strip_unc_prefix(path: PathBuf) -> PathBuf {
 
 /// Strips the unc prefix (ex. \\?\) from Windows paths.
 ///
-/// Lifted from deno_core for use in the tests.
+/// Lifted from ende_core for use in the tests.
 #[cfg(windows)]
 fn strip_unc_prefix(path: PathBuf) -> PathBuf {
   use std::path::Component;

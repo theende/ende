@@ -1,13 +1,13 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::OpState;
-use deno_core::op2;
 use deno_terminal::colors::ColorLevel;
+use ende_core::OpState;
+use ende_core::op2;
 
 use crate::BootstrapOptions;
 
-deno_core::extension!(
-  deno_bootstrap,
+ende_core::extension!(
+  ende_bootstrap,
   ops = [
     op_bootstrap_args,
     op_bootstrap_pid,
@@ -60,7 +60,7 @@ impl Default for SnapshotOptions {
 
     Self {
       ts_version: "n/a".to_owned(),
-      v8_version: deno_core::v8::VERSION_STRING,
+      v8_version: ende_core::v8::VERSION_STRING,
       target,
     }
   }
@@ -106,7 +106,7 @@ pub fn op_bootstrap_unstable_args(state: &mut OpState) -> Vec<String> {
   let mut flags = Vec::with_capacity(options.unstable_features.len());
   for unstable_feature in &options.unstable_features {
     if let Some(granular_flag) =
-      deno_features::UNSTABLE_FEATURES.get((*unstable_feature) as usize)
+      ende_features::UNSTABLE_FEATURES.get((*unstable_feature) as usize)
     {
       flags.push(format!("--unstable-{}", granular_flag.name));
     }

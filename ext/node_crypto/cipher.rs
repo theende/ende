@@ -11,10 +11,10 @@ use aes::cipher::KeyIvInit;
 use aes::cipher::KeySizeUser;
 use aes::cipher::StreamCipher;
 use aes::cipher::block_padding::Pkcs7;
-use deno_core::Resource;
 use deno_error::JsErrorClass;
 use digest::KeyInit;
 use digest::generic_array::GenericArray;
+use ende_core::Resource;
 use subtle::ConstantTimeEq;
 
 type Tag = Option<Vec<u8>>;
@@ -673,7 +673,7 @@ pub enum CipherContextError {
   ContextInUse,
   #[class(inherit)]
   #[error("{0}")]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
   #[class(inherit)]
   #[error(transparent)]
   Cipher(#[from] CipherError),
@@ -729,7 +729,7 @@ pub enum DecipherContextError {
   ContextInUse,
   #[class(inherit)]
   #[error("{0}")]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
   #[class(inherit)]
   #[error(transparent)]
   Decipher(#[from] DecipherError),

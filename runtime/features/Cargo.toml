@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_features"
+name = "ende_features"
 version = "0.56.0"
 authors.workspace = true
 edition.workspace = true
@@ -10,8 +10,8 @@ repository.workspace = true
 description = "Provides definitions of Deno unstable features."
 
 [lib]
-name = "deno_features"
+name = "ende_features"
 path = "lib.rs"
 
 [dependencies]
-deno_core.workspace = true
+ende_core.workspace = true

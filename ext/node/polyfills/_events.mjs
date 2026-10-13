@@ -68,17 +68,17 @@ const kWatermarkData = SymbolFor("nodejs.watermarkData");
 const kEvents = Symbol("kEvents");
 
 const { inspect } = core.loadExtScript(
-  "ext:deno_node/internal/util/inspect.mjs",
+  "ext:ende_node/internal/util/inspect.mjs",
 );
 const { kEmptyObject } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 const {
   AbortError,
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_THIS,
   ERR_UNHANDLED_ERROR,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const lazyAsyncHooks = core.createLazyLoader("node:async_hooks");
 const {
@@ -89,16 +89,16 @@ const {
   validateNumber,
   validateObject,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { spliceOne } = core.loadExtScript("ext:deno_node/_utils.ts");
-const { nextTick } = core.loadExtScript("ext:deno_node/_process/process.ts");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { spliceOne } = core.loadExtScript("ext:ende_node/_utils.ts");
+const { nextTick } = core.loadExtScript("ext:ende_node/_process/process.ts");
 const {
   eventTargetData,
   kResistStopImmediatePropagation,
-} = core.loadExtScript("ext:deno_web/02_event.js");
+} = core.loadExtScript("ext:ende_web/02_event.js");
 
 const { addAbortListener } = core.loadExtScript(
-  "ext:deno_node/internal/events/abort_listener.mjs",
+  "ext:ende_node/internal/events/abort_listener.mjs",
 );
 const kFirstEventParam = Symbol("kFirstEventParam");
 const kCapture = Symbol("kCapture");

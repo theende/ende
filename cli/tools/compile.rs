@@ -9,19 +9,19 @@ use std::sync::Arc;
 
 use deno_ast::MediaType;
 use deno_ast::ModuleSpecifier;
-use deno_config::deno_json::NodeModulesDirMode;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::anyhow;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
 use deno_graph::GraphKind;
 use deno_graph::ModuleGraph;
-use deno_npm_installer::graph::NpmCachingStrategy;
 use deno_path_util::resolve_url_or_path;
 use deno_path_util::url_from_file_path;
 use deno_path_util::url_to_file_path;
 use deno_terminal::colors;
+use ende_config::deno_json::NodeModulesDirMode;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::anyhow;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_npm_installer::graph::NpmCachingStrategy;
 use rand::Rng;
 
 use super::installer::BinNameResolver;
@@ -1380,8 +1380,8 @@ fn get_os_specific_filepath(
 
 #[cfg(test)]
 mod test {
-  use deno_npm::registry::TestNpmRegistryApi;
-  use deno_npm::resolution::NpmVersionResolver;
+  use ende_npm::registry::TestNpmRegistryApi;
+  use ende_npm::resolution::NpmVersionResolver;
 
   pub use super::*;
   use crate::http_util::HttpClientProvider;

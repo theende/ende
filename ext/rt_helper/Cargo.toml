@@ -1,14 +1,14 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "denort_helper"
+name = "endert_helper"
 version = "0.57.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 readme = "README.md"
 repository.workspace = true
-description = "Helpers for denort."
+description = "Helpers for endert."
 
 [lib]
 path = "lib.rs"

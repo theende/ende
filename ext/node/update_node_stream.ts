@@ -45,21 +45,21 @@ const moduleMap: Record<string, string> = {
   "buffer": "node:buffer",
   "stream": "node:stream",
   "string_decoder": "node:string_decoder",
-  "internal/abort_controller": "ext:deno_web/03_abort_signal.js",
+  "internal/abort_controller": "ext:ende_web/03_abort_signal.js",
   "internal/events/abort_listener":
-    "ext:deno_node/internal/events/abort_listener.mjs",
-  "internal/assert": "ext:deno_node/internal/assert.mjs",
+    "ext:ende_node/internal/events/abort_listener.mjs",
+  "internal/assert": "ext:ende_node/internal/assert.mjs",
   "internal/webstreams/adapters":
-    "ext:deno_node/internal/webstreams/adapters.js",
-  "internal/webstreams/compression": "ext:deno_web/14_compression.js",
-  "internal/webstreams/encoding": "ext:deno_web/08_text_encoding.js",
-  "internal/errors": "ext:deno_node/internal/errors.ts",
-  "internal/event_target": "ext:deno_node/internal/event_target.mjs",
-  "internal/util": "ext:deno_node/internal/util.mjs",
-  "internal/util/debuglog": "ext:deno_node/internal/util/debuglog.ts",
-  "internal/validators": "ext:deno_node/internal/validators.mjs",
-  "internal/encoding": "ext:deno_web/08_text_encoding.js",
-  "internal/blob": "ext:deno_web/09_file.js",
+    "ext:ende_node/internal/webstreams/adapters.js",
+  "internal/webstreams/compression": "ext:ende_web/14_compression.js",
+  "internal/webstreams/encoding": "ext:ende_web/08_text_encoding.js",
+  "internal/errors": "ext:ende_node/internal/errors.ts",
+  "internal/event_target": "ext:ende_node/internal/event_target.mjs",
+  "internal/util": "ext:ende_node/internal/util.mjs",
+  "internal/util/debuglog": "ext:ende_node/internal/util/debuglog.ts",
+  "internal/validators": "ext:ende_node/internal/validators.mjs",
+  "internal/encoding": "ext:ende_web/08_text_encoding.js",
+  "internal/blob": "ext:ende_web/09_file.js",
 };
 
 // Use default export for these conditional require()
@@ -77,10 +77,10 @@ const renameForDefaultExport = ["from"];
 
 const mapping = (source: string): string => {
   if (source.startsWith("internal/webstreams")) {
-    return `ext:deno_web/06_streams.js`;
+    return `ext:ende_web/06_streams.js`;
   }
   if (source.startsWith("internal/")) {
-    return `ext:deno_node/${source}.js`;
+    return `ext:ende_node/${source}.js`;
   }
   return source;
 };

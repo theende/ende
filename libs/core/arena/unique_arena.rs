@@ -239,7 +239,7 @@ impl<T> ArenaUnique<T> {
   /// # Example
   ///
   /// ```rust
-  /// # use deno_core::arena::ArenaUnique;
+  /// # use ende_core::arena::ArenaUnique;
   ///
   /// // Define a struct that will be allocated within the arena
   /// struct MyStruct {

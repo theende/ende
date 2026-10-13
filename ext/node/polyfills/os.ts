@@ -32,17 +32,17 @@ const {
   op_node_os_user_info,
 } = core.ops;
 
-const { isWindows } = core.loadExtScript("ext:deno_node/_util/os.ts");
+const { isWindows } = core.loadExtScript("ext:ende_node/_util/os.ts");
 const { os } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { osUptime } = core.loadExtScript("ext:deno_os/30_os.js");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { osUptime } = core.loadExtScript("ext:ende_os/30_os.js");
 const { validateInt32 } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const { denoErrorToNodeSystemError } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 
 const {

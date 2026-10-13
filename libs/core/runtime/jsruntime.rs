@@ -137,7 +137,7 @@ use crate::uv_compat;
 pub type WaitForInspectorDisconnectCallback = Box<dyn Fn()>;
 
 /// A per-isolate hook invoked when V8's host-initialize-import-meta callback
-/// fires for a module that is not registered in deno_core's module map (e.g.
+/// fires for a module that is not registered in ende_core's module map (e.g.
 /// a `node:vm` `SourceTextModule`). The embedder is expected to populate the
 /// `meta` object as needed and return; the hook is not allowed to throw.
 ///
@@ -524,7 +524,7 @@ pub struct JsRuntimeState {
   /// asks to initialize `import.meta` for a module that is *not* tracked by
   /// the module map. This is the path `node:vm` `SourceTextModule` takes:
   /// the v8::Module is created directly by the `node:vm` op and is never
-  /// registered in the deno_core module map, but V8 still invokes the
+  /// registered in the ende_core module map, but V8 still invokes the
   /// per-isolate import-meta callback for it. Without this hook the
   /// callback used to `panic!("Module not found")`.
   pub(crate) external_module_import_meta_cb:

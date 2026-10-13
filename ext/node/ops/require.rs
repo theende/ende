@@ -7,18 +7,18 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use boxed_error::Boxed;
-use deno_core::FastString;
-use deno_core::JsRuntimeInspector;
-use deno_core::OpState;
-use deno_core::op2;
-use deno_core::url::Url;
-use deno_core::v8;
 use deno_error::JsErrorBox;
-use deno_package_json::PackageJsonRc;
 use deno_path_util::normalize_path;
 use deno_path_util::url_from_file_path;
 use deno_path_util::url_to_file_path;
-use deno_permissions::PermissionsContainer;
+use ende_core::FastString;
+use ende_core::JsRuntimeInspector;
+use ende_core::OpState;
+use ende_core::op2;
+use ende_core::url::Url;
+use ende_core::v8;
+use ende_package_json::PackageJsonRc;
+use ende_permissions::PermissionsContainer;
 use node_resolver::InNpmPackageChecker;
 use node_resolver::NodeResolutionKind;
 use node_resolver::NpmPackageFolderResolver;
@@ -94,7 +94,7 @@ pub enum RequireErrorKind {
   Fs(
     #[from]
     #[inherit]
-    deno_io::fs::FsError,
+    ende_io::fs::FsError,
   ),
   #[class(inherit)]
   #[error(transparent)]
@@ -573,8 +573,8 @@ pub fn op_require_read_file<TSys: ExtNodeSys + 'static>(
   // Apply load-time security mitigations for known React Server Components
   // CVEs to required (CommonJS) source. Opt in via `DENO_PATCH_REACT_CVE`.
   let sys = state.borrow::<TSys>();
-  if deno_resolver::is_react_cve_patch_enabled(sys) {
-    match deno_resolver::patch_react_cves(file_path_str, code.as_str().into()) {
+  if ende_resolver::is_react_cve_patch_enabled(sys) {
+    match ende_resolver::patch_react_cves(file_path_str, code.as_str().into()) {
       Cow::Borrowed(_) => Ok(code),
       Cow::Owned(s) => Ok(s.into()),
     }

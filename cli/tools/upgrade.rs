@@ -14,15 +14,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::unsync::spawn;
-use deno_core::url::Url;
-use deno_lib::shared::ReleaseChannel;
-use deno_lib::version;
 use deno_semver::SmallStackString;
 use deno_semver::Version;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::unsync::spawn;
+use ende_core::url::Url;
+use ende_lib::shared::ReleaseChannel;
+use ende_lib::version;
 use once_cell::sync::Lazy;
 use sha2::Digest;
 use sys_traits::FsDirEntry;
@@ -1116,7 +1116,7 @@ pub async fn upgrade(
         if requested_version.release_channel() == ReleaseChannel::Canary {
           log::error!("Note: canary releases are only kept for 30 days.");
         }
-        deno_runtime::exit(1)
+        ende_runtime::exit(1)
       };
 
       store_cached_binary(sys, &cache_path, &data);
@@ -1848,9 +1848,9 @@ fn spawn_banner_task(
   version: &str,
   release_channel: ReleaseChannel,
   client: HttpClient,
-) -> deno_core::unsync::JoinHandle<Option<String>> {
+) -> ende_core::unsync::JoinHandle<Option<String>> {
   let banner_url = get_banner_url(version, release_channel);
-  deno_core::unsync::spawn(async move {
+  ende_core::unsync::spawn(async move {
     let banner_url = banner_url?;
     tokio::select! {
       result = client.download_text(banner_url) => {

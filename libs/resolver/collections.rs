@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use url::Url;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-type UrlRc = deno_maybe_sync::MaybeArc<Url>;
+type UrlRc = ende_maybe_sync::MaybeArc<Url>;
 
 /// A map that stores values scoped to a specific directory
 /// on the file system.

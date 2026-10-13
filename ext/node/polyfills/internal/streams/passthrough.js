@@ -28,7 +28,7 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const Transform = core.loadExtScript(
-  "ext:deno_node/internal/streams/transform.js",
+  "ext:ende_node/internal/streams/transform.js",
 ).default;
 
 const {

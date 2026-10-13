@@ -21,15 +21,15 @@ use deno_graph::ModuleGraph;
 use deno_graph::ast::CapturingEsParser;
 use deno_graph::ast::EsParser;
 use deno_graph::ast::ParseOptions;
-use deno_npm::NpmPackageId;
-use deno_npm::resolution::SerializedNpmResolutionSnapshot;
-use deno_npm::resolution::SerializedNpmResolutionSnapshotPackage;
-use deno_npm::resolution::ValidSerializedNpmResolutionSnapshot;
 use deno_semver::StackString;
 use deno_semver::npm::NpmPackageNvReference;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageNvReference;
 use deno_semver::package::PackageReq;
+use ende_npm::NpmPackageId;
+use ende_npm::resolution::SerializedNpmResolutionSnapshot;
+use ende_npm::resolution::SerializedNpmResolutionSnapshotPackage;
+use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
 use futures::future::poll_fn;
 use futures::io::AsyncReadExt;
 use hashlink::linked_hash_map::LinkedHashMap;
@@ -1570,7 +1570,7 @@ impl EszipV2 {
     let mut to_visit_npm_meta = VecDeque::new();
     let mut to_visit_npm = VecDeque::new();
     let mut to_visit_dynamic = VecDeque::new();
-    // deno_core's module loading traverses the dependencies breadth first. However, v8 evaluates
+    // ende_core's module loading traverses the dependencies breadth first. However, v8 evaluates
     // the source code depth-first. We prioritize module evaluation as it is performed sequentially,
     // thus modules are ordered depth-first within the eszip. Except:
     // - npm package's meta-modules are loaded sync during referrer loading, therefore they have
@@ -1998,12 +1998,12 @@ mod tests {
   use deno_graph::source::MemoryLoader;
   use deno_graph::source::ResolveError;
   use deno_graph::source::Source;
-  use deno_npm::NpmPackageId;
-  use deno_npm::resolution::SerializedNpmResolutionSnapshot;
-  use deno_npm::resolution::SerializedNpmResolutionSnapshotPackage;
   use deno_semver::npm::NpmPackageNvReference;
   use deno_semver::package::PackageNv;
   use deno_semver::package::PackageReq;
+  use ende_npm::NpmPackageId;
+  use ende_npm::resolution::SerializedNpmResolutionSnapshot;
+  use ende_npm::resolution::SerializedNpmResolutionSnapshotPackage;
   use futures::io::AllowStdIo;
   use futures::io::BufReader;
   use import_map::ImportMap;

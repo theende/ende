@@ -7,16 +7,16 @@ use std::ffi::c_void;
 use std::path::Path;
 use std::rc::Rc;
 
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::Resource;
-use deno_core::op2;
-use deno_core::v8;
 use deno_error::JsErrorBox;
 use deno_error::JsErrorClass;
-use deno_permissions::PermissionsContainer;
-use denort_helper::DenoRtNativeAddonLoaderRc;
 use dlopen2::raw::Library;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::Resource;
+use ende_core::op2;
+use ende_core::v8;
+use ende_permissions::PermissionsContainer;
+use endert_helper::DenoRtNativeAddonLoaderRc;
 use serde::Deserialize;
 
 use crate::ir::out_buffer_as_ptr;
@@ -49,10 +49,10 @@ pub enum DlfcnError {
   Dlopen(#[from] dlopen2::Error),
   #[class(inherit)]
   #[error(transparent)]
-  Permission(#[from] deno_permissions::PermissionCheckError),
+  Permission(#[from] ende_permissions::PermissionCheckError),
   #[class(inherit)]
   #[error(transparent)]
-  DenoRtLoad(#[from] denort_helper::LoadError),
+  DenoRtLoad(#[from] endert_helper::LoadError),
   #[class(inherit)]
   #[error(transparent)]
   Other(#[from] JsErrorBox),
@@ -257,7 +257,7 @@ pub struct FunctionData {
 
 // SAFETY: we're sure `FunctionData` can be GCed
 unsafe impl GarbageCollected for FunctionData {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"FunctionData"
@@ -294,7 +294,7 @@ fn make_sync_fn<'s>(
     .map(|turbocall| unsafe { turbocall.overloads() });
 
   let data = FunctionData { symbol, turbocall };
-  let data = deno_core::cppgc::make_cppgc_object(scope, data);
+  let data = ende_core::cppgc::make_cppgc_object(scope, data);
 
   let builder = v8::FunctionTemplate::builder(sync_fn_impl).data(data.into());
 
@@ -311,7 +311,7 @@ fn sync_fn_impl<'s>(
   args: v8::FunctionCallbackArguments<'s>,
   mut rv: v8::ReturnValue,
 ) {
-  let data = deno_core::cppgc::try_unwrap_cppgc_object::<FunctionData>(
+  let data = ende_core::cppgc::try_unwrap_cppgc_object::<FunctionData>(
     scope,
     args.data(),
   )
@@ -332,7 +332,7 @@ fn sync_fn_impl<'s>(
             unsafe { result.to_v8(scope, data.symbol.result_type.clone()) };
       rv.set(result);
     }
-    Err(err) => deno_core::error::throw_js_error_class(scope, &err),
+    Err(err) => ende_core::error::throw_js_error_class(scope, &err),
   };
 }
 
@@ -421,9 +421,9 @@ mod tests {
   use std::sync::atomic::AtomicUsize;
   use std::sync::atomic::Ordering;
 
-  use deno_core::JsRuntime;
-  use deno_core::RuntimeOptions;
-  use deno_core::v8;
+  use ende_core::JsRuntime;
+  use ende_core::RuntimeOptions;
+  use ende_core::v8;
   use serde_json::json;
 
   use super::ForeignFunction;
@@ -482,7 +482,7 @@ mod tests {
 
     let mut runtime = JsRuntime::new(RuntimeOptions::default());
     {
-      deno_core::scope!(scope, runtime);
+      ende_core::scope!(scope, runtime);
       let function = make_sync_fn(scope, Box::new(symbol));
       let key = v8::String::new(scope, "makeRect").unwrap();
       let global = scope.get_current_context().global(scope);

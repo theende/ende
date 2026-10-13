@@ -41,7 +41,7 @@ const {
   isAnyArrayBuffer,
   isArrayBufferView,
   isTypedArray,
-} = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+} = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 const {
   ERR_CRYPTO_ECDH_INVALID_FORMAT,
   ERR_CRYPTO_ECDH_INVALID_PUBLIC_KEY,
@@ -50,24 +50,24 @@ const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
   NodeError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   validateInt32,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { deprecate } = core.loadExtScript("ext:deno_node/util.ts");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { deprecate } = core.loadExtScript("ext:ende_node/util.ts");
 const {
   ellipticCurves,
   getDefaultEncoding,
   toBuf,
-} = core.loadExtScript("ext:deno_node/internal/crypto/util.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/util.ts");
 const {
   getArrayBufferOrView,
   getKeyObjectHandle,
   kConsumePrivate,
   kConsumePublic,
-} = core.loadExtScript("ext:deno_node/internal/crypto/keys.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/keys.ts");
 
 const DH_GENERATOR = 2;
 

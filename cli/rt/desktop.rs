@@ -2,17 +2,17 @@
 
 //! Desktop window management for `deno compile --desktop`.
 //!
-//! The ops are defined in `deno_runtime::ops::desktop` and included in the
+//! The ops are defined in `ende_runtime::ops::desktop` and included in the
 //! V8 snapshot. This module re-exports the key types and provides the JS
 //! initialization code.
 
 use std::sync::Arc;
 
-use deno_core::OpState;
-// Re-export from runtime so denort_desktop can use them.
-pub use deno_runtime::ops::desktop::AutoUpdateState;
-pub use deno_runtime::ops::desktop::DesktopApi;
-pub use deno_runtime::ops::desktop::MenuItem;
+use ende_core::OpState;
+// Re-export from runtime so endert_desktop can use them.
+pub use ende_runtime::ops::desktop::AutoUpdateState;
+pub use ende_runtime::ops::desktop::DesktopApi;
+pub use ende_runtime::ops::desktop::MenuItem;
 
 /// JS code that exposes desktop APIs via `Deno.BrowserWindow` and `Deno.desktop`.
 pub const DESKTOP_JS: &str = r#"
@@ -1311,15 +1311,15 @@ pub fn desktop_error_reporting_js(
   )
 }
 
-pub use deno_runtime::ops::desktop::DesktopEvent;
-pub use deno_runtime::ops::desktop::DesktopEventReceiver;
-pub use deno_runtime::ops::desktop::DesktopEventSender;
-pub use deno_runtime::ops::desktop::DesktopEventTx;
-pub use deno_runtime::ops::desktop::InitialWindowId;
-pub use deno_runtime::ops::desktop::PendingBindCall;
-pub use deno_runtime::ops::desktop::PendingBindResponses;
-pub use deno_runtime::ops::desktop::create_desktop_event_channel;
-pub use deno_runtime::ops::desktop::register_bind_call;
+pub use ende_runtime::ops::desktop::DesktopEvent;
+pub use ende_runtime::ops::desktop::DesktopEventReceiver;
+pub use ende_runtime::ops::desktop::DesktopEventSender;
+pub use ende_runtime::ops::desktop::DesktopEventTx;
+pub use ende_runtime::ops::desktop::InitialWindowId;
+pub use ende_runtime::ops::desktop::PendingBindCall;
+pub use ende_runtime::ops::desktop::PendingBindResponses;
+pub use ende_runtime::ops::desktop::create_desktop_event_channel;
+pub use ende_runtime::ops::desktop::register_bind_call;
 
 /// Place the DesktopApi and optional AutoUpdateState into OpState.
 /// The ops are already registered in the snapshot; this just provides
@@ -1336,7 +1336,7 @@ pub fn init_desktop_state(
   }
 }
 
-pub use deno_lib::util::net::allocate_random_port;
+pub use ende_lib::util::net::allocate_random_port;
 
 #[cfg(test)]
 mod tests {

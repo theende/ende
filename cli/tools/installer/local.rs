@@ -3,11 +3,11 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::url::Url;
-use deno_npm::NpmPackageId;
-use deno_resolver::workspace::WorkspaceResolver;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::url::Url;
+use ende_npm::NpmPackageId;
+use ende_resolver::workspace::WorkspaceResolver;
 
 use super::InstallReporter;
 use super::print_install_report;
@@ -72,17 +72,17 @@ pub fn categorize_installed_npm_deps(
         continue;
       };
       match s {
-        deno_package_json::PackageJsonDepValue::File(_) => {
+        ende_package_json::PackageJsonDepValue::File(_) => {
           // TODO(nathanwhit)
           // TODO(bartlomieju)
         }
-        deno_package_json::PackageJsonDepValue::Req(package_req) => {
+        ende_package_json::PackageJsonDepValue::Req(package_req) => {
           normal_deps.insert(package_req.name.to_string());
         }
-        deno_package_json::PackageJsonDepValue::Workspace { .. } => {
+        ende_package_json::PackageJsonDepValue::Workspace { .. } => {
           // ignore workspace deps
         }
-        deno_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
+        ende_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
           if workspace
             .resolve_catalog_dep(k.as_str(), catalog_name)
             .is_some()
@@ -98,17 +98,17 @@ pub fn categorize_installed_npm_deps(
         continue;
       };
       match s {
-        deno_package_json::PackageJsonDepValue::File(_) => {
+        ende_package_json::PackageJsonDepValue::File(_) => {
           // TODO(nathanwhit)
           // TODO(bartlomieju)
         }
-        deno_package_json::PackageJsonDepValue::Req(package_req) => {
+        ende_package_json::PackageJsonDepValue::Req(package_req) => {
           dev_deps.insert(package_req.name.to_string());
         }
-        deno_package_json::PackageJsonDepValue::Workspace { .. } => {
+        ende_package_json::PackageJsonDepValue::Workspace { .. } => {
           // ignore workspace deps
         }
-        deno_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
+        ende_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
           if workspace
             .resolve_catalog_dep(k.as_str(), catalog_name)
             .is_some()
@@ -212,7 +212,7 @@ pub async fn ci_command(
       node_modules_dir.display()
     );
     std::fs::remove_dir_all(node_modules_dir).map_err(|err| {
-      deno_core::anyhow::anyhow!(
+      ende_core::anyhow::anyhow!(
         "failed to remove {}: {err}",
         node_modules_dir.display()
       )

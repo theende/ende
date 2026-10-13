@@ -10,7 +10,7 @@ const {
   SymbolToStringTag,
   TypeError,
 } = primordials;
-const { EventTarget } = core.loadExtScript("ext:deno_web/02_event.js");
+const { EventTarget } = core.loadExtScript("ext:ende_web/02_event.js");
 
 const illegalConstructorKey = Symbol("illegalConstructorKey");
 

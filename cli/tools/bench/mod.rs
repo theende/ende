@@ -5,27 +5,27 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
-use deno_config::glob::WalkEntry;
-use deno_core::ModuleSpecifier;
-use deno_core::PollEventLoopOptions;
-use deno_core::anyhow::anyhow;
-use deno_core::convert::FromV8;
-use deno_core::error::AnyError;
-use deno_core::error::CoreErrorKind;
-use deno_core::error::JsError;
-use deno_core::futures::StreamExt;
-use deno_core::futures::future;
-use deno_core::futures::stream;
-use deno_core::unsync::spawn;
-use deno_core::unsync::spawn_blocking;
-use deno_core::v8;
 use deno_error::JsErrorBox;
-use deno_npm_installer::graph::NpmCachingStrategy;
-use deno_runtime::WorkerExecutionMode;
-use deno_runtime::deno_permissions::Permissions;
-use deno_runtime::deno_permissions::PermissionsContainer;
-use deno_runtime::permissions::RuntimePermissionDescriptorParser;
-use deno_runtime::tokio_util::create_and_run_current_thread;
+use ende_config::glob::WalkEntry;
+use ende_core::ModuleSpecifier;
+use ende_core::PollEventLoopOptions;
+use ende_core::anyhow::anyhow;
+use ende_core::convert::FromV8;
+use ende_core::error::AnyError;
+use ende_core::error::CoreErrorKind;
+use ende_core::error::JsError;
+use ende_core::futures::StreamExt;
+use ende_core::futures::future;
+use ende_core::futures::stream;
+use ende_core::unsync::spawn;
+use ende_core::unsync::spawn_blocking;
+use ende_core::v8;
+use ende_npm_installer::graph::NpmCachingStrategy;
+use ende_runtime::WorkerExecutionMode;
+use ende_runtime::ende_permissions::Permissions;
+use ende_runtime::ende_permissions::PermissionsContainer;
+use ende_runtime::permissions::RuntimePermissionDescriptorParser;
+use ende_runtime::tokio_util::create_and_run_current_thread;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use log::Level;
@@ -89,7 +89,7 @@ pub enum BenchEvent {
   UncaughtError(String, Box<JsError>),
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, deno_core::FromV8)]
+#[derive(Debug, Clone, Deserialize, Serialize, ende_core::FromV8)]
 #[serde(rename_all = "camelCase")]
 pub enum BenchResult {
   Ok(BenchStats),
@@ -116,7 +116,7 @@ pub struct BenchDescription {
   pub warmup: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deno_core::FromV8)]
+#[derive(Debug, Clone, Serialize, Deserialize, ende_core::FromV8)]
 #[serde(rename_all = "camelCase")]
 pub struct BenchStats {
   pub n: u64,
@@ -202,7 +202,7 @@ async fn bench_specifier_inner(
       preload_modules,
       require_modules,
       permissions_container,
-      vec![ops::bench::deno_bench::init(sender.clone())],
+      vec![ops::bench::ende_bench::init(sender.clone())],
       Default::default(),
       None,
     )
@@ -266,7 +266,7 @@ async fn bench_specifier_inner(
       .js_runtime
       .with_event_loop_promise(call, PollEventLoopOptions::default())
       .await?;
-    deno_core::scope!(scope, &mut worker.js_runtime);
+    ende_core::scope!(scope, &mut worker.js_runtime);
     let result = v8::Local::new(scope, result);
     let result = BenchResult::from_v8(scope, result)
       .map_err(|e| CoreErrorKind::JsBox(e).into_box())?;

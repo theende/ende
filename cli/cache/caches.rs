@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_lib::version::DENO_VERSION_INFO;
+use ende_lib::version::DENO_VERSION_INFO;
 use once_cell::sync::OnceCell;
 
 use super::cache_db::CacheDB;

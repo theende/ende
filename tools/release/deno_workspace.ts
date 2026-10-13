@@ -42,15 +42,15 @@ export class DenoWorkspace {
   }
 
   getCliCrate() {
-    return this.getCrate("deno");
+    return this.getCrate("ende");
   }
 
   getDenoRtCrate() {
-    return this.getCrate("denort");
+    return this.getCrate("endert");
   }
 
   getDenoLibCrate() {
-    return this.getCrate("deno_lib");
+    return this.getCrate("ende_lib");
   }
 
   getCrate(name: string) {

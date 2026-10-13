@@ -16,8 +16,8 @@ const {
   WeakMapPrototypeSet,
 } = primordials;
 
-const { URL } = core.loadExtScript("ext:deno_web/00_url.js");
-const { DOMException } = core.loadExtScript("ext:deno_web/01_dom_exception.js");
+const { URL } = core.loadExtScript("ext:ende_web/00_url.js");
+const { DOMException } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
 
 const locationConstructorKey = Symbol("locationConstructorKey");
 

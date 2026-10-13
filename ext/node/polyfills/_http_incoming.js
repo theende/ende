@@ -36,7 +36,7 @@ const {
 } = primordials;
 
 import { finished, Readable } from "node:stream";
-const { nextTick } = core.loadExtScript("ext:deno_node/_next_tick.ts");
+const { nextTick } = core.loadExtScript("ext:ende_node/_next_tick.ts");
 
 const kHeaders = Symbol("kHeaders");
 const kHeadersDistinct = Symbol("kHeadersDistinct");

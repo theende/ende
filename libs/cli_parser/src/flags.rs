@@ -10,20 +10,20 @@ use std::num::NonZeroU32;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
-pub use deno_bundle_runtime::BundleFormat;
-use deno_bundle_runtime::BundleOptions;
-pub use deno_bundle_runtime::BundlePlatform;
-pub use deno_bundle_runtime::PackageHandling;
-pub use deno_bundle_runtime::SourceMapType;
-pub use deno_config::deno_json::NewestDependencyDate;
-pub use deno_config::deno_json::NodeModulesDirMode;
-pub use deno_config::deno_json::NodeModulesLinkerMode;
-pub use deno_core::url::Url;
-pub use deno_lib::args::CaData;
-pub use deno_lib::args::UnstableConfig;
-pub use deno_npm_installer::PackagesAllowedScripts;
-pub use deno_runtime::deno_inspector_server::InspectPublishUid;
 use deno_semver::package::PackageReq;
+pub use ende_bundle_runtime::BundleFormat;
+use ende_bundle_runtime::BundleOptions;
+pub use ende_bundle_runtime::BundlePlatform;
+pub use ende_bundle_runtime::PackageHandling;
+pub use ende_bundle_runtime::SourceMapType;
+pub use ende_config::deno_json::NewestDependencyDate;
+pub use ende_config::deno_json::NodeModulesDirMode;
+pub use ende_config::deno_json::NodeModulesLinkerMode;
+pub use ende_core::url::Url;
+pub use ende_lib::args::CaData;
+pub use ende_lib::args::UnstableConfig;
+pub use ende_npm_installer::PackagesAllowedScripts;
+pub use ende_runtime::ende_inspector_server::InspectPublishUid;
 pub use log::Level;
 use serde::Deserialize;
 use serde::Serialize;
@@ -455,7 +455,7 @@ pub struct InstallEntrypointsFlags {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct JSONReferenceFlags {
-  pub json: deno_core::serde_json::Value,
+  pub json: ende_core::serde_json::Value,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

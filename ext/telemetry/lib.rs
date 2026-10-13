@@ -26,20 +26,20 @@ use std::time::Duration;
 use std::time::Instant;
 use std::time::SystemTime;
 
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::ToV8;
-use deno_core::futures::FutureExt;
-use deno_core::futures::Stream;
-use deno_core::futures::StreamExt;
-use deno_core::futures::channel::mpsc;
-use deno_core::futures::channel::mpsc::UnboundedSender;
-use deno_core::futures::future::BoxFuture;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::v8::DataError;
 use deno_error::JsError;
 use deno_error::JsErrorBox;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::ToV8;
+use ende_core::futures::FutureExt;
+use ende_core::futures::Stream;
+use ende_core::futures::StreamExt;
+use ende_core::futures::channel::mpsc;
+use ende_core::futures::channel::mpsc::UnboundedSender;
+use ende_core::futures::future::BoxFuture;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::v8::DataError;
 use once_cell::sync::Lazy;
 use once_cell::sync::OnceCell;
 use opentelemetry::Array;
@@ -105,8 +105,8 @@ use tokio::task::JoinSet;
 mod console_exporter;
 mod grpc_exporter;
 
-deno_core::extension!(
-  deno_telemetry,
+ende_core::extension!(
+  ende_telemetry,
   ops = [
     op_otel_collect_isolate_metrics,
     op_otel_enable_isolate_metrics,
@@ -376,14 +376,14 @@ impl MetricReader for DenoPeriodicReader {
   fn force_flush(&self) -> OTelSdkResult {
     let (tx, rx) = oneshot::channel();
     let _ = self.tx.try_send(DenoPeriodicReaderMessage::ForceFlush(tx));
-    deno_core::futures::executor::block_on(rx).unwrap()?;
+    ende_core::futures::executor::block_on(rx).unwrap()?;
     Ok(())
   }
 
   fn shutdown_with_timeout(&self, _timeout: Duration) -> OTelSdkResult {
     let (tx, rx) = oneshot::channel();
     let _ = self.tx.try_send(DenoPeriodicReaderMessage::Shutdown(tx));
-    deno_core::futures::executor::block_on(rx).unwrap()?;
+    ende_core::futures::executor::block_on(rx).unwrap()?;
     Ok(())
   }
 
@@ -530,15 +530,15 @@ mod hyper_client {
   use std::task::Poll;
   use std::time::Duration;
 
-  use deno_net::tunnel::TunnelConnection;
-  use deno_net::tunnel::TunnelStream;
-  use deno_net::tunnel::get_tunnel;
-  use deno_tls::SocketUse;
-  use deno_tls::TlsKey;
-  use deno_tls::TlsKeys;
-  use deno_tls::create_client_config;
-  use deno_tls::load_certs;
-  use deno_tls::load_private_keys;
+  use ende_net::tunnel::TunnelConnection;
+  use ende_net::tunnel::TunnelStream;
+  use ende_net::tunnel::get_tunnel;
+  use ende_tls::SocketUse;
+  use ende_tls::TlsKey;
+  use ende_tls::TlsKeys;
+  use ende_tls::create_client_config;
+  use ende_tls::load_certs;
+  use ende_tls::load_private_keys;
   use http_body_util::BodyExt;
   use http_body_util::Full;
   use hyper::Uri;
@@ -577,7 +577,7 @@ mod hyper_client {
     #[error(transparent)]
     Box(#[from] Box<dyn std::error::Error + Send + Sync>),
     #[error(transparent)]
-    Tunnel(#[from] deno_net::tunnel::Error),
+    Tunnel(#[from] ende_net::tunnel::Error),
   }
 
   #[derive(Debug, Clone)]
@@ -793,7 +793,7 @@ mod hyper_client {
   impl HyperClient {
     fn build_connector(
       sys: &impl FsRead,
-    ) -> deno_core::anyhow::Result<Connector> {
+    ) -> ende_core::anyhow::Result<Connector> {
       let connector = if let Some(tunnel) = get_tunnel() {
         Connector::Tunnel(tunnel.clone())
       } else if let Ok(addr) = std::env::var("OTEL_DENO_VSOCK") {
@@ -804,7 +804,7 @@ mod hyper_client {
         )))]
         {
           let _ = addr;
-          deno_core::anyhow::bail!("vsock is not supported on this platform")
+          ende_core::anyhow::bail!("vsock is not supported on this platform")
         }
 
         #[cfg(any(
@@ -814,7 +814,7 @@ mod hyper_client {
         ))]
         {
           let Some((cid, port)) = addr.split_once(':') else {
-            deno_core::anyhow::bail!("invalid vsock addr");
+            ende_core::anyhow::bail!("invalid vsock addr");
           };
           let cid = if cid == "-1" { u32::MAX } else { cid.parse()? };
           let port = port.parse()?;
@@ -838,7 +838,7 @@ mod hyper_client {
             let certs = load_certs(&mut std::io::Cursor::new(cert))?;
             let key =
               load_private_keys(&key)?.into_iter().next().ok_or_else(|| {
-                deno_core::anyhow::anyhow!(
+                ende_core::anyhow::anyhow!(
                   "no private key found in OTEL_EXPORTER_OTLP_CLIENT_KEY file"
                 )
               })?;
@@ -849,7 +849,7 @@ mod hyper_client {
         };
 
         let tls_config =
-          create_client_config(deno_tls::TlsClientConfigOptions {
+          create_client_config(ende_tls::TlsClientConfigOptions {
             root_cert_store: None,
             ca_certs,
             unsafely_ignore_certificate_errors: None,
@@ -866,13 +866,13 @@ mod hyper_client {
       Ok(connector)
     }
 
-    pub fn new(sys: &impl FsRead) -> deno_core::anyhow::Result<Self> {
+    pub fn new(sys: &impl FsRead) -> ende_core::anyhow::Result<Self> {
       let connector = Self::build_connector(sys)?;
       Ok(Self::from_connector(connector, false))
     }
 
     /// Create a client configured for gRPC (HTTP/2 enforced).
-    pub fn new_h2(sys: &impl FsRead) -> deno_core::anyhow::Result<Self> {
+    pub fn new_h2(sys: &impl FsRead) -> ende_core::anyhow::Result<Self> {
       let connector = Self::build_connector(sys)?;
       Ok(Self::from_connector(connector, true))
     }
@@ -1127,7 +1127,7 @@ impl Default for Sampler {
 impl Sampler {
   fn from_env(
     sys: &impl TelemetrySys,
-  ) -> Result<Self, deno_core::anyhow::Error> {
+  ) -> Result<Self, ende_core::anyhow::Error> {
     let Ok(value) = sys.env_var("OTEL_TRACES_SAMPLER") else {
       return Ok(Self::default());
     };
@@ -1172,7 +1172,7 @@ impl Sampler {
         root: RootSampler::TraceIdRatio(ratio()),
       },
       other => {
-        return Err(deno_core::anyhow::anyhow!(
+        return Err(ende_core::anyhow::anyhow!(
           "Env var OTEL_TRACES_SAMPLER specifies an unsupported sampler: {}",
           other
         ));
@@ -1226,7 +1226,7 @@ pub fn init(
   sys: &impl TelemetrySys,
   rt_config: OtelRuntimeConfig,
   config: OtelConfig,
-) -> deno_core::anyhow::Result<()> {
+) -> ende_core::anyhow::Result<()> {
   if !config.metrics_enabled
     && !config.tracing_enabled
     && config.console == OtelConsoleConfig::Ignore
@@ -1251,13 +1251,13 @@ pub fn init(
     Ok("http/json") => (false, false, Protocol::HttpJson),
     Ok("grpc") => (false, true, Protocol::HttpBinary),
     Ok(protocol) => {
-      return Err(deno_core::anyhow::anyhow!(
+      return Err(ende_core::anyhow::anyhow!(
         "Env var OTEL_EXPORTER_OTLP_PROTOCOL specifies an unsupported protocol: {}",
         protocol
       ));
     }
     Err(err) => {
-      return Err(deno_core::anyhow::anyhow!(
+      return Err(ende_core::anyhow::anyhow!(
         "Failed to read env var OTEL_EXPORTER_OTLP_PROTOCOL: {}",
         err
       ));
@@ -1308,7 +1308,7 @@ pub fn init(
     Some("delta") => Temporality::Delta,
     Some("lowmemory") => Temporality::LowMemory,
     Some(other) => {
-      return Err(deno_core::anyhow::anyhow!(
+      return Err(ende_core::anyhow::anyhow!(
         "Invalid value for OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: {}",
         other
       ));
@@ -1420,16 +1420,16 @@ pub fn init(
       sampler,
       config,
     })
-    .map_err(|_| deno_core::anyhow::anyhow!("failed to set otel globals"))?;
+    .map_err(|_| ende_core::anyhow::anyhow!("failed to set otel globals"))?;
 
-  deno_signals::before_exit(before_exit);
-  deno_net::tunnel::disable_before_exit();
+  ende_signals::before_exit(before_exit);
+  ende_net::tunnel::disable_before_exit();
 
   Ok(())
 }
 
 fn before_exit() {
-  log::trace!("deno_telemetry::before_exit");
+  log::trace!("ende_telemetry::before_exit");
 
   let Some(OtelGlobals {
     span_processor: spans,
@@ -1450,7 +1450,7 @@ fn before_exit() {
   let r = meter_provider.shutdown();
   log::trace!("meters={:?}", r);
 
-  deno_net::tunnel::before_exit();
+  ende_net::tunnel::before_exit();
 }
 
 pub fn handle_log(record: &log::Record) {
@@ -1816,7 +1816,7 @@ fn op_otel_log<'s>(
   log_record.add_attribute("log.iostream", iostream);
 
   if let Some(span) =
-    deno_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
+    ende_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
   {
     let state = span.0.borrow();
     match &**state {
@@ -1970,8 +1970,8 @@ fn owned_string<'s>(
 struct OtelTracer(InstrumentationScope);
 
 // SAFETY: we're sure this can be GCed
-unsafe impl deno_core::GarbageCollected for OtelTracer {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for OtelTracer {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"OtelTracer"
@@ -2236,8 +2236,8 @@ pub enum OtelSpanState {
 }
 
 // SAFETY: we're sure this can be GCed
-unsafe impl deno_core::GarbageCollected for OtelSpan {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for OtelSpan {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"OtelSpan"
@@ -2434,7 +2434,7 @@ fn op_otel_span_attribute1<'s>(
   value: v8::Local<'s, v8::Value>,
 ) {
   let Some(span) =
-    deno_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
+    ende_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
   else {
     return;
   };
@@ -2465,7 +2465,7 @@ fn op_otel_span_attribute2<'s>(
   value2: v8::Local<'s, v8::Value>,
 ) {
   let Some(span) =
-    deno_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
+    ende_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
   else {
     return;
   };
@@ -2510,7 +2510,7 @@ fn op_otel_span_attribute3<'s>(
   value3: v8::Local<'s, v8::Value>,
 ) {
   let Some(span) =
-    deno_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
+    ende_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
   else {
     return;
   };
@@ -2562,7 +2562,7 @@ fn op_otel_span_update_name<'s>(
   };
   let name = owned_string(scope, name);
   let Some(span) =
-    deno_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
+    ende_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
   else {
     return;
   };
@@ -2599,7 +2599,7 @@ fn op_otel_span_add_link<'s>(
   );
 
   let Some(span) =
-    deno_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
+    ende_core::_ops::try_unwrap_cppgc_object::<OtelSpan>(scope, span)
   else {
     return 0;
   };
@@ -2619,8 +2619,8 @@ fn op_otel_span_add_link<'s>(
 struct OtelMeter(opentelemetry::metrics::Meter);
 
 // SAFETY: we're sure this can be GCed
-unsafe impl deno_core::GarbageCollected for OtelMeter {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for OtelMeter {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"OtelMeter"
@@ -2824,7 +2824,7 @@ enum Instrument {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for Instrument {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"Instrument"
@@ -2921,7 +2921,7 @@ fn op_otel_metric_record1(
   key1: v8::Local<'_, v8::Value>,
   value1: v8::Local<'_, v8::Value>,
 ) {
-  let Some(instrument) = deno_core::_ops::try_unwrap_cppgc_object::<Instrument>(
+  let Some(instrument) = ende_core::_ops::try_unwrap_cppgc_object::<Instrument>(
     &mut *scope,
     instrument,
   ) else {
@@ -2966,7 +2966,7 @@ fn op_otel_metric_record2(
   key2: v8::Local<'_, v8::Value>,
   value2: v8::Local<'_, v8::Value>,
 ) {
-  let Some(instrument) = deno_core::_ops::try_unwrap_cppgc_object::<Instrument>(
+  let Some(instrument) = ende_core::_ops::try_unwrap_cppgc_object::<Instrument>(
     &mut *scope,
     instrument,
   ) else {
@@ -3019,7 +3019,7 @@ fn op_otel_metric_record3(
   key3: v8::Local<'_, v8::Value>,
   value3: v8::Local<'_, v8::Value>,
 ) {
-  let Some(instrument) = deno_core::_ops::try_unwrap_cppgc_object::<Instrument>(
+  let Some(instrument) = ende_core::_ops::try_unwrap_cppgc_object::<Instrument>(
     &mut *scope,
     instrument,
   ) else {
@@ -3089,7 +3089,7 @@ fn op_otel_metric_observable_record1(
   key1: v8::Local<'_, v8::Value>,
   value1: v8::Local<'_, v8::Value>,
 ) {
-  let Some(instrument) = deno_core::_ops::try_unwrap_cppgc_object::<Instrument>(
+  let Some(instrument) = ende_core::_ops::try_unwrap_cppgc_object::<Instrument>(
     &mut *scope,
     instrument,
   ) else {
@@ -3127,7 +3127,7 @@ fn op_otel_metric_observable_record2(
   key2: v8::Local<'_, v8::Value>,
   value2: v8::Local<'_, v8::Value>,
 ) {
-  let Some(instrument) = deno_core::_ops::try_unwrap_cppgc_object::<Instrument>(
+  let Some(instrument) = ende_core::_ops::try_unwrap_cppgc_object::<Instrument>(
     &mut *scope,
     instrument,
   ) else {
@@ -3171,7 +3171,7 @@ fn op_otel_metric_observable_record3(
   key3: v8::Local<'_, v8::Value>,
   value3: v8::Local<'_, v8::Value>,
 ) {
-  let Some(instrument) = deno_core::_ops::try_unwrap_cppgc_object::<Instrument>(
+  let Some(instrument) = ende_core::_ops::try_unwrap_cppgc_object::<Instrument>(
     &mut *scope,
     instrument,
   ) else {

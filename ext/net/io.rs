@@ -3,15 +3,15 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use deno_core::AsyncMutFuture;
-use deno_core::AsyncRefCell;
-use deno_core::AsyncResult;
-use deno_core::CancelHandle;
-use deno_core::CancelTryFuture;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::futures::TryFutureExt;
 use deno_error::JsErrorBox;
+use ende_core::AsyncMutFuture;
+use ende_core::AsyncRefCell;
+use ende_core::AsyncResult;
+use ende_core::CancelHandle;
+use ende_core::CancelTryFuture;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::futures::TryFutureExt;
 use socket2::SockRef;
 use tokio::io::AsyncRead;
 use tokio::io::AsyncReadExt;
@@ -123,8 +123,8 @@ pub type TcpStreamResource =
   FullDuplexResource<tcp::OwnedReadHalf, tcp::OwnedWriteHalf>;
 
 impl Resource for TcpStreamResource {
-  deno_core::impl_readable_byob!();
-  deno_core::impl_writable!();
+  ende_core::impl_readable_byob!();
+  ende_core::impl_writable!();
 
   fn name(&self) -> Cow<'_, str> {
     "tcpStream".into()
@@ -222,8 +222,8 @@ impl UnixStreamResource {
 }
 
 impl Resource for UnixStreamResource {
-  deno_core::impl_readable_byob!();
-  deno_core::impl_writable!();
+  ende_core::impl_readable_byob!();
+  ende_core::impl_writable!();
 
   fn name(&self) -> Cow<'_, str> {
     "unixStream".into()
@@ -279,8 +279,8 @@ impl VsockStreamResource {
 }
 
 impl Resource for VsockStreamResource {
-  deno_core::impl_readable_byob!();
-  deno_core::impl_writable!();
+  ende_core::impl_readable_byob!();
+  ende_core::impl_writable!();
 
   fn name(&self) -> Cow<'_, str> {
     "vsockStream".into()

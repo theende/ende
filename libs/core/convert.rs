@@ -24,7 +24,7 @@ use crate::runtime::ops;
 /// When passing data from Rust into JS, either
 /// via an op or by calling a JS function directly,
 /// you need to serialize the data into a native
-/// V8 value. When using the [`op2`][deno_core::op2] macro, the return
+/// V8 value. When using the [`op2`][ende_core::op2] macro, the return
 /// value is converted to a `v8::Local<Value>` automatically,
 /// and the strategy for conversion is controlled by attributes
 /// like `#[smi]`, `#[number]`, `#[string]`. For types with support
@@ -41,9 +41,9 @@ use crate::runtime::ops;
 /// # Example
 ///
 /// ```ignore
-/// use deno_core::ToV8;
-/// use deno_core::convert::Smi;
-/// use deno_core::op2;
+/// use ende_core::ToV8;
+/// use ende_core::convert::Smi;
+/// use ende_core::op2;
 ///
 /// struct Foo(i32);
 ///
@@ -91,20 +91,20 @@ pub trait ToV8<'a> {
 /// A conversion from a v8 value to a rust value.
 ///
 /// When writing a op, or otherwise writing a function in Rust called
-/// from JS, arguments passed from JS are represented as [`v8::Local<v8::Value>>`][deno_core::v8::Value].
+/// from JS, arguments passed from JS are represented as [`v8::Local<v8::Value>>`][ende_core::v8::Value].
 /// To convert these values into custom Rust types, you can implement the [`FromV8`] trait.
 ///
 /// Once you've implemented this trait, you can use the `#[from_v8]` attribute
-/// to tell the [`op2`][deno_core::op2] macro to use your implementation to convert the argument
+/// to tell the [`op2`][ende_core::op2] macro to use your implementation to convert the argument
 /// to the desired type.
 ///
 /// # Example
 ///
 /// ```ignore
-/// use deno_core::FromV8;
+/// use ende_core::FromV8;
 /// use deno_error::JsErrorBox;
-/// use deno_core::convert::Smi;
-/// use deno_core::op2;
+/// use ende_core::convert::Smi;
+/// use ende_core::op2;
 ///
 /// struct Foo(i32);
 ///
@@ -114,7 +114,7 @@ pub trait ToV8<'a> {
 ///   type Error = JsErrorBox;
 ///
 ///   fn from_v8(scope: &mut v8::PinScope<'a, '_>, value: v8::Local<'a, v8::Value>) -> Result<Self, Self::Error> {
-///     /// We expect this value to be a `v8::Integer`, so we use the [`Smi`][deno_core::convert::Smi] wrapper type to convert it.
+///     /// We expect this value to be a `v8::Integer`, so we use the [`Smi`][ende_core::convert::Smi] wrapper type to convert it.
 ///     Smi::from_v8(scope, value).map(|Smi(v)| Foo(v))
 ///   }
 /// }
@@ -1986,7 +1986,7 @@ function equal(a, b) {
 
   #[test]
   fn derive_struct() {
-    #[derive(deno_ops::FromV8, deno_ops::ToV8, Eq, PartialEq, Clone, Debug)]
+    #[derive(ende_ops::FromV8, ende_ops::ToV8, Eq, PartialEq, Clone, Debug)]
     pub struct Struct {
       a: u8,
       #[from_v8(default = Some(3))]
@@ -1998,7 +1998,7 @@ function equal(a, b) {
     }
 
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let value = Struct {
       a: 242,
@@ -2013,7 +2013,7 @@ function equal(a, b) {
 
   #[test]
   fn derive_from_struct() {
-    #[derive(deno_ops::FromV8, Eq, PartialEq, Clone, Debug)]
+    #[derive(ende_ops::FromV8, Eq, PartialEq, Clone, Debug)]
     pub struct Struct {
       a: u8,
       #[from_v8(default = Some(3))]
@@ -2033,7 +2033,7 @@ function equal(a, b) {
       .execute_script("", "({ a: 1, e: 'foo', b: {} })")
       .unwrap();
 
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let val = Local::new(scope, val);
     let from = Struct::from_v8(scope, val).unwrap();
@@ -2062,16 +2062,16 @@ function equal(a, b) {
 
   #[test]
   fn derive_from_tuple_struct() {
-    #[derive(deno_ops::FromV8, Eq, PartialEq, Clone, Debug)]
+    #[derive(ende_ops::FromV8, Eq, PartialEq, Clone, Debug)]
     pub struct Tuple(u8, String);
-    #[derive(deno_ops::FromV8, Eq, PartialEq, Clone, Debug)]
+    #[derive(ende_ops::FromV8, Eq, PartialEq, Clone, Debug)]
     pub struct TupleSingle(u8);
 
     let mut runtime = JsRuntime::new(Default::default());
     let val = runtime.execute_script("", "([1, 'foo'])").unwrap();
     let val2 = runtime.execute_script("", "(1)").unwrap();
 
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let val = Local::new(scope, val);
 
     let from = Tuple::from_v8(scope, val).unwrap();
@@ -2085,7 +2085,7 @@ function equal(a, b) {
 
   #[test]
   fn derive_to_struct() {
-    #[derive(deno_ops::ToV8, Eq, PartialEq, Clone, Debug)]
+    #[derive(ende_ops::ToV8, Eq, PartialEq, Clone, Debug)]
     pub struct Struct {
       a: u8,
       c: Option<u32>,
@@ -2096,7 +2096,7 @@ function equal(a, b) {
     }
 
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let from = ToV8::to_v8(
       Struct {
@@ -2198,13 +2198,13 @@ function equal(a, b) {
 
   #[test]
   fn derive_to_tuple_struct() {
-    #[derive(deno_ops::ToV8, Eq, PartialEq, Clone, Debug)]
+    #[derive(ende_ops::ToV8, Eq, PartialEq, Clone, Debug)]
     pub struct Tuple(u8, String);
-    #[derive(deno_ops::ToV8, Eq, PartialEq, Clone, Debug)]
+    #[derive(ende_ops::ToV8, Eq, PartialEq, Clone, Debug)]
     pub struct TupleSingle(u8);
 
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let from = ToV8::to_v8(Tuple(1, "foo".to_string()), scope).unwrap();
     let arr = from.cast::<v8::Array>();
@@ -2228,7 +2228,7 @@ function equal(a, b) {
   #[test]
   fn test_box_roundtrip() {
     let mut runtime = JsRuntime::new(Default::default());
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     // Box<T> forwards to T's ToV8/FromV8 — JS sees the inner shape, never
     // a wrapper.

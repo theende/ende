@@ -6,14 +6,14 @@ use std::sync::Arc;
 
 use dashmap::DashMap;
 use deno_ast::SourceRangedForSpanned;
-use deno_config::glob::FilePatterns;
-use deno_config::workspace::WorkspaceDirLintConfig;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::url::Url;
 use deno_lint::linter::LintConfig;
-use deno_resolver::deno_json::CompilerOptionsKey;
-use deno_runtime::tokio_util::create_basic_runtime;
+use ende_config::glob::FilePatterns;
+use ende_config::workspace::WorkspaceDirLintConfig;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_resolver::deno_json::CompilerOptionsKey;
+use ende_runtime::tokio_util::create_basic_runtime;
 use once_cell::sync::Lazy;
 use tower_lsp::lsp_types as lsp;
 

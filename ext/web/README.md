@@ -16,36 +16,36 @@ From javascript, include the extension's source:
 ```javascript
 import { core } from "ext:core/mod.js";
 
-const infra = core.loadExtScript("ext:deno_web/00_infra.js");
-const url = core.loadExtScript("ext:deno_web/00_url.js");
+const infra = core.loadExtScript("ext:ende_web/00_infra.js");
+const url = core.loadExtScript("ext:ende_web/00_url.js");
 const broadcastChannel = core.loadExtScript(
-  "ext:deno_web/01_broadcast_channel.js",
+  "ext:ende_web/01_broadcast_channel.js",
 );
-const console = core.loadExtScript("ext:deno_web/01_console.js");
-const DOMException = core.loadExtScript("ext:deno_web/01_dom_exception.js");
-const mimesniff = core.loadExtScript("ext:deno_web/01_mimesniff.js");
-const urlPattern = core.loadExtScript("ext:deno_web/01_urlpattern.js");
-const event = core.loadExtScript("ext:deno_web/02_event.js");
+const console = core.loadExtScript("ext:ende_web/01_console.js");
+const DOMException = core.loadExtScript("ext:ende_web/01_dom_exception.js");
+const mimesniff = core.loadExtScript("ext:ende_web/01_mimesniff.js");
+const urlPattern = core.loadExtScript("ext:ende_web/01_urlpattern.js");
+const event = core.loadExtScript("ext:ende_web/02_event.js");
 const structuredClone = core.loadExtScript(
-  "ext:deno_web/02_structured_clone.js",
+  "ext:ende_web/02_structured_clone.js",
 );
-const timers = core.loadExtScript("ext:deno_web/02_timers.js");
-const abortSignal = core.loadExtScript("ext:deno_web/03_abort_signal.js");
+const timers = core.loadExtScript("ext:ende_web/02_timers.js");
+const abortSignal = core.loadExtScript("ext:ende_web/03_abort_signal.js");
 const globalInterfaces = core.loadExtScript(
-  "ext:deno_web/04_global_interfaces.js",
+  "ext:ende_web/04_global_interfaces.js",
 );
-const base64 = core.loadExtScript("ext:deno_web/05_base64.js");
-const streams = core.loadExtScript("ext:deno_web/06_streams.js");
-const encoding = core.loadExtScript("ext:deno_web/08_text_encoding.js");
-const file = core.loadExtScript("ext:deno_web/09_file.js");
-const fileReader = core.loadExtScript("ext:deno_web/10_filereader.js");
-const location = core.loadExtScript("ext:deno_web/12_location.js");
-const messagePort = core.loadExtScript("ext:deno_web/13_message_port.js");
-const compression = core.loadExtScript("ext:deno_web/14_compression.js");
-const performance = core.loadExtScript("ext:deno_web/15_performance.js");
-const imageData = core.loadExtScript("ext:deno_web/16_image_data.js");
-const loadGeometry = core.createLazyLoader("ext:deno_web/geometry.js");
-const loadWebTransport = core.createLazyLoader("ext:deno_web/webtransport.js");
+const base64 = core.loadExtScript("ext:ende_web/05_base64.js");
+const streams = core.loadExtScript("ext:ende_web/06_streams.js");
+const encoding = core.loadExtScript("ext:ende_web/08_text_encoding.js");
+const file = core.loadExtScript("ext:ende_web/09_file.js");
+const fileReader = core.loadExtScript("ext:ende_web/10_filereader.js");
+const location = core.loadExtScript("ext:ende_web/12_location.js");
+const messagePort = core.loadExtScript("ext:ende_web/13_message_port.js");
+const compression = core.loadExtScript("ext:ende_web/14_compression.js");
+const performance = core.loadExtScript("ext:ende_web/15_performance.js");
+const imageData = core.loadExtScript("ext:ende_web/16_image_data.js");
+const loadGeometry = core.createLazyLoader("ext:ende_web/geometry.js");
+const loadWebTransport = core.createLazyLoader("ext:ende_web/webtransport.js");
 const geometry = loadGeometry();
 const webTransport = loadWebTransport();
 ```
@@ -119,7 +119,7 @@ Object.defineProperty(globalThis, "AbortController", {
 | structuredClone                  | messagePort.structuredClone              | true       | true         | true      |
 
 Then from rust, provide:
-`deno_web::deno_web::init(Arc<dyn BlobStoreTrait>, Option<Url>, bool, InMemoryBroadcastChannel)`
+`ende_web::ende_web::init(Arc<dyn BlobStoreTrait>, Option<Url>, bool, InMemoryBroadcastChannel)`
 in the `extensions` field of your `RuntimeOptions`
 
 Where:
@@ -131,7 +131,7 @@ Where:
 
 ## Dependencies
 
-- **deno_webidl**: Provided by the `deno_webidl` crate
+- **ende_webidl**: Provided by the `ende_webidl` crate
 
 ## Provided ops
 

@@ -29,9 +29,9 @@ pub fn generate_x448_keypair(pkey: &mut [u8], pubkey: &mut [u8]) {
 
   // x448(pkey, 5)
   let pkey: &[u8; 56] = (&*pkey).try_into().expect("Expected byteLength 56");
-  let point = deno_crypto_provider::x448::x448(
+  let point = ende_crypto_provider::x448::x448(
     pkey,
-    &deno_crypto_provider::x448::BASE_POINT,
+    &ende_crypto_provider::x448::BASE_POINT,
   );
   pubkey.copy_from_slice(&point);
 }
@@ -52,7 +52,7 @@ pub(crate) fn x448_derive_bits(
   let u: [u8; 56] = u.try_into().map_err(|_| X448Error::InvalidKeyLength)?;
 
   // x448(k, u)
-  let point = deno_crypto_provider::x448::x448(&k, &u);
+  let point = ende_crypto_provider::x448::x448(&k, &u);
   if point.ct_eq(&MONTGOMERY_IDENTITY).unwrap_u8() == 1 {
     return Ok(true);
   }
@@ -71,9 +71,9 @@ pub(crate) fn x448_public_key(private_key: &[u8]) -> Result<String, X448Error> {
     .try_into()
     .map_err(|_| X448Error::InvalidKeyLength)?;
   // x448(pkey, 5), identical derivation to generate_x448_keypair.
-  let point = deno_crypto_provider::x448::x448(
+  let point = ende_crypto_provider::x448::x448(
     &private_key,
-    &deno_crypto_provider::x448::BASE_POINT,
+    &ende_crypto_provider::x448::BASE_POINT,
   );
   Ok(BASE64_URL_SAFE_NO_PAD.encode(point))
 }

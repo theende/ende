@@ -2,13 +2,13 @@
 
 import { core, internals, primordials } from "ext:core/mod.js";
 import { ImageBitmap, op_create_image_bitmap } from "ext:core/ops";
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
-const { DOMException } = core.loadExtScript("ext:deno_web/01_dom_exception.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
+const { DOMException } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
 const { createFilteredInspectProxy } = core.loadExtScript(
-  "ext:deno_web/01_console.js",
+  "ext:ende_web/01_console.js",
 );
-const { BlobPrototype } = core.loadExtScript("ext:deno_web/09_file.js");
-const { sniffImage } = core.loadExtScript("ext:deno_web/01_mimesniff.js");
+const { BlobPrototype } = core.loadExtScript("ext:ende_web/09_file.js");
+const { sniffImage } = core.loadExtScript("ext:ende_web/01_mimesniff.js");
 const {
   ObjectDefineProperty,
   ObjectPrototypeIsPrototypeOf,
@@ -26,7 +26,7 @@ const {
 let _imageDataMod;
 const loadImageData = () =>
   _imageDataMod ??
-    (_imageDataMod = core.loadExtScript("ext:deno_web/16_image_data.js"));
+    (_imageDataMod = core.loadExtScript("ext:ende_web/16_image_data.js"));
 
 webidl.converters["ImageOrientation"] = webidl.createEnumConverter(
   "ImageOrientation",

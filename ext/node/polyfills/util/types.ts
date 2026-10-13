@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { core } from "ext:core/mod.js";
-const types = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+const types = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 export const {
   isCryptoKey,
   isKeyObject,

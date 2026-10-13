@@ -5,9 +5,9 @@ const { op_node_random_int } = core.ops;
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_OUT_OF_RANGE,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { validateFunction } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const {
   MathCeil,

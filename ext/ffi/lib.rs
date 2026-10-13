@@ -21,11 +21,11 @@ pub use callback::CallbackError;
 use callback::op_ffi_unsafe_callback_close;
 use callback::op_ffi_unsafe_callback_create;
 use callback::op_ffi_unsafe_callback_ref;
-pub use denort_helper::DenoRtNativeAddonLoader;
-pub use denort_helper::DenoRtNativeAddonLoaderRc;
 pub use dlfcn::DlfcnError;
 use dlfcn::ForeignFunction;
 use dlfcn::op_ffi_load;
+pub use endert_helper::DenoRtNativeAddonLoader;
+pub use endert_helper::DenoRtNativeAddonLoaderRc;
 pub use ir::IRError;
 pub use repr::ReprError;
 use repr::*;
@@ -46,8 +46,8 @@ const _: () = {
 
 pub const UNSTABLE_FEATURE_NAME: &str = "ffi";
 
-deno_core::extension!(deno_ffi,
-  deps = [ deno_web ],
+ende_core::extension!(ende_ffi,
+  deps = [ ende_web ],
   ops = [
     op_ffi_load,
     op_ffi_get_static,

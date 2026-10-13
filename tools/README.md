@@ -33,10 +33,10 @@ cargo run -- run --allow-read --allow-write --allow-run ./tools/<script>
 
 ## wgpu_sync.js
 
-`wgpu_sync.js` streamlines updating `deno_webgpu` from
+`wgpu_sync.js` streamlines updating `ende_webgpu` from
 [gfx-rs/wgpu](https://github.com/gfx-rs/wgpu/).
 
-It essentially vendors the `deno_webgpu` tree with a few minor patches applied
+It essentially vendors the `ende_webgpu` tree with a few minor patches applied
 on top, somewhat similar to `git subtree`.
 
 1. Update `COMMIT` or `V_WGPU` in `./tools/wgpu_sync.js`

@@ -3,29 +3,29 @@
 
 import { core, primordials } from "ext:core/mod.js";
 const { AbortController, AbortSignal } = core.loadExtScript(
-  "ext:deno_web/03_abort_signal.js",
+  "ext:ende_web/03_abort_signal.js",
 );
-const imported1 = core.loadExtScript("ext:deno_node/internal/errors.ts");
+const imported1 = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   validateAbortSignal,
   validateInteger,
   validateObject,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 import {
   kResistStopPropagation,
   kWeakHandler,
-} from "ext:deno_node/internal/event_target.mjs";
+} from "ext:ende_node/internal/event_target.mjs";
 const { finished } = core.loadExtScript(
-  "ext:deno_node/internal/streams/end-of-stream.js",
+  "ext:ende_node/internal/streams/end-of-stream.js",
 );
-import staticCompose from "ext:deno_node/internal/streams/compose.js";
+import staticCompose from "ext:ende_node/internal/streams/compose.js";
 const { addAbortSignalNoValidate } = core.loadExtScript(
-  "ext:deno_node/internal/streams/add-abort-signal.js",
+  "ext:ende_node/internal/streams/add-abort-signal.js",
 );
 const {
   isNodeStream,
   isWritable,
-} = core.loadExtScript("ext:deno_node/internal/streams/utils.js");
+} = core.loadExtScript("ext:ende_node/internal/streams/utils.js");
 
 const {
   AbortError,

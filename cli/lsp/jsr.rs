@@ -4,22 +4,22 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use dashmap::DashMap;
-use deno_cache_dir::HttpCache;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::url::Url;
 use deno_graph::ModuleSpecifier;
 use deno_graph::packages::JsrPackageInfo;
 use deno_graph::packages::JsrPackageInfoVersion;
 use deno_graph::packages::JsrPackageVersionInfo;
 use deno_graph::packages::JsrVersionResolver;
-use deno_resolver::workspace::WorkspaceResolver;
 use deno_semver::StackString;
 use deno_semver::Version;
 use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
+use ende_cache_dir::HttpCache;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_resolver::workspace::WorkspaceResolver;
 use serde::Deserialize;
 
 use super::config::ConfigData;
@@ -61,7 +61,7 @@ impl JsrCacheResolver {
     let info_by_name = DashMap::new();
     let mut workspace_packages_by_name = HashMap::new();
     for jsr_package in workspace_resolver.jsr_packages().iter() {
-      let exports = deno_core::serde_json::json!(&jsr_package.exports);
+      let exports = ende_core::serde_json::json!(&jsr_package.exports);
       let version_info = Arc::new(JsrPackageVersionInfo {
         exports: exports.clone(),
         module_graph_1: None,

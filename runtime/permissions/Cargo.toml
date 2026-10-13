@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_permissions"
+name = "ende_permissions"
 version = "0.118.0"
 authors.workspace = true
 edition.workspace = true
@@ -10,7 +10,7 @@ repository.workspace = true
 description = "Provides the deno permissions implementation."
 
 [lib]
-name = "deno_permissions"
+name = "ende_permissions"
 path = "lib.rs"
 
 [dependencies]

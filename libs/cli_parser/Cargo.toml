@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_cli_parser"
+name = "ende_cli_parser"
 version = "0.9.0"
 authors.workspace = true
 edition.workspace = true
@@ -13,14 +13,14 @@ description = "Zero-cost CLI argument parser for the Deno CLI"
 path = "src/lib.rs"
 
 [dependencies]
-deno_bundle_runtime.workspace = true
-deno_config = { workspace = true, features = ["workspace"] }
-deno_core.workspace = true
-deno_lib.workspace = true
-deno_npm_installer.workspace = true
-deno_permissions.workspace = true
-deno_runtime.workspace = true
 deno_semver.workspace = true
+ende_bundle_runtime.workspace = true
+ende_config = { workspace = true, features = ["workspace"] }
+ende_core.workspace = true
+ende_lib.workspace = true
+ende_npm_installer.workspace = true
+ende_permissions.workspace = true
+ende_runtime.workspace = true
 log.workspace = true
 serde = { workspace = true, features = ["derive"] }
 sys_traits = { workspace = true, features = ["real"] }

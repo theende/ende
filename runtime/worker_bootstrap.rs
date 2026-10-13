@@ -3,11 +3,11 @@
 use std::cell::RefCell;
 use std::thread;
 
-use deno_core::ModuleSpecifier;
-use deno_core::v8;
-use deno_node::ops::ipc::ChildIpcSerialization;
-use deno_telemetry::OtelConfig;
 use deno_terminal::colors;
+use ende_core::ModuleSpecifier;
+use ende_core::v8;
+use ende_node::ops::ipc::ChildIpcSerialization;
+use ende_telemetry::OtelConfig;
 use serde::Serialize;
 
 /// The execution mode for this worker. Some modes may have implicit behaviour.
@@ -130,7 +130,7 @@ impl Default for BootstrapOptions {
       .map(|p| p.get())
       .unwrap_or(1);
 
-    // this version is not correct as its the version of deno_runtime
+    // this version is not correct as its the version of ende_runtime
     // and the implementor should supply a user agent that makes sense
     let runtime_version = env!("CARGO_PKG_VERSION");
     let user_agent = format!("Deno/{runtime_version}");
@@ -226,7 +226,7 @@ impl BootstrapOptions {
     scope: &mut v8::PinScope<'s, '_>,
   ) -> v8::Local<'s, v8::Value> {
     let scope = RefCell::new(scope);
-    let ser = deno_core::serde_v8::Serializer::new(&scope);
+    let ser = ende_core::serde_v8::Serializer::new(&scope);
 
     let bootstrap = BootstrapV8(
       &self.deno_version,

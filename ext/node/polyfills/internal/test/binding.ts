@@ -3,7 +3,7 @@
 (function () {
 const { core } = __bootstrap;
 const lazyBindingMod = core.createLazyLoader(
-  "ext:deno_node/internal_binding/mod.ts",
+  "ext:ende_node/internal_binding/mod.ts",
 );
 
 let warningEmitted = false;

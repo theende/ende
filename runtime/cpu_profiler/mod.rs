@@ -55,15 +55,15 @@ pub fn cpu_prof_filename(
   }
 }
 
-use deno_core::InspectorSessionKind;
-use deno_core::JsRuntime;
-use deno_core::JsRuntimeInspector;
-use deno_core::LocalInspectorSession;
-use deno_core::SourceMapApplication;
-use deno_core::SourceMapper;
-use deno_core::error::CoreError;
-use deno_core::parking_lot::Mutex;
-use deno_core::serde_json;
+use ende_core::InspectorSessionKind;
+use ende_core::JsRuntime;
+use ende_core::JsRuntimeInspector;
+use ende_core::LocalInspectorSession;
+use ende_core::SourceMapApplication;
+use ende_core::SourceMapper;
+use ende_core::error::CoreError;
+use ende_core::parking_lot::Mutex;
+use ende_core::serde_json;
 
 static NEXT_MSG_ID: AtomicI32 = AtomicI32::new(0);
 
@@ -107,10 +107,10 @@ impl CpuProfilerState {
 
   pub fn callback(
     &self,
-    msg: deno_core::InspectorMsg,
+    msg: ende_core::InspectorMsg,
     source_mapper: &Rc<RefCell<SourceMapper>>,
   ) {
-    let deno_core::InspectorMsgKind::Message(msg_id) = msg.kind else {
+    let ende_core::InspectorMsgKind::Message(msg_id) = msg.kind else {
       return;
     };
     let maybe_profile_msg_id = self.0.lock().profile_msg_id.as_ref().cloned();

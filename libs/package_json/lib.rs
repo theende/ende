@@ -26,11 +26,11 @@ use thiserror::Error;
 use url::Url;
 
 #[allow(clippy::disallowed_types, reason = "arc wrapper type")]
-pub type PackageJsonRc = deno_maybe_sync::MaybeArc<PackageJson>;
+pub type PackageJsonRc = ende_maybe_sync::MaybeArc<PackageJson>;
 #[allow(clippy::disallowed_types, reason = "arc wrapper type")]
-pub type PackageJsonDepsRc = deno_maybe_sync::MaybeArc<PackageJsonDeps>;
+pub type PackageJsonDepsRc = ende_maybe_sync::MaybeArc<PackageJsonDeps>;
 #[allow(clippy::disallowed_types, reason = "once lock wrapper type")]
-type PackageJsonDepsRcCell = deno_maybe_sync::MaybeOnceLock<PackageJsonDepsRc>;
+type PackageJsonDepsRcCell = ende_maybe_sync::MaybeOnceLock<PackageJsonDepsRc>;
 
 pub enum PackageJsonCacheResult {
   Hit(Option<PackageJsonRc>),
@@ -437,7 +437,7 @@ impl PackageJson {
           Ok(file_text) => {
             let pkg_json =
               PackageJson::load_from_string(path.to_path_buf(), &file_text)?;
-            let pkg_json = deno_maybe_sync::new_rc(pkg_json);
+            let pkg_json = ende_maybe_sync::new_rc(pkg_json);
             if let Some(cache) = maybe_cache {
               cache.set(path.to_path_buf(), Some(pkg_json.clone()));
             }

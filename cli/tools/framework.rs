@@ -10,10 +10,10 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
 
 /// Result of framework detection.
 #[derive(Debug)]
@@ -145,7 +145,7 @@ pub fn run_build_command(
       format!("Failed to run build command: {}", build_cmd.join(" "))
     })?;
   if !status.success() {
-    deno_core::anyhow::bail!(
+    ende_core::anyhow::bail!(
       "{} build failed (exit code: {})",
       detection.name,
       status.code().unwrap_or(-1)

@@ -38,32 +38,32 @@ const {
 } = core.ops;
 
 const { default: randomBytes } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/_randomBytes.ts",
+  "ext:ende_node/internal/crypto/_randomBytes.ts",
 );
 const { default: randomFill, randomFillSync } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/_randomFill.mjs",
+  "ext:ende_node/internal/crypto/_randomFill.mjs",
 );
 const { default: randomInt } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/_randomInt.ts",
+  "ext:ende_node/internal/crypto/_randomInt.ts",
 );
 const {
   validateBoolean,
   validateFunction,
   validateInt32,
   validateObject,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   isAnyArrayBuffer,
   isArrayBufferView,
   isTypedArray,
-} = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+} = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_OUT_OF_RANGE,
   NodeError,
   NodeRangeError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 
 // OpenSSL BIGNUM max size: INT_MAX / (4 * BN_BITS2) words * 8 bytes/word
 // On 64-bit: (2^31 - 1) / 256 * 8 = 67108856 bytes

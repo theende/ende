@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { core } from "ext:core/mod.js";
-const mod = core.loadExtScript("ext:deno_node/cluster.ts");
+const mod = core.loadExtScript("ext:ende_node/cluster.ts");
 
 export const Worker = mod.Worker;
 export const SCHED_NONE = mod.SCHED_NONE;

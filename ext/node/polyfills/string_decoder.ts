@@ -25,18 +25,18 @@
 
 (function () {
 const { core, primordials } = __bootstrap;
-const bufMod = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const bufMod = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const { Buffer } = bufMod;
 const { MAX_STRING_LENGTH } = bufMod.constants;
 const { normalizeEncoding: castEncoding } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_THIS,
   ERR_UNKNOWN_ENCODING,
   NodeError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   ArrayBufferIsView,
   ObjectDefineProperties,

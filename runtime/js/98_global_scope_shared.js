@@ -3,85 +3,85 @@
 import { core, primordials } from "ext:core/mod.js";
 const { SafeArrayIterator } = primordials;
 
-const event = core.loadExtScript("ext:deno_web/02_event.js");
-const loadBase64 = () => core.loadExtScript("ext:deno_web/05_base64.js");
+const event = core.loadExtScript("ext:ende_web/02_event.js");
+const loadBase64 = () => core.loadExtScript("ext:ende_web/05_base64.js");
 const loadEncoding = () =>
-  core.loadExtScript("ext:deno_web/08_text_encoding.js");
+  core.loadExtScript("ext:ende_web/08_text_encoding.js");
 // console is installed eagerly (its impl is a thin cppgc port) so the global
 // stays a writable, identity-stable instance: `wrapConsole` (--inspect) patches
 // the same object the program sees, and the serve-worker path in 99_main.js can
 // reassign `console` to add a per-worker log prefix.
-const console = core.loadExtScript("ext:deno_web/01_console.js");
+const console = core.loadExtScript("ext:ende_web/01_console.js");
 const worker = core.loadExtScript("ext:runtime/11_workers.js");
-const performance = core.loadExtScript("ext:deno_web/15_performance.js");
+const performance = core.loadExtScript("ext:ende_web/15_performance.js");
 // `internals.kKeyObject` (set by this tiny, dependency-free node module) brands
 // WebCrypto CryptoKeys so node's crypto recognizes them (`00_crypto.js` below
 // reads it for `Crypto.registerSymbols`, and node's key bridge checks
 // `obj[kKeyObject]`). It used to be set as a side effect of the eager
 // `import "node:buffer"` chain; now that buffer/timers are deferred, set it
 // explicitly before crypto evaluates.
-core.loadExtScript("ext:deno_node/internal/crypto/constants.ts");
+core.loadExtScript("ext:ende_node/internal/crypto/constants.ts");
 // crypto is installed eagerly: evaluating 00_crypto.js at startup runs its
 // `registerCloneableResource("CryptoKey", ...)` side effect, which workers need
 // to deserialize a CryptoKey transferred via postMessage/workerData. The impl
 // is a thin cppgc port, so eager eval is cheap. `crypto.crypto` itself is a
 // getter that mints the cppgc Crypto instance lazily (see propGetterOnly below).
-const crypto = core.loadExtScript("ext:deno_crypto/00_crypto.js");
+const crypto = core.loadExtScript("ext:ende_crypto/00_crypto.js");
 // Eagerly register node host-object structured-clone deserializers (crypto
 // keys, histograms) so workers can resurrect them before the (deferred) node
 // modules load. The deserialization impls stay lazy. See the module comment.
-core.loadExtScript("ext:deno_node/02_register_cloneable.js");
-const url = core.loadExtScript("ext:deno_web/00_url.js");
+core.loadExtScript("ext:ende_node/02_register_cloneable.js");
+const url = core.loadExtScript("ext:ende_web/00_url.js");
 const loadUrlPattern = () =>
-  core.loadExtScript("ext:deno_web/01_urlpattern.js");
-const loadHeaders = () => core.loadExtScript("ext:deno_fetch/20_headers.js");
+  core.loadExtScript("ext:ende_web/01_urlpattern.js");
+const loadHeaders = () => core.loadExtScript("ext:ende_fetch/20_headers.js");
 // 06_streams.js is the 208 KB web-streams polyfill. Defer until a global
 // stream class (ReadableStream/WritableStream/TransformStream/etc.) is
 // accessed.
 let _streamsMod;
 const lazyStreams = () =>
   _streamsMod ??
-    (_streamsMod = core.loadExtScript("ext:deno_web/06_streams.js"));
+    (_streamsMod = core.loadExtScript("ext:ende_web/06_streams.js"));
 // caches/CacheStorage/Cache transitively pulls 06_streams via 22_body.
 let _cacheMod;
 const lazyCache = () =>
   _cacheMod ??
-    (_cacheMod = core.loadExtScript("ext:deno_cache/01_cache.js"));
+    (_cacheMod = core.loadExtScript("ext:ende_cache/01_cache.js"));
 // CompressionStream/DecompressionStream pull TransformStream from 06_streams.
 let _compressionMod;
 const lazyCompression = () =>
   _compressionMod ??
-    (_compressionMod = core.loadExtScript("ext:deno_web/14_compression.js"));
+    (_compressionMod = core.loadExtScript("ext:ende_web/14_compression.js"));
 // Request/Response/fetch/EventSource each chain through 22_body -> 06_streams.
 let _requestMod;
 const lazyRequest = () =>
   _requestMod ??
-    (_requestMod = core.loadExtScript("ext:deno_fetch/23_request.js"));
+    (_requestMod = core.loadExtScript("ext:ende_fetch/23_request.js"));
 let _responseMod;
 const lazyResponse = () =>
   _responseMod ??
-    (_responseMod = core.loadExtScript("ext:deno_fetch/23_response.js"));
+    (_responseMod = core.loadExtScript("ext:ende_fetch/23_response.js"));
 let _fetchMod;
 const lazyFetch = () =>
-  _fetchMod ?? (_fetchMod = core.loadExtScript("ext:deno_fetch/26_fetch.js"));
+  _fetchMod ?? (_fetchMod = core.loadExtScript("ext:ende_fetch/26_fetch.js"));
 let _eventSourceMod;
 const lazyEventSource = () =>
   _eventSourceMod ??
-    (_eventSourceMod = core.loadExtScript("ext:deno_fetch/27_eventsource.js"));
+    (_eventSourceMod = core.loadExtScript("ext:ende_fetch/27_eventsource.js"));
 const loadFileReader = () =>
-  core.loadExtScript("ext:deno_web/10_filereader.js");
+  core.loadExtScript("ext:ende_web/10_filereader.js");
 const loadBroadcastChannel = () =>
-  core.loadExtScript("ext:deno_web/01_broadcast_channel.js");
-const file = core.loadExtScript("ext:deno_web/09_file.js");
-const loadFormData = () => core.loadExtScript("ext:deno_fetch/21_formdata.js");
-const messagePort = core.loadExtScript("ext:deno_web/13_message_port.js");
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+  core.loadExtScript("ext:ende_web/01_broadcast_channel.js");
+const file = core.loadExtScript("ext:ende_web/09_file.js");
+const loadFormData = () => core.loadExtScript("ext:ende_fetch/21_formdata.js");
+const messagePort = core.loadExtScript("ext:ende_web/13_message_port.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const {
   DOMException,
   QuotaExceededError,
-} = core.loadExtScript("ext:deno_web/01_dom_exception.js");
-const abortSignal = core.loadExtScript("ext:deno_web/03_abort_signal.js");
-const loadLocks = core.createLazyLoader("ext:deno_web/locks.js");
+} = core.loadExtScript("ext:ende_web/01_dom_exception.js");
+const abortSignal = core.loadExtScript("ext:ende_web/03_abort_signal.js");
+const loadLocks = core.createLazyLoader("ext:ende_web/locks.js");
 // node:process is loaded lazily so its closure isn't pulled into the snapshot
 // build; the `process` global is installed via `propWritableLazyLoaded` below.
 const lazyProcessMod = core.createLazyLoader("node:process");
@@ -93,27 +93,27 @@ const lazyProcessMod = core.createLazyLoader("node:process");
 // that never touches them skips the deserialization entirely.
 const lazyBufferMod = core.createLazyLoader("node:buffer");
 const lazyTimersMod = core.createLazyLoader("node:timers");
-const { loadWebGPU } = core.loadExtScript("ext:deno_webgpu/00_init.js");
+const { loadWebGPU } = core.loadExtScript("ext:ende_webgpu/00_init.js");
 import { unstableIds } from "ext:runtime/90_deno_ns.js";
 
-const loadImage = core.createLazyLoader("ext:deno_image/01_image.js");
-const loadCanvas = core.createLazyLoader("ext:deno_canvas/01_canvas.js");
+const loadImage = core.createLazyLoader("ext:ende_image/01_image.js");
+const loadCanvas = core.createLazyLoader("ext:ende_canvas/01_canvas.js");
 let _imageDataMod;
 const loadImageData = () =>
   _imageDataMod ??
-    (_imageDataMod = core.loadExtScript("ext:deno_web/16_image_data.js"));
+    (_imageDataMod = core.loadExtScript("ext:ende_web/16_image_data.js"));
 let _geometryMod;
 const loadGeometry = () =>
   _geometryMod ??
-    (_geometryMod = core.loadExtScript("ext:deno_web/17_geometry.js"));
+    (_geometryMod = core.loadExtScript("ext:ende_web/17_geometry.js"));
 const loadWebSocket = core.createLazyLoader(
-  "ext:deno_websocket/01_websocket.js",
+  "ext:ende_websocket/01_websocket.js",
 );
 const loadWebSocketStream = core.createLazyLoader(
-  "ext:deno_websocket/02_websocketstream.js",
+  "ext:ende_websocket/02_websocketstream.js",
 );
 const loadWebTransport = core.createLazyLoader(
-  "ext:deno_web/webtransport.js",
+  "ext:ende_web/webtransport.js",
 );
 
 // https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope
@@ -567,7 +567,7 @@ let _cssStyleSheetMod;
 const loadCssStyleSheet = () =>
   _cssStyleSheetMod ??
     (_cssStyleSheetMod = core.loadExtScript(
-      "ext:deno_web/18_css_stylesheet.js",
+      "ext:ende_web/18_css_stylesheet.js",
     ));
 unstableForWindowOrWorkerGlobalScope[unstableIds.rawImports] = {
   CSSRule: core.propNonEnumerableLazyLoaded(

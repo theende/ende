@@ -9,11 +9,11 @@ use std::io::{self};
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_core::error::AnyError;
-use deno_core::url::Url;
-use deno_lib::version::DENO_VERSION_INFO;
-use deno_print::drop_print;
-use deno_print::drop_println;
+use ende_core::error::AnyError;
+use ende_core::url::Url;
+use ende_lib::version::DENO_VERSION_INFO;
+use ende_print::drop_print;
+use ende_print::drop_println;
 
 use super::CoverageReport;
 use super::util;

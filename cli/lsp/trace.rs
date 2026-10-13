@@ -30,7 +30,7 @@ impl fmt::Debug for TracingGuard {
 mod real_tracing {
   use std::sync::Mutex;
 
-  use deno_core::anyhow;
+  use ende_core::anyhow;
   pub use opentelemetry::Context;
   use opentelemetry::trace::TracerProvider;
   use opentelemetry_otlp::WithExportConfig;
@@ -172,7 +172,7 @@ mod stub_tracing {
 
   pub(crate) fn init_tracing_subscriber(
     _config: &super::TracingConfig,
-  ) -> Result<super::TracingGuard, deno_core::anyhow::Error> {
+  ) -> Result<super::TracingGuard, ende_core::anyhow::Error> {
     Ok(super::TracingGuard {
       defused: false,
       guard: {},

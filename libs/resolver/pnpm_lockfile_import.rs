@@ -1009,13 +1009,13 @@ snapshots:
     let out = pnpm_lock_to_deno_lock_v5(input).unwrap();
     let v: Value = serde_json::from_str(&out).unwrap();
     // Every entry has to survive the parsers that read a deno.lock back in.
-    let content = deno_lockfile::LockfileContent::from_json(
+    let content = ende_lockfile::LockfileContent::from_json(
       serde_json::from_str(&out).unwrap(),
     )
     .unwrap();
     for pkg in content.packages.npm.values() {
       for dep in pkg.dependencies.values() {
-        deno_npm::NpmPackageId::from_serialized(dep).unwrap();
+        ende_npm::NpmPackageId::from_serialized(dep).unwrap();
       }
     }
 
@@ -1071,13 +1071,13 @@ snapshots:
     // The only optional dependency was the workspace link.
     assert!(plugin.get("optionalDependencies").is_none());
 
-    let content = deno_lockfile::LockfileContent::from_json(
+    let content = ende_lockfile::LockfileContent::from_json(
       serde_json::from_str(&out).unwrap(),
     )
     .unwrap();
     for pkg in content.packages.npm.values() {
       for dep in pkg.dependencies.values() {
-        deno_npm::NpmPackageId::from_serialized(dep).unwrap();
+        ende_npm::NpmPackageId::from_serialized(dep).unwrap();
       }
     }
   }
@@ -1127,13 +1127,13 @@ snapshots:
       ["cac@7.0.0"]
     );
 
-    let content = deno_lockfile::LockfileContent::from_json(
+    let content = ende_lockfile::LockfileContent::from_json(
       serde_json::from_str(&out).unwrap(),
     )
     .unwrap();
     for pkg in content.packages.npm.values() {
       for dep in pkg.dependencies.values() {
-        deno_npm::NpmPackageId::from_serialized(dep).unwrap();
+        ende_npm::NpmPackageId::from_serialized(dep).unwrap();
       }
     }
   }
@@ -1177,13 +1177,13 @@ snapshots:
       ["string-width-cjs@npm:string-width@4.2.3"]
     );
 
-    let content = deno_lockfile::LockfileContent::from_json(
+    let content = ende_lockfile::LockfileContent::from_json(
       serde_json::from_str(&out).unwrap(),
     )
     .unwrap();
     for (key, pkg) in &content.packages.npm {
       for dep in pkg.dependencies.values() {
-        deno_npm::NpmPackageId::from_serialized(dep).unwrap();
+        ende_npm::NpmPackageId::from_serialized(dep).unwrap();
         assert!(
           content.packages.npm.contains_key(dep),
           "{key} depends on {dep}, which isn't in the lock"
@@ -1229,7 +1229,7 @@ packages:
 
     // Nothing dangles: every specifier and dependency names a package the
     // lock actually holds.
-    let content = deno_lockfile::LockfileContent::from_json(
+    let content = ende_lockfile::LockfileContent::from_json(
       serde_json::from_str(&out).unwrap(),
     )
     .unwrap();
@@ -1286,12 +1286,12 @@ packages:
     );
     assert_eq!(v["specifiers"]["npm:@nodelib/fs.stat@^2.0.5"], "2.0.5");
 
-    let content = deno_lockfile::LockfileContent::from_json(
+    let content = ende_lockfile::LockfileContent::from_json(
       serde_json::from_str(&out).unwrap(),
     )
     .unwrap();
     for (key, pkg) in &content.packages.npm {
-      deno_npm::NpmPackageId::from_serialized(key).unwrap();
+      ende_npm::NpmPackageId::from_serialized(key).unwrap();
       for dep in pkg.dependencies.values() {
         assert!(
           content.packages.npm.contains_key(dep),
@@ -1329,12 +1329,12 @@ packages:
       "sha512-STAT"
     );
 
-    let content = deno_lockfile::LockfileContent::from_json(
+    let content = ende_lockfile::LockfileContent::from_json(
       serde_json::from_str(&out).unwrap(),
     )
     .unwrap();
     for key in content.packages.npm.keys() {
-      deno_npm::NpmPackageId::from_serialized(key).unwrap();
+      ende_npm::NpmPackageId::from_serialized(key).unwrap();
     }
   }
 
@@ -1415,12 +1415,12 @@ snapshots:
       ["view-alias@npm:@types/3d-view@1.0.0"]
     );
 
-    let content = deno_lockfile::LockfileContent::from_json(
+    let content = ende_lockfile::LockfileContent::from_json(
       serde_json::from_str(&out).unwrap(),
     )
     .unwrap();
     for (key, pkg) in &content.packages.npm {
-      deno_npm::NpmPackageId::from_serialized(key).unwrap();
+      ende_npm::NpmPackageId::from_serialized(key).unwrap();
       for dep in pkg.dependencies.values() {
         assert!(
           content.packages.npm.contains_key(dep),
@@ -1469,7 +1469,7 @@ packages:
     );
 
     // Both point at packages the lock actually has.
-    let content = deno_lockfile::LockfileContent::from_json(
+    let content = ende_lockfile::LockfileContent::from_json(
       serde_json::from_str(&out).unwrap(),
     )
     .unwrap();
@@ -1520,12 +1520,12 @@ snapshots:
     assert_eq!(v["npm"]["lodash@4.17.21"]["integrity"], "sha512-LODASH");
     assert_eq!(v["npm"].as_object().unwrap().len(), 1);
 
-    let content = deno_lockfile::LockfileContent::from_json(
+    let content = ende_lockfile::LockfileContent::from_json(
       serde_json::from_str(&out).unwrap(),
     )
     .unwrap();
     for key in content.packages.npm.keys() {
-      deno_npm::NpmPackageId::from_serialized(key).unwrap();
+      ende_npm::NpmPackageId::from_serialized(key).unwrap();
     }
   }
 

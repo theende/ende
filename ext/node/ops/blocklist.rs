@@ -5,9 +5,9 @@ use std::collections::HashSet;
 use std::net::IpAddr;
 use std::net::SocketAddr;
 
-use deno_core::OpState;
-use deno_core::ToV8;
-use deno_core::op2;
+use ende_core::OpState;
+use ende_core::ToV8;
+use ende_core::op2;
 use ipnet::IpNet;
 use ipnet::Ipv4Net;
 use ipnet::Ipv6Net;
@@ -17,8 +17,8 @@ pub struct BlockListResource {
 }
 
 // SAFETY: we're sure this can be GCed
-unsafe impl deno_core::GarbageCollected for BlockListResource {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for BlockListResource {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"BlockListResource"

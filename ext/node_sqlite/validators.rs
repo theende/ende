@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use deno_core::v8;
+use ende_core::v8;
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
 #[property("code" = self.code())]

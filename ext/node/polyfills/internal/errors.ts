@@ -67,21 +67,21 @@ const {
   URIErrorPrototype,
 } = primordials;
 const { format, inspect } = core.loadExtScript(
-  "ext:deno_node/internal/util/inspect.mjs",
+  "ext:ende_node/internal/util/inspect.mjs",
 );
-const { codes } = core.loadExtScript("ext:deno_node/internal/error_codes.ts");
+const { codes } = core.loadExtScript("ext:ende_node/internal/error_codes.ts");
 const {
   codeMap,
   errorMap,
   mapSysErrnoToUvErrno,
   UV_EBADF,
-} = core.loadExtScript("ext:deno_node/internal_binding/uv.ts");
-const { isWindows } = core.loadExtScript("ext:deno_node/_util/os.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/uv.ts");
+const { isWindows } = core.loadExtScript("ext:ende_node/_util/os.ts");
 const { os: osConstants } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
 const { hideStackFrames } = core.loadExtScript(
-  "ext:deno_node/internal/hide_stack_frames.ts",
+  "ext:ende_node/internal/hide_stack_frames.ts",
 );
 
 // Lazy loader for getSystemErrorName to break circular dep with _utils.ts
@@ -89,7 +89,7 @@ let _getSystemErrorName;
 function getSystemErrorName(code) {
   if (!_getSystemErrorName) {
     _getSystemErrorName =
-      core.loadExtScript("ext:deno_node/_utils.ts").getSystemErrorName;
+      core.loadExtScript("ext:ende_node/_utils.ts").getSystemErrorName;
   }
   return _getSystemErrorName(code);
 }

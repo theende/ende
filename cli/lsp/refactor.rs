@@ -3,8 +3,8 @@
 // The logic of this module is heavily influenced by
 // https://github.com/microsoft/vscode/blob/main/extensions/typescript-language-features/src/languageFeatures/refactor.ts
 
-use deno_core::serde::Deserialize;
-use deno_core::serde::Serialize;
+use ende_core::serde::Deserialize;
+use ende_core::serde::Serialize;
 use lsp_types::Uri;
 use once_cell::sync::Lazy;
 use tower_lsp::lsp_types as lsp;

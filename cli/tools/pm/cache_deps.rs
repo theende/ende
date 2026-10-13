@@ -5,18 +5,18 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use deno_core::error::AnyError;
-use deno_core::futures::StreamExt;
-use deno_core::futures::stream::FuturesUnordered;
-use deno_core::url::Url;
 use deno_graph::JsrPackageReqNotFoundError;
 use deno_graph::packages::JsrPackageVersionInfo;
-use deno_npm_installer::PackageCaching;
-use deno_npm_installer::graph::NpmCachingStrategy;
-use deno_resolver::npm::version_req_matches_including_pre;
 use deno_semver::Version;
 use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_core::error::AnyError;
+use ende_core::futures::StreamExt;
+use ende_core::futures::stream::FuturesUnordered;
+use ende_core::url::Url;
+use ende_npm_installer::PackageCaching;
+use ende_npm_installer::graph::NpmCachingStrategy;
+use ende_resolver::npm::version_req_matches_including_pre;
 
 use crate::factory::CliFactory;
 use crate::graph_container::ModuleGraphContainer;

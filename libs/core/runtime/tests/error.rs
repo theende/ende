@@ -16,7 +16,7 @@ async fn test_error_builder() {
     Err(JsErrorBox::new("DOMExceptionOperationError", "abc"))
   }
 
-  deno_core::extension!(test_ext, ops = [op_err]);
+  ende_core::extension!(test_ext, ops = [op_err]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
     ..Default::default()
@@ -109,7 +109,7 @@ fn fast_call_error_preserves_class() {
   // Build + throw the exception through the native path, then stash it on the
   // global so JS can inspect it.
   {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let exception = {
       v8::tc_scope!(let tc_scope, scope);
       crate::error::throw_js_error_class(tc_scope, &CustomError);

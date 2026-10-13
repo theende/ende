@@ -15,10 +15,10 @@ use std::time::SystemTime;
 
 use deno_path_util::normalize_path;
 use deno_path_util::strip_unc_prefix;
-use deno_runtime::colors;
-use deno_runtime::deno_core::anyhow::Context;
-use deno_runtime::deno_core::anyhow::bail;
-use deno_runtime::deno_core::error::AnyError;
+use ende_runtime::colors;
+use ende_runtime::ende_core::anyhow::Context;
+use ende_runtime::ende_core::anyhow::bail;
+use ende_runtime::ende_core::error::AnyError;
 use indexmap::IndexSet;
 use serde::Deserialize;
 use serde::Deserializer;

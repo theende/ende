@@ -22,12 +22,12 @@ const {
   RegExpPrototypeTest,
 } = primordials;
 
-const { codes } = core.loadExtScript("ext:deno_node/internal/error_codes.ts");
+const { codes } = core.loadExtScript("ext:ende_node/internal/error_codes.ts");
 const { hideStackFrames } = core.loadExtScript(
-  "ext:deno_node/internal/hide_stack_frames.ts",
+  "ext:ende_node/internal/hide_stack_frames.ts",
 );
 const { isArrayBufferView } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 
 /**
@@ -250,7 +250,7 @@ const validateOneOf = hideStackFrames((value, name, oneOf) => {
 
 function validateEncoding(data, encoding) {
   const { normalizeEncoding } = core.loadExtScript(
-    "ext:deno_node/internal/normalize_encoding.ts",
+    "ext:ende_node/internal/normalize_encoding.ts",
   );
   const normalizedEncoding = normalizeEncoding(encoding);
   const length = data.length;

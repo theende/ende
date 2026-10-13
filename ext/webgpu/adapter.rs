@@ -3,13 +3,13 @@
 use std::ops::BitOr;
 use std::rc::Rc;
 
-use deno_core::GarbageCollected;
-use deno_core::OpState;
-use deno_core::V8TaskSpawner;
-use deno_core::WebIDL;
-use deno_core::cppgc::SameObject;
-use deno_core::op2;
-use deno_core::v8;
+use ende_core::GarbageCollected;
+use ende_core::OpState;
+use ende_core::V8TaskSpawner;
+use ende_core::WebIDL;
+use ende_core::cppgc::SameObject;
+use ende_core::op2;
+use ende_core::v8;
 
 use super::device::DEVICE_EXTERNAL_MEMORY_SIZE;
 use super::device::GPUDevice;
@@ -65,7 +65,7 @@ impl Drop for GPUAdapter {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for GPUAdapter {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"GPUAdapter"
@@ -186,7 +186,7 @@ impl GPUAdapter {
     // Create the queue object eagerly so that the wgpu-core queue resource
     // gets cleaned up when the device is garbage collected, even if JS code
     // never accesses the queue property.
-    let queue_obj = deno_core::cppgc::make_cppgc_object(
+    let queue_obj = ende_core::cppgc::make_cppgc_object(
       scope,
       GPUQueue {
         instance: self.instance.clone(),
@@ -213,7 +213,7 @@ impl GPUAdapter {
       weak: std::sync::OnceLock::new(),
       has_active_capture: std::cell::RefCell::new(false),
     };
-    let device = deno_core::cppgc::make_cppgc_object(scope, device);
+    let device = ende_core::cppgc::make_cppgc_object(scope, device);
     let weak_device = v8::Weak::new(scope, device);
     let event_target_setup = state.borrow::<crate::EventTargetSetup>();
     let webidl_brand = v8::Local::new(scope, event_target_setup.brand.clone());
@@ -238,7 +238,7 @@ impl GPUAdapter {
     // weak reference to it, and store the finalizer weak reference.
     let device = device.cast::<v8::Value>();
     let device_ref =
-      deno_core::cppgc::try_unwrap_cppgc_object::<GPUDevice>(scope, device)
+      ende_core::cppgc::try_unwrap_cppgc_object::<GPUDevice>(scope, device)
         .unwrap();
     device_ref.error_handler.set_device(weak_device);
     device_ref.weak.set(finalizer).unwrap();
@@ -264,7 +264,7 @@ pub struct GPUSupportedLimits(pub wgpu_types::Limits);
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for GPUSupportedLimits {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"GPUSupportedLimits"
@@ -467,7 +467,7 @@ pub struct GPUSupportedFeatures(v8::Global<v8::Value>);
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for GPUSupportedFeatures {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"GPUSupportedFeatures"
@@ -510,7 +510,7 @@ pub struct GPUAdapterInfo {
 
 // SAFETY: we're sure this can be GCed
 unsafe impl GarbageCollected for GPUAdapterInfo {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"GPUAdapterInfo"

@@ -2,13 +2,13 @@
 
 (function () {
 const { core, primordials } = __bootstrap;
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const {
   Blob,
   BlobPrototype,
   File,
   FilePrototype,
-} = core.loadExtScript("ext:deno_web/09_file.js");
+} = core.loadExtScript("ext:ende_web/09_file.js");
 const {
   ArrayPrototypePush,
   ArrayPrototypeSlice,

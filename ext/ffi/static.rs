@@ -2,10 +2,10 @@
 
 use std::ptr;
 
-use deno_core::OpState;
-use deno_core::ResourceId;
-use deno_core::op2;
-use deno_core::v8;
+use ende_core::OpState;
+use ende_core::ResourceId;
+use ende_core::op2;
+use ende_core::v8;
 
 use crate::dlfcn::DynamicLibraryResource;
 use crate::symbol::NativeType;
@@ -23,7 +23,7 @@ pub enum StaticError {
   InvalidTypeStruct,
   #[class(inherit)]
   #[error(transparent)]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
 }
 
 #[op2]

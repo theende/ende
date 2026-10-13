@@ -7,9 +7,9 @@ use std::net::Ipv6Addr;
 use std::ops::Deref;
 
 use base64::Engine;
-use deno_core::ToJsBuffer;
-use deno_core::op2;
 use digest::Digest;
+use ende_core::ToJsBuffer;
+use ende_core::op2;
 use x509_parser::der_parser::asn1_rs::Any;
 use x509_parser::der_parser::asn1_rs::Tag;
 use x509_parser::der_parser::oid::Oid;
@@ -122,8 +122,8 @@ pub struct Certificate {
 }
 
 // SAFETY: we're sure this can be GCed
-unsafe impl deno_core::GarbageCollected for Certificate {
-  fn trace(&self, _visitor: &mut deno_core::v8::cppgc::Visitor) {}
+unsafe impl ende_core::GarbageCollected for Certificate {
+  fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
 
   fn get_name(&self) -> &'static std::ffi::CStr {
     c"Certificate"

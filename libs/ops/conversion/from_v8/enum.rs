@@ -54,12 +54,12 @@ pub fn get_body(
         has_non_unit = true;
         let converter = if variant_attrs.serde {
           quote! {
-            ::deno_core::serde_v8::from_v8(__scope, __inner)
+            ::ende_core::serde_v8::from_v8(__scope, __inner)
               .map_err(::deno_error::JsErrorBox::from_err)?
           }
         } else {
           quote! {
-            ::deno_core::convert::FromV8::from_v8(__scope, __inner)
+            ::ende_core::convert::FromV8::from_v8(__scope, __inner)
               .map_err(::deno_error::JsErrorBox::from_err)?
           }
         };
@@ -92,7 +92,7 @@ pub fn get_body(
   } else {
     quote! {
       if let Ok(__s) =
-        ::deno_core::v8::Local::<::deno_core::v8::String>::try_from(__value)
+        ::ende_core::v8::Local::<::ende_core::v8::String>::try_from(__value)
       {
         let __s = __s.to_rust_string_lossy(__scope);
         match __s.as_str() {
@@ -109,12 +109,12 @@ pub fn get_body(
 
   let object_branch = if has_non_unit {
     quote! {
-      let __obj: ::deno_core::v8::Local<::deno_core::v8::Object> =
+      let __obj: ::ende_core::v8::Local<::ende_core::v8::Object> =
         match __value.try_into() {
           Ok(obj) => obj,
           Err(err) => {
             return Err(::deno_error::JsErrorBox::from_err(
-              ::deno_core::error::DataError::from(err),
+              ::ende_core::error::DataError::from(err),
             ));
           }
         };

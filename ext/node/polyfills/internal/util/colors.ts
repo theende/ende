@@ -2,7 +2,7 @@
 // Copyright Node.js contributors. All rights reserved. MIT License.
 (function () {
 const { core } = __bootstrap;
-const io = core.loadExtScript("ext:deno_io/12_io.js");
+const io = core.loadExtScript("ext:ende_io/12_io.js");
 
 let blue = "";
 let green = "";

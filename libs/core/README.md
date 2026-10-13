@@ -16,9 +16,9 @@ keeps track of all pending tasks (async ops, dynamic module loads). It is user's
 responsibility to drive that loop by using `JsRuntime::run_event_loop` method -
 it must be executed in the context of Rust's future executor (eg. tokio, smol).
 
-Rust functions can be registered in JavaScript using the `deno_core::extension!`
+Rust functions can be registered in JavaScript using the `ende_core::extension!`
 macro. A conventional way to write ops is using the
-[`deno_ops`](../ops/README.md) crate.
+[`ende_ops`](../ops/README.md) crate.
 
 Documentation for this crate is thin at the moment. Please see
 [hello_world.rs](./examples/hello_world.rs) and

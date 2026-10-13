@@ -39,14 +39,14 @@ fn convert_or_serde(
 ) -> TokenStream {
   if serde {
     quote_spanned! { span =>
-      ::deno_core::serde_v8::from_v8(
+      ::ende_core::serde_v8::from_v8(
         __scope,
         #value,
       ).map_err(::deno_error::JsErrorBox::from_err)?
     }
   } else {
     quote_spanned! { span =>
-      ::deno_core::convert::FromV8::from_v8(
+      ::ende_core::convert::FromV8::from_v8(
         __scope,
         #value,
       ).map_err(::deno_error::JsErrorBox::from_err)?
@@ -61,12 +61,12 @@ mod kw {
 
 fn create_impl(ident: impl ToTokens, body: TokenStream) -> TokenStream {
   quote! {
-    impl<'a> ::deno_core::convert::FromV8<'a> for #ident {
+    impl<'a> ::ende_core::convert::FromV8<'a> for #ident {
       type Error = ::deno_error::JsErrorBox;
 
       fn from_v8<'i>(
-        __scope: &mut ::deno_core::v8::PinScope<'a, 'i>,
-        __value: ::deno_core::v8::Local<'a, ::deno_core::v8::Value>,
+        __scope: &mut ::ende_core::v8::PinScope<'a, 'i>,
+        __value: ::ende_core::v8::Local<'a, ::ende_core::v8::Value>,
       ) -> Result<Self, Self::Error>
       {
         #body

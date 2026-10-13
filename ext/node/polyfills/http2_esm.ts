@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { core } from "ext:core/mod.js";
-const mod = core.loadExtScript("ext:deno_node/http2.ts");
+const mod = core.loadExtScript("ext:ende_node/http2.ts");
 
 export const addAbortListener = mod.addAbortListener;
 export const ClientHttp2Session = mod.ClientHttp2Session;

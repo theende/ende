@@ -5,18 +5,18 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_cache_dir::file_fetcher::CacheSetting;
-use deno_config::deno_json::MinimumDependencyAgeConfig;
-use deno_config::deno_json::NewestDependencyDate;
-use deno_core::anyhow;
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_npm_installer::PackagesAllowedScripts;
-use deno_runtime::deno_permissions::PathQueryDescriptor;
 use deno_semver::jsr::JsrPackageReqReference;
 use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageReq;
+use ende_cache_dir::file_fetcher::CacheSetting;
+use ende_config::deno_json::MinimumDependencyAgeConfig;
+use ende_config::deno_json::NewestDependencyDate;
+use ende_core::anyhow;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_npm_installer::PackagesAllowedScripts;
+use ende_runtime::ende_permissions::PathQueryDescriptor;
 use node_resolver::BinValue;
 
 use crate::args::CliOptions;
@@ -192,12 +192,12 @@ async fn resolve_local_bins(
   factory: &CliFactory,
 ) -> Result<BTreeMap<String, BinValue>, AnyError> {
   match &npm_resolver {
-    deno_resolver::npm::NpmResolver::Byonm(npm_resolver) => {
+    ende_resolver::npm::NpmResolver::Byonm(npm_resolver) => {
       let node_modules_dir = npm_resolver.root_node_modules_path().unwrap();
       let bin_dir = node_modules_dir.join(".bin");
       Ok(node_resolver.resolve_npm_commands_from_bin_dir(&bin_dir))
     }
-    deno_resolver::npm::NpmResolver::Managed(npm_resolver) => {
+    ende_resolver::npm::NpmResolver::Managed(npm_resolver) => {
       let mut all_bins = BTreeMap::new();
       for id in npm_resolver.resolution().top_level_packages() {
         let package_folder =
@@ -230,13 +230,13 @@ async fn resolve_local_bins(
 }
 
 fn run_js_file(
-  main_module: &deno_core::url::Url,
+  main_module: &ende_core::url::Url,
   deno_args: &[String],
   argv: &[String],
   npm_process_state: Option<String>,
   npm: bool,
 ) -> Result<i32, AnyError> {
-  use deno_runtime::deno_io::FromRawIoHandle;
+  use ende_runtime::ende_io::FromRawIoHandle;
 
   let deno_exe = std::env::current_exe()
     .and_then(|p| canonicalize_path(&p))
@@ -252,10 +252,10 @@ fn run_js_file(
 
   let _temp_file = if let Some(state) = &npm_process_state {
     let fd =
-      deno_runtime::deno_process::npm_process_state_tempfile(state.as_bytes())
+      ende_runtime::ende_process::npm_process_state_tempfile(state.as_bytes())
         .context("Failed to create npm process state tempfile")?;
     command.env(
-      deno_runtime::deno_process::NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME,
+      ende_runtime::ende_process::NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME,
       (fd as usize).to_string(),
     );
     // Keep the file alive until the subprocess completes
@@ -287,17 +287,17 @@ pub(crate) fn get_npm_process_state(
   npm_resolver: &CliNpmResolver,
 ) -> Option<String> {
   match npm_resolver {
-    deno_resolver::npm::NpmResolver::Managed(managed) => {
+    ende_resolver::npm::NpmResolver::Managed(managed) => {
       let linker_mode = match managed.linker_mode() {
-        deno_config::deno_json::NodeModulesLinkerMode::Hoisted => {
-          deno_npm_installer::process_state::NpmProcessStateLinkerMode::Hoisted
+        ende_config::deno_json::NodeModulesLinkerMode::Hoisted => {
+          ende_npm_installer::process_state::NpmProcessStateLinkerMode::Hoisted
         }
-        deno_config::deno_json::NodeModulesLinkerMode::Isolated => {
-          deno_npm_installer::process_state::NpmProcessStateLinkerMode::Isolated
+        ende_config::deno_json::NodeModulesLinkerMode::Isolated => {
+          ende_npm_installer::process_state::NpmProcessStateLinkerMode::Isolated
         }
       };
       Some(
-        deno_npm_installer::process_state::NpmProcessState::new_managed(
+        ende_npm_installer::process_state::NpmProcessState::new_managed(
           managed.resolution().serialized_valid_snapshot(),
           managed.root_node_modules_path(),
           linker_mode,
@@ -305,7 +305,7 @@ pub(crate) fn get_npm_process_state(
         .as_serialized(),
       )
     }
-    deno_resolver::npm::NpmResolver::Byonm(_) => None,
+    ende_resolver::npm::NpmResolver::Byonm(_) => None,
   }
 }
 
@@ -342,7 +342,7 @@ pub(crate) fn run_bin_value(
       }
       let permissions = factory.root_permissions_container()?;
       permissions.check_run(
-        &deno_runtime::deno_permissions::RunQueryDescriptor::Path(
+        &ende_runtime::ende_permissions::RunQueryDescriptor::Path(
           PathQueryDescriptor::new(
             &factory.sys(),
             std::borrow::Cow::Borrowed(path_buf.as_ref()),
@@ -613,7 +613,7 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
     ));
   }
 
-  let thing_to_run = match deno_core::url::Url::parse(&effective_command) {
+  let thing_to_run = match ende_core::url::Url::parse(&effective_command) {
     Ok(url) => {
       if url.scheme() == "npm" {
         let req_ref = NpmPackageReqReference::from_specifier(&url)?;
@@ -625,7 +625,7 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
         ReqRefOrUrl::Url(url)
       }
     }
-    Err(deno_core::url::ParseError::RelativeUrlWithoutBase) => {
+    Err(ende_core::url::ParseError::RelativeUrlWithoutBase) => {
       let new_command = format!("npm:{}", effective_command);
       let req_ref = NpmPackageReqReference::from_str(&new_command)?;
       ReqRefOrUrl::Npm(req_ref)
@@ -692,7 +692,7 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
       .await?;
       let mut runner_flags = (*managed_flags).clone();
       runner_flags.node_modules_dir =
-        Some(deno_config::deno_json::NodeModulesDirMode::Manual);
+        Some(ende_config::deno_json::NodeModulesDirMode::Manual);
       let runner_flags = Arc::new(runner_flags);
       let runner_factory = CliFactory::from_flags(runner_flags.clone());
       let runner_node_resolver = runner_factory.node_resolver().await?;
@@ -777,7 +777,7 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
       deno_args.extend(unstable_args.iter().cloned());
       deno_args.extend(forwarded.iter().cloned());
       let url =
-        deno_core::url::Url::parse(&jsr_package_req_reference.to_string())?;
+        ende_core::url::Url::parse(&jsr_package_req_reference.to_string())?;
       run_js_file(&url, &deno_args, &flags.argv, npm_process_state, false)
     }
     ReqRefOrUrl::Url(url) => {
@@ -842,7 +842,7 @@ async fn autoinstall_package(
     new_flags.permissions.deny_import = import_deny_rules;
     new_flags.permission_set = None;
     new_flags.node_modules_dir =
-      Some(deno_config::deno_json::NodeModulesDirMode::Auto);
+      Some(ende_config::deno_json::NodeModulesDirMode::Auto);
     let temp_node_modules = temp_dir.join("node_modules");
     new_flags.internal.root_node_modules_dir_override = Some(temp_node_modules);
     new_flags.config_flag = crate::args::ConfigFlag::Path(
@@ -994,5 +994,5 @@ impl<'a> ReqRef<'a> {
 enum ReqRefOrUrl {
   Npm(NpmPackageReqReference),
   Jsr(JsrPackageReqReference),
-  Url(deno_core::url::Url),
+  Url(ende_core::url::Url),
 }

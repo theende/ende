@@ -5,42 +5,42 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_package_json::PackageJson;
-use deno_package_json::PackageJsonCacheResult;
-use deno_package_json::PackageJsonRc;
+use ende_package_json::PackageJson;
+use ende_package_json::PackageJsonCacheResult;
+use ende_package_json::PackageJsonRc;
 use sys_traits::FsMetadata;
 use sys_traits::FsRead;
 
 use crate::errors::PackageJsonLoadError;
 
 pub trait NodePackageJsonCache:
-  deno_package_json::PackageJsonCache
+  ende_package_json::PackageJsonCache
   + std::fmt::Debug
-  + deno_maybe_sync::MaybeSend
-  + deno_maybe_sync::MaybeSync
+  + ende_maybe_sync::MaybeSend
+  + ende_maybe_sync::MaybeSync
 {
   fn as_deno_package_json_cache(
     &self,
-  ) -> &dyn deno_package_json::PackageJsonCache;
+  ) -> &dyn ende_package_json::PackageJsonCache;
 }
 
 impl<T> NodePackageJsonCache for T
 where
-  T: deno_package_json::PackageJsonCache
+  T: ende_package_json::PackageJsonCache
     + std::fmt::Debug
-    + deno_maybe_sync::MaybeSend
-    + deno_maybe_sync::MaybeSync,
+    + ende_maybe_sync::MaybeSend
+    + ende_maybe_sync::MaybeSync,
 {
   fn as_deno_package_json_cache(
     &self,
-  ) -> &dyn deno_package_json::PackageJsonCache {
+  ) -> &dyn ende_package_json::PackageJsonCache {
     self
   }
 }
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type PackageJsonCacheRc =
-  deno_maybe_sync::MaybeArc<dyn NodePackageJsonCache>;
+  ende_maybe_sync::MaybeArc<dyn NodePackageJsonCache>;
 
 thread_local! {
   static CACHE: RefCell<HashMap<PathBuf, PackageJsonRc>> = RefCell::new(HashMap::new());
@@ -55,7 +55,7 @@ impl PackageJsonThreadLocalCache {
   }
 }
 
-impl deno_package_json::PackageJsonCache for PackageJsonThreadLocalCache {
+impl ende_package_json::PackageJsonCache for PackageJsonThreadLocalCache {
   fn get(&self, path: &Path) -> PackageJsonCacheResult {
     CACHE.with_borrow(|cache| match cache.get(path).cloned() {
       Some(value) => PackageJsonCacheResult::Hit(Some(value)),
@@ -74,7 +74,7 @@ impl deno_package_json::PackageJsonCache for PackageJsonThreadLocalCache {
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type PackageJsonResolverRc<TSys> =
-  deno_maybe_sync::MaybeArc<PackageJsonResolver<TSys>>;
+  ende_maybe_sync::MaybeArc<PackageJsonResolver<TSys>>;
 
 #[derive(Debug)]
 pub struct PackageJsonResolver<TSys: FsRead + FsMetadata> {

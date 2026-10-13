@@ -26,18 +26,18 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
-use deno_core::FsModuleLoader;
-use deno_core::ModuleCodeString;
-use deno_core::resolve_path;
-use deno_resolver::npm::DenoInNpmPackageChecker;
-use deno_resolver::npm::NpmResolver;
-use deno_runtime::deno_fs::RealFs;
-use deno_runtime::deno_permissions::Permissions;
-use deno_runtime::deno_permissions::PermissionsContainer;
-use deno_runtime::permissions::RuntimePermissionDescriptorParser;
-use deno_runtime::worker::MainWorker;
-use deno_runtime::worker::WorkerOptions;
-use deno_runtime::worker::WorkerServiceOptions;
+use ende_core::FsModuleLoader;
+use ende_core::ModuleCodeString;
+use ende_core::resolve_path;
+use ende_resolver::npm::DenoInNpmPackageChecker;
+use ende_resolver::npm::NpmResolver;
+use ende_runtime::ende_fs::RealFs;
+use ende_runtime::ende_permissions::Permissions;
+use ende_runtime::ende_permissions::PermissionsContainer;
+use ende_runtime::permissions::RuntimePermissionDescriptorParser;
+use ende_runtime::worker::MainWorker;
+use ende_runtime::worker::WorkerOptions;
+use ende_runtime::worker::WorkerServiceOptions;
 
 #[allow(clippy::disallowed_types, reason = "example binary")]
 type Sys = sys_traits::impls::RealSys;
@@ -56,9 +56,9 @@ fn bootstrap_once() -> MainWorker {
     Arc::new(RuntimePermissionDescriptorParser::new(Sys::default()));
 
   let options = WorkerOptions {
-    startup_snapshot: deno_snapshots::CLI_SNAPSHOT,
-    residual_lazy_js_sources: deno_snapshots::RESIDUAL_LAZY_JS,
-    residual_lazy_esm_sources: deno_snapshots::RESIDUAL_LAZY_ESM,
+    startup_snapshot: ende_snapshots::CLI_SNAPSHOT,
+    residual_lazy_js_sources: ende_snapshots::RESIDUAL_LAZY_JS,
+    residual_lazy_esm_sources: ende_snapshots::RESIDUAL_LAZY_ESM,
     ..Default::default()
   };
 
@@ -76,9 +76,9 @@ fn bootstrap_once() -> MainWorker {
         Permissions::none_without_prompt(),
       ),
       blob_store: std::sync::Arc::new(
-        deno_runtime::deno_web::BlobStore::default(),
+        ende_runtime::ende_web::BlobStore::default(),
       )
-        as std::sync::Arc<dyn deno_runtime::deno_web::BlobStoreTrait>,
+        as std::sync::Arc<dyn ende_runtime::ende_web::BlobStoreTrait>,
       broadcast_channel: Default::default(),
       feature_checker: Default::default(),
       node_services: Default::default(),

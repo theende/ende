@@ -6,24 +6,24 @@ use deno_ast::ParseDiagnostic;
 use deno_ast::SourceRange;
 use deno_ast::SourceTextInfo;
 use deno_ast::SourceTextProvider;
-use deno_core::FromV8;
-use deno_core::OpState;
-use deno_core::convert::Uint8Array;
-use deno_core::op2;
 use deno_lint::diagnostic::LintDiagnostic;
 use deno_lint::diagnostic::LintDiagnosticDetails;
 use deno_lint::diagnostic::LintDiagnosticRange;
 use deno_lint::diagnostic::LintDocsUrl;
 use deno_lint::diagnostic::LintFix;
 use deno_lint::diagnostic::LintFixChange;
+use ende_core::FromV8;
+use ende_core::OpState;
+use ende_core::convert::Uint8Array;
+use ende_core::op2;
 use tokio_util::sync::CancellationToken;
 
 use crate::tools::lint;
 use crate::tools::lint::PluginLogger;
 use crate::util::text_encoding::Utf16Map;
 
-deno_core::extension!(
-  deno_lint_ext,
+ende_core::extension!(
+  ende_lint_ext,
   ops = [
     op_lint_create_serialized_ast,
     op_lint_report,
@@ -45,8 +45,8 @@ deno_core::extension!(
   },
 );
 
-deno_core::extension!(
-  deno_lint_ext_for_test,
+ende_core::extension!(
+  ende_lint_ext_for_test,
   ops = [op_lint_create_serialized_ast, op_is_cancelled],
   state = |state| {
     state.put(LintPluginContainer::default());

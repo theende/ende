@@ -31,43 +31,43 @@ use bytes::Bytes;
 // Re-export data_url
 pub use data_url;
 use data_url::DataUrl;
-use deno_core::AsyncRefCell;
-use deno_core::AsyncResult;
-use deno_core::BufView;
-use deno_core::CancelFuture;
-use deno_core::CancelHandle;
-use deno_core::CancelTryFuture;
-use deno_core::Canceled;
-use deno_core::FromV8;
-use deno_core::OpState;
-use deno_core::RcRef;
-use deno_core::Resource;
-use deno_core::ResourceId;
-use deno_core::ToV8;
-use deno_core::convert::ByteString;
-use deno_core::convert::Uint8Array;
-use deno_core::futures::FutureExt;
-use deno_core::futures::Stream;
-use deno_core::futures::StreamExt;
-use deno_core::futures::TryFutureExt;
-use deno_core::futures::stream::Peekable;
-use deno_core::op2;
-use deno_core::url;
-use deno_core::url::Url;
-use deno_core::v8;
 use deno_error::JsErrorBox;
-pub use deno_fs::FsError;
 use deno_path_util::PathToUrlError;
-use deno_permissions::OpenAccessKind;
-use deno_permissions::PermissionCheckError;
-use deno_permissions::PermissionsContainer;
-use deno_tls::Proxy;
-use deno_tls::RootCertStoreProvider;
-use deno_tls::SocketUse;
-use deno_tls::TlsKey;
-use deno_tls::TlsKeys;
-use deno_tls::TlsKeysHolder;
-use deno_tls::rustls::RootCertStore;
+use ende_core::AsyncRefCell;
+use ende_core::AsyncResult;
+use ende_core::BufView;
+use ende_core::CancelFuture;
+use ende_core::CancelHandle;
+use ende_core::CancelTryFuture;
+use ende_core::Canceled;
+use ende_core::FromV8;
+use ende_core::OpState;
+use ende_core::RcRef;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::ToV8;
+use ende_core::convert::ByteString;
+use ende_core::convert::Uint8Array;
+use ende_core::futures::FutureExt;
+use ende_core::futures::Stream;
+use ende_core::futures::StreamExt;
+use ende_core::futures::TryFutureExt;
+use ende_core::futures::stream::Peekable;
+use ende_core::op2;
+use ende_core::url;
+use ende_core::url::Url;
+use ende_core::v8;
+pub use ende_fs::FsError;
+use ende_permissions::OpenAccessKind;
+use ende_permissions::PermissionCheckError;
+use ende_permissions::PermissionsContainer;
+use ende_tls::Proxy;
+use ende_tls::RootCertStoreProvider;
+use ende_tls::SocketUse;
+use ende_tls::TlsKey;
+use ende_tls::TlsKeys;
+use ende_tls::TlsKeysHolder;
+use ende_tls::rustls::RootCertStore;
 pub use fs_fetch_handler::FsFetchHandler;
 use http::Extensions;
 use http::HeaderMap;
@@ -156,8 +156,8 @@ impl Default for Options {
   }
 }
 
-deno_core::extension!(deno_fetch,
-  deps = [ deno_webidl, deno_web ],
+ende_core::extension!(ende_fetch,
+  deps = [ ende_webidl, ende_web ],
   ops = [
     op_fetch,
     op_fetch_send,
@@ -187,7 +187,7 @@ deno_core::extension!(deno_fetch,
 pub enum FetchError {
   #[class(inherit)]
   #[error(transparent)]
-  Resource(#[from] deno_core::error::ResourceError),
+  Resource(#[from] ende_core::error::ResourceError),
   #[class(inherit)]
   #[error(transparent)]
   Permission(#[from] PermissionCheckError),
@@ -196,7 +196,7 @@ pub enum FetchError {
   NetworkError,
   #[class(type)]
   #[error("Error fetching file '{0}': {1}")]
-  FileFetch(String, deno_fs::FsError),
+  FileFetch(String, ende_fs::FsError),
   #[class(type)]
   #[error("Fetching files only supports the GET method: received {0}")]
   FsNotGet(Method),
@@ -262,16 +262,16 @@ pub enum FetchError {
   Other(JsErrorBox),
 }
 
-impl From<deno_fs::FsError> for FetchError {
-  fn from(value: deno_fs::FsError) -> Self {
+impl From<ende_fs::FsError> for FetchError {
+  fn from(value: ende_fs::FsError) -> Self {
     match value {
-      deno_fs::FsError::Io(_)
-      | deno_fs::FsError::FileBusy
-      | deno_fs::FsError::NotSupported => FetchError::NetworkError,
-      deno_fs::FsError::PermissionCheck(err) => {
+      ende_fs::FsError::Io(_)
+      | ende_fs::FsError::FileBusy
+      | ende_fs::FsError::NotSupported => FetchError::NetworkError,
+      ende_fs::FsError::PermissionCheck(err) => {
         FetchError::PermissionCheck(err)
       }
-      deno_fs::FsError::JoinError(err) => {
+      ende_fs::FsError::JoinError(err) => {
         FetchError::Other(JsErrorBox::from_err(err))
       }
     }
@@ -731,7 +731,7 @@ pub enum FetchResponseReader {
 
 impl Default for FetchResponseReader {
   fn default() -> Self {
-    let stream: BytesStream = Box::pin(deno_core::futures::stream::empty());
+    let stream: BytesStream = Box::pin(ende_core::futures::stream::empty());
     Self::BodyReader(stream.peekable())
   }
 }
@@ -1014,7 +1014,7 @@ impl Default for CreateHttpClientOptions {
 #[class(type)]
 pub enum HttpClientCreateError {
   #[error(transparent)]
-  Tls(deno_tls::TlsError),
+  Tls(ende_tls::TlsError),
   #[error("Illegal characters in User-Agent: received {0}")]
   InvalidUserAgent(String),
   #[error("Invalid address: {0}")]
@@ -1047,14 +1047,14 @@ pub fn create_http_client(
   options: CreateHttpClientOptions,
 ) -> Result<Client, HttpClientCreateError> {
   let mut tls_config =
-    deno_tls::create_client_config(deno_tls::TlsClientConfigOptions {
+    ende_tls::create_client_config(ende_tls::TlsClientConfigOptions {
       root_cert_store: options.root_cert_store,
       ca_certs: options.ca_certs,
       unsafely_ignore_certificate_errors: options
         .unsafely_ignore_certificate_errors,
       unsafely_disable_hostname_verification: false,
       cert_chain_and_key: options.client_cert_chain_and_key.into(),
-      socket_use: deno_tls::SocketUse::Http,
+      socket_use: ende_tls::SocketUse::Http,
     })
     .map_err(HttpClientCreateError::Tls)?;
 
@@ -1733,7 +1733,7 @@ where
 {
   type Response = TrackedIo<C::Response>;
   type Error = C::Error;
-  type Future = deno_core::futures::future::MapOk<
+  type Future = ende_core::futures::future::MapOk<
     C::Future,
     fn(C::Response) -> TrackedIo<C::Response>,
   >;

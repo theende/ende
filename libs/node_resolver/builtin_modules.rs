@@ -7,7 +7,7 @@ pub trait IsBuiltInNodeModuleChecker: std::fmt::Debug {
 
 /// An implementation of IsBuiltInNodeModuleChecker that uses
 /// the list of built-in node_modules that are supported by Deno
-/// in the `deno_node` crate (ext/node).
+/// in the `ende_node` crate (ext/node).
 #[derive(Debug)]
 pub struct DenoIsBuiltInNodeModuleChecker;
 

@@ -1,18 +1,18 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "denort"
+name = "endert"
 version = "2.9.7"
 authors.workspace = true
-default-run = "denort"
+default-run = "endert"
 edition.workspace = true
 license.workspace = true
 publish = false
 repository.workspace = true
-description = "Provides the denort executable"
+description = "Provides the endert executable"
 
 [[bin]]
-name = "denort"
+name = "endert"
 path = "main.rs"
 doc = false
 
@@ -26,34 +26,34 @@ harness = false
 
 [features]
 default = ["v8"]
-quickjs = ["deno_core/quickjs", "v8/quickjs"]
-v8 = ["deno_core/v8", "v8/v8"]
+quickjs = ["ende_core/quickjs", "v8/quickjs"]
+v8 = ["ende_core/v8", "v8/v8"]
 
 [build-dependencies]
-deno_runtime.workspace = true
-deno_core.workspace = true
+ende_runtime.workspace = true
+ende_core.workspace = true
 v8.workspace = true
 
 [dependencies]
 async-trait.workspace = true
 bincode.workspace = true
 deno_ast = { workspace = true, features = ["cjs"] }
-deno_cache_dir = { workspace = true, features = ["sync"] }
-deno_config = { workspace = true, features = ["sync", "workspace"] }
-deno_core.workspace = true
 deno_error.workspace = true
-deno_lib.workspace = true
 deno_media_type = { workspace = true, features = ["data_url", "decoding"] }
-deno_node.workspace = true
-deno_npm.workspace = true
-deno_npmrc.workspace = true
-deno_package_json = { workspace = true, features = ["sync"] }
 deno_path_util.workspace = true
-deno_resolver = { workspace = true, features = ["sync"] }
-deno_runtime.workspace = true
 deno_semver.workspace = true
-deno_snapshots.workspace = true
 deno_terminal.workspace = true
+ende_cache_dir = { workspace = true, features = ["sync"] }
+ende_config = { workspace = true, features = ["sync", "workspace"] }
+ende_core.workspace = true
+ende_lib.workspace = true
+ende_node.workspace = true
+ende_npm.workspace = true
+ende_npmrc.workspace = true
+ende_package_json = { workspace = true, features = ["sync"] }
+ende_resolver = { workspace = true, features = ["sync"] }
+ende_runtime.workspace = true
+ende_snapshots.workspace = true
 import_map.workspace = true
 indexmap.workspace = true
 jsonc-parser = { workspace = true }
@@ -73,7 +73,7 @@ v8.workspace = true
 [target.'cfg(windows)'.dependencies]
 junction.workspace = true
 memmap2.workspace = true
-deno_subprocess_windows.workspace = true
+ende_subprocess_windows.workspace = true
 
 [dev-dependencies]
 sys_traits = { workspace = true, features = ["memory"] }

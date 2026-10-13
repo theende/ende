@@ -4,11 +4,11 @@ use std::borrow::Cow;
 use std::ops::AddAssign;
 
 use console_static_text::ansi::strip_ansi_codes;
-use deno_core::stats::RuntimeActivity;
-use deno_core::stats::RuntimeActivityDiff;
-use deno_core::stats::RuntimeActivityTrace;
-use deno_core::stats::RuntimeActivityType;
-use deno_runtime::fmt_errors::format_js_error;
+use ende_core::stats::RuntimeActivity;
+use ende_core::stats::RuntimeActivityDiff;
+use ende_core::stats::RuntimeActivityTrace;
+use ende_core::stats::RuntimeActivityType;
+use ende_runtime::fmt_errors::format_js_error;
 use phf::phf_map;
 
 use super::*;
@@ -425,7 +425,7 @@ pub const OP_DETAILS: phf::Map<&'static str, [&'static str; 2]> = phf_map! {
 
 #[cfg(test)]
 mod tests {
-  use deno_core::stats::RuntimeActivity;
+  use ende_core::stats::RuntimeActivity;
 
   macro_rules! leak_format_test {
     ($name:ident, $appeared:literal, [$($activity:expr),*], $expected:literal) => {

@@ -124,7 +124,7 @@ pub struct LoadUnpreparedModuleError {
 }
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type ModuleLoaderRc<TSys> = deno_maybe_sync::MaybeArc<ModuleLoader<TSys>>;
+pub type ModuleLoaderRc<TSys> = ende_maybe_sync::MaybeArc<ModuleLoader<TSys>>;
 
 #[sys_traits::auto_impl]
 pub trait ModuleLoaderSys:
@@ -195,7 +195,7 @@ impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
     graph: &'a ModuleGraph,
     specifier: &'a Url,
     // todo(#30074): we should remove passing the referrer in here and remove the
-    // referrer from all error messages. This should be up to deno_core to display.
+    // referrer from all error messages. This should be up to ende_core to display.
     maybe_referrer: Option<&Url>,
     requested_module_type: &RequestedModuleType<'_>,
     cjs_analysis_source_provider: Option<&dyn CjsAnalysisSourceProvider>,

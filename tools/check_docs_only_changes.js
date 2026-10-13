@@ -3,7 +3,7 @@
 // deno-lint-ignore-file no-console
 
 // Checks whether a pull request only touches files under the `doc/` directory.
-// When that's the case, CI skips the build, test, bench and deno_core jobs and
+// When that's the case, CI skips the build, test, bench and ende_core jobs and
 // runs the `lint` job alone (markdown formatting + lint), since there is no
 // code to compile or test.
 //

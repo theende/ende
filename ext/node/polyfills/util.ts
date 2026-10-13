@@ -36,12 +36,12 @@ const {
   WeakRefPrototypeDeref,
 } = primordials;
 
-const { promisify } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+const { promisify } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 const { callbackify } = core.loadExtScript(
-  "ext:deno_node/_util/_util_callbackify.js",
+  "ext:ende_node/_util/_util_callbackify.js",
 );
 const { debuglog } = core.loadExtScript(
-  "ext:deno_node/internal/util/debuglog.ts",
+  "ext:ende_node/internal/util/debuglog.ts",
 );
 const {
   format,
@@ -49,11 +49,11 @@ const {
   inspect,
   stripVTControlCharacters,
   styleText,
-} = core.loadExtScript("ext:deno_node/internal/util/inspect.mjs");
-const { codes } = core.loadExtScript("ext:deno_node/internal/error_codes.ts");
-const types = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+} = core.loadExtScript("ext:ende_node/internal/util/inspect.mjs");
+const { codes } = core.loadExtScript("ext:ende_node/internal/error_codes.ts");
+const types = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 const { isDeepStrictEqual } = core.loadExtScript(
-  "ext:deno_node/internal/util/comparisons.ts",
+  "ext:ende_node/internal/util/comparisons.ts",
 );
 const {
   validateAbortSignal,
@@ -62,30 +62,30 @@ const {
   validateObject,
   validateString,
   validateStringArray,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const { myersDiff } = core.loadExtScript(
-  "ext:deno_node/internal/assert/myers_diff.js",
+  "ext:ende_node/internal/assert/myers_diff.js",
 );
 const { parseArgs } = core.loadExtScript(
-  "ext:deno_node/internal/util/parse_args/parse_args.js",
+  "ext:ende_node/internal/util/parse_args/parse_args.js",
 );
 const { MIMEParams, MIMEType } = core.loadExtScript(
-  "ext:deno_node/internal/mime.ts",
+  "ext:ende_node/internal/mime.ts",
 );
-const abortSignal = core.loadExtScript("ext:deno_web/03_abort_signal.js");
+const abortSignal = core.loadExtScript("ext:ende_web/03_abort_signal.js");
 const { ERR_INVALID_ARG_TYPE, ERR_WORKER_UNSUPPORTED_OPERATION } = core
   .loadExtScript(
-    "ext:deno_node/internal/errors.ts",
+    "ext:ende_node/internal/errors.ts",
   );
 const { default: binding } = core.loadExtScript(
-  "ext:deno_node/internal_binding/util.ts",
+  "ext:ende_node/internal_binding/util.ts",
 );
 const { validateOneOf } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 const lazyV8 = core.createLazyLoader("node:v8");
 const { os: osConstants } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
 
 const abortedRegistry = new SafeFinalizationRegistry((heldValue) => {
@@ -150,7 +150,7 @@ const {
   getSystemErrorMap,
   getSystemErrorMessage,
   getSystemErrorName,
-} = core.loadExtScript("ext:deno_node/_utils.ts");
+} = core.loadExtScript("ext:ende_node/_utils.ts");
 
 /** The global TextDecoder */
 const TextDecoder = _TextDecoder;

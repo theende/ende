@@ -5,15 +5,15 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use deno_ast::ModuleSpecifier;
-use deno_config::deno_json::LintRulesConfig;
-use deno_config::workspace::WorkspaceDirectory;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
 use deno_graph::ModuleGraph;
 use deno_lint::diagnostic::LintDiagnostic;
 use deno_lint::rules::LintRule;
 use deno_lint::tags;
-use deno_resolver::workspace::WorkspaceResolver;
+use ende_config::deno_json::LintRulesConfig;
+use ende_config::workspace::WorkspaceDirectory;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_resolver::workspace::WorkspaceResolver;
 
 use crate::sys::CliSys;
 

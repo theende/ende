@@ -22,7 +22,7 @@
 
 (function () {
 const { core } = __bootstrap;
-const { promises } = core.loadExtScript("ext:deno_node/dns.ts");
+const { promises } = core.loadExtScript("ext:ende_node/dns.ts");
 
 return {
   default: promises,

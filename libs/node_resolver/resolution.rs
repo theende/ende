@@ -13,12 +13,12 @@ use std::sync::atomic::Ordering;
 use anyhow::Error as AnyError;
 use anyhow::bail;
 use deno_media_type::MediaType;
-use deno_package_json::BrowserMapEntry;
-use deno_package_json::PackageJson;
-use deno_package_json::PackageJsonRc;
 use deno_path_util::url_to_file_path;
 use deno_semver::Version;
 use deno_semver::VersionReq;
+use ende_package_json::BrowserMapEntry;
+use ende_package_json::PackageJson;
+use ende_package_json::PackageJsonRc;
 use lazy_regex::Lazy;
 use regex::Regex;
 use serde_json::Map;
@@ -321,7 +321,7 @@ pub type NodeResolverRc<
   TIsBuiltInNodeModuleChecker,
   TNpmPackageFolderResolver,
   TSys,
-> = deno_maybe_sync::MaybeArc<
+> = ende_maybe_sync::MaybeArc<
   NodeResolver<
     TInNpmPackageChecker,
     TIsBuiltInNodeModuleChecker,
@@ -1114,10 +1114,10 @@ impl<
     // TODO(bartlomieju): skipped checking errors for commonJS resolution and
     // "preserveSymlinksMain"/"preserveSymlinks" options.
     let items = match bins {
-      deno_package_json::PackageJsonBins::Directory(path_buf) => {
+      ende_package_json::PackageJsonBins::Directory(path_buf) => {
         self.resolve_npm_commands_from_bin_dir(&path_buf)
       }
-      deno_package_json::PackageJsonBins::Bins(items) => items
+      ende_package_json::PackageJsonBins::Bins(items) => items
         .into_iter()
         .filter_map(|(command, path)| {
           let bin_value = read_bin_value(&path, &self.sys)?;
@@ -3098,7 +3098,7 @@ fn find_package_root_from_node_modules(path: &Path) -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-  use deno_package_json::PackageJsonBins;
+  use ende_package_json::PackageJsonBins;
   use serde_json::json;
   use sys_traits::FsCreateDirAll;
   use sys_traits::FsWrite;
@@ -3170,7 +3170,7 @@ mod tests {
       TestInNpmPackageChecker,
       TestBuiltInNodeModuleChecker,
       TestNpmPackageFolderResolver,
-      deno_maybe_sync::new_rc(PackageJsonResolver::new(sys.clone(), None)),
+      ende_maybe_sync::new_rc(PackageJsonResolver::new(sys.clone(), None)),
       NodeResolutionSys::new(sys, None),
       NodeResolverOptions::default(),
     )

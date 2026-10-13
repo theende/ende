@@ -17,7 +17,7 @@ if (!definitelyTypedDir.existsSync()) {
 }
 
 const denoExec = rootDir.join(
-  "target/debug/deno" + (Deno.build.os === "windows" ? ".exe" : ""),
+  "target/debug/ende" + (Deno.build.os === "windows" ? ".exe" : ""),
 );
 
 $.logStep("Building Deno executable...");

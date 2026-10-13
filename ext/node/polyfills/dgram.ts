@@ -35,8 +35,8 @@ const {
   SafeArrayIterator,
   SymbolAsyncDispose,
 } = primordials;
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 const {
   ERR_BUFFER_OUT_OF_BOUNDS,
   ERR_INVALID_ARG_TYPE,
@@ -50,17 +50,17 @@ const {
   ERR_SOCKET_DGRAM_NOT_RUNNING,
   errnoException,
   exceptionWithHostPort,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { kStateSymbol, newHandle } = core.loadExtScript(
-  "ext:deno_node/internal/dgram.ts",
+  "ext:ende_node/internal/dgram.ts",
 );
 const {
   asyncIdSymbol,
   defaultTriggerAsyncIdScope,
   ownerSymbol,
-} = core.loadExtScript("ext:deno_node/internal/async_hooks.ts");
+} = core.loadExtScript("ext:ende_node/internal/async_hooks.ts");
 const { SendWrap } = core.loadExtScript(
-  "ext:deno_node/internal_binding/udp_wrap.ts",
+  "ext:ende_node/internal_binding/udp_wrap.ts",
 );
 const {
   isInt32,
@@ -69,20 +69,20 @@ const {
   validatePort,
   validateString,
   validateUint32,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const { guessHandleType } = core.loadExtScript(
-  "ext:deno_node/internal_binding/util.ts",
+  "ext:ende_node/internal_binding/util.ts",
 );
 const { os } = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
-const { nextTick } = core.loadExtScript("ext:deno_node/_next_tick.ts");
-const { deprecate } = core.loadExtScript("ext:deno_node/util.ts");
+const { nextTick } = core.loadExtScript("ext:ende_node/_next_tick.ts");
+const { deprecate } = core.loadExtScript("ext:ende_node/util.ts");
 const { channel } = core.loadExtScript(
-  "ext:deno_node/diagnostics_channel.js",
+  "ext:ende_node/diagnostics_channel.js",
 );
 const { isArrayBufferView } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 
 const { UV_UDP_REUSEADDR, UV_UDP_IPV6ONLY } = os;
@@ -272,8 +272,8 @@ class Socket extends EventEmitter {
    * `EADDRINUSE` error will occur:
    *
    * ```js
-   * import cluster from "ext:deno_node/cluster";
-   * import dgram from "ext:deno_node/dgram";
+   * import cluster from "ext:ende_node/cluster";
+   * import dgram from "ext:ende_node/dgram";
    *
    * if (cluster.isPrimary) {
    *   cluster.fork(); // Works ok.
@@ -374,7 +374,7 @@ class Socket extends EventEmitter {
    * Example of a UDP server listening on port 41234:
    *
    * ```js
-   * import dgram from "ext:deno_node/dgram";
+   * import dgram from "ext:ende_node/dgram";
    *
    * const server = dgram.createSocket('udp4');
    *
@@ -830,8 +830,8 @@ class Socket extends EventEmitter {
    * Example of sending a UDP packet to a port on `localhost`;
    *
    * ```js
-   * import dgram from "ext:deno_node/dgram";
-   * import { Buffer } from "ext:deno_node/buffer";
+   * import dgram from "ext:ende_node/dgram";
+   * import { Buffer } from "ext:ende_node/buffer";
    *
    * const message = Buffer.from('Some bytes');
    * const client = dgram.createSocket('udp4');
@@ -844,8 +844,8 @@ class Socket extends EventEmitter {
    * `127.0.0.1`;
    *
    * ```js
-   * import dgram from "ext:deno_node/dgram";
-   * import { Buffer } from "ext:deno_node/buffer";
+   * import dgram from "ext:ende_node/dgram";
+   * import { Buffer } from "ext:ende_node/buffer";
    *
    * const buf1 = Buffer.from('Some ');
    * const buf2 = Buffer.from('bytes');
@@ -864,8 +864,8 @@ class Socket extends EventEmitter {
    * `localhost`:
    *
    * ```js
-   * import dgram from "ext:deno_node/dgram";
-   * import { Buffer } from "ext:deno_node/buffer";
+   * import dgram from "ext:ende_node/dgram";
+   * import { Buffer } from "ext:ende_node/buffer";
    *
    * const message = Buffer.from('Some bytes');
    * const client = dgram.createSocket('udp4');

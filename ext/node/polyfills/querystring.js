@@ -15,12 +15,12 @@ const {
   StringPrototypeSlice,
   decodeURIComponent,
 } = primordials;
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const { encodeStr, hexTable } = core.loadExtScript(
-  "ext:deno_node/internal/querystring.ts",
+  "ext:ende_node/internal/querystring.ts",
 );
 const { unhexTable } = core.loadExtScript(
-  "ext:deno_node/internal_binding/_utils.ts",
+  "ext:ende_node/internal_binding/_utils.ts",
 );
 
 /**

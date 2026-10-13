@@ -9,14 +9,14 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_cache_dir::GlobalOrLocalHttpCache;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::url::Url;
 use deno_graph::ModuleGraph;
 use deno_graph::packages::PackageSpecifiers;
-use deno_npm_installer::graph::NpmCachingStrategy;
+use ende_cache_dir::GlobalOrLocalHttpCache;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::url::Url;
+use ende_npm_installer::graph::NpmCachingStrategy;
 use sys_traits::FsCanonicalize;
 use sys_traits::FsCreateDirAll;
 use walkdir::WalkDir;
@@ -372,7 +372,7 @@ async fn clean_except(
       node_modules_keep.insert(package.get_package_cache_folder_id());
     }
     keep_paths_trie.insert(npm_cache.package_folder_for_id(
-      &deno_npm::NpmPackageCacheFolderId {
+      &ende_npm::NpmPackageCacheFolderId {
         nv: package.id.nv.clone(),
         copy_index: package.copy_index,
       },
@@ -572,7 +572,7 @@ fn walk_removing(
 
 fn clean_node_modules(
   cleaner: &mut FsCleaner,
-  keep_pkgs: &HashSet<deno_npm::NpmPackageCacheFolderId>,
+  keep_pkgs: &HashSet<ende_npm::NpmPackageCacheFolderId>,
   dir: &Path,
   dry_run: bool,
 ) -> Result<(), AnyError> {
@@ -637,7 +637,7 @@ fn clean_node_modules(
 
   let keep_ids = keep_pkgs
     .iter()
-    .map(deno_resolver::npm::get_package_folder_id_folder_name)
+    .map(ende_resolver::npm::get_package_folder_id_folder_name)
     .collect::<HashSet<_>>();
 
   // remove the actual packages from node_modules/.deno
@@ -666,7 +666,7 @@ fn clean_node_modules(
 
   // TODO(nathanwhit): this probably shouldn't reach directly into this code
   let sys = CliSys::default();
-  let mut setup_cache = deno_npm_installer::LocalSetupCache::load(
+  let mut setup_cache = ende_npm_installer::LocalSetupCache::load(
     sys.clone(),
     base.join(".setup-cache.bin"),
   );
@@ -704,7 +704,7 @@ fn clean_node_modules(
 
   // remove top level symlinks from node_modules/<package> to node_modules/.deno/<package>
   // where the target doesn't exist (because it was removed above)
-  deno_npm_installer::remove_unused_node_modules_symlinks(
+  ende_npm_installer::remove_unused_node_modules_symlinks(
     &sys,
     dir,
     &keep_ids,
@@ -718,7 +718,7 @@ fn clean_node_modules(
   // remove symlinks from node_modules/.deno/node_modules/<package> to node_modules/.deno/<package>
   // where the target doesn't exist (because it was removed above)
   let deno_nm = base.join("node_modules");
-  deno_npm_installer::remove_unused_node_modules_symlinks(
+  ende_npm_installer::remove_unused_node_modules_symlinks(
     &sys,
     &deno_nm,
     &keep_ids,

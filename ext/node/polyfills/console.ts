@@ -3,7 +3,7 @@
 (function () {
 const { core } = __bootstrap;
 const { Console } = core.loadExtScript(
-  "ext:deno_node/internal/console/constructor.mjs",
+  "ext:ende_node/internal/console/constructor.mjs",
 );
 
 return { Console };

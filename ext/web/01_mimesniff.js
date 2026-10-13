@@ -34,7 +34,7 @@ const {
   HTTP_WHITESPACE,
   HTTP_WHITESPACE_PREFIX_RE,
   HTTP_WHITESPACE_SUFFIX_RE,
-} = core.loadExtScript("ext:deno_web/00_infra.js");
+} = core.loadExtScript("ext:ende_web/00_infra.js");
 
 /**
  * @typedef MimeType

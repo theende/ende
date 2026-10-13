@@ -1,11 +1,11 @@
-impl<'a> ::deno_core::convert::FromV8<'a> for SimpleEnum {
+impl<'a> ::ende_core::convert::FromV8<'a> for SimpleEnum {
     type Error = ::deno_error::JsErrorBox;
     fn from_v8<'i>(
-        __scope: &mut ::deno_core::v8::PinScope<'a, 'i>,
-        __value: ::deno_core::v8::Local<'a, ::deno_core::v8::Value>,
+        __scope: &mut ::ende_core::v8::PinScope<'a, 'i>,
+        __value: ::ende_core::v8::Local<'a, ::ende_core::v8::Value>,
     ) -> Result<Self, Self::Error> {
-        if let Ok(__s) = ::deno_core::v8::Local::<
-            ::deno_core::v8::String,
+        if let Ok(__s) = ::ende_core::v8::Local::<
+            ::ende_core::v8::String,
         >::try_from(__value) {
             let __s = __s.to_rust_string_lossy(__scope);
             match __s.as_str() {
@@ -20,47 +20,47 @@ impl<'a> ::deno_core::convert::FromV8<'a> for SimpleEnum {
                 }
             }
         }
-        let __obj: ::deno_core::v8::Local<::deno_core::v8::Object> = match __value
+        let __obj: ::ende_core::v8::Local<::ende_core::v8::Object> = match __value
             .try_into()
         {
             Ok(obj) => obj,
             Err(err) => {
                 return Err(
                     ::deno_error::JsErrorBox::from_err(
-                        ::deno_core::error::DataError::from(err),
+                        ::ende_core::error::DataError::from(err),
                     ),
                 );
             }
         };
         {
-            let __key = ::deno_core::v8::String::new_from_one_byte(
+            let __key = ::ende_core::v8::String::new_from_one_byte(
                     __scope,
                     "variantC".as_bytes(),
-                    ::deno_core::v8::NewStringType::Internalized,
+                    ::ende_core::v8::NewStringType::Internalized,
                 )
                 .unwrap()
                 .into();
             if let Some(__inner) = __obj.get(__scope, __key) && !__inner.is_undefined() {
                 return Ok(
                     Self::VariantC(
-                        ::deno_core::convert::FromV8::from_v8(__scope, __inner)
+                        ::ende_core::convert::FromV8::from_v8(__scope, __inner)
                             .map_err(::deno_error::JsErrorBox::from_err)?,
                     ),
                 );
             }
         }
         {
-            let __key = ::deno_core::v8::String::new_from_one_byte(
+            let __key = ::ende_core::v8::String::new_from_one_byte(
                     __scope,
                     "renamedNewtype".as_bytes(),
-                    ::deno_core::v8::NewStringType::Internalized,
+                    ::ende_core::v8::NewStringType::Internalized,
                 )
                 .unwrap()
                 .into();
             if let Some(__inner) = __obj.get(__scope, __key) && !__inner.is_undefined() {
                 return Ok(
                     Self::VariantD(
-                        ::deno_core::convert::FromV8::from_v8(__scope, __inner)
+                        ::ende_core::convert::FromV8::from_v8(__scope, __inner)
                             .map_err(::deno_error::JsErrorBox::from_err)?,
                     ),
                 );
@@ -74,14 +74,14 @@ impl<'a> ::deno_core::convert::FromV8<'a> for SimpleEnum {
     }
 }
 
-impl<'a> ::deno_core::convert::FromV8<'a> for SerdeEnum {
+impl<'a> ::ende_core::convert::FromV8<'a> for SerdeEnum {
     type Error = ::deno_error::JsErrorBox;
     fn from_v8<'i>(
-        __scope: &mut ::deno_core::v8::PinScope<'a, 'i>,
-        __value: ::deno_core::v8::Local<'a, ::deno_core::v8::Value>,
+        __scope: &mut ::ende_core::v8::PinScope<'a, 'i>,
+        __value: ::ende_core::v8::Local<'a, ::ende_core::v8::Value>,
     ) -> Result<Self, Self::Error> {
-        if let Ok(__s) = ::deno_core::v8::Local::<
-            ::deno_core::v8::String,
+        if let Ok(__s) = ::ende_core::v8::Local::<
+            ::ende_core::v8::String,
         >::try_from(__value) {
             let __s = __s.to_rust_string_lossy(__scope);
             match __s.as_str() {
@@ -95,30 +95,30 @@ impl<'a> ::deno_core::convert::FromV8<'a> for SerdeEnum {
                 }
             }
         }
-        let __obj: ::deno_core::v8::Local<::deno_core::v8::Object> = match __value
+        let __obj: ::ende_core::v8::Local<::ende_core::v8::Object> = match __value
             .try_into()
         {
             Ok(obj) => obj,
             Err(err) => {
                 return Err(
                     ::deno_error::JsErrorBox::from_err(
-                        ::deno_core::error::DataError::from(err),
+                        ::ende_core::error::DataError::from(err),
                     ),
                 );
             }
         };
         {
-            let __key = ::deno_core::v8::String::new_from_one_byte(
+            let __key = ::ende_core::v8::String::new_from_one_byte(
                     __scope,
                     "withSerde".as_bytes(),
-                    ::deno_core::v8::NewStringType::Internalized,
+                    ::ende_core::v8::NewStringType::Internalized,
                 )
                 .unwrap()
                 .into();
             if let Some(__inner) = __obj.get(__scope, __key) && !__inner.is_undefined() {
                 return Ok(
                     Self::WithSerde(
-                        ::deno_core::serde_v8::from_v8(__scope, __inner)
+                        ::ende_core::serde_v8::from_v8(__scope, __inner)
                             .map_err(::deno_error::JsErrorBox::from_err)?,
                     ),
                 );

@@ -8,7 +8,7 @@ edition.workspace = true
 license.workspace = true
 readme = "README.md"
 repository.workspace = true
-description = "DEPRECATED: Use deno_web instead"
+description = "DEPRECATED: Use ende_web instead"
 
 [lib]
 path = "lib.rs"

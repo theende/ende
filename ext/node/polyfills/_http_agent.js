@@ -6,27 +6,27 @@ import { op_get_env_no_permission_check } from "ext:core/ops";
 import * as net from "node:net";
 import httpProxy from "node:_http_proxy";
 const lazyTls = core.createLazyLoader("node:tls");
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 const { debuglog } = core.loadExtScript(
-  "ext:deno_node/internal/util/debuglog.ts",
+  "ext:ende_node/internal/util/debuglog.ts",
 );
 let debug = debuglog("http", (fn) => {
   debug = fn;
 });
-const { AsyncResource } = core.loadExtScript("ext:deno_node/async_hooks.ts");
+const { AsyncResource } = core.loadExtScript("ext:ende_node/async_hooks.ts");
 const {
   emitDestroy,
   emitInit,
   executionAsyncId,
   symbols,
-} = core.loadExtScript("ext:deno_node/internal/async_hooks.ts");
+} = core.loadExtScript("ext:ende_node/internal/async_hooks.ts");
 const { async_id_symbol } = symbols;
-const { once } = core.loadExtScript("ext:deno_node/internal/util.mjs");
+const { once } = core.loadExtScript("ext:ende_node/internal/util.mjs");
 const {
   validateNumber,
   validateOneOf,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 
 const {
   ArrayPrototypeIncludes,

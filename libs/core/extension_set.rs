@@ -56,7 +56,7 @@ pub fn init_ops(
   #[cfg(debug_assertions)]
   check_extensions_dependencies(extensions);
 
-  // One entry per extension (plus deno_core's own table), each holding that
+  // One entry per extension (plus ende_core's own table), each holding that
   // extension's ops in registration order.
   let mut ops = Vec::with_capacity(extensions.len() + 1);
 
@@ -66,7 +66,7 @@ pub fn init_ops(
     .sum::<usize>();
   let mut op_methods = Vec::with_capacity(no_of_methods);
 
-  // Collect all middlewares - deno_core extension must not have a middleware!
+  // Collect all middlewares - ende_core extension must not have a middleware!
   let middlewares: Vec<Box<OpMiddlewareFn>> = extensions
     .iter_mut()
     .filter_map(|e| e.take_middleware())

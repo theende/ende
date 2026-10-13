@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 
-use deno_config::deno_json::ConfigFile;
-use deno_core::error::AnyError;
+use ende_config::deno_json::ConfigFile;
+use ende_core::error::AnyError;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 
@@ -24,7 +24,7 @@ pub fn default_tarball_filename(
     .json
     .name
     .as_ref()
-    .ok_or_else(|| deno_core::anyhow::anyhow!("Missing name"))?;
+    .ok_or_else(|| ende_core::anyhow::anyhow!("Missing name"))?;
   // Convert @scope/name to scope-name
   let normalized = name.replace('@', "").replace('/', "-");
   // The package name shape is checked against `@scope/name` higher up
@@ -34,7 +34,7 @@ pub fn default_tarball_filename(
   // tarball name that contains `..` or path separators so we never
   // escape the cwd regardless of upstream validation drift.
   if normalized.contains("..") || normalized.contains('/') {
-    return Err(deno_core::anyhow::anyhow!(
+    return Err(ende_core::anyhow::anyhow!(
       "refusing to write tarball with unsafe name derived from package: {}",
       name
     ));

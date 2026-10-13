@@ -2,11 +2,11 @@
 
 use std::borrow::Cow;
 
-use deno_cache_dir::npm::mixed_case_package_name_decode;
-use deno_cache_dir::npm::mixed_case_package_name_encode;
-use deno_npm::NpmPackageCacheFolderId;
 use deno_semver::StackString;
 use deno_semver::package::PackageNv;
+use ende_cache_dir::npm::mixed_case_package_name_decode;
+use ende_cache_dir::npm::mixed_case_package_name_encode;
+use ende_npm::NpmPackageCacheFolderId;
 
 #[inline]
 pub fn get_package_folder_id_folder_name(
@@ -73,8 +73,8 @@ pub fn normalize_pkg_name_for_node_modules_deno_folder(
 
 #[cfg(test)]
 mod test {
-  use deno_npm::NpmPackageCacheFolderId;
   use deno_semver::package::PackageNv;
+  use ende_npm::NpmPackageCacheFolderId;
 
   use super::*;
 

@@ -3,7 +3,7 @@
 // Remove Intl.v8BreakIterator because it is a non-standard API.
 delete Intl.v8BreakIterator;
 
-const internalConsole = core.loadExtScript("ext:deno_web/01_console.js");
+const internalConsole = core.loadExtScript("ext:ende_web/01_console.js");
 import { core, internals, primordials } from "ext:core/mod.js";
 const ops = core.ops;
 import {
@@ -84,11 +84,11 @@ const {
 let _serveMod;
 const lazyServeMod = () =>
   _serveMod ??
-    (_serveMod = core.loadExtScript("ext:deno_http/00_serve.ts"));
-const event = core.loadExtScript("ext:deno_web/02_event.js");
-const location = core.loadExtScript("ext:deno_web/12_location.js");
+    (_serveMod = core.loadExtScript("ext:ende_http/00_serve.ts"));
+const event = core.loadExtScript("ext:ende_web/02_event.js");
+const location = core.loadExtScript("ext:ende_web/12_location.js");
 const version = core.loadExtScript("ext:runtime/01_version.ts");
-const os = core.loadExtScript("ext:deno_os/30_os.js");
+const os = core.loadExtScript("ext:ende_os/30_os.js");
 const {
   getConsoleInspectOptions,
   getDefaultInspectOptions,
@@ -96,28 +96,28 @@ const {
   inspectArgs,
   quoteString,
   setNoColorFns,
-} = core.loadExtScript("ext:deno_web/01_console.js");
-const performance = core.loadExtScript("ext:deno_web/15_performance.js");
-const url = core.loadExtScript("ext:deno_web/00_url.js");
+} = core.loadExtScript("ext:ende_web/01_console.js");
+const performance = core.loadExtScript("ext:ende_web/15_performance.js");
+const url = core.loadExtScript("ext:ende_web/00_url.js");
 // 26_fetch pulls 22_body -> 06_streams (208 KB). The only thing 99_main
 // needs from it at bootstrap is the wasm-streaming callback registration -
 // wrap that so the actual module loads on first WebAssembly streaming use.
 let _fetchMod;
 const lazyFetchMod = () =>
   _fetchMod ??
-    (_fetchMod = core.loadExtScript("ext:deno_fetch/26_fetch.js"));
-const messagePort = core.loadExtScript("ext:deno_web/13_message_port.js");
+    (_fetchMod = core.loadExtScript("ext:ende_fetch/26_fetch.js"));
+const messagePort = core.loadExtScript("ext:ende_web/13_message_port.js");
 import {
   denoNs,
   denoNsUnstableById,
   unstableIds,
 } from "ext:runtime/90_deno_ns.js";
 const { errors } = core.loadExtScript("ext:runtime/01_errors.js");
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const {
   DOMException,
   QuotaExceededError,
-} = core.loadExtScript("ext:deno_web/01_dom_exception.js");
+} = core.loadExtScript("ext:ende_web/01_dom_exception.js");
 import {
   unstableForWindowOrWorkerGlobalScope,
   windowOrWorkerGlobalScope,
@@ -129,7 +129,7 @@ import {
 import {
   workerRuntimeGlobalProperties,
 } from "ext:runtime/98_global_scope_worker.js";
-const { SymbolMetadata } = core.loadExtScript("ext:deno_web/00_infra.js");
+const { SymbolMetadata } = core.loadExtScript("ext:ende_web/00_infra.js");
 // Telemetry (~2000 LOC, ~70 KB of bytecode + V8 heap) is only needed when an
 // OTEL config flag is set, but it was being loaded unconditionally at snapshot
 // build time. Skip the load on the cold-start path; only enter the module
@@ -150,7 +150,7 @@ function bootstrapOtel(otelConfig) {
   ) {
     return;
   }
-  const { bootstrap } = core.loadExtScript("ext:deno_telemetry/telemetry.ts");
+  const { bootstrap } = core.loadExtScript("ext:ende_telemetry/telemetry.ts");
   bootstrap(otelConfig);
 }
 
@@ -918,7 +918,7 @@ function disableProtoAccessor() {
 // The TC39 arraybuffer-base64 methods land on Uint8Array.prototype during
 // V8's InstallConditionalFeatures, after snapshot deserialization, so the
 // snapshotted primordials cannot include them. Capture them here, before any
-// user code runs, for ext:deno_node/internal/buffer.mjs; when a method is
+// user code runs, for ext:ende_node/internal/buffer.mjs; when a method is
 // unavailable the slot stays undefined and the consumer uses its JS codec.
 // TODO(tomas-zijdemans): move these to primordials once V8 ships the methods
 // unconditionally (no --js-arraybuffer-base64 flag).

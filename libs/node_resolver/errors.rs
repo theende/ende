@@ -6,8 +6,8 @@ use std::path::PathBuf;
 
 use boxed_error::Boxed;
 use deno_error::JsError;
-use deno_package_json::MissingPkgJsonNameError;
 use deno_path_util::UrlToFilePathError;
+use ende_package_json::MissingPkgJsonNameError;
 use thiserror::Error;
 use url::Url;
 
@@ -539,7 +539,7 @@ impl NodeJsErrorCoded for TypesNotFoundError {
 #[derive(Debug, Error, JsError)]
 #[class(inherit)]
 #[error("[{}] Invalid package config. {}", self.code(), .0)]
-pub struct PackageJsonLoadError(pub deno_package_json::PackageJsonLoadError);
+pub struct PackageJsonLoadError(pub ende_package_json::PackageJsonLoadError);
 
 impl NodeJsErrorCoded for PackageJsonLoadError {
   fn code(&self) -> NodeJsErrorCode {

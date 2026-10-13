@@ -8,9 +8,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
-use deno_core::futures::future::LocalBoxFuture;
 use deno_task_shell::ExecutableCommand;
 use deno_task_shell::ExecuteResult;
 use deno_task_shell::KillSignal;
@@ -18,6 +15,9 @@ use deno_task_shell::ShellCommand;
 use deno_task_shell::ShellCommandContext;
 use deno_task_shell::ShellPipeReader;
 use deno_task_shell::ShellPipeWriter;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_core::futures::future::LocalBoxFuture;
 use tokio::task::JoinHandle;
 use tokio::task::LocalSet;
 use tokio_util::sync::CancellationToken;
@@ -629,7 +629,7 @@ pub async fn run_future_forwarding_signals<TOutput>(
     future: impl std::future::Future<Output = ()> + 'static,
     token: CancellationToken,
   ) {
-    deno_core::unsync::spawn(async move {
+    ende_core::unsync::spawn(async move {
       tokio::select! {
         _ = future => {}
         _ = token.cancelled() => {}
@@ -667,7 +667,7 @@ async fn listen_ctrl_c(
   kill_signal: KillSignal,
   saved_terminal_mode: crate::util::console::SavedTerminalMode,
 ) {
-  while let Ok(()) = deno_signals::ctrl_c().await {
+  while let Ok(()) = ende_signals::ctrl_c().await {
     // On windows, ctrl+c is sent to the process group, so the signal would
     // have already been sent to the child process. We still want to listen
     // for ctrl+c here to keep the process alive when receiving it, but no
@@ -687,8 +687,8 @@ async fn listen_ctrl_c(
 
 #[cfg(unix)]
 async fn listen_and_forward_all_signals(kill_signal: KillSignal) {
-  use deno_core::futures::FutureExt;
-  use deno_signals::SIGNAL_NUMS;
+  use ende_core::futures::FutureExt;
+  use ende_signals::SIGNAL_NUMS;
 
   // listen and forward every signal we support
   let mut futures = Vec::with_capacity(SIGNAL_NUMS.len());
@@ -700,7 +700,7 @@ async fn listen_and_forward_all_signals(kill_signal: KillSignal) {
     let kill_signal = kill_signal.clone();
     futures.push(
       async move {
-        let Ok(mut stream) = deno_signals::signal_stream(signo) else {
+        let Ok(mut stream) = ende_signals::signal_stream(signo) else {
           return;
         };
         let signal_kind: deno_task_shell::SignalKind = signo.into();
@@ -711,7 +711,7 @@ async fn listen_and_forward_all_signals(kill_signal: KillSignal) {
       .boxed_local(),
     )
   }
-  deno_core::futures::future::join_all(futures).await;
+  ende_core::futures::future::join_all(futures).await;
 }
 
 #[cfg(test)]

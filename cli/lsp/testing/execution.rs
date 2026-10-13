@@ -8,19 +8,19 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
-use deno_core::ModuleSpecifier;
-use deno_core::anyhow::anyhow;
-use deno_core::error::AnyError;
-use deno_core::error::JsError;
-use deno_core::futures::StreamExt;
-use deno_core::futures::future;
-use deno_core::futures::stream;
-use deno_core::parking_lot::RwLock;
-use deno_core::unsync::spawn;
-use deno_core::unsync::spawn_blocking;
-use deno_runtime::deno_permissions::Permissions;
-use deno_runtime::deno_permissions::PermissionsContainer;
-use deno_runtime::tokio_util::create_and_run_current_thread;
+use ende_core::ModuleSpecifier;
+use ende_core::anyhow::anyhow;
+use ende_core::error::AnyError;
+use ende_core::error::JsError;
+use ende_core::futures::StreamExt;
+use ende_core::futures::future;
+use ende_core::futures::stream;
+use ende_core::parking_lot::RwLock;
+use ende_core::unsync::spawn;
+use ende_core::unsync::spawn_blocking;
+use ende_runtime::ende_permissions::Permissions;
+use ende_runtime::ende_permissions::PermissionsContainer;
+use ende_runtime::tokio_util::create_and_run_current_thread;
 use indexmap::IndexMap;
 use tokio_util::sync::CancellationToken;
 use tower_lsp::lsp_types as lsp;
@@ -598,7 +598,7 @@ fn collect_test_task_env_files(
   config_tree: &config::ConfigTree,
 ) -> Vec<PathBuf> {
   let mut env_files = Vec::new();
-  let mut seen_scopes: HashSet<Arc<deno_core::url::Url>> = HashSet::new();
+  let mut seen_scopes: HashSet<Arc<ende_core::url::Url>> = HashSet::new();
   let mut seen_env_files: HashSet<PathBuf> = HashSet::new();
   for specifier in queue {
     let Some(data) = config_tree.data_for_specifier(specifier) else {
@@ -1066,7 +1066,7 @@ impl LspTestReporter {
 
 #[cfg(test)]
 mod tests {
-  use deno_core::serde_json::json;
+  use ende_core::serde_json::json;
 
   use super::*;
   use crate::lsp::testing::collectors::tests::new_range;

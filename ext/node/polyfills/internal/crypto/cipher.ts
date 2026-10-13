@@ -57,7 +57,7 @@ const {
   op_node_validate_oaep_hash,
 } = core.ops;
 
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 
 const lazyStream = core.createLazyLoader("node:stream");
 
@@ -65,38 +65,38 @@ const {
   createPrivateKey,
   createPublicKey,
   getArrayBufferOrView,
-} = core.loadExtScript("ext:deno_node/internal/crypto/keys.ts");
+} = core.loadExtScript("ext:ende_node/internal/crypto/keys.ts");
 const { isKeyObject } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/_keys.ts",
+  "ext:ende_node/internal/crypto/_keys.ts",
 );
 const { kHandle } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/constants.ts",
+  "ext:ende_node/internal/crypto/constants.ts",
 );
 const { getDefaultEncoding } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/util.ts",
+  "ext:ende_node/internal/crypto/util.ts",
 );
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
   ERR_UNKNOWN_ENCODING,
   NodeError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const {
   isAnyArrayBuffer,
   isArrayBufferView,
   isTypedArray,
-} = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+} = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 const { ERR_CRYPTO_INVALID_STATE, ERR_CRYPTO_UNKNOWN_CIPHER } = core
   .loadExtScript(
-    "ext:deno_node/internal/errors.ts",
+    "ext:ende_node/internal/errors.ts",
   );
 const { StringDecoder } = core.loadExtScript(
-  "ext:deno_node/string_decoder.ts",
+  "ext:ende_node/string_decoder.ts",
 );
-const { default: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+const { default: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 const { normalizeEncoding } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 
 let Transform;

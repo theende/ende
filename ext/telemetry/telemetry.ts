@@ -26,7 +26,7 @@ const {
   OtelMeter,
   OtelTracer,
 } = core.ops;
-const { Console } = core.loadExtScript("ext:deno_web/01_console.js");
+const { Console } = core.loadExtScript("ext:ende_web/01_console.js");
 
 const {
   ArrayFrom,

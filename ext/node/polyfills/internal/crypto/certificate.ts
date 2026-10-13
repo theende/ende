@@ -8,9 +8,9 @@ const {
   op_node_cert_export_public_key,
   op_node_verify_spkac,
 } = core.ops;
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const { getArrayBufferOrView } = core.loadExtScript(
-  "ext:deno_node/internal/crypto/keys.ts",
+  "ext:ende_node/internal/crypto/keys.ts",
 );
 
 // The functions contained in this file cover the SPKAC format

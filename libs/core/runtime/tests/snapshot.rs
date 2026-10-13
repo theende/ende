@@ -344,7 +344,7 @@ fn es_snapshot() {
   #[allow(deprecated, reason = "TODO: document")]
   let val = futures::executor::block_on(runtime3.resolve_value(val)).unwrap();
   {
-    deno_core::scope!(scope, runtime3);
+    ende_core::scope!(scope, runtime3);
     let value = v8::Local::new(scope, val);
     let str_ = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
     assert_eq!(str_, "hello world test");
@@ -355,7 +355,7 @@ fn es_snapshot() {
 pub(crate) fn es_snapshot_without_runtime_module_loader() {
   let _snapshot_lock = super::snapshot_test_lock();
   let startup_data = {
-    deno_core::extension!(
+    ende_core::extension!(
       module_snapshot,
       esm_entry_point = "ext:module_snapshot/test.js",
       esm = ["ext:module_snapshot/test.js" =
@@ -381,7 +381,7 @@ pub(crate) fn es_snapshot_without_runtime_module_loader() {
 
   // Make sure the module was evaluated.
   {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let global_test: v8::Local<v8::String> =
       JsRuntime::eval(scope, "globalThis.TEST").unwrap();
     assert_eq!(
@@ -439,7 +439,7 @@ pub fn snapshot_with_additional_extensions() {
     "after".to_owned()
   }
 
-  deno_core::extension!(
+  ende_core::extension!(
     before_snapshot,
     ops = [op_before],
     esm_entry_point = "ext:module_snapshot/before.js",
@@ -447,7 +447,7 @@ pub fn snapshot_with_additional_extensions() {
       // If this throws, we accidentally tried to evaluate this module twice
       { source = "if (globalThis.before) { throw 'twice?' } globalThis.before = () => { globalThis.BEFORE = Deno.core.ops.op_before(); };" },]
   );
-  deno_core::extension!(
+  ende_core::extension!(
     after_snapshot,
     ops = [op_after],
     esm_entry_point = "ext:module_snapshot/after.js",
@@ -474,7 +474,7 @@ pub fn snapshot_with_additional_extensions() {
 
   // Make sure the module was evaluated.
   {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let global_test: v8::Local<v8::String> =
       JsRuntime::eval(scope, "globalThis.BEFORE + '/' + globalThis.AFTER")
         .unwrap();
@@ -489,7 +489,7 @@ pub fn snapshot_with_additional_extensions() {
 fn lazy_loaded_esm_not_snapshotted_but_metadata_survives() {
   let _snapshot_lock = super::snapshot_test_lock();
   let snapshot = {
-    deno_core::extension!(
+    ende_core::extension!(
       test_ext,
       lazy_loaded_esm =
         ["custom:lazy_mod" = { source = "export const value = 'lazy';" },]
@@ -519,7 +519,7 @@ fn lazy_loaded_esm_not_snapshotted_but_metadata_survives() {
   // When loading from the snapshot, the lazy ESM module should NOT
   // be in the module map (not compiled/instantiated), but the metadata
   // should be present in known_lazy_esm.
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     lazy_loaded_esm =
       ["custom:lazy_mod" = { source = "export const value = 'lazy';" },]

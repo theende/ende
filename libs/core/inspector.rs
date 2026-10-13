@@ -1963,7 +1963,7 @@ impl InspectorSession {
   {
     let sessions = self.state.sessions.clone();
     let send = self.state.send.clone();
-    deno_core::unsync::spawn(async move {
+    ende_core::unsync::spawn(async move {
       let sessions = sessions.borrow();
       for ts in sessions.target_sessions.values() {
         f(ts, &|msg| send(msg));
@@ -2187,7 +2187,7 @@ async fn pump_inspector_session_messages(
           let call_id = id.as_i64().unwrap_or(0) as i32;
           let send = session.state.send.clone();
           let sessions = session.state.sessions.clone();
-          deno_core::unsync::spawn(async move {
+          ende_core::unsync::spawn(async move {
             let sessions = sessions.borrow();
             let target_infos = sessions
               .target_sessions
@@ -2214,7 +2214,7 @@ async fn pump_inspector_session_messages(
           let call_id = id.as_i64().unwrap_or(0) as i32;
           let send = session.state.send.clone();
           let sessions = session.state.sessions.clone();
-          deno_core::unsync::spawn(async move {
+          ende_core::unsync::spawn(async move {
             let target_session =
               sessions.borrow().target_session_by_target_id(&target_id);
             let content = if let Some(ts) = target_session {
@@ -2245,7 +2245,7 @@ async fn pump_inspector_session_messages(
       "Target.detachFromTarget" => {
         let session_id = get_str_param(&params, "sessionId");
         let sessions = session.state.sessions.clone();
-        deno_core::unsync::spawn(async move {
+        ende_core::unsync::spawn(async move {
           if let Some(ts) = sessions.borrow().target_sessions.get(&session_id) {
             ts.attached.set(false);
           }
@@ -2263,7 +2263,7 @@ async fn pump_inspector_session_messages(
           .auto_attach_wait_for_debugger_on_start
           .set(wait_for_debugger_on_start);
         if auto_attach {
-          deno_core::unsync::spawn(async move {
+          ende_core::unsync::spawn(async move {
             let sessions = sessions.borrow();
             for ts in sessions.target_sessions.values() {
               if ts.attached.replace(true) {

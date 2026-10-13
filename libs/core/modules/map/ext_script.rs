@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_core::error::CoreError;
 use deno_error::JsErrorBox;
+use ende_core::error::CoreError;
 
 use super::CodeCacheInfo;
 use super::ModuleMap;

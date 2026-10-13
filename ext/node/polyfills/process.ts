@@ -5,12 +5,12 @@ import { core, internals, primordials } from "ext:core/mod.js";
 // Installs `internals.__inspectorNetwork` so ext/fetch (and other
 // extensions) can emit Network.* CDP events without requiring user code
 // to import `node:inspector`. Side-effect import; no exports.
-core.loadExtScript("ext:deno_node/inspector_network_bridge.js");
+core.loadExtScript("ext:ende_node/inspector_network_bridge.js");
 const { initializeDebugEnv } = core.loadExtScript(
-  "ext:deno_node/internal/util/debuglog.ts",
+  "ext:ende_node/internal/util/debuglog.ts",
 );
 const { format } = core.loadExtScript(
-  "ext:deno_node/internal/util/inspect.mjs",
+  "ext:ende_node/internal/util/inspect.mjs",
 );
 import {
   op_current_thread_cpu_usage,
@@ -34,7 +34,7 @@ import {
   op_stream_base_register_state,
 } from "ext:core/ops";
 
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 // Lazy: a static `import ... from "node:module"` makes node:process eagerly
 // pull node:module's entire eager closure (~95 loadExtScript) at process
 // bootstrap. When node:process is itself cold-bootstrapping (node-defer path),
@@ -43,10 +43,10 @@ const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
 // are only used at call time, so load node:module lazily on first use.
 const lazyNodeModule = core.createLazyLoader("node:module");
 const { report } = core.loadExtScript(
-  "ext:deno_node/internal/process/report.ts",
+  "ext:ende_node/internal/process/report.ts",
 );
 const { onWarning } = core.loadExtScript(
-  "ext:deno_node/internal/process/warning.ts",
+  "ext:ende_node/internal/process/warning.ts",
 );
 const {
   parseFileMode,
@@ -55,7 +55,7 @@ const {
   validateObject,
   validateString,
   validateUint32,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const {
   denoErrorToNodeError,
   ERR_INVALID_ARG_TYPE,
@@ -66,13 +66,13 @@ const {
   ERR_WORKER_UNSUPPORTED_OPERATION,
   errnoException,
   NodeTypeError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const { getOptionValue } = core.loadExtScript(
-  "ext:deno_node/internal/options.ts",
+  "ext:ende_node/internal/options.ts",
 );
-const { default: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+const { default: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 import { join } from "node:path";
-const { pathFromURL } = core.loadExtScript("ext:deno_web/00_infra.js");
+const { pathFromURL } = core.loadExtScript("ext:ende_web/00_infra.js");
 const {
   arch: arch_,
   chdir,
@@ -81,8 +81,8 @@ const {
   nextTick: _nextTick,
   version,
   versions,
-} = core.loadExtScript("ext:deno_node/_process/process.ts");
-const { _exiting } = core.loadExtScript("ext:deno_node/_process/exiting.ts");
+} = core.loadExtScript("ext:ende_node/_process/process.ts");
+const { _exiting } = core.loadExtScript("ext:ende_node/_process/exiting.ts");
 export { _nextTick as nextTick, chdir, cwd, env, version, versions };
 // Lazily load the stream/tty machinery. Static imports here would pin
 // `node:stream`, `node:net` and `node:tty` (TTYWriteStream extends net.Socket)
@@ -92,15 +92,15 @@ export { _nextTick as nextTick, chdir, cwd, env, version, versions };
 // the stream/net/tty closure into the heap - the single biggest chunk of node
 // snapshot-deserialization time.
 const lazyStreamsMod = core.createLazyLoader(
-  "ext:deno_node/_process/streams.mjs",
+  "ext:ende_node/_process/streams.mjs",
 );
-const lazyTtyMod = core.createLazyLoader("ext:deno_node/internal/tty.js");
-const { enableNextTick } = core.loadExtScript("ext:deno_node/_next_tick.ts");
+const lazyTtyMod = core.createLazyLoader("ext:ende_node/internal/tty.js");
+const { enableNextTick } = core.loadExtScript("ext:ende_node/_next_tick.ts");
 const { isAndroid, isWindows } = core.loadExtScript(
-  "ext:deno_node/_util/os.ts",
+  "ext:ende_node/_util/os.ts",
 );
-const io = core.loadExtScript("ext:deno_io/12_io.js");
-const denoOs = core.loadExtScript("ext:deno_os/30_os.js");
+const io = core.loadExtScript("ext:ende_io/12_io.js");
+const denoOs = core.loadExtScript("ext:ende_os/30_os.js");
 
 export let argv0 = "";
 
@@ -115,29 +115,29 @@ let stdin, stdout, stderr;
 
 export { stderr, stdin, stdout };
 
-import { getBinding } from "ext:deno_node/internal_binding/mod.ts";
+import { getBinding } from "ext:ende_node/internal_binding/mod.ts";
 const constants = core.loadExtScript(
-  "ext:deno_node/internal_binding/constants.ts",
+  "ext:ende_node/internal_binding/constants.ts",
 );
-const uv = core.loadExtScript("ext:deno_node/internal_binding/uv.ts");
-import type { BindingName } from "ext:deno_node/internal_binding/mod.ts";
+const uv = core.loadExtScript("ext:ende_node/internal_binding/uv.ts");
+import type { BindingName } from "ext:ende_node/internal_binding/mod.ts";
 const { buildAllowedFlags } = core.loadExtScript(
-  "ext:deno_node/internal/process/per_thread.mjs",
+  "ext:ende_node/internal/process/per_thread.mjs",
 );
 const {
   getActiveHandles,
   getActiveRequests,
   getActiveResourceNames,
-} = core.loadExtScript("ext:deno_node/internal/process/active_resources.ts");
+} = core.loadExtScript("ext:ende_node/internal/process/active_resources.ts");
 const {
   getActiveResourcesInfo: getTimerActiveResourcesInfo,
-} = core.loadExtScript("ext:deno_node/internal/timers.mjs");
-import type fsUtils from "ext:deno_node/internal/fs/utils.mjs";
-import type * as utilModule from "ext:deno_node/util.ts";
+} = core.loadExtScript("ext:ende_node/internal/timers.mjs");
+import type fsUtils from "ext:ende_node/internal/fs/utils.mjs";
+import type * as utilModule from "ext:ende_node/util.ts";
 
 let fsUtilsModule: typeof fsUtils;
 const lazyLoadFsUtils = core.createLazyLoader<typeof fsUtils>(
-  "ext:deno_node/internal/fs/utils.mjs",
+  "ext:ende_node/internal/fs/utils.mjs",
 );
 // Lazy-loaded to avoid a static circular import:
 //   process.ts -> util.ts -> internal/util/parse_args/parse_args.js
@@ -1852,7 +1852,7 @@ internals.__bootstrapNodeProcess = function (
     // it. It is self-contained (no node:module), so run it here as part of the
     // process bootstrap that node:process triggers on first node:* use.
     const { streamBaseState } = core.loadExtScript(
-      "ext:deno_node/internal_binding/stream_wrap.ts",
+      "ext:ende_node/internal_binding/stream_wrap.ts",
     );
     op_stream_base_register_state(streamBaseState);
     argv0 = argv0Val || "";
@@ -1929,7 +1929,7 @@ internals.__bootstrapNodeProcess = function (
         stderr = v;
       },
     });
-    core.loadExtScript("ext:deno_node/internal/console/constructor.mjs")
+    core.loadExtScript("ext:ende_node/internal/console/constructor.mjs")
       .bindStreamsLazy(globalThis.console, process);
 
     arch = arch_();

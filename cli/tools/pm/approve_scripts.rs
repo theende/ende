@@ -5,12 +5,6 @@ use std::fmt::Write as _;
 use std::sync::Arc;
 
 use console_static_text::TextItem;
-use deno_config::deno_json::AllowScriptsConfig;
-use deno_config::deno_json::AllowScriptsValueConfig;
-use deno_core::anyhow;
-use deno_core::anyhow::Context;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
 use deno_path_util::url_to_file_path;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::jsr::JsrDepPackageReqParseError;
@@ -18,6 +12,12 @@ use deno_semver::package::PackageKind;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
 use deno_terminal::colors;
+use ende_config::deno_json::AllowScriptsConfig;
+use ende_config::deno_json::AllowScriptsValueConfig;
+use ende_core::anyhow;
+use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
 use jsonc_parser::json;
 
 use super::CacheTopLevelDepsOptions;
@@ -188,7 +188,7 @@ fn parse_user_packages(
 
 fn find_script_candidates(
   npm_resolver: &CliNpmResolver,
-  system_info: &deno_npm::NpmSystemInfo,
+  system_info: &ende_npm::NpmSystemInfo,
   allow_list: &[JsrDepPackageReq],
   deny_list: &[PackageReq],
 ) -> Result<Vec<ScriptCandidate>, AnyError> {

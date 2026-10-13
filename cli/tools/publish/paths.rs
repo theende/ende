@@ -7,9 +7,9 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use deno_ast::ModuleSpecifier;
-use deno_config::glob::FileCollector;
-use deno_config::glob::FilePatterns;
-use deno_core::error::AnyError;
+use ende_config::glob::FileCollector;
+use ende_config::glob::FilePatterns;
+use ende_core::error::AnyError;
 use thiserror::Error;
 
 use super::diagnostics::PublishDiagnostic;

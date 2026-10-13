@@ -41,11 +41,11 @@ const {
   TypeError,
   decodeURIComponent,
 } = primordials;
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_PROXY_INVALID_CONFIG,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 // Lowercase keys that we look for, in priority order (lowercase
 // first to match Node's `http_proxy` > `HTTP_PROXY` precedence).

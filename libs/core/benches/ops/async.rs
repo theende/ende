@@ -8,11 +8,11 @@
 use std::ffi::c_void;
 
 use bencher::*;
-use deno_core::*;
 use deno_error::JsErrorBox;
+use ende_core::*;
 use tokio::runtime::Runtime;
 
-deno_core::extension!(
+ende_core::extension!(
   testing,
   ops = [
     op_void,
@@ -155,7 +155,7 @@ fn bench_op(
   #[allow(deprecated, reason = "bench code")]
   let bench = tokio.block_on(runtime.resolve_value(run)).unwrap();
   let bench = {
-    deno_core::scope!(scope, &mut runtime);
+    ende_core::scope!(scope, &mut runtime);
     let bench: v8::Local<v8::Function> =
       v8::Local::new(scope, bench).try_into().unwrap();
 

@@ -7,14 +7,14 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use deno_npm::registry::NpmPackageInfo;
-use deno_npm::registry::NpmRegistryApi;
-use deno_npm::registry::NpmRegistryPackageInfoLoadError;
-use deno_npm::registry::TestNpmRegistryApi;
-use deno_npm::resolution::AddPkgReqsOptions;
-use deno_npm::resolution::NpmResolutionSnapshot;
-use deno_npm::resolution::NpmVersionResolver;
 use deno_semver::package::PackageReq;
+use ende_npm::registry::NpmPackageInfo;
+use ende_npm::registry::NpmRegistryApi;
+use ende_npm::registry::NpmRegistryPackageInfoLoadError;
+use ende_npm::registry::TestNpmRegistryApi;
+use ende_npm::resolution::AddPkgReqsOptions;
+use ende_npm::resolution::NpmResolutionSnapshot;
+use ende_npm::resolution::NpmVersionResolver;
 use reqwest::StatusCode;
 
 fn main() {

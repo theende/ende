@@ -21,7 +21,7 @@ const {
   strict,
   strictEqual,
   throws,
-} = core.loadExtScript("ext:deno_node/assert.ts");
+} = core.loadExtScript("ext:ende_node/assert.ts");
 
 export {
   AssertionError,

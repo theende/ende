@@ -24,7 +24,7 @@ const {
 let _streamsImpl;
 function lazyStreams() {
   return _streamsImpl ??
-    (_streamsImpl = core.loadExtScript("ext:deno_web/06_streams.js"));
+    (_streamsImpl = core.loadExtScript("ext:ende_web/06_streams.js"));
 }
 
 // Seek whence values.

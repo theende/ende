@@ -9,8 +9,8 @@ pub use r#gen::UNSTABLE_ENV_VAR_NAMES;
 pub use r#gen::UNSTABLE_FEATURES;
 pub use structs::UnstableFeatureKind;
 
-pub const JS_SOURCE: deno_core::FastStaticString =
-  deno_core::ascii_str_include!("./gen.js");
+pub const JS_SOURCE: ende_core::FastStaticString =
+  ende_core::ascii_str_include!("./gen.js");
 
 pub type ExitCb = Box<dyn Fn(&str, &str) + Send + Sync>;
 

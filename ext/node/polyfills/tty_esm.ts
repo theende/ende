@@ -3,8 +3,8 @@
 import { core, primordials } from "ext:core/mod.js";
 import { op_tty_check_fd_permission, TTY } from "ext:core/ops";
 import { Socket } from "node:net";
-import { setReadStream } from "ext:deno_node/_process/streams.mjs";
-import { WriteStream } from "ext:deno_node/internal/tty.js";
+import { setReadStream } from "ext:ende_node/_process/streams.mjs";
+import { WriteStream } from "ext:ende_node/internal/tty.js";
 
 const {
   FunctionPrototypeCall,
@@ -14,9 +14,9 @@ const {
 const {
   ERR_INVALID_FD,
   ERR_TTY_INIT_FAILED,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
-const { isatty } = core.loadExtScript("ext:deno_node/tty.js");
+const { isatty } = core.loadExtScript("ext:ende_node/tty.js");
 
 // ReadStream needs to be callable without `new` to match Node.js behavior.
 // We use a wrapper function that delegates to the actual class.

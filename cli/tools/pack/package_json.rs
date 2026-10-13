@@ -3,10 +3,10 @@
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 
-use deno_config::deno_json::ConfigFile;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::serde_json::json;
+use ende_config::deno_json::ConfigFile;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::serde_json::json;
 use serde::Serialize;
 
 use super::ProcessedFile;
@@ -65,7 +65,7 @@ pub fn generate_package_json(
     .json
     .name
     .as_ref()
-    .ok_or_else(|| deno_core::anyhow::anyhow!("Missing name in config"))?;
+    .ok_or_else(|| ende_core::anyhow::anyhow!("Missing name in config"))?;
 
   let dts_set = dts_available_set(files);
 
@@ -177,7 +177,7 @@ fn convert_exports(
     return Ok(serde_json::Value::Object(result));
   }
 
-  deno_core::anyhow::bail!(
+  ende_core::anyhow::bail!(
     "unsupported 'exports' shape in deno.json: expected a string or object, got {}",
     exports
   )

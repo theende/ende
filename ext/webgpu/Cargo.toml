@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_webgpu"
+name = "ende_webgpu"
 version = "0.226.0"
 authors.workspace = true
 edition.workspace = true
@@ -19,7 +19,7 @@ path = "lib.rs"
 wgpu-core = { workspace = true, features = ["trace", "replay", "serde", "strict_asserts", "wgsl", "gles"] }
 wgpu-types = { workspace = true, features = ["serde", "std"] }
 
-deno_core.workspace = true
+ende_core.workspace = true
 deno_error.workspace = true
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["full"] }
@@ -27,7 +27,7 @@ raw-window-handle.workspace = true
 thiserror.workspace = true
 indexmap.workspace = true
 serde_json.workspace = true
-deno_image.workspace = true
+ende_image.workspace = true
 
 # Apple Platforms
 #

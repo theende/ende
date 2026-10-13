@@ -24,15 +24,15 @@ const {
 const { build, createLazyLoader } = core;
 
 const { nextTick: _nextTick } = core.loadExtScript(
-  "ext:deno_node/_next_tick.ts",
+  "ext:ende_node/_next_tick.ts",
 );
-const { _exiting } = core.loadExtScript("ext:deno_node/_process/exiting.ts");
-const fs = core.loadExtScript("ext:deno_fs/30_fs.js");
+const { _exiting } = core.loadExtScript("ext:ende_node/_process/exiting.ts");
+const fs = core.loadExtScript("ext:ende_fs/30_fs.js");
 const {
   denoErrorToNodeError,
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_OBJECT_DEFINE_PROPERTY,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const loadProcess = createLazyLoader<NodeJS.Process>("node:process");
 let nodeProcess: NodeJS.Process | undefined;

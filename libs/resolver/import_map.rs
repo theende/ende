@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use deno_config::workspace::WorkspaceRc;
+use ende_config::workspace::WorkspaceRc;
 
 #[derive(Debug, Clone)]
 pub struct ExternalImportMap {
@@ -13,7 +13,7 @@ pub struct ExternalImportMap {
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type WorkspaceExternalImportMapLoaderRc<TSys> =
-  deno_maybe_sync::MaybeArc<WorkspaceExternalImportMapLoader<TSys>>;
+  ende_maybe_sync::MaybeArc<WorkspaceExternalImportMapLoader<TSys>>;
 
 #[derive(Debug)]
 pub struct WorkspaceExternalImportMapLoader<TSys: sys_traits::FsRead> {

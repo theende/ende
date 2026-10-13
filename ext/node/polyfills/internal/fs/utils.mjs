@@ -39,7 +39,7 @@ const {
   Uint8Array,
   Uint8ArrayPrototype,
 } = primordials;
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const {
   ERR_FS_EISDIR,
   ERR_FS_INVALID_SYMLINK_TYPE,
@@ -48,19 +48,19 @@ const {
   ERR_OUT_OF_RANGE,
   hideStackFrames,
   uvException,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 
 const {
   isArrayBufferView,
   isBigUint64Array,
   isDate,
   isUint8Array,
-} = core.loadExtScript("ext:deno_node/internal/util/types.ts");
+} = core.loadExtScript("ext:ende_node/internal/util/types.ts");
 const { kEmptyObject, once } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 const { toPathIfFileURL } = core.loadExtScript(
-  "ext:deno_node/internal/url.ts",
+  "ext:ende_node/internal/url.ts",
 );
 const {
   validateAbortSignal,
@@ -70,25 +70,25 @@ const {
   validateInteger,
   validateObject,
   validateUint32,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const lazyPath = core.createLazyLoader("node:path");
 const kType = Symbol("type");
 const kStats = Symbol("stats");
 const assert = core.loadExtScript(
-  "ext:deno_node/internal/assert.mjs",
+  "ext:ende_node/internal/assert.mjs",
 );
 const { lstat, lstatSync } = core.loadExtScript(
-  "ext:deno_node/_fs/_fs_lstat.ts",
+  "ext:ende_node/_fs/_fs_lstat.ts",
 );
-const { isWindows } = core.loadExtScript("ext:deno_node/_util/os.ts");
+const { isWindows } = core.loadExtScript("ext:ende_node/_util/os.ts");
 const lazyProcess = core.createLazyLoader("node:process");
 const { ERR_INCOMPATIBLE_OPTION_PAIR } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 const {
   fs: fsConstants,
   os: osConstants,
-} = core.loadExtScript("ext:deno_node/internal_binding/constants.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/constants.ts");
 const {
   F_OK = 0,
   W_OK = 0,
@@ -965,7 +965,7 @@ export function warnOnNonPortableTemplate(template) {
   }
 }
 
-/** @import { CopyOptionsBase } from "ext:deno_node/_fs/cp/cp.d.ts" */
+/** @import { CopyOptionsBase } from "ext:ende_node/_fs/cp/cp.d.ts" */
 /** @type {CopyOptionsBase} */
 const defaultCpOptions = {
   dereference: false,

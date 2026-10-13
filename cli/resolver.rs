@@ -1,22 +1,22 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_resolver::npm::DenoInNpmPackageChecker;
+use ende_resolver::npm::DenoInNpmPackageChecker;
 use node_resolver::DenoIsBuiltInNodeModuleChecker;
 
 use crate::npm::CliNpmResolver;
 use crate::sys::CliSys;
 
 pub type CliCjsTracker =
-  deno_resolver::cjs::CjsTracker<DenoInNpmPackageChecker, CliSys>;
+  ende_resolver::cjs::CjsTracker<DenoInNpmPackageChecker, CliSys>;
 pub type CliIsCjsResolver =
-  deno_resolver::cjs::IsCjsResolver<DenoInNpmPackageChecker, CliSys>;
-pub type CliNpmReqResolver<TSys = CliSys> = deno_resolver::npm::NpmReqResolver<
+  ende_resolver::cjs::IsCjsResolver<DenoInNpmPackageChecker, CliSys>;
+pub type CliNpmReqResolver<TSys = CliSys> = ende_resolver::npm::NpmReqResolver<
   DenoInNpmPackageChecker,
   DenoIsBuiltInNodeModuleChecker,
   CliNpmResolver<TSys>,
   TSys,
 >;
-pub type CliResolver = deno_resolver::graph::DenoResolver<
+pub type CliResolver = ende_resolver::graph::DenoResolver<
   DenoInNpmPackageChecker,
   DenoIsBuiltInNodeModuleChecker,
   CliNpmResolver,
@@ -24,11 +24,11 @@ pub type CliResolver = deno_resolver::graph::DenoResolver<
 >;
 
 pub fn on_resolve_diagnostic(
-  diagnostic: deno_resolver::graph::MappedResolutionDiagnosticWithPosition,
+  diagnostic: ende_resolver::graph::MappedResolutionDiagnosticWithPosition,
 ) {
   log::warn!(
     "{} {}\n    at {}:{}",
-    deno_runtime::colors::yellow("Warning"),
+    ende_runtime::colors::yellow("Warning"),
     diagnostic.diagnostic,
     diagnostic.referrer,
     diagnostic.start

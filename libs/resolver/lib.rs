@@ -7,11 +7,11 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 
 use boxed_error::Boxed;
-use deno_cache_dir::npm::NpmCacheDir;
 use deno_error::JsError;
-use deno_package_json::PackageJsonDepValue;
-use deno_package_json::PackageJsonDepValueParseError;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_cache_dir::npm::NpmCacheDir;
+use ende_package_json::PackageJsonDepValue;
+use ende_package_json::PackageJsonDepValueParseError;
 pub use node_resolver::DenoIsBuiltInNodeModuleChecker;
 use node_resolver::InNpmPackageChecker;
 use node_resolver::IsBuiltInNodeModuleChecker;
@@ -69,10 +69,10 @@ pub mod yarn_lockfile_import;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type WorkspaceResolverRc<TSys> =
-  deno_maybe_sync::MaybeArc<WorkspaceResolver<TSys>>;
+  ende_maybe_sync::MaybeArc<WorkspaceResolver<TSys>>;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub(crate) type NpmCacheDirRc = deno_maybe_sync::MaybeArc<NpmCacheDir>;
+pub(crate) type NpmCacheDirRc = ende_maybe_sync::MaybeArc<NpmCacheDir>;
 
 #[derive(Debug, Clone)]
 pub struct DenoResolution {
@@ -245,7 +245,7 @@ pub type RawDenoResolverRc<
   TIsBuiltInNodeModuleChecker,
   TNpmPackageFolderResolver,
   TSys,
-> = deno_maybe_sync::MaybeArc<
+> = ende_maybe_sync::MaybeArc<
   RawDenoResolver<
     TInNpmPackageChecker,
     TIsBuiltInNodeModuleChecker,

@@ -6,52 +6,52 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use boxed_error::Boxed;
-use deno_bundle_runtime::BundleProvider;
-use deno_core::ModuleSpecifier;
-use deno_core::error::JsError;
-use deno_node::NodeRequireLoaderRc;
-use deno_node::ops::ipc::ChildIpcSerialization;
 use deno_path_util::url_from_file_path;
 use deno_path_util::url_to_file_path;
-use deno_resolver::npm::DenoInNpmPackageChecker;
-use deno_resolver::npm::NpmResolver;
-use deno_runtime::BootstrapOptions;
-use deno_runtime::CpuProfilerConfig;
-use deno_runtime::FeatureChecker;
-use deno_runtime::UNSTABLE_FEATURES;
-use deno_runtime::WorkerExecutionMode;
-use deno_runtime::WorkerLogLevel;
-use deno_runtime::colors;
-use deno_runtime::deno_core;
-use deno_runtime::deno_core::CompiledWasmModuleStore;
-use deno_runtime::deno_core::Extension;
-use deno_runtime::deno_core::JsRuntime;
-use deno_runtime::deno_core::LocalInspectorSession;
-use deno_runtime::deno_core::ModuleLoader;
-use deno_runtime::deno_core::SharedArrayBufferStore;
-use deno_runtime::deno_core::error::CoreError;
-use deno_runtime::deno_core::v8;
-use deno_runtime::deno_fs;
-use deno_runtime::deno_inspector_server::MainInspectorSessionChannel;
-use deno_runtime::deno_napi::DenoRtNativeAddonLoaderRc;
-use deno_runtime::deno_node::NodeExtInitServices;
-use deno_runtime::deno_node::NodeRequireLoader;
-use deno_runtime::deno_node::NodeResolver;
-use deno_runtime::deno_permissions::PermissionsContainer;
-use deno_runtime::deno_process::NpmProcessStateProviderRc;
-use deno_runtime::deno_telemetry::OtelConfig;
-use deno_runtime::deno_tls::RootCertStoreProvider;
-use deno_runtime::deno_web::Blob;
-use deno_runtime::deno_web::BlobStoreTrait;
-use deno_runtime::deno_web::InMemoryBroadcastChannel;
-use deno_runtime::fmt_errors::format_js_error;
-use deno_runtime::ops::worker_host::CreateWebWorkerCb;
-use deno_runtime::web_worker::WebWorker;
-use deno_runtime::web_worker::WebWorkerOptions;
-use deno_runtime::web_worker::WebWorkerServiceOptions;
-use deno_runtime::worker::MainWorker;
-use deno_runtime::worker::WorkerOptions;
-use deno_runtime::worker::WorkerServiceOptions;
+use ende_bundle_runtime::BundleProvider;
+use ende_core::ModuleSpecifier;
+use ende_core::error::JsError;
+use ende_node::NodeRequireLoaderRc;
+use ende_node::ops::ipc::ChildIpcSerialization;
+use ende_resolver::npm::DenoInNpmPackageChecker;
+use ende_resolver::npm::NpmResolver;
+use ende_runtime::BootstrapOptions;
+use ende_runtime::CpuProfilerConfig;
+use ende_runtime::FeatureChecker;
+use ende_runtime::UNSTABLE_FEATURES;
+use ende_runtime::WorkerExecutionMode;
+use ende_runtime::WorkerLogLevel;
+use ende_runtime::colors;
+use ende_runtime::ende_core;
+use ende_runtime::ende_core::CompiledWasmModuleStore;
+use ende_runtime::ende_core::Extension;
+use ende_runtime::ende_core::JsRuntime;
+use ende_runtime::ende_core::LocalInspectorSession;
+use ende_runtime::ende_core::ModuleLoader;
+use ende_runtime::ende_core::SharedArrayBufferStore;
+use ende_runtime::ende_core::error::CoreError;
+use ende_runtime::ende_core::v8;
+use ende_runtime::ende_fs;
+use ende_runtime::ende_inspector_server::MainInspectorSessionChannel;
+use ende_runtime::ende_napi::DenoRtNativeAddonLoaderRc;
+use ende_runtime::ende_node::NodeExtInitServices;
+use ende_runtime::ende_node::NodeRequireLoader;
+use ende_runtime::ende_node::NodeResolver;
+use ende_runtime::ende_permissions::PermissionsContainer;
+use ende_runtime::ende_process::NpmProcessStateProviderRc;
+use ende_runtime::ende_telemetry::OtelConfig;
+use ende_runtime::ende_tls::RootCertStoreProvider;
+use ende_runtime::ende_web::Blob;
+use ende_runtime::ende_web::BlobStoreTrait;
+use ende_runtime::ende_web::InMemoryBroadcastChannel;
+use ende_runtime::fmt_errors::format_js_error;
+use ende_runtime::ops::worker_host::CreateWebWorkerCb;
+use ende_runtime::web_worker::WebWorker;
+use ende_runtime::web_worker::WebWorkerOptions;
+use ende_runtime::web_worker::WebWorkerServiceOptions;
+use ende_runtime::worker::MainWorker;
+use ende_runtime::worker::WorkerOptions;
+use ende_runtime::worker::WorkerServiceOptions;
 use node_resolver::UrlOrPath;
 use node_resolver::errors::ResolvePkgJsonBinExportError;
 use url::Url;
@@ -64,7 +64,7 @@ pub struct CreateModuleLoaderResult {
   pub module_loader: Rc<dyn ModuleLoader>,
   pub node_require_loader: Rc<dyn NodeRequireLoader>,
   pub hook_registry:
-    Option<deno_runtime::deno_node::ops::module_hooks::LoaderHookRegistry>,
+    Option<ende_runtime::ende_node::ops::module_hooks::LoaderHookRegistry>,
 }
 
 pub trait ModuleLoaderFactory: Send + Sync {
@@ -175,7 +175,7 @@ pub fn create_isolate_create_params<TSys: DenoLibSys>(
   }
   #[cfg(not(any(target_os = "android", target_os = "linux")))]
   {
-    let maybe_mem_info = deno_runtime::deno_os::sys_info::mem_info();
+    let maybe_mem_info = ende_runtime::ende_os::sys_info::mem_info();
     maybe_mem_info.map(|mem_info| {
       v8::CreateParams::default()
         .heap_limits_from_system_memory(mem_info.total, 0)
@@ -185,14 +185,14 @@ pub fn create_isolate_create_params<TSys: DenoLibSys>(
 
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod linux {
-  use deno_runtime::deno_node::ops::process::cgroup::CgroupVersion;
-  use deno_runtime::deno_node::ops::process::cgroup::parse_self_cgroup;
+  use ende_runtime::ende_node::ops::process::cgroup::CgroupVersion;
+  use ende_runtime::ende_node::ops::process::cgroup::parse_self_cgroup;
 
   /// Get memory limit with cgroup (either v1 or v2) taken into account.
   pub(super) fn get_memory_limit<TSys: crate::sys::DenoLibSys>(
     sys: &TSys,
   ) -> Option<u64> {
-    let system_total_memory = deno_runtime::deno_os::sys_info::mem_info()
+    let system_total_memory = ende_runtime::ende_os::sys_info::mem_info()
       .map(|mem_info| mem_info.total);
 
     // For performance, parse cgroup config only when DENO_USE_CGROUPS is set
@@ -311,11 +311,11 @@ pub struct LibWorkerFactoryRoots {
 struct LibWorkerFactorySharedState<TSys: DenoLibSys> {
   blob_store: Arc<dyn BlobStoreTrait>,
   broadcast_channel: InMemoryBroadcastChannel,
-  code_cache: Option<Arc<dyn deno_runtime::code_cache::CodeCache>>,
+  code_cache: Option<Arc<dyn ende_runtime::code_cache::CodeCache>>,
   compiled_wasm_module_store: CompiledWasmModuleStore,
   deno_rt_native_addon_loader: Option<DenoRtNativeAddonLoaderRc>,
   feature_checker: Arc<FeatureChecker>,
-  fs: Arc<dyn deno_fs::FileSystem>,
+  fs: Arc<dyn ende_fs::FileSystem>,
   maybe_coverage_dir: Option<PathBuf>,
   maybe_cpu_prof_config: Option<CpuProfilerConfig>,
   main_inspector_session_tx: MainInspectorSessionChannel,
@@ -360,7 +360,7 @@ impl<TSys: DenoLibSys> LibWorkerFactorySharedState<TSys> {
 
   fn create_web_worker_callback(
     self: &Arc<Self>,
-    stdio: deno_runtime::deno_io::Stdio,
+    stdio: ende_runtime::ende_io::Stdio,
   ) -> Arc<CreateWebWorkerCb> {
     let shared = self.clone();
     Arc::new(move |args| {
@@ -452,7 +452,7 @@ impl<TSys: DenoLibSys> LibWorkerFactorySharedState<TSys> {
         // unspecified fields), matching Node.js behavior.
         // Note: integer division truncates sub-MB fractions, which is fine
         // since V8 and Node.js both work in whole-MB granularity here.
-        let resolved = deno_node::ops::worker_threads::ResolvedResourceLimits {
+        let resolved = ende_node::ops::worker_threads::ResolvedResourceLimits {
           max_young_generation_size_mb: params
             .max_young_generation_size_in_bytes()
             / mb,
@@ -461,7 +461,7 @@ impl<TSys: DenoLibSys> LibWorkerFactorySharedState<TSys> {
           code_range_size_mb: params.code_range_size_in_bytes() / mb,
           stack_size_mb: limits
             .stack_size_mb
-            .unwrap_or(deno_node::ops::worker_threads::DEFAULT_STACK_SIZE_MB),
+            .unwrap_or(ende_node::ops::worker_threads::DEFAULT_STACK_SIZE_MB),
         };
 
         (Some(params), Some(resolved))
@@ -481,7 +481,7 @@ impl<TSys: DenoLibSys> LibWorkerFactorySharedState<TSys> {
             .unwrap_or(1),
           log_level: shared.options.log_level,
           enable_testing_features: shared.options.enable_testing_features,
-          locale: deno_core::v8::icu::get_language_tag(),
+          locale: ende_core::v8::icu::get_language_tag(),
           location: Some(args.main_module),
           color_level: colors::get_color_level(),
           unstable_features,
@@ -585,10 +585,10 @@ impl<TSys: DenoLibSys> LibMainWorkerFactory<TSys> {
   #[allow(clippy::too_many_arguments, reason = "construction")]
   pub fn new(
     blob_store: Arc<dyn BlobStoreTrait>,
-    code_cache: Option<Arc<dyn deno_runtime::code_cache::CodeCache>>,
+    code_cache: Option<Arc<dyn ende_runtime::code_cache::CodeCache>>,
     deno_rt_native_addon_loader: Option<DenoRtNativeAddonLoaderRc>,
     feature_checker: Arc<FeatureChecker>,
-    fs: Arc<dyn deno_fs::FileSystem>,
+    fs: Arc<dyn ende_fs::FileSystem>,
     maybe_coverage_dir: Option<PathBuf>,
     maybe_cpu_prof_config: Option<CpuProfilerConfig>,
     module_loader_factory: Box<dyn ModuleLoaderFactory>,
@@ -659,8 +659,8 @@ impl<TSys: DenoLibSys> LibMainWorkerFactory<TSys> {
     require_modules: Vec<Url>,
     permissions: PermissionsContainer,
     custom_extensions: Vec<Extension>,
-    stdio: deno_runtime::deno_io::Stdio,
-    unconfigured_runtime: Option<deno_runtime::UnconfiguredRuntime>,
+    stdio: ende_runtime::ende_io::Stdio,
+    unconfigured_runtime: Option<ende_runtime::UnconfiguredRuntime>,
   ) -> Result<LibMainWorker, CoreError> {
     let shared = &self.shared;
     let CreateModuleLoaderResult {
@@ -731,7 +731,7 @@ impl<TSys: DenoLibSys> LibMainWorkerFactory<TSys> {
           .unwrap_or(1),
         log_level: shared.options.log_level,
         enable_testing_features: shared.options.enable_testing_features,
-        locale: deno_core::v8::icu::get_language_tag(),
+        locale: ende_core::v8::icu::get_language_tag(),
         location: shared.options.location.clone(),
         color_level: colors::get_color_level(),
         unstable_features,
@@ -910,7 +910,7 @@ impl LibMainWorker {
   #[inline]
   pub fn create_inspector_session(
     &mut self,
-    cb: deno_core::InspectorSessionSend,
+    cb: ende_core::InspectorSessionSend,
   ) -> LocalInspectorSession {
     self.worker.create_inspector_session(cb)
   }

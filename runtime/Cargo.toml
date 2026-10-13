@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_runtime"
+name = "ende_runtime"
 version = "0.267.0"
 authors.workspace = true
 edition.workspace = true
@@ -25,7 +25,7 @@ transpile = ["deno_ast"]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tokio_unstable)'] }
 
 [lib]
-name = "deno_runtime"
+name = "ende_runtime"
 path = "lib.rs"
 
 [dependencies]
@@ -34,43 +34,43 @@ base64.workspace = true
 boxed_error.workspace = true
 color-print.workspace = true
 deno_ast = { workspace = true, optional = true }
-deno_bundle_runtime.workspace = true
-deno_cache.workspace = true
-deno_canvas.workspace = true
-deno_core.workspace = true
-deno_cron.workspace = true
-deno_crypto.workspace = true
 deno_error.workspace = true
-deno_features.workspace = true
-deno_fetch.workspace = true
-deno_ffi.workspace = true
-deno_fs = { workspace = true, features = ["sync_fs"] }
-deno_http.workspace = true
-deno_image.workspace = true
-deno_inspector_server.workspace = true
-deno_io.workspace = true
-deno_kv.workspace = true
-deno_napi.workspace = true
-deno_net.workspace = true
-deno_node.workspace = true
-deno_node_crypto.workspace = true
-deno_node_sqlite.workspace = true
-deno_os.workspace = true
 deno_path_util.workspace = true
-deno_permissions.workspace = true
-deno_process.workspace = true
-deno_resolver = { workspace = true, features = ["sync"] }
-deno_signals.workspace = true
-deno_telemetry.workspace = true
 deno_terminal.workspace = true
-deno_tls.workspace = true
-deno_web.workspace = true
-deno_webgpu.workspace = true
-deno_webidl.workspace = true
-deno_websocket.workspace = true
-deno_webstorage.workspace = true
 ed25519-dalek.workspace = true
 encoding_rs.workspace = true
+ende_bundle_runtime.workspace = true
+ende_cache.workspace = true
+ende_canvas.workspace = true
+ende_core.workspace = true
+ende_cron.workspace = true
+ende_crypto.workspace = true
+ende_features.workspace = true
+ende_fetch.workspace = true
+ende_ffi.workspace = true
+ende_fs = { workspace = true, features = ["sync_fs"] }
+ende_http.workspace = true
+ende_image.workspace = true
+ende_inspector_server.workspace = true
+ende_io.workspace = true
+ende_kv.workspace = true
+ende_napi.workspace = true
+ende_net.workspace = true
+ende_node.workspace = true
+ende_node_crypto.workspace = true
+ende_node_sqlite.workspace = true
+ende_os.workspace = true
+ende_permissions.workspace = true
+ende_process.workspace = true
+ende_resolver = { workspace = true, features = ["sync"] }
+ende_signals.workspace = true
+ende_telemetry.workspace = true
+ende_tls.workspace = true
+ende_web.workspace = true
+ende_webgpu.workspace = true
+ende_webidl.workspace = true
+ende_websocket.workspace = true
+ende_webstorage.workspace = true
 faster-hex.workspace = true
 fastwebsockets.workspace = true
 http.workspace = true

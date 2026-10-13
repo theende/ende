@@ -5,7 +5,7 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
-use deno_runtime::*;
+use ende_runtime::*;
 
 fn compress_decls(out_dir: &Path) {
   let decls = [
@@ -283,7 +283,7 @@ fn emit_laufey_version() {
   // During `cargo publish` the crate is verified in an isolated package dir
   // where the workspace lock is absent. The crate-local `Cargo.lock` cargo
   // bundles into the tarball is no help here either: `laufey` is a dependency
-  // of `denort_desktop`, not of the `deno` crate, so it never appears in the
+  // of `endert_desktop`, not of the `deno` crate, so it never appears in the
   // `deno` crate's own resolved lockfile. Fall back to the `# version:`
   // directive committed in `cli/laufey_sums.lock`, which is always bundled into
   // the published tarball.
@@ -521,15 +521,15 @@ fn emit_startup_order_link_args(out_dir: &Path) {
   let order_file = order_file.canonicalize().unwrap();
   match target.as_str() {
     "aarch64-apple-darwin" => println!(
-      "cargo:rustc-link-arg-bin=deno=-Wl,-order_file,{}",
+      "cargo:rustc-link-arg-bin=ende=-Wl,-order_file,{}",
       order_file.display()
     ),
     "aarch64-unknown-linux-gnu" | "x86_64-unknown-linux-gnu" => {
       println!(
-        "cargo:rustc-link-arg-bin=deno=-Wl,--symbol-ordering-file={}",
+        "cargo:rustc-link-arg-bin=ende=-Wl,--symbol-ordering-file={}",
         order_file.display()
       );
-      println!("cargo:rustc-link-arg-bin=deno=-Wl,--no-warn-symbol-ordering");
+      println!("cargo:rustc-link-arg-bin=ende=-Wl,--no-warn-symbol-ordering");
     }
     _ => unreachable!(),
   }
@@ -546,8 +546,8 @@ fn main() {
     return;
   }
 
-  deno_napi::print_linker_flags("deno");
-  deno_webgpu::print_linker_flags("deno");
+  ende_napi::print_linker_flags("ende");
+  ende_webgpu::print_linker_flags("ende");
 
   // Host snapshots won't work when cross compiling.
   let target = env::var("TARGET").unwrap();

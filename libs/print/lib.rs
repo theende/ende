@@ -11,7 +11,7 @@
 //! and how `env_logger` treats write errors.
 //!
 //! ```
-//! use deno_print::drop_println;
+//! use ende_print::drop_println;
 //!
 //! drop_println!("hello there");
 //! ```

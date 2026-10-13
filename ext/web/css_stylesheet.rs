@@ -13,12 +13,12 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 
-use deno_core::GarbageCollected;
-use deno_core::cppgc;
-use deno_core::op2;
-use deno_core::v8;
-use deno_core::webidl::ContextFn;
-use deno_core::webidl::WebIdlConverter;
+use ende_core::GarbageCollected;
+use ende_core::cppgc;
+use ende_core::op2;
+use ende_core::v8;
+use ende_core::webidl::ContextFn;
+use ende_core::webidl::WebIdlConverter;
 
 pub struct CSSRule {
   text: String,
@@ -239,7 +239,7 @@ impl CSSStyleSheet {
         resolver.resolve(scope, this);
       }
       Err(err) => {
-        let exception = deno_core::error::to_v8_error(scope, &err);
+        let exception = ende_core::error::to_v8_error(scope, &err);
         resolver.reject(scope, exception);
       }
     }

@@ -2,7 +2,7 @@
 
 import { core, primordials } from "ext:core/mod.js";
 import { windowOrWorkerGlobalScope } from "ext:runtime/98_global_scope_shared.js";
-const { Console } = core.loadExtScript("ext:deno_node/console.ts");
+const { Console } = core.loadExtScript("ext:ende_node/console.ts");
 
 // Don't rely on global `console` because during bootstrapping, it is pointing
 // to the native `console` object provided by V8. Read via the property

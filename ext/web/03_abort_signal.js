@@ -21,10 +21,10 @@ const {
   WeakRefPrototypeDeref,
 } = primordials;
 
-const webidl = core.loadExtScript("ext:deno_webidl/00_webidl.js");
-const { assert } = core.loadExtScript("ext:deno_web/00_infra.js");
+const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
+const { assert } = core.loadExtScript("ext:ende_web/00_infra.js");
 const { createFilteredInspectProxy } = core.loadExtScript(
-  "ext:deno_web/01_console.js",
+  "ext:ende_web/01_console.js",
 );
 const {
   defineEventHandler,
@@ -32,7 +32,7 @@ const {
   EventTarget,
   listenerCount,
   setIsTrusted,
-} = core.loadExtScript("ext:deno_web/02_event.js");
+} = core.loadExtScript("ext:ende_web/02_event.js");
 
 const add = Symbol("[[add]]");
 const signalAbort = Symbol("[[signalAbort]]");

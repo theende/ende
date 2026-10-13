@@ -12,13 +12,13 @@ const {
 } = primordials;
 
 const lazyStatUtils = core.createLazyLoader(
-  "ext:deno_node/internal/fs/stat_utils.ts",
+  "ext:ende_node/internal/fs/stat_utils.ts",
 );
 const lazyFsUtils = core.createLazyLoader(
-  "ext:deno_node/internal/fs/utils.mjs",
+  "ext:ende_node/internal/fs/utils.mjs",
 );
 const { denoErrorToNodeError } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 
 function nodeFsStatToFileInfo(stat) {

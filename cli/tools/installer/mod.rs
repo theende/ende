@@ -3,14 +3,14 @@
 use std::sync::Arc;
 
 use dashmap::DashSet;
-use deno_core::error::AnyError;
-use deno_core::parking_lot::Mutex;
-use deno_core::url::Url;
-use deno_lib::version::DENO_VERSION;
-use deno_lib::version::NODE_VERSION;
-use deno_npm_installer::lifecycle_scripts::LifecycleScriptsWarning;
-use deno_package_json::EngineMismatchKind;
-use deno_resolver::workspace::WorkspaceResolver;
+use ende_core::error::AnyError;
+use ende_core::parking_lot::Mutex;
+use ende_core::url::Url;
+use ende_lib::version::DENO_VERSION;
+use ende_lib::version::NODE_VERSION;
+use ende_npm_installer::lifecycle_scripts::LifecycleScriptsWarning;
+use ende_package_json::EngineMismatchKind;
+use ende_resolver::workspace::WorkspaceResolver;
 
 pub use self::bin_name_resolver::BinNameResolver;
 use crate::args::Flags;
@@ -108,7 +108,7 @@ impl InstallReporter {
   }
 }
 
-impl deno_npm_installer::InstallProgressReporter for InstallReporter {
+impl ende_npm_installer::InstallProgressReporter for InstallReporter {
   fn initializing(&self, _nv: &deno_semver::package::PackageNv) {}
 
   fn initialized(&self, nv: &deno_semver::package::PackageNv) {
@@ -119,7 +119,7 @@ impl deno_npm_installer::InstallProgressReporter for InstallReporter {
 
   fn scripts_not_run_warning(
     &self,
-    warning: deno_npm_installer::lifecycle_scripts::LifecycleScriptsWarning,
+    warning: ende_npm_installer::lifecycle_scripts::LifecycleScriptsWarning,
   ) {
     self.scripts_warnings.lock().push(warning);
   }
@@ -157,7 +157,7 @@ impl deno_graph::source::Reporter for InstallReporter {
   }
 }
 
-impl deno_npm::resolution::Reporter for InstallReporter {
+impl ende_npm::resolution::Reporter for InstallReporter {
   fn on_resolved(
     &self,
     package_req: &deno_semver::package::PackageReq,
@@ -167,7 +167,7 @@ impl deno_npm::resolution::Reporter for InstallReporter {
   }
 }
 
-impl deno_npm_cache::TarballCacheReporter for InstallReporter {
+impl ende_npm_cache::TarballCacheReporter for InstallReporter {
   fn download_started(&self, _nv: &deno_semver::package::PackageNv) {}
 
   fn downloaded(&self, nv: &deno_semver::package::PackageNv) {
@@ -179,18 +179,18 @@ impl deno_npm_cache::TarballCacheReporter for InstallReporter {
   }
 }
 
-impl deno_resolver::file_fetcher::GraphLoaderReporter for InstallReporter {
+impl ende_resolver::file_fetcher::GraphLoaderReporter for InstallReporter {
   fn on_load(
     &self,
     specifier: &Url,
-    loaded_from: deno_cache_dir::file_fetcher::LoadedFrom,
+    loaded_from: ende_cache_dir::file_fetcher::LoadedFrom,
   ) {
     if let Some(nv) = package_nv_from_url(specifier) {
       match loaded_from {
-        deno_cache_dir::file_fetcher::LoadedFrom::Cache => {
+        ende_cache_dir::file_fetcher::LoadedFrom::Cache => {
           self.stats.reused_jsr.insert(nv);
         }
-        deno_cache_dir::file_fetcher::LoadedFrom::Remote => {
+        ende_cache_dir::file_fetcher::LoadedFrom::Remote => {
           self.stats.downloaded_jsr.insert(nv);
         }
         _ => {}

@@ -16,10 +16,10 @@ pub mod win_pipe;
 
 use std::sync::Arc;
 
-use deno_core::OpState;
-use deno_features::FeatureChecker;
-use deno_tls::RootCertStoreProvider;
-use deno_tls::rustls::RootCertStore;
+use ende_core::OpState;
+use ende_features::FeatureChecker;
+use ende_tls::RootCertStoreProvider;
+use ende_tls::rustls::RootCertStore;
 pub use quic::QuicError;
 
 pub const UNSTABLE_FEATURE_NAME: &str = "net";
@@ -38,16 +38,16 @@ pub const UNSTABLE_FEATURE_NAME: &str = "net";
 /// Abstract socket paths (Linux, leading NUL) have no filesystem entry, so
 /// they skip the filesystem check and rely on the network check alone.
 pub fn check_unix_socket_path<'a>(
-  permissions: &mut deno_permissions::PermissionsContainer,
+  permissions: &mut ende_permissions::PermissionsContainer,
   path: std::borrow::Cow<'a, std::path::Path>,
-  access_kind: deno_permissions::OpenAccessKind,
+  access_kind: ende_permissions::OpenAccessKind,
   api_name: Option<&str>,
 ) -> Result<
-  deno_permissions::CheckedPath<'a>,
-  deno_permissions::PermissionCheckError,
+  ende_permissions::CheckedPath<'a>,
+  ende_permissions::PermissionCheckError,
 > {
   let checked = if is_unix_socket_abstract_path(path.as_ref()) {
-    deno_permissions::CheckedPath::unsafe_new(path)
+    ende_permissions::CheckedPath::unsafe_new(path)
   } else {
     permissions.check_open(path, access_kind, api_name)?
   };
@@ -61,11 +61,11 @@ pub fn check_unix_socket_path<'a>(
 /// first applies the requested host-and-port grant, while the second preserves
 /// IP deny rules that also apply after name resolution.
 pub fn check_multicast_membership_permission(
-  permissions: &mut deno_permissions::PermissionsContainer,
+  permissions: &mut ende_permissions::PermissionsContainer,
   group: std::net::IpAddr,
   port: u16,
   api_name: &str,
-) -> Result<(), deno_permissions::PermissionCheckError> {
+) -> Result<(), ende_permissions::PermissionCheckError> {
   permissions.check_net(&(group.to_string(), Some(port)), api_name)?;
   permissions.check_net_resolved(&group, port, api_name)?;
   Ok(())
@@ -114,8 +114,8 @@ impl DefaultTlsOptions {
 /// would override previously used alias.
 pub struct UnsafelyIgnoreCertificateErrors(pub Option<Vec<String>>);
 
-deno_core::extension!(deno_net,
-  deps = [ deno_web ],
+ende_core::extension!(ende_net,
+  deps = [ ende_web ],
   ops = [
     ops::op_net_accept_tcp,
     ops::op_net_get_ips_from_perm_token,
@@ -218,7 +218,7 @@ deno_core::extension!(deno_net,
 /// Stub ops for non-unix platforms.
 #[cfg(not(unix))]
 mod ops_unix {
-  use deno_core::op2;
+  use ende_core::op2;
 
   macro_rules! stub_op {
     ($name:ident) => {

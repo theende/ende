@@ -25,7 +25,7 @@ const {
 } = primordials;
 
 const { Conn, Listener, validatePort } = core.loadExtScript(
-  "ext:deno_net/01_net.js",
+  "ext:ende_net/01_net.js",
 );
 
 const _getPeerCertificate = Symbol("getPeerCertificate");

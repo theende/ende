@@ -14,9 +14,9 @@ use std::num::NonZeroU8;
 use std::num::NonZeroU32;
 use std::num::NonZeroUsize;
 
-use deno_permissions::SysDescriptor;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::package::PackageKind;
+use ende_permissions::SysDescriptor;
 
 use crate::error::CliError;
 use crate::error::CliErrorKind;
@@ -236,7 +236,7 @@ pub fn convert(result: ParseResult) -> Result<Flags, CliError> {
   // Validate --location scheme (must be http/https), mirroring clap's
   // location value_parser. No-op when `--location` was not provided.
   if let Some(loc) = result.get_one("location") {
-    let url = deno_core::url::Url::parse(loc).map_err(|_| {
+    let url = ende_core::url::Url::parse(loc).map_err(|_| {
       CliError::new(CliErrorKind::InvalidValue, "Failed to parse URL")
     })?;
     if !["http", "https"].contains(&url.scheme()) {
@@ -591,7 +591,7 @@ fn permission_args_parse(result: &ParseResult, flags: &mut Flags) {
     {
       eprintln!(
         "{} `allow-hrtime` and `deny-hrtime` have been removed in Deno 2, as high resolution time is now always allowed",
-        deno_runtime::colors::yellow("Warning")
+        ende_runtime::colors::yellow("Warning")
       );
     }
   }
@@ -809,7 +809,7 @@ fn unsafely_ignore_certificate_errors_parse(
 
 fn min_dep_age_arg_parse(result: &ParseResult, flags: &mut Flags) {
   if let Some(age) = result.get_one("min-dep-age") {
-    flags.minimum_dependency_age = deno_config::parse_minutes_duration_or_date(
+    flags.minimum_dependency_age = ende_config::parse_minutes_duration_or_date(
       &sys_traits::impls::RealSys,
       age,
     )
@@ -825,7 +825,7 @@ fn cached_only_arg_parse(result: &ParseResult, flags: &mut Flags) {
 
 fn location_arg_parse(result: &ParseResult, flags: &mut Flags) {
   if let Some(loc) = result.get_one("location") {
-    flags.location = deno_core::url::Url::parse(loc).ok().map(|mut url| {
+    flags.location = ende_core::url::Url::parse(loc).ok().map(|mut url| {
       // Mirror clap's location value_parser, which strips any credentials.
       let _ = url.set_username("");
       let _ = url.set_password(None);
@@ -3313,8 +3313,8 @@ fn json_reference_parse(flags: &mut Flags) {
   // This replaces the clap-based json_reference_parse.
   let root = &crate::defs::DENO_ROOT;
   let json_str = serialize_command_def(root, true);
-  let json = deno_core::serde_json::from_str(&json_str)
-    .unwrap_or_else(|_| deno_core::serde_json::Value::Null);
+  let json = ende_core::serde_json::from_str(&json_str)
+    .unwrap_or_else(|_| ende_core::serde_json::Value::Null);
   flags.subcommand = DenoSubcommand::JSONReference(JSONReferenceFlags { json });
 }
 

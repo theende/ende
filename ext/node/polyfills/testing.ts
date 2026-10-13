@@ -205,8 +205,8 @@ const {
   validateObject,
   validateString,
   validateStringArray,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const nodeErrors = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const nodeErrors = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
@@ -215,13 +215,13 @@ const {
 // errors module; unlike the generated codes it is not registered on `.codes`.
 const { ERR_INVALID_STATE } = nodeErrors;
 const { emitExperimentalWarning } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
-const { default: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+const { default: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 const {
   tapEscape,
   tapIndent,
-} = core.loadExtScript("ext:deno_node/internal/test/reporters.ts");
+} = core.loadExtScript("ext:ende_node/internal/test/reporters.ts");
 
 const methodsToCopy = [
   "deepEqual",
@@ -262,14 +262,14 @@ function getAssertObject() {
 let _fsForSnapshot = null;
 function getFsForSnapshot() {
   if (_fsForSnapshot === null) {
-    _fsForSnapshot = core.loadExtScript("ext:deno_node/fs.ts");
+    _fsForSnapshot = core.loadExtScript("ext:ende_node/fs.ts");
   }
   return _fsForSnapshot;
 }
 let _pathForSnapshot = null;
 function getPathForSnapshot() {
   if (_pathForSnapshot === null) {
-    _pathForSnapshot = core.loadExtScript("ext:deno_node/path/mod.ts");
+    _pathForSnapshot = core.loadExtScript("ext:ende_node/path/mod.ts");
   }
   return _pathForSnapshot;
 }
@@ -280,7 +280,7 @@ function getPathForSnapshot() {
 // NODE_OPTIONS, so the polyfill behaves the same way the rest of the Node
 // compat surface does for reporter detection above.
 //
-// The deno_test extension's ops are registered at runtime - after this
+// The ende_test extension's ops are registered at runtime - after this
 // polyfill's snapshot is built - so they are not on the captured `core.ops`.
 // They are however reachable via `Deno[Deno.internal].core.ops`, which the
 // test runner exposes for cli/js code; we look them up lazily through there.
@@ -418,7 +418,7 @@ let _Readable = null;
 function getReadable() {
   if (_Readable === null) {
     _Readable = core.loadExtScript(
-      "ext:deno_node/internal/streams/readable.js",
+      "ext:ende_node/internal/streams/readable.js",
     ).Readable;
   }
   return _Readable;
@@ -426,7 +426,7 @@ function getReadable() {
 let _fsWatch = null;
 function getFsWatch() {
   if (_fsWatch === null) {
-    _fsWatch = core.loadExtScript("ext:deno_node/fs.ts").watch;
+    _fsWatch = core.loadExtScript("ext:ende_node/fs.ts").watch;
   }
   return _fsWatch;
 }
@@ -633,7 +633,7 @@ function isTapMode() {
 
 function getTapSuiteALS() {
   if (tapSuiteALS !== null) return tapSuiteALS;
-  const mod = core.loadExtScript("ext:deno_node/async_hooks.ts");
+  const mod = core.loadExtScript("ext:ende_node/async_hooks.ts");
   const ALS = mod.AsyncLocalStorage;
   tapSuiteALS = new ALS();
   return tapSuiteALS;
@@ -1675,7 +1675,7 @@ let currentSuite = null;
 let testContextALS = null;
 function getTestContextALS() {
   if (testContextALS !== null) return testContextALS;
-  const mod = core.loadExtScript("ext:deno_node/async_hooks.ts");
+  const mod = core.loadExtScript("ext:ende_node/async_hooks.ts");
   const ALS = mod.AsyncLocalStorage;
   testContextALS = new ALS();
   return testContextALS;
@@ -2720,12 +2720,12 @@ class MockTimers {
 
     // Route the `node:timers` / `node:timers/promises` module functions through
     // this instance too (see `kInstallMockTimers` in `timers.ts`).
-    core.loadExtScript("ext:deno_node/timers.ts")[kInstallMockTimers](this);
+    core.loadExtScript("ext:ende_node/timers.ts")[kInstallMockTimers](this);
   }
 
   reset() {
     if (!this._enabled) return;
-    core.loadExtScript("ext:deno_node/timers.ts")[kInstallMockTimers](null);
+    core.loadExtScript("ext:ende_node/timers.ts")[kInstallMockTimers](null);
     for (
       const { 0: name, 1: original } of new SafeMapIterator(this.#originals)
     ) {
@@ -3015,7 +3015,7 @@ function getCallerUrl() {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (
-      StringPrototypeIncludes(line, "ext:deno_node/") ||
+      StringPrototypeIncludes(line, "ext:ende_node/") ||
       StringPrototypeIncludes(line, "ext:core/")
     ) {
       continue;

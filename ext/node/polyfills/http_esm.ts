@@ -5,7 +5,7 @@ import { core } from "ext:core/mod.js";
 // after `setGlobalAgent` propagate to importers.
 import { globalAgent } from "node:_http_agent";
 
-const mod = core.loadExtScript("ext:deno_node/http.ts");
+const mod = core.loadExtScript("ext:ende_node/http.ts");
 
 export const _connectionListener = mod._connectionListener;
 export const Agent = mod.Agent;

@@ -21,8 +21,8 @@ use deno_error::JsErrorBox;
 use deno_graph::MediaType;
 use deno_graph::Module;
 use deno_graph::ModuleGraph;
-use deno_maybe_sync::MaybeSend;
-use deno_maybe_sync::MaybeSync;
+use ende_maybe_sync::MaybeSend;
+use ende_maybe_sync::MaybeSync;
 use futures::FutureExt;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
@@ -45,7 +45,7 @@ type ArcStr = std::sync::Arc<str>;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type EmitterRc<TInNpmPackageChecker, TSys> =
-  deno_maybe_sync::MaybeArc<Emitter<TInNpmPackageChecker, TSys>>;
+  ende_maybe_sync::MaybeArc<Emitter<TInNpmPackageChecker, TSys>>;
 
 #[sys_traits::auto_impl]
 pub trait EmitterSys: EmitCacheSys {}

@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_node_crypto"
+name = "ende_node_crypto"
 version = "0.29.0"
 authors.workspace = true
 edition.workspace = true
@@ -23,8 +23,6 @@ cbc.workspace = true
 const-oid.workspace = true
 ctr.workspace = true
 data-encoding.workspace = true
-deno_core.workspace = true
-deno_crypto_provider.workspace = true
 deno_error.workspace = true
 der = { workspace = true, features = ["derive"] }
 des.workspace = true
@@ -35,6 +33,8 @@ ecdsa.workspace = true
 ed25519-dalek = { workspace = true, features = ["digest", "pkcs8", "rand_core", "signature"] }
 ed448-goldilocks = { workspace = true }
 elliptic-curve.workspace = true
+ende_core.workspace = true
+ende_crypto_provider.workspace = true
 faster-hex.workspace = true
 hkdf.workspace = true
 hmac.workspace = true

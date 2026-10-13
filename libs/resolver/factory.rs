@@ -7,31 +7,31 @@ use std::path::PathBuf;
 
 use anyhow::bail;
 use boxed_error::Boxed;
-use deno_cache_dir::DenoDirResolutionError;
-use deno_cache_dir::GlobalHttpCacheRc;
-use deno_cache_dir::GlobalOrLocalHttpCache;
-use deno_cache_dir::LocalHttpCache;
-use deno_cache_dir::npm::NpmCacheDir;
-use deno_config::deno_json::MinimumDependencyAgeConfig;
-use deno_config::deno_json::NewestDependencyDate;
-use deno_config::deno_json::NodeModulesDirMode;
-use deno_config::deno_json::NodeModulesLinkerMode;
-use deno_config::workspace::FolderConfigs;
-use deno_config::workspace::VendorEnablement;
-use deno_config::workspace::WorkspaceDirectory;
-use deno_config::workspace::WorkspaceDirectoryEmptyOptions;
-use deno_config::workspace::WorkspaceDirectoryRc;
-use deno_config::workspace::WorkspaceDiscoverError;
-use deno_config::workspace::WorkspaceDiscoverOptions;
-use deno_config::workspace::WorkspaceDiscoverStart;
-use deno_maybe_sync::MaybeSend;
-use deno_maybe_sync::MaybeSync;
-use deno_maybe_sync::new_rc;
-pub use deno_npm::NpmSystemInfo;
-use deno_npm::resolution::NpmOverrides;
-use deno_npm::resolution::NpmVersionResolver;
 use deno_path_util::fs::canonicalize_path_maybe_not_exists;
 use deno_semver::package::PackageName;
+use ende_cache_dir::DenoDirResolutionError;
+use ende_cache_dir::GlobalHttpCacheRc;
+use ende_cache_dir::GlobalOrLocalHttpCache;
+use ende_cache_dir::LocalHttpCache;
+use ende_cache_dir::npm::NpmCacheDir;
+use ende_config::deno_json::MinimumDependencyAgeConfig;
+use ende_config::deno_json::NewestDependencyDate;
+use ende_config::deno_json::NodeModulesDirMode;
+use ende_config::deno_json::NodeModulesLinkerMode;
+use ende_config::workspace::FolderConfigs;
+use ende_config::workspace::VendorEnablement;
+use ende_config::workspace::WorkspaceDirectory;
+use ende_config::workspace::WorkspaceDirectoryEmptyOptions;
+use ende_config::workspace::WorkspaceDirectoryRc;
+use ende_config::workspace::WorkspaceDiscoverError;
+use ende_config::workspace::WorkspaceDiscoverOptions;
+use ende_config::workspace::WorkspaceDiscoverStart;
+use ende_maybe_sync::MaybeSend;
+use ende_maybe_sync::MaybeSync;
+use ende_maybe_sync::new_rc;
+pub use ende_npm::NpmSystemInfo;
+use ende_npm::resolution::NpmOverrides;
+use ende_npm::resolution::NpmVersionResolver;
 use futures::future::FutureExt;
 use node_resolver::DenoIsBuiltInNodeModuleChecker;
 use node_resolver::NodeResolver;
@@ -118,11 +118,11 @@ pub type DenoNodeCodeTranslatorRc<TSys> = NodeCodeTranslatorRc<
   TSys,
 >;
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type NpmVersionResolverRc = deno_maybe_sync::MaybeArc<NpmVersionResolver>;
+pub type NpmVersionResolverRc = ende_maybe_sync::MaybeArc<NpmVersionResolver>;
 #[cfg(feature = "graph")]
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type JsrVersionResolverRc =
-  deno_maybe_sync::MaybeArc<deno_graph::packages::JsrVersionResolver>;
+  ende_maybe_sync::MaybeArc<deno_graph::packages::JsrVersionResolver>;
 
 #[derive(Debug, Boxed)]
 pub struct HttpCacheCreateError(pub Box<HttpCacheCreateErrorKind>);
@@ -221,7 +221,7 @@ pub struct WorkspaceFactoryOptions {
   /// sibling `package-lock.json`. Currently set by `deno install`.
   pub import_npm_lockfile: bool,
   /// The process state if using ext/node and the current process was "forked".
-  /// This value is found at `deno_lib::args::NPM_PROCESS_STATE`
+  /// This value is found at `ende_lib::args::NPM_PROCESS_STATE`
   /// but in most scenarios this can probably just be `None`.
   pub npm_process_state: Option<NpmProcessStateOptions>,
   /// Override the path to the root node_modules directory.
@@ -231,15 +231,15 @@ pub struct WorkspaceFactoryOptions {
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type WorkspaceFactoryRc<TSys> =
-  deno_maybe_sync::MaybeArc<WorkspaceFactory<TSys>>;
+  ende_maybe_sync::MaybeArc<WorkspaceFactory<TSys>>;
 
 #[sys_traits::auto_impl]
 pub trait WorkspaceFactorySys:
   DenoDirSys
   + crate::lockfile::LockfileSys
   + crate::npm::NpmResolverSys
-  + deno_cache_dir::GlobalHttpCacheSys
-  + deno_cache_dir::LocalHttpCacheSys
+  + ende_cache_dir::GlobalHttpCacheSys
+  + ende_cache_dir::LocalHttpCacheSys
   + crate::loader::NpmModuleLoaderSys
   + sys_traits::SystemTimeNow
 {
@@ -498,7 +498,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
   ) -> Result<&GlobalHttpCacheRc<TSys>, DenoDirResolutionError> {
     self.global_http_cache.get_or_try_init(|| {
       let global_cache_dir = self.deno_dir()?.remote_folder_path();
-      let global_http_cache = new_rc(deno_cache_dir::GlobalHttpCache::new(
+      let global_http_cache = new_rc(ende_cache_dir::GlobalHttpCache::new(
         self.sys.clone(),
         global_cache_dir,
       ));
@@ -508,7 +508,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
 
   pub fn http_cache(
     &self,
-  ) -> Result<&deno_cache_dir::GlobalOrLocalHttpCache<TSys>, HttpCacheCreateError>
+  ) -> Result<&ende_cache_dir::GlobalOrLocalHttpCache<TSys>, HttpCacheCreateError>
   {
     self.http_cache.get_or_try_init(|| {
       let global_cache = self.global_http_cache()?.clone();
@@ -517,7 +517,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
           let local_cache = LocalHttpCache::new(
             local_path.clone(),
             global_cache,
-            deno_cache_dir::GlobalToLocalCopy::Allow,
+            ende_cache_dir::GlobalToLocalCopy::Allow,
             self.jsr_url().clone(),
           );
           Ok(new_rc(local_cache).into())
@@ -529,7 +529,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
 
   pub async fn maybe_lockfile(
     &self,
-    npm_package_info_provider: &dyn deno_lockfile::NpmPackageInfoProvider,
+    npm_package_info_provider: &dyn ende_lockfile::NpmPackageInfoProvider,
   ) -> Result<Option<&LockfileLockRc<TSys>>, anyhow::Error> {
     self
       .lockfile
@@ -561,7 +561,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
           npm_package_info_provider,
         )
         .await?
-        .map(deno_maybe_sync::new_rc);
+        .map(ende_maybe_sync::new_rc);
 
         Ok(maybe_lock_file)
       })
@@ -1162,13 +1162,13 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
       // the `trust-policy` / `trust-policy-ignore-after` npmrc settings drive
       // the `no-downgrade` publishing-trust policy
       let npmrc = self.workspace_factory.npmrc()?;
-      let trust_policy = deno_npm::resolution::TrustPolicyOptions {
+      let trust_policy = ende_npm::resolution::TrustPolicyOptions {
         policy: match npmrc.trust_policy {
-          deno_npmrc::TrustPolicyConfig::NoDowngrade => {
-            deno_npm::resolution::NpmTrustPolicy::NoDowngrade
+          ende_npmrc::TrustPolicyConfig::NoDowngrade => {
+            ende_npm::resolution::NpmTrustPolicy::NoDowngrade
           }
-          deno_npmrc::TrustPolicyConfig::Off => {
-            deno_npm::resolution::NpmTrustPolicy::Off
+          ende_npmrc::TrustPolicyConfig::Off => {
+            ende_npm::resolution::NpmTrustPolicy::Off
           }
         },
         // turn the relative `trust-policy-ignore-after` minutes into an
@@ -1202,12 +1202,12 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
 
       Ok(new_rc(NpmVersionResolver {
         newest_dependency_date_options:
-          deno_npm::resolution::NewestDependencyDateOptions {
+          ende_npm::resolution::NewestDependencyDateOptions {
             date: minimum_dependency_age_config
               .age
               .as_ref()
               .and_then(|d| d.into_option())
-              .map(deno_npm::resolution::NewestDependencyDate),
+              .map(ende_npm::resolution::NewestDependencyDate),
             exclude,
             exclude_prefixes,
           },
@@ -1396,7 +1396,7 @@ fn apply_minimum_dependency_age_fallbacks(
 /// Returns `NpmOverrides::default()` if no overrides are present or if parsing fails.
 /// Logs a warning on parse failure.
 pub fn npm_overrides_from_workspace(
-  workspace: &deno_config::workspace::Workspace,
+  workspace: &ende_config::workspace::Workspace,
 ) -> NpmOverrides {
   let Some(overrides_json) = workspace.npm_overrides() else {
     return NpmOverrides::default();
@@ -1423,8 +1423,8 @@ pub fn npm_overrides_from_workspace(
 #[cfg(test)]
 mod tests {
   use chrono::TimeZone;
-  use deno_config::deno_json::MinimumDependencyAgeConfig;
-  use deno_config::deno_json::NewestDependencyDate;
+  use ende_config::deno_json::MinimumDependencyAgeConfig;
+  use ende_config::deno_json::NewestDependencyDate;
 
   use super::apply_minimum_dependency_age_fallbacks;
 

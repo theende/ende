@@ -8,9 +8,9 @@
 
 (function () {
 const { core, primordials } = __bootstrap;
-const { EventEmitter } = core.loadExtScript("ext:deno_node/_events.mjs");
+const { EventEmitter } = core.loadExtScript("ext:ende_node/_events.mjs");
 const { kEmptyObject } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 
 const { FunctionPrototypeCall, ObjectSetPrototypeOf, ReflectApply } =

@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_io"
+name = "ende_io"
 version = "0.169.0"
 authors.workspace = true
 edition.workspace = true
@@ -15,9 +15,9 @@ path = "lib.rs"
 
 [dependencies]
 async-trait.workspace = true
-deno_core.workspace = true
 deno_error.workspace = true
-deno_permissions.workspace = true
+ende_core.workspace = true
+ende_permissions.workspace = true
 filetime.workspace = true
 log.workspace = true
 pin-project.workspace = true
@@ -35,5 +35,5 @@ nix = { workspace = true, features = ["fs", "user", "socket"] }
 rand.workspace = true
 parking_lot.workspace = true
 windows-sys = { workspace = true, features = ["Win32_System_Console"] }
-deno_subprocess_windows.workspace = true
+ende_subprocess_windows.workspace = true
 libc.workspace = true

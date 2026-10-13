@@ -5,11 +5,11 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_package_json::PackageJsonDepValue;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::package::PackageKind;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_package_json::PackageJsonDepValue;
 
 use crate::args::Flags;
 use crate::args::WhyFlags;
@@ -62,7 +62,7 @@ pub async fn why(
 ) -> Result<(), AnyError> {
   let factory = CliFactory::from_flags(flags);
   let lockfile = factory.maybe_lockfile().await?.cloned().ok_or_else(|| {
-    deno_core::anyhow::anyhow!("No lockfile found. Run `deno install` first.")
+    ende_core::anyhow::anyhow!("No lockfile found. Run `deno install` first.")
   })?;
 
   // Workspace-declared root dependency requirements (from deno.json `imports`,

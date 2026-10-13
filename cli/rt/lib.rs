@@ -4,13 +4,13 @@ use std::borrow::Cow;
 use std::env;
 use std::sync::Arc;
 
-use deno_core::error::AnyError;
-use deno_lib::util::result::js_error_downcast_ref;
-use deno_lib::version::otel_runtime_config;
-use deno_runtime::deno_telemetry::OtelConfig;
-use deno_runtime::fmt_errors::format_js_error;
-use deno_runtime::tokio_util::create_and_run_current_thread_with_maybe_metrics;
 use deno_terminal::colors;
+use ende_core::error::AnyError;
+use ende_lib::util::result::js_error_downcast_ref;
+use ende_lib::version::otel_runtime_config;
+use ende_runtime::ende_telemetry::OtelConfig;
+use ende_runtime::fmt_errors::format_js_error;
+use ende_runtime::tokio_util::create_and_run_current_thread_with_maybe_metrics;
 use indexmap::IndexMap;
 
 use self::binary::extract_standalone;
@@ -29,7 +29,7 @@ pub fn unstable_exit_cb(feature: &str, api_name: &str) {
     "Unstable API '{api_name}'. The `--unstable-{}` flag must be provided.",
     feature
   );
-  deno_runtime::exit(70);
+  ende_runtime::exit(70);
 }
 
 fn exit_with_message(message: &str, code: i32) -> ! {
@@ -38,7 +38,7 @@ fn exit_with_message(message: &str, code: i32) -> ! {
     colors::red_bold("error"),
     message.trim_start_matches("error: ")
   );
-  deno_runtime::exit(code);
+  ende_runtime::exit(code);
 }
 
 fn unwrap_or_exit<T>(result: Result<T, AnyError>) -> T {
@@ -75,7 +75,7 @@ pub fn main() {
   #[cfg(windows)]
   colors::enable_ansi(); // For Windows 10
 
-  deno_runtime::deno_permissions::mark_standalone();
+  ende_runtime::ende_permissions::mark_standalone();
 
   rustls::crypto::aws_lc_rs::default_provider()
     .install_default()
@@ -92,7 +92,7 @@ pub fn main() {
         } else {
           DenoRtSys::new(data.vfs.clone())
         };
-        deno_runtime::deno_telemetry::init(
+        ende_runtime::ende_telemetry::init(
           &sys,
           otel_runtime_config(),
           data.metadata.otel_config.clone(),
@@ -103,7 +103,7 @@ pub fn main() {
         );
         load_env_vars(&data.metadata.env_vars_from_env_file);
         let exit_code = run::run(Arc::new(sys.clone()), sys, data).await?;
-        deno_runtime::exit(exit_code);
+        ende_runtime::exit(exit_code);
       }
       Err(err) => Err(err),
     }
@@ -118,7 +118,7 @@ pub fn init_logging(
   maybe_level: Option<log::Level>,
   otel_config: Option<OtelConfig>,
 ) {
-  deno_lib::util::logger::init(deno_lib::util::logger::InitLoggingOptions {
+  ende_lib::util::logger::init(ende_lib::util::logger::InitLoggingOptions {
     maybe_level,
     otel_config,
     on_log_start: || {},

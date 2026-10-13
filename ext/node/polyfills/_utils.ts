@@ -15,15 +15,15 @@ const {
   SafeArrayIterator,
 } = primordials;
 const { TextDecoder, TextEncoder } = core.loadExtScript(
-  "ext:deno_web/08_text_encoding.js",
+  "ext:ende_web/08_text_encoding.js",
 );
-const { errorMap } = core.loadExtScript("ext:deno_node/internal_binding/uv.ts");
-const { codes } = core.loadExtScript("ext:deno_node/internal/error_codes.ts");
+const { errorMap } = core.loadExtScript("ext:ende_node/internal_binding/uv.ts");
+const { codes } = core.loadExtScript("ext:ende_node/internal/error_codes.ts");
 const { ERR_NOT_IMPLEMENTED } = core.loadExtScript(
-  "ext:deno_node/internal/errors.ts",
+  "ext:ende_node/internal/errors.ts",
 );
 const { validateNumber } = core.loadExtScript(
-  "ext:deno_node/internal/validators.mjs",
+  "ext:ende_node/internal/validators.mjs",
 );
 
 type BinaryEncodings = "binary";

@@ -59,9 +59,9 @@ const {
 } = primordials;
 
 import net from "node:net";
-const { ok: assert } = core.loadExtScript("ext:deno_node/assert.ts");
+const { ok: assert } = core.loadExtScript("ext:ende_node/assert.ts");
 const { kEmptyObject, once } = core.loadExtScript(
-  "ext:deno_node/internal/util.mjs",
+  "ext:ende_node/internal/util.mjs",
 );
 import {
   _checkInvalidHeaderChar as checkInvalidHeaderChar,
@@ -80,11 +80,11 @@ import {
 } from "node:_http_outgoing";
 import httpAgent from "node:_http_agent";
 import httpProxy from "node:_http_proxy";
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const { urlToHttpOptions } = core.loadExtScript(
-  "ext:deno_node/internal/url.ts",
+  "ext:ende_node/internal/url.ts",
 );
-const { kOutHeaders } = core.loadExtScript("ext:deno_node/internal/http.ts");
+const { kOutHeaders } = core.loadExtScript("ext:ende_node/internal/http.ts");
 const {
   connResetException,
   ERR_HTTP_HEADERS_SENT,
@@ -93,23 +93,23 @@ const {
   ERR_INVALID_PROTOCOL,
   ERR_INVALID_URL,
   ERR_UNESCAPED_CHARACTERS,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   validateBoolean,
   validateInteger,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
 const { getTimerDuration } = core.loadExtScript(
-  "ext:deno_node/internal/timers.mjs",
+  "ext:ende_node/internal/timers.mjs",
 );
 import { addAbortSignal, finished } from "node:stream";
-const { nextTick } = core.loadExtScript("ext:deno_node/_next_tick.ts");
+const { nextTick } = core.loadExtScript("ext:ende_node/_next_tick.ts");
 const { defaultTriggerAsyncIdScope } = core.loadExtScript(
-  "ext:deno_node/internal/async_hooks.ts",
+  "ext:ende_node/internal/async_hooks.ts",
 );
-const { kNeedDrain } = core.loadExtScript("ext:deno_node/internal/http.ts");
-const { channel } = core.loadExtScript("ext:deno_node/diagnostics_channel.js");
+const { kNeedDrain } = core.loadExtScript("ext:ende_node/internal/http.ts");
+const { channel } = core.loadExtScript("ext:ende_node/diagnostics_channel.js");
 const { enqueueNodePerformanceEntry } = core.loadExtScript(
-  "ext:deno_node/perf_hooks.js",
+  "ext:ende_node/perf_hooks.js",
 );
 
 const onClientRequestCreatedChannel = channel("http.client.request.created");
@@ -117,14 +117,14 @@ const onClientRequestStartChannel = channel("http.client.request.start");
 const onClientRequestErrorChannel = channel("http.client.request.error");
 const onClientResponseFinishChannel = channel("http.client.response.finish");
 const { updateSpanFromError } = core.loadExtScript(
-  "ext:deno_telemetry/util.ts",
+  "ext:ende_telemetry/util.ts",
 );
 const {
   otelState,
   builtinTracer,
   ContextManager,
   SPAN_KEY,
-} = core.loadExtScript("ext:deno_telemetry/telemetry.ts");
+} = core.loadExtScript("ext:ende_telemetry/telemetry.ts");
 
 const INVALID_PATH_REGEX = new SafeRegExp(/[^\u0021-\u00ff]/);
 const kError = Symbol("kError");

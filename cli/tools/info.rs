@@ -6,10 +6,6 @@ use std::fmt::Write;
 use std::sync::Arc;
 
 use deno_ast::ModuleSpecifier;
-use deno_core::anyhow::bail;
-use deno_core::error::AnyError;
-use deno_core::serde_json;
-use deno_core::url;
 use deno_error::JsErrorClass;
 use deno_graph::Dependency;
 use deno_graph::GraphKind;
@@ -18,19 +14,23 @@ use deno_graph::ModuleError;
 use deno_graph::ModuleErrorKind;
 use deno_graph::ModuleGraph;
 use deno_graph::Resolution;
-use deno_lib::util::checksum;
-use deno_lib::version::DENO_VERSION_INFO;
-use deno_npm::NpmPackageId;
-use deno_npm::NpmResolutionPackage;
-use deno_npm::resolution::NpmResolutionSnapshot;
-use deno_npm_installer::graph::NpmCachingStrategy;
-use deno_npmrc::ResolvedNpmRc;
-use deno_print::drop_println;
-use deno_resolver::DenoResolveErrorKind;
-use deno_resolver::display::DisplayTreeNode;
 use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageReq;
 use deno_terminal::colors;
+use ende_core::anyhow::bail;
+use ende_core::error::AnyError;
+use ende_core::serde_json;
+use ende_core::url;
+use ende_lib::util::checksum;
+use ende_lib::version::DENO_VERSION_INFO;
+use ende_npm::NpmPackageId;
+use ende_npm::NpmResolutionPackage;
+use ende_npm::resolution::NpmResolutionSnapshot;
+use ende_npm_installer::graph::NpmCachingStrategy;
+use ende_npmrc::ResolvedNpmRc;
+use ende_print::drop_println;
+use ende_resolver::DenoResolveErrorKind;
+use ende_resolver::display::DisplayTreeNode;
 
 use crate::args::Flags;
 use crate::args::InfoFlags;
@@ -63,18 +63,18 @@ pub async fn info(
     let maybe_import_specifier = match resolver.resolve(
       &specifier,
       &cwd_url,
-      deno_resolver::workspace::ResolutionKind::Execution,
+      ende_resolver::workspace::ResolutionKind::Execution,
     ) {
       Ok(resolved) => match resolved {
-        deno_resolver::workspace::MappedResolution::Normal {
+        ende_resolver::workspace::MappedResolution::Normal {
           specifier,
           ..
         }
-        | deno_resolver::workspace::MappedResolution::WorkspaceJsrPackage {
+        | ende_resolver::workspace::MappedResolution::WorkspaceJsrPackage {
           specifier,
           ..
         } => Some(specifier),
-        deno_resolver::workspace::MappedResolution::WorkspaceNpmPackage {
+        ende_resolver::workspace::MappedResolution::WorkspaceNpmPackage {
           target_pkg_json,
           sub_path,
           ..
@@ -89,20 +89,20 @@ pub async fn info(
             )?
             .into_url()?,
         ),
-        deno_resolver::workspace::MappedResolution::PackageJson {
+        ende_resolver::workspace::MappedResolution::PackageJson {
           alias,
           sub_path,
           dep_result,
           ..
         } => match dep_result.as_ref().map_err(|e| e.clone())? {
-          deno_package_json::PackageJsonDepValue::File(_) => {
+          ende_package_json::PackageJsonDepValue::File(_) => {
             return Err(
               DenoResolveErrorKind::UnsupportedPackageJsonFileSpecifier
                 .into_box()
                 .into(),
             );
           }
-          deno_package_json::PackageJsonDepValue::Workspace {
+          ende_package_json::PackageJsonDepValue::Workspace {
             name,
             version_req,
           } => {
@@ -123,14 +123,14 @@ pub async fn info(
                 .into_url()?,
             )
           }
-          deno_package_json::PackageJsonDepValue::Req(req) => {
+          ende_package_json::PackageJsonDepValue::Req(req) => {
             Some(ModuleSpecifier::parse(&format!(
               "npm:{}{}",
               req,
               sub_path.map(|s| format!("/{}", s)).unwrap_or_default()
             ))?)
           }
-          deno_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
+          ende_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
             match resolver.resolve_catalog_dep(alias, catalog_name) {
               Some(req) => Some(ModuleSpecifier::parse(&format!(
                 "npm:{}{}",
@@ -141,7 +141,7 @@ pub async fn info(
             }
           }
         },
-        deno_resolver::workspace::MappedResolution::PackageJsonImport {
+        ende_resolver::workspace::MappedResolution::PackageJsonImport {
           pkg_json,
         } => Some(
           node_resolver
@@ -210,7 +210,7 @@ pub async fn info(
         maybe_npm_info.as_ref().map(|(r, s)| (r.as_ref(), s)),
         &mut output,
       )?;
-      deno_print::drop_write_stdout(output.as_bytes());
+      ende_print::drop_write_stdout(output.as_bytes());
     }
   } else {
     // If it was just "deno info" print location of caches and exit
@@ -226,7 +226,7 @@ pub async fn info(
 fn print_cache_info(
   factory: &CliFactory,
   json: bool,
-  location: Option<&deno_core::url::Url>,
+  location: Option<&ende_core::url::Url>,
 ) -> Result<(), AnyError> {
   let deno_version = DENO_VERSION_INFO.deno;
   let dir = factory.deno_dir()?;
@@ -236,7 +236,7 @@ fn print_cache_info(
   let registry_cache = dir.registries_folder_path();
   let mut origin_dir = dir.origin_data_folder_path();
   let deno_dir = dir.root_path_for_display().to_string();
-  let web_cache_dir = deno_lib::worker::get_cache_storage_dir(&origin_dir);
+  let web_cache_dir = ende_lib::worker::get_cache_storage_dir(&origin_dir);
 
   if let Some(location) = &location {
     origin_dir =

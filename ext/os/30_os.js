@@ -29,7 +29,7 @@ const {
   TypeError,
 } = primordials;
 
-const { Event, EventTarget } = core.loadExtScript("ext:deno_web/02_event.js");
+const { Event, EventTarget } = core.loadExtScript("ext:ende_web/02_event.js");
 
 const windowDispatchEvent = FunctionPrototypeBind(
   EventTarget.prototype.dispatchEvent,

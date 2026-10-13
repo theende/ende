@@ -18,7 +18,7 @@ use std::task::Poll;
 
 use deno_error::JsErrorBox;
 use deno_error::JsErrorClass;
-use deno_ops::op2;
+use ende_ops::op2;
 use futures::future::FutureExt;
 use parking_lot::Mutex;
 use tokio::task::LocalSet;
@@ -33,8 +33,8 @@ use crate::ModuleType;
 use crate::ResolutionKind;
 use crate::RuntimeOptions;
 use crate::ascii_str;
-// deno_ops macros generate code assuming deno_core in scope.
-use crate::deno_core;
+// ende_ops macros generate code assuming ende_core in scope.
+use crate::ende_core;
 use crate::error::CoreErrorKind;
 use crate::error::exception_to_err_result;
 use crate::modules::CustomModuleEvaluationKind;
@@ -445,7 +445,7 @@ fn test_mods() {
     43
   }
 
-  deno_core::extension!(test_ext, ops = [op_test]);
+  ende_core::extension!(test_ext, ops = [op_test]);
 
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
@@ -471,7 +471,7 @@ fn test_mods() {
   let module_map = runtime.module_map().clone();
 
   let (mod_a, mod_b) = {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let mod_a = module_map
       .new_es_module(
         scope,
@@ -547,7 +547,7 @@ fn test_mods() {
 
 #[test]
 fn test_lazy_loaded_esm() {
-  deno_core::extension!(test_ext, lazy_loaded_esm = [dir "modules/testdata", "lazy_loaded.js"]);
+  ende_core::extension!(test_ext, lazy_loaded_esm = [dir "modules/testdata", "lazy_loaded.js"]);
 
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
@@ -604,7 +604,7 @@ fn test_lazy_loaded_esm_rejects_non_lazy_cached_module() {
 
 #[test]
 fn test_lazy_loaded_esm_aliased_specifier() {
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     lazy_loaded_esm = [
       dir "modules/testdata",
@@ -633,7 +633,7 @@ fn test_lazy_loaded_esm_aliased_specifier() {
 
 #[tokio::test]
 async fn test_lazy_loaded_esm_aliased_via_import() {
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     lazy_loaded_esm = [
       dir "modules/testdata",
@@ -677,7 +677,7 @@ async fn test_lazy_loaded_esm_aliased_via_import() {
 /// getter lazy-loads `async_hooks_esm.ts` (a sibling in the user's bundle).
 #[tokio::test]
 async fn test_lazy_load_esm_evaluates_pre_instantiated_sibling() {
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     lazy_loaded_esm = [
       dir "modules/testdata",
@@ -717,7 +717,7 @@ fn test_cached_synthetic_esm_evaluation_allows_dynamic_import() {
   let mut runtime = JsRuntime::new(Default::default());
   let module_map = runtime.module_map().clone();
 
-  deno_core::scope!(scope, runtime);
+  ende_core::scope!(scope, runtime);
   module_map.add_synthetic_esm_module(
     ascii_str!("custom:synthetic").into(),
     ascii_str!("ext:test/backing.js").into(),
@@ -751,7 +751,7 @@ fn test_cached_synthetic_esm_evaluation_allows_dynamic_import() {
 /// + react-router 7.15 under a CJS bin).
 #[tokio::test]
 async fn test_lazy_loaded_esm_concurrent_loads() {
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     lazy_loaded_esm = [
       dir "modules/testdata",
@@ -794,7 +794,7 @@ async fn test_lazy_loaded_esm_concurrent_loads() {
 
 #[test]
 fn test_lazy_loaded_script() {
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     lazy_loaded_js = [dir "modules/testdata", "lazy_script.js", "lazy_script_dep.js"]
   );
@@ -830,7 +830,7 @@ fn test_lazy_loaded_script() {
 
 #[test]
 fn test_lazy_loaded_script_not_found() {
-  deno_core::extension!(test_ext);
+  ende_core::extension!(test_ext);
 
   let mut runtime = JsRuntime::new(RuntimeOptions {
     extensions: vec![test_ext::init()],
@@ -874,7 +874,7 @@ fn test_json_text_bytes_modules() {
   let module_map = runtime.module_map().clone();
 
   let (mod_b, mod_c, mod_d, mod_e) = {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let specifier_b = ascii_str!("file:///b.js");
 
     let mod_b = module_map
@@ -1010,7 +1010,7 @@ fn test_validate_import_attributes_default() {
   });
 
   let module_map_rc = runtime.module_map().clone();
-  deno_core::scope!(scope, runtime);
+  ende_core::scope!(scope, runtime);
   module_map_rc
     .new_es_module(
       scope,
@@ -1128,7 +1128,7 @@ fn test_validate_import_attributes_callback() {
   let module_map_rc = runtime.module_map().clone();
 
   {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let module_err = module_map_rc
       .new_es_module(
         scope,
@@ -1154,7 +1154,7 @@ fn test_validate_import_attributes_callback() {
   }
 
   {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let module_err = module_map_rc
       .new_es_module(
         scope,
@@ -1202,7 +1202,7 @@ fn test_validate_import_attributes_callback2() {
   let module_map = runtime.module_map().clone();
 
   {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let module_err = module_map
       .new_es_module(
         scope,
@@ -1290,7 +1290,7 @@ fn test_custom_module_type_default() {
   let module_map = runtime.module_map().clone();
 
   let err = {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let specifier_a = ascii_str!("file:///a.png").into();
     module_map
       .new_module(
@@ -1355,7 +1355,7 @@ fn test_custom_module_type_callback_synthetic() {
   let module_map = runtime.module_map().clone();
 
   let err = {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let specifier_a = ascii_str!("file:///a.png").into();
     module_map
       .new_module(
@@ -1381,7 +1381,7 @@ fn test_custom_module_type_callback_synthetic() {
   };
 
   {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let specifier_a = ascii_str!("file:///b.png").into();
     module_map
       .new_module(
@@ -1452,7 +1452,7 @@ export const foo = bytes;
   let module_map = runtime.module_map().clone();
 
   let mod_id = {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     let specifier_a = ascii_str!("file:///b.png").into();
     module_map
       .new_module(
@@ -2852,7 +2852,7 @@ async fn evaluate_already_evaluated_module_sync() {
   // Evaluate synchronously using scope
   {
     let module_map = runtime.module_map();
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     module_map.mod_evaluate_sync(scope, mod_id).unwrap();
   }
 
@@ -2864,7 +2864,7 @@ async fn evaluate_already_evaluated_module_sync() {
   // Try to evaluate the same module again synchronously - should not panic
   {
     let module_map = runtime.module_map();
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
     module_map.mod_evaluate_sync(scope, mod_id).unwrap();
   }
 
@@ -3179,7 +3179,7 @@ async fn test_lazy_loaded_esm_with_tla_no_panic() {
     42
   }
 
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     ops = [op_eager_resolve],
     lazy_loaded_esm = [
@@ -3210,7 +3210,7 @@ async fn test_lazy_loaded_esm_with_tla_no_panic() {
   // prematurely resolve the main module evaluation promise.
 
   let (mod_main, mod_tla, mod_lazy) = {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let mod_tla = module_map
       .new_es_module(
@@ -3299,7 +3299,7 @@ async fn test_tla_with_tick_scheduled_no_hang() {
     42
   }
 
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     ops = [op_async_resolve],
     lazy_loaded_esm = [
@@ -3331,7 +3331,7 @@ async fn test_tla_with_tick_scheduled_no_hang() {
   // evaluation promise stays Pending forever.
 
   let (mod_main, mod_tick, mod_tla) = {
-    deno_core::scope!(scope, runtime);
+    ende_core::scope!(scope, runtime);
 
     let mod_tick = module_map
       .new_es_module(
@@ -3416,7 +3416,7 @@ async fn test_tla_with_tick_scheduled_no_hang() {
 /// microtask checkpoint.
 #[tokio::test]
 async fn test_dyn_import_async_graph_with_lazy_esm_no_stall() {
-  deno_core::extension!(
+  ende_core::extension!(
     test_ext,
     lazy_loaded_esm = [
       dir "modules/testdata",
@@ -3486,7 +3486,7 @@ async fn test_dyn_import_async_graph_with_lazy_esm_no_stall() {
 
   // Confirm main.js's TLA actually completed (not just that we didn't
   // hit a stall error).
-  deno_core::scope!(scope, runtime);
+  ende_core::scope!(scope, runtime);
   let g = scope.get_current_context().global(scope);
   let key = v8::String::new(scope, "done").unwrap();
   let v = g.get(scope, key.into()).unwrap();

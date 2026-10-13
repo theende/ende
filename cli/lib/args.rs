@@ -7,20 +7,20 @@ use std::path::PathBuf;
 
 use base64::prelude::BASE64_STANDARD;
 use base64::prelude::Engine;
-use deno_npm::resolution::PackageIdNotFoundError;
-use deno_npm::resolution::ValidSerializedNpmResolutionSnapshot;
-use deno_npm_installer::process_state::NpmProcessState;
-use deno_npm_installer::process_state::NpmProcessStateFromEnvVarSys;
-use deno_npm_installer::process_state::NpmProcessStateKind;
-use deno_runtime::UNSTABLE_ENV_VAR_NAMES;
-use deno_runtime::colors;
-use deno_runtime::deno_node::ops::ipc::ChildIpcSerialization;
-use deno_runtime::deno_tls::deno_native_certs::load_native_certs;
-use deno_runtime::deno_tls::rustls;
-use deno_runtime::deno_tls::rustls::RootCertStore;
-use deno_runtime::deno_tls::rustls_pemfile;
-use deno_runtime::deno_tls::webpki_roots;
 use deno_semver::npm::NpmPackageReqReference;
+use ende_npm::resolution::PackageIdNotFoundError;
+use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
+use ende_npm_installer::process_state::NpmProcessState;
+use ende_npm_installer::process_state::NpmProcessStateFromEnvVarSys;
+use ende_npm_installer::process_state::NpmProcessStateKind;
+use ende_runtime::UNSTABLE_ENV_VAR_NAMES;
+use ende_runtime::colors;
+use ende_runtime::ende_node::ops::ipc::ChildIpcSerialization;
+use ende_runtime::ende_tls::deno_native_certs::load_native_certs;
+use ende_runtime::ende_tls::rustls;
+use ende_runtime::ende_tls::rustls::RootCertStore;
+use ende_runtime::ende_tls::rustls_pemfile;
+use ende_runtime::ende_tls::webpki_roots;
 use serde::Deserialize;
 use serde::Serialize;
 use sys_traits::EnvVar;
@@ -50,14 +50,14 @@ pub fn has_flag_env_var(sys: &impl EnvVar, name: &str) -> bool {
 /// `process.on("message")`. The env vars are removed once read so they don't
 /// leak into grandchild processes. Returns `Ok(None)` when no channel was set.
 ///
-/// Shared by the `deno` CLI and the standalone (`denort`) runtime so the two
+/// Shared by the `deno` CLI and the standalone (`endert`) runtime so the two
 /// entry points can't drift; the latter relies on this for IPC to work in a
 /// compiled binary's forked child (issue #26304).
 pub fn node_ipc_init(
   sys: &impl EnvVar,
 ) -> Result<
   Option<(i64, ChildIpcSerialization)>,
-  deno_runtime::deno_core::anyhow::Error,
+  ende_runtime::ende_core::anyhow::Error,
 > {
   let maybe_node_channel_fd = sys.env_var("NODE_CHANNEL_FD").ok();
   let maybe_node_channel_serialization =
@@ -240,7 +240,7 @@ pub fn npm_process_state(
 
   NPM_PROCESS_STATE
     .get_or_init(|| {
-      use deno_runtime::deno_process::NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME;
+      use ende_runtime::ende_process::NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME;
       let fd_or_path = sys.env_var_os(NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME)?;
 
       sys.env_remove_var(NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME);

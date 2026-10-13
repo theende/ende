@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 // Copyright Joyent, Inc. and Node.js contributors. All rights reserved. MIT license.
 
-import { BufferEncoding } from "ext:deno_node/_global.d.ts";
+import { BufferEncoding } from "ext:ende_node/_global.d.ts";
 import { Buffer } from "../../buffer.ts";
 
 export type HASH_DATA = string | ArrayBufferView | Buffer | ArrayBuffer;

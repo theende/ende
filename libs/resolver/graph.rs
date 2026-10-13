@@ -40,7 +40,7 @@ use crate::workspace::sloppy_imports_resolve;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type FoundPackageJsonDepFlagRc =
-  deno_maybe_sync::MaybeArc<FoundPackageJsonDepFlag>;
+  ende_maybe_sync::MaybeArc<FoundPackageJsonDepFlag>;
 
 /// A flag that indicates if a package.json dependency was
 /// found during resolution.
@@ -159,7 +159,7 @@ pub struct MappedResolutionDiagnosticWithPosition<'a> {
 }
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type OnMappedResolutionDiagnosticFn = deno_maybe_sync::MaybeArc<
+pub type OnMappedResolutionDiagnosticFn = ende_maybe_sync::MaybeArc<
   dyn Fn(MappedResolutionDiagnosticWithPosition) + Send + Sync,
 >;
 
@@ -167,7 +167,7 @@ pub struct ResolveWithGraphOptions {
   pub mode: node_resolver::ResolutionMode,
   pub kind: node_resolver::NodeResolutionKind,
   /// Whether to maintain npm specifiers as-is. It's necessary for the
-  /// deno_core module loader to resolve npm specifiers as-is so that
+  /// ende_core module loader to resolve npm specifiers as-is so that
   /// the loader can properly dynamic import and install npm packages
   /// when managed.
   pub maintain_npm_specifiers: bool,
@@ -192,7 +192,7 @@ pub type DenoResolverRc<
   TIsBuiltInNodeModuleChecker,
   TNpmPackageFolderResolver,
   TSys,
-> = deno_maybe_sync::MaybeArc<
+> = ende_maybe_sync::MaybeArc<
   DenoResolver<
     TInNpmPackageChecker,
     TIsBuiltInNodeModuleChecker,
@@ -217,7 +217,7 @@ pub struct DenoResolver<
   >,
   sys: TSys,
   found_package_json_dep_flag: FoundPackageJsonDepFlagRc,
-  warned_pkgs: deno_maybe_sync::MaybeDashSet<PackageReq>,
+  warned_pkgs: ende_maybe_sync::MaybeDashSet<PackageReq>,
   on_warning: Option<OnMappedResolutionDiagnosticFn>,
 }
 

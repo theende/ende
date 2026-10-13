@@ -6,56 +6,56 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use deno_bundle_runtime::BundlePlatform;
-use deno_cache_dir::GlobalOrLocalHttpCache;
-use deno_cache_dir::npm::NpmCacheDir;
-use deno_config::workspace::WorkspaceDirectory;
-use deno_core::anyhow::Context;
-use deno_core::error::AnyError;
-use deno_core::futures::FutureExt;
-use deno_core::serde_json;
-use deno_core::url::Url;
 use deno_error::JsErrorBox;
 use deno_graph::packages::JsrVersionResolver;
-use deno_lib::args::CaData;
-use deno_lib::args::get_root_cert_store;
-use deno_lib::args::npm_process_state;
-use deno_lib::npm::NpmRegistryReadPermissionChecker;
-use deno_lib::npm::NpmRegistryReadPermissionCheckerMode;
-use deno_lib::npm::create_npm_process_state_provider;
-use deno_lib::worker::LibMainWorkerFactory;
-use deno_lib::worker::LibMainWorkerOptions;
-use deno_lib::worker::LibWorkerFactoryRoots;
-use deno_npm::resolution::NpmVersionResolver;
-use deno_npm_cache::NpmCacheSetting;
-use deno_npm_installer::NpmInstallerFactoryOptions;
-use deno_npm_installer::lifecycle_scripts::LifecycleScriptsExecutor;
-use deno_npm_installer::lifecycle_scripts::NullLifecycleScriptsExecutor;
-use deno_npm_installer::process_state::NpmProcessStateKind;
-use deno_npmrc::ResolvedNpmRc;
-use deno_resolver::cache::ParsedSourceCache;
-use deno_resolver::cjs::IsCjsResolutionMode;
-use deno_resolver::deno_json::CompilerOptionsOverrides;
-use deno_resolver::deno_json::CompilerOptionsResolver;
-use deno_resolver::factory::ConfigDiscoveryOption;
-use deno_resolver::factory::NpmProcessStateOptions;
-use deno_resolver::factory::ResolverFactoryOptions;
-use deno_resolver::factory::SpecifiedImportMapProvider;
-use deno_resolver::import_map::WorkspaceExternalImportMapLoader;
-use deno_resolver::loader::MemoryFiles;
-use deno_resolver::npm::DenoInNpmPackageChecker;
-use deno_resolver::workspace::WorkspaceResolver;
-use deno_runtime::CpuProfilerConfig;
-use deno_runtime::FeatureChecker;
-use deno_runtime::deno_fs;
-use deno_runtime::deno_fs::RealFs;
-use deno_runtime::deno_permissions::Permissions;
-use deno_runtime::deno_permissions::PermissionsContainer;
-use deno_runtime::deno_tls::RootCertStoreProvider;
-use deno_runtime::deno_tls::rustls::RootCertStore;
-use deno_runtime::deno_web::BlobStore;
-use deno_runtime::deno_web::BlobStoreTrait;
-use deno_runtime::permissions::RuntimePermissionDescriptorParser;
+use ende_bundle_runtime::BundlePlatform;
+use ende_cache_dir::GlobalOrLocalHttpCache;
+use ende_cache_dir::npm::NpmCacheDir;
+use ende_config::workspace::WorkspaceDirectory;
+use ende_core::anyhow::Context;
+use ende_core::error::AnyError;
+use ende_core::futures::FutureExt;
+use ende_core::serde_json;
+use ende_core::url::Url;
+use ende_lib::args::CaData;
+use ende_lib::args::get_root_cert_store;
+use ende_lib::args::npm_process_state;
+use ende_lib::npm::NpmRegistryReadPermissionChecker;
+use ende_lib::npm::NpmRegistryReadPermissionCheckerMode;
+use ende_lib::npm::create_npm_process_state_provider;
+use ende_lib::worker::LibMainWorkerFactory;
+use ende_lib::worker::LibMainWorkerOptions;
+use ende_lib::worker::LibWorkerFactoryRoots;
+use ende_npm::resolution::NpmVersionResolver;
+use ende_npm_cache::NpmCacheSetting;
+use ende_npm_installer::NpmInstallerFactoryOptions;
+use ende_npm_installer::lifecycle_scripts::LifecycleScriptsExecutor;
+use ende_npm_installer::lifecycle_scripts::NullLifecycleScriptsExecutor;
+use ende_npm_installer::process_state::NpmProcessStateKind;
+use ende_npmrc::ResolvedNpmRc;
+use ende_resolver::cache::ParsedSourceCache;
+use ende_resolver::cjs::IsCjsResolutionMode;
+use ende_resolver::deno_json::CompilerOptionsOverrides;
+use ende_resolver::deno_json::CompilerOptionsResolver;
+use ende_resolver::factory::ConfigDiscoveryOption;
+use ende_resolver::factory::NpmProcessStateOptions;
+use ende_resolver::factory::ResolverFactoryOptions;
+use ende_resolver::factory::SpecifiedImportMapProvider;
+use ende_resolver::import_map::WorkspaceExternalImportMapLoader;
+use ende_resolver::loader::MemoryFiles;
+use ende_resolver::npm::DenoInNpmPackageChecker;
+use ende_resolver::workspace::WorkspaceResolver;
+use ende_runtime::CpuProfilerConfig;
+use ende_runtime::FeatureChecker;
+use ende_runtime::ende_fs;
+use ende_runtime::ende_fs::RealFs;
+use ende_runtime::ende_permissions::Permissions;
+use ende_runtime::ende_permissions::PermissionsContainer;
+use ende_runtime::ende_tls::RootCertStoreProvider;
+use ende_runtime::ende_tls::rustls::RootCertStore;
+use ende_runtime::ende_web::BlobStore;
+use ende_runtime::ende_web::BlobStoreTrait;
+use ende_runtime::permissions::RuntimePermissionDescriptorParser;
 use node_resolver::NodeConditionOptions;
 use node_resolver::NodeResolverOptions;
 use node_resolver::cache::NodeResolutionThreadLocalCache;
@@ -194,7 +194,7 @@ struct CliSpecifiedImportMapProvider {
 impl SpecifiedImportMapProvider for CliSpecifiedImportMapProvider {
   async fn get(
     &self,
-  ) -> Result<Option<deno_resolver::workspace::SpecifiedImportMap>, AnyError>
+  ) -> Result<Option<ende_resolver::workspace::SpecifiedImportMap>, AnyError>
   {
     async fn resolve_import_map_value_from_specifier(
       specifier: &Url,
@@ -227,7 +227,7 @@ impl SpecifiedImportMapProvider for CliSpecifiedImportMapProvider {
             format!("Unable to load '{}' import map", specifier)
           })?,
         };
-        Ok(Some(deno_resolver::workspace::SpecifiedImportMap {
+        Ok(Some(ende_resolver::workspace::SpecifiedImportMap {
           base_url: specifier,
           value,
         }))
@@ -237,7 +237,7 @@ impl SpecifiedImportMapProvider for CliSpecifiedImportMapProvider {
           self.workspace_external_import_map_loader.get_or_load()?
         {
           let path_url = deno_path_util::url_from_file_path(&import_map.path)?;
-          Ok(Some(deno_resolver::workspace::SpecifiedImportMap {
+          Ok(Some(ende_resolver::workspace::SpecifiedImportMap {
             base_url: path_url,
             value: import_map.value.clone(),
           }))
@@ -249,8 +249,8 @@ impl SpecifiedImportMapProvider for CliSpecifiedImportMapProvider {
   }
 }
 
-pub type CliWorkspaceFactory = deno_resolver::factory::WorkspaceFactory<CliSys>;
-pub type CliResolverFactory = deno_resolver::factory::ResolverFactory<CliSys>;
+pub type CliWorkspaceFactory = ende_resolver::factory::WorkspaceFactory<CliSys>;
+pub type CliResolverFactory = ende_resolver::factory::ResolverFactory<CliSys>;
 
 pub struct Deferred<T>(once_cell::unsync::OnceCell<T>);
 
@@ -307,7 +307,7 @@ struct CliFactoryServices {
   eszip_module_loader_provider: Deferred<Arc<EszipModuleLoaderProvider>>,
   feature_checker: Deferred<Arc<FeatureChecker>>,
   file_fetcher: Deferred<Arc<CliFileFetcher>>,
-  fs: Deferred<Arc<dyn deno_fs::FileSystem>>,
+  fs: Deferred<Arc<dyn ende_fs::FileSystem>>,
   http_client_provider: Deferred<Arc<HttpClientProvider>>,
   import_deny_permissions: Deferred<Option<PermissionsContainer>>,
   import_http_client_provider: Deferred<Arc<HttpClientProvider>>,
@@ -570,7 +570,7 @@ impl CliFactory {
     })
   }
 
-  pub fn fs(&self) -> &Arc<dyn deno_fs::FileSystem> {
+  pub fn fs(&self) -> &Arc<dyn ende_fs::FileSystem> {
     self.services.fs.get_or_init(|| Arc::new(RealFs))
   }
 
@@ -609,7 +609,7 @@ impl CliFactory {
       npmrc.get_all_known_registries_urls(),
     ));
     let packument_format = if npmrc.min_release_age_days.is_some()
-      || npmrc.trust_policy != deno_npmrc::TrustPolicyConfig::Off
+      || npmrc.trust_policy != ende_npmrc::TrustPolicyConfig::Off
     {
       NpmPackumentFormat::Full
     } else {
@@ -630,7 +630,7 @@ impl CliFactory {
       self
         .install_reporter()?
         .cloned()
-        .map(|r| r as Arc<dyn deno_npm_cache::TarballCacheReporter>),
+        .map(|r| r as Arc<dyn ende_npm_cache::TarballCacheReporter>),
     ))
   }
 
@@ -672,7 +672,7 @@ impl CliFactory {
         .workspace_factory()
         .npmrc()
         .ok()
-        .map(|rc| rc.trust_policy != deno_npmrc::TrustPolicyConfig::Off)
+        .map(|rc| rc.trust_policy != ende_npmrc::TrustPolicyConfig::Off)
         .unwrap_or(false);
       let needs_full_packument = needs_full_packument_for_trust
         || resolver_factory
@@ -707,7 +707,7 @@ impl CliFactory {
         self
           .install_reporter()?
           .cloned()
-          .map(|r| r as Arc<dyn deno_npm_installer::InstallReporter>),
+          .map(|r| r as Arc<dyn ende_npm_installer::InstallReporter>),
         NpmInstallerFactoryOptions {
           clean_on_install: match cli_options.sub_command() {
             DenoSubcommand::Add { .. }
@@ -809,7 +809,7 @@ impl CliFactory {
             _ => false,
           },
           resolve_npm_resolution_snapshot: Box::new(|| {
-            deno_lib::args::resolve_npm_resolution_snapshot(&CliSys::default())
+            ende_lib::args::resolve_npm_resolution_snapshot(&CliSys::default())
           }),
         },
       ))
@@ -1044,7 +1044,7 @@ impl CliFactory {
             self.root_permissions_container()?.clone(),
             self.sys(),
             self.install_reporter()?.cloned().map(|r| {
-              r as Arc<dyn deno_resolver::file_fetcher::GraphLoaderReporter>
+              r as Arc<dyn ende_resolver::file_fetcher::GraphLoaderReporter>
             }),
           )))
         }
@@ -1097,7 +1097,7 @@ impl CliFactory {
     if let Some((host, name, publish_uid)) =
       cli_options.resolve_inspector_server_options()
     {
-      deno_runtime::deno_inspector_server::create_inspector_server(
+      ende_runtime::ende_inspector_server::create_inspector_server(
         host,
         name,
         publish_uid,
@@ -1146,7 +1146,7 @@ impl CliFactory {
       let mut checker = FeatureChecker::default();
       checker.set_exit_cb(Box::new(crate::unstable_exit_cb));
       let unstable_features = cli_options.unstable_features();
-      for feature in deno_runtime::UNSTABLE_FEATURES {
+      for feature in ende_runtime::UNSTABLE_FEATURES {
         if unstable_features.contains(&feature.name) {
           checker.enable_feature(feature.name);
         }
@@ -1390,9 +1390,9 @@ impl CliFactory {
       serve_host: cli_options.serve_host(),
       otel_config: cli_options.otel_config(),
       no_legacy_abort: cli_options.no_legacy_abort(),
-      startup_snapshot: deno_snapshots::CLI_SNAPSHOT,
-      residual_lazy_js_sources: deno_snapshots::RESIDUAL_LAZY_JS,
-      residual_lazy_esm_sources: deno_snapshots::RESIDUAL_LAZY_ESM,
+      startup_snapshot: ende_snapshots::CLI_SNAPSHOT,
+      residual_lazy_js_sources: ende_snapshots::RESIDUAL_LAZY_JS,
+      residual_lazy_esm_sources: ende_snapshots::RESIDUAL_LAZY_ESM,
       enable_raw_imports: cli_options.unstable_raw_imports(),
       close_on_idle: true,
       maybe_initial_cwd: Some(deno_path_util::url_from_directory_path(
@@ -1496,7 +1496,7 @@ impl CliFactory {
             },
             typescript_version: Some(
               deno_semver::Version::parse_standard(
-                deno_lib::version::DENO_VERSION_INFO.typescript,
+                ende_lib::version::DENO_VERSION_INFO.typescript,
               )
               .unwrap(),
             ),
@@ -1547,7 +1547,7 @@ impl CliFactory {
             DenoSubcommand::Publish(_) => {
               // the node_modules directory is not published to jsr, so resolve
               // dependencies via the package.json rather than using node resolution
-              Some(deno_resolver::workspace::PackageJsonDepResolution::Enabled)
+              Some(ende_resolver::workspace::PackageJsonDepResolution::Enabled)
             }
             _ => None,
           },
@@ -1556,9 +1556,9 @@ impl CliFactory {
             DenoSubcommand::Bundle(_)
           ) || self.flags.internal.force_bundle_mode
           {
-            deno_resolver::loader::AllowJsonImports::Always
+            ende_resolver::loader::AllowJsonImports::Always
           } else {
-            deno_resolver::loader::AllowJsonImports::WithAttribute
+            ende_resolver::loader::AllowJsonImports::WithAttribute
           },
           require_modules: options.require_modules()?,
         },
@@ -1570,8 +1570,8 @@ impl CliFactory {
 fn new_workspace_factory_options(
   initial_cwd: &Path,
   flags: &Flags,
-) -> deno_resolver::factory::WorkspaceFactoryOptions {
-  deno_resolver::factory::WorkspaceFactoryOptions {
+) -> ende_resolver::factory::WorkspaceFactoryOptions {
+  ende_resolver::factory::WorkspaceFactoryOptions {
     additional_config_file_names: if matches!(
       flags.subcommand,
       DenoSubcommand::Publish(..)
@@ -1632,7 +1632,7 @@ fn new_workspace_factory_options(
     node_modules_linker: flags.node_modules_linker,
     npm_process_state: npm_process_state(&CliSys::default()).as_ref().map(
       |s| {
-        use deno_npm_installer::process_state::NpmProcessStateLinkerMode;
+        use ende_npm_installer::process_state::NpmProcessStateLinkerMode;
         NpmProcessStateOptions {
           node_modules_dir: s
             .local_node_modules_path
@@ -1641,10 +1641,10 @@ fn new_workspace_factory_options(
           is_byonm: matches!(s.kind, NpmProcessStateKind::Byonm),
           linker_mode: Some(match s.linker_mode {
             NpmProcessStateLinkerMode::Isolated => {
-              deno_config::deno_json::NodeModulesLinkerMode::Isolated
+              ende_config::deno_json::NodeModulesLinkerMode::Isolated
             }
             NpmProcessStateLinkerMode::Hoisted => {
-              deno_config::deno_json::NodeModulesLinkerMode::Hoisted
+              ende_config::deno_json::NodeModulesLinkerMode::Hoisted
             }
           }),
         }

@@ -36,8 +36,8 @@ const {
   validateOneOf,
   validatePort,
   validateString,
-} = core.loadExtScript("ext:deno_node/internal/validators.mjs");
-const { isIP } = core.loadExtScript("ext:deno_node/internal/net.ts");
+} = core.loadExtScript("ext:ende_node/internal/validators.mjs");
+const { isIP } = core.loadExtScript("ext:ende_node/internal/net.ts");
 const {
   dnsOrderToNumber,
   getDefaultDnsOrder,
@@ -47,7 +47,7 @@ const {
   Resolver: CallbackResolver,
   validateHints,
   validDnsOrders,
-} = core.loadExtScript("ext:deno_node/internal/dns/utils.ts");
+} = core.loadExtScript("ext:ende_node/internal/dns/utils.ts");
 
 const {
   dnsException,
@@ -55,15 +55,15 @@ const {
   ERR_INVALID_ARG_VALUE,
   ERR_MISSING_ARGS,
   handleDnsError,
-} = core.loadExtScript("ext:deno_node/internal/errors.ts");
+} = core.loadExtScript("ext:ende_node/internal/errors.ts");
 const {
   default: cares,
   GetAddrInfoReqWrap,
   GetNameInfoReqWrap,
   QueryReqWrap,
-} = core.loadExtScript("ext:deno_node/internal_binding/cares_wrap.ts");
+} = core.loadExtScript("ext:ende_node/internal_binding/cares_wrap.ts");
 const { toASCII } = core.loadExtScript(
-  "ext:deno_node/internal/idna.ts",
+  "ext:ende_node/internal/idna.ts",
 );
 
 function onlookup(

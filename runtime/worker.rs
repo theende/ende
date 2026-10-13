@@ -11,45 +11,45 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 use std::time::Instant;
 
-use deno_cache::CacheImpl;
-use deno_cache::CreateCache;
-use deno_cache::SqliteBackedCache;
-use deno_core::CompiledWasmModuleStore;
-use deno_core::Extension;
-use deno_core::InspectorSessionKind;
-use deno_core::JsRuntime;
-use deno_core::JsRuntimeInspector;
-use deno_core::LocalInspectorSession;
-use deno_core::ModuleCodeString;
-use deno_core::ModuleId;
-use deno_core::ModuleLoadOptions;
-use deno_core::ModuleLoadReferrer;
-use deno_core::ModuleLoader;
-use deno_core::ModuleSpecifier;
-use deno_core::OpMetricsFactoryFn;
-use deno_core::PollEventLoopOptions;
-use deno_core::RuntimeOptions;
-use deno_core::SharedArrayBufferStore;
-use deno_core::SourceCodeCacheInfo;
-use deno_core::error::CoreError;
-use deno_core::error::JsError;
-use deno_core::v8;
-use deno_cron::CronHandler;
-use deno_cron::CronHandlerImpl;
 use deno_error::JsErrorBox;
-use deno_fs::FileSystem;
-use deno_io::Stdio;
-use deno_kv::dynamic::MultiBackendDbHandler;
-use deno_napi::DenoRtNativeAddonLoaderRc;
-use deno_node::ExtNodeSys;
-use deno_node::NodeExtInitServices;
-use deno_os::ExitCode;
-use deno_permissions::PermissionsContainer;
-use deno_process::NpmProcessStateProviderRc;
-use deno_tls::RootCertStoreProvider;
-use deno_tls::TlsKeys;
-use deno_web::BlobStoreTrait;
-use deno_web::InMemoryBroadcastChannel;
+use ende_cache::CacheImpl;
+use ende_cache::CreateCache;
+use ende_cache::SqliteBackedCache;
+use ende_core::CompiledWasmModuleStore;
+use ende_core::Extension;
+use ende_core::InspectorSessionKind;
+use ende_core::JsRuntime;
+use ende_core::JsRuntimeInspector;
+use ende_core::LocalInspectorSession;
+use ende_core::ModuleCodeString;
+use ende_core::ModuleId;
+use ende_core::ModuleLoadOptions;
+use ende_core::ModuleLoadReferrer;
+use ende_core::ModuleLoader;
+use ende_core::ModuleSpecifier;
+use ende_core::OpMetricsFactoryFn;
+use ende_core::PollEventLoopOptions;
+use ende_core::RuntimeOptions;
+use ende_core::SharedArrayBufferStore;
+use ende_core::SourceCodeCacheInfo;
+use ende_core::error::CoreError;
+use ende_core::error::JsError;
+use ende_core::v8;
+use ende_cron::CronHandler;
+use ende_cron::CronHandlerImpl;
+use ende_fs::FileSystem;
+use ende_io::Stdio;
+use ende_kv::dynamic::MultiBackendDbHandler;
+use ende_napi::DenoRtNativeAddonLoaderRc;
+use ende_node::ExtNodeSys;
+use ende_node::NodeExtInitServices;
+use ende_os::ExitCode;
+use ende_permissions::PermissionsContainer;
+use ende_process::NpmProcessStateProviderRc;
+use ende_tls::RootCertStoreProvider;
+use ende_tls::TlsKeys;
+use ende_web::BlobStoreTrait;
+use ende_web::InMemoryBroadcastChannel;
 use log::debug;
 use node_resolver::InNpmPackageChecker;
 use node_resolver::NpmPackageFolderResolver;
@@ -58,7 +58,7 @@ use crate::BootstrapOptions;
 use crate::FeatureChecker;
 use crate::code_cache::CodeCache;
 use crate::code_cache::CodeCacheType;
-use crate::deno_inspector_server::get_inspector_server;
+use crate::ende_inspector_server::get_inspector_server;
 use crate::ops;
 use crate::shared::runtime;
 
@@ -74,7 +74,7 @@ pub(crate) static SIGUSR2_RX: LazyLock<tokio::sync::watch::Receiver<()>> =
     let (tx, rx) = tokio::sync::watch::channel(());
 
     tokio::spawn(async move {
-      let mut sigusr2 = deno_signals::signal_stream(libc::SIGUSR2).unwrap();
+      let mut sigusr2 = ende_signals::signal_stream(libc::SIGUSR2).unwrap();
 
       loop {
         sigusr2.recv().await;
@@ -97,11 +97,11 @@ pub(crate) static SIGUSR2_RX: LazyLock<tokio::sync::watch::Receiver<()>> =
 // module types
 pub fn create_validate_import_attributes_callback(
   enable_raw_imports: Arc<AtomicBool>,
-) -> deno_core::ValidateImportAttributesCb {
+) -> ende_core::ValidateImportAttributesCb {
   Box::new(
     move |scope: &mut v8::PinScope<'_, '_>,
           attributes: &HashMap<String, String>,
-          context: &deno_core::ImportAttributesContext| {
+          context: &ende_core::ImportAttributesContext| {
       // If `module.registerHooks()` has installed user hooks, defer
       // import-attribute validation to the user hooks so they can
       // implement custom module types and attributes
@@ -111,7 +111,7 @@ pub fn create_validate_import_attributes_callback(
       let op_state = JsRuntime::op_state_from(&*scope);
       if let Ok(op_state) = op_state.try_borrow()
         && let Some(registry) = op_state
-          .try_borrow::<deno_node::ops::module_hooks::LoaderHookRegistry>(
+          .try_borrow::<ende_node::ops::module_hooks::LoaderHookRegistry>(
         )
         && registry.hooks_active.get()
       {
@@ -145,25 +145,25 @@ pub fn create_validate_import_attributes_callback(
   )
 }
 
-/// Evaluates custom module types that aren't built into deno_core. Currently
+/// Evaluates custom module types that aren't built into ende_core. Currently
 /// only `with { type: "css" }` imports (gated on `--unstable-raw-imports` by
 /// `create_validate_import_attributes_callback`), which evaluate to a
 /// `CSSStyleSheet` containing the source text.
 pub fn create_custom_module_evaluation_callback()
--> deno_core::CustomModuleEvaluationCb {
+-> ende_core::CustomModuleEvaluationCb {
   Box::new(
     |scope, module_type, _module_name, code| match &*module_type {
       "css" => {
         let code = match code {
-          deno_core::ModuleSourceCode::String(code) => code.as_str().to_owned(),
-          deno_core::ModuleSourceCode::Bytes(bytes) => {
+          ende_core::ModuleSourceCode::String(code) => code.as_str().to_owned(),
+          ende_core::ModuleSourceCode::Bytes(bytes) => {
             String::from_utf8_lossy(bytes.as_bytes()).into_owned()
           }
         };
         let sheet: v8::Local<v8::Value> =
-          deno_web::create_css_style_sheet(scope, code).into();
+          ende_web::create_css_style_sheet(scope, code).into();
         let sheet = v8::Global::new(scope, sheet);
-        Ok(deno_core::CustomModuleEvaluationKind::Synthetic(sheet))
+        Ok(ende_core::CustomModuleEvaluationKind::Synthetic(sheet))
       }
       _ => Err(deno_error::JsErrorBox::generic(format!(
         "Importing \"{module_type}\" modules is not supported"
@@ -239,7 +239,7 @@ pub struct WorkerServiceOptions<
   pub npm_process_state_provider: Option<NpmProcessStateProviderRc>,
   pub permissions: PermissionsContainer,
   pub root_cert_store_provider: Option<Arc<dyn RootCertStoreProvider>>,
-  pub fetch_dns_resolver: deno_fetch::dns::Resolver,
+  pub fetch_dns_resolver: ende_fetch::dns::Resolver,
 
   /// The store to use for transferring SharedArrayBuffers between isolates.
   /// If multiple isolates should have the possibility of sharing
@@ -259,7 +259,7 @@ pub struct WorkerServiceOptions<
   /// V8 code cache for module and script source code.
   pub v8_code_cache: Option<Arc<dyn CodeCache>>,
 
-  pub bundle_provider: Option<Arc<dyn deno_bundle_runtime::BundleProvider>>,
+  pub bundle_provider: Option<Arc<dyn ende_bundle_runtime::BundleProvider>>,
 }
 
 pub struct WorkerOptions {
@@ -345,7 +345,7 @@ impl Default for WorkerOptions {
 }
 
 pub(crate) fn request_builder_hook(
-  request: &mut http::Request<deno_fetch::ReqBody>,
+  request: &mut http::Request<ende_fetch::ReqBody>,
 ) -> Result<(), JsErrorBox> {
   const X_DENO_FETCH_TOKEN: http::HeaderName =
     http::HeaderName::from_static("x-deno-fetch-token");
@@ -425,7 +425,7 @@ pub fn create_op_metrics(
         clippy::print_stderr,
         reason = "we actually want to output here"
       )]
-      move |op: &deno_core::_ops::OpCtx, event, source| {
+      move |op: &ende_core::_ops::OpCtx, event, source| {
         eprintln!(
           "[{: >10.3}] {name:max_len$}: {event:?} {source:?}",
           now.elapsed().as_secs_f64(),
@@ -476,12 +476,12 @@ impl MainWorker {
         if elems.len() == 2 {
           let endpoint = elems[0];
           let token = elems[1];
-          use deno_cache::CacheShard;
+          use ende_cache::CacheShard;
 
           let shard =
             Rc::new(CacheShard::new(endpoint.to_string(), token.to_string()));
           let create_cache_fn = move || {
-            let x = deno_cache::LscBackend::default();
+            let x = ende_cache::LscBackend::default();
             x.set_shard(shard.clone());
 
             Ok(CacheImpl::Lsc(x))
@@ -611,39 +611,39 @@ impl MainWorker {
 
     js_runtime
       .lazy_init_extensions(vec![
-        deno_web::deno_web::args(
+        ende_web::ende_web::args(
           services.blob_store.clone(),
           options.bootstrap.location.clone(),
           true,
           services.broadcast_channel.clone(),
         ),
-        deno_fetch::deno_fetch::args(deno_fetch::Options {
+        ende_fetch::ende_fetch::args(ende_fetch::Options {
           user_agent: options.bootstrap.user_agent.clone(),
           root_cert_store_provider: services.root_cert_store_provider.clone(),
           unsafely_ignore_certificate_errors: options
             .unsafely_ignore_certificate_errors
             .clone(),
-          file_fetch_handler: Rc::new(deno_fetch::FsFetchHandler),
+          file_fetch_handler: Rc::new(ende_fetch::FsFetchHandler),
           resolver: services.fetch_dns_resolver,
           request_builder_hook: Some(request_builder_hook),
           ..Default::default()
         }),
-        deno_cache::deno_cache::args(create_cache),
-        deno_websocket::deno_websocket::args(),
-        deno_webstorage::deno_webstorage::args(
+        ende_cache::ende_cache::args(create_cache),
+        ende_websocket::ende_websocket::args(),
+        ende_webstorage::ende_webstorage::args(
           options.origin_storage_dir.clone(),
         ),
-        deno_crypto::deno_crypto::args(options.seed),
-        deno_ffi::deno_ffi::args(services.deno_rt_native_addon_loader.clone()),
-        deno_net::deno_net::args(
+        ende_crypto::ende_crypto::args(options.seed),
+        ende_ffi::ende_ffi::args(services.deno_rt_native_addon_loader.clone()),
+        ende_net::ende_net::args(
           services.root_cert_store_provider.clone(),
           options.unsafely_ignore_certificate_errors.clone(),
         ),
-        deno_kv::deno_kv::args(
+        ende_kv::ende_kv::args(
           Box::new(MultiBackendDbHandler::remote_or_sqlite(
             options.origin_storage_dir.clone(),
             options.seed,
-            deno_kv::remote::HttpOptions {
+            ende_kv::remote::HttpOptions {
               user_agent: options.bootstrap.user_agent.clone(),
               root_cert_store_provider: services
                 .root_cert_store_provider
@@ -655,30 +655,30 @@ impl MainWorker {
               proxy: None,
             },
           )),
-          deno_kv::KvConfig::builder().build(),
+          ende_kv::KvConfig::builder().build(),
         ),
-        deno_napi::deno_napi::args(
+        ende_napi::ende_napi::args(
           services.deno_rt_native_addon_loader.clone(),
         ),
-        deno_http::deno_http::args(deno_http::Options {
+        ende_http::ende_http::args(ende_http::Options {
           no_legacy_abort: options.bootstrap.no_legacy_abort,
           ..Default::default()
         }),
-        deno_io::deno_io::args(Some(options.stdio)),
-        deno_fs::deno_fs::args(services.fs.clone()),
-        deno_os::deno_os::args(Some(exit_code.clone())),
-        deno_process::deno_process::args(services.npm_process_state_provider),
-        deno_node::deno_node::args::<
+        ende_io::ende_io::args(Some(options.stdio)),
+        ende_fs::ende_fs::args(services.fs.clone()),
+        ende_os::ende_os::args(Some(exit_code.clone())),
+        ende_process::ende_process::args(services.npm_process_state_provider),
+        ende_node::ende_node::args::<
           TInNpmPackageChecker,
           TNpmPackageFolderResolver,
           TExtNodeSys,
         >(services.node_services, services.fs.clone()),
-        ops::runtime::deno_runtime::args(main_module.clone()),
-        ops::worker_host::deno_worker_host::args(
+        ops::runtime::ende_runtime::args(main_module.clone()),
+        ops::worker_host::ende_worker_host::args(
           options.create_web_worker_cb.clone(),
           options.format_js_error_fn.clone(),
         ),
-        deno_bundle_runtime::deno_bundle_runtime::args(
+        ende_bundle_runtime::ende_bundle_runtime::args(
           services.bundle_provider.clone(),
         ),
       ])
@@ -697,7 +697,7 @@ impl MainWorker {
       state.put(services.feature_checker);
     }
 
-    // Register the uv_loop_t (created by deno_node extension state callback)
+    // Register the uv_loop_t (created by ende_node extension state callback)
     // The uv loop is auto-created and registered by JsRuntime::new_inner.
 
     if let Some(server) = get_inspector_server() {
@@ -719,7 +719,7 @@ impl MainWorker {
       dispatch_process_exit_event_fn_global,
     ) = {
       let context = js_runtime.main_context();
-      deno_core::scope!(scope, &mut js_runtime);
+      ende_core::scope!(scope, &mut js_runtime);
       let context_local = v8::Local::new(scope, context);
       let global_obj = context_local.global(scope);
       let bootstrap_str =
@@ -835,11 +835,11 @@ impl MainWorker {
       let mut state = op_state.borrow_mut();
       state.put(options.clone());
       if let Some((fd, serialization)) = options.node_ipc_init {
-        state.put(deno_node::ChildPipeFd(fd, serialization));
+        state.put(ende_node::ChildPipeFd(fd, serialization));
       }
     }
 
-    deno_core::scope!(scope, &mut self.js_runtime);
+    ende_core::scope!(scope, &mut self.js_runtime);
     v8::tc_scope!(scope, scope);
     let args = options.as_v8(scope);
     let bootstrap_fn = self.bootstrap_fn_global.take().unwrap();
@@ -887,7 +887,7 @@ impl MainWorker {
       .js_runtime
       .op_state()
       .borrow()
-      .borrow::<deno_core::V8CrossThreadTaskSpawner>()
+      .borrow::<ende_core::V8CrossThreadTaskSpawner>()
       .clone();
 
     let memory_trim_handle = tokio::spawn(async move {
@@ -905,7 +905,7 @@ impl MainWorker {
     self.memory_trim_handle = Some(memory_trim_handle);
   }
 
-  /// See [JsRuntime::execute_script](deno_core::JsRuntime::execute_script)
+  /// See [JsRuntime::execute_script](ende_core::JsRuntime::execute_script)
   pub fn execute_script(
     &mut self,
     script_name: &'static str,
@@ -1009,7 +1009,7 @@ impl MainWorker {
   /// was not configured to create inspector.
   pub fn create_inspector_session(
     &mut self,
-    cb: deno_core::InspectorSessionSend,
+    cb: ende_core::InspectorSessionSend,
   ) -> LocalInspectorSession {
     self.js_runtime.maybe_init_inspector();
     let insp = self.js_runtime.inspector();
@@ -1069,14 +1069,14 @@ impl MainWorker {
   ///
   /// Does not poll event loop, and thus not await any of the "load" event handlers.
   pub fn dispatch_load_event(&mut self) -> Result<(), Box<JsError>> {
-    deno_core::scope!(scope, &mut self.js_runtime);
+    ende_core::scope!(scope, &mut self.js_runtime);
     v8::tc_scope!(tc_scope, scope);
     let dispatch_load_event_fn =
       v8::Local::new(tc_scope, &self.dispatch_load_event_fn_global);
     let undefined = v8::undefined(tc_scope);
     dispatch_load_event_fn.call(tc_scope, undefined.into(), &[]);
     if let Some(exception) = tc_scope.exception() {
-      return Err(deno_core::exception_to_err(
+      return Err(ende_core::exception_to_err(
         tc_scope, exception, false, true,
       ));
     }
@@ -1087,14 +1087,14 @@ impl MainWorker {
   ///
   /// Does not poll event loop, and thus not await any of the "unload" event handlers.
   pub fn dispatch_unload_event(&mut self) -> Result<(), Box<JsError>> {
-    deno_core::scope!(scope, &mut self.js_runtime);
+    ende_core::scope!(scope, &mut self.js_runtime);
     v8::tc_scope!(tc_scope, scope);
     let dispatch_unload_event_fn =
       v8::Local::new(tc_scope, &self.dispatch_unload_event_fn_global);
     let undefined = v8::undefined(tc_scope);
     dispatch_unload_event_fn.call(tc_scope, undefined.into(), &[]);
     if let Some(exception) = tc_scope.exception() {
-      return Err(deno_core::exception_to_err(
+      return Err(ende_core::exception_to_err(
         tc_scope, exception, false, true,
       ));
     }
@@ -1103,14 +1103,14 @@ impl MainWorker {
 
   /// Dispatches process.emit("exit") event for node compat.
   pub fn dispatch_process_exit_event(&mut self) -> Result<(), Box<JsError>> {
-    deno_core::scope!(scope, &mut self.js_runtime);
+    ende_core::scope!(scope, &mut self.js_runtime);
     v8::tc_scope!(tc_scope, scope);
     let dispatch_process_exit_event_fn =
       v8::Local::new(tc_scope, &self.dispatch_process_exit_event_fn_global);
     let undefined = v8::undefined(tc_scope);
     dispatch_process_exit_event_fn.call(tc_scope, undefined.into(), &[]);
     if let Some(exception) = tc_scope.exception() {
-      return Err(deno_core::exception_to_err(
+      return Err(ende_core::exception_to_err(
         tc_scope, exception, false, true,
       ));
     }
@@ -1124,7 +1124,7 @@ impl MainWorker {
     let finalizers = {
       let op_state = self.js_runtime.op_state();
       let op_state = op_state.borrow();
-      match op_state.try_borrow::<deno_napi::NapiState>() {
+      match op_state.try_borrow::<ende_napi::NapiState>() {
         Some(s) => s.ref_tracker.borrow_mut().take_pending(),
         None => return,
       }
@@ -1137,7 +1137,7 @@ impl MainWorker {
     // so native addon code can use NAPI functions during cleanup. LIFO matches
     // Node.js's linked list behavior (head insertion → reverse iteration).
     {
-      deno_core::scope!(scope, &mut self.js_runtime);
+      ende_core::scope!(scope, &mut self.js_runtime);
       let _scope = v8::HandleScope::new(scope);
       for f in finalizers.into_iter().rev() {
         // SAFETY: The pointers (env, data, hint) were stored when the native
@@ -1154,7 +1154,7 @@ impl MainWorker {
   /// indicating if the event was prevented and thus event loop should continue
   /// running.
   pub fn dispatch_beforeunload_event(&mut self) -> Result<bool, Box<JsError>> {
-    deno_core::scope!(scope, &mut self.js_runtime);
+    ende_core::scope!(scope, &mut self.js_runtime);
     v8::tc_scope!(tc_scope, scope);
     let dispatch_beforeunload_event_fn =
       v8::Local::new(tc_scope, &self.dispatch_beforeunload_event_fn_global);
@@ -1162,7 +1162,7 @@ impl MainWorker {
     let ret_val =
       dispatch_beforeunload_event_fn.call(tc_scope, undefined.into(), &[]);
     if let Some(exception) = tc_scope.exception() {
-      return Err(deno_core::exception_to_err(
+      return Err(ende_core::exception_to_err(
         tc_scope, exception, false, true,
       ));
     }
@@ -1174,7 +1174,7 @@ impl MainWorker {
   pub fn dispatch_process_beforeexit_event(
     &mut self,
   ) -> Result<bool, Box<JsError>> {
-    deno_core::scope!(scope, &mut self.js_runtime);
+    ende_core::scope!(scope, &mut self.js_runtime);
     v8::tc_scope!(tc_scope, scope);
     let dispatch_process_beforeexit_event_fn = v8::Local::new(
       tc_scope,
@@ -1187,7 +1187,7 @@ impl MainWorker {
       &[],
     );
     if let Some(exception) = tc_scope.exception() {
-      return Err(deno_core::exception_to_err(
+      return Err(ende_core::exception_to_err(
         tc_scope, exception, false, true,
       ));
     }
@@ -1208,46 +1208,46 @@ fn common_extensions<
   // `runtime/worker.rs`, `runtime/web_worker.rs`, `runtime/snapshot_info.rs`
   // and `runtime/snapshot.rs`!
   vec![
-    deno_telemetry::deno_telemetry::init(),
+    ende_telemetry::ende_telemetry::init(),
     // Web APIs
-    deno_webidl::deno_webidl::init(),
-    deno_web::deno_web::lazy_init(),
-    deno_webgpu::deno_webgpu::init(),
-    deno_image::deno_image::init(),
-    deno_canvas::deno_canvas::init(),
-    deno_fetch::deno_fetch::lazy_init(),
-    deno_cache::deno_cache::lazy_init(),
-    deno_websocket::deno_websocket::lazy_init(),
-    deno_webstorage::deno_webstorage::lazy_init(),
-    deno_crypto::deno_crypto::lazy_init(),
-    deno_ffi::deno_ffi::lazy_init(),
-    deno_net::deno_net::lazy_init(),
-    deno_tls::deno_tls::init(),
-    deno_kv::deno_kv::lazy_init(),
-    deno_cron::deno_cron::init(Box::new(CronHandlerImpl::create_from_env())),
-    deno_napi::deno_napi::lazy_init(),
-    deno_http::deno_http::lazy_init(),
-    deno_io::deno_io::lazy_init(),
-    deno_fs::deno_fs::lazy_init(),
-    deno_os::deno_os::lazy_init(),
-    deno_process::deno_process::lazy_init(),
-    deno_node_crypto::deno_node_crypto::init(),
-    deno_node_sqlite::deno_node_sqlite::init(),
-    deno_node::deno_node::lazy_init::<
+    ende_webidl::ende_webidl::init(),
+    ende_web::ende_web::lazy_init(),
+    ende_webgpu::ende_webgpu::init(),
+    ende_image::ende_image::init(),
+    ende_canvas::ende_canvas::init(),
+    ende_fetch::ende_fetch::lazy_init(),
+    ende_cache::ende_cache::lazy_init(),
+    ende_websocket::ende_websocket::lazy_init(),
+    ende_webstorage::ende_webstorage::lazy_init(),
+    ende_crypto::ende_crypto::lazy_init(),
+    ende_ffi::ende_ffi::lazy_init(),
+    ende_net::ende_net::lazy_init(),
+    ende_tls::ende_tls::init(),
+    ende_kv::ende_kv::lazy_init(),
+    ende_cron::ende_cron::init(Box::new(CronHandlerImpl::create_from_env())),
+    ende_napi::ende_napi::lazy_init(),
+    ende_http::ende_http::lazy_init(),
+    ende_io::ende_io::lazy_init(),
+    ende_fs::ende_fs::lazy_init(),
+    ende_os::ende_os::lazy_init(),
+    ende_process::ende_process::lazy_init(),
+    ende_node_crypto::ende_node_crypto::init(),
+    ende_node_sqlite::ende_node_sqlite::init(),
+    ende_node::ende_node::lazy_init::<
       TInNpmPackageChecker,
       TNpmPackageFolderResolver,
       TExtNodeSys,
     >(),
     // Ops from this crate
-    ops::runtime::deno_runtime::lazy_init(),
-    ops::worker_host::deno_worker_host::lazy_init(),
-    ops::fs_events::deno_fs_events::init(),
-    ops::permissions::deno_permissions::init(),
-    ops::tty::deno_tty::init(),
-    ops::http::deno_http_runtime::init(),
-    deno_bundle_runtime::deno_bundle_runtime::lazy_init(),
-    ops::desktop::deno_desktop::init(),
-    ops::bootstrap::deno_bootstrap::init(
+    ops::runtime::ende_runtime::lazy_init(),
+    ops::worker_host::ende_worker_host::lazy_init(),
+    ops::fs_events::ende_fs_events::init(),
+    ops::permissions::ende_permissions::init(),
+    ops::tty::ende_tty::init(),
+    ops::http::ende_http_runtime::init(),
+    ende_bundle_runtime::ende_bundle_runtime::lazy_init(),
+    ops::desktop::ende_desktop::init(),
+    ops::bootstrap::ende_bootstrap::init(
       has_snapshot.then(Default::default),
       unconfigured_runtime,
     ),
@@ -1256,7 +1256,7 @@ fn common_extensions<
     // are available and importing them in `99_main.js` doesn't cause an
     // error because they're not defined. Trying to use these ops in non-worker
     // context will cause a panic.
-    ops::web_worker::deno_web_worker::init().disable(),
+    ops::web_worker::ende_web_worker::init().disable(),
   ]
 }
 
@@ -1325,13 +1325,13 @@ fn common_runtime(opts: CommonRuntimeOptions) -> JsRuntime {
 }
 
 pub fn create_permissions_stack_trace_callback()
--> deno_core::OpStackTraceCallback {
-  Box::new(|stack: Vec<deno_core::error::JsStackFrame>| {
-    deno_permissions::prompter::set_current_stacktrace(Box::new(move || {
+-> ende_core::OpStackTraceCallback {
+  Box::new(|stack: Vec<ende_core::error::JsStackFrame>| {
+    ende_permissions::prompter::set_current_stacktrace(Box::new(move || {
       stack
         .iter()
         .map(|frame| {
-          deno_core::error::format_frame::<deno_core::error::NoAnsiColors>(
+          ende_core::error::format_frame::<ende_core::error::NoAnsiColors>(
             frame, None,
           )
         })
@@ -1409,8 +1409,8 @@ impl ModuleLoader for PlaceholderModuleLoader {
     &self,
     specifier: &str,
     referrer: &str,
-    kind: deno_core::ResolutionKind,
-  ) -> deno_core::ModuleResolveResponse {
+    kind: ende_core::ResolutionKind,
+  ) -> ende_core::ModuleResolveResponse {
     self
       .0
       .borrow_mut()
@@ -1424,7 +1424,7 @@ impl ModuleLoader for PlaceholderModuleLoader {
     module_specifier: &ModuleSpecifier,
     maybe_referrer: Option<&ModuleLoadReferrer>,
     options: ModuleLoadOptions,
-  ) -> deno_core::ModuleLoadResponse {
+  ) -> ende_core::ModuleLoadResponse {
     self.0.borrow_mut().clone().unwrap().load(
       module_specifier,
       maybe_referrer,
@@ -1441,7 +1441,7 @@ impl ModuleLoader for PlaceholderModuleLoader {
   ) -> std::pin::Pin<
     Box<
       dyn std::prelude::rust_2024::Future<
-          Output = Result<(), deno_core::error::ModuleLoaderError>,
+          Output = Result<(), ende_core::error::ModuleLoaderError>,
         >,
     >,
   > {

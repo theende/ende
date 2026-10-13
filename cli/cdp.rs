@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 /// <https://chromedevtools.github.io/devtools-protocol/tot/>
-use deno_core::serde_json::Value;
+use ende_core::serde_json::Value;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;

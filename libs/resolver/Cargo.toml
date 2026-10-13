@@ -1,7 +1,7 @@
 # Copyright 2018-2026 the Deno authors. MIT license.
 
 [package]
-name = "deno_resolver"
+name = "ende_resolver"
 version = "0.90.0"
 authors.workspace = true
 edition.workspace = true
@@ -15,14 +15,14 @@ path = "lib.rs"
 
 [features]
 deno_ast = ["dep:deno_ast", "deno_graph/swc"]
-graph = ["deno_graph", "node_resolver/graph", "http", "deno_permissions"]
+graph = ["deno_graph", "node_resolver/graph", "http", "ende_permissions"]
 sync = [
   "dashmap",
-  "deno_maybe_sync/sync",
-  "deno_package_json/sync",
+  "ende_maybe_sync/sync",
+  "ende_package_json/sync",
   "node_resolver/sync",
-  "deno_config/sync",
-  "deno_cache_dir/sync",
+  "ende_config/sync",
+  "ende_cache_dir/sync",
 ]
 
 [dependencies]
@@ -34,21 +34,21 @@ capacity_builder.workspace = true
 chrono.workspace = true
 dashmap = { workspace = true, optional = true }
 deno_ast = { workspace = true, features = ["cjs"], optional = true }
-deno_cache_dir.workspace = true
-deno_config.workspace = true
 deno_error.workspace = true
 deno_graph = { workspace = true, optional = true }
-deno_lockfile.workspace = true
-deno_maybe_sync.workspace = true
 deno_media_type.workspace = true
-deno_npm.workspace = true
-deno_npmrc.workspace = true
-deno_package_json.workspace = true
 deno_path_util.workspace = true
-deno_permissions = { workspace = true, optional = true }
 deno_semver.workspace = true
 deno_terminal.workspace = true
 deno_unsync.workspace = true
+ende_cache_dir.workspace = true
+ende_config.workspace = true
+ende_lockfile.workspace = true
+ende_maybe_sync.workspace = true
+ende_npm.workspace = true
+ende_npmrc.workspace = true
+ende_package_json.workspace = true
+ende_permissions = { workspace = true, optional = true }
 futures.workspace = true
 http = { workspace = true, optional = true }
 imara-diff.workspace = true

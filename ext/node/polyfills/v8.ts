@@ -81,13 +81,13 @@ const {
   op_v8_gc_profiler_stop,
 } = core.ops;
 
-const { Buffer } = core.loadExtScript("ext:deno_node/internal/buffer.mjs");
+const { Buffer } = core.loadExtScript("ext:ende_node/internal/buffer.mjs");
 const lazyFs = core.createLazyLoader("node:fs");
 const lazyStream = core.createLazyLoader("node:stream");
 
-const { notImplemented } = core.loadExtScript("ext:deno_node/_utils.ts");
+const { notImplemented } = core.loadExtScript("ext:ende_node/_utils.ts");
 const { isArrayBufferView, isDataView } = core.loadExtScript(
-  "ext:deno_node/internal/util/types.ts",
+  "ext:ende_node/internal/util/types.ts",
 );
 
 function getViewBuffer(view: ArrayBufferView): ArrayBufferLike {
@@ -106,7 +106,7 @@ function getViewByteLength(view: ArrayBufferView): number {
     : TypedArrayPrototypeGetByteLength(view as Uint8Array);
 }
 const lazyFsUtils = core.createLazyLoader(
-  "ext:deno_node/internal/fs/utils.mjs",
+  "ext:ende_node/internal/fs/utils.mjs",
 );
 const {
   validateFunction,
@@ -116,7 +116,7 @@ const {
   validateUint32,
 } = core
   .loadExtScript(
-    "ext:deno_node/internal/validators.mjs",
+    "ext:ende_node/internal/validators.mjs",
   );
 
 function cachedDataVersionTag() {
