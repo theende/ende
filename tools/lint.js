@@ -816,7 +816,6 @@ async function ensureNoNewTopLevelEntries() {
   // Keep the root of the repository clean.
   const allowed = new Set([
     ".cargo",
-    ".claude",
     ".devcontainer",
     ".github",
     "x",
@@ -834,7 +833,6 @@ async function ensureNoNewTopLevelEntries() {
     ".gitignore",
     ".gitmodules",
     ".rustfmt.toml",
-    "CLAUDE.md",
     "Cargo.lock",
     "Cargo.toml",
     "LICENSE.md",

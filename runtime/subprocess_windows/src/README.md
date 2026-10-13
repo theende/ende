@@ -8,6 +8,3 @@ comments), with some parts adapted from the rust std library.
 
 The interface mimics `std::process::Command`, though some types (e.g. `Stdio`)
 aren't compatible with the std version.
-
-Note: some parts of the code were initially translated from C by claude code,
-though it has largely been edited from that starting part.

@@ -672,7 +672,7 @@ async fn test_lazy_loaded_esm_aliased_via_import() {
 /// `op_lazy_load_esm` early-return path used to hand back B's module
 /// namespace without first evaluating it, so any `export const` bindings in
 /// B were in the temporal dead zone — producing `Cannot access 'X' before
-/// initialization`. This reproduces the gemini-cli failure where
+/// initialization`. This reproduces a real-world failure where
 /// `events_esm.ts` eagerly destructures `EventEmitterAsyncResource`, whose
 /// getter lazy-loads `async_hooks_esm.ts` (a sibling in the user's bundle).
 #[tokio::test]

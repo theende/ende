@@ -1,13 +1,8 @@
 # Contributing Guidelines
 
-> **AI-assisted contributions:** If you use AI tools (e.g. Copilot, ChatGPT,
-> Claude, Cursor, etc.) to help write your contribution, **you must disclose
-> this in your PR description**. There is no penalty for using AI tools, but PRs
-> will be rejected if there is suspicion of undisclosed AI usage.
-
 > **Spamming issues or PRs:** If you create multiple issues or PRs or create
-> multiple comments on issue or PRs that look AI generated, that are not
-> substantial, your account may be banned.
+> multiple comments on issue or PRs that are not substantial, your account may
+> be banned.
 
 This is the main repository that provides the `deno` CLI.
 

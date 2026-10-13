@@ -1,9 +1,7 @@
 # Testing
 
 Deno has several test suites, each aimed at a different layer. This page is a
-map of what each one is for and how to run it. For the operational command
-reference, `CLAUDE.md` at the repository root is the source of truth; this page
-adds the "when do I reach for which suite" context.
+map of what each one is for and how to run it.
 
 ## The suites at a glance
 
@@ -61,13 +59,11 @@ APIs. Run on Linux in CI.
 
 Standard `cargo test`, plus `cargo nextest` for the `deno_core` / `libs/*`
 crates in CI. Lower-layer crates under `libs/` are designed to be testable in
-isolation; some need a sibling crate co-selected to compile (see `CLAUDE.md` and
-the project memory for the specific gotchas).
+isolation; some need a sibling crate co-selected to compile.
 
 ## Running the suites
 
-`CLAUDE.md` lists the exact commands. In short, the `./x` helper wraps the
-common ones:
+The `./x` helper wraps the common commands:
 
 - `./x test-spec <name>` — spec tests.
 - `./x test-unit <name>` — unit tests.

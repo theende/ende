@@ -36,8 +36,7 @@ if (process.env.SPAWNED_CHILD === "1") {
   console.log("child_args: " + JSON.stringify(appArgs));
 } else {
   // Parent process: re-spawn self with the script path and user args
-  // (mimics the pattern used by Node CLIs that relaunch themselves,
-  // e.g. @google/gemini-cli's relaunch.js)
+  // (mimics the pattern used by Node CLIs that relaunch themselves)
   const script = process.argv[1];
   const userArgs = process.argv.slice(2);
   const child = spawn(process.execPath, [script, ...userArgs], {

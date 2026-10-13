@@ -206,9 +206,9 @@ mod test {
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
     let http_client = HttpClientProvider::new(None, None);
     let registry_api = TestNpmRegistryApi::default();
-    registry_api.with_version_info(("@google/gemini-cli", "1.0.0"), |info| {
+    registry_api.with_version_info(("@example/foo-cli", "1.0.0"), |info| {
       info.bin = Some(deno_npm::registry::NpmPackageVersionBinEntry::Map(
-        HashMap::from([("gemini".to_string(), "./bin.js".to_string())]),
+        HashMap::from([("foo".to_string(), "./bin.js".to_string())]),
       ))
     });
     let npm_version_resolver = NpmVersionResolver::default();
@@ -354,8 +354,8 @@ mod test {
       Some("slidev".to_string())
     );
     assert_eq!(
-      infer_name_from_url(&Url::parse("npm:@google/gemini-cli").unwrap()).await,
-      Some("gemini".to_string())
+      infer_name_from_url(&Url::parse("npm:@example/foo-cli").unwrap()).await,
+      Some("foo".to_string())
     );
   }
 

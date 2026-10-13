@@ -1,14 +1,9 @@
-# Agent & contributor documentation
+# Contributor documentation
 
 This directory holds long-form, mostly-stable context about how the Deno
-codebase is structured. It is meant to be read by both humans and AI coding
-agents before they start working in the repository.
-
-`CLAUDE.md` at the repository root is the short, operational guide: how to
-build, which command runs which test, formatting and lint rules, the git
-workflow. The files in `doc/` are the longer companion to it: the architectural
-"why" and the map of where things live, the kind of background that is too large
-to keep in `CLAUDE.md` but that saves a lot of exploration time up front.
+codebase is structured. It is meant to be read by contributors before they start
+working in the repository: the architectural "why" and the map of where things
+live, the kind of background that saves a lot of exploration time up front.
 
 ## Contents
 

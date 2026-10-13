@@ -785,9 +785,9 @@ fn rewrite_relative_import_map_paths(
 
 /// After packages are installed (including postinstall scripts), check if the
 /// npm bin entry resolves to a native binary on disk. Returns the absolute path
-/// to the binary if so. This handles packages like `@anthropic-ai/claude-code`
-/// that ship platform-specific native binaries via optional dependencies and a
-/// postinstall script that copies the binary into the bin entry path.
+/// to the binary if so. This handles packages that ship platform-specific
+/// native binaries via optional dependencies and a postinstall script that
+/// copies the binary into the bin entry path.
 fn resolve_native_binary_path(
   bin_name_and_url: &BinaryNameAndUrl,
   installation_dir: &Path,

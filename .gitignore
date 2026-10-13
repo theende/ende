@@ -46,8 +46,5 @@ Untitled*.ipynb
 # playwright browser binary cache
 /.ms-playwright
 
-**/.claude/settings.local.json
-**/.claude/scheduled_tasks.lock
-
 # pyenv
 /.python-version
