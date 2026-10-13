@@ -91,7 +91,7 @@ exclude = ["tests/util/std/hash/_wasm", "tests/sqlite_extension"]
 authors = ["the Deno authors"]
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/denoland/deno"
+repository = "https://github.com/theende/ende"
 
 [workspace.dependencies]
 deno_ast = { version = "=0.53.3", features = ["transpiling"] }

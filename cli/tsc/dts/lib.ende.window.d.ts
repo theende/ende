@@ -240,9 +240,9 @@ declare var onunhandledrejection:
  * same storage, but https://example.com/ would be different.
  *
  * For more information, see the reference guide for
- * [Web Storage](https://docs.deno.com/runtime/reference/web_platform_apis/#web-storage)
+ * [Web Storage](https://docs.ende.sh/runtime/reference/web_platform_apis/#web-storage)
  * and using
- * [the `--location` flag](https://docs.deno.com/runtime/reference/web_platform_apis/#location-flag).
+ * [the `--location` flag](https://docs.ende.sh/runtime/reference/web_platform_apis/#location-flag).
  *
  * @example
  * ```ts
@@ -279,7 +279,7 @@ declare var localStorage: Storage;
  * methods, visible in the {@linkcode Storage} type.
  *
  * For more information, see the reference guide for
- * [Web Storage](https://docs.deno.com/runtime/reference/web_platform_apis/#web-storage)
+ * [Web Storage](https://docs.ende.sh/runtime/reference/web_platform_apis/#web-storage)
  *
  * @example
  * ```ts

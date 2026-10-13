@@ -102,7 +102,7 @@
     },
     "deno_filter_recursive": {
       "cwd": "./deno",
-      "args": "task -r --filter @deno/foo dev",
+      "args": "task -r --filter @ende/foo dev",
       "output": "deno_filter_recursive.out"
     },
     // Regression test for https://github.com/denoland/deno/issues/28620

@@ -1,5 +1,5 @@
 {
-  "$id": "https://raw.githubusercontent.com/denoland/deno/main/cli/schemas/permission-audit.v1.json",
+  "$id": "https://raw.githubusercontent.com/theende/ende/primary/cli/schemas/permission-audit.v1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Schema for ENDE_AUDIT_PERMISSIONS",
   "description": "The schema of a single line of the ENDE_AUDIT_PERMISSIONS file output.",

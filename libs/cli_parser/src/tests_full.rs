@@ -2033,7 +2033,7 @@ fn repl_with_eval_flag() {
 #[test]
 fn repl_with_eval_file_flag() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "repl", "--eval-file=./a.js,./b.ts,https://docs.deno.com/hello_world.ts"]);
+    let r = flags_from_vec(svec!["deno", "repl", "--eval-file=./a.js,./b.ts,https://docs.ende.sh/hello_world.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2041,7 +2041,7 @@ fn repl_with_eval_file_flag() {
         eval_files: Some(vec![
           "./a.js".to_string(),
           "./b.ts".to_string(),
-          "https://docs.deno.com/hello_world.ts".to_string()
+          "https://docs.ende.sh/hello_world.ts".to_string()
         ]),
         eval: None,
         is_default_command: false,
@@ -5048,13 +5048,13 @@ fn compile() {
   let r = flags_from_vec(svec![
     "deno",
     "compile",
-    "https://examples.deno.land/color-logging.ts"
+    "https://examples.ende.sh/color-logging.ts"
   ]);
   assert_eq!(
     r.unwrap(),
     Flags {
       subcommand: DenoSubcommand::Compile(CompileFlags {
-        source_file: "https://examples.deno.land/color-logging.ts".to_string(),
+        source_file: "https://examples.ende.sh/color-logging.ts".to_string(),
         output: None,
         args: vec![],
         target: None,
@@ -5218,12 +5218,12 @@ fn compile_watch_with_no_clear_screen() {
 #[test]
 fn compile_with_flags() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "compile", "--include", "include.txt", "--exclude", "exclude.txt", "--import-map", "import_map.json", "--no-code-cache", "--no-remote", "--config", "tsconfig.json", "--no-check", "--unsafely-ignore-certificate-errors", "--reload", "--lock", "lock.json", "--cert", "example.crt", "--cached-only", "--location", "https:foo", "--allow-read", "--allow-net", "--v8-flags=--help", "--seed", "1", "--no-terminal", "--icon", "favicon.ico", "--output", "colors", "--env=.example.env", "https://examples.deno.land/color-logging.ts", "foo", "bar", "-p", "8080"]);
+    let r = flags_from_vec(svec!["deno", "compile", "--include", "include.txt", "--exclude", "exclude.txt", "--import-map", "import_map.json", "--no-code-cache", "--no-remote", "--config", "tsconfig.json", "--no-check", "--unsafely-ignore-certificate-errors", "--reload", "--lock", "lock.json", "--cert", "example.crt", "--cached-only", "--location", "https:foo", "--allow-read", "--allow-net", "--v8-flags=--help", "--seed", "1", "--no-terminal", "--icon", "favicon.ico", "--output", "colors", "--env=.example.env", "https://examples.ende.sh/color-logging.ts", "foo", "bar", "-p", "8080"]);
   assert_eq!(
     r.unwrap(),
     Flags {
       subcommand: DenoSubcommand::Compile(CompileFlags {
-        source_file: "https://examples.deno.land/color-logging.ts".to_string(),
+        source_file: "https://examples.ende.sh/color-logging.ts".to_string(),
         output: Some(String::from("colors")),
         args: svec!["foo", "bar", "-p", "8080"],
         target: None,

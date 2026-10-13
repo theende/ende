@@ -115,7 +115,7 @@ impl SnapshotStoreDataStore {
 ///
 /// See: [example][1].
 ///
-/// [1]: https://github.com/denoland/deno_core/tree/main/core/examples/snapshot
+/// [1]: https://github.com/theende/ende/tree/primary/libs/core/examples/snapshot
 pub struct CreateSnapshotOptions {
   /// The directory which Cargo will compile everything into.
   ///
@@ -180,7 +180,7 @@ pub struct CreateSnapshotOutput {
 ///
 /// For a concrete example, see [core/examples/snapshot/][example].
 ///
-/// [example]: https://github.com/denoland/deno_core/tree/main/core/examples/snapshot
+/// [example]: https://github.com/theende/ende/tree/primary/libs/core/examples/snapshot
 /// [OUT_DIR]: https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
 #[must_use = "The files listed by create_snapshot should be printed as 'cargo:rerun-if-changed' lines"]
 pub fn create_snapshot(

@@ -25,4 +25,4 @@ Documentation for this crate is thin at the moment. Please see
 [eval_js_value.rs](./examples/eval_js_value.rs) as examples of usage.
 
 TypeScript support and lots of other functionality are not available at this
-layer. See the [CLI](https://github.com/denoland/deno/tree/main/cli) for that.
+layer. See the [CLI](https://github.com/theende/ende/tree/primary/cli) for that.

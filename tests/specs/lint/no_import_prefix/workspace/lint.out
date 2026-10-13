@@ -5,7 +5,7 @@ error[no-import-prefix]: Inline 'npm:', 'jsr:' or 'https:' dependency not allowe
   |                     ^^^^^^^^^^^^^^^^^^^^^
   = hint: Add it as a dependency in a deno.json or package.json instead and reference it here via its bare specifier
 
-  docs: https://docs.deno.com/lint/rules/no-import-prefix
+  docs: https://docs.ende.sh/lint/rules/no-import-prefix
 
 
 Found 1 problem

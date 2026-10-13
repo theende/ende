@@ -1155,11 +1155,12 @@ console.log("imported", import.meta.url);
     ),
     // for testing deno upgrade
     (&Method::GET, path)
-      if path.starts_with("/deno-upgrade/download/")
+      if path.starts_with("/ende-upgrade/download/")
+        && path.rsplit('/').next().unwrap_or("").starts_with("ende-")
         && path.ends_with(".zip") =>
     {
       let version = path
-        .strip_prefix("/deno-upgrade/download/v")
+        .strip_prefix("/ende-upgrade/download/v")
         .and_then(|s| s.split('/').next())
         .unwrap_or("unknown");
 
@@ -1172,9 +1173,9 @@ console.log("imported", import.meta.url);
           .compression_method(zip::CompressionMethod::Stored);
 
         let exe_name = if path.contains("windows") {
-          "deno.exe"
+          "ende.exe"
         } else {
-          "deno"
+          "ende"
         };
 
         zip_writer.start_file(exe_name, options).unwrap();
@@ -1193,19 +1194,19 @@ console.log("imported", import.meta.url);
     }
     // for testing deno upgrade -- uncompressed binary SHA-256
     (&Method::GET, path)
-      if path.starts_with("/deno-upgrade/download/")
+      if path.starts_with("/ende-upgrade/download/")
         && path.ends_with(".sha256sum")
         && !path.ends_with(".zip.sha256sum")
         && !path.ends_with(".bsdiff.sha256sum") =>
     {
       let version = path
-        .strip_prefix("/deno-upgrade/download/v")
+        .strip_prefix("/ende-upgrade/download/v")
         .and_then(|s| s.split('/').next())
         .unwrap_or("unknown");
       // The fake binary content matches what the zip handler produces
       let content = format!("DENO_UPGRADE_TEST_BINARY_VERSION_{}", version);
       let hash = sha2_digest(content.as_bytes());
-      let filename = path.rsplit('/').next().unwrap_or("deno");
+      let filename = path.rsplit('/').next().unwrap_or("ende");
       let body = format!("{}  {}\n", hash, filename);
       Ok(
         Response::builder()
@@ -1217,14 +1218,14 @@ console.log("imported", import.meta.url);
     }
     // for testing deno upgrade -- bsdiff delta patch
     (&Method::GET, path)
-      if path.starts_with("/deno-upgrade/download/")
+      if path.starts_with("/ende-upgrade/download/")
         && path.ends_with(".bsdiff") =>
     {
       let version = path
-        .strip_prefix("/deno-upgrade/download/v")
+        .strip_prefix("/ende-upgrade/download/v")
         .and_then(|s| s.split('/').next())
         .unwrap_or("unknown");
-      // Extract source version from filename: deno-{target}.from-{src}.bsdiff
+      // Extract source version from filename: ende-{target}.from-{src}.bsdiff
       let filename = path.rsplit('/').next().unwrap_or("");
       let src_version = filename
         .rsplit(".from-")
@@ -1248,11 +1249,11 @@ console.log("imported", import.meta.url);
     }
     // for testing deno upgrade -- bsdiff delta patch SHA-256
     (&Method::GET, path)
-      if path.starts_with("/deno-upgrade/download/")
+      if path.starts_with("/ende-upgrade/download/")
         && path.ends_with(".bsdiff.sha256sum") =>
     {
       let version = path
-        .strip_prefix("/deno-upgrade/download/v")
+        .strip_prefix("/ende-upgrade/download/v")
         .and_then(|s| s.split('/').next())
         .unwrap_or("unknown");
       let filename_with_sum = path.rsplit('/').next().unwrap_or("");

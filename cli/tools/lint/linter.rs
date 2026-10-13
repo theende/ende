@@ -13,6 +13,7 @@ use deno_ast::ParsedSource;
 use deno_ast::SourceTextInfo;
 use deno_graph::ModuleGraph;
 use deno_lint::diagnostic::LintDiagnostic;
+use deno_lint::diagnostic::LintDocsUrl;
 use deno_lint::linter::ExternalLinterCb;
 use deno_lint::linter::ExternalLinterResult;
 use deno_lint::linter::LintConfig as DenoLintConfig;
@@ -118,7 +119,7 @@ impl CliLinter {
     if let Some(err) = external_linter_container.take_error() {
       return Err(err);
     }
-    Ok(d)
+    Ok(with_ende_docs_urls(d))
   }
 
   pub fn lint_file(
@@ -163,7 +164,7 @@ impl CliLinter {
         return Err(err);
       }
 
-      Ok((source, diagnostics))
+      Ok((source, with_ende_docs_urls(diagnostics)))
     }
   }
 
@@ -238,7 +239,7 @@ impl CliLinter {
       .context("Failed writing fix to file.")?;
     }
 
-    Ok((source, diagnostics))
+    Ok((source, with_ende_docs_urls(diagnostics)))
   }
 }
 
@@ -477,11 +478,69 @@ impl ExternalLinterContainer {
   }
 }
 
+/// `deno_lint` links its built-in rules to docs.deno.com; point those
+/// diagnostics at the Ende docs instead.
+fn with_ende_docs_urls(
+  mut diagnostics: Vec<LintDiagnostic>,
+) -> Vec<LintDiagnostic> {
+  for diagnostic in &mut diagnostics {
+    let details = &mut diagnostic.details;
+    if matches!(details.custom_docs_url, LintDocsUrl::Default) {
+      details.custom_docs_url = LintDocsUrl::Custom(format!(
+        "https://docs.ende.sh/lint/rules/{}",
+        details.code
+      ));
+    }
+  }
+  diagnostics
+}
+
 #[cfg(test)]
 mod test {
   use deno_ast::TextChange;
+  use deno_ast::diagnostics::Diagnostic;
+  use deno_lint::diagnostic::LintDiagnosticDetails;
 
   use super::*;
+
+  fn diagnostic(code: &str, docs_url: LintDocsUrl) -> LintDiagnostic {
+    LintDiagnostic {
+      specifier: ModuleSpecifier::parse("file:///a.ts").unwrap(),
+      range: None,
+      details: LintDiagnosticDetails {
+        message: "message".to_string(),
+        code: code.to_string(),
+        hint: None,
+        fixes: vec![],
+        custom_docs_url: docs_url,
+        info: vec![],
+      },
+    }
+  }
+
+  #[test]
+  fn default_docs_urls_point_at_ende_docs() {
+    let diagnostics = with_ende_docs_urls(vec![
+      diagnostic("no-empty", LintDocsUrl::Default),
+      diagnostic(
+        "custom",
+        LintDocsUrl::Custom("https://example.com/custom".to_string()),
+      ),
+      diagnostic("none", LintDocsUrl::None),
+    ]);
+    let urls = diagnostics
+      .iter()
+      .map(|d| d.docs_url().map(|u| u.to_string()))
+      .collect::<Vec<_>>();
+    assert_eq!(
+      urls,
+      vec![
+        Some("https://docs.ende.sh/lint/rules/no-empty".to_string()),
+        Some("https://example.com/custom".to_string()),
+        None,
+      ]
+    );
+  }
 
   #[test]
   fn test_filter_overlapping_text_changes() {

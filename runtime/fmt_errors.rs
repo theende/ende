@@ -507,7 +507,7 @@ fn get_message_suggestions_inner(
             "or pass <i>--unstable-detect-cjs</> flag to detect CommonJS when loading."
           ),
         ]),
-        FixSuggestion::docs("https://docs.deno.com/go/commonjs"),
+        FixSuggestion::docs("https://docs.ende.sh/go/commonjs"),
       ];
     } else if msg.contains("__filename is not defined") {
       return vec![

@@ -595,7 +595,7 @@ impl<'a> DenoCompileBinaryWriter<'a> {
     output_path: &Path,
     binary_path_suffix: &str,
   ) -> Result<Vec<u8>, AnyError> {
-    let download_url = format!("https://dl.deno.land/{binary_path_suffix}");
+    let download_url = runtime_download_url(binary_path_suffix);
     let response = {
       let progress_bars = ProgressBar::new(ProgressBarStyle::DownloadBars);
       let progress = progress_bars.update(&download_url);
@@ -1786,6 +1786,10 @@ fn get_denort_path(deno_exe: PathBuf) -> Option<OsString> {
   endert.exists().then(|| endert.into_os_string())
 }
 
+fn runtime_download_url(binary_path_suffix: &str) -> String {
+  format!("https://dl.ende.sh/{binary_path_suffix}")
+}
+
 fn runtime_archive_name(
   prefix: &str,
   engine: &JavaScriptEngine,
@@ -1903,6 +1907,7 @@ fn set_windows_binary_to_gui(bin: &mut [u8]) -> Result<(), AnyError> {
 mod tests {
   use super::default_app_name;
   use super::runtime_archive_name;
+  use super::runtime_download_url;
   use crate::args::JavaScriptEngine;
 
   #[test]
@@ -1919,6 +1924,14 @@ mod tests {
     assert_eq!(
       runtime_archive_name("libendert", &JavaScriptEngine::QuickJs, target),
       "libendert-quickjs-aarch64-apple-darwin.zip"
+    );
+  }
+
+  #[test]
+  fn runtime_download_url_uses_ende_host() {
+    assert_eq!(
+      runtime_download_url("release/v2.0.0/endert-aarch64-apple-darwin.zip"),
+      "https://dl.ende.sh/release/v2.0.0/endert-aarch64-apple-darwin.zip"
     );
   }
 

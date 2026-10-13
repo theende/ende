@@ -1786,7 +1786,7 @@ declare namespace Ende {
    * deno run --env-file --allow-env main.ts
    * ```
    *
-   * Learn more at [the Deno docs](https://docs.deno.com/runtime/reference/env_variables/).
+   * Learn more at [the Deno docs](https://docs.ende.sh/runtime/reference/env_variables/).
    *
    * @tags allow-env
    * @category Runtime
@@ -4621,7 +4621,7 @@ declare namespace Ende {
 
   /** The permission descriptor for the `allow-ffi` and `deny-ffi` permissions, which controls
    * access to loading _foreign_ code and interfacing with it via the
-   * [Foreign Function Interface API](https://docs.deno.com/runtime/manual/runtime/ffi_api)
+   * [Foreign Function Interface API](https://docs.ende.sh/runtime/manual/runtime/ffi_api)
    * available in Deno.  The option `path` allows scoping the permission to a
    * specific path on the host.
    *

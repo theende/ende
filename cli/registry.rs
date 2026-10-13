@@ -342,7 +342,7 @@ mod test {
 
   #[test]
   fn test_parse_package_name() {
-    assert_eq!(parse_package_name("@deno/doc").unwrap(), ("deno", "doc"));
+    assert_eq!(parse_package_name("@ende/doc").unwrap(), ("ende", "doc"));
     assert_eq!(
       parse_package_name("@scope-1/package-2").unwrap(),
       ("scope-1", "package-2")
@@ -350,14 +350,14 @@ mod test {
     assert_eq!(parse_package_name("@a/b").unwrap(), ("a", "b"));
 
     for invalid_name in [
-      "deno/doc",
-      "@deno",
-      "@deno/../doc",
-      "@deno/doc/other",
-      "@deno/doc?other",
-      "@deno/doc#other",
-      "@deno/doc\\other",
-      "@deno/doc%2Fother",
+      "ende/doc",
+      "@ende",
+      "@ende/../doc",
+      "@ende/doc/other",
+      "@ende/doc?other",
+      "@ende/doc#other",
+      "@ende/doc\\other",
+      "@ende/doc%2Fother",
     ] {
       assert!(
         parse_package_name(invalid_name).is_err(),

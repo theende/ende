@@ -1708,7 +1708,7 @@ This is a *markdown*.
 
 ```js
 import { assertEquals } from "@std/assert/equal";
-import { add } from "jsr:@deno/non-existent";
+import { add } from "jsr:@ende/non-existent";
 
 assertEquals(add(1, 2), 3);
 ```
@@ -1717,7 +1717,7 @@ assertEquals(add(1, 2), 3);
         },
         expected: vec![Expected {
           source: r#"import { assertEquals } from "@std/assert/equal";
-import { add } from "jsr:@deno/non-existent";
+import { add } from "jsr:@ende/non-existent";
 Ende.test("file:///README.md#6-12.js", async ()=>{
     assertEquals(add(1, 2), 3);
 });
@@ -2580,7 +2580,7 @@ This is a *markdown*.
 
 ```js
 import { assertEquals } from "@std/assert/equal";
-import { add } from "jsr:@deno/non-existent";
+import { add } from "jsr:@ende/non-existent";
 
 assertEquals(add(1, 2), 3);
 ```
@@ -2589,7 +2589,7 @@ assertEquals(add(1, 2), 3);
         },
         expected: vec![Expected {
           source: r#"import { assertEquals } from "@std/assert/equal";
-import { add } from "jsr:@deno/non-existent";
+import { add } from "jsr:@ende/non-existent";
 assertEquals(add(1, 2), 3);
 "#,
           specifier: "file:///README.md#6-12.js",

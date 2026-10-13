@@ -10,6 +10,7 @@ pub mod extract;
 pub mod file_watcher;
 pub mod fs;
 pub mod git;
+pub mod panic_report;
 pub mod path;
 pub mod pnpm_workspace;
 pub mod progress_bar;

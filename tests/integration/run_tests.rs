@@ -170,7 +170,7 @@ fn _090_run_permissions_request() {
         "┏ ⚠️  Deno requests run access to \"ls\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-run\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all run permissions)",
       ));
@@ -181,7 +181,7 @@ fn _090_run_permissions_request() {
         "┏ ⚠️  Deno requests run access to \"cat\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-run\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all run permissions)",
       ));
@@ -203,7 +203,7 @@ fn _090_run_permissions_request_sync() {
         "┏ ⚠️  Deno requests run access to \"ls\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-run\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all run permissions)",
       ));
@@ -214,7 +214,7 @@ fn _090_run_permissions_request_sync() {
         "┏ ⚠️  Deno requests run access to \"cat\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-run\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all run permissions)",
       ));
@@ -237,7 +237,7 @@ fn permissions_prompt_allow_all() {
         "┏ ⚠️  Deno requests run access to \"FOO\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-run\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all run permissions)",
       ));
@@ -249,7 +249,7 @@ fn permissions_prompt_allow_all() {
         "┏ ⚠️  Deno requests read access to \"FOO\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-read\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
         "┠─ Run again with --allow-read to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all read permissions)",
       ));
@@ -261,7 +261,7 @@ fn permissions_prompt_allow_all() {
         "┏ ⚠️  Deno requests write access to \"FOO\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-write\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-write\r\n",
         "┠─ Run again with --allow-write to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all write permissions)",
       ));
@@ -273,7 +273,7 @@ fn permissions_prompt_allow_all() {
         "┏ ⚠️  Deno requests net access to \"foo\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-net\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-net\r\n",
         "┠─ Run again with --allow-net to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all net permissions)",
       ));
@@ -285,7 +285,7 @@ fn permissions_prompt_allow_all() {
         "┏ ⚠️  Deno requests env access to \"FOO\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-env\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-env\r\n",
         "┠─ Run again with --allow-env to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all env permissions)",
       ));
@@ -297,7 +297,7 @@ fn permissions_prompt_allow_all() {
         "┏ ⚠️  Deno requests sys access to \"loadavg\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-sys\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-sys\r\n",
         "┠─ Run again with --allow-sys to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all sys permissions)",
       ));
@@ -309,7 +309,7 @@ fn permissions_prompt_allow_all() {
         "┏ ⚠️  Deno requests ffi access to \"FOO\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-ffi\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-ffi\r\n",
         "┠─ Run again with --allow-ffi to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all ffi permissions)",
       ));
@@ -330,7 +330,7 @@ fn permissions_prompt_allow_all_2() {
       console.expect(concat!(
         "┏ ⚠️  Deno requests env access to \"FOO\".\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-env\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-env\r\n",
         "┠─ Run again with --allow-env to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all env permissions)",
       ));
@@ -343,7 +343,7 @@ fn permissions_prompt_allow_all_2() {
         "┏ ⚠️  Deno requests sys access to \"loadavg\".\r\n",
         "┠─ Requested by `Deno.loadavg()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-sys\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-sys\r\n",
         "┠─ Run again with --allow-sys to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all sys permissions)",
       ));
@@ -358,7 +358,7 @@ fn permissions_prompt_allow_all_2() {
         "┏ ⚠️  Deno requests read access to \"[WILDCARD]tests[WILDCHAR]testdata\".\r\n",
         "┠─ Requested by `Deno.lstatSync()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-read\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
         "┠─ Run again with --allow-read to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all read permissions)",
       ));
@@ -379,7 +379,7 @@ fn permissions_prompt_allow_all_lowercase_a() {
         "┏ ⚠️  Deno requests run access to \"FOO\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-run\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all run permissions)",
       ));
@@ -431,7 +431,7 @@ fn permissions_cache() {
         "┏ ⚠️  Deno requests read access to \"foo\".\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-read\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
         "┠─ Run again with --allow-read to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all read permissions)",
       ));
@@ -458,7 +458,7 @@ fn permissions_trace() {
       "┃  ├─ foo (file://[WILDCARD]/run/permissions_trace.ts:2:8)\r\n",
       "┃  ├─ bar (file://[WILDCARD]/run/permissions_trace.ts:6:3)\r\n",
       "┃  └─ file://[WILDCARD]/run/permissions_trace.ts:9:1\r\n",
-      "┠─ Learn more at: https://docs.deno.com/go/--allow-sys\r\n",
+      "┠─ Learn more at: https://docs.ende.sh/go/--allow-sys\r\n",
       "┠─ Run again with --allow-sys to bypass this prompt.\r\n",
       "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all sys permissions)",
       ));
@@ -1561,7 +1561,7 @@ mod permissions {
           "┏ ⚠️  Deno requests read access to \"foo\".\r\n",
           "┠─ Requested by `Deno.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-          "┠─ Learn more at: https://docs.deno.com/go/--allow-read\r\n",
+          "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
           "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all read permissions)",
         ));
@@ -1571,7 +1571,7 @@ mod permissions {
           "┏ ⚠️  Deno requests read access to \"bar\".\r\n",
           "┠─ Requested by `Deno.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-          "┠─ Learn more at: https://docs.deno.com/go/--allow-read\r\n",
+          "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
           "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all read permissions)",
         ));
@@ -1593,7 +1593,7 @@ mod permissions {
           "┏ ⚠️  Deno requests read access to \"foo\".\r\n",
           "┠─ Requested by `Deno.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-          "┠─ Learn more at: https://docs.deno.com/go/--allow-read\r\n",
+          "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
           "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all read permissions)",
         ));
@@ -1603,7 +1603,7 @@ mod permissions {
           "┏ ⚠️  Deno requests read access to \"bar\".\r\n",
           "┠─ Requested by `Deno.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-          "┠─ Learn more at: https://docs.deno.com/go/--allow-read\r\n",
+          "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
           "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all read permissions)",
         ));
@@ -1625,7 +1625,7 @@ mod permissions {
           "┏ ⚠️  Deno requests read access.\r\n",
           "┠─ Requested by `Deno.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-          "┠─ Learn more at: https://docs.deno.com/go/--allow-read\r\n",
+          "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
           "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all read permissions)",
         ));
@@ -1650,7 +1650,7 @@ mod permissions {
           "┏ ⚠️  Deno requests read access.\r\n",
           "┠─ Requested by `Deno.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-          "┠─ Learn more at: https://docs.deno.com/go/--allow-read\r\n",
+          "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
           "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all read permissions)",
         ));
@@ -1772,7 +1772,7 @@ fn issue9750() {
         "┏ ⚠️  Deno requests env access.\r\n",
         "┠─ Requested by `Deno.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-env\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-env\r\n",
         "┠─ Run again with --allow-env to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all env permissions)",
       ));
@@ -1782,7 +1782,7 @@ fn issue9750() {
       console.expect(concat!(
         "┏ ⚠️  Deno requests env access to \"SECRET\".\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
-        "┠─ Learn more at: https://docs.deno.com/go/--allow-env\r\n",
+        "┠─ Learn more at: https://docs.ende.sh/go/--allow-env\r\n",
         "┠─ Run again with --allow-env to bypass this prompt.\r\n",
         "┗ Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all env permissions)",
       ));

@@ -40,7 +40,7 @@ impl NoSloppyImportsRule {
 }
 
 const CODE: &str = "no-sloppy-imports";
-const DOCS_URL: &str = "https://docs.deno.com/runtime/manual/tools/unstable_flags/#--unstable-sloppy-imports";
+const DOCS_URL: &str = "https://docs.ende.sh/runtime/manual/tools/unstable_flags/#--unstable-sloppy-imports";
 
 impl ExtendedLintRule for NoSloppyImportsRule {
   fn supports_incremental_cache(&self) -> bool {

@@ -760,7 +760,7 @@ fn maybe_docs_url_for_graph_error(
     | ModuleErrorKind::InvalidTypeAssertion {
       actual_media_type: MediaType::Json,
       ..
-    } => Some("https://docs.deno.com/examples/importing_json/"),
+    } => Some("https://docs.ende.sh/examples/importing_json/"),
     _ => None,
   }
 }

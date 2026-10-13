@@ -499,7 +499,7 @@ impl PublishPreparer {
                 "Failed ensuring public API type output is valid.\n\n",
                 "{:#}\n\n",
                 "You may have discovered a bug in Deno. Please open an issue at: ",
-                "https://github.com/denoland/deno/issues/"
+                "https://github.com/theende/ende/issues/"
               ),
               check_diagnostics
             );

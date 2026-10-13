@@ -255,7 +255,7 @@ async fn run_subcommand(
         log::warn!(
           "{} command is intended to be run by text editors and IDEs and shouldn't be run manually.
 
-  Visit https://docs.deno.com/runtime/getting_started/setup_your_environment/ for instruction
+  Visit https://docs.ende.sh/runtime/getting_started/setup_your_environment/ for instruction
   how to setup your favorite text editor.
 
   Press Ctrl+C to exit.
@@ -514,7 +514,7 @@ async fn run_subcommand(
       tools::bump_version::bump_version_command(Arc::new(flags), version_flags)
     }),
     DenoSubcommand::Vendor => exit_with_message(
-      "⚠️  `deno vendor` was removed in Deno 2.\n\nSee the Deno 1.x to 2.x Migration Guide for migration instructions: https://docs.deno.com/runtime/manual/advanced/migrate_deprecations",
+      "⚠️  `deno vendor` was removed in Deno 2.\n\nSee the Deno 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
       1,
     ),
     DenoSubcommand::Publish(publish_flags) => spawn_subcommand(async {
@@ -623,7 +623,7 @@ fn setup_panic_hook() {
 
     eprintln!("\n============================================================");
     eprintln!("Deno has panicked. This is a bug in Deno. Please report this");
-    eprintln!("at https://github.com/denoland/deno/issues/new.");
+    eprintln!("at https://github.com/theende/ende/issues/new.");
     eprintln!("If you can reliably reproduce this panic, include the");
     #[cfg(not(all(
       feature = "panic-trace-frame-pointer",
@@ -640,7 +640,7 @@ fn setup_panic_hook() {
       any(target_arch = "x86_64", target_arch = "aarch64")
     ))]
     eprintln!(
-      "reproduction steps and the stack trace URL below in your report."
+      "reproduction steps; the report link below includes the stack trace."
     );
     eprintln!();
     eprintln!("Platform: {} {}", env::consts::OS, env::consts::ARCH);
@@ -648,17 +648,17 @@ fn setup_panic_hook() {
     eprintln!("Args: {:?}", env::args().collect::<Vec<_>>());
     eprintln!();
 
+    let info = &ende_lib::version::DENO_VERSION_INFO;
+    let version =
+      if info.release_channel == ende_lib::shared::ReleaseChannel::Canary {
+        format!("{}+{}", ende_lib::version::DENO_VERSION, info.git_hash)
+      } else {
+        info.deno.to_string()
+      };
+
     // Panic traces are not supported for custom/development builds.
     #[cfg(feature = "panic-trace")]
-    {
-      let info = &ende_lib::version::DENO_VERSION_INFO;
-      let version =
-        if info.release_channel == ende_lib::shared::ReleaseChannel::Canary {
-          format!("{}+{}", ende_lib::version::DENO_VERSION, info.git_hash)
-        } else {
-          info.deno.to_string()
-        };
-
+    let trace = {
       #[cfg(all(
         feature = "panic-trace-frame-pointer",
         target_os = "linux",
@@ -671,14 +671,24 @@ fn setup_panic_hook() {
         any(target_arch = "x86_64", target_arch = "aarch64")
       )))]
       let trace = deno_panic::trace();
-      eprintln!("View stack trace at:");
-      eprintln!(
-        "https://panic.deno.com/v{}/{}/{}",
-        version,
-        env!("TARGET"),
-        trace
-      );
-    }
+      Some(trace.to_string())
+    };
+    #[cfg(not(feature = "panic-trace"))]
+    let trace = None;
+
+    let platform = format!("{} {}", env::consts::OS, env::consts::ARCH);
+    eprintln!("Report this panic with a prefilled issue:");
+    eprintln!(
+      "{}",
+      util::panic_report::panic_issue_url(&util::panic_report::PanicReport {
+        message: panic_str,
+        version: &version,
+        target: env!("TARGET"),
+        platform: &platform,
+        location: panic_info.location().map(|l| l.to_string()),
+        trace,
+      })
+    );
 
     orig_hook(panic_info);
     ende_runtime::exit(1);
@@ -806,7 +816,7 @@ fn maybe_minimum_dependency_age_hint(error_string: &str) -> Option<String> {
     colors::bold("60"),
     colors::bold("\"minimumDependencyAge\""),
     colors::yellow("docs:"),
-    colors::cyan("https://docs.deno.com/go/minimum-dependency-age"),
+    colors::cyan("https://docs.ende.sh/go/minimum-dependency-age"),
   ))
 }
 
@@ -1083,7 +1093,7 @@ async fn resolve_flags_and_init(
   // TODO(bartlomieju): remove in Deno v2.5 and hard error then.
   if flags.unstable_config.legacy_flag_enabled {
     log::warn!(
-      "{} The `--unstable` flag has been removed in Deno 2.0. Use granular `--unstable-*` flags instead.\nLearn more at: https://docs.deno.com/runtime/manual/tools/unstable_flags",
+      "{} The `--unstable` flag has been removed in Deno 2.0. Use granular `--unstable-*` flags instead.\nLearn more at: https://docs.ende.sh/runtime/manual/tools/unstable_flags",
       colors::yellow("Warning")
     );
   }

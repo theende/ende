@@ -200,7 +200,7 @@ pub static COMPILE_ARGS: &[ArgDef] = &[
     .long_aliases(&["importmap"])
     .action(ArgAction::Set)
     .num_args(NumArgs::Exact(1))
-.help("Load import map file from local file or remote URL\n  Docs: https://docs.deno.com/runtime/manual/basics/import_maps"),
+.help("Load import map file from local file or remote URL\n  Docs: https://docs.ende.sh/runtime/manual/basics/import_maps"),
   ArgDef::new("no-remote").long("no-remote").set_true()
 .help("Do not resolve remote modules"),
   ArgDef::new("no-npm").long("no-npm").set_true()
@@ -234,7 +234,7 @@ pub static COMPILE_ARGS: &[ArgDef] = &[
     .long("config")
     .action(ArgAction::Set)
     .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.deno.com/go/config"),
+.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
   ArgDef::new("no-config")
     .long("no-config")
     .set_true()
@@ -363,7 +363,7 @@ pub static RUNTIME_MISC_ARGS: &[ArgDef] = &[
     .action(ArgAction::Append)
     .num_args(NumArgs::OneOrMore)
     .value_delimiter(',')
-.help("Use this argument to specify custom conditions for npm package exports. You can also use ENDE_CONDITIONS env var.\n\nDocs: https://docs.deno.com/go/conditional-exports"),
+.help("Use this argument to specify custom conditions for npm package exports. You can also use ENDE_CONDITIONS env var.\n\nDocs: https://docs.ende.sh/go/conditional-exports"),
 ];
 
 pub static CPU_PROF_ARGS: &[ArgDef] = &[
@@ -982,7 +982,7 @@ pub static FMT_SUBCOMMAND: CommandDef = CommandDef {
       .long("config")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.deno.com/go/config"),
+.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
     ArgDef::new("no-config").long("no-config").set_true()
 .help("Disable automatic loading of the configuration file"),
     ArgDef::new("no-editorconfig")
@@ -1097,7 +1097,7 @@ pub static LINT_SUBCOMMAND: CommandDef = CommandDef {
       .long("config")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.deno.com/go/config"),
+.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
     ArgDef::new("no-config").long("no-config").set_true()
 .help("Disable automatic loading of the configuration file"),
     ArgDef::new("ext")
@@ -1611,7 +1611,7 @@ pub static TASK_SUBCOMMAND: CommandDef = CommandDef {
       .long("config")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.deno.com/go/config"),
+.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
     ArgDef::new("recursive")
       .short('r')
       .long("recursive")
@@ -2742,7 +2742,7 @@ pub static LSP_SUBCOMMAND: CommandDef = CommandDef {
 
 pub static VENDOR_SUBCOMMAND: CommandDef = CommandDef {
   name: "vendor",
-  about: "`deno vendor` was removed in Deno 2.\n\nSee the Deno 1.x to 2.x Migration Guide for migration instructions: https://docs.deno.com/runtime/manual/advanced/migrate_deprecations",
+  about: "`deno vendor` was removed in Deno 2.\n\nSee the Deno 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
   aliases: &[],
   args: &[
     ArgDef::new("help")
@@ -3204,7 +3204,7 @@ pub static PACK_SUBCOMMAND: CommandDef = CommandDef {
       .long("config")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.deno.com/go/config"),
+.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
     ArgDef::new("no-config")
       .long("no-config")
       .set_true()

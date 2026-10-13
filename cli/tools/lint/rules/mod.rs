@@ -92,7 +92,7 @@ impl CliLintRule {
     use CliLintRuleKind::*;
     match &self.0 {
       DenoLint(rule) => {
-        Cow::Owned(format!("https://docs.deno.com/lint/rules/{}", rule.code()))
+        Cow::Owned(format!("https://docs.ende.sh/lint/rules/{}", rule.code()))
       }
       Extended(rule) => rule.help_docs_url(),
       Package(rule) => rule.help_docs_url(),

@@ -4136,7 +4136,7 @@ pub mod test {
             "include": ["rule1"],
             "exclude": ["rule2"],
           },
-          "plugins": ["jsr:@deno/test-plugin1", "jsr:@deno/test-plugin3"]
+          "plugins": ["jsr:@ende/test-plugin1", "jsr:@ende/test-plugin3"]
         }
       }),
       json!({
@@ -4148,9 +4148,9 @@ pub mod test {
             "include": ["rule2"],
           },
           "plugins": [
-            "jsr:@deno/test-plugin1",
-            "jsr:@deno/test-plugin2",
-            "!jsr:@deno/test-plugin3"
+            "jsr:@ende/test-plugin1",
+            "jsr:@ende/test-plugin2",
+            "!jsr:@ende/test-plugin3"
           ]
         }
       }),
@@ -4181,8 +4181,8 @@ pub mod test {
           exclude: Some(vec![]),
         },
         plugins: vec![
-          Url::parse("jsr:@deno/test-plugin1").unwrap(),
-          Url::parse("jsr:@deno/test-plugin2").unwrap(),
+          Url::parse("jsr:@ende/test-plugin1").unwrap(),
+          Url::parse("jsr:@ende/test-plugin2").unwrap(),
         ],
         files: FilePatterns {
           base: root_dir().join("member/"),
@@ -4210,8 +4210,8 @@ pub mod test {
           exclude: Some(vec!["rule2".to_string()]),
         },
         plugins: vec![
-          Url::parse("jsr:@deno/test-plugin1").unwrap(),
-          Url::parse("jsr:@deno/test-plugin3").unwrap(),
+          Url::parse("jsr:@ende/test-plugin1").unwrap(),
+          Url::parse("jsr:@ende/test-plugin3").unwrap(),
         ],
         files: FilePatterns {
           base: root_dir(),

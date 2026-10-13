@@ -13,7 +13,7 @@ Also because it _checks_ how ende_core works. Yuk yuk.
 _Checkin_ is a tiny testing tool designed to exercise the functionality of
 `ende_core`. It implements a very small standard library which is just enough to
 exercise all of the components that we expose to
-[Deno](https://github.com/denoland/deno) without reinventing the wheel.
+[Deno](https://github.com/theende/ende) without reinventing the wheel.
 
 ## Modules
 

@@ -541,7 +541,7 @@ impl PermissionPrompter for TtyPrompter {
       let msg = format!(
         "Learn more at: {}",
         colors::cyan_with_underline(&format!(
-          "https://docs.deno.com/go/--allow-{}",
+          "https://docs.ende.sh/go/--allow-{}",
           name
         ))
       );

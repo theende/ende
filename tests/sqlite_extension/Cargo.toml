@@ -12,7 +12,7 @@ authors = ["the Deno authors"]
 edition = "2024"
 license = "MIT"
 publish = false
-repository = "https://github.com/denoland/deno"
+repository = "https://github.com/theende/ende"
 
 [lib]
 crate-type = ["cdylib"]

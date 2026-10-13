@@ -147,7 +147,7 @@ pub enum IndentStyle {
   Smart = 2,
 }
 
-/// Relevant subset of https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6658.
+/// Relevant subset of https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6658.
 #[derive(Clone, Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FormatCodeSettings {
@@ -6424,14 +6424,14 @@ enum TscRequest {
   /// Not a real client request: the JS main loop prompts V8 to collect and
   /// return memory, and never sends a response.
   ReleaseMemory,
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6230
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6230
   FindReferences((String, u32)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6235
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6235
   GetNavigationTree((String,)),
   GetSupportedCodeFixes,
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6214
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6214
   GetQuickInfoAtPosition((String, u32, u32)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6257
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6257
   GetCodeFixesAtPosition(
     Box<(
       String,
@@ -6442,7 +6442,7 @@ enum TscRequest {
       UserPreferences,
     )>,
   ),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6274
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6274
   GetApplicableRefactors(
     Box<(
       String,
@@ -6452,7 +6452,7 @@ enum TscRequest {
       String,
     )>,
   ),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6258
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6258
   GetCombinedCodeFix(
     Box<(
       CombinedCodeFixScope,
@@ -6461,7 +6461,7 @@ enum TscRequest {
       UserPreferences,
     )>,
   ),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6275
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6275
   GetEditsForRefactor(
     Box<(
       String,
@@ -6472,17 +6472,17 @@ enum TscRequest {
       Option<UserPreferences>,
     )>,
   ),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6281
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6281
   GetEditsForFileRename(
     Box<(String, String, FormatCodeSettings, UserPreferences)>,
   ),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6231
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6231
   GetDocumentHighlights(Box<(String, u32, Vec<String>)>),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6226
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6226
   GetDefinitionAndBoundSpan((String, u32)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6227
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6227
   GetTypeDefinitionAtPosition((String, u32)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6193
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6193
   GetCompletionsAtPosition(
     Box<(
       String,
@@ -6491,7 +6491,7 @@ enum TscRequest {
       FormatCodeSettings,
     )>,
   ),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6205
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6205
   #[allow(clippy::type_complexity, reason = "TODO: cleanup")]
   GetCompletionEntryDetails(
     Box<(
@@ -6504,29 +6504,29 @@ enum TscRequest {
       Option<Value>,
     )>,
   ),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6228
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6228
   GetImplementationAtPosition((String, u32)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6240
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6240
   GetOutliningSpans((String,)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6237
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6237
   ProvideCallHierarchyIncomingCalls((String, u32)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6238
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6238
   ProvideCallHierarchyOutgoingCalls((String, u32)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6236
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6236
   PrepareCallHierarchy((String, u32)),
-  // https://github.com/denoland/deno/blob/v2.2.2/cli/tsc/dts/typescript.d.ts#L6674
+  // https://github.com/theende/ende/blob/v2.2.2/cli/tsc/dts/typescript.d.ts#L6674
   FindRenameLocations((String, u32, bool, bool, UserPreferences)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6224
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6224
   GetSmartSelectionRange((String, u32)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6183
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6183
   GetEncodedSemanticClassifications((String, TextSpan, &'static str)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6217
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6217
   GetSignatureHelpItems((String, u32, SignatureHelpItemsOptions)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6233
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6233
   GetNavigateToItems((String, Option<u32>, Option<String>)),
-  // https://github.com/denoland/deno/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6239
+  // https://github.com/theende/ende/blob/v1.37.1/cli/tsc/dts/typescript.d.ts#L6239
   ProvideInlayHints((String, TextSpan, UserPreferences)),
-  // https://github.com/denoland/deno/blob/v2.5.2/cli/tsc/dts/typescript.d.ts#L6769
+  // https://github.com/theende/ende/blob/v2.5.2/cli/tsc/dts/typescript.d.ts#L6769
   OrganizeImports(
     (
       OrganizeImportsArgs,

@@ -1,6 +1,6 @@
-Available tasks (@deno/bar):
+Available tasks (@ende/bar):
 - dev
-    echo '@deno/bar'
-Available tasks (@deno/foo):
+    echo '@ende/bar'
+Available tasks (@ende/foo):
 - dev
-    echo '@deno/foo'
+    echo '@ende/foo'

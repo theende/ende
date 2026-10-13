@@ -39,15 +39,15 @@ use crate::util::archive;
 use crate::util::progress_bar::ProgressBar;
 use crate::util::progress_bar::ProgressBarStyle;
 
-static RELEASE_URL: &str = "https://github.com/denoland/deno/releases";
-static CANARY_URL: &str = "https://dl.deno.land/canary";
-static DL_RELEASE_URL: &str = "https://dl.deno.land/release";
+static RELEASE_URL: &str = "https://github.com/theende/ende/releases";
+static CANARY_URL: &str = "https://dl.ende.sh/canary";
+static DL_RELEASE_URL: &str = "https://dl.ende.sh/release";
 
 pub static ARCHIVE_NAME: Lazy<String> =
-  Lazy::new(|| format!("deno-{}.zip", env!("TARGET")));
+  Lazy::new(|| format!("ende-{}.zip", env!("TARGET")));
 
 static DELTA_TARGET_NAME: Lazy<String> =
-  Lazy::new(|| format!("deno-{}", env!("TARGET")));
+  Lazy::new(|| format!("ende-{}", env!("TARGET")));
 
 // How often query server for new version. In hours.
 const UPGRADE_CHECK_INTERVAL: i64 = 24;
@@ -232,13 +232,17 @@ impl<TEnvironment: UpdateCheckerEnvironment, TVersionProvider: VersionProvider>
   }
 }
 
+fn get_release_notes_url(version: &str) -> String {
+  format!("{RELEASE_URL}/tag/v{version}")
+}
+
 fn get_minor_version_blog_post_url(semver: &Version) -> String {
-  format!("https://deno.com/blog/v{}.{}", semver.major, semver.minor)
+  format!("https://ende.sh/blog/v{}.{}", semver.major, semver.minor)
 }
 
 fn get_rc_version_blog_post_url(semver: &Version) -> String {
   format!(
-    "https://deno.com/blog/v{}.{}-rc-{}",
+    "https://ende.sh/blog/v{}.{}-rc-{}",
     semver.major, semver.minor, semver.pre[1]
   )
 }
@@ -267,7 +271,7 @@ async fn print_release_notes(
       "{}\n\n  {}\n",
       colors::gray("Migration guide:"),
       colors::bold(
-        "https://docs.deno.com/runtime/manual/advanced/migrate_deprecations"
+        "https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations"
       )
     );
   }
@@ -276,7 +280,7 @@ async fn print_release_notes(
     log::info!(
       "{}\n\n  {}\n",
       colors::gray("If you find a bug, please report to:"),
-      colors::bold("https://github.com/denoland/deno/issues/new")
+      colors::bold("https://github.com/theende/ende/issues/new")
     );
 
     // Check if there's blog post entry for this release
@@ -302,10 +306,7 @@ async fn print_release_notes(
   log::info!(
     "{}\n\n  {}\n",
     colors::gray("Release notes:"),
-    colors::bold(format!(
-      "https://github.com/denoland/deno/releases/tag/v{}",
-      &new_version,
-    ))
+    colors::bold(get_release_notes_url(new_version))
   );
   log::info!(
     "{}\n\n  {}\n",
@@ -598,7 +599,7 @@ fn get_pr_artifact_name() -> Result<String, AnyError> {
   };
 
   // Prefer release builds, fall back to debug
-  Ok(format!("release-{os}-{arch}-deno"))
+  Ok(format!("release-{os}-{arch}-ende"))
 }
 
 fn get_pr_debug_artifact_name() -> Result<String, AnyError> {
@@ -628,7 +629,7 @@ fn upgrade_from_pr(
       "view",
       &pr_number.to_string(),
       "--repo",
-      "denoland/deno",
+      "theende/ende",
       "--json",
       "title,state,headRefName,headRefOid",
       "-q",
@@ -679,7 +680,7 @@ fn upgrade_from_pr(
         "run",
         "list",
         "--repo",
-        "denoland/deno",
+        "theende/ende",
         "--branch",
         pr_branch,
         "--workflow",
@@ -732,7 +733,7 @@ fn upgrade_from_pr(
           "download",
           run_id,
           "--repo",
-          "denoland/deno",
+          "theende/ende",
           "--name",
           name,
           "--dir",
@@ -766,7 +767,7 @@ fn upgrade_from_pr(
   }
 
   // Find the downloaded binary
-  let exe_name = if cfg!(windows) { "deno.exe" } else { "deno" };
+  let exe_name = if cfg!(windows) { "ende.exe" } else { "ende" };
   let new_exe_path = download_dir.join(exe_name);
 
   if !new_exe_path.exists() {
@@ -850,7 +851,7 @@ fn upgrade_from_branch(
       "run",
       "list",
       "--repo",
-      "denoland/deno",
+      "theende/ende",
       "--branch",
       branch,
       "--workflow",
@@ -902,7 +903,7 @@ fn upgrade_from_branch(
           "download",
           run_id,
           "--repo",
-          "denoland/deno",
+          "theende/ende",
           "--name",
           name,
           "--dir",
@@ -933,7 +934,7 @@ fn upgrade_from_branch(
     );
   }
 
-  let exe_name = if cfg!(windows) { "deno.exe" } else { "deno" };
+  let exe_name = if cfg!(windows) { "ende.exe" } else { "ende" };
   let new_exe_path = download_dir.join(exe_name);
 
   if !new_exe_path.exists() {
@@ -1083,7 +1084,7 @@ pub async fn upgrade(
       ))
     );
 
-    let exe_name = if cfg!(windows) { "deno.exe" } else { "deno" };
+    let exe_name = if cfg!(windows) { "ende.exe" } else { "ende" };
     let new_exe_path = temp_dir.path().join(exe_name);
     std::fs::write(&new_exe_path, &delta_binary).with_context(|| {
       format!(
@@ -1138,7 +1139,7 @@ pub async fn upgrade(
     );
 
     archive::unpack_into_dir(archive::UnpackArgs {
-      exe_name: if cfg!(windows) { "deno.exe" } else { "deno" },
+      exe_name: if cfg!(windows) { "ende.exe" } else { "ende" },
       archive_name: &ARCHIVE_NAME,
       archive_data: &archive_data,
       dest_path: temp_dir.path(),
@@ -1469,7 +1470,7 @@ fn base_upgrade_url() -> Cow<'static, str> {
   if let Ok(url) = env::var("ENDE_DONT_USE_INTERNAL_BASE_UPGRADE_URL") {
     Cow::Owned(url)
   } else {
-    Cow::Borrowed("https://dl.deno.land")
+    Cow::Borrowed("https://dl.ende.sh")
   }
 }
 
@@ -1480,7 +1481,7 @@ fn get_download_url(
   let download_url = match release_channel {
     ReleaseChannel::Stable | ReleaseChannel::Alpha | ReleaseChannel::Beta => {
       let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
-        "http://localhost:4545/deno-upgrade"
+        "http://localhost:4545/ende-upgrade"
       } else {
         RELEASE_URL
       };
@@ -1581,7 +1582,7 @@ fn get_delta_download_url(
   target_version: &str,
 ) -> Result<Url, AnyError> {
   let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
-    "http://localhost:4545/deno-upgrade"
+    "http://localhost:4545/ende-upgrade"
   } else {
     RELEASE_URL
   };
@@ -1599,7 +1600,7 @@ fn get_delta_checksum_url(
   target_version: &str,
 ) -> Result<Url, AnyError> {
   let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
-    "http://localhost:4545/deno-upgrade"
+    "http://localhost:4545/ende-upgrade"
   } else {
     RELEASE_URL
   };
@@ -1614,7 +1615,7 @@ fn get_delta_checksum_url(
 /// Construct the URL for the uncompressed binary's SHA-256 checksum file.
 fn get_binary_checksum_url(target_version: &str) -> Result<Url, AnyError> {
   let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
-    "http://localhost:4545/deno-upgrade"
+    "http://localhost:4545/ende-upgrade"
   } else {
     RELEASE_URL
   };
@@ -1985,7 +1986,7 @@ fn kill_running_deno_lsp_processes() {
     .args([
       "-Command",
       r#"Get-WmiObject Win32_Process | Where-Object {
-    $_.Name -eq 'deno.exe' -and
+    $_.Name -eq 'ende.exe' -and
     $_.CommandLine -match '^(?:\"[^\"]+\"|\S+)\s+lsp\b'
 } | ForEach-Object {
   if ($_.Terminate()) {
@@ -2132,14 +2133,14 @@ mod test {
   #[test]
   fn test_get_pr_artifact_name() {
     let name = get_pr_artifact_name().unwrap();
-    // Should match the pattern "release-{os}-{arch}-deno"
+    // Should match the pattern "release-{os}-{arch}-ende"
     assert!(
       name.starts_with("release-"),
       "artifact name should start with 'release-': {name}"
     );
     assert!(
-      name.ends_with("-deno"),
-      "artifact name should end with '-deno': {name}"
+      name.ends_with("-ende"),
+      "artifact name should end with '-ende': {name}"
     );
     // Should contain a valid os
     assert!(
@@ -2679,7 +2680,7 @@ mod test {
         "aarch64-apple-darwin",
         UpgradeCheckKind::Execution
       ),
-      "https://dl.deno.land/canary-aarch64-apple-darwin-latest.txt"
+      "https://dl.ende.sh/canary-aarch64-apple-darwin-latest.txt"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2687,7 +2688,7 @@ mod test {
         "aarch64-apple-darwin",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/canary-aarch64-apple-darwin-latest.txt?lsp"
+      "https://dl.ende.sh/canary-aarch64-apple-darwin-latest.txt?lsp"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2695,7 +2696,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Execution
       ),
-      "https://dl.deno.land/canary-x86_64-pc-windows-msvc-latest.txt"
+      "https://dl.ende.sh/canary-x86_64-pc-windows-msvc-latest.txt"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2703,7 +2704,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/canary-x86_64-pc-windows-msvc-latest.txt?lsp"
+      "https://dl.ende.sh/canary-x86_64-pc-windows-msvc-latest.txt?lsp"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2711,7 +2712,7 @@ mod test {
         "aarch64-apple-darwin",
         UpgradeCheckKind::Execution
       ),
-      "https://dl.deno.land/release-latest.txt"
+      "https://dl.ende.sh/release-latest.txt"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2719,7 +2720,7 @@ mod test {
         "aarch64-apple-darwin",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/release-latest.txt?lsp"
+      "https://dl.ende.sh/release-latest.txt?lsp"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2727,7 +2728,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Execution
       ),
-      "https://dl.deno.land/release-latest.txt"
+      "https://dl.ende.sh/release-latest.txt"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2735,7 +2736,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/release-rc-latest.txt?lsp"
+      "https://dl.ende.sh/release-rc-latest.txt?lsp"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2743,7 +2744,7 @@ mod test {
         "aarch64-apple-darwin",
         UpgradeCheckKind::Execution
       ),
-      "https://dl.deno.land/release-rc-latest.txt"
+      "https://dl.ende.sh/release-rc-latest.txt"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2751,7 +2752,7 @@ mod test {
         "aarch64-apple-darwin",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/release-rc-latest.txt?lsp"
+      "https://dl.ende.sh/release-rc-latest.txt?lsp"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2759,7 +2760,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Execution
       ),
-      "https://dl.deno.land/release-rc-latest.txt"
+      "https://dl.ende.sh/release-rc-latest.txt"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2767,7 +2768,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/release-rc-latest.txt?lsp"
+      "https://dl.ende.sh/release-rc-latest.txt?lsp"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2775,7 +2776,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/release-lts-latest.txt?lsp"
+      "https://dl.ende.sh/release-lts-latest.txt?lsp"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2783,7 +2784,7 @@ mod test {
         "aarch64-apple-darwin",
         UpgradeCheckKind::Execution
       ),
-      "https://dl.deno.land/release-lts-latest.txt"
+      "https://dl.ende.sh/release-lts-latest.txt"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2791,7 +2792,7 @@ mod test {
         "aarch64-apple-darwin",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/release-lts-latest.txt?lsp"
+      "https://dl.ende.sh/release-lts-latest.txt?lsp"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2799,7 +2800,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Execution
       ),
-      "https://dl.deno.land/release-lts-latest.txt"
+      "https://dl.ende.sh/release-lts-latest.txt"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2807,7 +2808,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/release-lts-latest.txt?lsp"
+      "https://dl.ende.sh/release-lts-latest.txt?lsp"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2815,7 +2816,7 @@ mod test {
         "aarch64-apple-darwin",
         UpgradeCheckKind::Execution
       ),
-      "https://dl.deno.land/release-alpha-latest.txt"
+      "https://dl.ende.sh/release-alpha-latest.txt"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2823,7 +2824,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/release-alpha-latest.txt?lsp"
+      "https://dl.ende.sh/release-alpha-latest.txt?lsp"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2831,7 +2832,7 @@ mod test {
         "aarch64-apple-darwin",
         UpgradeCheckKind::Execution
       ),
-      "https://dl.deno.land/release-beta-latest.txt"
+      "https://dl.ende.sh/release-beta-latest.txt"
     );
     assert_eq!(
       get_latest_version_url(
@@ -2839,7 +2840,7 @@ mod test {
         "x86_64-pc-windows-msvc",
         UpgradeCheckKind::Lsp
       ),
-      "https://dl.deno.land/release-beta-latest.txt?lsp"
+      "https://dl.ende.sh/release-beta-latest.txt?lsp"
     );
   }
 
@@ -3045,25 +3046,25 @@ mod test {
     let version = Version::parse_standard("1.46.0").unwrap();
     assert_eq!(
       get_minor_version_blog_post_url(&version),
-      "https://deno.com/blog/v1.46"
+      "https://ende.sh/blog/v1.46"
     );
 
     let version = Version::parse_standard("2.1.1").unwrap();
     assert_eq!(
       get_minor_version_blog_post_url(&version),
-      "https://deno.com/blog/v2.1"
+      "https://ende.sh/blog/v2.1"
     );
 
     let version = Version::parse_standard("2.0.0-rc.0").unwrap();
     assert_eq!(
       get_rc_version_blog_post_url(&version),
-      "https://deno.com/blog/v2.0-rc-0"
+      "https://ende.sh/blog/v2.0-rc-0"
     );
 
     let version = Version::parse_standard("2.0.0-rc.2").unwrap();
     assert_eq!(
       get_rc_version_blog_post_url(&version),
-      "https://deno.com/blog/v2.0-rc-2"
+      "https://ende.sh/blog/v2.0-rc-2"
     );
   }
 
@@ -3325,8 +3326,68 @@ mod test {
       "URL should contain source version and bsdiff extension: {url_str}"
     );
     assert!(
-      url_str.contains("deno-"),
+      url_str.contains(&format!("/ende-{}.from-", env!("TARGET"))),
       "URL should contain target name: {url_str}"
+    );
+    assert!(
+      url_str.starts_with("https://github.com/theende/ende/releases/"),
+      "URL should point at the ende releases: {url_str}"
+    );
+  }
+
+  #[test]
+  fn test_archive_names() {
+    assert_eq!(*ARCHIVE_NAME, format!("ende-{}.zip", env!("TARGET")));
+    assert_eq!(*DELTA_TARGET_NAME, format!("ende-{}", env!("TARGET")));
+  }
+
+  #[test]
+  fn test_get_download_url() {
+    let target = env!("TARGET");
+    assert_eq!(
+      get_download_url("2.0.0", ReleaseChannel::Stable)
+        .unwrap()
+        .as_str(),
+      format!(
+        "https://github.com/theende/ende/releases/download/v2.0.0/ende-{target}.zip"
+      )
+    );
+    assert_eq!(
+      get_download_url("2.0.0-rc.1", ReleaseChannel::Rc)
+        .unwrap()
+        .as_str(),
+      format!("https://dl.ende.sh/release/v2.0.0-rc.1/ende-{target}.zip")
+    );
+    assert_eq!(
+      get_download_url("2.0.0", ReleaseChannel::Lts)
+        .unwrap()
+        .as_str(),
+      format!("https://dl.ende.sh/release/v2.0.0/ende-{target}.zip")
+    );
+    assert_eq!(
+      get_download_url("abc123", ReleaseChannel::Canary)
+        .unwrap()
+        .as_str(),
+      format!("https://dl.ende.sh/canary/abc123/ende-{target}.zip")
+    );
+  }
+
+  #[test]
+  fn test_get_binary_checksum_url() {
+    assert_eq!(
+      get_binary_checksum_url("2.0.0").unwrap().as_str(),
+      format!(
+        "https://github.com/theende/ende/releases/download/v2.0.0/ende-{}.sha256sum",
+        env!("TARGET")
+      )
+    );
+  }
+
+  #[test]
+  fn test_get_release_notes_url() {
+    assert_eq!(
+      get_release_notes_url("2.1.0"),
+      "https://github.com/theende/ende/releases/tag/v2.1.0"
     );
   }
 

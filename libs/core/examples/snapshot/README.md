@@ -28,5 +28,5 @@ Missing features vs. those blog posts:
 - Does not implement [TsModuleLoader], to keep this example more concise.
 
 [blog]: https://deno.com/blog/roll-your-own-javascript-runtime-pt3#creating-a-snapshot-in-buildrs
-[op2]: https://github.com/denoland/deno_core/tree/main/ops/op2#readme
+[op2]: https://github.com/theende/ende/tree/primary/libs/ops/op2#readme
 [TsModuleLoader]: https://deno.com/blog/roll-your-own-javascript-runtime-pt2#supporting-typescript

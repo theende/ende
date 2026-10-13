@@ -7,7 +7,7 @@
 //! usage examples and the permission-related environment variables.
 
 pub static PERMISSION_HELP: &str = "Permission options:
-Docs: https://docs.deno.com/go/permissions
+Docs: https://docs.ende.sh/go/permissions
 
   -A, --allow-all                           Allow all permissions.
   -P, --permission-set[=<NAME>]             Loads the permission set from the config file.
