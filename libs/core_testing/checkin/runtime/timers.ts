@@ -4,14 +4,14 @@
  * Call a callback function after a delay.
  */
 export function setTimeout(callback: () => void, delay = 0) {
-  return Deno.core.createTimer(callback, delay, undefined, false, true);
+  return Ende.core.createTimer(callback, delay, undefined, false, true);
 }
 
 /**
  * Call a callback function after a delay.
  */
 export function setInterval(callback: () => void, delay = 0) {
-  return Deno.core.createTimer(callback, delay, undefined, true, true);
+  return Ende.core.createTimer(callback, delay, undefined, true, true);
 }
 
 /**
@@ -19,7 +19,7 @@ export function setInterval(callback: () => void, delay = 0) {
  */
 // deno-lint-ignore no-explicit-any
 export function clearTimeout(timer: any) {
-  Deno.core.cancelTimer(timer);
+  Ende.core.cancelTimer(timer);
 }
 
 /**
@@ -27,7 +27,7 @@ export function clearTimeout(timer: any) {
  */
 // deno-lint-ignore no-explicit-any
 export function clearInterval(timer: any) {
-  Deno.core.cancelTimer(timer);
+  Ende.core.cancelTimer(timer);
 }
 
 /**
@@ -40,13 +40,13 @@ export function setImmediate(callback: () => void) {
     _onImmediate: callback,
     _argv: null,
     _destroyed: false,
-    [Deno.core.kRefed]: false,
+    [Ende.core.kRefed]: false,
     asyncId: 0,
     triggerAsyncId: 0,
   };
-  immediate[Deno.core.kRefed] = true;
-  Deno.core.immediateRefCount(true);
-  Deno.core.queueImmediate(immediate);
+  immediate[Ende.core.kRefed] = true;
+  Ende.core.immediateRefCount(true);
+  Ende.core.queueImmediate(immediate);
   return immediate;
 }
 
@@ -55,7 +55,7 @@ export function setImmediate(callback: () => void) {
  */
 // deno-lint-ignore no-explicit-any
 export function clearImmediate(immediate: any) {
-  Deno.core.clearImmediate(immediate);
+  Ende.core.clearImmediate(immediate);
 }
 
 /**
@@ -63,9 +63,9 @@ export function clearImmediate(immediate: any) {
  */
 // deno-lint-ignore no-explicit-any
 export function unrefImmediate(immediate: any) {
-  if (immediate && immediate[Deno.core.kRefed]) {
-    immediate[Deno.core.kRefed] = false;
-    Deno.core.immediateRefCount(false);
+  if (immediate && immediate[Ende.core.kRefed]) {
+    immediate[Ende.core.kRefed] = false;
+    Ende.core.immediateRefCount(false);
   }
 }
 
@@ -74,7 +74,7 @@ export function unrefImmediate(immediate: any) {
  */
 // deno-lint-ignore no-explicit-any
 export function unrefTimer(timer: any) {
-  Deno.core.unrefTimer(timer);
+  Ende.core.unrefTimer(timer);
 }
 
 /**
@@ -82,5 +82,5 @@ export function unrefTimer(timer: any) {
  */
 // deno-lint-ignore no-explicit-any
 export function refTimer(timer: any) {
-  Deno.core.refTimer(timer);
+  Ende.core.refTimer(timer);
 }

@@ -1,11 +1,11 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 /// <reference no-default-lib="true" />
-/// <reference lib="deno.ns" />
-/// <reference lib="deno.shared_globals" />
-/// <reference lib="deno.webstorage" />
+/// <reference lib="ende.ns" />
+/// <reference lib="ende.shared_globals" />
+/// <reference lib="ende.webstorage" />
 /// <reference lib="esnext" />
-/// <reference lib="deno.cache" />
+/// <reference lib="ende.cache" />
 
 /**
  * Defines the mapping between event names and their corresponding event types
@@ -60,7 +60,8 @@ interface Window extends EventTarget {
   alert: (message?: string) => void;
   confirm: (message?: string) => boolean;
   prompt: (message?: string, defaultValue?: string) => string | null;
-  Deno: typeof Deno;
+  Ende: typeof Ende;
+  Deno: typeof Ende;
   Navigator: typeof Navigator;
   navigator: Navigator;
   Location: typeof Location;

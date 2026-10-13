@@ -11,7 +11,7 @@ const {
   op_async_never_resolves,
   op_async_fake,
   op_async_promise_id,
-} = Deno
+} = Ende
   .core
   .ops;
 
@@ -34,7 +34,7 @@ export async function asyncSpin() {
 
 export function asyncNeverResolves() {
   const prom = op_async_never_resolves();
-  Deno.core.refOpPromise(prom);
+  Ende.core.refOpPromise(prom);
   return prom;
 }
 

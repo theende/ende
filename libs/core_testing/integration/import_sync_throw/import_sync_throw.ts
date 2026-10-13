@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 import { assertThrows } from "checkin:testing";
-const { op_import_sync, op_path_to_url } = Deno.core.ops;
+const { op_import_sync, op_path_to_url } = Ende.core.ops;
 
 globalThis.onunhandledrejection = (...args) => {
   console.error("unexpected call", args);

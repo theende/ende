@@ -282,11 +282,11 @@ function modifySourceFiles() {
 }
 
 // Collect the names Deno declares as Web Platform globals (from
-// `lib.deno_web.d.ts`). These are what `node:stream/web` should alias to.
+// `lib.ende_web.d.ts`). These are what `node:stream/web` should alias to.
 function getWebGlobalNames(): Set<string> {
   const project = new Project({ skipAddingFilesFromTsConfig: true });
   const sourceFile = project.addSourceFileAtPath(
-    dtsDir.join("lib.deno_web.d.ts").toString(),
+    dtsDir.join("lib.ende_web.d.ts").toString(),
   );
   const names = new Set<string>();
   for (const decl of sourceFile.getInterfaces()) {

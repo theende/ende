@@ -39,7 +39,7 @@ use crate::io::WriteOutcome;
 /// this are files, sockets, or HTTP streams.
 ///
 /// Readables can be read from from either JS or Rust. In JS one can use
-/// `Deno.core.read()` to read from a single chunk of data from a readable. In
+/// `Ende.core.read()` to read from a single chunk of data from a readable. In
 /// Rust one can directly call `read()` or `read_byob()`. The Rust side code is
 /// used to implement ops like `op_slice`.
 ///
@@ -64,7 +64,7 @@ use crate::io::WriteOutcome;
 /// this are files, sockets, or HTTP streams.
 ///
 /// Writables can be written to from either JS or Rust. In JS one can use
-/// `Deno.core.write()` to write to a single chunk of data to a writable. In
+/// `Ende.core.write()` to write to a single chunk of data to a writable. In
 /// Rust one can directly call `write()`. The latter is used to implement ops
 /// like `op_slice`.
 pub trait Resource: Any + 'static {

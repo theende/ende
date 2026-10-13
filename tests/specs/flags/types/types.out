@@ -1,3 +1,5 @@
 [WILDCARD]
-declare namespace Deno [WILDCARD]
+declare namespace Ende [WILDCARD]
+import Deno = Ende;
+[WILDCARD]
 declare var window: Window [WILDCARD]

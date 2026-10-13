@@ -258,7 +258,7 @@ const versions = {
   nghttp3: "",
   sqlite: "3.53.1",
   // Will be filled when calling "__bootstrapNodeProcess()",
-  deno: "",
+  ende: "",
   v8: "",
   typescript: "",
 };

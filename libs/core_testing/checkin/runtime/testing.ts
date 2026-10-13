@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-const { op_test_register } = Deno.core.ops;
+const { op_test_register } = Ende.core.ops;
 
 /**
  * Define a sync or async test function.

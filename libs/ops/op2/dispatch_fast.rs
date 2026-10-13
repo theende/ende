@@ -397,7 +397,7 @@ pub(crate) fn generate_fast_result_early_exit(
         let mut scope = scope.init();
         // Build and throw the exception using only native V8 APIs. Calling
         // `to_v8_error` here would synchronously invoke the JS
-        // `Deno.core.buildCustomError` callback, which can execute
+        // `Ende.core.buildCustomError` callback, which can execute
         // attacker-controlled JS (e.g. a setter on an error prototype's
         // `name`) *inside* the fast call. That JS can detach an `ArrayBuffer`
         // argument, leaving the JIT to write through a now-stale backing-store

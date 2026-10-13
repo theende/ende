@@ -16,7 +16,7 @@
     },
     {
       "commandName": "./deno_copy",
-      "args": ["eval", "if (Deno.version.deno === '1.43.2') { Deno.exit(1); }"],
+      "args": ["eval", "if (Deno.version.ende === '1.43.2') { Deno.exit(1); }"],
       "exitCode": 0,
       "output": ""
     },

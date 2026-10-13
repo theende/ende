@@ -57,23 +57,23 @@ pub use self::js::TscConstants;
 
 pub fn get_types_declaration_file_text() -> String {
   let lib_names = vec![
-    "deno.ns",
-    "deno.console",
-    "deno.url",
-    "deno.web",
-    "deno.fetch",
-    "deno.webgpu",
-    "deno.websocket",
-    "deno.webstorage",
-    "deno.canvas",
-    "deno.crypto",
-    "deno.broadcast_channel",
-    "deno.net",
-    "deno.shared_globals",
-    "deno.cache",
+    "ende.ns",
+    "ende.console",
+    "ende.url",
+    "ende.web",
+    "ende.fetch",
+    "ende.webgpu",
+    "ende.websocket",
+    "ende.webstorage",
+    "ende.canvas",
+    "ende.crypto",
+    "ende.broadcast_channel",
+    "ende.net",
+    "ende.shared_globals",
+    "ende.cache",
     "esnext.temporal",
-    "deno.window",
-    "deno.unstable",
+    "ende.window",
+    "ende.unstable",
   ];
 
   lib_names
@@ -147,6 +147,26 @@ macro_rules! maybe_compressed_lib {
 // Include the auto-generated node type libs macro
 include!(concat!(env!("OUT_DIR"), "/node_types.rs"));
 
+/// Libs that keep the old `deno.*` lib names working in
+/// `/// <reference lib="deno.*" />` directives. Each one only references its
+/// `ende.*` replacement. (`compilerOptions.lib` entries are rewritten to the
+/// new names with a deprecation warning before they reach tsc.)
+macro_rules! deprecated_deno_libs {
+  ($($name: literal),* $(,)?) => {
+    [$((
+      concat!("lib.deno.", $name, ".d.ts"),
+      StaticAsset {
+        is_lib: true,
+        source: StaticAssetSource::Uncompressed(concat!(
+          "/// <reference lib=\"ende.",
+          $name,
+          "\" />\n"
+        )),
+      },
+    )),*]
+  };
+}
+
 #[derive(Clone)]
 pub enum StaticAssetSource {
   #[cfg_attr(
@@ -193,30 +213,30 @@ pub static LAZILY_LOADED_STATIC_ASSETS: Lazy<
 > = Lazy::new(|| {
   Vec::from([
     // compressed in build.rs
-    maybe_compressed_lib!("lib.deno.console.d.ts", "lib.deno_console.d.ts"),
-    maybe_compressed_lib!("lib.deno.url.d.ts", "lib.deno_url.d.ts"),
-    maybe_compressed_lib!("lib.deno.web.d.ts", "lib.deno_web.d.ts"),
-    maybe_compressed_lib!("lib.deno.fetch.d.ts", "lib.deno_fetch.d.ts"),
-    maybe_compressed_lib!("lib.deno.websocket.d.ts", "lib.deno_websocket.d.ts"),
+    maybe_compressed_lib!("lib.ende.console.d.ts", "lib.ende_console.d.ts"),
+    maybe_compressed_lib!("lib.ende.url.d.ts", "lib.ende_url.d.ts"),
+    maybe_compressed_lib!("lib.ende.web.d.ts", "lib.ende_web.d.ts"),
+    maybe_compressed_lib!("lib.ende.fetch.d.ts", "lib.ende_fetch.d.ts"),
+    maybe_compressed_lib!("lib.ende.websocket.d.ts", "lib.ende_websocket.d.ts"),
     maybe_compressed_lib!(
-      "lib.deno.webstorage.d.ts",
-      "lib.deno_webstorage.d.ts"
+      "lib.ende.webstorage.d.ts",
+      "lib.ende_webstorage.d.ts"
     ),
-    maybe_compressed_lib!("lib.deno.canvas.d.ts", "lib.deno_canvas.d.ts"),
-    maybe_compressed_lib!("lib.deno.crypto.d.ts", "lib.deno_crypto.d.ts"),
+    maybe_compressed_lib!("lib.ende.canvas.d.ts", "lib.ende_canvas.d.ts"),
+    maybe_compressed_lib!("lib.ende.crypto.d.ts", "lib.ende_crypto.d.ts"),
     maybe_compressed_lib!(
-      "lib.deno.broadcast_channel.d.ts",
-      "lib.deno_broadcast_channel.d.ts"
+      "lib.ende.broadcast_channel.d.ts",
+      "lib.ende_broadcast_channel.d.ts"
     ),
-    maybe_compressed_lib!("lib.deno.net.d.ts", "lib.deno_net.d.ts"),
-    maybe_compressed_lib!("lib.deno.cache.d.ts", "lib.deno_cache.d.ts"),
-    maybe_compressed_lib!("lib.deno.webgpu.d.ts", "lib.deno_webgpu.d.ts"),
-    maybe_compressed_lib!("lib.deno.window.d.ts"),
-    maybe_compressed_lib!("lib.deno.worker.d.ts"),
-    maybe_compressed_lib!("lib.deno.desktop.d.ts"),
-    maybe_compressed_lib!("lib.deno.shared_globals.d.ts"),
-    maybe_compressed_lib!("lib.deno.ns.d.ts"),
-    maybe_compressed_lib!("lib.deno.unstable.d.ts"),
+    maybe_compressed_lib!("lib.ende.net.d.ts", "lib.ende_net.d.ts"),
+    maybe_compressed_lib!("lib.ende.cache.d.ts", "lib.ende_cache.d.ts"),
+    maybe_compressed_lib!("lib.ende.webgpu.d.ts", "lib.ende_webgpu.d.ts"),
+    maybe_compressed_lib!("lib.ende.window.d.ts"),
+    maybe_compressed_lib!("lib.ende.worker.d.ts"),
+    maybe_compressed_lib!("lib.ende.desktop.d.ts"),
+    maybe_compressed_lib!("lib.ende.shared_globals.d.ts"),
+    maybe_compressed_lib!("lib.ende.ns.d.ts"),
+    maybe_compressed_lib!("lib.ende.unstable.d.ts"),
     maybe_compressed_lib!("lib.decorators.d.ts"),
     maybe_compressed_lib!("lib.decorators.legacy.d.ts"),
     maybe_compressed_lib!("lib.dom.asynciterable.d.ts"),
@@ -347,6 +367,26 @@ pub static LAZILY_LOADED_STATIC_ASSETS: Lazy<
   ])
   .into_iter()
   .chain(node_type_libs!())
+  .chain(deprecated_deno_libs!(
+    "ns",
+    "window",
+    "worker",
+    "desktop",
+    "shared_globals",
+    "unstable",
+    "console",
+    "url",
+    "web",
+    "fetch",
+    "websocket",
+    "webstorage",
+    "canvas",
+    "crypto",
+    "broadcast_channel",
+    "net",
+    "cache",
+    "webgpu",
+  ))
   .collect()
 });
 
@@ -360,7 +400,7 @@ pub fn lib_names() -> Vec<String> {
     let lib = key
       .replace("lib.", "")
       .replace(".d.ts", "")
-      .replace("deno_", "deno.");
+      .replace("ende_", "ende.");
     out.push(lib);
   }
   out
@@ -1308,7 +1348,7 @@ pub static IGNORED_DIAGNOSTIC_CODES: LazyLock<HashSet<u64>> =
   });
 
 // Names of globals that `@types/node` redeclares but that Deno already
-// declares natively (typically in `lib.deno.web.d.ts`). When the TypeScript
+// declares natively (typically in `lib.ende.web.d.ts`). When the TypeScript
 // fork merges `@types/node` into the global symbol table, declarations for
 // these names are dropped so the user-visible global remains Deno's.
 //

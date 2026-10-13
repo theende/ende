@@ -22,6 +22,7 @@ v8_static_strings!(
   ERROR_CONSTRUCTORS = "errorConstructors",
   CORE = "core",
   DENO = "Deno",
+  ENDE = "Ende",
   DEFAULT = "default",
   DIRNAME = "dirname",
   ERR_MODULE_NOT_FOUND = "ERR_MODULE_NOT_FOUND",

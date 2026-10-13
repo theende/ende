@@ -33,7 +33,7 @@
     hasPromise,
     promiseIdSymbol,
     registerErrorClass,
-  } = window.Deno.core;
+  } = window.Ende.core;
   const {
     __setLeakTracingEnabled,
     __isLeakTracingEnabled,
@@ -292,7 +292,7 @@
   // Shared buffer with Rust - avoids JS-to-Rust op calls for tick scheduling.
   // Index 0: hasTickScheduled
   // Index 1: hasRejectionToWarn (set by Rust in promise_reject_callback)
-  // Set by Rust during store_js_callbacks via Deno.core.__tickInfo.
+  // Set by Rust during store_js_callbacks via Ende.core.__tickInfo.
   const kHasTickScheduled = 0;
   const kHasRejectionToWarn = 1;
   let tickInfo;
@@ -593,7 +593,7 @@
   }
 
   // Some "extensions" rely on "BadResource", "Interrupted", "NotCapable"
-  // errors in the JS code (eg. "ende_net") so they are provided in "Deno.core"
+  // errors in the JS code (eg. "ende_net") so they are provided in "Ende.core"
   // but later reexported on "Deno.errors"
   class BadResource extends Error {
     constructor(msg, options) {
@@ -742,7 +742,7 @@
   // with default implementation of Console from V8. This will cause
   // console messages to be piped to inspector console.
   //
-  // We are using `Deno.core.callConsole` binding to preserve proper stack
+  // We are using `Ende.core.callConsole` binding to preserve proper stack
   // frames in inspector console. This has to be done because V8 considers
   // the last JS stack frame as gospel for the inspector. In our case we
   // specifically want the latest user stack frame to be the one that matters
@@ -751,7 +751,7 @@
   // Inspired by:
   // https://github.com/nodejs/node/blob/1317252dfe8824fd9cfee125d2aaa94004db2f3b/lib/internal/util/inspector.js#L39-L61
   function wrapConsole(customConsole, consoleFromV8) {
-    const callConsole = window.Deno.core.callConsole;
+    const callConsole = window.Ende.core.callConsole;
 
     const keys = ObjectKeys(consoleFromV8);
     for (let i = 0; i < keys.length; ++i) {
@@ -776,7 +776,7 @@
     }
   }
 
-  // Minimal console implementation, that uses `Deno.core.print` under the hood.
+  // Minimal console implementation, that uses `Ende.core.print` under the hood.
   // It's not fully fledged and is meant to make debugging slightly easier when working with
   // only `ende_core` crate.
   class CoreConsole {
@@ -975,7 +975,7 @@
   // polyfill's IIFE preamble destructures `globalThis.__bootstrap` and
   // `__bootstrap.core.ops`, but at runtime (`runtime/js/99_main.js`) the
   // harness deletes `globalThis.__bootstrap` and `removeImportedOps()`
-  // strips most entries out of `Deno.core.ops`. The captured view (a
+  // strips most entries out of `Ende.core.ops`. The captured view (a
   // shallow clone of `core.ops` immune to `removeImportedOps`) is
   // registered via `op_set_captured_bootstrap` at the end of this IIFE.
   // Doing the install in Rust means the `synthetic_esm` dispatch path
@@ -1052,8 +1052,8 @@
     }
   }
 
-  // Extra Deno.core.* exports
-  const core = ObjectAssign(globalThis.Deno.core, {
+  // Extra Ende.core.* exports
+  const core = ObjectAssign(globalThis.Ende.core, {
     internalRidSymbol: Symbol("Deno.internal.rid"),
     internalFdSymbol: Symbol("Deno.internal.fd"),
     resources,
@@ -1299,7 +1299,7 @@
 
   const internals = {};
   ObjectAssign(globalThis.__bootstrap, { core, internals });
-  ObjectAssign(globalThis.Deno, { core });
+  ObjectAssign(globalThis.Ende, { core });
   ObjectFreeze(globalThis.__bootstrap.core);
 
   // Build the snapshot-time view of __bootstrap and hand it off to Rust.

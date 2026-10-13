@@ -65,7 +65,7 @@ fn will_snapshot2() {
       .execute_script("check_b.js", "if (b != 5) throw Error('x')")
       .unwrap();
     runtime
-      .execute_script("check2.js", "if (!Deno.core) throw Error('x')")
+      .execute_script("check2.js", "if (!Ende.core) throw Error('x')")
       .unwrap();
   }
 }
@@ -79,15 +79,15 @@ fn test_snapshot_callbacks() {
       .execute_script(
         "a.js",
         r#"
-        Deno.core.queueNextTick({
+        Ende.core.queueNextTick({
           callback: () => {},
           args: undefined,
           snapshot: undefined,
         });
-        Deno.core.ops.op_set_format_exception_callback(()=> {
+        Ende.core.ops.op_set_format_exception_callback(()=> {
           return null;
         })
-        Deno.core.setUnhandledPromiseRejectionHandler(() => {
+        Ende.core.setUnhandledPromiseRejectionHandler(() => {
           return false;
         });
         a = 1 + 2;
@@ -338,7 +338,7 @@ fn es_snapshot() {
 
   let source_code = r#"(async () => {
     const mod = await import("file:///400.js");
-    return mod.f400() + " " + Deno.core.ops.op_test();
+    return mod.f400() + " " + Ende.core.ops.op_test();
   })();"#;
   let val = runtime3.execute_script(".", source_code).unwrap();
   #[allow(deprecated, reason = "TODO: document")]
@@ -445,7 +445,7 @@ pub fn snapshot_with_additional_extensions() {
     esm_entry_point = "ext:module_snapshot/before.js",
     esm = ["ext:module_snapshot/before.js" =
       // If this throws, we accidentally tried to evaluate this module twice
-      { source = "if (globalThis.before) { throw 'twice?' } globalThis.before = () => { globalThis.BEFORE = Deno.core.ops.op_before(); };" },]
+      { source = "if (globalThis.before) { throw 'twice?' } globalThis.before = () => { globalThis.BEFORE = Ende.core.ops.op_before(); };" },]
   );
   ende_core::extension!(
     after_snapshot,
@@ -453,7 +453,7 @@ pub fn snapshot_with_additional_extensions() {
     esm_entry_point = "ext:module_snapshot/after.js",
     esm = ["ext:module_snapshot/after.js" = {
       source =
-        "globalThis.before(); globalThis.AFTER = Deno.core.ops.op_after();"
+        "globalThis.before(); globalThis.AFTER = Ende.core.ops.op_after();"
     },]
   );
 
@@ -556,9 +556,9 @@ fn lazy_loaded_esm_not_snapshotted_but_metadata_survives() {
     .execute_script(
       "test.js",
       r#"
-      const mod = Deno.core.createLazyLoader("custom:lazy_mod")();
+      const mod = Ende.core.createLazyLoader("custom:lazy_mod")();
       if (mod.value !== "lazy") throw new Error("expected 'lazy', got " + mod.value);
-      Deno.core.print("lazy ESM survived snapshot without being snapshotted\n");
+      Ende.core.print("lazy ESM survived snapshot without being snapshotted\n");
       "#,
     )
     .unwrap();

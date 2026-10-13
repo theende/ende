@@ -70,7 +70,7 @@ interface ReadableStreamGenericReader {
 
 declare function queueMicrotask(callback: VoidFunction): void;
 
-declare namespace Deno {
+declare namespace Ende {
   export function inspect(
     value: unknown,
     options?: Record<string, unknown>,

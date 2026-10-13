@@ -77,26 +77,23 @@ impl<'a> TestCodeActionCollector<'a> {
       return;
     }
 
-    let Some((is_deno_test, maybe_modifier)) = deno_test_call(node) else {
+    let Some((namespace, maybe_modifier)) = deno_test_call(node) else {
       return;
     };
-    if !is_deno_test {
-      return;
-    }
 
     match maybe_modifier {
       Some(TestToggleKind::Ignore) => {
         self.push_replace_callee_action(
           TestToggleKind::Ignore.disable_title(),
           node,
-          "Deno.test",
+          &format!("{namespace}.test"),
         );
       }
       Some(TestToggleKind::Only) => {
         self.push_replace_callee_action(
           TestToggleKind::Only.disable_title(),
           node,
-          "Deno.test",
+          &format!("{namespace}.test"),
         );
       }
       None => {
@@ -264,9 +261,11 @@ pub fn collect_test_code_actions(
   collector.take()
 }
 
+/// Returns the namespace (`Deno` or `Ende`) and modifier of a
+/// `Deno.test(...)`/`Ende.test(...)` call.
 fn deno_test_call(
   node: &ast::CallExpr,
-) -> Option<(bool, Option<TestToggleKind>)> {
+) -> Option<(&str, Option<TestToggleKind>)> {
   let ast::Callee::Expr(callee_expr) = &node.callee else {
     return None;
   };
@@ -293,9 +292,13 @@ fn deno_test_call(
   }
 
   match prop_chain {
-    ["", "Deno", "test"] => Some((true, None)),
-    ["Deno", "test", "ignore"] => Some((true, Some(TestToggleKind::Ignore))),
-    ["Deno", "test", "only"] => Some((true, Some(TestToggleKind::Only))),
+    ["", ns @ ("Deno" | "Ende"), "test"] => Some((ns, None)),
+    [ns @ ("Deno" | "Ende"), "test", "ignore"] => {
+      Some((ns, Some(TestToggleKind::Ignore)))
+    }
+    [ns @ ("Deno" | "Ende"), "test", "only"] => {
+      Some((ns, Some(TestToggleKind::Only)))
+    }
     _ => None,
   }
 }
@@ -411,5 +414,22 @@ mod tests {
   fn test_modifier_test_disable_action() {
     let actions = collect(r#"Deno.test.ignore("name", () => {});"#, 0, 15);
     assert_eq!(action_texts(&actions), vec![("Unignore test", "Deno.test")]);
+  }
+
+  #[test]
+  fn test_ende_namespace_test_actions() {
+    let actions = collect(r#"Ende.test("name", () => {});"#, 0, 5);
+    assert_eq!(
+      action_texts(&actions),
+      vec![
+        (
+          "Ignore test",
+          r#"{ name: "name", fn: () => {}, ignore: true }"#
+        ),
+        ("Only test", r#"{ name: "name", fn: () => {}, only: true }"#),
+      ]
+    );
+    let actions = collect(r#"Ende.test.only("name", () => {});"#, 0, 15);
+    assert_eq!(action_texts(&actions), vec![("Unfocus test", "Ende.test")]);
   }
 }

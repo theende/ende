@@ -11,7 +11,7 @@ declare global {
     captureStackTrace(targetObject: object, constructorOpt?: Function): void;
   }
 
-  namespace Deno {
+  namespace Ende {
     export const core: typeof __bootstrap.core;
   }
 
@@ -53,7 +53,7 @@ export namespace core {
 
   /**
    * Returns a map containing traces for all ongoing async ops. The key is the promise id.
-   * Tracing only occurs when `Deno.core.setLeakTracingEnabled()` was previously
+   * Tracing only occurs when `Ende.core.setLeakTracingEnabled()` was previously
    * enabled.
    */
   function getAllLeakTraces(): Map<number, string>;
@@ -142,7 +142,7 @@ export namespace core {
    *     and an exception. Invalidates the resource.
    *   - `op_wasm_streaming_set_url`. Sets a source URL for the wasm module.
    *     Takes the rid and a string.
-   *   - To indicate the end of the resource, use `Deno.core.close()` with the
+   *   - To indicate the end of the resource, use `Ende.core.close()` with the
    *     rid.
    */
   function setWasmStreamingCallback(

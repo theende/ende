@@ -439,7 +439,7 @@ macro_rules! or {
 ///  * lazy_loaded_esm: a comma-separated list of ESM module filenames (see [`include_js_files`]), that will be included in
 ///    the produced binary, but not automatically evaluated. Eg: `lazy_loaded_esm = [ dir "dir", "my_file.js" ]`
 ///  * lazy_loaded_js: a comma-separated list of JS script filenames that will be included in
-///    the produced binary, but not automatically evaluated. Loaded on demand via `Deno.core.loadExtScript()`.
+///    the produced binary, but not automatically evaluated. Loaded on demand via `Ende.core.loadExtScript()`.
 ///    Eg: `lazy_loaded_js = [ dir "dir", "my_file.js" ]`
 ///  * synthetic_esm: a comma-separated list of `"module_specifier" = "backing_script_specifier"` pairs.
 ///    Imports of `module_specifier` resolve to a synthetic ESM module whose exports are derived from

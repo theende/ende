@@ -519,7 +519,7 @@ impl ModuleMap {
 
   /// Load and evaluate a script on demand. The evaluated result is
   /// cached in `loaded_script_results` so later callers (the JS
-  /// `Deno.core.loadExtScript()` op, the `synthetic_esm` dispatch, etc.)
+  /// `Ende.core.loadExtScript()` op, the `synthetic_esm` dispatch, etc.)
   /// share a single evaluation — the source is consumed on first eval,
   /// and re-evaluating polyfill IIFEs would clobber registered hooks and
   /// duplicate class identities. Circular dependencies are detected and

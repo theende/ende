@@ -11,7 +11,7 @@ test(function testIssue20727() {
   // https://github.com/denoland/deno/issues/20727
   const ab = new ArrayBuffer(10);
   const transferList = [ab];
-  Deno.core.serialize(
+  Ende.core.serialize(
     { ab },
     { transferredArrayBuffers: transferList },
   );
@@ -29,7 +29,7 @@ test(function testIssue20727b() {
     data.array1.buffer,
     data.array2.buffer,
   ];
-  const serializedMultipleTransferredBuffers = Deno.core.serialize(
+  const serializedMultipleTransferredBuffers = Ende.core.serialize(
     { id: 2, data },
     { transferredArrayBuffers: transferList },
   );
@@ -39,7 +39,7 @@ test(function testIssue20727b() {
   assertEquals(typeof transferList[1], "number");
 
   // should not throw
-  Deno.core.deserialize(
+  Ende.core.deserialize(
     serializedMultipleTransferredBuffers,
     { transferredArrayBuffers: transferList },
   );
@@ -51,11 +51,11 @@ test(function testEmptyString() {
   // 34 = "kOneByteString", 0 = length
   const emptyStringSerialized = [255, 16, 34, 0];
   assertArrayEquals(
-    Deno.core.serialize(emptyString),
+    Ende.core.serialize(emptyString),
     emptyStringSerialized,
   );
   assertEquals(
-    Deno.core.deserialize(
+    Ende.core.deserialize(
       new Uint8Array(emptyStringSerialized),
     ),
     emptyString,
@@ -70,11 +70,11 @@ test(function testPrimitiveArray() {
     34, 1, 97, 48, 95, 36, 0, 4,
   ];
   assertArrayEquals(
-    Deno.core.serialize(primitiveValueArray),
+    Ende.core.serialize(primitiveValueArray),
     primitiveValueArraySerialized,
   );
   assertArrayEquals(
-    Deno.core.deserialize(
+    Ende.core.deserialize(
       new Uint8Array(primitiveValueArraySerialized),
     ),
     primitiveValueArray,
@@ -93,11 +93,11 @@ test(function testCircularObject() {
     97, 123, 3,
   ];
   assertArrayEquals(
-    Deno.core.serialize(circularObject),
+    Ende.core.serialize(circularObject),
     circularObjectSerialized,
   );
 
-  const deserializedCircularObject = Deno.core.deserialize(
+  const deserializedCircularObject = Ende.core.deserialize(
     new Uint8Array(circularObjectSerialized),
   );
   assertEquals(deserializedCircularObject.test, deserializedCircularObject);
@@ -106,13 +106,13 @@ test(function testCircularObject() {
 test(function structuredClone() {
   const primitiveValueArray = ["test", "a", null, undefined];
   assertArrayEquals(
-    Deno.core.structuredClone(primitiveValueArray),
+    Ende.core.structuredClone(primitiveValueArray),
     primitiveValueArray,
   );
 
   const circularObject = { test: null as unknown, test2: "dd", test3: "aa" };
   circularObject.test = circularObject;
-  const cloned = Deno.core.structuredClone(circularObject);
+  const cloned = Ende.core.structuredClone(circularObject);
   assertEquals(cloned.test, cloned);
   assertEquals(cloned.test2, circularObject.test2);
   assertEquals(cloned.test3, circularObject.test3);
@@ -126,20 +126,20 @@ test(function cloneableResourceStructuredClone() {
       this.value = value;
       // deno-lint-ignore no-this-alias
       const self = this;
-      this[Deno.core.hostObjectBrand] = () => ({
+      this[Ende.core.hostObjectBrand] = () => ({
         type: "MyCloneable",
         value: self.value,
       });
     }
   }
 
-  Deno.core.registerCloneableResource(
+  Ende.core.registerCloneableResource(
     "MyCloneable",
     (data: { value: string }) => new MyCloneable(data.value),
   );
 
   const original = new MyCloneable("hello");
-  const cloned = Deno.core.structuredClone(original);
+  const cloned = Ende.core.structuredClone(original);
 
   assert(cloned instanceof MyCloneable);
   assertEquals(cloned.value, "hello");
@@ -154,22 +154,22 @@ test(function cloneableResourceSerializeDeserialize() {
       this.data = data;
       // deno-lint-ignore no-this-alias
       const self = this;
-      this[Deno.core.hostObjectBrand] = () => ({
+      this[Ende.core.hostObjectBrand] = () => ({
         type: "AnotherCloneable",
         data: self.data,
       });
     }
   }
 
-  Deno.core.registerCloneableResource(
+  Ende.core.registerCloneableResource(
     "AnotherCloneable",
     (d: { data: number }) => new AnotherCloneable(d.data),
   );
 
   const original = new AnotherCloneable(42);
-  const serialized = Deno.core.serialize(original);
-  const deserialized = Deno.core.deserialize(serialized, {
-    deserializers: Deno.core.getCloneableDeserializers(),
+  const serialized = Ende.core.serialize(original);
+  const deserialized = Ende.core.deserialize(serialized, {
+    deserializers: Ende.core.getCloneableDeserializers(),
   });
 
   assert(deserialized instanceof AnotherCloneable);
@@ -183,14 +183,14 @@ test(function cloneableResourceNestedInObject() {
       this.name = name;
       // deno-lint-ignore no-this-alias
       const self = this;
-      this[Deno.core.hostObjectBrand] = () => ({
+      this[Ende.core.hostObjectBrand] = () => ({
         type: "NestedCloneable",
         name: self.name,
       });
     }
   }
 
-  Deno.core.registerCloneableResource(
+  Ende.core.registerCloneableResource(
     "NestedCloneable",
     (d: { name: string }) => new NestedCloneable(d.name),
   );
@@ -201,7 +201,7 @@ test(function cloneableResourceNestedInObject() {
     num: 123,
   };
 
-  const cloned = Deno.core.structuredClone(obj);
+  const cloned = Ende.core.structuredClone(obj);
 
   assertEquals(cloned.foo, "bar");
   assertEquals(cloned.num, 123);
@@ -210,9 +210,9 @@ test(function cloneableResourceNestedInObject() {
 });
 
 test(function cloneableResourceDuplicateRegistrationThrows() {
-  Deno.core.registerCloneableResource("DuplicateTest", () => {});
+  Ende.core.registerCloneableResource("DuplicateTest", () => {});
   assertThrows(
-    () => Deno.core.registerCloneableResource("DuplicateTest", () => {}),
+    () => Ende.core.registerCloneableResource("DuplicateTest", () => {}),
     Error,
     "already registered",
   );

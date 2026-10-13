@@ -523,8 +523,8 @@
     }
   }
 
-  // Extra Deno.core.* exports
-  const core = ObjectAssign(globalThis.Deno.core, {
+  // Extra Ende.core.* exports
+  const core = ObjectAssign(globalThis.Ende.core, {
     build,
     setBuildInfo,
     registerErrorBuilder,
@@ -547,5 +547,5 @@
 
   ObjectAssign(globalThis, { __infra: infra });
   ObjectAssign(globalThis.__bootstrap, { core });
-  ObjectAssign(globalThis.Deno, { core });
+  ObjectAssign(globalThis.Ende, { core });
 })(globalThis);

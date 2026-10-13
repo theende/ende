@@ -1622,7 +1622,7 @@ async fn op_http_write(
 
 /// Gracefully closes the write half of the HTTP stream. Note that this does not
 /// remove the HTTP stream resource from the resource table; it still has to be
-/// closed with `Deno.core.close()`.
+/// closed with `Ende.core.close()`.
 #[op2]
 async fn op_http_shutdown(
   state: Rc<RefCell<OpState>>,

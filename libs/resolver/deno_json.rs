@@ -99,12 +99,17 @@ impl Serialize for IgnoredCompilerOptions {
 pub struct CompilerOptionsWithIgnoredOptions {
   pub compiler_options: CompilerOptions,
   pub ignored_options: Vec<IgnoredCompilerOptions>,
+  /// Deprecated `deno.*` names found in `compilerOptions.lib`.
+  pub deprecated_libs: Vec<String>,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct ParsedCompilerOptions {
   pub options: serde_json::Map<String, serde_json::Value>,
   pub maybe_ignored: Option<IgnoredCompilerOptions>,
+  /// Deprecated `deno.*` names found in `compilerOptions.lib`. They were
+  /// rewritten to their `ende.*` replacements in `options`.
+  pub deprecated_libs: Vec<String>,
 }
 
 /// A set of all the compiler options that should be allowed;
@@ -155,8 +160,9 @@ pub fn parse_compiler_options(
   let mut allowed: serde_json::Map<String, serde_json::Value> =
     serde_json::Map::with_capacity(compiler_options.len());
   let mut ignored: Vec<String> = Vec::new(); // don't pre-allocate because it's rare
+  let mut deprecated_libs = Vec::new();
 
-  for (key, value) in compiler_options {
+  for (key, mut value) in compiler_options {
     // We don't pass "types" entries to typescript via the compiler
     // options and instead provide those to tsc as "roots". This is
     // because our "types" behavior is at odds with how TypeScript's
@@ -184,7 +190,10 @@ pub fn parse_compiler_options(
             .unwrap_or(false))
         || ALLOWED_COMPILER_OPTIONS.contains(key.as_str())
       {
-        allowed.insert(key, value.to_owned());
+        if key == "lib" {
+          deprecated_libs = rewrite_deprecated_lib_names(&mut value);
+        }
+        allowed.insert(key, value);
       } else {
         ignored.push(key);
       }
@@ -202,7 +211,29 @@ pub fn parse_compiler_options(
   ParsedCompilerOptions {
     options: allowed,
     maybe_ignored,
+    deprecated_libs,
   }
+}
+
+/// Rewrites the deprecated `deno.*` lib names (ex. `deno.ns`) in a
+/// `compilerOptions.lib` value to their `ende.*` replacements and returns the
+/// deprecated names that were found.
+fn rewrite_deprecated_lib_names(value: &mut serde_json::Value) -> Vec<String> {
+  let mut deprecated = Vec::new();
+  let Some(libs) = value.as_array_mut() else {
+    return deprecated;
+  };
+  for lib in libs {
+    let Some(name) = lib.as_str() else {
+      continue;
+    };
+    let name = name.to_ascii_lowercase();
+    if let Some(suffix) = name.strip_prefix("deno.") {
+      *lib = format!("ende.{suffix}").into();
+      deprecated.push(name);
+    }
+  }
+  deprecated
 }
 
 #[allow(
@@ -327,12 +358,12 @@ pub fn get_base_compiler_options_for_emit(
       "inlineSources": true,
       "isolatedModules": true,
       "lib": match (lib, source_kind) {
-        (TsTypeLib::DenoWindow, CompilerOptionsSourceKind::DenoJson) => vec!["deno.window", "deno.unstable", "node"],
-        (TsTypeLib::DenoWindow, CompilerOptionsSourceKind::TsConfig) => vec!["deno.window", "deno.unstable", "dom", "node"],
-        (TsTypeLib::DenoWorker, CompilerOptionsSourceKind::DenoJson) => vec!["deno.worker", "deno.unstable", "node"],
-        (TsTypeLib::DenoWorker, CompilerOptionsSourceKind::TsConfig) => vec!["deno.worker", "deno.unstable", "dom", "node"],
-        (TsTypeLib::DenoDesktop, CompilerOptionsSourceKind::DenoJson) => vec!["deno.desktop", "deno.unstable", "node"],
-        (TsTypeLib::DenoDesktop, CompilerOptionsSourceKind::TsConfig) => vec!["deno.desktop", "deno.unstable", "dom", "node"],
+        (TsTypeLib::DenoWindow, CompilerOptionsSourceKind::DenoJson) => vec!["ende.window", "ende.unstable", "node"],
+        (TsTypeLib::DenoWindow, CompilerOptionsSourceKind::TsConfig) => vec!["ende.window", "ende.unstable", "dom", "node"],
+        (TsTypeLib::DenoWorker, CompilerOptionsSourceKind::DenoJson) => vec!["ende.worker", "ende.unstable", "node"],
+        (TsTypeLib::DenoWorker, CompilerOptionsSourceKind::TsConfig) => vec!["ende.worker", "ende.unstable", "dom", "node"],
+        (TsTypeLib::DenoDesktop, CompilerOptionsSourceKind::DenoJson) => vec!["ende.desktop", "ende.unstable", "node"],
+        (TsTypeLib::DenoDesktop, CompilerOptionsSourceKind::TsConfig) => vec!["ende.desktop", "ende.unstable", "dom", "node"],
       },
       "module": "NodeNext",
       "moduleDetection": "force",
@@ -483,6 +514,7 @@ impl CompilerOptionsPaths {
 struct LoggedWarnings {
   experimental_decorators: AtomicFlag,
   folders: ende_maybe_sync::MaybeDashSet<Url>,
+  deprecated_libs: ende_maybe_sync::MaybeDashSet<String>,
 }
 
 #[allow(clippy::disallowed_types, reason = "definition")]
@@ -612,6 +644,7 @@ impl CompilerOptionsData {
           self.source_kind,
         ),
         ignored_options: Vec::new(),
+        deprecated_libs: Vec::new(),
       };
       for source in &self.sources {
         let Some(compiler_options) = source.compiler_options.as_ref() else {
@@ -637,6 +670,7 @@ impl CompilerOptionsData {
         if let Some(ignored) = parsed.maybe_ignored {
           result.ignored_options.push(ignored);
         }
+        result.deprecated_libs.extend(parsed.deprecated_libs);
       }
       if matches!(typ, CompilerOptionsType::Check { .. })
         && self.overrides.force_check_js
@@ -648,6 +682,7 @@ impl CompilerOptionsData {
       if self.source_kind != CompilerOptionsSourceKind::TsConfig {
         check_warn_compiler_options(&result, &self.logged_warnings);
       }
+      warn_deprecated_lib_names(&result, &self.logged_warnings);
       Ok(new_rc(result.compiler_options))
     });
     result.as_ref().map_err(Clone::clone)
@@ -1846,6 +1881,22 @@ fn compiler_options_to_transpile_and_emit_options(
     emit,
     pre_computed_hash: transpile_and_emit_options_hash,
   })
+}
+
+fn warn_deprecated_lib_names(
+  compiler_options: &CompilerOptionsWithIgnoredOptions,
+  logged_warnings: &LoggedWarnings,
+) {
+  for name in &compiler_options.deprecated_libs {
+    if logged_warnings.deprecated_libs.insert(name.clone()) {
+      log::warn!(
+        "{} \"{}\" in compilerOptions.lib is deprecated. Use \"ende.{}\" instead.",
+        colors::yellow("Warning:"),
+        name,
+        &name["deno.".len()..],
+      );
+    }
+  }
 }
 
 fn check_warn_compiler_options(

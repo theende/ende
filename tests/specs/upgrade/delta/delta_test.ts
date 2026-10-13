@@ -3,7 +3,7 @@
 // hash verification, and fallback to full download.
 
 const target = Deno.build.target;
-const currentVersion = Deno.version.deno;
+const currentVersion = Deno.version.ende;
 
 async function runUpgrade(
   args: string[],

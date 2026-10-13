@@ -111,37 +111,37 @@ if (import.meta.url != 'file:///d.js') throw Error();
 
   const CIRCULAR1_SRC: &str = r#"
 import "/circular2.js";
-Deno.core.print("circular1");
+Ende.core.print("circular1");
 "#;
 
   const CIRCULAR2_SRC: &str = r#"
 import "/circular3.js";
-Deno.core.print("circular2");
+Ende.core.print("circular2");
 "#;
 
   const CIRCULAR3_SRC: &str = r#"
 import "/circular1.js";
 import "/circular2.js";
-Deno.core.print("circular3");
+Ende.core.print("circular3");
 "#;
 
   const REDIRECT1_SRC: &str = r#"
 import "./redirect2.js";
-Deno.core.print("redirect1");
+Ende.core.print("redirect1");
 "#;
 
   const REDIRECT2_SRC: &str = r#"
 import "./redirect3.js";
-Deno.core.print("redirect2");
+Ende.core.print("redirect2");
 "#;
 
-  const REDIRECT3_SRC: &str = r#"Deno.core.print("redirect3");"#;
+  const REDIRECT3_SRC: &str = r#"Ende.core.print("redirect3");"#;
 
   const CONCURRENT_REDIRECT_SRC: &str = r#"
 import "./redirect2.js";  // This import loads the module and registers the redirect alias
 import "./dir/redirect2.js";  // This import aborts load only after detecting it's an already loaded redirect
 import "./dir/redirect3.js";  // Tihs import is still in the queue, preventing RecursiveModuleLoad to transition to LoadState::Done
-Deno.core.print("concurrent_redirect");
+Ende.core.print("concurrent_redirect");
 "#;
 
   const MAIN_SRC: &str = r#"
@@ -482,7 +482,7 @@ fn test_mods() {
           import { b } from './b.js'
           if (b() != 'b') throw Error();
           let control = 42;
-          Deno.core.ops.op_test(control);
+          Ende.core.ops.op_test(control);
         "#
         )
         .into(),
@@ -565,11 +565,11 @@ fn test_lazy_loaded_esm() {
     .execute_script(
       "setup.js",
       r#"
-      Deno.core.print("1\n");
-      const module = Deno.core.createLazyLoader("ext:test_ext/lazy_loaded.js")();
+      Ende.core.print("1\n");
+      const module = Ende.core.createLazyLoader("ext:test_ext/lazy_loaded.js")();
       module.blah("hello\n");
-      Deno.core.print(`${JSON.stringify(module)}\n`);
-      const module1 = Deno.core.createLazyLoader("ext:test_ext/lazy_loaded.js")();
+      Ende.core.print(`${JSON.stringify(module)}\n`);
+      const module1 = Ende.core.createLazyLoader("ext:test_ext/lazy_loaded.js")();
       if (module !== module1) throw new Error("should return the same error");
       "#,
     )
@@ -584,7 +584,7 @@ fn test_lazy_loaded_esm_rejects_non_lazy_cached_module() {
     .execute_script(
       "setup.js",
       r#"
-      const load = Deno.core.createLazyLoader("ext:core/ops");
+      const load = Ende.core.createLazyLoader("ext:core/ops");
       let error;
       try {
         load();
@@ -622,10 +622,10 @@ fn test_lazy_loaded_esm_aliased_specifier() {
     .execute_script(
       "setup.js",
       r#"
-      const module = Deno.core.createLazyLoader("custom:aliased")();
+      const module = Ende.core.createLazyLoader("custom:aliased")();
       if (module.value !== "aliased") throw new Error("expected 'aliased', got " + module.value);
       if (module.default.value !== "aliased") throw new Error("expected default.value to be 'aliased'");
-      Deno.core.print("lazy_loaded_esm aliased specifier works\n");
+      Ende.core.print("lazy_loaded_esm aliased specifier works\n");
       "#,
     )
     .unwrap();
@@ -809,20 +809,20 @@ fn test_lazy_loaded_script() {
       "test_load_ext_script.js",
       r#"
       // Load a lazy script
-      const module = Deno.core.loadExtScript("ext:test_ext/lazy_script.js");
+      const module = Ende.core.loadExtScript("ext:test_ext/lazy_script.js");
       if (module.foo !== "foo") throw new Error("expected foo");
       if (module.bar !== 123) throw new Error("expected 123");
 
       // Should be cached - same object returned
-      const module2 = Deno.core.loadExtScript("ext:test_ext/lazy_script.js");
+      const module2 = Ende.core.loadExtScript("ext:test_ext/lazy_script.js");
       if (module !== module2) throw new Error("should return the same cached object");
 
       // Load a script that depends on another lazy script
-      const dep = Deno.core.loadExtScript("ext:test_ext/lazy_script_dep.js");
+      const dep = Ende.core.loadExtScript("ext:test_ext/lazy_script_dep.js");
       if (dep.fromDep !== true) throw new Error("expected fromDep");
       if (dep.utils.foo !== "foo") throw new Error("expected nested foo");
 
-      Deno.core.print("lazy script test passed\n");
+      Ende.core.print("lazy script test passed\n");
       "#,
     )
     .unwrap();
@@ -839,7 +839,7 @@ fn test_lazy_loaded_script_not_found() {
 
   let result = runtime.execute_script(
     "test_not_found.js",
-    r#"Deno.core.loadExtScript("ext:test_ext/nonexistent.js")"#,
+    r#"Ende.core.loadExtScript("ext:test_ext/nonexistent.js")"#,
   );
   assert!(result.is_err());
   let err = result.unwrap_err();
@@ -3219,10 +3219,10 @@ async fn test_lazy_loaded_esm_with_tla_no_panic() {
         ascii_str!("file:///tla_mod.js").into(),
         ascii_str!(
           r#"
-          const lazy1 = Deno.core.createLazyLoader("ext:test_ext/lazy_loaded.js")();
+          const lazy1 = Ende.core.createLazyLoader("ext:test_ext/lazy_loaded.js")();
           if (lazy1.foo !== "foo") throw new Error("lazy1.foo: " + lazy1.foo);
           if (lazy1.bar !== 123) throw new Error("lazy1.bar: " + lazy1.bar);
-          const result = await Deno.core.ops.op_eager_resolve();
+          const result = await Ende.core.ops.op_eager_resolve();
           if (result !== 42) throw new Error("unexpected: " + result);
           "#
         )
@@ -3239,7 +3239,7 @@ async fn test_lazy_loaded_esm_with_tla_no_panic() {
         ascii_str!("file:///lazy_mod.js").into(),
         ascii_str!(
           r#"
-          const lazy2 = Deno.core.createLazyLoader("ext:test_ext/lazy_loaded_2.js")();
+          const lazy2 = Ende.core.createLazyLoader("ext:test_ext/lazy_loaded_2.js")();
           if (lazy2.baz !== "baz") throw new Error("lazy2.baz: " + lazy2.baz);
           "#
         )
@@ -3340,7 +3340,7 @@ async fn test_tla_with_tick_scheduled_no_hang() {
         ascii_str!("file:///tick_mod.js").into(),
         ascii_str!(
           r#"
-          Deno.core.setHasTickScheduled(true);
+          Ende.core.setHasTickScheduled(true);
           "#
         )
         .into(),
@@ -3356,9 +3356,9 @@ async fn test_tla_with_tick_scheduled_no_hang() {
         ascii_str!("file:///tla_mod.js").into(),
         ascii_str!(
           r#"
-          const lazy1 = Deno.core.createLazyLoader("ext:test_ext/lazy_loaded.js")();
+          const lazy1 = Ende.core.createLazyLoader("ext:test_ext/lazy_loaded.js")();
           if (lazy1.foo !== "foo") throw new Error("lazy1.foo: " + lazy1.foo);
-          const result = await Deno.core.ops.op_async_resolve();
+          const result = await Ende.core.ops.op_async_resolve();
           if (result !== 42) throw new Error("unexpected: " + result);
           "#
         )
@@ -3457,7 +3457,7 @@ async fn test_dyn_import_async_graph_with_lazy_esm_no_stall() {
         "file:///tla.js" => r#"await Promise.resolve();"#,
         "file:///helper.js" => {
           r#"
-          const lazy = Deno.core.createLazyLoader("ext:test_ext/lazy_loaded.js")();
+          const lazy = Ende.core.createLazyLoader("ext:test_ext/lazy_loaded.js")();
           if (lazy.foo !== "foo") throw new Error("lazy.foo: " + lazy.foo);
           "#
         }

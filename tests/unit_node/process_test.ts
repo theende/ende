@@ -126,7 +126,9 @@ Deno.test({
     assertEquals(typeof process.versions.unicode, "string");
     // These two are not present in `process.versions` in Node, but we
     // add them anyway
-    assertEquals(typeof process.versions.deno, "string");
+    assertEquals(typeof process.versions.ende, "string");
+    assertEquals(process.versions.ende, Ende.version.ende);
+    assertEquals("deno" in process.versions, false);
     assertEquals(typeof process.versions.typescript, "string");
   },
 });

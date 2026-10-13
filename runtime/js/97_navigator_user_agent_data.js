@@ -73,14 +73,14 @@ function getArchitecture(arch) {
   }
 }
 
-// `op_bootstrap_user_agent()` returns a string of the form `Deno/<version>`.
+// `op_bootstrap_user_agent()` returns a string of the form `Ende/<version>`.
 // Derive the version once, lazily.
 let fullVersion_ = null;
 function fullVersion() {
   if (fullVersion_ === null) {
     const ua = op_bootstrap_user_agent();
-    fullVersion_ = StringPrototypeStartsWith(ua, "Deno/")
-      ? StringPrototypeSlice(ua, "Deno/".length)
+    fullVersion_ = StringPrototypeStartsWith(ua, "Ende/")
+      ? StringPrototypeSlice(ua, "Ende/".length)
       : ua;
   }
   return fullVersion_;
@@ -94,11 +94,11 @@ function majorVersion() {
 }
 
 function lowEntropyBrands() {
-  return [{ brand: "Deno", version: majorVersion() }];
+  return [{ brand: "Ende", version: majorVersion() }];
 }
 
 function fullVersionList() {
-  return [{ brand: "Deno", version: fullVersion() }];
+  return [{ brand: "Ende", version: fullVersion() }];
 }
 
 const highEntropyValues = {

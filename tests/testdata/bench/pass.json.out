@@ -1,6 +1,6 @@
 Check file:///[WILDCARD]testdata/bench/pass.ts
 {
-  "runtime": "Deno/[WILDCARD]",
+  "runtime": "Ende/[WILDCARD]",
   "cpu": "[WILDCARD]",
   "benches": [
     {

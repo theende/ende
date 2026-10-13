@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { test } from "checkin:testing";
 
-const { op_task_submit } = Deno.core.ops;
+const { op_task_submit } = Ende.core.ops;
 
 test(async function testTaskSubmit1() {
   const { promise, resolve } = Promise.withResolvers();

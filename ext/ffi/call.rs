@@ -545,7 +545,7 @@ mod tests {
           op_ffi_call_ptr,
           op_ffi_call_ptr_nonblocking,
           op_ffi_ptr_create,
-        } = Deno.core.ops;
+        } = Ende.core.ops;
         const pointer = op_ffi_ptr_create(__FUNCTION_POINTER__n);
         const definition = {
           parameters: ["f64", "f64", "f64", "f64"],

@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-const { op_import_sync, op_path_to_url } = Deno.core.ops;
+const { op_import_sync, op_path_to_url } = Ende.core.ops;
 
 const resolve = (p: string) => op_path_to_url(p);
 

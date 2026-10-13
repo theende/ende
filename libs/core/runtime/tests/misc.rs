@@ -125,7 +125,7 @@ async fn test_wakers_for_async_ops() {
     .execute_script(
       "",
       ascii_str!(
-        "const { op_async_sleep } = Deno.core.ops; (async () => { await op_async_sleep(); })()"
+        "const { op_async_sleep } = Ende.core.ops; (async () => { await op_async_sleep(); })()"
       ),
     )
     .unwrap();
@@ -231,12 +231,12 @@ async fn test_resolve_promise(
 // happens.
 #[case(
   "call",
-  "() => { Deno.core.reportUnhandledException(new Error('fail')); return 1; }",
+  "() => { Ende.core.reportUnhandledException(new Error('fail')); return 1; }",
   Ok(Some(1))
 )]
 #[case(
   "call",
-  "() => { Deno.core.reportUnhandledException(new Error('fail')); willNotCall(); }",
+  "() => { Ende.core.reportUnhandledException(new Error('fail')); willNotCall(); }",
   Err("Uncaught Error: fail")
 )]
 #[tokio::test]
@@ -396,10 +396,10 @@ async fn wasm_streaming_op_invocation_in_import() {
   // Run an infinite loop in WebAssembly code, which should be terminated.
   runtime.execute_script("setup.js",
                          r#"
-                                Deno.core.setWasmStreamingCallback((source, rid) => {
-                                  Deno.core.ops.op_wasm_streaming_set_url(rid, "file:///foo.wasm");
-                                  Deno.core.ops.op_wasm_streaming_feed(rid, source);
-                                  Deno.core.close(rid);
+                                Ende.core.setWasmStreamingCallback((source, rid) => {
+                                  Ende.core.ops.op_wasm_streaming_set_url(rid, "file:///foo.wasm");
+                                  Ende.core.ops.op_wasm_streaming_feed(rid, source);
+                                  Ende.core.close(rid);
                                 });
                                "#).unwrap();
 
@@ -720,7 +720,7 @@ fn test_is_proxy() {
     (function () {
       const o = { a: 1, b: 2};
       const p = new Proxy(o, {});
-      return Deno.core.ops.op_is_proxy(p) && !Deno.core.ops.op_is_proxy(o) && !Deno.core.ops.op_is_proxy(42);
+      return Ende.core.ops.op_is_proxy(p) && !Ende.core.ops.op_is_proxy(o) && !Ende.core.ops.op_is_proxy(42);
     })()
   "#,
     )
@@ -749,10 +749,10 @@ async fn test_set_macrotask_callback_set_next_tick_callback() {
     .execute_script(
       "macrotasks_and_nextticks.js",
       r#"
-      const { op_async_sleep } = Deno.core.ops;
+      const { op_async_sleep } = Ende.core.ops;
       (async function () {
         const results = [];
-        Deno.core.queueNextTick({
+        Ende.core.queueNextTick({
           callback: () => results.push("nextTick"),
           args: undefined,
           snapshot: undefined,
@@ -767,13 +767,13 @@ async fn test_set_macrotask_callback_set_next_tick_callback() {
           ref() { this._refed = true; return this; },
           unref() { this._refed = false; return this; },
         };
-        Deno.core.queueImmediate(imm);
+        Ende.core.queueImmediate(imm);
         await op_async_sleep();
         if (results[0] != "nextTick") {
           throw new Error(`expected nextTick, got: ${results[0]}`);
         }
         // Manually trigger immediate callbacks to test they were registered
-        Deno.core.runImmediateCallbacks();
+        Ende.core.runImmediateCallbacks();
         if (results[1] != "immediate") {
           throw new Error(`expected immediate, got: ${results[1]}`);
         }
@@ -813,24 +813,24 @@ async fn test_next_tick() {
       r#"
         (async function() {
           // Queue multiple ticks and verify they all drain
-          Deno.core.queueNextTick({
-            callback: () => Deno.core.ops.op_next_tick(),
+          Ende.core.queueNextTick({
+            callback: () => Ende.core.ops.op_next_tick(),
             args: undefined,
             snapshot: undefined,
           });
-          Deno.core.queueNextTick({
-            callback: () => Deno.core.ops.op_next_tick(),
+          Ende.core.queueNextTick({
+            callback: () => Ende.core.ops.op_next_tick(),
             args: undefined,
             snapshot: undefined,
           });
-          Deno.core.queueNextTick({
-            callback: () => Deno.core.ops.op_next_tick(),
+          Ende.core.queueNextTick({
+            callback: () => Ende.core.ops.op_next_tick(),
             args: undefined,
             snapshot: undefined,
           });
           // Wait for the event loop to drain the ticks
-          await Deno.core.ops.op_async_sleep();
-          if (Deno.core.ops.op_next_tick.length !== 0) {
+          await Ende.core.ops.op_async_sleep();
+          if (Ende.core.ops.op_next_tick.length !== 0) {
             // Just a no-op to ensure op is used
           }
         })();
@@ -864,14 +864,14 @@ async fn test_promise_rejection_nexttick_interleave() {
     .execute_script(
       "promise_rejection_nexttick_interleave.js",
       r#"
-      const { op_async_sleep } = Deno.core.ops;
+      const { op_async_sleep } = Ende.core.ops;
       (async function () {
         const order = [];
 
         // Register a rejection handler that queues a nextTick
-        Deno.core.setUnhandledPromiseRejectionHandler((promise, reason) => {
+        Ende.core.setUnhandledPromiseRejectionHandler((promise, reason) => {
           order.push("rejection-handler");
-          Deno.core.queueNextTick({
+          Ende.core.queueNextTick({
             callback: () => order.push("tick-from-rejection-handler"),
             args: undefined,
             snapshot: undefined,
@@ -880,7 +880,7 @@ async fn test_promise_rejection_nexttick_interleave() {
         });
 
         // Queue a tick that creates an unhandled rejection
-        Deno.core.queueNextTick({
+        Ende.core.queueNextTick({
           callback: () => {
             order.push("first-tick");
             Promise.reject(new Error("test rejection"));
@@ -936,27 +936,27 @@ async fn test_next_tick_error_continues_drain() {
     .execute_script(
       "nexttick_error_continues.js",
       r#"
-      Deno.core.setReportExceptionCallback((e) => {
+      Ende.core.setReportExceptionCallback((e) => {
         // Swallow the error so the event loop doesn't abort
       });
 
-      Deno.core.queueNextTick({
-        callback: () => Deno.core.ops.op_tick_count(),
+      Ende.core.queueNextTick({
+        callback: () => Ende.core.ops.op_tick_count(),
         args: undefined,
         snapshot: undefined,
       });
-      Deno.core.queueNextTick({
+      Ende.core.queueNextTick({
         callback: () => { throw new Error("boom"); },
         args: undefined,
         snapshot: undefined,
       });
-      Deno.core.queueNextTick({
-        callback: () => Deno.core.ops.op_tick_count(),
+      Ende.core.queueNextTick({
+        callback: () => Ende.core.ops.op_tick_count(),
         args: undefined,
         snapshot: undefined,
       });
 
-      (async () => { await Deno.core.ops.op_async_sleep(); })();
+      (async () => { await Ende.core.ops.op_async_sleep(); })();
       "#,
     )
     .unwrap();
@@ -978,7 +978,7 @@ fn terminate_during_module_eval() {
 
   let module_id = futures::executor::block_on(
     runtime
-      .load_main_es_module_from_code(&specifier, "Deno.core.print('hello\\n')"),
+      .load_main_es_module_from_code(&specifier, "Ende.core.print('hello\\n')"),
   )
   .unwrap();
 
@@ -1014,14 +1014,14 @@ async fn test_promise_rejection_handler_generic(
     function throwError() {
       throw new Error("boom");
     }
-    const { op_void_async, op_void_async_deferred } = Deno.core.ops;
+    const { op_void_async, op_void_async_deferred } = Ende.core.ops;
     if (test != "no_handler") {
-      Deno.core.setUnhandledPromiseRejectionHandler((promise, rejection) => {
+      Ende.core.setUnhandledPromiseRejectionHandler((promise, rejection) => {
         if (test.startsWith("exception_")) {
           try {
             throwError();
           } catch (e) {
-            Deno.core.reportUnhandledException(e);
+            Ende.core.reportUnhandledException(e);
           }
         }
         return test.endsWith("_true");
@@ -1029,14 +1029,14 @@ async fn test_promise_rejection_handler_generic(
     }
     if (test != "no_reject") {
       if (test.startsWith("async_op_eager_")) {
-        op_void_async().then(() => { Deno.core.ops.op_breakpoint(); throw new Error("fail") });
+        op_void_async().then(() => { Ende.core.ops.op_breakpoint(); throw new Error("fail") });
       } else if (test.startsWith("async_op_deferred_")) {
-        op_void_async_deferred().then(() => { Deno.core.ops.op_breakpoint(); throw new Error("fail") });
+        op_void_async_deferred().then(() => { Ende.core.ops.op_breakpoint(); throw new Error("fail") });
       } else if (test.startsWith("throw_")) {
-        Deno.core.ops.op_breakpoint();
+        Ende.core.ops.op_breakpoint();
         throw new Error("fail");
       } else {
-        Deno.core.ops.op_breakpoint();
+        Ende.core.ops.op_breakpoint();
         Promise.reject(new Error("fail"));
       }
     }
@@ -1120,10 +1120,10 @@ async fn test_promise_rejection_handler_preserves_async_context() {
   let mut runtime = JsRuntime::new(Default::default());
 
   let script = r#"
-    const v = new Deno.core.AsyncVariable();
+    const v = new Ende.core.AsyncVariable();
     let capturedValue = undefined;
 
-    Deno.core.setUnhandledPromiseRejectionHandler((promise, rejection) => {
+    Ende.core.setUnhandledPromiseRejectionHandler((promise, rejection) => {
       capturedValue = v.get();
       return true;
     });
@@ -1131,7 +1131,7 @@ async fn test_promise_rejection_handler_preserves_async_context() {
     // Enter an async context with a known value, then reject a promise
     const prev = v.enter("my_context_data");
     Promise.reject(new Error("fail"));
-    Deno.core.setAsyncContext(prev);
+    Ende.core.setAsyncContext(prev);
 
     // capturedValue will be checked after the event loop tick
   "#;
@@ -1208,7 +1208,7 @@ async fn test_dynamic_import_module_error_stack() {
     ),
     (
       Url::parse("file:///import.js").unwrap(),
-      "const { op_async_error } = Deno.core.ops; await op_async_error();",
+      "const { op_async_error } = Ende.core.ops; await op_async_error();",
     ),
   ]);
   let mut runtime = JsRuntime::new(RuntimeOptions {
@@ -1260,7 +1260,7 @@ async fn tla_in_esm_extensions_panics() {
       "mod:test" = { source = "import 'mod:tla';" },
       "mod:tla" = {
         source = r#"
-          const { op_wait } = Deno.core.ops;
+          const { op_wait } = Ende.core.ops;
           await op_wait(0);
           export const TEST = "foo";
       "#
@@ -1330,8 +1330,8 @@ async fn generic_in_extension_middleware() {
     .execute_script(
       "greet.js",
       r#"
-        const greet = Deno.core.ops.say_greeting();
-        const bye = Deno.core.ops.say_goodbye();
+        const greet = Ende.core.ops.say_greeting();
+        const bye = Ende.core.ops.say_goodbye();
         greet + " and " + bye;
       "#,
     )
@@ -1503,7 +1503,7 @@ async fn terminate_execution_run_event_loop_js() {
   });
 
   // Start async task
-  runtime.execute_script("sleep.js", "(async () => { while (true) { await Deno.core.ops.op_async_sleep(); } })()").unwrap();
+  runtime.execute_script("sleep.js", "(async () => { while (true) { await Ende.core.ops.op_async_sleep(); } })()").unwrap();
 
   // Terminate execution after 1 second.
   let v8_isolate_handle = runtime.v8_isolate().thread_safe_handle();
@@ -1644,7 +1644,7 @@ fn eval_context_with_code_cache() {
     runtime
       .execute_script(
         "",
-        ascii_str!("Deno.core.evalContext('const i = 10;', 'file:///foo.js');"),
+        ascii_str!("Ende.core.evalContext('const i = 10;', 'file:///foo.js');"),
       )
       .unwrap();
 
@@ -1683,7 +1683,7 @@ fn eval_context_with_code_cache() {
     runtime
       .execute_script(
         "",
-        ascii_str!("Deno.core.evalContext('const i = 10;', 'file:///foo.js');"),
+        ascii_str!("Ende.core.evalContext('const i = 10;', 'file:///foo.js');"),
       )
       .unwrap();
 
@@ -1713,7 +1713,7 @@ fn eval_context_code_cache_error_is_cache_miss() {
     .execute_script(
       "",
       ascii_str!(
-        r#"const [result, err] = Deno.core.evalContext('1 + 1', 'file:///foo.js');
+        r#"const [result, err] = Ende.core.evalContext('1 + 1', 'file:///foo.js');
         if (err !== null) throw new Error(`unexpected error: ${err}`);
         if (result !== 2) throw new Error(`unexpected result: ${result}`);"#
       ),
@@ -1756,7 +1756,7 @@ fn eval_context_code_cache_key_sees_full_source() {
       .execute_script(
         "",
         format!(
-          "Deno.core.evalContext({}, 'file:///foo.js');",
+          "Ende.core.evalContext({}, 'file:///foo.js');",
           serde_json::to_string(source).unwrap()
         ),
       )
@@ -1805,14 +1805,14 @@ async fn test_nexttick_before_promise_then() {
       (async function() {
         const order = [];
 
-        Deno.core.queueNextTick({
+        Ende.core.queueNextTick({
           callback: () => order.push("tick"),
           args: undefined,
           snapshot: undefined,
         });
         Promise.resolve().then(() => order.push("then"));
 
-        await Deno.core.ops.op_async_sleep();
+        await Ende.core.ops.op_async_sleep();
 
         const result = order.join(",");
         if (result !== "tick,then") {
@@ -1849,14 +1849,14 @@ async fn test_timer_return_protocol_keeps_timers_armed_from_promise_hook() {
     (
       "stale_zero",
       r#"
-        Deno.core.createTimer(() => {}, 20, undefined, false, true, false);
+        Ende.core.createTimer(() => {}, 20, undefined, false, true, false);
       "#,
     ),
     (
       "stale_negative_unrefed_later",
       r#"
-        Deno.core.createTimer(() => {}, 20, undefined, false, true, false);
-        laterTimer = Deno.core.createTimer(
+        Ende.core.createTimer(() => {}, 20, undefined, false, true, false);
+        laterTimer = Ende.core.createTimer(
           () => {},
           1000,
           undefined,
@@ -1869,8 +1869,8 @@ async fn test_timer_return_protocol_keeps_timers_armed_from_promise_hook() {
     (
       "stale_positive_refed_later",
       r#"
-        Deno.core.createTimer(() => {}, 20, undefined, false, true, false);
-        laterTimer = Deno.core.createTimer(
+        Ende.core.createTimer(() => {}, 20, undefined, false, true, false);
+        laterTimer = Ende.core.createTimer(
           () => {},
           1000,
           undefined,
@@ -1896,16 +1896,16 @@ async fn test_timer_return_protocol_keeps_timers_armed_from_promise_hook() {
         format!(
           r#"
           const {{ op_mark_timer_race_fired, op_async_sleep }} =
-            Deno.core.ops;
+            Ende.core.ops;
           let armed = false;
           let laterTimer;
 
-          Deno.core.setPromiseHooks(null, null, null, () => {{
+          Ende.core.setPromiseHooks(null, null, null, () => {{
             if (armed) return;
             armed = true;
-            Deno.core.createTimer(() => {{
+            Ende.core.createTimer(() => {{
               if (laterTimer !== undefined) {{
-                Deno.core.cancelTimer(laterTimer);
+                Ende.core.cancelTimer(laterTimer);
               }}
               op_mark_timer_race_fired();
             }}, 5, undefined, false, true, false);
@@ -1965,13 +1965,13 @@ async fn test_timer_return_protocol_keeps_timers_armed_from_run_next_ticks() {
     .execute_script(
       "timer_return_protocol_run_next_ticks.js",
       r#"
-      const { op_mark_run_next_ticks_timer_fired } = Deno.core.ops;
+      const { op_mark_run_next_ticks_timer_fired } = Ende.core.ops;
       let armed = false;
 
-      Deno.core.setPromiseHooks(null, () => {
+      Ende.core.setPromiseHooks(null, () => {
         if (armed) return;
         armed = true;
-        Deno.core.createTimer(() => {
+        Ende.core.createTimer(() => {
           op_mark_run_next_ticks_timer_fired();
         }, 5, undefined, false, true, false);
       }, null, null);
@@ -1979,10 +1979,10 @@ async fn test_timer_return_protocol_keeps_timers_armed_from_run_next_ticks() {
       // These timers share a timeout list. processTimers() drains ticks and
       // microtasks between callbacks, so the Promise callback below runs from
       // processTimers()'s runNextTicks() path before the second timer fires.
-      Deno.core.createTimer(() => {
+      Ende.core.createTimer(() => {
         Promise.resolve().then(() => {});
       }, 1, undefined, false, true, false);
-      Deno.core.createTimer(() => {}, 1, undefined, false, true, false);
+      Ende.core.createTimer(() => {}, 1, undefined, false, true, false);
       "#,
     )
     .unwrap();
@@ -2029,13 +2029,13 @@ async fn test_nexttick_queue_drains_before_microtasks() {
       (async function() {
         const order = [];
 
-        Deno.core.queueNextTick({
+        Ende.core.queueNextTick({
           callback: () => {
             order.push("tick1");
             // Promise queued during tick should run after all ticks
             Promise.resolve().then(() => order.push("then-from-tick1"));
             // Nested tick should run before that promise
-            Deno.core.queueNextTick({
+            Ende.core.queueNextTick({
               callback: () => order.push("tick2"),
               args: undefined,
               snapshot: undefined,
@@ -2047,7 +2047,7 @@ async fn test_nexttick_queue_drains_before_microtasks() {
         Promise.resolve().then(() => order.push("then1"));
         Promise.resolve().then(() => order.push("then2"));
 
-        await Deno.core.ops.op_async_sleep();
+        await Ende.core.ops.op_async_sleep();
 
         const result = order.join(",");
         const expected = "tick1,tick2,then1,then2,then-from-tick1";
@@ -2088,11 +2088,11 @@ async fn test_nexttick_ordering_after_await() {
         const order = [];
 
         // First await to get into a "later turn"
-        await Deno.core.ops.op_async_sleep();
+        await Ende.core.ops.op_async_sleep();
 
         // Inside an await continuation (which is a microtask), a .then
         // runs in the same microtask checkpoint, before nextTick.
-        Deno.core.queueNextTick({
+        Ende.core.queueNextTick({
           callback: () => order.push("tick-after-await"),
           args: undefined,
           snapshot: undefined,
@@ -2100,7 +2100,7 @@ async fn test_nexttick_ordering_after_await() {
         Promise.resolve().then(() => order.push("then-after-await"));
 
         // Wait for drain
-        await Deno.core.ops.op_async_sleep();
+        await Ende.core.ops.op_async_sleep();
 
         const result = order.join(",");
         if (result !== "then-after-await,tick-after-await") {
@@ -2136,7 +2136,7 @@ async fn test_nexttick_before_queue_microtask() {
       (async function() {
         const order = [];
 
-        Deno.core.queueNextTick({
+        Ende.core.queueNextTick({
           callback: () => order.push("tick"),
           args: undefined,
           snapshot: undefined,
@@ -2144,7 +2144,7 @@ async fn test_nexttick_before_queue_microtask() {
         queueMicrotask(() => order.push("microtask"));
         Promise.resolve().then(() => order.push("then"));
 
-        await Deno.core.ops.op_async_sleep();
+        await Ende.core.ops.op_async_sleep();
 
         const result = order.join(",");
         if (result !== "tick,microtask,then") {

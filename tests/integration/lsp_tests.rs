@@ -39,7 +39,7 @@ fn lsp_config_setting() {
     "lib.tsconfig.json",
     r#"{
   "compilerOptions": {
-    "lib": ["deno.ns", "deno.unstable", "dom"]
+    "lib": ["ende.ns", "ende.unstable", "dom"]
   }
 }"#,
   );
@@ -1909,7 +1909,7 @@ fn lsp_hover() {
     json!({
       "contents": {
         "kind": "markdown",
-        "value": "```tsx\nconst Deno.args: string[]\n```\nReturns the script arguments to the program.\n\nGive the following command line invocation of Deno:\n\n```sh\ndeno eval \"console.log(Deno.args)\" Sushi Maguro Hamachi\n```\n\nThen `Deno.args` will contain:\n\n```ts\n[ \"Sushi\", \"Maguro\", \"Hamachi\" ]\n```\n\nIf you are looking for a structured way to parse arguments, there is\n[`parseArgs()`](https://jsr.io/@std/cli/doc/parse-args/~/parseArgs) from\nthe Deno Standard Library.\n\n*@category* — Runtime\n",
+        "value": "```tsx\nconst Ende.args: string[]\n```\nReturns the script arguments to the program.\n\nGive the following command line invocation of Deno:\n\n```sh\ndeno eval \"console.log(Deno.args)\" Sushi Maguro Hamachi\n```\n\nThen `Deno.args` will contain:\n\n```ts\n[ \"Sushi\", \"Maguro\", \"Hamachi\" ]\n```\n\nIf you are looking for a structured way to parse arguments, there is\n[`parseArgs()`](https://jsr.io/@std/cli/doc/parse-args/~/parseArgs) from\nthe Deno Standard Library.\n\n*@category* — Runtime\n",
       },
       "range": {
         "start": { "line": 0, "character": 17 },
@@ -2853,7 +2853,7 @@ fn lsp_hover_unstable_always_enabled() {
     json!({
       "contents": {
         "kind": "markdown",
-        "value": "```tsx\ninterface Deno.DatagramConn\n```\n**UNSTABLE**: New API, yet to be vetted.\n\nA generic transport listener for message-oriented protocols.\n\n*@category* — Network\n\n\n*@experimental*",
+        "value": "```tsx\ninterface Ende.DatagramConn\n```\n**UNSTABLE**: New API, yet to be vetted.\n\nA generic transport listener for message-oriented protocols.\n\n*@category* — Network\n\n\n*@experimental*",
       },
       "range":{
         "start":{ "line":0, "character":14 },
@@ -2894,7 +2894,7 @@ fn lsp_hover_unstable_enabled() {
     json!({
       "contents": {
         "kind": "markdown",
-        "value": "```tsx\ninterface Deno.DatagramConn\n```\n**UNSTABLE**: New API, yet to be vetted.\n\nA generic transport listener for message-oriented protocols.\n\n*@category* — Network\n\n\n*@experimental*",
+        "value": "```tsx\ninterface Ende.DatagramConn\n```\n**UNSTABLE**: New API, yet to be vetted.\n\nA generic transport listener for message-oriented protocols.\n\n*@category* — Network\n\n\n*@experimental*",
       },
       "range":{
         "start":{ "line":0, "character":14 },
@@ -3821,7 +3821,7 @@ fn lsp_goto_type_definition_builtin() {
         .as_str()
         .unwrap())
       .collect::<Vec<_>>(),
-    vec!["deno:/asset/lib.deno.fetch.d.ts"],
+    vec!["deno:/asset/lib.ende.fetch.d.ts"],
   );
   client.shutdown();
 }
@@ -5495,7 +5495,7 @@ fn lsp_code_lens_non_doc_nav_tree() {
     "deno/virtualTextDocument",
     json!({
       "textDocument": {
-        "uri": "deno:/asset/lib.deno.shared_globals.d.ts"
+        "uri": "deno:/asset/lib.ende.shared_globals.d.ts"
       }
     }),
   );
@@ -5503,7 +5503,7 @@ fn lsp_code_lens_non_doc_nav_tree() {
     "textDocument/codeLens",
     json!({
       "textDocument": {
-        "uri": "deno:/asset/lib.deno.shared_globals.d.ts"
+        "uri": "deno:/asset/lib.ende.shared_globals.d.ts"
       }
     }),
   );
@@ -5516,7 +5516,7 @@ fn lsp_code_lens_non_doc_nav_tree() {
         "end": { "line": 416, "character": 19 }
       },
       "data": {
-        "uri": "deno:/asset/lib.deno.shared_globals.d.ts",
+        "uri": "deno:/asset/lib.ende.shared_globals.d.ts",
         "source": "references"
       }
     }),
@@ -7608,7 +7608,7 @@ fn lsp_asset_document_dom_code_action() {
     "deno.json",
     json!({
       "compilerOptions": {
-        "lib": ["deno.window", "dom"],
+        "lib": ["ende.window", "dom"],
       },
     })
     .to_string(),
@@ -9239,9 +9239,9 @@ fn lsp_completions() {
       "label": "build",
       "kind": 6,
       "detail": if false {
-        "const Deno.build: { target: string; arch: \"aarch64\" | \"x86_64\"; os: \"aix\" | \"android\" | \"darwin\" | \"freebsd\" | \"illumos\" | \"linux\" | \"netbsd\" | \"solaris\" | \"windows\"; standalone: boolean; vendor: string; env?: string | undefined; }"
+        "const Ende.build: { target: string; arch: \"aarch64\" | \"x86_64\"; os: \"aix\" | \"android\" | \"darwin\" | \"freebsd\" | \"illumos\" | \"linux\" | \"netbsd\" | \"solaris\" | \"windows\"; standalone: boolean; vendor: string; env?: string | undefined; }"
       } else {
-        "const Deno.build: {\n    target: string;\n    arch: \"x86_64\" | \"aarch64\";\n    os: \"darwin\" | \"linux\" | \"android\" | \"windows\" | \"freebsd\" | \"netbsd\" | \"aix\" | \"solaris\" | \"illumos\";\n    standalone: boolean;\n    vendor: string;\n    env?: string;\n}"
+        "const Ende.build: {\n    target: string;\n    arch: \"x86_64\" | \"aarch64\";\n    os: \"darwin\" | \"linux\" | \"android\" | \"windows\" | \"freebsd\" | \"netbsd\" | \"aix\" | \"solaris\" | \"illumos\";\n    standalone: boolean;\n    vendor: string;\n    env?: string;\n}"
       },
       "documentation": {
         "kind": "markdown",
@@ -13381,7 +13381,7 @@ fn lsp_jupyter_import_map_and_diagnostics() {
             "message": "Type 'number' is not assignable to type 'string'.",
           },
           // Note: `const name = "Hello"` does not error here even though it
-          // shadows the ambient `name` global from `lib.deno.window.d.ts`.
+          // shadows the ambient `name` global from `lib.ende.window.d.ts`.
           // Notebook cells are classic scripts, so such a redeclaration would
           // normally produce a spurious error; we filter it out because the
           // conflicting declaration is in a default library.
@@ -13524,11 +13524,11 @@ fn lsp_jupyter_completions() {
       "detail": if false {
         "function Deno.readTextFile(path: string | URL, options?: Deno.ReadFileOptions | undefined): Promise<string>"
       } else {
-        "function Deno.readTextFile(path: string | URL, options?: Deno.ReadFileOptions): Promise<string>"
+        "function Ende.readTextFile(path: string | URL, options?: Deno.ReadFileOptions): Promise<string>"
       },
       "documentation": {
         "kind": "markdown",
-        "value": "Asynchronously reads and returns the entire contents of a file as an UTF-8\ndecoded string.\n\n```ts\nconst data = await Deno.readTextFile(\"hello.txt\");\nconsole.log(data);\n```\n\nThe returned promise rejects if the operation fails, for example with\n[`Deno.errors.NotFound`](deno:/asset/lib.deno.ns.d.ts#174,5-174,43) if the file does not exist,\n[`Deno.errors.IsADirectory`](deno:/asset/lib.deno.ns.d.ts#307,5-307,47) if `path` refers to a directory, or\n[`Deno.errors.PermissionDenied`](deno:/asset/lib.deno.ns.d.ts#185,5-185,51) if the required permission has not\nbeen granted.\n\nRequires `allow-read` permission.\n\n*@tags* — allow-read\n\n\n*@category* — File System\n",
+        "value": "Asynchronously reads and returns the entire contents of a file as an UTF-8\ndecoded string.\n\n```ts\nconst data = await Deno.readTextFile(\"hello.txt\");\nconsole.log(data);\n```\n\nThe returned promise rejects if the operation fails, for example with\n[`Deno.errors.NotFound`](deno:/asset/lib.ende.ns.d.ts#174,5-174,43) if the file does not exist,\n[`Deno.errors.IsADirectory`](deno:/asset/lib.ende.ns.d.ts#307,5-307,47) if `path` refers to a directory, or\n[`Deno.errors.PermissionDenied`](deno:/asset/lib.ende.ns.d.ts#185,5-185,51) if the required permission has not\nbeen granted.\n\nRequires `allow-read` permission.\n\n*@tags* — allow-read\n\n\n*@category* — File System\n",
       },
       "sortText": "11",
     }),
@@ -18219,7 +18219,7 @@ fn lsp_deno_json_scopes_compiler_options() {
     "project2/deno.json",
     json!({
       "compilerOptions": {
-        "lib": ["deno.worker"],
+        "lib": ["ende.worker"],
       },
     })
     .to_string(),
@@ -19629,7 +19629,7 @@ fn lsp_tsconfig_scopes() {
     "project1/tsconfig.json",
     json!({
       "compilerOptions": {
-        "lib": ["deno.window"],
+        "lib": ["ende.window"],
       },
     })
     .to_string(),
@@ -19682,7 +19682,7 @@ fn lsp_tsconfig_scopes() {
             "severity": 1,
             "code": 2304,
             "source": "deno-ts",
-            "message": "Cannot find name 'Deno'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'deno.ns' or add a triple-slash directive to the top of your entrypoint (main file): /// <reference lib=\"deno.ns\" />",
+            "message": "Cannot find name 'Deno'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'ende.ns' or add a triple-slash directive to the top of your entrypoint (main file): /// <reference lib=\"ende.ns\" />",
           },
         ],
         "version": 1,
@@ -19734,7 +19734,7 @@ fn lsp_tsconfig_references_extends_include() {
     json!({
       "exclude": ["file3.ts"],
       "compilerOptions": {
-        "lib": ["deno.window"],
+        "lib": ["ende.window"],
       },
       "references": [
         { "path": "tsconfig.dom.json" },
@@ -19766,7 +19766,7 @@ fn lsp_tsconfig_references_extends_include() {
   let file2 = temp_dir.source_file("file2.ts", "Deno;\ndocument;\n");
   // This file is scoped for `deno.json`. Since no compiler options are
   // specified, it will use the default. Since there are tsconfigs in the
-  // workspace, the defaults will be tsc-compatible (`[ "deno.window", "dom"]`).
+  // workspace, the defaults will be tsc-compatible (`[ "ende.window", "dom"]`).
   let file3 = temp_dir.source_file("file2.ts", "Deno;\ndocument;\n");
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
@@ -19805,7 +19805,7 @@ fn lsp_tsconfig_references_extends_include() {
             "severity": 1,
             "code": 2304,
             "source": "deno-ts",
-            "message": "Cannot find name 'Deno'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'deno.ns' or add a triple-slash directive to the top of your entrypoint (main file): /// <reference lib=\"deno.ns\" />",
+            "message": "Cannot find name 'Deno'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'ende.ns' or add a triple-slash directive to the top of your entrypoint (main file): /// <reference lib=\"ende.ns\" />",
           },
         ],
         "version": 1,
@@ -19866,7 +19866,7 @@ fn lsp_tsconfig_node_modules_dts_diagnostics() {
         "severity": 1,
         "code": 2304,
         "source": "deno-ts",
-        "message": "Cannot find name 'Deno'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'deno.ns' or add a triple-slash directive to the top of your entrypoint (main file): /// <reference lib=\"deno.ns\" />",
+        "message": "Cannot find name 'Deno'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'ende.ns' or add a triple-slash directive to the top of your entrypoint (main file): /// <reference lib=\"ende.ns\" />",
       },
     ]),
   );

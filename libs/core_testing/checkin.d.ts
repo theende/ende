@@ -23,7 +23,7 @@ declare global {
     transfer(size: number): SharedArrayBuffer;
   }
 
-  namespace Deno {
+  namespace Ende {
     export function refTimer(id: number): void;
     export function unrefTimer(id: number): void;
   }

@@ -22,7 +22,7 @@ import {
 } from "./97_ts_host.js";
 
 /** @type {DenoCore} */
-const core = globalThis.Deno.core;
+const core = globalThis.Ende.core;
 const ops = core.ops;
 
 const ChangeKind = {

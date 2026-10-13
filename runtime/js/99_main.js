@@ -839,6 +839,16 @@ ObjectDefineProperties(finalDenoNs, {
   },
 });
 
+// Setup the `Ende` global - this overrides the bare core namespace object
+// (`{ core }`) that ende_core installed on `globalThis.Ende` during bootstrap.
+// `Deno` is a permanent alias: the very same object, defined with the same
+// property descriptor, so `Deno === Ende` and anything added to one later
+// (unstable APIs, `jupyter`, test harness hooks) is visible on both.
+function installEndeNamespace(ns) {
+  ObjectDefineProperty(globalThis, "Ende", core.propReadOnly(ns));
+  ObjectDefineProperty(globalThis, "Deno", core.propReadOnly(ns));
+}
+
 const {
   tsVersion,
   v8Version,
@@ -1152,9 +1162,7 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
       disableProtoAccessor();
     }
 
-    // Setup `Deno` global - we're actually overriding already existing global
-    // `Deno` with `Deno` namespace from "./deno.ts".
-    ObjectDefineProperty(globalThis, "Deno", core.propReadOnly(finalDenoNs));
+    installEndeNamespace(finalDenoNs);
 
     const nodeBootstrapArgs = {
       usesLocalNodeModulesDir: hasNodeModulesDir,
@@ -1167,8 +1175,8 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
       // without reading Deno.* (the no-deno-api-in-polyfills lint counts
       // Deno.* references in node polyfills; passing them in keeps process.ts
       // at zero new violations).
-      denoArgs: Deno.args,
-      denoVersion: Deno.version,
+      denoArgs: finalDenoNs.args,
+      denoVersion: finalDenoNs.version,
     };
     if (nodeBootstrap) {
       nodeBootstrap(nodeBootstrapArgs);
@@ -1315,9 +1323,7 @@ function bootstrapWorkerRuntime(
       disableProtoAccessor();
     }
 
-    // Setup `Deno` global - we're actually overriding already existing global
-    // `Deno` with `Deno` namespace from "./deno.ts".
-    ObjectDefineProperty(globalThis, "Deno", core.propReadOnly(finalDenoNs));
+    installEndeNamespace(finalDenoNs);
 
     const workerMetadata = maybeWorkerMetadata
       ? messagePort.deserializeJsMessageData(maybeWorkerMetadata)
@@ -1335,8 +1341,8 @@ function bootstrapWorkerRuntime(
       moduleSpecifier: workerType === "node" ? moduleSpecifier : null,
       // Stashed so process.ts's self-trigger can call __bootstrapNodeProcess
       // without reading Deno.* (see the main-thread branch above).
-      denoArgs: Deno.args,
-      denoVersion: Deno.version,
+      denoArgs: finalDenoNs.args,
+      denoVersion: finalDenoNs.version,
     };
     if (nodeBootstrap) {
       nodeBootstrap(nodeBootstrapArgs);

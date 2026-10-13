@@ -22,7 +22,7 @@ import {
 import { serverMainLoop } from "./98_lsp.js";
 
 /** @type {DenoCore} */
-const core = globalThis.Deno.core;
+const core = globalThis.Ende.core;
 const ops = core.ops;
 
 /** @type {Array<[string, number]>} */
@@ -202,7 +202,7 @@ const libs = ops.op_libs();
 for (const lib of libs) {
   const specifier = `lib.${lib}.d.ts`;
   // we are using internal APIs here to "inject" our custom libraries into
-  // tsc, so things like `"lib": [ "deno.ns" ]` are supported.
+  // tsc, so things like `"lib": [ "ende.ns" ]` are supported.
   if (!ts.libs.includes(lib)) {
     ts.libs.push(lib);
     ts.libMap.set(lib, specifier);

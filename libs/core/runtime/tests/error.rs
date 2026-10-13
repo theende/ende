@@ -101,7 +101,7 @@ fn fast_call_error_preserves_class() {
           this.name = "MyError";
         }
       };
-      Deno.core.registerErrorClass("MyError", globalThis.MyError);
+      Ende.core.registerErrorClass("MyError", globalThis.MyError);
       "#,
     )
     .unwrap();

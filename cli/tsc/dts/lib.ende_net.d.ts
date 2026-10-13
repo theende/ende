@@ -4,7 +4,7 @@
 /// <reference lib="esnext" />
 /// <reference lib="esnext.disposable" />
 
-declare namespace Deno {
+declare namespace Ende {
   /** The address of a network connection or listener using an IP-based
    * transport.
    *

@@ -108,7 +108,7 @@ pub(crate) fn record_esm_import(from: &str, to: &str) {
   record(from, to, "esm");
 }
 
-/// `Deno.core` lazy ESM: a cache miss, i.e. the module was actually parsed,
+/// `Ende.core` lazy ESM: a cache miss, i.e. the module was actually parsed,
 /// instantiated, and evaluated.
 pub(crate) fn record_lazy_esm(scope: &mut v8::PinScope, to: &str) {
   let stderr = stderr_log_enabled();
@@ -139,7 +139,7 @@ pub(crate) fn record_lazy_esm_cached(scope: &mut v8::PinScope, to: &str) {
   );
 }
 
-/// `Deno.core.loadExtScript(...)`. Called via the op only on cache miss
+/// `Ende.core.loadExtScript(...)`. Called via the op only on cache miss
 /// (the JS-side `loadedScripts` map short-circuits cache hits before the
 /// op fires), so this always corresponds to a real load.
 pub(crate) fn record_lazy_script(scope: &mut v8::PinScope, to: &str) {

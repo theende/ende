@@ -996,7 +996,7 @@ mod impl_ {
             for (const opName of ["op_node_ipc_ref", "op_node_ipc_unref"]) {
               for (const serializationJson of [true, false]) {
                 try {
-                  Deno.core.ops[opName](0, serializationJson);
+                  Ende.core.ops[opName](0, serializationJson);
                   throw new Error(`${opName} did not throw`);
                 } catch (error) {
                   if (error.name !== "BadResource") {

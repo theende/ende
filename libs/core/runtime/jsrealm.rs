@@ -112,8 +112,8 @@ pub struct ContextState {
   /// the first residual ext-module load — a program that never loads a
   /// residual module (e.g. `deno run empty.js`) never pays for it.
   pub(crate) fast_ops_upgraded: Cell<bool>,
-  /// `(Deno.core.ops, Deno.core.setUpAsyncStub)` captured at `new_inner` time,
-  /// because `Deno.core` is scrubbed from the public `Deno` after bootstrap and
+  /// `(Ende.core.ops, Ende.core.setUpAsyncStub)` captured at `new_inner` time,
+  /// because `Ende.core` is scrubbed from the public `Deno` after bootstrap and
   /// the deferred upgrade (which runs post-bootstrap) can no longer read them
   /// from the global. `None` when the upgrade isn't deferred.
   pub(crate) deferred_fast_ops:

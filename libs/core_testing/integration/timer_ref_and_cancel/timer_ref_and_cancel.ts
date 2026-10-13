@@ -5,5 +5,5 @@ setTimeout(() => console.log("b"), 2000);
 const c = setTimeout(() => console.log("c"), 120_000);
 const d = setTimeout(() => console.log("d"), 150_000);
 // c should not run, if d is cancelled
-Deno.unrefTimer(c);
+Ende.unrefTimer(c);
 clearTimeout(d);

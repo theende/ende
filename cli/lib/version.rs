@@ -75,13 +75,13 @@ pub static DENO_VERSION_INFO: std::sync::LazyLock<DenoVersionInfo> =
       // Keep in sync with `deno` field.
       user_agent: if release_channel == ReleaseChannel::Canary {
         concat!(
-          "Deno/",
+          "Ende/",
           env!("DENO_VERSION"),
           "+",
           env!("GIT_COMMIT_HASH_SHORT")
         )
       } else {
-        concat!("Deno/", env!("DENO_VERSION"))
+        concat!("Ende/", env!("DENO_VERSION"))
       },
 
       typescript: TYPESCRIPT,

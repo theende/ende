@@ -18,10 +18,10 @@ fn setup() -> Vec<Extension> {
         import { TextDecoder, TextEncoder } from "ext:ende_web/08_text_encoding.js";
         globalThis.TextDecoder = TextDecoder;
         globalThis.TextEncoder = TextEncoder;
-        globalThis.hello12k = Deno.core.encode("hello world\n".repeat(1e3));
-        globalThis.hello120 = Deno.core.encode("hello world\n".repeat(10));
+        globalThis.hello12k = Ende.core.encode("hello world\n".repeat(1e3));
+        globalThis.hello120 = Ende.core.encode("hello world\n".repeat(10));
         // Non-ASCII (4-byte UTF-8 emoji, ~2.4kB): exercises the non-ASCII path.
-        globalThis.utf8_2k = Deno.core.encode("\u{1F600} hello \u{4E2D}".repeat(64));
+        globalThis.utf8_2k = Ende.core.encode("\u{1F600} hello \u{4E2D}".repeat(64));
         globalThis.dec = new TextDecoder();
         globalThis.helloShort = "hello world\n";
         globalThis.encInto = new TextEncoder();

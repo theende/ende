@@ -1151,7 +1151,7 @@ impl<TGraphContainer: ModuleGraphContainer>
   ) -> Result<ModuleSpecifier, ResolveReferrerError> {
     let referrer = if referrer.is_empty() && self.shared.is_repl {
       // FIXME(bartlomieju): this is a hacky way to provide compatibility with REPL
-      // and `Deno.core.evalContext` API. Ideally we should always have a referrer filled
+      // and `Ende.core.evalContext` API. Ideally we should always have a referrer filled
       "./$deno$repl.mts"
     } else {
       referrer

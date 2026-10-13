@@ -215,7 +215,7 @@ pub(crate) struct ModuleMapData {
   pub(crate) residual_lazy_script_sources:
     &'static [(&'static str, &'static str)],
   /// Results of `load_ext_script` evaluations. Populated on first
-  /// evaluation so later callers (`Deno.core.loadExtScript()` from JS,
+  /// evaluation so later callers (`Ende.core.loadExtScript()` from JS,
   /// the `synthetic_esm` dispatch from Rust) share a single evaluated
   /// exports value — the source is removed from `lazy_script_sources`
   /// on first eval, so subsequent reads come from here. Runtime-only —

@@ -31,7 +31,7 @@ pub enum LazyExtensionFileKind {
   /// `lazy_loaded_js` — loaded on demand via `core.loadExtScript()`.
   Js,
   /// `lazy_loaded_esm` — loaded on demand via `op_lazy_load_esm` (i.e. the
-  /// `createLazyLoader` factory exposed by `Deno.core`).
+  /// `createLazyLoader` factory exposed by `Ende.core`).
   Esm,
 }
 

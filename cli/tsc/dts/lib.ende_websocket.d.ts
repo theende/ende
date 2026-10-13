@@ -324,7 +324,7 @@ interface WebSocketOptions {
    *
    * @experimental
    */
-  client?: Deno.HttpClient;
+  client?: Ende.HttpClient;
 }
 
 /**

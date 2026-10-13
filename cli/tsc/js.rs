@@ -669,7 +669,7 @@ mod tests {
       "jsx": "react",
       "jsxFactory": "React.createElement",
       "jsxFragmentFactory": "React.Fragment",
-      "lib": ["deno.window", "node"],
+      "lib": ["ende.window", "node"],
       "noEmit": true,
       "outDir": "internal:///",
       "strict": true,

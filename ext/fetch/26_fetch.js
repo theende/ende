@@ -997,7 +997,7 @@ function abortFetch(request, responseObject, error) {
 /**
  * Handle the Response argument to the WebAssembly streaming APIs, after
  * resolving if it was passed as a promise. This function should be registered
- * through `Deno.core.setWasmStreamingCallback`.
+ * through `Ende.core.setWasmStreamingCallback`.
  *
  * @param {any} source The source parameter that the WebAssembly streaming API
  * was called with. If it was called with a Promise, `source` is the resolved

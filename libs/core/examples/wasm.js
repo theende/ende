@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-const { ops } = Deno.core;
+const { ops } = Ende.core;
 
 // The Wasm module is generated using assemblyscript@0.24.1
 // asc core/examples/wasm.ts --exportStart --initialMemory 6400 -O -o core/examples/wasm.wasm

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "lib": [
-      "deno.window",
+      "ende.window",
       "dom"
     ]
   }

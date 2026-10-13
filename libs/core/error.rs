@@ -275,7 +275,7 @@ pub fn throw_js_error_class(
 /// Builds a JS exception for `error` using only native V8 APIs, without
 /// re-entering JavaScript.
 ///
-/// This mirrors what the JS `Deno.core.buildCustomError` callback does
+/// This mirrors what the JS `Ende.core.buildCustomError` callback does
 /// (restoring the registered error class so `instanceof` holds, and attaching
 /// the additional properties), but never invokes user-reachable JS. That makes
 /// it safe to call from inside a V8 fast call, where re-entering JS is

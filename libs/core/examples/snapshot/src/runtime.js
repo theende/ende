@@ -5,6 +5,6 @@
 
 // Minimal example, just passes arguments through to Rust:
 export function callRust(stringValue) {
-  const { op_call_rust } = Deno.core.ops;
+  const { op_call_rust } = Ende.core.ops;
   op_call_rust(stringValue);
 }

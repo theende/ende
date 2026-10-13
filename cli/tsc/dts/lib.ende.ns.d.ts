@@ -2,7 +2,7 @@
 
 /// <reference no-default-lib="true" />
 /// <reference lib="esnext" />
-/// <reference lib="deno.net" />
+/// <reference lib="ende.net" />
 
 /** Deno provides extra properties on `import.meta`. These are included here
  * to ensure that these are still available when using the Deno namespace in
@@ -143,7 +143,7 @@ interface PerformanceMeasureOptions {
 }
 
 /** The global namespace where Deno specific, non-standard APIs are located. */
-declare namespace Deno {
+declare namespace Ende {
   /** A set of error constructors that are raised by Deno APIs.
    *
    * Can be used to provide more specific handling of failures within code
@@ -4944,8 +4944,8 @@ declare namespace Deno {
    * @category Runtime
    */
   export const version: {
-    /** Deno CLI's version. For example: `"1.26.0"`. */
-    deno: string;
+    /** Ende CLI's version. For example: `"1.26.0"`. */
+    ende: string;
     /** The V8 version used by Deno. For example: `"10.7.100.0"`.
      *
      * V8 is the underlying JavaScript runtime platform that Deno is built on
@@ -5673,7 +5673,7 @@ declare namespace Deno {
    *
    * @category HTTP Server
    */
-  export interface ServeHandlerInfo<Addr extends Deno.Addr = Deno.Addr> {
+  export interface ServeHandlerInfo<Addr extends Ende.Addr = Ende.Addr> {
     /** The remote address of the connection. */
     remoteAddr: Addr;
     /** A promise that settles when the request has been fully handled and the
@@ -5703,7 +5703,7 @@ declare namespace Deno {
    *
    * @category HTTP Server
    */
-  export type ServeHandler<Addr extends Deno.Addr = Deno.Addr> = (
+  export type ServeHandler<Addr extends Ende.Addr = Ende.Addr> = (
     request: Request,
     info: ServeHandlerInfo<Addr>,
   ) => Response | Promise<Response>;
@@ -5738,14 +5738,14 @@ declare namespace Deno {
      *
      * @category HTTP Server
      */
-    onListen?: (localAddr: Deno.Addr) => void;
+    onListen?: (localAddr: Ende.Addr) => void;
   }
 
   /** Options which can be set when calling {@linkcode Deno.serve}.
    *
    * @category HTTP Server
    */
-  export interface ServeOptions<Addr extends Deno.Addr = Deno.Addr> {
+  export interface ServeOptions<Addr extends Ende.Addr = Ende.Addr> {
     /** An {@linkcode AbortSignal} to close the server and all connections. */
     signal?: AbortSignal;
 
@@ -5770,7 +5770,7 @@ declare namespace Deno {
    *
    * @category HTTP Server
    */
-  export interface ServeTcpOptions extends ServeOptions<Deno.NetAddr> {
+  export interface ServeTcpOptions extends ServeOptions<Ende.NetAddr> {
     /** The transport to use. */
     transport?: "tcp";
 
@@ -5813,7 +5813,7 @@ declare namespace Deno {
    *
    * @category HTTP Server
    */
-  export interface ServeUnixOptions extends ServeOptions<Deno.UnixAddr> {
+  export interface ServeUnixOptions extends ServeOptions<Ende.UnixAddr> {
     /** The transport to use. */
     transport?: "unix";
 
@@ -5829,7 +5829,7 @@ declare namespace Deno {
    *
    * @category HTTP Server
    */
-  export interface ServeVsockOptions extends ServeOptions<Deno.VsockAddr> {
+  export interface ServeVsockOptions extends ServeOptions<Ende.VsockAddr> {
     /** The transport to use. */
     transport?: "vsock";
 
@@ -5843,7 +5843,7 @@ declare namespace Deno {
   /**
    * @category HTTP Server
    */
-  export interface ServeInit<Addr extends Deno.Addr = Deno.Addr> {
+  export interface ServeInit<Addr extends Ende.Addr = Ende.Addr> {
     /** The handler to invoke to process each incoming request. */
     handler: ServeHandler<Addr>;
   }
@@ -5852,7 +5852,7 @@ declare namespace Deno {
    *
    * @category HTTP Server
    */
-  export interface HttpServer<Addr extends Deno.Addr = Deno.Addr>
+  export interface HttpServer<Addr extends Ende.Addr = Ende.Addr>
     extends AsyncDisposable {
     /** A promise that resolves once server finishes - eg. when aborted using
      * the signal passed to {@linkcode ServeOptions.signal}.
@@ -5890,8 +5890,8 @@ declare namespace Deno {
    * @category HTTP Server
    */
   export function serve(
-    handler: ServeHandler<Deno.NetAddr>,
-  ): HttpServer<Deno.NetAddr>;
+    handler: ServeHandler<Ende.NetAddr>,
+  ): HttpServer<Ende.NetAddr>;
   /** Serves HTTP requests with the given option bag and handler.
    *
    * You can specify the socket path with `path` option.
@@ -5939,8 +5939,8 @@ declare namespace Deno {
    */
   export function serve(
     options: ServeUnixOptions,
-    handler: ServeHandler<Deno.UnixAddr>,
-  ): HttpServer<Deno.UnixAddr>;
+    handler: ServeHandler<Ende.UnixAddr>,
+  ): HttpServer<Ende.UnixAddr>;
   /** Serves HTTP requests with the given option bag and handler.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
@@ -5993,8 +5993,8 @@ declare namespace Deno {
    */
   export function serve(
     options: ServeVsockOptions,
-    handler: ServeHandler<Deno.VsockAddr>,
-  ): HttpServer<Deno.VsockAddr>;
+    handler: ServeHandler<Ende.VsockAddr>,
+  ): HttpServer<Ende.VsockAddr>;
   /** Serves HTTP requests with the given option bag and handler.
    *
    * You can specify an object with a port and hostname option, which is the
@@ -6053,8 +6053,8 @@ declare namespace Deno {
    */
   export function serve(
     options: ServeTcpOptions | (ServeTcpOptions & TlsCertifiedKeyPem),
-    handler: ServeHandler<Deno.NetAddr>,
-  ): HttpServer<Deno.NetAddr>;
+    handler: ServeHandler<Ende.NetAddr>,
+  ): HttpServer<Ende.NetAddr>;
   /** Serves HTTP requests with the given option bag.
    *
    * You can specify an object with the path option, which is the
@@ -6080,8 +6080,8 @@ declare namespace Deno {
    * @category HTTP Server
    */
   export function serve(
-    options: ServeUnixOptions & ServeInit<Deno.UnixAddr>,
-  ): HttpServer<Deno.UnixAddr>;
+    options: ServeUnixOptions & ServeInit<Ende.UnixAddr>,
+  ): HttpServer<Ende.UnixAddr>;
   /** Serves HTTP requests with the given option bag.
    *
    * The VSOCK address family facilitates communication between virtual machines and the host they are running on: https://man7.org/linux/man-pages/man7/vsock.7.html
@@ -6111,8 +6111,8 @@ declare namespace Deno {
    * @category HTTP Server
    */
   export function serve(
-    options: ServeVsockOptions & ServeInit<Deno.VsockAddr>,
-  ): HttpServer<Deno.VsockAddr>;
+    options: ServeVsockOptions & ServeInit<Ende.VsockAddr>,
+  ): HttpServer<Ende.VsockAddr>;
   /** Serves HTTP requests with the given option bag.
    *
    * You can specify an object with a port and hostname option, which is the
@@ -6141,8 +6141,8 @@ declare namespace Deno {
   export function serve(
     options:
       & (ServeTcpOptions | (ServeTcpOptions & TlsCertifiedKeyPem))
-      & ServeInit<Deno.NetAddr>,
-  ): HttpServer<Deno.NetAddr>;
+      & ServeInit<Ende.NetAddr>,
+  ): HttpServer<Ende.NetAddr>;
 
   /** All plain number types for interfacing with foreign functions.
    *
@@ -6515,7 +6515,7 @@ declare namespace Deno {
     static equals<T = unknown>(a: PointerValue<T>, b: PointerValue<T>): boolean;
     /** Return the direct memory pointer to the typed array in memory. */
     static of<T = unknown>(
-      value: Deno.UnsafeCallback | AllowSharedBufferSource,
+      value: Ende.UnsafeCallback | AllowSharedBufferSource,
     ): PointerValue<T>;
     /** Return a new pointer offset from the original by `offset` bytes. */
     static offset<T = unknown>(
@@ -7069,3 +7069,8 @@ declare namespace Deno {
 
   export {}; // only export exports
 }
+
+/** `Deno` is a permanent alias of the {@linkcode Ende} namespace. It refers to
+ * the very same declarations, so both `Deno.readTextFile()` and the type
+ * `Deno.Conn` keep working. */
+import Deno = Ende;

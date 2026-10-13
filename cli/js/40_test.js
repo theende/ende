@@ -49,7 +49,7 @@ const { setExitHandler } = core.loadExtScript("ext:ende_os/30_os.js");
 
 // Capture `Deno` global so that users deleting or mangling it, won't
 // have impact on our sanitizers.
-const DenoNs = globalThis.Deno;
+const DenoNs = globalThis.Ende;
 
 /**
  * @typedef {{
@@ -879,6 +879,6 @@ function wrapTest(desc) {
   return wrapOuter(testFn, desc);
 }
 
-globalThis.Deno.test = test;
-globalThis.Deno[globalThis.Deno.internal].installTestIsolateExitHandler =
+globalThis.Ende.test = test;
+globalThis.Ende[globalThis.Ende.internal].installTestIsolateExitHandler =
   installTestIsolateExitHandler;

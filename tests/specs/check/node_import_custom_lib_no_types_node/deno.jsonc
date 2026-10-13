@@ -2,6 +2,6 @@
   "compilerOptions": {
     // Notice there's no "node" here. In this case, it
     // should inject and use the built-in types
-    "lib": ["deno.window"]
+    "lib": ["ende.window"]
   }
 }

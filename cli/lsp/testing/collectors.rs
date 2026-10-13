@@ -560,7 +560,8 @@ impl Visit for TestCollector {
       return;
     };
     let is_describe = match prop_chain {
-      ["", "Deno", "test"] | ["Deno", "test", "ignore" | "only"] => false,
+      ["", "Deno" | "Ende", "test"]
+      | ["Deno" | "Ende", "test", "ignore" | "only"] => false,
       ["", "", "describe"] | ["", "describe", "ignore" | "only" | "skip"] => {
         true
       }
@@ -583,9 +584,9 @@ impl Visit for TestCollector {
       let Some(init) = &decl.init else { continue };
 
       match init.as_ref() {
-        // Identify destructured assignments of `test` from `Deno`
+        // Identify destructured assignments of `test` from `Deno`/`Ende`
         ast::Expr::Ident(ident) => {
-          if ident.sym != "Deno" {
+          if ident.sym != "Deno" && ident.sym != "Ende" {
             continue;
           }
 
@@ -616,13 +617,13 @@ impl Visit for TestCollector {
             }
           }
         }
-        // Identify variable assignments where the init is `Deno.test`
+        // Identify variable assignments where the init is `Deno.test`/`Ende.test`
         ast::Expr::Member(member_expr) => {
           let ast::Expr::Ident(obj_ident) = member_expr.obj.as_ref() else {
             continue;
           };
 
-          if obj_ident.sym != "Deno" {
+          if obj_ident.sym != "Deno" && obj_ident.sym != "Ende" {
             continue;
           };
 
@@ -679,6 +680,24 @@ pub mod tests {
     let mut collector = TestCollector::new(specifier, text_info);
     parsed_module.program().visit_with(&mut collector);
     collector.take()
+  }
+
+  #[test]
+  fn test_test_collector_ende_namespace() {
+    // `Ende` is the namespace and `Deno` an alias of it, so tests declared
+    // through either name are collected identically.
+    let source = r#"
+      Deno.test("a", () => {});
+      Deno.test.only("b", () => {});
+      const { test } = Deno;
+      test("c", () => {});
+      const t = Deno.test;
+      t("d", () => {});
+    "#;
+    let deno_module = collect(source);
+    assert_eq!(deno_module.defs.len(), 4);
+    let ende_module = collect(&source.replace("Deno", "Ende"));
+    assert_eq!(ende_module, deno_module);
   }
 
   #[test]

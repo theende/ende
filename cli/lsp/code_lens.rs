@@ -306,7 +306,8 @@ impl Visit for DenoTestCollector {
       return;
     };
     let is_describe = match prop_chain {
-      ["", "Deno", "test"] | ["Deno", "test", "ignore" | "only"] => false,
+      ["", "Deno" | "Ende", "test"]
+      | ["Deno" | "Ende", "test", "ignore" | "only"] => false,
       ["", "", "describe"] | ["", "describe", "ignore" | "only" | "skip"] => {
         true
       }
@@ -320,9 +321,9 @@ impl Visit for DenoTestCollector {
     for decl in &node.decls {
       if let Some(init) = &decl.init {
         match init.as_ref() {
-          // Identify destructured assignments of `test` from `Deno`
+          // Identify destructured assignments of `test` from `Deno`/`Ende`
           ast::Expr::Ident(ident) => {
-            if ident.sym == "Deno"
+            if (ident.sym == "Deno" || ident.sym == "Ende")
               && let ast::Pat::Object(object_pat) = &decl.name
             {
               for prop in &object_pat.props {
@@ -346,10 +347,10 @@ impl Visit for DenoTestCollector {
               }
             }
           }
-          // Identify variable assignments where the init is `Deno.test`
+          // Identify variable assignments where the init is `Deno.test`/`Ende.test`
           ast::Expr::Member(member_expr) => {
             if let ast::Expr::Ident(obj_ident) = member_expr.obj.as_ref()
-              && obj_ident.sym == "Deno"
+              && (obj_ident.sym == "Deno" || obj_ident.sym == "Ende")
               && let ast::MemberProp::Ident(prop_ident) = &member_expr.prop
               && prop_ident.sym == "test"
               && let ast::Pat::Ident(binding_ident) = &decl.name
@@ -747,6 +748,39 @@ mod tests {
   use ende_core::resolve_url;
 
   use super::*;
+
+  #[test]
+  fn test_deno_test_collector_ende_namespace() {
+    // `Ende` is the namespace and `Deno` an alias of it, so tests declared
+    // through either name get the same code lenses.
+    fn collect(source: &str) -> Vec<lsp::CodeLens> {
+      let specifier = resolve_url("https://deno.land/x/mod.ts").unwrap();
+      let parsed_module = deno_ast::parse_module(deno_ast::ParseParams {
+        specifier: specifier.clone(),
+        text: source.into(),
+        media_type: MediaType::TypeScript,
+        capture_tokens: true,
+        scope_analysis: true,
+        maybe_syntax: None,
+      })
+      .unwrap();
+      let mut collector =
+        DenoTestCollector::new(specifier, parsed_module.clone());
+      parsed_module.program().visit_with(&mut collector);
+      collector.take()
+    }
+    let source = r#"
+      Deno.test("a", () => {});
+      Deno.test.ignore("b", () => {});
+      const { test } = Deno;
+      test("c", () => {});
+      const t = Deno.test;
+      t("d", () => {});
+    "#;
+    let deno_lenses = collect(source);
+    assert_eq!(deno_lenses.len(), 8);
+    assert_eq!(collect(&source.replace("Deno", "Ende")), deno_lenses);
+  }
 
   #[test]
   fn test_deno_test_collector() {

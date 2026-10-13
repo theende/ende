@@ -133,7 +133,7 @@ impl Default for BootstrapOptions {
     // this version is not correct as its the version of ende_runtime
     // and the implementor should supply a user agent that makes sense
     let runtime_version = env!("CARGO_PKG_VERSION");
-    let user_agent = format!("Deno/{runtime_version}");
+    let user_agent = format!("Ende/{runtime_version}");
 
     Self {
       deno_version: runtime_version.to_string(),

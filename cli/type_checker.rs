@@ -230,7 +230,7 @@ impl TypeChecker {
     // to the user's own files. That widens the report to every file in the
     // program, including deno's bundled `asset:///` declarations. Those aren't
     // self-contained under a user-supplied `compilerOptions.lib`: with
-    // `"lib": ["dom", "deno.ns"]`, `lib.deno.ns.d.ts`'s own `import("node:net")`
+    // `"lib": ["dom", "ende.ns"]`, `lib.ende.ns.d.ts`'s own `import("node:net")`
     // and `NodeJS.Timeout` references have nothing to resolve against, and
     // adding `"node"` instead collides the bundled node types with the web
     // ones. Either way the user gets errors in a file they can't edit.

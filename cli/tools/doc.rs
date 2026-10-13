@@ -155,8 +155,12 @@ async fn generate_doc_nodes_for_builtin_types(
   analyzer: &dyn ModuleAnalyzer,
 ) -> Result<ParseOutput, AnyError> {
   let source_file_specifier =
-    ModuleSpecifier::parse("file:///lib.deno.d.ts").unwrap();
-  let content = get_types_declaration_file_text();
+    ModuleSpecifier::parse("file:///lib.ende.d.ts").unwrap();
+  // The global `import Deno = Ende;` alias would make deno_doc treat the
+  // declarations as a module (hiding every non-exported global), so leave it
+  // out. `Deno.*` links are resolved to `Ende.*` by `DocResolver`.
+  let content =
+    get_types_declaration_file_text().replace("\nimport Deno = Ende;\n", "\n");
   let loader = deno_graph::source::MemoryLoader::new(
     vec![(
       source_file_specifier.to_string(),
@@ -452,6 +456,17 @@ impl deno_doc::html::HrefResolver for DocResolver {
   }
 
   fn resolve_global_symbol(&self, symbol: &[String]) -> Option<String> {
+    // `Deno` is an alias of the `Ende` namespace.
+    let ende_symbol;
+    let symbol = match symbol.split_first() {
+      Some((first, rest)) if first == "Deno" => {
+        ende_symbol = std::iter::once("Ende".to_string())
+          .chain(rest.iter().cloned())
+          .collect::<Vec<_>>();
+        ende_symbol.as_slice()
+      }
+      _ => symbol,
+    };
     if self.deno_ns.contains_key(symbol) {
       Some(format!(
         "https://deno.land/api@v{}?s={}",
@@ -608,7 +623,7 @@ fn generate_docs_directory(
       deno_doc::html::GenerateOptions {
         package_name: None,
         main_entrypoint: Some(
-          ModuleSpecifier::parse("file:///lib.deno.d.ts").unwrap(),
+          ModuleSpecifier::parse("file:///lib.ende.d.ts").unwrap(),
         ),
         href_resolver: Arc::new(DocResolver {
           deno_ns: Default::default(),
@@ -630,7 +645,7 @@ fn generate_docs_directory(
         symbol_listing_limit: None,
       },
       IndexMap::from([(
-        ModuleSpecifier::parse("file:///lib.deno.d.ts").unwrap(),
+        ModuleSpecifier::parse("file:///lib.ende.d.ts").unwrap(),
         built_in_types,
       )]),
       None,

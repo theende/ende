@@ -67,7 +67,7 @@ test(async function promiseId() {
 // correctly. https://github.com/denoland/deno/issues/22759
 test(async function testPromiseIdWraparound() {
   const distanceToWrap = 5000;
-  Deno.core.__setNextPromiseId(2 ** 31 - distanceToWrap);
+  Ende.core.__setNextPromiseId(2 ** 31 - distanceToWrap);
 
   barrierCreate("wraparound_barrier", 2);
   const pending = barrierAwait("wraparound_barrier");
@@ -95,7 +95,7 @@ test(async function testPromiseIdWraparound() {
 // loose `!=` against `NO_PROMISE` keeps it a no-op.
 test(async function testRefUnrefPromiseWithoutId() {
   const eager = Promise.resolve("eager");
-  Deno.core.refOpPromise(eager);
-  Deno.core.unrefOpPromise(eager);
+  Ende.core.refOpPromise(eager);
+  Ende.core.unrefOpPromise(eager);
   await eager;
 });

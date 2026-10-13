@@ -4,24 +4,24 @@ import { Node, Project, ts } from "npm:ts-morph@25.0.1";
 import { join, ROOT_PATH } from "./util.js";
 
 const libs = [
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_cache.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_console.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_url.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_web.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_fetch.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_websocket.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_webstorage.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_canvas.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_crypto.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_net.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno.ns.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno.shared_globals.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno.window.d.ts"),
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno_broadcast_channel.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_cache.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_console.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_url.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_web.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_fetch.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_websocket.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_webstorage.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_canvas.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_crypto.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_net.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende.ns.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende.shared_globals.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende.window.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende_broadcast_channel.d.ts"),
 ];
 
 const unstableLibs = [
-  join(ROOT_PATH, "cli/tsc/dts/lib.deno.unstable.d.ts"),
+  join(ROOT_PATH, "cli/tsc/dts/lib.ende.unstable.d.ts"),
 ];
 
 const errors = [];

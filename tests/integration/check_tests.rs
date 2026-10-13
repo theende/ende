@@ -78,7 +78,7 @@ fn typecheck_declarations_ns() {
     "check".to_string(),
     "--doc-only".to_string(),
     util::root_path()
-      .join("cli/tsc/dts/lib.deno.ns.d.ts")
+      .join("cli/tsc/dts/lib.ende.ns.d.ts")
       .to_string_lossy()
       .into_owned(),
   ];
@@ -101,7 +101,7 @@ fn typecheck_declarations_unstable() {
     "check".to_string(),
     "--doc-only".to_string(),
     util::root_path()
-      .join("cli/tsc/dts/lib.deno.unstable.d.ts")
+      .join("cli/tsc/dts/lib.ende.unstable.d.ts")
       .to_string_lossy()
       .into_owned(),
   ];

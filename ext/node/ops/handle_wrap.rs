@@ -585,7 +585,7 @@ mod tests {
   async fn test_handle_wrap() {
     js_test(
       r#"
-        const { HandleWrap } = Deno.core.ops;
+        const { HandleWrap } = Ende.core.ops;
 
         let called = false;
         class MyHandleWrap extends HandleWrap {

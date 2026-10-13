@@ -18,7 +18,7 @@
  *
  * * TypeScript ${Deno.version.typescript}
  * * V8 ${Deno.version.v8}
- * * Deno ${Deno.version.deno}
+ * * Ende ${Ende.version.ende}
  *
  * Interactive compute with Jupyter _built into Deno_!
  * `);
@@ -350,7 +350,7 @@ function createTaggedTemplateDisplayable(mediatype) {
  *
  * * TypeScript ${Deno.version.typescript}
  * * V8 ${Deno.version.v8}
- * * Deno ${Deno.version.deno}
+ * * Ende ${Ende.version.ende}
  *
  * Interactive compute with Jupyter _built into Deno_!
  * `
@@ -568,7 +568,7 @@ function enableJupyter() {
 
   globalThis.confirm = confirm;
   globalThis.prompt = prompt;
-  globalThis.Deno.jupyter = {
+  globalThis.Ende.jupyter = {
     broadcast,
     display,
     format,

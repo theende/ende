@@ -5,7 +5,7 @@
 // deno-lint-ignore-file no-undef
 
 /** @type {DenoCore} */
-const core = globalThis.Deno.core;
+const core = globalThis.Ende.core;
 const ops = core.ops;
 
 let logDebug = false;
@@ -44,9 +44,9 @@ const unstableDenoProps = new Set([
   "QuicSendStream",
 ]);
 const unstableMsgSuggestion =
-  "If not, try changing the 'lib' compiler option to include 'deno.unstable' " +
+  "If not, try changing the 'lib' compiler option to include 'ende.unstable' " +
   "or add a triple-slash directive to the top of your entrypoint (main file): " +
-  '/// <reference lib="deno.unstable" />';
+  '/// <reference lib="ende.unstable" />';
 
 /**
  * @param {unknown} value
@@ -191,18 +191,21 @@ ts.deno.setIsNodeSourceFileCallback(isNodeSourceFile);
 function formatMessage(msg, code) {
   switch (code) {
     case 2304: {
-      if (msg === "Cannot find name 'Deno'.") {
+      if (
+        msg === "Cannot find name 'Ende'." ||
+        msg === "Cannot find name 'Deno'."
+      ) {
         msg += " Do you need to change your target library? " +
-          "Try changing the 'lib' compiler option to include 'deno.ns' " +
+          "Try changing the 'lib' compiler option to include 'ende.ns' " +
           "or add a triple-slash directive to the top of your entrypoint " +
-          '(main file): /// <reference lib="deno.ns" />';
+          '(main file): /// <reference lib="ende.ns" />';
       }
       return msg;
     }
     case 2339: {
       const property = getProperty();
       if (property && unstableDenoProps.has(property)) {
-        return `${msg} 'Deno.${property}' is an unstable API. ${unstableMsgSuggestion}`;
+        return `${msg} 'Ende.${property}' is an unstable API. ${unstableMsgSuggestion}`;
       }
       return msg;
     }
@@ -211,7 +214,7 @@ function formatMessage(msg, code) {
       if (property && unstableDenoProps.has(property)) {
         const suggestion = getMsgSuggestion();
         if (suggestion) {
-          return `${msg} 'Deno.${property}' is an unstable API. Did you mean '${suggestion}'? ${unstableMsgSuggestion}`;
+          return `${msg} 'Ende.${property}' is an unstable API. Did you mean '${suggestion}'? ${unstableMsgSuggestion}`;
         }
       }
       return msg;
@@ -219,7 +222,7 @@ function formatMessage(msg, code) {
   }
 
   function getProperty() {
-    return /Property '([^']+)' does not exist on type 'typeof Deno'/
+    return /Property '([^']+)' does not exist on type 'typeof (?:Ende|Deno)'/
       .exec(msg)?.[1];
   }
 
@@ -799,7 +802,7 @@ export function filterMapDiagnostic(diagnostic) {
     // declarations are shared between cells. As a side effect, declaring a
     // top-level binding whose name matches an ambient global from the default
     // libraries (e.g. `const name = ...` shadowing `declare var name` in
-    // `lib.deno.window.d.ts`) is reported as a redeclaration, even though it's
+    // `lib.ende.window.d.ts`) is reported as a redeclaration, even though it's
     // valid in a notebook. Suppress these when the conflicting declaration
     // lives in a default library.
     // See https://github.com/denoland/deno/issues/22628.

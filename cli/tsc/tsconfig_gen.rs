@@ -37,7 +37,7 @@ pub struct GeneratedTsConfig {
 /// is exactly the state Deno's own type checker sees after the resolver
 /// filters our generated tsconfig out of the extends chain. With @types/deno
 /// auto-loaded into Deno's checker, every global also declared in
-/// `lib.deno.shared_globals.d.ts` would duplicate (TS2403).
+/// `lib.ende.shared_globals.d.ts` would duplicate (TS2403).
 ///
 /// Generates `.deno/tsconfig.json` with compiler options and paths mappings
 /// for npm:/jsr: specifiers. Also ensures a root `tsconfig.json` exists
@@ -973,8 +973,9 @@ fn merge_deno_options(base: &mut Map<String, Value>, user_opts: &Value) {
     let mut libs: Vec<Value> = vec![json!("esnext")];
     for lib in user_lib {
       if let Some(s) = lib.as_str() {
-        // Skip Deno-specific libs that stock tsc doesn't know
-        if !s.starts_with("deno.") && s != "esnext" {
+        // Skip Ende-specific libs (and their deprecated `deno.*` names)
+        // that stock tsc doesn't know
+        if !s.starts_with("ende.") && !s.starts_with("deno.") && s != "esnext" {
           libs.push(lib.clone());
         }
       }
@@ -1082,12 +1083,13 @@ interface AlsoKeep {
   #[test]
   fn test_merge_deno_options_filters_deno_libs() {
     let mut base = base_compiler_options();
-    let user = json!({ "lib": ["deno.window", "dom", "esnext"] });
+    let user = json!({ "lib": ["ende.window", "deno.ns", "dom", "esnext"] });
     merge_deno_options(&mut base, &user);
     let lib = base.get("lib").unwrap().as_array().unwrap();
     assert!(lib.contains(&json!("esnext")));
     assert!(lib.contains(&json!("dom")));
-    assert!(!lib.iter().any(|v| v.as_str() == Some("deno.window")));
+    assert!(!lib.iter().any(|v| v.as_str() == Some("ende.window")));
+    assert!(!lib.iter().any(|v| v.as_str() == Some("deno.ns")));
   }
 
   #[test]

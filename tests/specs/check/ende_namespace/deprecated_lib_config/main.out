@@ -1,0 +1,4 @@
+Warning: "deno.ns" in compilerOptions.lib is deprecated. Use "ende.ns" instead.
+Warning: "deno.window" in compilerOptions.lib is deprecated. Use "ende.window" instead.
+Check [WILDLINE]main.ts
+Check [WILDLINE]other.ts

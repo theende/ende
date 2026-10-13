@@ -1,10 +1,10 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 /// <reference no-default-lib="true" />
-/// <reference lib="deno.ns" />
-/// <reference lib="deno.shared_globals" />
+/// <reference lib="ende.ns" />
+/// <reference lib="ende.shared_globals" />
 /// <reference lib="esnext" />
-/// <reference lib="deno.cache" />
+/// <reference lib="ende.cache" />
 
 /**
  * Event map for WorkerGlobalScope event handlers.
@@ -87,7 +87,8 @@ declare interface WorkerGlobalScope extends EventTarget {
   ): void;
 
   /** The Deno namespace containing runtime APIs. */
-  Deno: typeof Deno;
+  Ende: typeof Ende;
+  Deno: typeof Ende;
 
   /** The cache storage object for the worker. */
   caches: CacheStorage;

@@ -12,7 +12,7 @@ Deno.test(function navigatorNumCpus() {
 });
 
 Deno.test(function navigatorUserAgent() {
-  const pattern = /Deno\/\d+\.\d+\.\d+/;
+  const pattern = /^Ende\/\d+\.\d+\.\d+/;
   assert(pattern.test(navigator.userAgent));
 });
 
@@ -24,8 +24,8 @@ Deno.test(function navigatorUserAgentData() {
   assertEquals(uaData.mobile, false);
   assert(Array.isArray(uaData.brands));
   assert(uaData.brands.length > 0);
-  const deno = uaData.brands.find((b) => b.brand === "Deno");
-  assert(deno !== undefined, "expected a Deno brand");
+  const deno = uaData.brands.find((b) => b.brand === "Ende");
+  assert(deno !== undefined, "expected an Ende brand");
   assert(/^\d+$/.test(deno!.version), "brand version should be the major");
   assert(typeof uaData.platform === "string" && uaData.platform.length > 0);
 });
@@ -69,7 +69,7 @@ Deno.test(async function navigatorUserAgentDataHighEntropyValues() {
   assertEquals(values.platformVersion, "");
   assert(/^\d+\.\d+\.\d+/.test(values.uaFullVersion!));
   assert(Array.isArray(values.fullVersionList));
-  const deno = values.fullVersionList!.find((b) => b.brand === "Deno");
+  const deno = values.fullVersionList!.find((b) => b.brand === "Ende");
   assert(deno !== undefined);
   assert(/^\d+\.\d+\.\d+/.test(deno!.version));
 });

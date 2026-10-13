@@ -1,12 +1,12 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 /// <reference no-default-lib="true" />
-/// <reference lib="deno.ns" />
-/// <reference lib="deno.window" />
-/// <reference lib="deno.shared_globals" />
-/// <reference lib="deno.webstorage" />
+/// <reference lib="ende.ns" />
+/// <reference lib="ende.window" />
+/// <reference lib="ende.shared_globals" />
+/// <reference lib="ende.webstorage" />
 /// <reference lib="esnext" />
-/// <reference lib="deno.cache" />
+/// <reference lib="ende.cache" />
 /// <reference lib="es2022.intl" />
 
 declare interface UIEventInit extends EventInit {
@@ -273,7 +273,7 @@ declare interface Navigator {
   readonly clipboard: Clipboard;
 }
 
-declare namespace Deno {
+declare namespace Ende {
   export {}; // stop default export type behavior
 
   /** The application version read from `deno.json` at compile time, or
@@ -676,7 +676,7 @@ declare namespace Deno {
      */
     showContextMenu(x: number, y: number, menu: MenuItem[]): void;
 
-    getNativeWindow(): Deno.UnsafeWindowSurface;
+    getNativeWindow(): Ende.UnsafeWindowSurface;
 
     addEventListener<K extends keyof BrowserWindowEventMap>(
       type: K,

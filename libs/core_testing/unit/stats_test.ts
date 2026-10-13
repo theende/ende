@@ -12,7 +12,7 @@ import {
   test,
 } from "checkin:testing";
 
-const { op_pipe_create } = Deno.core.ops;
+const { op_pipe_create } = Ende.core.ops;
 
 test(async function testStatsOps() {
   using statsBefore = StatsFactory.capture();
@@ -50,8 +50,8 @@ test(function testStatsResources() {
   const diffMiddle = StatsFactory.diff(statsBefore, statsMiddle);
   assertEquals(0, diffMiddle.disappeared.count(LeakType.Resource));
   assertEquals(2, diffMiddle.appeared.count(LeakType.Resource));
-  Deno.core.close(p1);
-  Deno.core.close(p2);
+  Ende.core.close(p1);
+  Ende.core.close(p2);
 
   using statsAfter = StatsFactory.capture();
   const diff = StatsFactory.diff(statsBefore, statsAfter);
@@ -80,22 +80,22 @@ test(function testTimers() {
 });
 
 async function enableTracingForTest(f: () => Promise<void> | void) {
-  const oldTracingState = Deno.core.isLeakTracingEnabled();
-  Deno.core.setLeakTracingEnabled(true);
+  const oldTracingState = Ende.core.isLeakTracingEnabled();
+  Ende.core.setLeakTracingEnabled(true);
   try {
     await f();
   } finally {
-    Deno.core.setLeakTracingEnabled(oldTracingState);
+    Ende.core.setLeakTracingEnabled(oldTracingState);
   }
 }
 
 test(async function testAsyncLeakTrace() {
   await enableTracingForTest(async () => {
     barrierCreate("barrier", 2);
-    const tracesBefore = Deno.core.getAllLeakTraces();
+    const tracesBefore = Ende.core.getAllLeakTraces();
     using statsBefore = StatsFactory.capture();
     const p1 = barrierAwait("barrier");
-    const tracesAfter = Deno.core.getAllLeakTraces();
+    const tracesAfter = Ende.core.getAllLeakTraces();
     using statsAfter = StatsFactory.capture();
     const diff = StatsFactory.diff(statsBefore, statsAfter);
     // We don't test the contents, just that we have a trace here
@@ -103,7 +103,7 @@ test(async function testAsyncLeakTrace() {
 
     assertEquals(tracesAfter.size, tracesBefore.size + 1);
     assertStackTraceEquals(
-      Deno.core.getLeakTraceForPromise(p1)!,
+      Ende.core.getLeakTraceForPromise(p1)!,
       `
       at op_async_barrier_await (ext:core/00_infra.js:line:col)
       at barrierAwait (checkin:async:line:col)
@@ -120,17 +120,17 @@ test(async function testAsyncLeakTrace() {
 test(async function testTimeoutLeakTrace() {
   // Timers are tracked by Rust and have leak traces when tracing is enabled.
   await enableTracingForTest(() => {
-    const tracesBefore = Deno.core.getAllLeakTraces();
+    const tracesBefore = Ende.core.getAllLeakTraces();
     using statsBefore = StatsFactory.capture();
     const t1 = setTimeout(() => {}, 100_000);
-    const tracesAfter = Deno.core.getAllLeakTraces();
+    const tracesAfter = Ende.core.getAllLeakTraces();
     using statsAfter = StatsFactory.capture();
     const diff = StatsFactory.diff(statsBefore, statsAfter);
     assertEquals(diff.appeared.countWithTraces(LeakType.Timer), 1);
 
     assertEquals(tracesAfter.size, tracesBefore.size + 1);
     clearTimeout(t1);
-    const tracesFinal = Deno.core.getAllLeakTraces();
+    const tracesFinal = Ende.core.getAllLeakTraces();
     assertEquals(tracesFinal.size, tracesBefore.size);
   });
 });
@@ -138,17 +138,17 @@ test(async function testTimeoutLeakTrace() {
 test(async function testIntervalLeakTrace() {
   // Intervals are tracked by Rust and have leak traces when tracing is enabled.
   await enableTracingForTest(() => {
-    const tracesBefore = Deno.core.getAllLeakTraces();
+    const tracesBefore = Ende.core.getAllLeakTraces();
     using statsBefore = StatsFactory.capture();
     const t1 = setInterval(() => {}, 100_000);
-    const tracesAfter = Deno.core.getAllLeakTraces();
+    const tracesAfter = Ende.core.getAllLeakTraces();
     using statsAfter = StatsFactory.capture();
     const diff = StatsFactory.diff(statsBefore, statsAfter);
     assertEquals(diff.appeared.countWithTraces(LeakType.Interval), 1);
 
     assertEquals(tracesAfter.size, tracesBefore.size + 1);
     clearInterval(t1);
-    const tracesFinal = Deno.core.getAllLeakTraces();
+    const tracesFinal = Ende.core.getAllLeakTraces();
     assertEquals(tracesFinal.size, tracesBefore.size);
   });
 });

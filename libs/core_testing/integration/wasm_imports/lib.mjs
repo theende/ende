@@ -3,7 +3,7 @@ console.log("lib.js before");
 
 export function sleep(timeout) {
   return new Promise((resolve) => {
-    Deno.core.createTimer(resolve, timeout, undefined, false, true);
+    Ende.core.createTimer(resolve, timeout, undefined, false, true);
   });
 }
 await sleep(100);

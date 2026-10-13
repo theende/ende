@@ -1074,7 +1074,7 @@ impl JsRuntime {
         .borrow_mut()
         .replace(v8::Global::new(scope, callsite_prototype));
 
-      // ...followed by creation of `Deno.core` namespace, as well as internal
+      // ...followed by creation of `Ende.core` namespace, as well as internal
       // infrastructure to provide JavaScript bindings for ops...
       let _phase = startup_phase_begin();
       if init_mode == InitMode::New {
@@ -1102,7 +1102,7 @@ impl JsRuntime {
         // ext-module load (`ensure_fast_ops_upgraded`). A program that loads no
         // residual module (e.g. an empty script) never pays for it.
         //
-        // Capture the refs the deferred upgrade needs NOW, while `Deno.core` is
+        // Capture the refs the deferred upgrade needs NOW, while `Ende.core` is
         // still on the global — it's scrubbed from the public `Deno` after
         // bootstrap, so the post-bootstrap deferred caller can't read them.
         let (ops_obj, stub_fn) =
@@ -1253,7 +1253,7 @@ impl JsRuntime {
       let module_map = realm.0.module_map();
 
       // TODO(bartlomieju): this is somewhat duplicated in `bindings::initialize_context`,
-      // but for migration period we need to have ops available in both `Deno.core.ops`
+      // but for migration period we need to have ops available in both `Ende.core.ops`
       // as well as have them available in "virtual ops module"
       // if !matches!(
       //   self.init_mode,
@@ -1500,7 +1500,7 @@ impl JsRuntime {
 
   /// Executes built-in scripts and ES modules - this code is required for
   /// ops system to work properly, as well as providing necessary bindings
-  /// on the `Deno.core` namespace.
+  /// on the `Ende.core` namespace.
   ///
   /// This is not done in [`bindings::initialize_primordials_and_infra`] because
   /// some of this code already relies on certain ops being available.
@@ -1699,52 +1699,52 @@ impl JsRuntime {
       let context_local = v8::Local::new(scope, context);
       let global = context_local.global(scope);
       let deno_obj: v8::Local<v8::Object> =
-        bindings::get(scope, global, DENO, "Deno");
+        bindings::get(scope, global, ENDE, "Ende");
       let core_obj: v8::Local<v8::Object> =
-        bindings::get(scope, deno_obj, CORE, "Deno.core");
+        bindings::get(scope, deno_obj, CORE, "Ende.core");
 
       let event_loop_tick_cb: v8::Local<v8::Function> = bindings::get(
         scope,
         core_obj,
         EVENT_LOOP_TICK,
-        "Deno.core.__eventLoopTick",
+        "Ende.core.__eventLoopTick",
       );
       let process_timers_cb: v8::Local<v8::Function> = bindings::get(
         scope,
         core_obj,
         PROCESS_TIMERS,
-        "Deno.core.__processTimers",
+        "Ende.core.__processTimers",
       );
       let drain_next_tick_and_macrotasks_cb: v8::Local<v8::Function> =
         bindings::get(
           scope,
           core_obj,
           DRAIN_NEXT_TICK_AND_MACROTASKS,
-          "Deno.core.__drainNextTickAndMacrotasks",
+          "Ende.core.__drainNextTickAndMacrotasks",
         );
       let handle_rejections_cb: v8::Local<v8::Function> = bindings::get(
         scope,
         core_obj,
         HANDLE_REJECTIONS,
-        "Deno.core.__handleRejections",
+        "Ende.core.__handleRejections",
       );
       let build_custom_error_cb: v8::Local<v8::Function> = bindings::get(
         scope,
         core_obj,
         BUILD_CUSTOM_ERROR,
-        "Deno.core.buildCustomError",
+        "Ende.core.buildCustomError",
       );
       let error_constructors: v8::Local<v8::Object> = bindings::get(
         scope,
         core_obj,
         ERROR_CONSTRUCTORS,
-        "Deno.core.errorConstructors",
+        "Ende.core.errorConstructors",
       );
       let run_immediate_callbacks_cb: v8::Local<v8::Function> = bindings::get(
         scope,
         core_obj,
         RUN_IMMEDIATE_CALLBACKS,
-        "Deno.core.runImmediateCallbacks",
+        "Ende.core.runImmediateCallbacks",
       );
       let mut wasm_instance_fn = None;
       let mut wasm_instances_map = None;
@@ -1804,11 +1804,11 @@ impl JsRuntime {
           scope,
           core_obj,
           SET_TICK_INFO,
-          "Deno.core.__setTickInfo",
+          "Ende.core.__setTickInfo",
         );
         let undefined: v8::Local<v8::Value> = v8::undefined(scope).into();
         set_tick_info_fn.call(scope, undefined, &[tick_info_array.into()]);
-        // Clean up the init-only setter from Deno.core
+        // Clean up the init-only setter from Ende.core
         let key = SET_TICK_INFO.v8_string(scope).unwrap();
         core_obj.delete(scope, key.into());
       }
@@ -1836,7 +1836,7 @@ impl JsRuntime {
           scope,
           core_obj,
           SET_IMMEDIATE_INFO,
-          "Deno.core.__setImmediateInfo",
+          "Ende.core.__setImmediateInfo",
         );
         let undefined: v8::Local<v8::Value> = v8::undefined(scope).into();
         set_imm_info_fn.call(scope, undefined, &[imm_info_array.into()]);
@@ -1867,7 +1867,7 @@ impl JsRuntime {
           scope,
           core_obj,
           SET_TIMER_INFO,
-          "Deno.core.__setTimerInfo",
+          "Ende.core.__setTimerInfo",
         );
         let undefined: v8::Local<v8::Value> = v8::undefined(scope).into();
         set_timer_info_fn.call(scope, undefined, &[timer_info_array.into()]);

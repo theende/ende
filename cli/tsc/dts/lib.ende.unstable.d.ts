@@ -1,11 +1,11 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 /// <reference no-default-lib="true" />
-/// <reference lib="deno.ns" />
+/// <reference lib="ende.ns" />
 /// <reference lib="esnext" />
 /// <reference lib="es2022.intl" />
 
-declare namespace Deno {
+declare namespace Ende {
   export {}; // stop default export type behavior
 
   /**
@@ -199,8 +199,8 @@ declare namespace Deno {
    * @experimental
    */
   export function bundle(
-    options: Deno.bundle.Options,
-  ): Promise<Deno.bundle.Result>;
+    options: Ende.bundle.Options,
+  ): Promise<Ende.bundle.Result>;
 
   /** **UNSTABLE**: New API, yet to be vetted.
    *
@@ -228,8 +228,8 @@ declare namespace Deno {
     constructor(
       options: {
         system: "cocoa" | "win32" | "x11" | "wayland";
-        windowHandle: Deno.PointerValue<unknown>;
-        displayHandle: Deno.PointerValue<unknown>;
+        windowHandle: Ende.PointerValue<unknown>;
+        displayHandle: Ende.PointerValue<unknown>;
         width: number;
         height: number;
       },
@@ -1397,7 +1397,7 @@ declare namespace Deno {
      *
      * * TypeScript ${Deno.version.typescript}
      * * V8 ${Deno.version.v8}
-     * * Deno ${Deno.version.deno}
+     * * Ende ${Ende.version.ende}
      *
      * Interactive compute with Jupyter _built into Deno_!
      * `
@@ -4696,7 +4696,7 @@ interface WorkerOptions {
    */
   deno?: {
     /** Set to `"none"` to disable all the permissions in the worker. */
-    permissions?: Deno.PermissionOptions;
+    permissions?: Ende.PermissionOptions;
   };
 }
 

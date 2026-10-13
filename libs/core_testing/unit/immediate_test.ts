@@ -139,7 +139,7 @@ test(async function testUnrefImmediateFiresWithOtherWork() {
     immediateFired = true;
   });
   // deno-lint-ignore no-explicit-any
-  (Deno as any).unrefImmediate(imm);
+  (Ende as any).unrefImmediate(imm);
   // The timer keeps the loop alive. After it fires, check the flag.
   setTimeout(() => {
     // Use a second immediate (refed) to check after the check phase

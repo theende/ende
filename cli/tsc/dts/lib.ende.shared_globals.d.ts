@@ -5,16 +5,16 @@
 
 /// <reference no-default-lib="true" />
 /// <reference lib="esnext" />
-/// <reference lib="deno.console" />
-/// <reference lib="deno.url" />
-/// <reference lib="deno.web" />
-/// <reference lib="deno.webgpu" />
-/// <reference lib="deno.canvas" />
-/// <reference lib="deno.fetch" />
-/// <reference lib="deno.websocket" />
-/// <reference lib="deno.crypto" />
-/// <reference lib="deno.ns" />
-/// <reference lib="deno.broadcast_channel" />
+/// <reference lib="ende.console" />
+/// <reference lib="ende.url" />
+/// <reference lib="ende.web" />
+/// <reference lib="ende.webgpu" />
+/// <reference lib="ende.canvas" />
+/// <reference lib="ende.fetch" />
+/// <reference lib="ende.websocket" />
+/// <reference lib="ende.crypto" />
+/// <reference lib="ende.ns" />
+/// <reference lib="ende.broadcast_channel" />
 /// <reference lib="node" />
 
 /** The `WebAssembly` JavaScript object acts as the namespace for all
@@ -1090,7 +1090,7 @@ interface ErrorConstructor {
  */
 declare function fetch(
   input: RequestInfo | URL,
-  init?: RequestInit & { client?: Deno.HttpClient },
+  init?: RequestInit & { client?: Ende.HttpClient },
 ): Promise<Response>;
 
 /** @category Platform */

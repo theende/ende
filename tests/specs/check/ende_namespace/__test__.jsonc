@@ -1,0 +1,28 @@
+{
+  "tests": {
+    // `Deno` is a type-level alias of the `Ende` namespace.
+    "alias": {
+      "args": "check --quiet alias/main.ts alias/worker.ts",
+      "output": ""
+    },
+    // The alias is a real alias, so type errors are still reported.
+    "alias_type_error": {
+      "args": "check alias/type_error.ts",
+      "output": "alias/type_error.out",
+      "exitCode": 1
+    },
+    // Old `deno.*` lib names in compilerOptions keep working, with a
+    // one-time deprecation warning per name.
+    "deprecated_lib_config": {
+      "cwd": "deprecated_lib_config",
+      "args": "check main.ts other.ts",
+      "output": "deprecated_lib_config/main.out"
+    },
+    // Old `deno.*` lib names in triple-slash references keep working
+    // silently.
+    "deprecated_lib_reference": {
+      "args": "check deprecated_lib_reference/main.ts",
+      "output": "deprecated_lib_reference/main.out"
+    }
+  }
+}

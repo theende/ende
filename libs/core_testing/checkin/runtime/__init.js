@@ -21,7 +21,7 @@ globalThis.clearInterval = timers.clearInterval;
 globalThis.setImmediate = timers.setImmediate;
 globalThis.clearImmediate = timers.clearImmediate;
 globalThis.Worker = worker.Worker;
-Deno.core.addMainModuleHandler((module) => {
+Ende.core.addMainModuleHandler((module) => {
   if (onMainModuleCb) onMainModuleCb(module);
 });
 let onMainModuleCb = () => {};
@@ -33,25 +33,25 @@ Reflect.defineProperty(globalThis, "onmainmodule", {
 Reflect.defineProperty(globalThis, "onerror", {
   set: (cb) => {
     if (cb) {
-      Deno.core.setReportExceptionCallback((error) => {
+      Ende.core.setReportExceptionCallback((error) => {
         let defaultPrevented = false;
         cb({
           error,
           preventDefault: () => defaultPrevented = true,
         });
         if (!defaultPrevented) {
-          Deno.core.reportUnhandledException(error);
+          Ende.core.reportUnhandledException(error);
         }
       });
     } else {
-      Deno.core.setReportExceptionCallback(null);
+      Ende.core.setReportExceptionCallback(null);
     }
   },
 });
 Reflect.defineProperty(globalThis, "onunhandledrejection", {
   set: (cb) => {
     if (cb) {
-      Deno.core.setUnhandledPromiseRejectionHandler((promise, reason) => {
+      Ende.core.setUnhandledPromiseRejectionHandler((promise, reason) => {
         let defaultPrevented = false;
         cb({
           promise,
@@ -61,24 +61,24 @@ Reflect.defineProperty(globalThis, "onunhandledrejection", {
         return defaultPrevented;
       });
     } else {
-      Deno.core.setUnhandledPromiseRejectionHandler(null);
+      Ende.core.setUnhandledPromiseRejectionHandler(null);
     }
   },
 });
 Reflect.defineProperty(globalThis, "onrejectionhandled", {
   set: (cb) => {
     if (cb) {
-      Deno.core.setHandledPromiseRejectionHandler((promise, reason) => {
+      Ende.core.setHandledPromiseRejectionHandler((promise, reason) => {
         cb({
           promise,
           reason,
         });
       });
     } else {
-      Deno.core.setHandledPromiseRejectionHandler(null);
+      Ende.core.setHandledPromiseRejectionHandler(null);
     }
   },
 });
-Deno.unrefTimer = timers.unrefTimer;
-Deno.refTimer = timers.refTimer;
-Deno.unrefImmediate = timers.unrefImmediate;
+Ende.unrefTimer = timers.unrefTimer;
+Ende.refTimer = timers.refTimer;
+Ende.unrefImmediate = timers.unrefImmediate;

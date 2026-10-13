@@ -29,7 +29,7 @@ const {
 
 // Capture `Deno.inspect` and `Deno.noColor` early so that user code mangling
 // the `Deno` global doesn't affect snapshot serialization.
-const DenoNs = globalThis.Deno;
+const DenoNs = globalThis.Ende;
 const inspect = DenoNs.inspect;
 const noColor = DenoNs.noColor;
 
@@ -448,5 +448,5 @@ function flushTestSnapshots(allowStaleRemoval) {
   }
 }
 
-globalThis.Deno[globalThis.Deno.internal].flushTestSnapshots =
+globalThis.Ende[globalThis.Ende.internal].flushTestSnapshots =
   flushTestSnapshots;

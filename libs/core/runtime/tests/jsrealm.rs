@@ -30,8 +30,8 @@ fn test_set_format_exception_callback_realms() {
         "",
         format!(
           r#"
-          Deno.core.ops.op_set_format_exception_callback((error) => {{
-            Deno.core.isNativeError(error); // test reentrancy
+          Ende.core.ops.op_set_format_exception_callback((error) => {{
+            Ende.core.isNativeError(error); // test reentrancy
             return `{realm_name} / ${{error}}`;
           }});
         "#
@@ -102,7 +102,7 @@ async fn js_realm_ref_unref_ops() {
         runtime.v8_isolate(),
         "",
         r#"
-        const { op_pending } = Deno.core.ops;
+        const { op_pending } = Ende.core.ops;
         var promise = op_pending();
         "#,
       )
@@ -117,7 +117,7 @@ async fn js_realm_ref_unref_ops() {
         runtime.v8_isolate(),
         "",
         r#"
-          Deno.core.unrefOpPromise(promise);
+          Ende.core.unrefOpPromise(promise);
         "#,
       )
       .unwrap();

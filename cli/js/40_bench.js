@@ -500,4 +500,4 @@ function benchNow() {
   return op_bench_now();
 }
 
-globalThis.Deno.bench = bench;
+globalThis.Ende.bench = bench;
