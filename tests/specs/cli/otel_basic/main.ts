@@ -155,7 +155,7 @@ function onListen({ port }) {
     });
 }
 
-if (Deno.env.get("OTEL_DENO_VSOCK")) {
+if (Deno.env.get("OTEL_ENDE_VSOCK")) {
   server = Deno.serve({
     cid: -1,
     port: 4317,

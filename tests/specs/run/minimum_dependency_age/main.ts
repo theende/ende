@@ -1,2 +1,2 @@
-import "jsr:@denotest/add";
+import "jsr:@endetest/add";
 import "npm:@denotest/add";

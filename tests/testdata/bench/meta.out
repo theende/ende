@@ -2,7 +2,7 @@ Check [WILDCARD]/bench/meta.ts
 import.meta.main: false
 import.meta.url: [WILDCARD]/bench/meta.ts
     CPU | [WILDCARD]
-Runtime | Deno [WILDCARD] ([WILDCARD])
+Runtime | Ende [WILDCARD] ([WILDCARD])
 
 [WILDCARD]/bench/meta.ts
 

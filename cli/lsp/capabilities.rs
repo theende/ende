@@ -10,6 +10,7 @@ use std::sync::LazyLock;
 use ende_core::serde_json::json;
 use tower_lsp::lsp_types::*;
 
+use super::legacy_client;
 use super::refactor::ALL_KNOWN_REFACTOR_ACTION_KINDS;
 use super::semantic_tokens::get_legend;
 
@@ -153,7 +154,7 @@ pub fn server_capabilities(
     references_provider: Some(OneOf::Left(true)),
     document_highlight_provider: Some(OneOf::Left(true)),
     document_symbol_provider: Some(OneOf::Right(DocumentSymbolOptions {
-      label: Some("Deno".to_string()),
+      label: Some("Ende".to_string()),
       work_done_progress_options: WorkDoneProgressOptions {
         work_done_progress: None,
       },
@@ -174,10 +175,10 @@ pub fn server_capabilities(
     document_link_provider: None,
     color_provider: None,
     execute_command_provider: Some(ExecuteCommandOptions {
-      commands: vec![
-        "deno.cache".to_string(),
-        "deno.reloadImportRegistries".to_string(),
-      ],
+      commands: legacy_client::server_command_ids(&[
+        "cache",
+        "reloadImportRegistries",
+      ]),
       ..Default::default()
     }),
     call_hierarchy_provider: Some(CallHierarchyServerCapability::Simple(true)),
@@ -206,8 +207,11 @@ pub fn server_capabilities(
     linked_editing_range_provider: None,
     moniker_provider: None,
     experimental: Some(json!({
-      "denoConfigTasks": true,
+      "endeConfigTasks": true,
       "testingApi": true,
+      "didRefreshEndeConfigurationTreeNotifications": true,
+      // the capability names of legacy clients
+      "denoConfigTasks": true,
       "didRefreshDenoConfigurationTreeNotifications": true,
     })),
     inlay_hint_provider: Some(OneOf::Left(true)),

@@ -79,7 +79,7 @@ pub struct PermissionDeniedError {
 fn format_permission_error(name: &'static str) -> String {
   if is_standalone() {
     format!(
-      "specify the required permissions during compilation using `deno compile --allow-{name}`"
+      "specify the required permissions during compilation using `ende compile --allow-{name}`"
     )
   } else {
     format!("run again with the --allow-{name} flag")
@@ -601,7 +601,7 @@ impl UnitPermission {
         == permission_prompt(
           &format!("access to {}", self.description),
           self.name,
-          Some("Deno.permissions.query()"),
+          Some("Ende.permissions.query()"),
           false,
         )
       {
@@ -1138,7 +1138,7 @@ impl<
     match permission_prompt(
       &message,
       TAllowDesc::QueryDesc::flag_name(),
-      Some("Deno.permissions.request()"),
+      Some("Ende.permissions.request()"),
       true,
     ) {
       PromptResponse::Allow => {

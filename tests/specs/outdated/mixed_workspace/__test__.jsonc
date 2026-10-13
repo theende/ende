@@ -142,7 +142,7 @@
           "output": "[WILDCARD]"
         },
         {
-          "args": "outdated --update --latest --recursive @denotest/add @denotest/sub* !@denotest/breaking* aliased @denotest/with-subpath@0.5.0",
+          "args": "outdated --update --latest --recursive @endetest/add @endetest/sub* !@denotest/breaking* aliased @denotest/with-subpath@0.5.0",
           "output": "filtered/update.out"
         },
         {

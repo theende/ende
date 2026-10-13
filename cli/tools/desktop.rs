@@ -46,7 +46,7 @@ pub async fn desktop(
 ) -> Result<(), AnyError> {
   log::warn!(
     "{}",
-    colors::yellow_bold("⚠ deno desktop is experimental and subject to change")
+    colors::yellow_bold("⚠ ende desktop is experimental and subject to change")
   );
 
   let all_targets = desktop_flags.all_targets;
@@ -359,7 +359,7 @@ async fn compile_desktop(
         && !matches!(flags.type_check_mode, TypeCheckMode::None)
       {
         log::info!(
-          "Disabling Deno type checking for Next.js desktop compile; Next handles app compilation itself"
+          "Disabling Ende type checking for Next.js desktop compile; Next handles app compilation itself"
         );
         flags.type_check_mode = TypeCheckMode::None;
       }
@@ -1547,7 +1547,7 @@ fn reserve_app_dir(app_dir: &Path) -> Result<(), AnyError> {
   if !is_ours && !is_empty {
     bail!(
       "Refusing to delete existing directory '{}': it was not created by \
-       `deno desktop`. The app name was inferred from the entrypoint or the \
+       `ende desktop`. The app name was inferred from the entrypoint or the \
        project directory and collided with this directory. Pass --output to \
        choose a different name, or remove the directory yourself if it is a \
        leftover from an older build.",
@@ -1972,7 +1972,7 @@ impl LaufeyBackendResolver {
     // releases) start rate-limiting empty UAs aggressively.
     let mut headers = http::HeaderMap::new();
     if let Ok(ua) = http::HeaderValue::from_str(&format!(
-      "deno-desktop/{} (+https://ende.sh)",
+      "ende-desktop/{} (+https://ende.sh)",
       env!("CARGO_PKG_VERSION")
     )) {
       headers.insert(http::header::USER_AGENT, ua);
@@ -2592,8 +2592,8 @@ fn codesign_macos_bundle(
   if !cfg!(target_os = "macos") {
     bail!(
       "codesigning requires a macOS build host (uses `codesign(1)`). \
-       Run `deno desktop` on macOS, or drop `macos.codesignIdentity` \
-       from your deno.json when cross-building."
+       Run `ende desktop` on macOS, or drop `macos.codesignIdentity` \
+       from your ende.json when cross-building."
     );
   }
   if identity.is_empty() {
@@ -3890,14 +3890,14 @@ fn linux_package_version(
   };
   if !version.starts_with(|c: char| c.is_ascii_digit()) {
     bail!(
-      "deno.json `version` \"{version}\" cannot be used as a Debian/RPM package version: it must start with a digit"
+      "ende.json `version` \"{version}\" cannot be used as a Debian/RPM package version: it must start with a digit"
     );
   }
   if let Some(c) = version.chars().find(|c| {
     !(c.is_ascii_alphanumeric() || matches!(c, '.' | '+' | '-' | '~'))
   }) {
     bail!(
-      "deno.json `version` \"{version}\" cannot be used as a Debian/RPM package version: the character '{c}' is not allowed (only alphanumerics, '.', '+', '-' and '~')"
+      "ende.json `version` \"{version}\" cannot be used as a Debian/RPM package version: the character '{c}' is not allowed (only alphanumerics, '.', '+', '-' and '~')"
     );
   }
   Ok(version.replace('-', "~"))
@@ -4492,7 +4492,7 @@ fn msi_product_version(
   for (field, (limit, name)) in fields.iter().zip(LIMITS) {
     if *field > limit {
       bail!(
-        "deno.json `version` \"{version}\" cannot be used as an MSI \
+        "ende.json `version` \"{version}\" cannot be used as an MSI \
          ProductVersion: the {name} field {field} exceeds the maximum of \
          {limit}. Windows Installer packs ProductVersion into \
          major(0-255).minor(0-255).build(0-65535), so a CalVer-style version \
@@ -4533,13 +4533,13 @@ fn warn_about_unusable_version(
     return;
   };
   if numeric_version_fields(version).is_none() {
-    log::warn!("deno.json `version` {version:?} is not numeric; {consequence}");
+    log::warn!("ende.json `version` {version:?} is not numeric; {consequence}");
   } else if version_core_fields(version).len() > 3 {
     // Three is all either target can hold (MSI's ProductVersion has three
     // fields, `CFBundleVersion` accepts at most three integers), so the
     // output is right — this is only about saying so.
     log::warn!(
-      "deno.json `version` {version:?} has more than three numeric fields; \
+      "ende.json `version` {version:?} has more than three numeric fields; \
        only the leading major.minor.build are used"
     );
   }
@@ -4621,7 +4621,7 @@ fn create_windows_msi(
     .identifier
     .clone()
     .unwrap_or_else(|| format!("com.deno.desktop.{}", app_name.to_lowercase()));
-  let manufacturer = "Deno";
+  let manufacturer = "Ende";
   let arch = msi_arch_for_target(target)?;
 
   // --- Walk the staged tree: register every directory, then every file. ----
@@ -4845,7 +4845,7 @@ fn create_windows_msi(
     summary.set_comments(format!("{app_name} desktop application"));
     summary.set_arch(arch);
     summary.set_languages(&[msi::Language::from_code(1033)]);
-    summary.set_creating_application("deno desktop");
+    summary.set_creating_application("ende desktop");
     // Package code: a fresh GUID identifying this exact package build.
     summary.set_uuid(uuid::Uuid::new_v5(
       &MSI_GUID_NAMESPACE,

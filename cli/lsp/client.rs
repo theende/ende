@@ -312,22 +312,42 @@ impl ClientTrait for TowerClient {
     &self,
     params: lsp_custom::DidRefreshDenoConfigurationTreeNotificationParams,
   ) {
-    send_custom_notification!(
-      self.0,
-      lsp_custom::DidRefreshDenoConfigurationTreeNotification,
-      params
-    )
+    if legacy_client::is_legacy() {
+      self
+        .0
+        .send_notification::<
+          lsp_custom::DidRefreshDenoConfigurationTreeNotification<true>,
+        >(params.into_legacy())
+        .await
+    } else {
+      self
+        .0
+        .send_notification::<
+          lsp_custom::DidRefreshDenoConfigurationTreeNotification<false>,
+        >(params)
+        .await
+    }
   }
 
   async fn send_did_change_deno_configuration_notification(
     &self,
     params: lsp_custom::DidChangeDenoConfigurationNotificationParams,
   ) {
-    send_custom_notification!(
-      self.0,
-      lsp_custom::DidChangeDenoConfigurationNotification,
-      params
-    )
+    if legacy_client::is_legacy() {
+      self
+        .0
+        .send_notification::<
+          lsp_custom::DidChangeDenoConfigurationNotification<true>,
+        >(params.into_legacy())
+        .await
+    } else {
+      self
+        .0
+        .send_notification::<
+          lsp_custom::DidChangeDenoConfigurationNotification<false>,
+        >(params)
+        .await
+    }
   }
 
   async fn send_did_upgrade_check_notification(

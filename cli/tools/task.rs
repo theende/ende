@@ -64,7 +64,7 @@ pub async fn execute_script(
   let start_dir = &cli_options.start_dir;
   if !start_dir.has_deno_or_pkg_json() && !task_flags.eval {
     bail!(
-      "deno task couldn't find deno.json(c) or package.json. See https://docs.ende.sh/go/config"
+      "ende task couldn't find ende.json(c) or package.json. See https://docs.ende.sh/go/config"
     )
   }
   let force_use_pkg_json =
@@ -1316,7 +1316,7 @@ fn print_available_tasks_workspace(
     log::warn!(
       "{}",
       colors::red(format!(
-        "No package name matched the filter '{}' in available 'deno.json' or 'package.json' files.",
+        "No package name matched the filter '{}' in available 'ende.json' or 'package.json' files.",
         filter
       ))
     );

@@ -210,7 +210,7 @@ pub struct WorkspaceLintConfig {
 #[class(type)]
 pub enum WorkspaceDiagnosticKind {
   #[error(
-    "\"{0}\" field can only be specified in the workspace root deno.json file."
+    "\"{0}\" field can only be specified in the workspace root ende.json file."
   )]
   RootOnlyOption(&'static str),
   #[error(
@@ -218,7 +218,7 @@ pub enum WorkspaceDiagnosticKind {
   )]
   PkgJsonRootOnlyOption(&'static str),
   #[error(
-    "\"{0}\" field can only be specified in a workspace member deno.json file and not the workspace root file."
+    "\"{0}\" field can only be specified in a workspace member ende.json file and not the workspace root file."
   )]
   MemberOnlyOption(&'static str),
   #[error("\"workspaces\" field was ignored. Use \"workspace\" instead.")]

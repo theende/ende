@@ -3,12 +3,12 @@
   "tests": {
     "excluded": {
       "cwd": "excluded",
-      "args": "run jsr:@denotest/add",
+      "args": "run jsr:@endetest/add",
       "output": "excluded.out"
     },
     "not_excluded": {
       "cwd": "not_excluded",
-      "args": "run jsr:@denotest/add",
+      "args": "run jsr:@endetest/add",
       "output": "not_excluded.out"
     }
   }

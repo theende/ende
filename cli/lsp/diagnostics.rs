@@ -55,6 +55,7 @@ use super::documents::DocumentModule;
 use super::documents::DocumentModules;
 use super::language_server;
 use super::language_server::StateSnapshot;
+use super::legacy_client;
 use super::performance::Performance;
 use super::ts_server::TsServer;
 use crate::args::Flags;
@@ -881,7 +882,7 @@ impl DenoDiagnostic {
             diagnostics: Some(vec![diagnostic.clone()]),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: legacy_client::command_id("cache"),
               arguments: Some(vec![json!([data.specifier]), json!(&specifier)]),
             }),
             ..Default::default()

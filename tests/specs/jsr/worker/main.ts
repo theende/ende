@@ -1,4 +1,4 @@
-import { addAsync } from "jsr:@denotest/worker";
+import { addAsync } from "jsr:@endetest/worker";
 
 addAsync(1, 2).then((result) => {
   console.log(result);

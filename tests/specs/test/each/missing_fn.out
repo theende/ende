@@ -4,7 +4,7 @@ Uncaught error from ./missing_fn.ts FAILED
  ERRORS[WILDLINE]
 
 ./missing_fn.ts (uncaught error)
-error: (in promise) TypeError: Deno.test.each: missing test function
+error: (in promise) TypeError: Ende.test.each: missing test function
 [WILDCARD]
  FAILURES[WILDLINE]
 

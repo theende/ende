@@ -40,7 +40,7 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
   },
   UnstableFeatureDescription {
     name: "cron",
-    help_text: "Enable unstable `Deno.cron` API",
+    help_text: "Enable unstable `Ende.cron` API",
     show_in_help: true,
     kind: UnstableFeatureKind::Runtime,
     env_var: None,
@@ -103,7 +103,7 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
   },
   UnstableFeatureDescription {
     name: "no-legacy-abort",
-    help_text: "Enable abort signal in Deno.serve without legacy behavior. This will not abort the server when the request is handled successfully.",
+    help_text: "Enable abort signal in Ende.serve without legacy behavior. This will not abort the server when the request is handled successfully.",
     show_in_help: true,
     kind: UnstableFeatureKind::Runtime,
     env_var: None,

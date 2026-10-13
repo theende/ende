@@ -54,7 +54,7 @@ pub fn handle_denied_env_file_key(
   #[allow(clippy::print_stderr, reason = "can't use log crate yet")]
   if log_level.map(|l| l >= log::Level::Info).unwrap_or(true) {
     eprintln!(
-      "{} Ignoring '{}' from environment file '{}': this variable controls Deno's own runtime behavior and cannot be set from an env file.",
+      "{} Ignoring '{}' from environment file '{}': this variable controls Ende's own runtime behavior and cannot be set from an env file.",
       colors::yellow("Warning"),
       key.to_string_lossy(),
       file_path.display(),

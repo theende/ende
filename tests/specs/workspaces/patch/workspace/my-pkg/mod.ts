@@ -1,1 +1,1 @@
-export { add } from "@denotest/add";
+export { add } from "@endetest/add";

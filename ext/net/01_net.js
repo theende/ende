@@ -605,7 +605,7 @@ function listen(args) {
     case "unix": {
       const { 0: rid, 1: path } = op_net_listen_unix(
         args.path,
-        args[listenOptionApiName] ?? "Deno.listen",
+        args[listenOptionApiName] ?? "Ende.listen",
       );
       const addr = {
         transport: "unix",

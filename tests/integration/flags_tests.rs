@@ -16,7 +16,7 @@ fn help_output() {
     "Run a JavaScript or TypeScript program, or a task",
     "Run a server",
     "Run a task defined in the configuration file",
-    "Start an interactive Read-Eval-Print Loop (REPL) for Deno",
+    "Start an interactive Read-Eval-Print Loop (REPL) for Ende",
     "Evaluate a script from the command line",
     "Add dependencies",
     "Installs dependencies either in the local project or globally to a bin directory",
@@ -34,10 +34,47 @@ fn help_output() {
     "Run tests",
     "Publish the current working directory's package or workspace",
     #[cfg(feature = "upgrade")]
-    "Upgrade deno executable to given version",
+    "Upgrade ende executable to given version",
   ];
 
   for description in subcommand_descriptions {
     assert_contains!(stdout, description);
+  }
+}
+
+/// `ende --help` and `ende <sub> --help` speak "ende". The only remaining
+/// mentions of "deno" are third-party host names, the deprecated `DENO_*`
+/// env var note, header names, and doomed features (Deno Deploy, Jupyter).
+#[test]
+fn help_output_says_ende() {
+  const ALLOWED: &[&str] = &[
+    "deno.land",
+    "The deprecated DENO_* names are still accepted.",
+    "X-deno-client-address",
+    "Deno Deploy",
+    "Deno kernel for Jupyter notebooks",
+  ];
+  for args in [
+    &["--help"][..],
+    &["--help=full"][..],
+    &["run", "--help"][..],
+    &["vendor", "--help"][..],
+  ] {
+    let output = util::deno_cmd()
+      .current_dir(util::testdata_path())
+      .args_vec(args)
+      .run();
+    let stdout = output.combined_output();
+    assert_contains!(stdout, "Usage: ende");
+    for line in stdout.lines() {
+      if ALLOWED.iter().any(|allowed| line.contains(allowed)) {
+        continue;
+      }
+      assert!(
+        !line.to_lowercase().contains("deno"),
+        "`ende {}` help mentions deno: {line}",
+        args.join(" ")
+      );
+    }
   }
 }

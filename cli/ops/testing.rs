@@ -397,7 +397,7 @@ fn op_test_snapshot_read(
       .check_open(
         Cow::Owned(path),
         OpenAccessKind::Read,
-        Some("Deno.TestContext.assertSnapshot"),
+        Some("Ende.TestContext.assertSnapshot"),
       )
       .map_err(JsErrorBox::from_err)?
       .into_owned_path()
@@ -439,7 +439,7 @@ fn op_test_snapshot_write(
       .check_open(
         Cow::Owned(path),
         OpenAccessKind::Write,
-        Some("Deno.TestContext.assertSnapshot"),
+        Some("Ende.TestContext.assertSnapshot"),
       )
       .map_err(JsErrorBox::from_err)?
       .into_owned_path()

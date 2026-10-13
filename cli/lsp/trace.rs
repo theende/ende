@@ -66,13 +66,13 @@ mod real_tracing {
       .with_batch_exporter(exporter)
       .with_resource(
         Resource::builder_empty()
-          .with_service_name("deno-lsp")
+          .with_service_name("ende-lsp")
           .build(),
       )
       .build();
     opentelemetry::global::set_tracer_provider(provider.clone());
     *TRACER_PROVIDER.lock().unwrap() = Some(provider.clone());
-    Ok(provider.tracer("deno-lsp-tracer"))
+    Ok(provider.tracer("ende-lsp-tracer"))
   }
 
   pub(crate) fn init_tracing_subscriber(

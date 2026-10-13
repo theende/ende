@@ -8,7 +8,7 @@
     },
     // Mixing unprefixed (npm default) with explicit jsr: prefix
     "add_mixed_with_jsr": {
-      "args": "add @denotest/esm-basic jsr:@denotest/add",
+      "args": "add @denotest/esm-basic jsr:@endetest/add",
       "output": "add_mixed.out"
     },
     // install subcommand should also default to npm
@@ -23,7 +23,7 @@
     },
     // --jsr flag overrides default to jsr
     "add_jsr_flag": {
-      "args": "add --jsr @denotest/add",
+      "args": "add --jsr @endetest/add",
       "output": "add_jsr_flag.out"
     },
     // --npm flag is now a no-op (same as default) but should still work
@@ -51,15 +51,15 @@
     "add_alias_jsr_prefix": {
       "steps": [
         {
-          "args": "add my-jsr@jsr:@denotest/add",
-          "output": "Add jsr:@denotest/add@1.0.0\n[WILDCARD]\n"
+          "args": "add my-jsr@jsr:@endetest/add",
+          "output": "Add jsr:@endetest/add@1.0.0\n[WILDCARD]\n"
         },
         {
           "args": [
             "eval",
             "console.log(JSON.stringify(JSON.parse(Deno.readTextFileSync('ende.json')).imports))"
           ],
-          "output": "{\"my-jsr\":\"jsr:@denotest/add@^1.0.0\"}\n"
+          "output": "{\"my-jsr\":\"jsr:@endetest/add@^1.0.0\"}\n"
         }
       ]
     }

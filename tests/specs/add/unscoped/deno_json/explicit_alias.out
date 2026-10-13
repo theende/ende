@@ -1,6 +1,6 @@
 {
   "nodeModulesDir": "manual",
   "imports": {
-    "my-alias": "jsr:@denotest/add@^1.0.0"
+    "my-alias": "jsr:@endetest/add@^1.0.0"
   }
 }

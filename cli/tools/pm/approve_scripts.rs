@@ -49,7 +49,7 @@ pub async fn approve_scripts(
     options = factory.cli_options()?;
   }
   let deno_json = options.workspace().root_deno_json().ok_or_else(|| {
-    anyhow::anyhow!("A deno.json file could not be found or created")
+    anyhow::anyhow!("An ende.json file could not be found or created")
   })?;
 
   let deno_json_path = url_to_file_path(&deno_json.specifier)?;
@@ -193,7 +193,7 @@ fn find_script_candidates(
   deny_list: &[PackageReq],
 ) -> Result<Vec<ScriptCandidate>, AnyError> {
   let managed_resolver = npm_resolver.as_managed().with_context(|| {
-    "Lifecycle script approval requires an npm resolution. Run `deno install` first to create one."
+    "Lifecycle script approval requires an npm resolution. Run `ende install` first to create one."
   })?;
   let snapshot = managed_resolver.resolution().snapshot();
   let mut candidates = Vec::new();

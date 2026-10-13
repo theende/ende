@@ -18,16 +18,16 @@ fn add_basic() {
   let temp_dir = context.temp_dir().path();
   temp_dir.join("ende.json").write_json(&starting_deno_json);
 
-  let output = context.new_command().args("add jsr:@denotest/add").run();
+  let output = context.new_command().args("add jsr:@endetest/add").run();
   output.assert_exit_code(0);
   let output = output.combined_output();
-  assert_contains!(output, "Add jsr:@denotest/add");
+  assert_contains!(output, "Add jsr:@endetest/add");
   temp_dir.join("ende.json").assert_matches_json(json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./mod.ts",
     "imports": {
-      "@denotest/add": "jsr:@denotest/add@^1.0.0"
+      "@endetest/add": "jsr:@endetest/add@^1.0.0"
     }
   }));
 }
@@ -37,14 +37,14 @@ fn add_basic_no_deno_json() {
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir().path();
 
-  let output = context.new_command().args("add jsr:@denotest/add").run();
+  let output = context.new_command().args("add jsr:@endetest/add").run();
   output.assert_exit_code(0);
   let output = output.combined_output();
-  assert_contains!(output, "Add jsr:@denotest/add");
+  assert_contains!(output, "Add jsr:@endetest/add");
   // Don't use `assert_matches_json` to ensure the file is properly formatted.
   let expected = r#"{
   "imports": {
-    "@denotest/add": "jsr:@denotest/add@^1.0.0"
+    "@endetest/add": "jsr:@endetest/add@^1.0.0"
   }
 }
 "#;
@@ -57,16 +57,16 @@ fn add_basic_with_empty_deno_json() {
   let temp_dir = context.temp_dir();
   temp_dir.write("ende.json", "");
 
-  let output = context.new_command().args("add jsr:@denotest/add").run();
+  let output = context.new_command().args("add jsr:@endetest/add").run();
   output.assert_exit_code(0);
   let output = output.combined_output();
-  assert_contains!(output, "Add jsr:@denotest/add");
+  assert_contains!(output, "Add jsr:@endetest/add");
   temp_dir
     .path()
     .join("ende.json")
     .assert_matches_json(json!({
       "imports": {
-        "@denotest/add": "jsr:@denotest/add@^1.0.0"
+        "@endetest/add": "jsr:@endetest/add@^1.0.0"
       }
     }));
 }
@@ -76,13 +76,13 @@ fn add_version_contraint() {
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir().path();
 
-  let output = context.new_command().args("add jsr:@denotest/add@1").run();
+  let output = context.new_command().args("add jsr:@endetest/add@1").run();
   output.assert_exit_code(0);
   let output = output.combined_output();
-  assert_contains!(output, "Add jsr:@denotest/add");
+  assert_contains!(output, "Add jsr:@endetest/add");
   temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
-      "@denotest/add": "jsr:@denotest/add@^1.0.0"
+      "@endetest/add": "jsr:@endetest/add@^1.0.0"
     }
   }));
 }
@@ -92,13 +92,13 @@ fn add_tilde() {
   let context = pm_context_builder().build();
   let temp_dir = context.temp_dir().path();
 
-  let output = context.new_command().args("add jsr:@denotest/add@~1").run();
+  let output = context.new_command().args("add jsr:@endetest/add@~1").run();
   output.assert_exit_code(0);
   let output = output.combined_output();
-  assert_contains!(output, "Add jsr:@denotest/add");
+  assert_contains!(output, "Add jsr:@endetest/add");
   temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
-      "@denotest/add": "jsr:@denotest/add@~1.0.0"
+      "@endetest/add": "jsr:@endetest/add@~1.0.0"
     }
   }));
 }
@@ -110,14 +110,14 @@ fn add_save_exact() {
 
   let output = context
     .new_command()
-    .args("add jsr:@denotest/add --save-exact")
+    .args("add jsr:@endetest/add --save-exact")
     .run();
   output.assert_exit_code(0);
   let output = output.combined_output();
-  assert_contains!(output, "Add jsr:@denotest/add");
+  assert_contains!(output, "Add jsr:@endetest/add");
   temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
-      "@denotest/add": "jsr:@denotest/add@1.0.0"
+      "@endetest/add": "jsr:@endetest/add@1.0.0"
     }
   }));
 }
@@ -129,14 +129,14 @@ fn add_exact_alias() {
 
   let output = context
     .new_command()
-    .args("add jsr:@denotest/add --exact")
+    .args("add jsr:@endetest/add --exact")
     .run();
   output.assert_exit_code(0);
   let output = output.combined_output();
-  assert_contains!(output, "Add jsr:@denotest/add");
+  assert_contains!(output, "Add jsr:@endetest/add");
   temp_dir.join("ende.json").assert_matches_json(json!({
     "imports": {
-      "@denotest/add": "jsr:@denotest/add@1.0.0"
+      "@endetest/add": "jsr:@endetest/add@1.0.0"
     }
   }));
 }
@@ -154,18 +154,18 @@ fn add_multiple() {
 
   let output = context
     .new_command()
-    .args("add jsr:@denotest/add jsr:@denotest/subset-type-graph")
+    .args("add jsr:@endetest/add jsr:@endetest/subset-type-graph")
     .run();
   output.assert_exit_code(0);
   let output = output.combined_output();
-  assert_contains!(output, "Add jsr:@denotest/add");
+  assert_contains!(output, "Add jsr:@endetest/add");
   temp_dir.join("ende.json").assert_matches_json(json!({
     "name": "@foo/bar",
     "version": "1.0.0",
     "exports": "./mod.ts",
     "imports": {
-      "@denotest/add": "jsr:@denotest/add@^1.0.0",
-      "@denotest/subset-type-graph": "jsr:@denotest/subset-type-graph@^0.1.0"
+      "@endetest/add": "jsr:@endetest/add@^1.0.0",
+      "@endetest/subset-type-graph": "jsr:@endetest/subset-type-graph@^0.1.0"
     }
   }));
 }

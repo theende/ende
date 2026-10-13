@@ -222,7 +222,7 @@ class InnerRequest {
         legacyAbortWarned = true;
         // deno-lint-ignore no-console
         console.warn(
-          "Deno.serve: request.signal aborts on successful responses (legacy behavior). To detect when a request has been fully delivered use the `completed` promise on the handler's info argument. Move cleanup to the handler's return path, or opt in to the new behavior with --unstable-no-legacy-abort. See https://docs.ende.sh/go/unstable-no-legacy-abort",
+          "Ende.serve: request.signal aborts on successful responses (legacy behavior). To detect when a request has been fully delivered use the `completed` promise on the handler's info argument. Move cleanup to the handler's return path, or opt in to the new behavior with --unstable-no-legacy-abort. See https://docs.ende.sh/go/unstable-no-legacy-abort",
         );
       }
       abortRequest(this.request);
@@ -1308,7 +1308,7 @@ function serveInner(options, handler) {
     const listener = listen({
       transport: "unix",
       path: options.path,
-      [listenOptionApiName]: "Deno.serve",
+      [listenOptionApiName]: "Ende.serve",
     });
     const path = listener.addr.path;
     return serveHttpOnListener(
@@ -1332,7 +1332,7 @@ function serveInner(options, handler) {
       transport: "vsock",
       cid: options.cid,
       port: options.port,
-      [listenOptionApiName]: "Deno.serve",
+      [listenOptionApiName]: "Ende.serve",
     });
     const { cid, port } = listener.addr;
     return serveHttpOnListener(
@@ -1354,7 +1354,7 @@ function serveInner(options, handler) {
   if (wantsTunnel) {
     const listener = listen({
       transport: "tunnel",
-      [listenOptionApiName]: "Deno.serve",
+      [listenOptionApiName]: "Ende.serve",
     });
     return serveHttpOnListener(
       listener,
@@ -1461,7 +1461,7 @@ function serveHttpOnListener(
   const promiseErrorHandler = (error) => {
     internals.log(
       "error",
-      "Terminating Deno.serve loop due to unexpected error",
+      "Terminating Ende.serve loop due to unexpected error",
       error,
     );
     serverContext?.close();
@@ -1514,7 +1514,7 @@ function serveHttpOnConnection(connection, signal, handler, onError, onListen) {
   const promiseErrorHandler = (error) => {
     internals.log(
       "error",
-      "Terminating Deno.serve loop due to unexpected error",
+      "Terminating Ende.serve loop due to unexpected error",
       error,
     );
     serverContext?.close();

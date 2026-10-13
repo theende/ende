@@ -155,6 +155,6 @@ Deno.test("outer", () => {
   let output = context.new_command().args("test nested_test.ts").run();
   output.assert_exit_code(1);
   let combined = output.combined_output();
-  assert_contains!(combined, "Nested Deno.test() calls are not supported",);
+  assert_contains!(combined, "Nested Ende.test() calls are not supported",);
   assert_contains!(combined, "Use t.step()");
 }

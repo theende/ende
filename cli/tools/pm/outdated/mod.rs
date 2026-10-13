@@ -124,7 +124,7 @@ fn print_suggestion(compatible: bool) {
   log::info!(
     "{}",
     color_print::cformat!(
-      "<p(245)>Run</> <u>deno update{}</> <p(245)>to update to the latest {} versions,</>\n<p(245)>or</> <u>deno outdated --help</> <p(245)>for more information.</>",
+      "<p(245)>Run</> <u>ende update{}</> <p(245)>to update to the latest {} versions,</>\n<p(245)>or</> <u>ende outdated --help</> <p(245)>for more information.</>",
       cmd,
       txt,
     )
@@ -287,7 +287,7 @@ pub async fn outdated(
 
   if !cli_options.start_dir.has_deno_or_pkg_json() {
     bail!(
-      "No deno.json or package.json in \"{}\".",
+      "No ende.json or package.json in \"{}\".",
       cli_options.initial_cwd().display(),
     );
   }
@@ -652,7 +652,7 @@ async fn update(
     if lockfile_only && update_to_latest {
       let note = deno_terminal::colors::intense_blue("note");
       log::info!(
-        "{note}: --lockfile-only updates only within existing version requirements.\n      Drop --lockfile-only to update deno.json/package.json requirements.",
+        "{note}: --lockfile-only updates only within existing version requirements.\n      Drop --lockfile-only to update ende.json/package.json requirements.",
       );
     }
   } else {

@@ -993,7 +993,7 @@ impl Inner {
     &mut self,
     params: InitializeParams,
   ) -> LspResult<InitializeResult> {
-    lsp_log!("Starting Deno language server...");
+    lsp_log!("Starting Ende language server...");
     let mark = self.performance.mark_with_args("lsp.initialize", &params);
 
     // exit this process when the parent is lost
@@ -1013,7 +1013,7 @@ impl Inner {
     }
 
     let server_info = ServerInfo {
-      name: "deno-language-server".to_string(),
+      name: "ende-language-server".to_string(),
       version: Some(version),
     };
 
@@ -1267,11 +1267,12 @@ impl Inner {
         lsp_warn!(
           concat!(
             "Hit the language server document preload limit of {} file system entries. ",
-            "You may want to use the \"deno.enablePaths\" configuration setting to only have Deno ",
-            "partially enable a workspace or increase the limit via \"deno.documentPreloadLimit\". ",
-            "In cases where Deno ends up using too much memory, you may want to lower the limit."
+            "You may want to use the \"{section}.enablePaths\" configuration setting to only have Ende ",
+            "partially enable a workspace or increase the limit via \"{section}.documentPreloadLimit\". ",
+            "In cases where Ende ends up using too much memory, you may want to lower the limit."
           ),
           document_preload_limit,
+          section = legacy_client::settings_section(),
         );
       }
     }
@@ -2242,7 +2243,7 @@ impl Inner {
           DenoDiagnostic::get_code_action(document.uri(), &url, diagnostic)
             .inspect_err(|err| {
               lsp_warn!(
-                "Error getting deno code action: {:#}\nDiagnostic: {:#?}",
+                "Error getting Ende code action: {:#}\nDiagnostic: {:#?}",
                 err,
                 diagnostic
               );
@@ -2307,7 +2308,7 @@ impl Inner {
           kind: Some(INFERRED_TYPE_CODE_ACTION_KIND.clone()),
           command: Some(Command {
             title: "Copy inferred type".to_string(),
-            command: INFERRED_TYPE_COMMAND.to_string(),
+            command: legacy_client::command_id(INFERRED_TYPE_COMMAND),
             arguments: Some(vec![
               serde_json::to_value(lsp_custom::InferredTypeParams {
                 text_document: TextDocumentIdentifier {
@@ -2394,7 +2395,7 @@ impl Inner {
             }
             Err(err) => {
               lsp_warn!(
-                "Error getting deno code action: {:#}\nDiagnostic: {:#?}",
+                "Error getting Ende code action: {:#}\nDiagnostic: {:#?}",
                 err,
                 diagnostic
               );
@@ -2412,7 +2413,7 @@ impl Inner {
             }
             Err(err) => {
               lsp_warn!(
-                "Error getting deno lint code actions: {:#}\nDiagnostic: {:#?}",
+                "Error getting Ende lint code actions: {:#}\nDiagnostic: {:#?}",
                 err,
                 diagnostic
               );
@@ -2463,7 +2464,7 @@ impl Inner {
             diagnostics: Some(no_cache_diagnostics.as_ref().clone()),
             command: Some(Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: legacy_client::command_id("cache"),
               arguments: Some(vec![json!([]), json!(&module.specifier)]),
             }),
             ..Default::default()
@@ -2562,7 +2563,7 @@ impl Inner {
           }
         })?;
       if combined_code_actions.commands.is_some() {
-        error!("Deno does not support code actions with commands.");
+        error!("Ende does not support code actions with commands.");
         return Err(LspError::invalid_request());
       }
 
@@ -3796,7 +3797,8 @@ impl tower_lsp::LanguageServer for LanguageServer {
     _token: CancellationToken,
   ) -> LspResult<Option<Value>> {
     self.init_flag.wait_raised().await;
-    if params.command == "deno.cache" {
+    let command = legacy_client::command_name(&params.command);
+    if command == Some("cache") {
       #[derive(Default, Deserialize)]
       #[serde(rename_all = "camelCase")]
       struct Options {
@@ -3811,7 +3813,7 @@ impl tower_lsp::LanguageServer for LanguageServer {
       self
         .cache(specifiers, referrer, options.force_global_cache)
         .await
-    } else if params.command == "deno.reloadImportRegistries" {
+    } else if command == Some("reloadImportRegistries") {
       *self.did_change_batch_queue.borrow_mut() = None;
       self.inner.write().await.reload_import_registries().await
     } else {
@@ -4742,7 +4744,7 @@ impl Inner {
 
       write!(
         contents,
-        r#"# Deno Language Server Status
+        r#"# Ende Language Server Status
 
 ## Workspace Settings
 

@@ -6,7 +6,7 @@ const tmpDir = Deno.makeTempDirSync();
 const file1 = join(tmpDir, "1");
 const command1 = new Deno.Command(Deno.execPath(), {
   env: {
-    "OTEL_DENO_METRICS": "false",
+    "OTEL_ENDE_METRICS": "false",
     "OTEL_SERVICE_NAME": "server_1",
     "ENDE_UNSTABLE_OTEL_DETERMINISTIC": "1",
   },
@@ -20,7 +20,7 @@ const p1 = command1.output();
 const file2 = join(tmpDir, "2");
 const command2 = new Deno.Command(Deno.execPath(), {
   env: {
-    "OTEL_DENO_METRICS": "false",
+    "OTEL_ENDE_METRICS": "false",
     "OTEL_SERVICE_NAME": "server_2",
     "ENDE_UNSTABLE_OTEL_DETERMINISTIC": "2",
   },

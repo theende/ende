@@ -53,7 +53,7 @@
     "jsr_comparator_range": {
       "steps": [
         {
-          "args": ["add", "jsr:@denotest/add@>=1.0.0 <2.0.0"],
+          "args": ["add", "jsr:@endetest/add@>=1.0.0 <2.0.0"],
           "output": "jsr_add.out"
         },
         {

@@ -8,7 +8,7 @@ for (const file of ["ende.json", "deno.json", "ende.lock", "deno.lock"]) {
   if (text == null) {
     console.log(`${file}: false`);
   } else if (file.endsWith(".json")) {
-    const hasDep = text.includes("@denotest/add");
+    const hasDep = text.includes("@endetest/add");
     console.log(`${file}: true (${hasDep ? "has dep" : "no dep"})`);
   } else {
     console.log(`${file}: true`);

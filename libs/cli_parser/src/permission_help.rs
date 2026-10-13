@@ -51,8 +51,8 @@ Docs: https://docs.ende.sh/go/permissions
   --ignore-read[=<PATH>...]                 Ignore file system read access with a `NotFound` error. Optionally specify ignored paths.
                                             --ignore-read  |  --ignore-read=\"/etc,/var/log.txt\"
   ENDE_TRACE_PERMISSIONS                    Environmental variable to enable stack traces in permission prompts.
-                                            ENDE_TRACE_PERMISSIONS=1 deno run main.ts
+                                            ENDE_TRACE_PERMISSIONS=1 ende run main.ts
   ENDE_AUDIT_PERMISSIONS                    Environmental variable to audit all permissions accesses. Set to a file path for JSONL output, or \"otel\" to emit as OpenTelemetry log events via the configured OTel exporter.
-                                            ENDE_AUDIT_PERMISSIONS=./audit.jsonl deno run main.ts
-                                            ENDE_AUDIT_PERMISSIONS=otel deno run main.ts
+                                            ENDE_AUDIT_PERMISSIONS=./audit.jsonl ende run main.ts
+                                            ENDE_AUDIT_PERMISSIONS=otel ende run main.ts
 ";

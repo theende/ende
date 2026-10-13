@@ -24,7 +24,7 @@ pub enum LockfileErrorReason {
   #[error("Failed deserializing. Lockfile may be corrupt")]
   DeserializationError(#[source] DeserializationError),
   #[error(
-    "Unsupported lockfile version '{version}'. Try upgrading Deno or recreating the lockfile"
+    "Unsupported lockfile version '{version}'. Try upgrading Ende or recreating the lockfile"
   )]
   UnsupportedVersion { version: String },
   #[error(

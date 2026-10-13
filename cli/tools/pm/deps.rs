@@ -692,7 +692,7 @@ impl DepManager {
     let mut deps = Vec::with_capacity(256);
     if let Some(deno_json) = workspace_dir.member_deno_json() {
       if deno_json.specifier.scheme() != "file" {
-        bail!("remote deno.json files are not supported");
+        bail!("remote ende.json files are not supported");
       }
       let path = deno_json.specifier.to_file_path().unwrap();
       if path.parent().unwrap() == workspace_dir.dir_path() {

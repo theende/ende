@@ -32,7 +32,7 @@ Deno.test(function testWrongOverloads() {
       Deno.test(function foo() {}, {});
     },
     TypeError,
-    "Unexpected second argument to Deno.test()",
+    "Unexpected second argument to Ende.test()",
   );
   assertThrows(
     () => {

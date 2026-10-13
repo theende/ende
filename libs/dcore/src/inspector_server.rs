@@ -435,7 +435,7 @@ async fn listen_for_new_inspectors(
     );
     eprintln!("Visit chrome://inspect to connect to the debugger.");
     if info.wait_for_session {
-      eprintln!("Deno is waiting for debugger to connect.");
+      eprintln!("Ende is waiting for debugger to connect.");
     }
     if inspector_map.borrow_mut().insert(info.uuid, info).is_some() {
       panic!("Inspector UUID already in map");
@@ -526,7 +526,7 @@ impl InspectorInfo {
     let host_listen = format!("{}", self.host);
     let host = host.as_ref().unwrap_or(&host_listen);
     json!({
-      "description": "deno",
+      "description": "ende",
       "devtoolsFrontendUrl": self.get_frontend_url(host),
       "faviconUrl": "https://deno.land/favicon.ico",
       "id": self.uuid.to_string(),
@@ -550,7 +550,7 @@ impl InspectorInfo {
 
   fn get_title(&self) -> String {
     format!(
-      "deno{} [pid: {}]",
+      "ende{} [pid: {}]",
       self
         .thread_name
         .as_ref()

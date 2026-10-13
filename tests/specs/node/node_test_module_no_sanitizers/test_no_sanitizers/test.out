@@ -3,7 +3,7 @@ should not complain about resource and op sanitizers ...
   nested test ... ok ([WILDCARD])
 should not complain about resource and op sanitizers ... ok ([WILDCARD])
 should allow exit ...
-warning A test called Deno.exit(123) while the exit sanitizer was disabled (sanitizeExit: false). Aborting the test run.
+warning A test called Ende.exit(123) while the exit sanitizer was disabled (sanitizeExit: false). Aborting the test run.
 
 The following tests were pending:
 

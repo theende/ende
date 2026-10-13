@@ -231,7 +231,7 @@ function getSnapshotNotMatchMessage(actual, expected) {
     green("Actual")
   } / ${
     red("Expected")
-  }\n\n${diff}\n\nTo update snapshots, run\n    deno test --update-snapshots [files]...\n`;
+  }\n\n${diff}\n\nTo update snapshots, run\n    ende test --update-snapshots [files]...\n`;
 }
 
 let isUpdateMode = undefined;

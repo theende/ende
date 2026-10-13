@@ -883,11 +883,11 @@ pub fn op_fetch_custom_client(
             HttpClientCreateError::InvalidProxyUrl,
           ));
         }
-        permissions.check_net_url(&url, "Deno.createHttpClient()")?;
+        permissions.check_net_url(&url, "Ende.createHttpClient()")?;
       }
       Proxy::Tcp { hostname, port } => {
         permissions
-          .check_net(&(hostname, Some(*port)), "Deno.createHttpClient()")?;
+          .check_net(&(hostname, Some(*port)), "Ende.createHttpClient()")?;
       }
       Proxy::Unix {
         path: original_path,
@@ -897,7 +897,7 @@ pub fn op_fetch_custom_client(
           .check_open(
             Cow::Borrowed(path),
             OpenAccessKind::ReadWriteNoFollow,
-            Some("Deno.createHttpClient()"),
+            Some("Ende.createHttpClient()"),
           )?
           .into_path();
         // Unix sockets are an outbound network primitive, so a Unix proxy
@@ -905,14 +905,14 @@ pub fn op_fetch_custom_client(
         // filesystem check above, mirroring the direct Unix socket ops.
         permissions.check_net_unix_socket(
           &resolved_path,
-          Some("Deno.createHttpClient()"),
+          Some("Ende.createHttpClient()"),
         )?;
         if path != resolved_path {
           *original_path = resolved_path.to_string_lossy().into_owned();
         }
       }
       Proxy::Vsock { cid, port } => {
-        permissions.check_net_vsock(*cid, *port, "Deno.createHttpClient()")?;
+        permissions.check_net_vsock(*cid, *port, "Ende.createHttpClient()")?;
       }
     }
   }

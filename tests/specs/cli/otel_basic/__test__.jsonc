@@ -8,7 +8,7 @@
       "if": "linux",
       "args": "run -A --unstable-vsock main.ts basic.ts",
       "envs": {
-        "OTEL_DENO_VSOCK": "1:4317"
+        "OTEL_ENDE_VSOCK": "1:4317"
       },
       "output": "basic.out"
     },

@@ -3,7 +3,7 @@
 // Example: OpenTelemetry console exporter demo
 //
 // Run with:
-//   OTEL_DENO=true OTEL_EXPORTER_OTLP_PROTOCOL=console ./target/debug/deno run -A tests/specs/cli/otel_console/example.ts
+//   OTEL_ENDE=true OTEL_EXPORTER_OTLP_PROTOCOL=console ./target/debug/ende run -A tests/specs/cli/otel_console/example.ts
 //
 // This demonstrates spans, logs, and metrics being printed to stderr
 // in human-readable format — no collector needed.

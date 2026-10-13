@@ -257,7 +257,7 @@ impl TestReporter for TapTestReporter {
     tests: &IndexMap<usize, TestDescription>,
     test_steps: &IndexMap<usize, TestStepDescription>,
   ) {
-    drop_println!("Bail out! Deno.exit({}) called.", exit_code);
+    drop_println!("Bail out! Ende.exit({}) called.", exit_code);
     common::report_exit(
       &mut std::io::stdout(),
       &self.cwd,

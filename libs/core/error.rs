@@ -165,7 +165,7 @@ pub enum CoreErrorKind {
   #[class(generic)]
   #[error(
     "Module evaluation is still pending after multiple event loop iterations, \
-     but no stalled top-level await was found. This is a bug in Deno."
+     but no stalled top-level await was found. This is a bug in Ende."
   )]
   ModuleEvaluationDeadlock,
   #[class(generic)]
@@ -1154,7 +1154,7 @@ impl JsError {
               )]
               {
                 eprintln!(
-                  "warning: Failed to create JsStackFrame from callsite object: {message}. This is a bug in deno"
+                  "warning: Failed to create JsStackFrame from callsite object: {message}. This is a bug in ende"
                 );
               }
               break;
@@ -2296,7 +2296,7 @@ pub fn format_stack_trace<'s, 'i>(
       #[allow(clippy::print_stderr, reason = "intentional warning output")]
       {
         eprintln!(
-          "warning: Failed to create JsStackFrame from callsite object: {message}; Result so far: {result}. This is a bug in deno"
+          "warning: Failed to create JsStackFrame from callsite object: {message}; Result so far: {result}. This is a bug in ende"
         );
       }
       break;

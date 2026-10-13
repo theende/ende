@@ -253,7 +253,7 @@ pub async fn run(
   if !cli_options.is_quiet() {
     let mut handle = io::stdout().lock();
 
-    writeln!(handle, "Deno {}", DENO_VERSION_INFO.deno)?;
+    writeln!(handle, "Ende {}", DENO_VERSION_INFO.deno)?;
     writeln!(handle, "exit using ctrl+d, ctrl+c, or close()")?;
 
     if repl_flags.is_default_command {
@@ -264,7 +264,7 @@ pub async fn run(
       )?;
       writeln!(
         handle,
-        "To specify permissions, run `deno repl` with allow flags."
+        "To specify permissions, run `ende repl` with allow flags."
       )?;
     }
   }

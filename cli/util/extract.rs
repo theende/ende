@@ -560,16 +560,19 @@ fn parse_shebang(shebang: &str) -> Shebang {
   let Some(tokens) = shlex::split(line) else {
     return invalid("tokenization failed, possibly due to unterminated quotes");
   };
-  // Find the `deno` executable in the shebang (e.g. `deno`, `/usr/bin/deno`).
+  // Find the `ende` (or legacy `deno`) executable in the shebang (e.g.
+  // `ende`, `/usr/bin/ende`).
   let Some(deno_index) = tokens.iter().position(|token| {
-    std::path::Path::new(token)
-      .file_stem()
-      .and_then(|stem| stem.to_str())
-      == Some("deno")
+    matches!(
+      std::path::Path::new(token)
+        .file_stem()
+        .and_then(|stem| stem.to_str()),
+      Some("ende" | "deno")
+    )
   }) else {
-    return invalid("binary basename needs to be 'deno'");
+    return invalid("binary basename needs to be 'ende' or 'deno'");
   };
-  let mut args = vec![OsString::from("deno")];
+  let mut args = vec![OsString::from("ende")];
   args.extend(tokens[deno_index + 1..].iter().cloned().map(OsString::from));
   args.push(OsString::from("./__doctest_shebang__.ts"));
   match flags_from_vec(args) {
@@ -2082,7 +2085,7 @@ export function foo() {}
         expected: vec![Expected {
           source: r#"import { foo } from "file:///main.ts";
 Ende.test("file:///main.ts#3-7.ts", async ()=>{
-    throw new Error("invalid doc test hashbang: #!/bin/sh (binary basename needs to be 'deno')");
+    throw new Error("invalid doc test hashbang: #!/bin/sh (binary basename needs to be 'ende' or 'deno')");
     foo();
 });
 "#,
@@ -2937,6 +2940,29 @@ export default Foo
       let got = helper(test.input);
       assert_eq!(got.named_exports, test.named_expected);
       assert_eq!(got.default_export, test.default_expected);
+    }
+  }
+
+  #[test]
+  fn shebang_accepts_ende_and_deno() {
+    for shebang in [
+      "#!/usr/bin/env -S ende run --allow-read",
+      "#!/usr/local/bin/ende run --allow-read",
+      "#!/usr/bin/env -S deno run --allow-read",
+    ] {
+      match parse_shebang(shebang) {
+        Shebang::Permissions(permissions) => {
+          assert_eq!(permissions.allow_read, Some(vec![]), "{shebang}");
+        }
+        Shebang::Invalid(reason) => panic!("{shebang}: {reason}"),
+      }
+    }
+    match parse_shebang("#!/bin/sh") {
+      Shebang::Invalid(reason) => assert_eq!(
+        reason,
+        "invalid doc test hashbang: #!/bin/sh (binary basename needs to be 'ende' or 'deno')"
+      ),
+      Shebang::Permissions(_) => panic!("#!/bin/sh should be invalid"),
     }
   }
 }

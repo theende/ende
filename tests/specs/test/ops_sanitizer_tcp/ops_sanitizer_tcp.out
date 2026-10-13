@@ -7,7 +7,7 @@ testLeakTcpOps ... FAILED ([WILDCARD])
 testLeakTcpOps => [WILDCARD]/ops_sanitizer_tcp.ts:[WILDCARD]
 error: Leaks detected:
   - A TCP listener was opened during the test, but not closed during the test. Close the TCP listener by calling `tcpListener.close()`.
-  - An async operation to accept a TCP stream was started in this test, but never completed. This is often caused by not closing a `Deno.Listener`. The operation was started here:
+  - An async operation to accept a TCP stream was started in this test, but never completed. This is often caused by not closing a `Ende.Listener`. The operation was started here:
     at op_net_accept_tcp ([WILDCARD])
     at Listener.accept ([WILDCARD])
     at testLeakTcpOps ([WILDCARD])

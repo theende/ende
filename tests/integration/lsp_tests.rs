@@ -12,6 +12,7 @@ use test_util::assert_starts_with;
 use test_util::assertions::assert_json_subset;
 use test_util::eprintln;
 use test_util::lsp::LspClient;
+use test_util::lsp::SourceFile;
 use test_util::lsp::range_of;
 use test_util::lsp::source_file;
 use test_util::test;
@@ -220,7 +221,7 @@ fn unadded_dependency_message_with_import_map() {
   let mut expected_lsp_messages = Vec::from([
     "`x` is never used\nIf this is intentional, prefix it with an underscore like `_x`",
     "'x' is declared but its value is never read.",
-    "Import \"@std/fs\" not a dependency and not in import map from \"   hint: If you want to use the JSR package, try running `deno add jsr:@std/fs`",
+    "Import \"@std/fs\" not a dependency and not in import map from \"   hint: If you want to use the JSR package, try running `ende add jsr:@std/fs`",
   ]);
   expected_lsp_messages.sort();
   let all_diagnostics = diagnostics.all();
@@ -354,7 +355,7 @@ fn unadded_dependency_message() {
   let mut expected_lsp_messages = Vec::from([
     "`x` is never used\nIf this is intentional, prefix it with an underscore like `_x`",
     "'x' is declared but its value is never read.",
-    "Import \"@std/fs\" not a dependency and not in import map from \"   hint: If you want to use the JSR package, try running `deno add jsr:@std/fs`",
+    "Import \"@std/fs\" not a dependency and not in import map from \"   hint: If you want to use the JSR package, try running `ende add jsr:@std/fs`",
   ]);
   expected_lsp_messages.sort();
   let all_diagnostics = diagnostics.all();
@@ -530,7 +531,7 @@ fn lsp_import_map_diagnostics() {
         ],
         "command": {
           "title": "",
-          "command": "deno.cache",
+          "command": "ende.cache",
           "arguments": [
             ["https://deno.land/x/example/mod.ts"],
             temp_dir.url().join("import-map.json").unwrap(),
@@ -882,7 +883,7 @@ fn lsp_import_map_config_file_auto_discovered() {
     }]
   }));
   client.wait_until_stderr_line(|line| {
-    line.contains("  Resolved Deno configuration file:")
+    line.contains("  Resolved Ende configuration file:")
   });
   client.read_diagnostics();
 
@@ -941,7 +942,7 @@ fn lsp_import_map_config_file_auto_discovered() {
     }]
   }));
   client.wait_until_stderr_line(|line| {
-    line.contains("  Resolved Deno configuration file:")
+    line.contains("  Resolved Ende configuration file:")
   });
   assert_eq!(json!(client.read_diagnostics().all()), json!([]));
   let res = client.write_request(
@@ -1005,7 +1006,7 @@ fn lsp_import_map_config_file_auto_discovered_symlink() {
 
   // this will discover the ende.json in the root
   let search_line = format!(
-    "  Resolved Deno configuration file: \"{}\"",
+    "  Resolved Ende configuration file: \"{}\"",
     temp_dir.url().join("ende.json").unwrap().as_str()
   );
   client.wait_until_stderr_line(|line| line.contains(&search_line));
@@ -1252,10 +1253,10 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
   client.initialize_default();
   let mut res = client
     .read_notification_with_method::<Value>(
-      "ende/didRefreshDenoConfigurationTree",
+      "ende/didRefreshEndeConfigurationTree",
     )
     .unwrap();
-  res.as_object_mut().unwrap().remove("denoDirNpmFolderUri");
+  res.as_object_mut().unwrap().remove("endeDirNpmFolderUri");
   assert_eq!(
     res,
     json!({
@@ -1263,7 +1264,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("non_workspace1/").unwrap()).unwrap(),
           "workspaceRootScopeUri": null,
-          "denoJson": {
+          "endeJson": {
             "uri": url_to_uri(&temp_dir.url().join("non_workspace1/ende.json").unwrap()).unwrap(),
           },
           "packageJson": null,
@@ -1271,7 +1272,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("workspace/").unwrap()).unwrap(),
           "workspaceRootScopeUri": null,
-          "denoJson": {
+          "endeJson": {
             "uri": url_to_uri(&temp_dir.url().join("workspace/ende.json").unwrap()).unwrap(),
           },
           "packageJson": null,
@@ -1279,7 +1280,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("workspace/member1/").unwrap()).unwrap(),
           "workspaceRootScopeUri": url_to_uri(&temp_dir.url().join("workspace/").unwrap()).unwrap(),
-          "denoJson": {
+          "endeJson": {
             "uri": url_to_uri(&temp_dir.url().join("workspace/member1/ende.json").unwrap()).unwrap(),
           },
           "packageJson": {
@@ -1289,7 +1290,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("workspace/member2/").unwrap()).unwrap(),
           "workspaceRootScopeUri": url_to_uri(&temp_dir.url().join("workspace/").unwrap()).unwrap(),
-          "denoJson": null,
+          "endeJson": null,
           "packageJson": {
             "uri": url_to_uri(&temp_dir.url().join("workspace/member2/package.json").unwrap()).unwrap(),
           },
@@ -1308,10 +1309,10 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
   client.read_diagnostics();
   let mut res = client
     .read_notification_with_method::<Value>(
-      "ende/didRefreshDenoConfigurationTree",
+      "ende/didRefreshEndeConfigurationTree",
     )
     .unwrap();
-  res.as_object_mut().unwrap().remove("denoDirNpmFolderUri");
+  res.as_object_mut().unwrap().remove("endeDirNpmFolderUri");
   assert_eq!(
     res,
     json!({
@@ -1319,7 +1320,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("non_workspace1/").unwrap()).unwrap(),
           "workspaceRootScopeUri": null,
-          "denoJson": {
+          "endeJson": {
             "uri": url_to_uri(&temp_dir.url().join("non_workspace1/ende.json").unwrap()).unwrap(),
           },
           "packageJson": null,
@@ -1327,7 +1328,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("non_workspace2/").unwrap()).unwrap(),
           "workspaceRootScopeUri": null,
-          "denoJson": {
+          "endeJson": {
             "uri": url_to_uri(&temp_dir.url().join("non_workspace2/ende.json").unwrap()).unwrap(),
           },
           "packageJson": null,
@@ -1335,7 +1336,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("workspace/").unwrap()).unwrap(),
           "workspaceRootScopeUri": null,
-          "denoJson": {
+          "endeJson": {
             "uri": url_to_uri(&temp_dir.url().join("workspace/ende.json").unwrap()).unwrap(),
           },
           "packageJson": null,
@@ -1343,7 +1344,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("workspace/member1/").unwrap()).unwrap(),
           "workspaceRootScopeUri": url_to_uri(&temp_dir.url().join("workspace/").unwrap()).unwrap(),
-          "denoJson": {
+          "endeJson": {
             "uri": url_to_uri(&temp_dir.url().join("workspace/member1/ende.json").unwrap()).unwrap(),
           },
           "packageJson": {
@@ -1353,7 +1354,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("workspace/member2/").unwrap()).unwrap(),
           "workspaceRootScopeUri": url_to_uri(&temp_dir.url().join("workspace/").unwrap()).unwrap(),
-          "denoJson": null,
+          "endeJson": null,
           "packageJson": {
             "uri": url_to_uri(&temp_dir.url().join("workspace/member2/package.json").unwrap()).unwrap(),
           },
@@ -1368,10 +1369,10 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
   }));
   let mut res = client
     .read_notification_with_method::<Value>(
-      "ende/didRefreshDenoConfigurationTree",
+      "ende/didRefreshEndeConfigurationTree",
     )
     .unwrap();
-  res.as_object_mut().unwrap().remove("denoDirNpmFolderUri");
+  res.as_object_mut().unwrap().remove("endeDirNpmFolderUri");
   assert_eq!(
     res,
     json!({
@@ -1379,7 +1380,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("non_workspace2/").unwrap()).unwrap(),
           "workspaceRootScopeUri": null,
-          "denoJson": {
+          "endeJson": {
             "uri": url_to_uri(&temp_dir.url().join("non_workspace2/ende.json").unwrap()).unwrap(),
           },
           "packageJson": null,
@@ -1387,7 +1388,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("workspace/").unwrap()).unwrap(),
           "workspaceRootScopeUri": null,
-          "denoJson": {
+          "endeJson": {
             "uri": url_to_uri(&temp_dir.url().join("workspace/ende.json").unwrap()).unwrap(),
           },
           "packageJson": null,
@@ -1395,7 +1396,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("workspace/member1/").unwrap()).unwrap(),
           "workspaceRootScopeUri": url_to_uri(&temp_dir.url().join("workspace/").unwrap()).unwrap(),
-          "denoJson": {
+          "endeJson": {
             "uri": url_to_uri(&temp_dir.url().join("workspace/member1/ende.json").unwrap()).unwrap(),
           },
           "packageJson": {
@@ -1405,7 +1406,7 @@ fn lsp_did_refresh_deno_configuration_tree_notification() {
         {
           "scopeUri": url_to_uri(&temp_dir.url().join("workspace/member2/").unwrap()).unwrap(),
           "workspaceRootScopeUri": url_to_uri(&temp_dir.url().join("workspace/").unwrap()).unwrap(),
-          "denoJson": null,
+          "endeJson": null,
           "packageJson": {
             "uri": url_to_uri(&temp_dir.url().join("workspace/member2/package.json").unwrap()).unwrap(),
           },
@@ -1426,7 +1427,7 @@ fn lsp_did_change_deno_configuration_notification() {
   client.initialize_default();
 
   let res = client
-    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeEndeConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -1435,7 +1436,7 @@ fn lsp_did_change_deno_configuration_notification() {
           "scopeUri": temp_dir.uri(),
           "fileUri": url_to_uri(&temp_dir.url().join("ende.json").unwrap()).unwrap(),
           "type": "added",
-          "configurationType": "denoJson"
+          "configurationType": "endeJson"
         },
         {
           "scopeUri": temp_dir.uri(),
@@ -1459,7 +1460,7 @@ fn lsp_did_change_deno_configuration_notification() {
   }));
   client.read_diagnostics();
   let res = client
-    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeEndeConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -1467,7 +1468,7 @@ fn lsp_did_change_deno_configuration_notification() {
         "scopeUri": temp_dir.uri(),
         "fileUri": url_to_uri(&temp_dir.url().join("ende.json").unwrap()).unwrap(),
         "type": "changed",
-        "configurationType": "denoJson"
+        "configurationType": "endeJson"
       }],
     }))
   );
@@ -1481,7 +1482,7 @@ fn lsp_did_change_deno_configuration_notification() {
   }));
   client.read_diagnostics();
   let res = client
-    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeEndeConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -1489,7 +1490,7 @@ fn lsp_did_change_deno_configuration_notification() {
         "scopeUri": temp_dir.uri(),
         "fileUri": url_to_uri(&temp_dir.url().join("ende.json").unwrap()).unwrap(),
         "type": "removed",
-        "configurationType": "denoJson"
+        "configurationType": "endeJson"
       }],
     }))
   );
@@ -1503,7 +1504,7 @@ fn lsp_did_change_deno_configuration_notification() {
   }));
   client.read_diagnostics();
   let res = client
-    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeEndeConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -1525,7 +1526,7 @@ fn lsp_did_change_deno_configuration_notification() {
   }));
   client.read_diagnostics();
   let res = client
-    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeEndeConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -1587,7 +1588,7 @@ fn lsp_reload_import_registries_command() {
   client.initialize_default();
   let res = client.write_request(
     "workspace/executeCommand",
-    json!({ "command": "deno.reloadImportRegistries" }),
+    json!({ "command": "ende.reloadImportRegistries" }),
   );
   assert_eq!(res, json!(true));
   client.shutdown();
@@ -1909,7 +1910,7 @@ fn lsp_hover() {
     json!({
       "contents": {
         "kind": "markdown",
-        "value": "```tsx\nconst Ende.args: string[]\n```\nReturns the script arguments to the program.\n\nGive the following command line invocation of Deno:\n\n```sh\ndeno eval \"console.log(Deno.args)\" Sushi Maguro Hamachi\n```\n\nThen `Deno.args` will contain:\n\n```ts\n[ \"Sushi\", \"Maguro\", \"Hamachi\" ]\n```\n\nIf you are looking for a structured way to parse arguments, there is\n[`parseArgs()`](https://jsr.io/@std/cli/doc/parse-args/~/parseArgs) from\nthe Deno Standard Library.\n\n*@category* — Runtime\n",
+        "value": "```tsx\nconst Ende.args: string[]\n```\nReturns the script arguments to the program.\n\nGive the following command line invocation of Ende:\n\n```sh\nende eval \"console.log(Ende.args)\" Sushi Maguro Hamachi\n```\n\nThen `Ende.args` will contain:\n\n```ts\n[ \"Sushi\", \"Maguro\", \"Hamachi\" ]\n```\n\nIf you are looking for a structured way to parse arguments, there is\n[`parseArgs()`](https://jsr.io/@std/cli/doc/parse-args/~/parseArgs) from\nthe Deno Standard Library.\n\n*@category* — Runtime\n",
       },
       "range": {
         "start": { "line": 0, "character": 17 },
@@ -2003,7 +2004,7 @@ const inferred = {
       "kind": "refactor.extract.inferredType",
       "command": {
         "title": "Copy inferred type",
-        "command": "deno.inferredType",
+        "command": "ende.inferredType",
         "arguments": [{
           "textDocument": file.identifier(),
           "position": file.range_of("inferred").start,
@@ -3403,7 +3404,7 @@ fn lsp_document_preload_limit_zero_deno_json_detection() {
     builder.set_preload_limit(0);
   });
   let res = client
-    .read_notification_with_method::<Value>("ende/didChangeDenoConfiguration");
+    .read_notification_with_method::<Value>("ende/didChangeEndeConfiguration");
   assert_eq!(
     res,
     Some(json!({
@@ -3411,7 +3412,7 @@ fn lsp_document_preload_limit_zero_deno_json_detection() {
         "scopeUri": temp_dir.uri(),
         "fileUri": url_to_uri(&temp_dir.url().join("ende.json").unwrap()).unwrap(),
         "type": "added",
-        "configurationType": "denoJson",
+        "configurationType": "endeJson",
       }],
     }))
   );
@@ -3597,7 +3598,7 @@ fn lsp_hover_jsr() {
       "uri": url_to_uri(&temp_dir.url().join("file.ts").unwrap()).unwrap(),
       "languageId": "typescript",
       "version": 1,
-      "text": "import \"jsr:@denotest/add@1.0.0\";\n",
+      "text": "import \"jsr:@endetest/add@1.0.0\";\n",
     }
   }));
   client.cache_specifier(temp_dir.url().join("file.ts").unwrap());
@@ -3616,7 +3617,7 @@ fn lsp_hover_jsr() {
     json!({
       "contents": {
         "kind": "markdown",
-        "value": "**Resolved Dependency**\n\n**Code**: jsr&#8203;:&#8203;@denotest/add&#8203;@1.0.0 (<http://127.0.0.1:4250/@denotest/add/1.0.0/mod.ts>)\n",
+        "value": "**Resolved Dependency**\n\n**Code**: jsr&#8203;:&#8203;@endetest/add&#8203;@1.0.0 (<http://127.0.0.1:4250/@endetest/add/1.0.0/mod.ts>)\n",
       },
       "range": {
         "start": { "line": 0, "character": 7 },
@@ -4896,7 +4897,7 @@ fn lsp_code_lens_references() {
       },
       "command": {
         "title": "1 reference",
-        "command": "deno.client.showReferences",
+        "command": "ende.client.showReferences",
         "arguments": [
           "file:///a/file.ts",
           { "line": 0, "character": 6 },
@@ -4963,7 +4964,7 @@ fn lsp_code_lens_references() {
       },
       "command": {
         "title": "2 references",
-        "command": "deno.client.showReferences",
+        "command": "ende.client.showReferences",
         "arguments": [
           "file:///a/file.ts",
           { "line": 15, "character": 6 },
@@ -5118,7 +5119,7 @@ fn lsp_code_lens_implementations() {
       },
       "command": {
         "title": "1 implementation",
-        "command": "deno.client.showReferences",
+        "command": "ende.client.showReferences",
         "arguments": [
           "file:///a/file.ts",
           { "line": 0, "character": 10 },
@@ -5196,7 +5197,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "▶︎ Run Test",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test a",
@@ -5210,7 +5211,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "Debug",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test a",
@@ -5224,7 +5225,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "▶︎ Run Test",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test b",
@@ -5238,7 +5239,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "Debug",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test b",
@@ -5252,7 +5253,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "▶︎ Run Test",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test c",
@@ -5266,7 +5267,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "Debug",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test c",
@@ -5280,7 +5281,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "▶︎ Run Test",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test d",
@@ -5294,7 +5295,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "Debug",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test d",
@@ -5308,7 +5309,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "▶︎ Run Test",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test e",
@@ -5322,7 +5323,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "Debug",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test e",
@@ -5336,7 +5337,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "▶︎ Run Test",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test f",
@@ -5350,7 +5351,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "Debug",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test f",
@@ -5364,7 +5365,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "▶︎ Run Test",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test g",
@@ -5378,7 +5379,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "Debug",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test g",
@@ -5392,7 +5393,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "▶︎ Run Test",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test h",
@@ -5406,7 +5407,7 @@ fn lsp_code_lens_test() {
       },
       "command": {
         "title": "Debug",
-        "command": "deno.client.test",
+        "command": "ende.client.test",
         "arguments": [
           "file:///a/file.ts",
           "test h",
@@ -6251,7 +6252,7 @@ fn lsp_status_file() {
     }),
   );
   let res = res.as_str().unwrap().to_string();
-  assert!(res.starts_with("# Deno Language Server Status"));
+  assert!(res.starts_with("# Ende Language Server Status"));
 
   let res = client.write_request(
     "ende/virtualTextDocument",
@@ -6262,7 +6263,7 @@ fn lsp_status_file() {
     }),
   );
   let res = res.as_str().unwrap().to_string();
-  assert!(res.starts_with("# Deno Language Server Status"));
+  assert!(res.starts_with("# Ende Language Server Status"));
   client.shutdown();
 }
 
@@ -6424,7 +6425,7 @@ fn lsp_code_actions_deno_cache() {
       }],
       "command": {
         "title": "",
-        "command": "deno.cache",
+        "command": "ende.cache",
         "arguments": [["https://deno.land/x/a/mod.ts"], "file:///a/file.ts"]
       }
     }])
@@ -6447,7 +6448,7 @@ fn lsp_code_actions_deno_cache_jsr() {
       "languageId": "typescript",
       "version": 1,
       "text": r#"
-        import { add } from "jsr:@denotest/add@1";
+        import { add } from "jsr:@endetest/add@1";
         console.log(add(1, 2));
       "#,
     },
@@ -6464,8 +6465,8 @@ fn lsp_code_actions_deno_cache_jsr() {
         "severity": 1,
         "code": "not-installed-jsr",
         "source": "ende",
-        "message": "JSR package \"@denotest/add@1\" is not installed or doesn't exist.",
-        "data": { "specifier": "jsr:@denotest/add@1" },
+        "message": "JSR package \"@endetest/add@1\" is not installed or doesn't exist.",
+        "data": { "specifier": "jsr:@endetest/add@1" },
       }],
       "version": 1,
     })
@@ -6487,8 +6488,8 @@ fn lsp_code_actions_deno_cache_jsr() {
           "severity": 1,
           "code": "not-installed-jsr",
           "source": "ende",
-          "message": "JSR package \"@denotest/add@1\" is not installed or doesn't exist.",
-          "data": { "specifier": "jsr:@denotest/add@1" },
+          "message": "JSR package \"@endetest/add@1\" is not installed or doesn't exist.",
+          "data": { "specifier": "jsr:@endetest/add@1" },
         }],
         "only": ["quickfix"],
       }
@@ -6497,7 +6498,7 @@ fn lsp_code_actions_deno_cache_jsr() {
   assert_eq!(
     res,
     json!([{
-      "title": "Install \"jsr:@denotest/add@1\" and its dependencies.",
+      "title": "Install \"jsr:@endetest/add@1\" and its dependencies.",
       "kind": "quickfix",
       "diagnostics": [{
         "range": {
@@ -6507,21 +6508,21 @@ fn lsp_code_actions_deno_cache_jsr() {
         "severity": 1,
         "code": "not-installed-jsr",
         "source": "ende",
-        "message": "JSR package \"@denotest/add@1\" is not installed or doesn't exist.",
-        "data": { "specifier": "jsr:@denotest/add@1" },
+        "message": "JSR package \"@endetest/add@1\" is not installed or doesn't exist.",
+        "data": { "specifier": "jsr:@endetest/add@1" },
       }],
       "command": {
         "title": "",
-        "command": "deno.cache",
+        "command": "ende.cache",
         "arguments": [
-          ["jsr:@denotest/add@1"],
+          ["jsr:@endetest/add@1"],
           temp_dir.url().join("file.ts").unwrap(),
         ],
       },
     }])
   );
   client.cache(
-    ["jsr:@denotest/add@1"],
+    ["jsr:@endetest/add@1"],
     temp_dir.url().join("file.ts").unwrap(),
   );
   let diagnostics = client.read_diagnostics();
@@ -6554,7 +6555,7 @@ fn lsp_cache_downloads_jsr_type_only_dependencies() {
   let file = temp_dir.source_file(
     "file.ts",
     r#"
-      import { someFunction } from "jsr:@denotest/types-file@1";
+      import { someFunction } from "jsr:@endetest/types-file@1";
       console.log(someFunction());
     "#,
   );
@@ -6596,17 +6597,17 @@ fn lsp_jsr_lockfile() {
     .to_string(),
   );
   let lockfile = temp_dir.path().join("ende.lock");
-  let integrity = context.get_jsr_package_integrity("@denotest/add/0.2.0");
+  let integrity = context.get_jsr_package_integrity("@endetest/add/0.2.0");
   lockfile.write_json(&json!({
     "version": "3",
     "packages": {
       "specifiers": {
         // This is an old version of the package which exports `sum()` instead
         // of `add()`.
-        "jsr:@denotest/add": "jsr:@denotest/add@0.2.0",
+        "jsr:@endetest/add": "jsr:@endetest/add@0.2.0",
       },
       "jsr": {
-        "@denotest/add@0.2.0": {
+        "@endetest/add@0.2.0": {
           "integrity": integrity
         }
       }
@@ -6621,7 +6622,7 @@ fn lsp_jsr_lockfile() {
       "languageId": "typescript",
       "version": 1,
       "text": r#"
-        import { sum } from "jsr:@denotest/add";
+        import { sum } from "jsr:@endetest/add";
         console.log(sum(1, 2));
       "#,
     },
@@ -6655,7 +6656,7 @@ fn lsp_jsr_prerelease_only_package() {
       "languageId": "typescript",
       "version": 1,
       "text": r#"
-        import { doThing } from "jsr:@denotest/unstable";
+        import { doThing } from "jsr:@endetest/unstable";
         console.log(doThing());
       "#,
     },
@@ -6678,7 +6679,7 @@ fn lsp_jsr_auto_import_completion() {
   temp_dir.write(
     "main.ts",
     r#"
-      import "jsr:@denotest/add@1";
+      import "jsr:@endetest/add@1";
     "#,
   );
   let mut client = context.new_lsp_command().build();
@@ -6704,7 +6705,7 @@ fn lsp_jsr_auto_import_completion() {
   let item = list.items.iter().find(|i| i.label == "add").unwrap();
   assert_eq!(
     json!(&item.label_details),
-    json!({ "description": "jsr:@denotest/add@1" })
+    json!({ "description": "jsr:@endetest/add@1" })
   );
 
   let res = client.write_request("completionItem/resolve", json!(item));
@@ -6712,9 +6713,9 @@ fn lsp_jsr_auto_import_completion() {
     res,
     json!({
       "label": "add",
-      "labelDetails": { "description": "jsr:@denotest/add@1" },
+      "labelDetails": { "description": "jsr:@endetest/add@1" },
       "kind": 3,
-      "detail": "Add import from \"jsr:@denotest/add@1\"\n\nfunction add(a: number, b: number): number",
+      "detail": "Add import from \"jsr:@endetest/add@1\"\n\nfunction add(a: number, b: number): number",
       "sortText": "\u{ffff}16_1",
       "additionalTextEdits": [
         {
@@ -6722,7 +6723,7 @@ fn lsp_jsr_auto_import_completion() {
             "start": { "line": 0, "character": 0 },
             "end": { "line": 0, "character": 0 },
           },
-          "newText": "import { add } from \"jsr:@denotest/add@1\";\n\n",
+          "newText": "import { add } from \"jsr:@endetest/add@1\";\n\n",
         },
       ],
     })
@@ -6741,7 +6742,7 @@ fn lsp_jsr_auto_import_completion_import_map() {
     "ende.json",
     json!({
       "imports": {
-        "add": "jsr:@denotest/add@^1.0",
+        "add": "jsr:@endetest/add@^1.0",
       },
     })
     .to_string(),
@@ -7039,7 +7040,7 @@ fn lsp_jsr_code_action_missing_declaration() {
   let file = source_file(
     temp_dir.path().join("file.ts"),
     r#"
-      import { someFunction } from "jsr:@denotest/types-file";
+      import { someFunction } from "jsr:@endetest/types-file";
       assertReturnType(someFunction());
     "#,
   );
@@ -7109,7 +7110,7 @@ fn lsp_jsr_code_action_missing_declaration() {
                   "start": { "line": 1, "character": 6 },
                   "end": { "line": 1, "character": 6 },
                 },
-                "newText": "import { ReturnType } from \"jsr:@denotest/types-file/types\";\n",
+                "newText": "import { ReturnType } from \"jsr:@endetest/types-file/types\";\n",
               },
               {
                 "range": {
@@ -7136,7 +7137,7 @@ fn lsp_jsr_code_action_move_to_new_file() {
   let file = source_file(
     temp_dir.path().join("file.ts"),
     r#"
-      import { someFunction } from "jsr:@denotest/types-file";
+      import { someFunction } from "jsr:@endetest/types-file";
       export const someValue = someFunction();
     "#,
   );
@@ -7214,7 +7215,7 @@ fn lsp_jsr_code_action_move_to_new_file() {
                   "start": { "line": 0, "character": 0 },
                   "end": { "line": 0, "character": 0 },
                 },
-                "newText": "import { someFunction } from \"jsr:@denotest/types-file\";\n\nexport const someValue = someFunction();\n",
+                "newText": "import { someFunction } from \"jsr:@endetest/types-file\";\n\nexport const someValue = someFunction();\n",
               },
             ],
           },
@@ -7311,7 +7312,7 @@ fn lsp_code_actions_deno_cache_npm() {
       }],
       "command": {
         "title": "",
-        "command": "deno.cache",
+        "command": "ende.cache",
         "arguments": [["npm:chalk@5"], "file:///a/file.ts"]
       }
     }])
@@ -7429,7 +7430,7 @@ fn lsp_code_actions_deno_cache_all() {
         }],
         "command": {
           "title": "",
-          "command": "deno.cache",
+          "command": "ende.cache",
           "arguments": [["https://deno.land/x/a/mod.ts"], "file:///a/file.ts"],
         }
       },
@@ -7464,7 +7465,7 @@ fn lsp_code_actions_deno_cache_all() {
         ],
         "command": {
           "title": "",
-          "command": "deno.cache",
+          "command": "ende.cache",
           "arguments": [[], "file:///a/file.ts"],
         }
       },
@@ -7716,7 +7717,7 @@ fn lsp_virtual_text_document_non_normalized_uri() {
     .add_jsr_env_vars()
     .build();
   let temp_dir = context.temp_dir();
-  let file = temp_dir.source_file("file.ts", "import \"jsr:@denotest/add@1\";");
+  let file = temp_dir.source_file("file.ts", "import \"jsr:@endetest/add@1\";");
   context.run_deno("cache file.ts");
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
@@ -7733,14 +7734,14 @@ fn lsp_virtual_text_document_non_normalized_uri() {
     .unwrap();
   assert_eq!(
     target_uri,
-    "ende:/http/127.0.0.1:4250/@denotest/add/1.0.0/mod.ts"
+    "ende:/http/127.0.0.1:4250/@endetest/add/1.0.0/mod.ts"
   );
   let res = client.write_request(
     "ende/virtualTextDocument",
     json!({
       "textDocument": {
         // The client encodes `@` to `%40`, but we should normalize it back.
-        "uri": "ende:/http/127.0.0.1:4250/%40denotest/add/1.0.0/mod.ts"
+        "uri": "ende:/http/127.0.0.1:4250/%40endetest/add/1.0.0/mod.ts"
       }
     }),
   );
@@ -9245,7 +9246,7 @@ fn lsp_completions() {
       },
       "documentation": {
         "kind": "markdown",
-        "value": "Information related to the build of the current Deno runtime.\n\nUsers are discouraged from code branching based on this information, as\nassumptions about what is available in what build environment might change\nover time. Developers should specifically sniff out the features they\nintend to use.\n\nThe intended use for the information is for logging and debugging purposes.\n\n*@category* — Runtime\n"
+        "value": "Information related to the build of the current Ende runtime.\n\nUsers are discouraged from code branching based on this information, as\nassumptions about what is available in what build environment might change\nover time. Developers should specifically sniff out the features they\nintend to use.\n\nThe intended use for the information is for logging and debugging purposes.\n\n*@category* — Runtime\n"
       },
       "sortText": "11",
     })
@@ -11649,7 +11650,7 @@ fn lsp_completions_deno_json_imports() {
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
   // Layout of line 2 (0-indexed columns):
-  //     "add": "jsr:@denotest/add@"
+  //     "add": "jsr:@endetest/add@"
   // 0   4    9 11                30
   // The closing quote sits at column 30 — a cursor at (2, 30) sits between
   // the trailing `@` and the closing `"`, where TS would offer no help but
@@ -11659,7 +11660,7 @@ fn lsp_completions_deno_json_imports() {
       "uri": deno_json_uri,
       "languageId": "jsonc",
       "version": 1,
-      "text": "{\n  \"imports\": {\n    \"add\": \"jsr:@denotest/add@\"\n  }\n}\n",
+      "text": "{\n  \"imports\": {\n    \"add\": \"jsr:@endetest/add@\"\n  }\n}\n",
     }
   }));
   let list = client.get_completion_list(
@@ -11671,8 +11672,8 @@ fn lsp_completions_deno_json_imports() {
     list
       .items
       .iter()
-      .any(|i| i.label.starts_with("jsr:@denotest/add@")),
-    "expected a jsr:@denotest/add@<version> completion, got: {:#?}",
+      .any(|i| i.label.starts_with("jsr:@endetest/add@")),
+    "expected a jsr:@endetest/add@<version> completion, got: {:#?}",
     list.items.iter().map(|i| &i.label).collect::<Vec<_>>(),
   );
 
@@ -11715,7 +11716,7 @@ fn lsp_completions_deno_json_imports() {
             "start": { "line": 0, "character": 0 },
             "end": { "line": 4, "character": 1 }
           },
-          "text": "{\n  \"scopes\": {\n    \"./a/\": {\n      \"add\": \"jsr:@denotest/add@\"\n    }\n  }\n}\n",
+          "text": "{\n  \"scopes\": {\n    \"./a/\": {\n      \"add\": \"jsr:@endetest/add@\"\n    }\n  }\n}\n",
         }
       ]
     }),
@@ -11729,8 +11730,8 @@ fn lsp_completions_deno_json_imports() {
     list
       .items
       .iter()
-      .any(|i| i.label.starts_with("jsr:@denotest/add@")),
-    "expected a jsr:@denotest/add@<version> completion in scopes, got: {:#?}",
+      .any(|i| i.label.starts_with("jsr:@endetest/add@")),
+    "expected a jsr:@endetest/add@<version> completion in scopes, got: {:#?}",
     list.items.iter().map(|i| &i.label).collect::<Vec<_>>(),
   );
 
@@ -13528,7 +13529,7 @@ fn lsp_jupyter_completions() {
       },
       "documentation": {
         "kind": "markdown",
-        "value": "Asynchronously reads and returns the entire contents of a file as an UTF-8\ndecoded string.\n\n```ts\nconst data = await Deno.readTextFile(\"hello.txt\");\nconsole.log(data);\n```\n\nThe returned promise rejects if the operation fails, for example with\n[`Deno.errors.NotFound`](ende:/asset/lib.ende.ns.d.ts#174,5-174,43) if the file does not exist,\n[`Deno.errors.IsADirectory`](ende:/asset/lib.ende.ns.d.ts#307,5-307,47) if `path` refers to a directory, or\n[`Deno.errors.PermissionDenied`](ende:/asset/lib.ende.ns.d.ts#185,5-185,51) if the required permission has not\nbeen granted.\n\nRequires `allow-read` permission.\n\n*@tags* — allow-read\n\n\n*@category* — File System\n",
+        "value": "Asynchronously reads and returns the entire contents of a file as an UTF-8\ndecoded string.\n\n```ts\nconst data = await Ende.readTextFile(\"hello.txt\");\nconsole.log(data);\n```\n\nThe returned promise rejects if the operation fails, for example with\n[`Ende.errors.NotFound`](ende:/asset/lib.ende.ns.d.ts#174,5-174,43) if the file does not exist,\n[`Ende.errors.IsADirectory`](ende:/asset/lib.ende.ns.d.ts#307,5-307,47) if `path` refers to a directory, or\n[`Ende.errors.PermissionDenied`](ende:/asset/lib.ende.ns.d.ts#185,5-185,51) if the required permission has not\nbeen granted.\n\nRequires `allow-read` permission.\n\n*@tags* — allow-read\n\n\n*@category* — File System\n",
       },
       "sortText": "11",
     }),
@@ -22490,7 +22491,7 @@ fn lsp_push_diagnostics() {
             "severity": 1,
             "code": "import-prefix-missing",
             "source": "ende",
-            "message": "Import \"foo\" not a dependency\n  hint: If you want to use the npm package, try running `deno add npm:foo`",
+            "message": "Import \"foo\" not a dependency\n  hint: If you want to use the npm package, try running `ende add npm:foo`",
           },
         ],
         "version": 1,
@@ -22583,7 +22584,7 @@ fn lsp_force_push_based_diagnostics_setting() {
             "severity": 1,
             "code": "import-prefix-missing",
             "source": "ende",
-            "message": "Import \"foo\" not a dependency\n  hint: If you want to use the npm package, try running `deno add npm:foo`",
+            "message": "Import \"foo\" not a dependency\n  hint: If you want to use the npm package, try running `ende add npm:foo`",
           },
         ],
         "version": 1,
@@ -22643,7 +22644,7 @@ fn lsp_dts_entrypoint_unresolved_import() {
         "severity": 1,
         "code": "import-prefix-missing",
         "source": "ende",
-        "message": "Import \"some-non-existent-package\" not a dependency\n  hint: If you want to use the npm package, try running `deno add npm:some-non-existent-package`",
+        "message": "Import \"some-non-existent-package\" not a dependency\n  hint: If you want to use the npm package, try running `ende add npm:some-non-existent-package`",
       },
     ]),
   );
@@ -22749,14 +22750,36 @@ fn lsp_modern_client_receives_ende_names() {
     temp_dir.source_file("file.ts", "export const d: Date = new Date();\n");
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
-  // custom notifications use `ende/*` names
-  client
+  // custom notifications use `ende/*` names and `ende*` payload fields
+  let refresh = client
     .read_notification_with_method::<Value>(
-      "ende/didRefreshDenoConfigurationTree",
+      "ende/didRefreshEndeConfigurationTree",
     )
     .unwrap();
+  assert!(refresh.get("endeDirNpmFolderUri").is_some(), "{refresh}");
+  assert!(refresh.get("denoDirNpmFolderUri").is_none(), "{refresh}");
+  assert_eq!(
+    refresh["data"][0]["endeJson"],
+    json!({
+      "uri": url_to_uri(&temp_dir.url().join("ende.json").unwrap()).unwrap()
+    }),
+  );
+  assert!(refresh["data"][0].get("denoJson").is_none(), "{refresh}");
   let diagnostics = client.did_open_file(&file);
   assert_eq!(json!(diagnostics.all()), json!([]));
+  // commands sent to the client use `ende.*` ids
+  assert_eq!(
+    cache_quick_fix_command(&mut client, &file),
+    json!("ende.cache")
+  );
+  // both command id forms are accepted
+  for command in ["ende.cache", "deno.cache"] {
+    let res = client.write_request(
+      "workspace/executeCommand",
+      json!({ "command": command, "arguments": [[], file.uri()] }),
+    );
+    assert_eq!(res, json!(true), "{command}");
+  }
   // virtual documents use the `ende:` scheme
   let res = client.write_request(
     "textDocument/definition",
@@ -22774,6 +22797,31 @@ fn lsp_modern_client_receives_ende_names() {
     0
   );
   client.shutdown();
+}
+
+/// Requests the quick fix for an uncached remote import in `file` and returns
+/// the id of its command.
+fn cache_quick_fix_command(client: &mut LspClient, file: &SourceFile) -> Value {
+  let diagnostic = json!({
+    "range": {
+      "start": { "line": 0, "character": 0 },
+      "end": { "line": 0, "character": 1 }
+    },
+    "severity": 1,
+    "code": "no-cache",
+    "source": "ende",
+    "message": "Uncached or missing remote URL: https://deno.land/x/a/mod.ts",
+    "data": { "specifier": "https://deno.land/x/a/mod.ts" }
+  });
+  let res = client.write_request(
+    "textDocument/codeAction",
+    json!({
+      "textDocument": { "uri": file.uri() },
+      "range": diagnostic["range"],
+      "context": { "diagnostics": [diagnostic], "only": ["quickfix"] }
+    }),
+  );
+  res[0]["command"]["command"].clone()
 }
 
 #[test(timeout = 300)]
@@ -22799,16 +22847,42 @@ fn lsp_legacy_client_receives_deno_names() {
       "message": "The \"deno\" settings section is deprecated. Use \"ende\" instead.",
     }),
   );
-  // custom notifications use `deno/*` names
-  client
+  // custom notifications use `deno/*` names and `deno*` payload fields
+  let refresh = client
     .read_notification_with_method::<Value>(
       "deno/didRefreshDenoConfigurationTree",
     )
     .unwrap();
+  assert!(refresh.get("denoDirNpmFolderUri").is_some(), "{refresh}");
+  assert!(refresh.get("endeDirNpmFolderUri").is_none(), "{refresh}");
+  for data in refresh["data"].as_array().unwrap() {
+    assert!(data.get("denoJson").is_some(), "{refresh}");
+    assert!(data.get("endeJson").is_none(), "{refresh}");
+  }
   // the settings from the `deno` section are used
   let diagnostics = client.did_open_file(&file);
   assert_eq!(diagnostics.all().len(), 1);
   assert_eq!(diagnostics.all()[0].source.as_deref(), Some("ende-ts"));
+  // the warning is only logged once (checked before the `cache` commands
+  // below, whose diagnostic refresh requests would be read first)
+  client.change_configuration(json!({ "deno": { "enable": true } }));
+  client.write_request(
+    "deno/virtualTextDocument",
+    json!({ "textDocument": { "uri": "deno:/status.md" } }),
+  );
+  // commands sent to the client use `deno.*` ids
+  assert_eq!(
+    cache_quick_fix_command(&mut client, &file),
+    json!("deno.cache")
+  );
+  // both command id forms are accepted
+  for command in ["deno.cache", "ende.cache"] {
+    let res = client.write_request(
+      "workspace/executeCommand",
+      json!({ "command": command, "arguments": [[], file.uri()] }),
+    );
+    assert_eq!(res, json!(true), "{command}");
+  }
   // virtual documents use the `deno:` scheme
   let res = client.write_request(
     "textDocument/definition",
@@ -22820,15 +22894,9 @@ fn lsp_legacy_client_receives_deno_names() {
   let res = res.to_string();
   assert!(res.contains("\"deno:/asset/"), "{res}");
   assert!(!res.contains("ende:"), "{res}");
-  // the warning is only logged once
-  client.change_configuration(json!({ "deno": { "enable": true } }));
-  client.write_request(
-    "deno/virtualTextDocument",
-    json!({ "textDocument": { "uri": "deno:/status.md" } }),
-  );
   assert_eq!(client.notification_count("window/logMessage"), 1);
   assert_eq!(
-    client.notification_count("ende/didRefreshDenoConfigurationTree"),
+    client.notification_count("ende/didRefreshEndeConfigurationTree"),
     0
   );
   client.shutdown();
@@ -22924,7 +22992,7 @@ fn lsp_code_actions_accept_deno_diagnostic_source() {
       "diagnostics": [diagnostic],
       "command": {
         "title": "",
-        "command": "deno.cache",
+        "command": "ende.cache",
         "arguments": [["https://deno.land/x/a/mod.ts"], "file:///a/file.ts"]
       }
     }])

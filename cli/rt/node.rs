@@ -119,7 +119,7 @@ impl CjsCodeAnalyzer {
             // the compile step skipped analysis for this file — bug.
             if log::log_enabled!(log::Level::Debug) {
               log::debug!(
-                "No CJS export analysis was stored for '{}'. Assuming ESM. This might indicate a bug in Deno.",
+                "No CJS export analysis was stored for '{}'. Assuming ESM. This might indicate a bug in Ende.",
                 specifier
               );
             }

@@ -12,7 +12,7 @@
     "jsr_latest": {
       "steps": [
         {
-          "args": "add jsr:@denotest/add@latest",
+          "args": "add jsr:@endetest/add@latest",
           "output": "add_jsr.out"
         }
       ]
@@ -20,7 +20,7 @@
     "jsr_unsupported_tag": {
       "steps": [
         {
-          "args": "add jsr:@denotest/add@beta",
+          "args": "add jsr:@endetest/add@beta",
           "output": "add_jsr_unsupported_tag.out",
           "exitCode": 1
         }

@@ -28,7 +28,7 @@
     "jsr": {
       "steps": [
         { "args": "install", "output": "[WILDCARD]" },
-        { "args": "list @denotest/add", "output": "jsr.out" }
+        { "args": "list @endetest/add", "output": "jsr.out" }
       ]
     },
     "depth": {

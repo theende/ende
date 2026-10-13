@@ -1,8 +1,8 @@
 {
   "$id": "https://raw.githubusercontent.com/theende/ende/primary/cli/schemas/config-file.v1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Deno configuration file Schema",
-  "description": "A JSON representation of a Deno configuration file.",
+  "title": "Ende configuration file Schema",
+  "description": "A JSON representation of an Ende configuration file.",
   "type": "object",
   "required": [],
   "$defs": {
@@ -124,7 +124,7 @@
     },
     "compile": {
       "type": "object",
-      "description": "Configuration for `deno compile`.",
+      "description": "Configuration for `ende compile`.",
       "additionalProperties": false,
       "properties": {
         "include": {
@@ -148,7 +148,7 @@
     },
     "desktop": {
       "type": "object",
-      "description": "Configuration for `deno desktop`.",
+      "description": "Configuration for `ende desktop`.",
       "additionalProperties": false,
       "properties": {
         "app": {
@@ -473,7 +473,7 @@
         "baseUrl": {
           "description": "Specify the base directory to resolve non-relative module names.",
           "type": ["string", "null"],
-          "markdownDescription": "Specify the base directory to resolve non-relative module names.\n\nIn Deno, this is only applied to bare specifier entries in `compilerOptions.paths` and `compilerOptions.rootDirs`.\n\nSee more: https://www.typescriptlang.org/tsconfig#baseUrl"
+          "markdownDescription": "Specify the base directory to resolve non-relative module names.\n\nIn Ende, this is only applied to bare specifier entries in `compilerOptions.paths` and `compilerOptions.rootDirs`.\n\nSee more: https://www.typescriptlang.org/tsconfig#baseUrl"
         },
         "paths": {
           "description": "Specify a set of entries that re-map imports to additional lookup locations.",
@@ -562,7 +562,7 @@
     },
     "deploy": {
       "type": "object",
-      "description": "Configuration for `deno deploy` and `deno sandbox`.",
+      "description": "Configuration for `ende deploy` and `ende sandbox`.",
       "additionalProperties": false,
       "properties": {
         "org": {
@@ -912,7 +912,7 @@
           "enum": ["maintain", "caseSensitive", "caseInsensitive"]
         },
         "useEditorConfig": {
-          "description": "Whether `deno fmt` reads `.editorconfig` files to fill in formatting options that are not otherwise set. Defaults to true.",
+          "description": "Whether `ende fmt` reads `.editorconfig` files to fill in formatting options that are not otherwise set. Defaults to true.",
           "default": true,
           "type": "boolean"
         },
@@ -996,11 +996,11 @@
       "type": "boolean"
     },
     "preferPackageJson": {
-      "description": "When enabled, `deno add`, `deno install` and `deno remove` manage dependencies in package.json instead of deno.json, creating a package.json if one does not exist. Equivalent to passing `--package-json` to those commands.",
+      "description": "When enabled, `ende add`, `ende install` and `ende remove` manage dependencies in package.json instead of ende.json, creating a package.json if one does not exist. Equivalent to passing `--package-json` to those commands.",
       "type": "boolean"
     },
     "tasks": {
-      "description": "Configuration for deno task",
+      "description": "Configuration for ende task",
       "type": "object",
       "patternProperties": {
         "^[A-Za-z][A-Za-z0-9_\\-:]*$": {
@@ -1015,7 +1015,7 @@
               "properties": {
                 "description": {
                   "type": "string",
-                  "description": "Description of a task that will be shown when running `deno task` without a task name"
+                  "description": "Description of a task that will be shown when running `ende task` without a task name"
                 },
                 "command": {
                   "type": "string",
@@ -1057,7 +1057,7 @@
       "additionalProperties": false
     },
     "test": {
-      "description": "Configuration for deno test",
+      "description": "Configuration for ende test",
       "type": "object",
       "properties": {
         "include": {
@@ -1089,7 +1089,7 @@
     },
     "publish": {
       "oneOf": [{
-        "description": "Configuration for deno publish",
+        "description": "Configuration for ende publish",
         "type": "object",
         "properties": {
           "include": {
@@ -1108,12 +1108,12 @@
           }
         }
       }, {
-        "description": "Disable publishing this package with deno publish",
+        "description": "Disable publishing this package with ende publish",
         "const": false
       }]
     },
     "bench": {
-      "description": "Configuration for deno bench",
+      "description": "Configuration for ende bench",
       "type": "object",
       "properties": {
         "include": {
@@ -1136,7 +1136,7 @@
       }
     },
     "coverage": {
-      "description": "Configuration for deno coverage and deno test --coverage",
+      "description": "Configuration for ende coverage and ende test --coverage",
       "type": "object",
       "properties": {
         "thresholds": {

@@ -13,7 +13,7 @@
     },
     // --jsr flag overrides default to jsr
     "install_jsr_flag": {
-      "args": "install --jsr @denotest/add",
+      "args": "install --jsr @endetest/add",
       "output": "install_jsr_flag.out"
     }
   }

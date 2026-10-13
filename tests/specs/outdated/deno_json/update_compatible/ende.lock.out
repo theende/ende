@@ -1,21 +1,21 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@denotest/add@~0.2.1": "0.2.1",
-    "jsr:@denotest/multiple-exports@0.2.0": "0.2.0",
-    "jsr:@denotest/subtract@0.2": "0.2.0",
+    "jsr:@endetest/add@~0.2.1": "0.2.1",
+    "jsr:@endetest/multiple-exports@0.2.0": "0.2.0",
+    "jsr:@endetest/subtract@0.2": "0.2.0",
     "npm:@denotest/bin@0.6.0": "0.6.0",
     "npm:@denotest/breaking-change-between-versions@1.0.0": "1.0.0",
     "npm:@denotest/has-patch-versions@~0.1.1": "0.1.1"
   },
   "jsr": {
-    "@denotest/add@0.2.1": {
+    "@endetest/add@0.2.1": {
       "integrity": "a9076d30ecb42b2fc6dd95e7055fbf4e6358b53f550741bd7f60089d19f68848"
     },
-    "@denotest/multiple-exports@0.2.0": {
-      "integrity": "efe9748a0c0939c7ac245fee04acc0c42bd7a61874ff71a360c4543e4f5f6b36"
+    "@endetest/multiple-exports@0.2.0": {
+      "integrity": "3fe642a5ec09d940d24252b006e75f387b7b846ec0e5c70d47c2dec5e293cce5"
     },
-    "@denotest/subtract@0.2.0": {
+    "@endetest/subtract@0.2.0": {
       "integrity": "c9650fc559ab2430effc0c7fb1540e3aa89888fbdd926335ccfdeac57eb3a64d"
     }
   },
@@ -35,9 +35,9 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@denotest/add@~0.2.1",
-      "jsr:@denotest/multiple-exports@0.2.0",
-      "jsr:@denotest/subtract@0.2",
+      "jsr:@endetest/add@~0.2.1",
+      "jsr:@endetest/multiple-exports@0.2.0",
+      "jsr:@endetest/subtract@0.2",
       "npm:@denotest/bin@0.6.0",
       "npm:@denotest/breaking-change-between-versions@1.0.0",
       "npm:@denotest/has-patch-versions@~0.1.1"

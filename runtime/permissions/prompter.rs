@@ -507,7 +507,7 @@ impl PermissionPrompter for TtyPrompter {
     let stack_lines_count = {
       let mut output = String::new();
       write!(&mut output, "┏ {PERMISSION_EMOJI}  ").unwrap();
-      write!(&mut output, "{}", colors::bold("Deno requests ")).unwrap();
+      write!(&mut output, "{}", colors::bold("Ende requests ")).unwrap();
       write!(&mut output, "{}", colors::bold(message.clone())).unwrap();
       writeln!(&mut output, "{}", colors::bold(".")).unwrap();
       if let Some(api_name) = api_name.clone() {
@@ -548,7 +548,7 @@ impl PermissionPrompter for TtyPrompter {
       writeln!(&mut output, "┠─ {}", colors::italic(&msg)).unwrap();
       let msg = if crate::is_standalone() {
         format!(
-          "Specify the required permissions during compile time using `deno compile --allow-{name}`."
+          "Specify the required permissions during compile time using `ende compile --allow-{name}`."
         )
       } else {
         format!("Run again with --allow-{name} to bypass this prompt.")

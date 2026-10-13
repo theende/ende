@@ -796,7 +796,7 @@ mod hyper_client {
     ) -> ende_core::anyhow::Result<Connector> {
       let connector = if let Some(tunnel) = get_tunnel() {
         Connector::Tunnel(tunnel.clone())
-      } else if let Ok(addr) = std::env::var("OTEL_DENO_VSOCK") {
+      } else if let Ok(addr) = ende_env::var("OTEL_ENDE_VSOCK") {
         #[cfg(not(any(
           target_os = "android",
           target_os = "linux",

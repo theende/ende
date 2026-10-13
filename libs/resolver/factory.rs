@@ -429,7 +429,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
           if dir_mode != NodeModulesDirMode::Manual {
             bail!(
               "The hoisted node_modules linker requires --node-modules-dir=manual. \
-               Add \"nodeModulesDir\": \"manual\" to your deno.json or pass \
+               Add \"nodeModulesDir\": \"manual\" to your ende.json or pass \
                --node-modules-dir=manual on the command line."
             );
           }
@@ -694,7 +694,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
           workspace_dir.workspace.as_ref(),
         );
         if !npm_packages.0.is_empty() && !matches!(self.node_modules_dir_mode()?, NodeModulesDirMode::Auto | NodeModulesDirMode::Manual) {
-          bail!("Linking npm packages requires using a node_modules directory. Ensure you have a package.json or set the \"nodeModulesDir\" option to \"auto\" or \"manual\" in your workspace root deno.json.")
+          bail!("Linking npm packages requires using a node_modules directory. Ensure you have a package.json or set the \"nodeModulesDir\" option to \"auto\" or \"manual\" in your workspace root ende.json.")
         } else {
           Ok(npm_packages)
         }

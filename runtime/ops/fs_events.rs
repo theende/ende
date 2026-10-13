@@ -514,7 +514,7 @@ fn op_fs_events_open(
         .check_open(
           Cow::Owned(PathBuf::from(path)),
           ende_permissions::OpenAccessKind::ReadNoFollow,
-          Some("Deno.watchFs()"),
+          Some("Ende.watchFs()"),
         )?
         .into_owned_path();
       ignore_paths.push(normalize_watch_path(checked));
@@ -524,7 +524,7 @@ fn op_fs_events_open(
         .check_open(
           Cow::Owned(PathBuf::from(path)),
           ende_permissions::OpenAccessKind::ReadNoFollow,
-          Some("Deno.watchFs()"),
+          Some("Ende.watchFs()"),
         )?
         .into_owned_path();
       resolved_paths.push(normalize_watch_path(checked));

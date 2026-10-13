@@ -1,6 +1,6 @@
-Download http://127.0.0.1:4250/@denotest/markdown/meta.json
-Download http://127.0.0.1:4250/@denotest/markdown/1.0.0_meta.json
-Download http://127.0.0.1:4250/@denotest/markdown/1.0.0/readme.md
+Download http://127.0.0.1:4250/@endetest/markdown/meta.json
+Download http://127.0.0.1:4250/@endetest/markdown/1.0.0_meta.json
+Download http://127.0.0.1:4250/@endetest/markdown/1.0.0/readme.md
 # Markdown Test Package
 
 A package for testing `deno doc` with markdown files from JSR.

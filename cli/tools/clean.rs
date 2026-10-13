@@ -125,8 +125,8 @@ fn format_locked_files_message(
 
   if processes.is_empty() {
     message.push_str(
-      "\n\nThis is usually an editor running the Deno language server holding \
-       the cache open. Close it (or any running `deno` process) and run `deno \
+      "\n\nThis is usually an editor running the Ende language server holding \
+       the cache open. Close it (or any running `ende` process) and run `ende \
        clean` again.",
     );
   } else {
@@ -137,14 +137,14 @@ fn format_locked_files_message(
         None => process.name.clone(),
       };
       let hint = if process.is_deno {
-        " (a running Deno process, likely the language server in your editor)"
+        " (a running Ende process, likely the language server in your editor)"
       } else {
         ""
       };
       message.push_str(&format!("\n  {} (PID {}){}", label, process.pid, hint));
     }
     message
-      .push_str("\n\nClose the process(es) above and run `deno clean` again.");
+      .push_str("\n\nClose the process(es) above and run `ende clean` again.");
   }
 
   message
@@ -757,7 +757,7 @@ mod tests {
       "1 file could not be removed because they are in use by another process:"
     ));
     assert!(message.contains("dep_analysis_cache_v2"));
-    assert!(message.contains("Deno language server"));
+    assert!(message.contains("Ende language server"));
   }
 
   #[test]

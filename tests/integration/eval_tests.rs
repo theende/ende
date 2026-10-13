@@ -45,5 +45,5 @@ fn eval_error_getter_does_not_panic() {
   let stderr =
     util::strip_ansi_codes(std::str::from_utf8(&output.stderr).unwrap().trim());
   assert_contains!(stderr, "error: Uncaught");
-  assert_not_contains!(stderr, "Deno has panicked", "panicked at");
+  assert_not_contains!(stderr, "Ende has panicked", "panicked at");
 }

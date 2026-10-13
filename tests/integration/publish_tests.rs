@@ -21,16 +21,16 @@ fn publish_non_exported_files_using_import_map() {
     "version": "1.0.0",
     "exports": "./mod.ts",
     "imports": {
-      "@denotest/add": "jsr:@denotest/add@1"
+      "@endetest/add": "jsr:@endetest/add@1"
     }
   }));
   temp_dir.join("LICENSE").write("");
   // file not in the graph
   let other_ts = temp_dir.join("_other.ts");
   other_ts
-    .write("import { add } from '@denotest/add'; console.log(add(1, 3));");
+    .write("import { add } from '@endetest/add'; console.log(add(1, 3));");
   let mod_ts = temp_dir.join("mod.ts");
-  mod_ts.write("import { add } from '@denotest/add'; console.log(add(1, 2));");
+  mod_ts.write("import { add } from '@endetest/add'; console.log(add(1, 2));");
   let output = context
     .new_command()
     .args("publish --log-level=debug --token 'sadfasdf'")

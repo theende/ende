@@ -236,7 +236,7 @@ fn bump_version_fails_without_config_files() {
     .run();
 
   output.assert_exit_code(1).skip_output_check();
-  assert_contains!(output.stderr(), "No deno.json or package.json found");
+  assert_contains!(output.stderr(), "No ende.json or package.json found");
 }
 
 #[test]

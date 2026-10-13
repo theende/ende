@@ -1,5 +1,5 @@
 {
   "dependencies": {
-    "add": "npm:@jsr/denotest__add@^1.0.0"
+    "add": "npm:@jsr/endetest__add@^1.0.0"
   }
 }

@@ -1,5 +1,5 @@
 {
   "imports": {
-    "alias": "jsr:@denotest/add"
+    "alias": "jsr:@endetest/add"
   }
 }

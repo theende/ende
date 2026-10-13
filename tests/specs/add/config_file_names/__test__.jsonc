@@ -4,7 +4,7 @@
     // `add` without a config creates ende.json (and ende.lock).
     "creates_ende_json": {
       "steps": [{
-        "args": "add jsr:@denotest/add",
+        "args": "add jsr:@endetest/add",
         "output": "Created ende.json configuration file.\n[WILDCARD]"
       }, {
         "args": "run --no-config --no-lock -R check.ts",
@@ -16,7 +16,7 @@
     "edits_existing_deno_json": {
       "steps": [{
         "cwd": "existing_deno_json",
-        "args": "add jsr:@denotest/add",
+        "args": "add jsr:@endetest/add",
         "output": "Warning: \"deno.json\" in [WILDLINE] is deprecated. Rename it to \"ende.json\".\n[WILDCARD]"
       }, {
         "cwd": "existing_deno_json",

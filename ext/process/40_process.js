@@ -63,7 +63,7 @@ function opKill(pid, signo, apiName) {
 }
 
 function kill(pid, signo = "SIGTERM") {
-  opKill(pid, signo, "Deno.kill()");
+  opKill(pid, signo, "Ende.kill()");
 }
 
 function opRunStatus(rid) {
@@ -143,7 +143,7 @@ class Process {
   }
 
   kill(signo = "SIGTERM") {
-    opKill(this.pid, signo, "Deno.Process.kill()");
+    opKill(this.pid, signo, "Ende.Process.kill()");
   }
 }
 
@@ -229,7 +229,7 @@ function spawnChildInner(command, apiName, {
 function spawnChild(command, options = { __proto__: null }) {
   return spawnChildInner(
     command,
-    "Deno.Command().spawn()",
+    "Ende.Command().spawn()",
     options,
   );
 }
@@ -644,7 +644,7 @@ function spawnInner(command, {
 } = { __proto__: null }) {
   if (stdin === "piped") {
     throw new TypeError(
-      "Piped stdin is not supported for this function, use 'Deno.Command().spawn()' instead",
+      "Piped stdin is not supported for this function, use 'Ende.Command().spawn()' instead",
     );
   }
   // Bypass ChildProcess and ReadableStream machinery. Creating streams
@@ -669,7 +669,7 @@ function spawnInner(command, {
     extraStdio: [],
     detached: false,
     needsNpmProcessState,
-  }, "Deno.Command().output()");
+  }, "Ende.Command().output()");
 
   const stdoutRid = child.stdoutRid;
   const stderrRid = child.stderrRid;
@@ -740,7 +740,7 @@ function spawnSyncInner(command, {
 } = { __proto__: null }) {
   if (stdin === "piped") {
     throw new TypeError(
-      "Piped stdin is not supported for this function, use 'Deno.Command().spawn()' instead",
+      "Piped stdin is not supported for this function, use 'Ende.Command().spawn()' instead",
     );
   }
   const spawnArgs = {
@@ -800,7 +800,7 @@ class Command {
   output() {
     if (this.#options?.stdin === "piped") {
       throw new TypeError(
-        "Piped stdin is not supported for this function, use 'Deno.Command.spawn()' instead",
+        "Piped stdin is not supported for this function, use 'Ende.Command.spawn()' instead",
       );
     }
     return spawnInner(this.#command, this.#options);
@@ -809,7 +809,7 @@ class Command {
   outputSync() {
     if (this.#options?.stdin === "piped") {
       throw new TypeError(
-        "Piped stdin is not supported for this function, use 'Deno.Command.spawn()' instead",
+        "Piped stdin is not supported for this function, use 'Ende.Command.spawn()' instead",
       );
     }
     return spawnSyncInner(this.#command, this.#options);

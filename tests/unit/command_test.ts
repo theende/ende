@@ -1012,7 +1012,7 @@ Deno.test(function commandStdinPipedFails() {
         stdin: "piped",
       }).output(),
     TypeError,
-    "Piped stdin is not supported for this function, use 'Deno.Command.spawn()' instead",
+    "Piped stdin is not supported for this function, use 'Ende.Command.spawn()' instead",
   );
 });
 
@@ -1023,7 +1023,7 @@ Deno.test(function spawnSyncStdinPipedFails() {
         stdin: "piped",
       }).outputSync(),
     TypeError,
-    "Piped stdin is not supported for this function, use 'Deno.Command.spawn()' instead",
+    "Piped stdin is not supported for this function, use 'Ende.Command.spawn()' instead",
   );
 });
 

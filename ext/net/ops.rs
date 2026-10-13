@@ -191,7 +191,7 @@ pub enum NetError {
   #[error("{0}")]
   Tls(#[from] ende_tls::TlsError),
   #[class("InvalidData")]
-  #[error("Error creating TLS certificate: Deno.listenTls requires a key")]
+  #[error("Error creating TLS certificate: Ende.listenTls requires a key")]
   ListenTlsRequiresKey,
   #[class(inherit)]
   #[error("{0}")]
@@ -326,7 +326,7 @@ pub async fn op_net_send_udp(
     let mut s = state.borrow_mut();
     s.borrow_mut::<PermissionsContainer>().check_net(
       &(&addr.hostname, Some(addr.port)),
-      "Deno.DatagramConn.send()",
+      "Ende.DatagramConn.send()",
     )?;
   }
   let addr = resolve_addr(&addr.hostname, addr.port)
@@ -341,7 +341,7 @@ pub async fn op_net_send_udp(
       .check_net_resolved(
         &addr.ip(),
         addr.port(),
-        "Deno.DatagramConn.send()",
+        "Ende.DatagramConn.send()",
       )?;
   }
 
@@ -399,7 +399,7 @@ pub async fn op_net_join_multi_v4_udp(
       state.borrow_mut::<PermissionsContainer>(),
       std::net::IpAddr::V4(addr),
       port,
-      "Deno.DatagramConn.joinMulticastV4()",
+      "Ende.DatagramConn.joinMulticastV4()",
     )?;
   }
 
@@ -431,7 +431,7 @@ pub async fn op_net_join_multi_v6_udp(
       state.borrow_mut::<PermissionsContainer>(),
       std::net::IpAddr::V6(addr),
       port,
-      "Deno.DatagramConn.joinMulticastV6()",
+      "Ende.DatagramConn.joinMulticastV6()",
     )?;
   }
 
@@ -621,7 +621,7 @@ pub async fn op_net_connect_tcp_inner(
     };
     state_
       .borrow_mut::<PermissionsContainer>()
-      .check_net(&(&hostname_to_check, Some(addr.port)), "Deno.connect()")?;
+      .check_net(&(&hostname_to_check, Some(addr.port)), "Ende.connect()")?;
   }
 
   let options = options.unwrap_or_default();
@@ -671,7 +671,7 @@ pub async fn op_net_connect_tcp_inner(
         permissions.check_net_resolved(
           &addr.ip(),
           addr.port(),
-          "Deno.connect()",
+          "Ende.connect()",
         )?;
       }
     }
@@ -748,17 +748,17 @@ pub fn op_net_listen_tcp(
   tcp_backlog: i32,
 ) -> Result<(ResourceId, IpAddr), NetError> {
   if reuse_port {
-    super::check_unstable(state, "Deno.listen({ reusePort: true })");
+    super::check_unstable(state, "Ende.listen({ reusePort: true })");
   }
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_net(&(&addr.hostname, Some(addr.port)), "Deno.listen()")?;
+    .check_net(&(&addr.hostname, Some(addr.port)), "Ende.listen()")?;
   let addr = resolve_addr_sync(&addr.hostname, addr.port)?
     .next()
     .ok_or_else(|| NetError::NoResolvedAddress)?;
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_net_resolved(&addr.ip(), addr.port(), "Deno.listen()")?;
+    .check_net_resolved(&addr.ip(), addr.port(), "Ende.listen()")?;
 
   let listener = if load_balanced {
     TcpListener::bind_load_balanced(addr, tcp_backlog)
@@ -780,13 +780,13 @@ fn net_listen_udp(
 ) -> Result<(ResourceId, IpAddr), NetError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_net(&(&addr.hostname, Some(addr.port)), "Deno.listenDatagram()")?;
+    .check_net(&(&addr.hostname, Some(addr.port)), "Ende.listenDatagram()")?;
   let addr = resolve_addr_sync(&addr.hostname, addr.port)?
     .next()
     .ok_or_else(|| NetError::NoResolvedAddress)?;
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_net_resolved(&addr.ip(), addr.port(), "Deno.listenDatagram()")?;
+    .check_net_resolved(&addr.ip(), addr.port(), "Ende.listenDatagram()")?;
 
   let domain = if addr.is_ipv4() {
     Domain::IPV4
@@ -846,7 +846,7 @@ pub fn op_net_listen_udp(
   reuse_address: bool,
   loopback: bool,
 ) -> Result<(ResourceId, IpAddr), NetError> {
-  super::check_unstable(state, "Deno.listenDatagram");
+  super::check_unstable(state, "Ende.listenDatagram");
   net_listen_udp(state, addr, reuse_address, loopback)
 }
 
@@ -876,12 +876,12 @@ pub async fn op_net_connect_vsock(
   state
     .borrow()
     .borrow::<Arc<FeatureChecker>>()
-    .check_or_exit("vsock", "Deno.connect");
+    .check_or_exit("vsock", "Ende.connect");
 
   state
     .borrow_mut()
     .borrow_mut::<PermissionsContainer>()
-    .check_net_vsock(cid, port, "Deno.connect()")?;
+    .check_net_vsock(cid, port, "Ende.connect()")?;
 
   let addr = VsockAddr::new(cid, port);
   let vsock_stream = VsockStream::connect(addr).await?;
@@ -928,12 +928,12 @@ pub fn op_net_listen_vsock(
 
   state
     .borrow::<Arc<FeatureChecker>>()
-    .check_or_exit("vsock", "Deno.listen");
+    .check_or_exit("vsock", "Ende.listen");
 
   state.borrow_mut::<PermissionsContainer>().check_net_vsock(
     cid,
     port,
-    "Deno.listen()",
+    "Ende.listen()",
   )?;
 
   let addr = VsockAddr::new(cid, port);
@@ -1178,7 +1178,7 @@ pub async fn op_dns_resolve(
       let socker_addr = &ns.socket_addr;
       let ip = socker_addr.ip().to_string();
       let port = socker_addr.port();
-      perm.check_net(&(&ip, Some(port)), "Deno.resolveDns()")?;
+      perm.check_net(&(&ip, Some(port)), "Ende.resolveDns()")?;
     }
   }
 

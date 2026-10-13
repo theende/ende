@@ -328,7 +328,7 @@ pub async fn list(
 
   if !cli_options.start_dir.has_deno_or_pkg_json() {
     bail!(
-      "No deno.json or package.json in \"{}\".",
+      "No ende.json or package.json in \"{}\".",
       cli_options.initial_cwd().display(),
     );
   }

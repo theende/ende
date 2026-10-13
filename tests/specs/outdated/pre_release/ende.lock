@@ -1,15 +1,15 @@
 {
   "version": "4",
   "specifiers": {
-    "jsr:@denotest/has-only-pre-release@^2.0.0-beta.1": "2.0.0-beta.1",
-    "jsr:@denotest/has-pre-release@^2.0.0-beta.1": "2.0.0-beta.1",
+    "jsr:@endetest/has-only-pre-release@^2.0.0-beta.1": "2.0.0-beta.1",
+    "jsr:@endetest/has-pre-release@^2.0.0-beta.1": "2.0.0-beta.1",
     "npm:@denotest/has-pre-release@^2.0.0-beta.1": "2.0.0-beta.1"
   },
   "jsr": {
-    "@denotest/has-only-pre-release@2.0.0-beta.1": {
+    "@endetest/has-only-pre-release@2.0.0-beta.1": {
       "integrity": "43fd680ea94bb5db5fe1a2d86101c47d0e2cc77323b881755cea9a0372e49537"
     },
-    "@denotest/has-pre-release@2.0.0-beta.1": {
+    "@endetest/has-pre-release@2.0.0-beta.1": {
       "integrity": "43fd680ea94bb5db5fe1a2d86101c47d0e2cc77323b881755cea9a0372e49537"
     }
   },
@@ -20,8 +20,8 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@denotest/has-only-pre-release@^2.0.0-beta.1",
-      "jsr:@denotest/has-pre-release@^2.0.0-beta.1",
+      "jsr:@endetest/has-only-pre-release@^2.0.0-beta.1",
+      "jsr:@endetest/has-pre-release@^2.0.0-beta.1",
       "npm:@denotest/has-pre-release@^2.0.0-beta.1"
     ]
   }

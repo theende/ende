@@ -369,51 +369,51 @@ pub fn check_for_upgrades(
       ReleaseChannel::Stable => {
         log::info!(
           "{} {} → {} {}",
-          colors::green("A new release of Deno is available:"),
+          colors::green("A new release of Ende is available:"),
           colors::cyan(version::DENO_VERSION_INFO.deno),
           colors::cyan(&upgrade_version),
-          colors::italic_gray("Run `deno upgrade` to install it.")
+          colors::italic_gray("Run `ende upgrade` to install it.")
         );
       }
       ReleaseChannel::Canary => {
         log::info!(
           "{} {}",
-          colors::green("A new canary release of Deno is available."),
-          colors::italic_gray("Run `deno upgrade canary` to install it.")
+          colors::green("A new canary release of Ende is available."),
+          colors::italic_gray("Run `ende upgrade canary` to install it.")
         );
       }
       ReleaseChannel::Rc => {
         log::info!(
           "{} {}",
-          colors::green("A new release candidate of Deno is available."),
-          colors::italic_gray("Run `deno upgrade rc` to install it.")
+          colors::green("A new release candidate of Ende is available."),
+          colors::italic_gray("Run `ende upgrade rc` to install it.")
         );
       }
       ReleaseChannel::Lts => {
         log::info!(
           "{} {} → {} {}",
-          colors::green("A new LTS release of Deno is available:"),
+          colors::green("A new LTS release of Ende is available:"),
           colors::cyan(version::DENO_VERSION_INFO.deno),
           colors::cyan(&upgrade_version),
-          colors::italic_gray("Run `deno upgrade lts` to install it.")
+          colors::italic_gray("Run `ende upgrade lts` to install it.")
         );
       }
       ReleaseChannel::Alpha => {
         log::info!(
           "{} {} → {} {}",
-          colors::green("A new alpha release of Deno is available:"),
+          colors::green("A new alpha release of Ende is available:"),
           colors::cyan(version::DENO_VERSION_INFO.deno),
           colors::cyan(&upgrade_version),
-          colors::italic_gray("Run `deno upgrade alpha` to install it.")
+          colors::italic_gray("Run `ende upgrade alpha` to install it.")
         );
       }
       ReleaseChannel::Beta => {
         log::info!(
           "{} {} → {} {}",
-          colors::green("A new beta release of Deno is available:"),
+          colors::green("A new beta release of Ende is available:"),
           colors::cyan(version::DENO_VERSION_INFO.deno),
           colors::cyan(&upgrade_version),
-          colors::italic_gray("Run `deno upgrade beta` to install it.")
+          colors::italic_gray("Run `ende upgrade beta` to install it.")
         );
       }
     }
@@ -1015,7 +1015,7 @@ pub async fn upgrade(
   let requested_version =
     RequestedVersion::from_upgrade_flags(upgrade_flags.clone())?;
 
-  log::info!("Current Deno version: v{}", version::DENO_VERSION_INFO.deno);
+  log::info!("Current Ende version: v{}", version::DENO_VERSION_INFO.deno);
 
   let maybe_selected_version_to_upgrade = match &requested_version {
     RequestedVersion::Latest(channel) => {
@@ -1079,7 +1079,7 @@ pub async fn upgrade(
     log::info!(
       "{}",
       colors::gray(format!(
-        "Deno is upgrading to version {}",
+        "Ende is upgrading to version {}",
         &selected_version_to_upgrade.version_or_hash
       ))
     );
@@ -1133,7 +1133,7 @@ pub async fn upgrade(
     log::info!(
       "{}",
       colors::gray(format!(
-        "Deno is upgrading to version {}",
+        "Ende is upgrading to version {}",
         &selected_version_to_upgrade.version_or_hash
       ))
     );
@@ -1183,7 +1183,7 @@ pub async fn upgrade(
   check_windows_access_denied_error(output_result, output_exe_path)?;
 
   log::info!(
-    "\nUpgraded successfully to Deno {} {}\n",
+    "\nUpgraded successfully to Ende {} {}\n",
     colors::green(selected_version_to_upgrade.display()),
     colors::gray(&format!(
       "({})",
@@ -1382,7 +1382,7 @@ async fn find_latest_version_to_upgrade(
     );
   } else {
     log::info!(
-      "Local deno version {} is the most recent release",
+      "Local ende version {} is the most recent release",
       color_print::cformat!("<g>{}</>", current_version)
     );
   }
@@ -1958,9 +1958,9 @@ fn check_windows_access_denied_error(
   Err(err).with_context(|| {
     format!(
       concat!(
-        "Could not replace the deno executable. This may be because an ",
-        "existing deno process is running. Please ensure there are no ",
-        "running deno processes (ex. Stop-Process -Name deno ; deno {}), ",
+        "Could not replace the ende executable. This may be because an ",
+        "existing ende process is running. Please ensure there are no ",
+        "running ende processes (ex. Stop-Process -Name ende ; ende {}), ",
         "close any editors before upgrading, and ensure you have ",
         "sufficient permission to '{}'."
       ),
@@ -2027,8 +2027,8 @@ fn set_exe_permissions(
     bail!(
       concat!(
         "You don't have write permission to {} because it's owned by root.\n",
-        "Consider updating deno through your package manager if its installed from it.\n",
-        "Otherwise run `deno upgrade` as root.",
+        "Consider updating ende through your package manager if its installed from it.\n",
+        "Otherwise run `ende upgrade` as root.",
       ),
       output_exe_path.display()
     );
@@ -2044,7 +2044,7 @@ fn check_exe(exe_path: &Path) -> Result<(), AnyError> {
     .with_context(|| format!("failed to run '{}'", exe_path.display()))?;
   if !output.status.success() {
     bail!(
-      "Failed to validate Deno executable. This may be because your OS is unsupported or the executable is corrupted"
+      "Failed to validate Ende executable. This may be because your OS is unsupported or the executable is corrupted"
     )
   } else {
     Ok(())

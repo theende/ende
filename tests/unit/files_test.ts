@@ -65,7 +65,7 @@ Deno.test(function fsFileGlobalSymbolCannotConstruct() {
   assertThrows(
     () => new FsFileCtor(0, Symbol.for("Deno.internal.FsFile")),
     TypeError,
-    "'Deno.FsFile' cannot be constructed",
+    "'Ende.FsFile' cannot be constructed",
   );
 });
 

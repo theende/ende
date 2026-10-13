@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "exports": "./mod.ts",
   "imports": {
-    "@denotest/add": "jsr:@denotest/add@1"
+    "@endetest/add": "jsr:@endetest/add@1"
   },
   "links": [
     "../add"

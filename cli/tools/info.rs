@@ -264,7 +264,7 @@ fn print_cache_info(
 
     display::write_json_to_stdout(&json_output)
   } else {
-    drop_println!("{} {}", colors::bold("Deno version:"), deno_version);
+    drop_println!("{} {}", colors::bold("Ende version:"), deno_version);
     drop_println!("{} {}", colors::bold("ENDE_DIR location:"), deno_dir);
     drop_println!(
       "{} {}",

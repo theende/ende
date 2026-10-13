@@ -161,7 +161,7 @@ async fn run_subcommand(
     DenoSubcommand::Bundle(bundle_flags) => spawn_subcommand(async {
       log::warn!(
         "⚠️  {} is experimental and subject to changes",
-        colors::cyan("deno bundle")
+        colors::cyan("ende bundle")
       );
       tools::bundle::bundle(Arc::new(flags), bundle_flags).await
     }),
@@ -219,7 +219,7 @@ async fn run_subcommand(
       spawn_subcommand(async move {
         log::warn!(
           "⚠️  {} is experimental and subject to changes",
-          colors::cyan("deno transpile")
+          colors::cyan("ende transpile")
         );
         tools::transpile::transpile(Arc::new(flags), transpile_flags).await
       })
@@ -259,7 +259,7 @@ async fn run_subcommand(
   how to setup your favorite text editor.
 
   Press Ctrl+C to exit.
-        ", colors::cyan("deno lsp"));
+        ", colors::cyan("ende lsp"));
       }
       lsp::start().await
     }),
@@ -498,7 +498,7 @@ async fn run_subcommand(
     }),
     #[cfg(not(feature = "upgrade"))]
     DenoSubcommand::Upgrade(_) => exit_with_message(
-      "This deno was built without the \"upgrade\" feature. Please upgrade using the installation method originally used to install Deno.",
+      "This ende was built without the \"upgrade\" feature. Please upgrade using the installation method originally used to install Ende.",
       1,
     ),
     DenoSubcommand::Why(why_flags) => spawn_subcommand(async {
@@ -508,13 +508,13 @@ async fn run_subcommand(
       log::warn!(
         "{}",
         colors::yellow(
-          "deno bump-version is experimental and subject to change"
+          "ende bump-version is experimental and subject to change"
         )
       );
       tools::bump_version::bump_version_command(Arc::new(flags), version_flags)
     }),
     DenoSubcommand::Vendor => exit_with_message(
-      "⚠️  `deno vendor` was removed in Deno 2.\n\nSee the Deno 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
+      "⚠️  `ende vendor` was removed in 2.0.\n\nSee the 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
       1,
     ),
     DenoSubcommand::Publish(publish_flags) => spawn_subcommand(async {
@@ -609,7 +609,7 @@ fn setup_panic_hook() {
       eprintln!(
         "\n============================================================"
       );
-      eprintln!("Deno could not start: unable to create worker threads.");
+      eprintln!("Ende could not start: unable to create worker threads.");
       eprintln!();
       eprintln!("This usually happens when running in a container with a low");
       eprintln!("PID limit. Try increasing the limit (e.g. --pids-limit=40).");
@@ -622,7 +622,7 @@ fn setup_panic_hook() {
     }
 
     eprintln!("\n============================================================");
-    eprintln!("Deno has panicked. This is a bug in Deno. Please report this");
+    eprintln!("Ende has panicked. This is a bug in Ende. Please report this");
     eprintln!("at https://github.com/theende/ende/issues/new.");
     eprintln!("If you can reliably reproduce this panic, include the");
     #[cfg(not(all(
@@ -806,7 +806,7 @@ fn maybe_minimum_dependency_age_hint(error_string: &str) -> Option<String> {
       "which avoids installing recently published versions to reduce supply ",
       "chain risk (the default is 24 hours). To use this version now, pass the ",
       "{} (or {}) flag (for example {} to disable it, or a shorter duration ",
-      "like {} minutes) or set {} in your deno.json, or wait until the version ",
+      "like {} minutes) or set {} in your ende.json, or wait until the version ",
       "is old enough.\n{} {}"
     ),
     colors::yellow("hint:"),
@@ -1093,7 +1093,7 @@ async fn resolve_flags_and_init(
   // TODO(bartlomieju): remove in Deno v2.5 and hard error then.
   if flags.unstable_config.legacy_flag_enabled {
     log::warn!(
-      "{} The `--unstable` flag has been removed in Deno 2.0. Use granular `--unstable-*` flags instead.\nLearn more at: https://docs.ende.sh/runtime/manual/tools/unstable_flags",
+      "{} The `--unstable` flag has been removed in 2.0. Use granular `--unstable-*` flags instead.\nLearn more at: https://docs.ende.sh/runtime/manual/tools/unstable_flags",
       colors::yellow("Warning")
     );
   }

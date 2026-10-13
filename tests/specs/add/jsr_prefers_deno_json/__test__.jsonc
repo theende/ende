@@ -2,7 +2,7 @@
   "tempDir": true,
   "steps": [
     {
-      "args": "add jsr:@denotest/add",
+      "args": "add jsr:@endetest/add",
       "output": "add.out"
     },
     {

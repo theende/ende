@@ -233,7 +233,7 @@ fn maybe_show_format_confirmation(
     Ok(())
   } else {
     bail!(
-      "Did not format non-workspace directory. Run again specifying the current directory (ex. `deno fmt .`)"
+      "Did not format non-workspace directory. Run again specifying the current directory (ex. `ende fmt .`)"
     )
   }
 }

@@ -26,7 +26,7 @@ fn generate_bash(cmd: &CommandDef) -> Vec<u8> {
   let subcmd_list = subcmds.join(" ");
 
   out.push_str(&format!(
-    r#"_deno() {{
+    r#"_{name}() {{
     local i cur prev opts cmds
     COMPREPLY=()
     cur="${{COMP_WORDS[COMP_CWORD]}}"
@@ -143,7 +143,9 @@ fn generate_zsh(cmd: &CommandDef) -> Vec<u8> {
   out.push_str(&format!("#compdef {name}\n\n"));
 
   // Subcommands
-  out.push_str("_deno_commands() {\n    local commands; commands=(\n");
+  out.push_str(&format!(
+    "_{name}_commands() {{\n    local commands; commands=(\n"
+  ));
   for sub in cmd.subcommands {
     if sub.name == "help" {
       continue;
@@ -160,7 +162,7 @@ fn generate_zsh(cmd: &CommandDef) -> Vec<u8> {
     out.push_str(&format!("        '{}:{}'\n", sub.name, about));
   }
   out.push_str(
-    "    )\n    _describe -t commands 'deno commands' commands\n}\n\n",
+    "    )\n    _describe -t commands 'ende commands' commands\n}\n\n",
   );
 
   // Main function
@@ -182,7 +184,7 @@ fn generate_zsh(cmd: &CommandDef) -> Vec<u8> {
     }
   }
 
-  out.push_str("        \":: :_deno_commands\" \\\n");
+  out.push_str(&format!("        \":: :_{name}_commands\" \\\n"));
   out.push_str("        \"*::arg:->args\" \\\n");
   out.push_str("        && ret=0\n\n");
 
@@ -687,7 +689,7 @@ mod tests {
 
   #[test]
   fn completes_subcommands_at_root() {
-    let c = complete(&["deno", ""], 1, &no_positional);
+    let c = complete(&["ende", ""], 1, &no_positional);
     let v = values(&c);
     assert!(v.contains(&"run"), "{v:?}");
     assert!(v.contains(&"task"), "{v:?}");
@@ -698,7 +700,7 @@ mod tests {
 
   #[test]
   fn completes_subcommand_prefix() {
-    let c = complete(&["deno", "ru"], 1, &no_positional);
+    let c = complete(&["ende", "ru"], 1, &no_positional);
     let v = values(&c);
     assert!(v.contains(&"run"), "{v:?}");
     assert!(!v.contains(&"task"), "{v:?}");
@@ -706,7 +708,7 @@ mod tests {
 
   #[test]
   fn completes_flags_in_subcommand() {
-    let c = complete(&["deno", "run", "--no-r"], 2, &no_positional);
+    let c = complete(&["ende", "run", "--no-r"], 2, &no_positional);
     let v = values(&c);
     assert!(v.iter().all(|f| f.starts_with("--no-r")), "{v:?}");
     assert!(v.contains(&"--no-remote"), "{v:?}");
@@ -717,7 +719,7 @@ mod tests {
     // Permission args are `hidden` (they're documented in the after-help
     // "Permission options" section instead), and clap's `.hide(true)` kept
     // them out of clap_complete's candidates too — so stay consistent.
-    let c = complete(&["deno", "run", "--allow-r"], 2, &no_positional);
+    let c = complete(&["ende", "run", "--allow-r"], 2, &no_positional);
     assert!(c.is_empty(), "{:?}", values(&c));
   }
 
@@ -725,7 +727,7 @@ mod tests {
   fn value_taking_flag_defers_to_file_completion() {
     // `run --config <TAB>`: --config takes a value, so no candidates (the shell
     // does file completion).
-    let c = complete(&["deno", "run", "--config", ""], 3, &no_positional);
+    let c = complete(&["ende", "run", "--config", ""], 3, &no_positional);
     assert!(c.is_empty(), "{:?}", values(&c));
   }
 
@@ -738,7 +740,7 @@ mod tests {
         ("test".to_string(), None),
       ]
     }
-    let c = complete(&["deno", "task", ""], 2, &tasks);
+    let c = complete(&["ende", "task", ""], 2, &tasks);
     let v = values(&c);
     // task names come first...
     assert_eq!(&v[0..2], &["build", "test"], "{v:?}");
@@ -750,10 +752,14 @@ mod tests {
   fn generate_bash_uses_real_newlines() {
     let s = String::from_utf8(generate("bash", &DENO_ROOT)).unwrap();
     assert!(
-      s.contains("\"deno,run\")\n                cmd=\"deno__run\""),
+      s.contains("\"ende,run\")\n                cmd=\"ende__run\""),
       "{s}"
     );
     assert!(s.contains("            *)\n                ;;"), "{s}");
+    // the function that `complete -F` registers is the one defined
+    assert!(s.starts_with("_ende() {"), "{s}");
+    assert!(s.contains("complete -F _ende -o bashdefault"), "{s}");
+    assert!(!s.contains("_deno"), "{s}");
   }
 
   #[test]
@@ -788,6 +794,14 @@ mod tests {
     }
     // `--help` has no help text, so it gets no `[]` description at all.
     assert!(s.contains("'(-h --help)'{-h,--help}'' \\"), "{s}");
+    assert!(s.contains("#compdef ende"), "{s}");
+    assert!(
+      s.contains("_describe -t commands 'ende commands' commands"),
+      "{s}"
+    );
+    assert!(s.contains("_ende_commands() {"), "{s}");
+    assert!(s.contains("\":: :_ende_commands\""), "{s}");
+    assert!(!s.contains("_deno"), "{s}");
   }
 
   #[test]
@@ -805,17 +819,17 @@ mod tests {
   #[test]
   fn generate_dynamic_bash_uses_callback_protocol() {
     let s =
-      String::from_utf8(generate_dynamic("bash", "deno", "/bin/deno")).unwrap();
-    assert!(s.contains("_clap_complete_deno"), "{s}");
+      String::from_utf8(generate_dynamic("bash", "ende", "/bin/ende")).unwrap();
+    assert!(s.contains("_clap_complete_ende"), "{s}");
     assert!(s.contains("_CLAP_COMPLETE_INDEX"), "{s}");
-    assert!(s.contains("/bin/deno"), "{s}");
-    assert!(s.contains("-F _clap_complete_deno deno"), "{s}");
+    assert!(s.contains("/bin/ende"), "{s}");
+    assert!(s.contains("-F _clap_complete_ende ende"), "{s}");
   }
 
   #[test]
   fn generate_dynamic_fish_is_exclusive_keep_order() {
     let s =
-      String::from_utf8(generate_dynamic("fish", "deno", "/bin/deno")).unwrap();
+      String::from_utf8(generate_dynamic("fish", "ende", "/bin/ende")).unwrap();
     assert!(s.contains("complete --keep-order --exclusive"), "{s}");
     assert!(s.contains("COMPLETE=fish"), "{s}");
   }
@@ -823,9 +837,9 @@ mod tests {
   #[test]
   fn generate_dynamic_zsh_preserves_order() {
     let s =
-      String::from_utf8(generate_dynamic("zsh", "deno", "/bin/deno")).unwrap();
-    assert!(s.contains("#compdef deno"), "{s}");
-    assert!(s.contains("_clap_dynamic_completer_deno"), "{s}");
+      String::from_utf8(generate_dynamic("zsh", "ende", "/bin/ende")).unwrap();
+    assert!(s.contains("#compdef ende"), "{s}");
+    assert!(s.contains("_clap_dynamic_completer_ende"), "{s}");
     assert!(s.contains("-o nosort"), "{s}");
   }
 }

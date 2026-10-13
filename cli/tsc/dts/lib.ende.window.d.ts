@@ -9,7 +9,7 @@
 
 /**
  * Defines the mapping between event names and their corresponding event types
- * for the `Window` interface in Deno.
+ * for the `Window` interface in Ende.
  *
  * This interface provides type safety for event handlers by associating event names
  * with their proper event types.
@@ -23,9 +23,9 @@ interface WindowEventMap {
 }
 
 /**
- * Represents the global window object in the Deno runtime environment.
+ * Represents the global window object in the Ende runtime environment.
  *
- * While Deno doesn't have a browser window, this interface mimics browser window
+ * While Ende doesn't have a browser window, this interface mimics browser window
  * functionality for compatibility with web APIs. It provides access to global
  * properties and methods such as timers, storage, and event handling.
  *
@@ -102,7 +102,7 @@ interface Window extends EventTarget {
 /**
  * Constructor for `Window` objects.
  *
- * Note: This constructor cannot be used to create new `Window` instances in Deno.
+ * Note: This constructor cannot be used to create new `Window` instances in Ende.
  * The global `window` object is pre-defined in the runtime environment.
  *
  * @category Platform
@@ -130,27 +130,27 @@ declare var self: Window & typeof globalThis;
 
 /**
  * Indicates whether the current window (context) is closed.
- * In Deno, this property is primarily for API compatibility with browsers.
+ * In Ende, this property is primarily for API compatibility with browsers.
  *
  * @category Platform
  */
 declare var closed: boolean;
 
 /**
- * Exits the current Deno process.
+ * Exits the current Ende process.
  *
  * This function terminates the process by signaling the runtime to exit.
  * Similar to exit(0) in posix. Its behavior is similar to the `window.close()`
- * method in the browser, but specific to the Deno runtime.
+ * method in the browser, but specific to the Ende runtime.
  *
  * Note: Use this function cautiously, as it will stop the execution of the
- * entire Deno program immediately.
+ * entire Ende program immediately.
  *
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/close
  *
  * @example
  * ```ts
- * console.log("About to close the Deno process.");
+ * console.log("About to close the Ende process.");
  * close(); // The process will terminate here.
  * console.log("This will not be logged."); // This line will never execute.
  * ```
@@ -177,7 +177,7 @@ declare var onerror: ((this: Window, ev: ErrorEvent) => any) | null;
 
 /**
  * Load event handler for the window.
- * In Deno, this is primarily for API compatibility with browsers.
+ * In Ende, this is primarily for API compatibility with browsers.
  *
  * @category Events
  */
@@ -185,7 +185,7 @@ declare var onload: ((this: Window, ev: Event) => any) | null;
 
 /**
  * Before unload event handler for the window.
- * In Deno, this is primarily for API compatibility with browsers.
+ * In Ende, this is primarily for API compatibility with browsers.
  *
  * @category Events
  */
@@ -193,7 +193,7 @@ declare var onbeforeunload: ((this: Window, ev: Event) => any) | null;
 
 /**
  * Unload event handler for the window.
- * In Deno, this is primarily for API compatibility with browsers.
+ * In Ende, this is primarily for API compatibility with browsers.
  *
  * @category Events
  */
@@ -221,9 +221,9 @@ declare var onunhandledrejection:
   | null;
 
 /**
- * Deno's `localStorage` API provides a way to store key-value pairs in a
+ * Ende's `localStorage` API provides a way to store key-value pairs in a
  * web-like environment, similar to the Web Storage API found in browsers.
- * It allows developers to persist data across sessions in a Deno application.
+ * It allows developers to persist data across sessions in an Ende application.
  * This API is particularly useful for applications that require a simple
  * and effective way to store data locally.
  *
@@ -265,7 +265,7 @@ declare var onunhandledrejection:
 declare var localStorage: Storage;
 
 /**
- * Deno's `sessionStorage` API operates similarly to the {@linkcode localStorage} API,
+ * Ende's `sessionStorage` API operates similarly to the {@linkcode localStorage} API,
  * but it is intended for storing data temporarily for the duration of a session.
  * Data stored in sessionStorage is cleared when the application session or
  * process ends. This makes it suitable for temporary data that you do not need
@@ -339,9 +339,9 @@ declare var sessionStorage: Storage;
 declare var caches: CacheStorage;
 
 /**
- * Provides information about the Deno runtime environment and the system
+ * Provides information about the Ende runtime environment and the system
  * on which it's running. Similar to the browser `Navigator` object but
- * adapted for the Deno context.
+ * adapted for the Ende context.
  *
  * @example
  * ```ts
@@ -370,7 +370,7 @@ interface Navigator {
 /**
  * Constructor for `Navigator` objects.
  *
- * Note: This constructor cannot be used to create new `Navigator` instances in Deno.
+ * Note: This constructor cannot be used to create new `Navigator` instances in Ende.
  * The global `navigator` object is pre-defined in the runtime environment.
  *
  * @category Platform
@@ -381,7 +381,7 @@ declare var Navigator: {
 };
 
 /**
- * Provides access to the Deno runtime's `Navigator` interface, which contains
+ * Provides access to the Ende runtime's `Navigator` interface, which contains
  * information about the environment in which the script is running.
  *
  * @example
@@ -531,60 +531,60 @@ interface Location {
    * browsing contexts, from the parent browsing context to the top-level
    * browsing context.
    *
-   * Always empty in Deno. */
+   * Always empty in Ende. */
   readonly ancestorOrigins: DOMStringList;
   /** Returns the Location object's URL's fragment (includes leading "#" if
    * non-empty).
    *
-   * Cannot be set in Deno. */
+   * Cannot be set in Ende. */
   hash: string;
   /** Returns the Location object's URL's host and port (if different from the
    * default port for the scheme).
    *
-   * Cannot be set in Deno. */
+   * Cannot be set in Ende. */
   host: string;
   /** Returns the Location object's URL's host.
    *
-   * Cannot be set in Deno. */
+   * Cannot be set in Ende. */
   hostname: string;
   /** Returns the Location object's URL.
    *
-   * Cannot be set in Deno. */
+   * Cannot be set in Ende. */
   href: string;
   toString(): string;
   /** Returns the Location object's URL's origin. */
   readonly origin: string;
   /** Returns the Location object's URL's path.
    *
-   * Cannot be set in Deno. */
+   * Cannot be set in Ende. */
   pathname: string;
   /** Returns the Location object's URL's port.
    *
-   * Cannot be set in Deno. */
+   * Cannot be set in Ende. */
   port: string;
   /** Returns the Location object's URL's scheme.
    *
-   * Cannot be set in Deno. */
+   * Cannot be set in Ende. */
   protocol: string;
   /** Returns the Location object's URL's query (includes leading "?" if
    * non-empty).
    *
-   * Cannot be set in Deno. */
+   * Cannot be set in Ende. */
   search: string;
   /** Navigates to the given URL.
    *
-   * Cannot be set in Deno. */
+   * Cannot be set in Ende. */
   assign(url: string): void;
   /** Reloads the current page.
    *
-   * Disabled in Deno. */
+   * Disabled in Ende. */
   reload(): void;
   /** @deprecated */
   reload(forcedReload: boolean): void;
   /** Removes the current page from the session history and navigates to the
    * given URL.
    *
-   * Disabled in Deno. */
+   * Disabled in Ende. */
   replace(url: string): void;
 }
 
@@ -612,7 +612,7 @@ declare var location: Location;
 
 /** Gets or sets the name of the global scope's browsing context.
  *
- * Provided for web compatibility; Deno has no browsing context, so this is an
+ * Provided for web compatibility; Ende has no browsing context, so this is an
  * empty string by default.
  *
  * @category Platform */

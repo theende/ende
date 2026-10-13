@@ -94,7 +94,7 @@ pub async fn pack(
         });
       }
       None => {
-        bail!("No deno.json found in current directory");
+        bail!("No ende.json found in current directory");
       }
     }
   }

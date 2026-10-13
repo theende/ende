@@ -101,7 +101,7 @@ pub async fn publish(
       }
       None => {
         bail!(
-          "Couldn't find a deno.json, deno.jsonc, jsr.json or jsr.jsonc configuration file in {}.",
+          "Couldn't find an ende.json, ende.jsonc, jsr.json or jsr.jsonc configuration file in {}.",
           directory_path.display()
         );
       }
@@ -498,7 +498,7 @@ impl PublishPreparer {
               concat!(
                 "Failed ensuring public API type output is valid.\n\n",
                 "{:#}\n\n",
-                "You may have discovered a bug in Deno. Please open an issue at: ",
+                "You may have discovered a bug in Ende. Please open an issue at: ",
                 "https://github.com/theende/ende/issues/"
               ),
               check_diagnostics

@@ -44,7 +44,7 @@ pub struct FrameworkDetection {
 /// agreement with where it actually listens.
 const VITE_DEV_ENTRYPOINT: &str = r#"// @ts-nocheck
 import { createServer } from "vite";
-const addr = Deno.env.get("ENDE_SERVE_ADDRESS") ?? "";
+const addr = Ende.env.get("ENDE_SERVE_ADDRESS") ?? "";
 const match = addr.match(/^tcp:(.+):(\d+)$/);
 const server = await createServer({
   server: match
@@ -258,7 +258,7 @@ pub fn detect_framework(
 fn deno_exe() -> String {
   std::env::current_exe()
     .map(|p| p.display().to_string())
-    .unwrap_or_else(|_| "deno".into())
+    .unwrap_or_else(|_| "ende".into())
 }
 
 fn deno_task_build() -> Vec<String> {
@@ -280,7 +280,7 @@ globalThis.addEventListener("unhandledrejection", (e) => {{
 }});
 // Guard: skip for forked workers (child_process.fork sets NODE_CHANNEL_FD).
 // Workers use override_main_module to run their target script directly.
-if (!Deno.env.get("NODE_CHANNEL_FD")) {{
+if (!Ende.env.get("NODE_CHANNEL_FD")) {{
   // Use import.meta.dirname so paths resolve against the VFS in the
   // compiled binary rather than the runtime CWD.
   await nextStart({{ hostname: "0.0.0.0" }}, import.meta.dirname);
@@ -338,7 +338,7 @@ fn detect_fresh(dir: &Path) -> FrameworkDetection {
       name: "Fresh",
       entrypoint_code: r#"// @ts-nocheck
 const mod = await import("./_fresh/server.js");
-Deno.serve(mod.default.fetch);
+Ende.serve(mod.default.fetch);
 "#
       .into(),
       include_paths,
@@ -414,7 +414,7 @@ import { serveDir } from "jsr:@std/http/file-server";
 // against the VFS in the compiled binary via import.meta.dirname rather than
 // the runtime CWD.
 const fsRoot = import.meta.dirname + "/build/client";
-Deno.serve(async (req) => {
+Ende.serve(async (req) => {
   const res = await serveDir(req, { fsRoot, quiet: true });
   // SPA fallback: route unmatched HTML navigations back to index.html so
   // client-side routers keep working after a hard refresh.
@@ -453,7 +453,7 @@ import * as build from "./build/server/index.js";
 const fsRoot = import.meta.dirname + "/build/client";
 const handler = createRequestHandler(build, "production");
 
-Deno.serve(async (req) => {
+Ende.serve(async (req) => {
   if (req.method === "GET" || req.method === "HEAD") {
     const staticRes = await serveDir(req, { fsRoot, quiet: true });
     if (staticRes.status !== 404) {
@@ -613,9 +613,9 @@ fn detect_sveltekit(dir: &Path) -> Result<FrameworkDetection, AnyError> {
     ""
   };
   bail!(
-    "SvelteKit detected, but no adapter that `deno desktop` can bundle is \
+    "SvelteKit detected, but no adapter that `ende desktop` can bundle is \
      configured.\n{auto_hint}Configure a supported adapter in your \
-     svelte.config:\n  - `@sveltejs/adapter-node` (runs under Deno via \
+     svelte.config:\n  - `@sveltejs/adapter-node` (runs under Ende via \
      Node.js compatibility)\n  - `@deno/svelte-adapter` (for Deno Deploy)"
   );
 }
@@ -688,7 +688,7 @@ import { serveDir } from "jsr:@std/http@^1/file-server";
 // `vite build` emits a static site into `dist/`. Resolve it against the VFS in
 // the compiled binary via import.meta.dirname rather than the runtime CWD.
 const fsRoot = import.meta.dirname + "/dist";
-Deno.serve(async (req) => {
+Ende.serve(async (req) => {
   const res = await serveDir(req, { fsRoot, quiet: true });
   // SPA fallback: route unmatched HTML navigations back to index.html so
   // client-side routers keep working after a hard refresh.
@@ -1440,7 +1440,7 @@ mod tests {
     assert_eq!(det.name, "Vite");
     assert!(det.entrypoint_code.contains("serveDir"));
     assert!(det.entrypoint_code.contains("/dist"));
-    assert!(det.entrypoint_code.contains("Deno.serve"));
+    assert!(det.entrypoint_code.contains("Ende.serve"));
     // The remote `@std/http` dependency must be version-pinned so the compiled
     // binary is reproducible.
     assert!(det.entrypoint_code.contains("jsr:@std/http@^1/file-server"));

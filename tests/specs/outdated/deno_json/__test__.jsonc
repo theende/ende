@@ -103,7 +103,7 @@
           "output": "[WILDCARD]"
         },
         {
-          "args": "outdated --update --latest @denotest/add @denotest/b* !@denotest/breaking* @denotest/with-subpath@0.5.0",
+          "args": "outdated --update --latest @endetest/add @denotest/b* !@denotest/breaking* @denotest/with-subpath@0.5.0",
           "output": "filtered/update.out"
         },
         {

@@ -557,8 +557,8 @@ pub async fn add(
   {
     bail!(
       concat!(
-        "`deno {}` is not supported when configuration file contains an \"importMap\" field. ",
-        "Inline the import map into the Deno configuration file.\n",
+        "`ende {}` is not supported when configuration file contains an \"importMap\" field. ",
+        "Inline the import map into the Ende configuration file.\n",
         "    at {}",
       ),
       cmd_name,
@@ -641,7 +641,7 @@ pub async fn add(
               add_req.package_name(),
               add_req.alias,
               crate::colors::yellow(format!(
-                "deno {cmd_name} my-alias@{}",
+                "ende {cmd_name} my-alias@{}",
                 add_req.package_name()
               )),
             );
@@ -662,7 +662,7 @@ pub async fn add(
         {
           bail!(
             "{entry_text} is missing a prefix. Did you mean `{}`?",
-            crate::colors::yellow(format!("deno {cmd_name} jsr:{package_req}"))
+            crate::colors::yellow(format!("ende {cmd_name} jsr:{package_req}"))
           )
         } else if npm_resolver
           .req_to_nv(&package_req)
@@ -673,7 +673,7 @@ pub async fn add(
         {
           bail!(
             "{entry_text} is missing a prefix. Did you mean `{}`?",
-            crate::colors::yellow(format!("deno {cmd_name} npm:{package_req}"))
+            crate::colors::yellow(format!("ende {cmd_name} npm:{package_req}"))
           )
         } else {
           bail!(
@@ -717,14 +717,14 @@ pub async fn add(
           bail!(
             "{} was not found, but a matching npm package exists. Did you mean `{}`?",
             crate::colors::red(package_name),
-            crate::colors::yellow(format!("deno {cmd_name} npm:{package_req}"))
+            crate::colors::yellow(format!("ende {cmd_name} npm:{package_req}"))
           );
         }
         Some(NotFoundHelp::JsrPackage) => {
           bail!(
             "{} was not found, but a matching jsr package exists. Did you mean `{}`?",
             crate::colors::red(package_name),
-            crate::colors::yellow(format!("deno {cmd_name} jsr:{package_req}"))
+            crate::colors::yellow(format!("ende {cmd_name} jsr:{package_req}"))
           )
         }
         Some(NotFoundHelp::PreReleaseVersion(version)) => {
@@ -732,7 +732,7 @@ pub async fn add(
             "{} has only pre-release versions available. Try specifying a version: `{}`",
             crate::colors::red(&package_name),
             crate::colors::yellow(format!(
-              "deno {cmd_name} {package_name}@^{version}"
+              "ende {cmd_name} {package_name}@^{version}"
             ))
           )
         }
@@ -1387,7 +1387,7 @@ fn link_hint_for_spec(cwd: &Path, spec: &str) -> Option<String> {
   Some(format!(
     "'{}' looks like a local package directory. Did you mean `{}`?",
     spec,
-    crate::colors::yellow(format!("deno link {spec}"))
+    crate::colors::yellow(format!("ende link {spec}"))
   ))
 }
 
@@ -1444,7 +1444,7 @@ fn load_deno_config_for_link(
     let (cli_factory, _force_package_json, _npm_config, deno_config) =
       load_configs(flags, || true, false, false)?;
     let deno_config = deno_config.ok_or_else(|| {
-      ende_core::anyhow::anyhow!("Could not load or create deno.json")
+      ende_core::anyhow::anyhow!("Could not load or create ende.json")
     })?;
     return Ok((cli_factory, deno_config));
   }
@@ -1459,7 +1459,7 @@ fn load_deno_config_for_link(
       ConfigKind::DenoJson,
       url_to_file_path(&deno_json.specifier)?,
     )?,
-    None => bail!("No deno.json found; there are no linked packages to unlink"),
+    None => bail!("No ende.json found; there are no linked packages to unlink"),
   };
   Ok((cli_factory, deno_config))
 }
@@ -1496,14 +1496,14 @@ pub async fn link(
       .any(|name| abs.join(name).exists());
     if !has_config {
       bail!(
-        "Cannot link '{}': no deno.json found in directory. \
-         A linked package must contain a deno.json with a \"name\" field.",
+        "Cannot link '{}': no ende.json found in directory. \
+         A linked package must contain an ende.json with a \"name\" field.",
         raw_path
       );
     }
     if read_link_target_name(&abs).is_none() {
       bail!(
-        "Cannot link '{}': its deno.json has no \"name\" field. \
+        "Cannot link '{}': its ende.json has no \"name\" field. \
          A linked package must declare a JSR-style \"name\" to be importable.",
         raw_path
       );

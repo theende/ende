@@ -69,7 +69,7 @@ async function connectTls({
     throw new TypeError(`Unsupported transport: '${transport}'`);
   }
 
-  const keyPair = loadTlsKeyPair("Deno.connectTls", {
+  const keyPair = loadTlsKeyPair("Ende.connectTls", {
     keyFormat,
     cert,
     key,
@@ -177,10 +177,10 @@ function listenTls({
 
   if (!hasTlsKeyPairOptions(arguments[0])) {
     throw new TypeError(
-      "A key and certificate are required for `Deno.listenTls`",
+      "A key and certificate are required for `Ende.listenTls`",
     );
   }
-  const keyPair = loadTlsKeyPair("Deno.listenTls", arguments[0]);
+  const keyPair = loadTlsKeyPair("Ende.listenTls", arguments[0]);
   const { 0: rid, 1: localAddr } = op_net_listen_tls(
     { hostname, port },
     { alpnProtocols, reusePort, tcpBacklog },
@@ -247,7 +247,7 @@ function createTlsKeyResolver(callback) {
           if (!hasTlsKeyPairOptions(key)) {
             op_tls_cert_resolver_resolve_error(lookup, sni, "Invalid key");
           } else {
-            const resolved = loadTlsKeyPair("Deno.listenTls", key);
+            const resolved = loadTlsKeyPair("Ende.listenTls", key);
             op_tls_cert_resolver_resolve(lookup, sni, resolved);
           }
         } catch (e) {

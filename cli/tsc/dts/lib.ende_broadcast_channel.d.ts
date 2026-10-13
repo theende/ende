@@ -15,7 +15,7 @@ interface BroadcastChannelEventMap {
 
 /** Represents a named channel that any
  * {@linkcode BroadcastChannel} with the same name (across workers or isolates
- * in the same Deno process) can use to send and receive messages, allowing
+ * in the same Ende process) can use to send and receive messages, allowing
  * one-to-many communication between execution contexts.
  *
  * @category Messaging

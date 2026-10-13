@@ -61,6 +61,7 @@ use lsp_types::Uri;
 use node_resolver::NodeResolverOptions;
 use tower_lsp::lsp_types as lsp;
 
+use super::legacy_client;
 use super::legacy_client::is_virtual_document_scheme;
 use super::logging::lsp_log;
 use super::lsp_custom;
@@ -675,20 +676,24 @@ impl WorkspaceSettings {
         }
       }
     }
+    let section = legacy_client::settings_section();
     let deno_inlay_hints =
       deno.as_object().and_then(|o| o.get("inlayHints").cloned());
     let deno_suggest = deno.as_object().and_then(|o| o.get("suggest").cloned());
-    let mut settings: Self = parse_or_default(deno, "settings under \"deno\"");
+    let mut settings: Self =
+      parse_or_default(deno, &format!("settings under \"{section}\""));
     settings.javascript =
       parse_or_default(javascript, "settings under \"javascript\"");
     settings.typescript =
       parse_or_default(typescript, "settings under \"typescript\"");
     if let Some(inlay_hints) = deno_inlay_hints {
-      let inlay_hints: InlayHintsSettings =
-        parse_or_default(inlay_hints, "settings under \"deno.inlayHints\"");
+      let inlay_hints: InlayHintsSettings = parse_or_default(
+        inlay_hints,
+        &format!("settings under \"{section}.inlayHints\""),
+      );
       if inlay_hints.parameter_names.enabled != Default::default() {
         lsp_warn!(
-          "\"deno.inlayHints.parameterNames.enabled\" is deprecated. Instead use \"javascript.inlayHints.parameterNames.enabled\" and \"typescript.inlayHints.parameterNames.enabled\"."
+          "\"{section}.inlayHints.parameterNames.enabled\" is deprecated. Instead use \"javascript.inlayHints.parameterNames.enabled\" and \"typescript.inlayHints.parameterNames.enabled\"."
         );
         settings.javascript.inlay_hints.parameter_names.enabled =
           inlay_hints.parameter_names.enabled.clone();
@@ -700,7 +705,7 @@ impl WorkspaceSettings {
         .suppress_when_argument_matches_name
       {
         lsp_warn!(
-          "\"deno.inlayHints.parameterNames.suppressWhenArgumentMatchesName\" is deprecated. Instead use \"javascript.inlayHints.parameterNames.suppressWhenArgumentMatchesName\" and \"typescript.inlayHints.parameterNames.suppressWhenArgumentMatchesName\"."
+          "\"{section}.inlayHints.parameterNames.suppressWhenArgumentMatchesName\" is deprecated. Instead use \"javascript.inlayHints.parameterNames.suppressWhenArgumentMatchesName\" and \"typescript.inlayHints.parameterNames.suppressWhenArgumentMatchesName\"."
         );
         settings
           .javascript
@@ -719,7 +724,7 @@ impl WorkspaceSettings {
       }
       if inlay_hints.parameter_types.enabled {
         lsp_warn!(
-          "\"deno.inlayHints.parameterTypes.enabled\" is deprecated. Instead use \"javascript.inlayHints.parameterTypes.enabled\" and \"typescript.inlayHints.parameterTypes.enabled\"."
+          "\"{section}.inlayHints.parameterTypes.enabled\" is deprecated. Instead use \"javascript.inlayHints.parameterTypes.enabled\" and \"typescript.inlayHints.parameterTypes.enabled\"."
         );
         settings.javascript.inlay_hints.parameter_types.enabled =
           inlay_hints.parameter_types.enabled;
@@ -728,7 +733,7 @@ impl WorkspaceSettings {
       }
       if inlay_hints.variable_types.enabled {
         lsp_warn!(
-          "\"deno.inlayHints.variableTypes.enabled\" is deprecated. Instead use \"javascript.inlayHints.variableTypes.enabled\" and \"typescript.inlayHints.variableTypes.enabled\"."
+          "\"{section}.inlayHints.variableTypes.enabled\" is deprecated. Instead use \"javascript.inlayHints.variableTypes.enabled\" and \"typescript.inlayHints.variableTypes.enabled\"."
         );
         settings.javascript.inlay_hints.variable_types.enabled =
           inlay_hints.variable_types.enabled;
@@ -737,7 +742,7 @@ impl WorkspaceSettings {
       }
       if !inlay_hints.variable_types.suppress_when_type_matches_name {
         lsp_warn!(
-          "\"deno.inlayHints.variableTypes.suppressWhenTypeMatchesName\" is deprecated. Instead use \"javascript.inlayHints.variableTypes.suppressWhenTypeMatchesName\" and \"typescript.inlayHints.variableTypes.suppressWhenTypeMatchesName\"."
+          "\"{section}.inlayHints.variableTypes.suppressWhenTypeMatchesName\" is deprecated. Instead use \"javascript.inlayHints.variableTypes.suppressWhenTypeMatchesName\" and \"typescript.inlayHints.variableTypes.suppressWhenTypeMatchesName\"."
         );
         settings
           .javascript
@@ -754,7 +759,7 @@ impl WorkspaceSettings {
       }
       if inlay_hints.property_declaration_types.enabled {
         lsp_warn!(
-          "\"deno.inlayHints.propertyDeclarationTypes.enabled\" is deprecated. Instead use \"javascript.inlayHints.propertyDeclarationTypes.enabled\" and \"typescript.inlayHints.propertyDeclarationTypes.enabled\"."
+          "\"{section}.inlayHints.propertyDeclarationTypes.enabled\" is deprecated. Instead use \"javascript.inlayHints.propertyDeclarationTypes.enabled\" and \"typescript.inlayHints.propertyDeclarationTypes.enabled\"."
         );
         settings
           .javascript
@@ -769,7 +774,7 @@ impl WorkspaceSettings {
       }
       if inlay_hints.function_like_return_types.enabled {
         lsp_warn!(
-          "\"deno.inlayHints.functionLikeReturnTypes.enabled\" is deprecated. Instead use \"javascript.inlayHints.functionLikeReturnTypes.enabled\" and \"typescript.inlayHints.functionLikeReturnTypes.enabled\"."
+          "\"{section}.inlayHints.functionLikeReturnTypes.enabled\" is deprecated. Instead use \"javascript.inlayHints.functionLikeReturnTypes.enabled\" and \"typescript.inlayHints.functionLikeReturnTypes.enabled\"."
         );
         settings
           .javascript
@@ -784,7 +789,7 @@ impl WorkspaceSettings {
       }
       if inlay_hints.enum_member_values.enabled {
         lsp_warn!(
-          "\"deno.inlayHints.enumMemberValues.enabled\" is deprecated. Instead use \"javascript.inlayHints.enumMemberValues.enabled\" and \"typescript.inlayHints.enumMemberValues.enabled\"."
+          "\"{section}.inlayHints.enumMemberValues.enabled\" is deprecated. Instead use \"javascript.inlayHints.enumMemberValues.enabled\" and \"typescript.inlayHints.enumMemberValues.enabled\"."
         );
         settings.javascript.inlay_hints.enum_member_values.enabled =
           inlay_hints.enum_member_values.enabled;
@@ -793,11 +798,13 @@ impl WorkspaceSettings {
       }
     }
     if let Some(suggest) = deno_suggest {
-      let suggest: CompletionSettings =
-        parse_or_default(suggest, "settings under \"deno.suggest\"");
+      let suggest: CompletionSettings = parse_or_default(
+        suggest,
+        &format!("settings under \"{section}.suggest\""),
+      );
       if suggest.complete_function_calls {
         lsp_warn!(
-          "\"deno.suggest.completeFunctionCalls\" is deprecated. Instead use \"javascript.suggest.completeFunctionCalls\" and \"typescript.suggest.completeFunctionCalls\"."
+          "\"{section}.suggest.completeFunctionCalls\" is deprecated. Instead use \"javascript.suggest.completeFunctionCalls\" and \"typescript.suggest.completeFunctionCalls\"."
         );
         settings.javascript.suggest.complete_function_calls =
           suggest.complete_function_calls;
@@ -806,21 +813,21 @@ impl WorkspaceSettings {
       }
       if !suggest.names {
         lsp_warn!(
-          "\"deno.suggest.names\" is deprecated. Instead use \"javascript.suggest.names\" and \"typescript.suggest.names\"."
+          "\"{section}.suggest.names\" is deprecated. Instead use \"javascript.suggest.names\" and \"typescript.suggest.names\"."
         );
         settings.javascript.suggest.names = suggest.names;
         settings.typescript.suggest.names = suggest.names;
       }
       if !suggest.paths {
         lsp_warn!(
-          "\"deno.suggest.paths\" is deprecated. Instead use \"javascript.suggest.paths\" and \"typescript.suggest.paths\"."
+          "\"{section}.suggest.paths\" is deprecated. Instead use \"javascript.suggest.paths\" and \"typescript.suggest.paths\"."
         );
         settings.javascript.suggest.paths = suggest.paths;
         settings.typescript.suggest.paths = suggest.paths;
       }
       if !suggest.auto_imports {
         lsp_warn!(
-          "\"deno.suggest.autoImports\" is deprecated. Instead use \"javascript.suggest.autoImports\" and \"typescript.suggest.autoImports\"."
+          "\"{section}.suggest.autoImports\" is deprecated. Instead use \"javascript.suggest.autoImports\" and \"typescript.suggest.autoImports\"."
         );
         settings.javascript.suggest.auto_imports = suggest.auto_imports;
         settings.typescript.suggest.auto_imports = suggest.auto_imports;
@@ -1584,7 +1591,7 @@ impl ConfigData {
 
     if let Some(deno_json) = member_dir.member_deno_json() {
       lsp_log!(
-        "  Resolved Deno configuration file: \"{}\"",
+        "  Resolved Ende configuration file: \"{}\"",
         deno_json.specifier
       );
 

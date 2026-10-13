@@ -1,2 +1,2 @@
-await import("jsr:@denotest/add");
+await import("jsr:@endetest/add");
 console.log("Hello world");

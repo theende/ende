@@ -1,0 +1,14 @@
+Warning: OTEL_DENO is deprecated. Use OTEL_ENDE instead.
+Warning: OTEL_DENO_CONSOLE is deprecated. Use OTEL_ENDE_CONSOLE instead.
+[WILDCARD]hello from inner
+SPAN inner span [00000000000000000000000000000001/0000000000000002] Internal [WILDCARD]ms
+  parent: 0000000000000001
+  scope: example-tracer
+  key: value
+SPAN outer span [00000000000000000000000000000001/0000000000000001] Internal [WILDCARD]ms
+  scope: example-tracer
+[WILDCARD]LOG [INFO] [WILDCARD] "hello from inner
+"
+  scope: deno@[WILDCARD]
+  trace: 00000000000000000000000000000001/0000000000000002
+[WILDCARD]

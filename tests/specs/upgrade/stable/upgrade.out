@@ -1,4 +1,4 @@
-Current Deno version: [WILDCARD]
+Current Ende version: [WILDCARD]
 Looking up stable version
 
 Found latest stable version [WILDCARD]
@@ -6,7 +6,7 @@ Found latest stable version [WILDCARD]
 [# a full download, a delta patch, or -- once an earlier attempt populated]
 [# the deno dir -- the cached archive.]
 [WILDCARD]
-Deno is upgrading to version [WILDCARD]
+Ende is upgrading to version [WILDCARD]
 
-Upgraded successfully to Deno [WILDCARD] (stable)
+Upgraded successfully to Ende [WILDCARD] (stable)
 [WILDCARD]

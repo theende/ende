@@ -16,7 +16,7 @@
     "jsr_specifier": {
       "steps": [
         {
-          "args": "bundle --output=out.js jsr:@denotest/checks-for-main@1.0.0",
+          "args": "bundle --output=out.js jsr:@endetest/checks-for-main@1.0.0",
           "output": "[WILDCARD]"
         },
         {

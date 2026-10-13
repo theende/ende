@@ -62,7 +62,7 @@ pub fn init_log_file(enabled: bool, cwd: &Path) {
     let now = SystemTime::now();
     let now: DateTime<Utc> = now.into();
     let now = now.to_rfc3339().replace(':', "_");
-    let path = cwd.join(format!(".deno_lsp/log_{}.txt", now));
+    let path = cwd.join(format!(".ende_lsp/log_{}.txt", now));
     fs::create_dir_all(path.parent()?).ok()?;
     fs::write(&path, "").ok()?;
     Some(path)

@@ -1,1 +1,1 @@
-import { add } from "@denotest/add";
+import { add } from "@endetest/add";

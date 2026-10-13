@@ -922,6 +922,16 @@ impl LspClient {
     }
   }
 
+  /// The id of the server command `name` (e.g. `cache`) for this client:
+  /// `ende.<name>`, or `deno.<name>` for a legacy client.
+  pub fn command_id(&self, name: &str) -> String {
+    if self.legacy_deno_client {
+      format!("deno.{name}")
+    } else {
+      format!("ende.{name}")
+    }
+  }
+
   pub fn duration(&self) -> Duration {
     self.start.elapsed()
   }
@@ -1208,20 +1218,22 @@ impl LspClient {
     specifiers: impl IntoIterator<Item = impl Serialize>,
     referrer: impl Serialize,
   ) {
+    let command = self.command_id("cache");
     self.write_request(
       "workspace/executeCommand",
       json!({
-        "command": "deno.cache",
+        "command": command,
         "arguments": [specifiers.into_iter().collect::<Vec<_>>(), referrer],
       }),
     );
   }
 
   pub fn cache_specifier(&mut self, specifier: impl Serialize) {
+    let command = self.command_id("cache");
     self.write_request(
       "workspace/executeCommand",
       json!({
-        "command": "deno.cache",
+        "command": command,
         "arguments": [[], specifier],
       }),
     );

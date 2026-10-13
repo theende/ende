@@ -12,7 +12,7 @@
           "output": "ende.lock.json.out"
         },
         {
-          "args": "install jsr:@denotest/add",
+          "args": "install jsr:@endetest/add",
           "output": "[WILDCARD]"
         },
         {

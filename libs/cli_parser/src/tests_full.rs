@@ -32,7 +32,7 @@ macro_rules! svec {
 #[test]
 fn global_flags() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "--log-level", "debug", "--quiet", "run", "script.ts"]);
+    let r = flags_from_vec(svec!["ende", "--log-level", "debug", "--quiet", "run", "script.ts"]);
 
   let flags = r.unwrap();
   assert_eq!(
@@ -47,7 +47,7 @@ fn global_flags() {
     }
   );
   #[rustfmt::skip]
-    let r2 = flags_from_vec(svec!["deno", "run", "--log-level", "debug", "--quiet", "script.ts"]);
+    let r2 = flags_from_vec(svec!["ende", "run", "--log-level", "debug", "--quiet", "script.ts"]);
   let flags2 = r2.unwrap();
   assert_eq!(flags2, flags);
 }
@@ -58,7 +58,7 @@ fn crlf_shebang_arg() {
   // `#!/usr/bin/env -S deno run --allow-net` is invoked by the kernel as
   // roughly `deno run --allow-net\r script.ts`. The stray `\r` on the last
   // shebang token must not break flag parsing.
-  let r = flags_from_vec(svec!["deno", "run", "--allow-net\r", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--allow-net\r", "script.ts"]);
   let flags = r.unwrap();
   assert_eq!(
     flags,
@@ -78,7 +78,7 @@ fn crlf_shebang_arg() {
 
 #[test]
 fn upgrade() {
-  let r = flags_from_vec(svec!["deno", "upgrade", "--dry-run", "--force"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "--dry-run", "--force"]);
   let flags = r.unwrap();
   assert_eq!(
     flags,
@@ -103,7 +103,7 @@ fn upgrade() {
 
 #[test]
 fn upgrade_with_output_flag() {
-  let r = flags_from_vec(svec!["deno", "upgrade", "--output", "example.txt"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "--output", "example.txt"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -127,15 +127,15 @@ fn upgrade_with_output_flag() {
 
 #[test]
 fn version() {
-  let r = flags_from_vec(svec!["deno", "--version"]);
+  let r = flags_from_vec(svec!["ende", "--version"]);
   assert_eq!(r.unwrap_err().kind, CliErrorKind::DisplayVersion);
-  let r = flags_from_vec(svec!["deno", "-V"]);
+  let r = flags_from_vec(svec!["ende", "-V"]);
   assert_eq!(r.unwrap_err().kind, CliErrorKind::DisplayVersion);
 }
 
 #[test]
 fn run_reload() {
-  let r = flags_from_vec(svec!["deno", "run", "-r", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "-r", "script.ts"]);
   let flags = r.unwrap();
   assert_eq!(
     flags,
@@ -152,7 +152,7 @@ fn run_reload() {
 
 #[test]
 fn run_watch() {
-  let r = flags_from_vec(svec!["deno", "run", "--watch", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--watch", "script.ts"]);
   let flags = r.unwrap();
   assert_eq!(
     flags,
@@ -175,7 +175,7 @@ fn run_watch() {
   );
 
   let r =
-    flags_from_vec(svec!["deno", "--watch", "--no-clear-screen", "script.ts"]);
+    flags_from_vec(svec!["ende", "--watch", "--no-clear-screen", "script.ts"]);
   let flags = r.unwrap();
   assert_eq!(
     flags,
@@ -198,7 +198,7 @@ fn run_watch() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--watch-hmr",
     "--no-clear-screen",
@@ -226,7 +226,7 @@ fn run_watch() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--unstable-hmr",
     "--no-clear-screen",
@@ -254,7 +254,7 @@ fn run_watch() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--watch-hmr=foo.txt",
     "--no-clear-screen",
@@ -281,14 +281,14 @@ fn run_watch() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "run", "--hmr", "--watch", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--hmr", "--watch", "script.ts"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn watch_subcommand() {
   // `deno watch script.ts` is an alias for `deno run --watch-hmr script.ts`.
-  let r = flags_from_vec(svec!["deno", "watch", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "watch", "script.ts"]);
   let flags = r.unwrap();
   assert_eq!(
     flags,
@@ -312,7 +312,7 @@ fn watch_subcommand() {
 
   // Additional watched paths and watch options are still respected.
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "watch",
     "--watch-hmr=foo.txt",
     "--no-clear-screen",
@@ -342,7 +342,7 @@ fn watch_subcommand() {
 
   // `--watch-exclude` is honored even without an explicit `--watch-hmr` flag.
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "watch",
     "--watch-exclude=bar.txt",
     "script.ts"
@@ -369,13 +369,13 @@ fn watch_subcommand() {
   );
 
   // Reading from stdin while watching is not supported.
-  let r = flags_from_vec(svec!["deno", "watch", "-"]);
+  let r = flags_from_vec(svec!["ende", "watch", "-"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn run_watch_with_external() {
-  let r = flags_from_vec(svec!["deno", "--watch=file1,file2", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "--watch=file1,file2", "script.ts"]);
   let flags = r.unwrap();
   assert_eq!(
     flags,
@@ -401,7 +401,7 @@ fn run_watch_with_external() {
 #[test]
 fn run_watch_with_no_clear_screen() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--watch",
     "--no-clear-screen",
@@ -433,7 +433,7 @@ fn run_watch_with_no_clear_screen() {
 #[test]
 fn run_watch_with_excluded_paths() {
   let r = flags_from_vec(svec!(
-    "deno",
+    "ende",
     "--watch",
     "--watch-exclude=foo",
     "script.ts"
@@ -461,7 +461,7 @@ fn run_watch_with_excluded_paths() {
   );
 
   let r = flags_from_vec(svec!(
-    "deno",
+    "ende",
     "run",
     "--watch=foo",
     "--watch-exclude=bar",
@@ -489,7 +489,7 @@ fn run_watch_with_excluded_paths() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--watch",
     "--watch-exclude=foo,bar",
@@ -518,7 +518,7 @@ fn run_watch_with_excluded_paths() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "--watch=foo,bar",
     "--watch-exclude=baz,qux",
     "script.ts"
@@ -551,19 +551,19 @@ fn run_watch_with_stdin_is_error() {
   // `--watch` and `--watch-hmr` cannot be combined with reading from stdin,
   // previously `--watch-hmr -` panicked and `--watch -` was silently ignored.
   for watch_flag in ["--watch", "--watch-hmr", "--unstable-hmr"] {
-    let r = flags_from_vec(svec!["deno", "run", watch_flag, "-"]);
+    let r = flags_from_vec(svec!["ende", "run", watch_flag, "-"]);
     assert!(r.is_err(), "expected conflict for {watch_flag}");
   }
 
   // a regular script with the same flags must still parse fine
-  let r = flags_from_vec(svec!["deno", "run", "--watch-hmr", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--watch-hmr", "script.ts"]);
   assert!(r.is_ok());
 }
 
 #[test]
 fn run_reload_allow_write() {
   let r =
-    flags_from_vec(svec!["deno", "run", "-r", "--allow-write", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "-r", "--allow-write", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -583,7 +583,7 @@ fn run_reload_allow_write() {
 
 #[test]
 fn run_coverage() {
-  let r = flags_from_vec(svec!["deno", "run", "--coverage=foo", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--coverage=foo", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -601,7 +601,7 @@ fn run_coverage() {
 
 #[test]
 fn run_v8_flags() {
-  let r = flags_from_vec(svec!["deno", "run", "--v8-flags=--help"]);
+  let r = flags_from_vec(svec!["ende", "run", "--v8-flags=--help"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -613,7 +613,7 @@ fn run_v8_flags() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--v8-flags=--expose-gc,--gc-stats=1",
     "script.ts"
@@ -630,13 +630,13 @@ fn run_v8_flags() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "run", "--v8-flags=--expose-gc"]);
+  let r = flags_from_vec(svec!["ende", "run", "--v8-flags=--expose-gc"]);
   assert!(r.is_ok());
 }
 
 #[test]
 fn serve_flags() {
-  let r = flags_from_vec(svec!["deno", "serve", "main.ts"]);
+  let r = flags_from_vec(svec!["ende", "serve", "main.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -653,7 +653,7 @@ fn serve_flags() {
       ..Flags::default()
     }
   );
-  let r = flags_from_vec(svec!["deno", "serve", "--port", "5000", "main.ts"]);
+  let r = flags_from_vec(svec!["ende", "serve", "--port", "5000", "main.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -671,7 +671,7 @@ fn serve_flags() {
     }
   );
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "serve",
     "--port",
     "5000",
@@ -695,7 +695,7 @@ fn serve_flags() {
     }
   );
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "serve",
     "--port",
     "5000",
@@ -722,32 +722,32 @@ fn serve_flags() {
 
 #[test]
 fn has_permission() {
-  let r = flags_from_vec(svec!["deno", "--allow-read", "x.ts"]);
+  let r = flags_from_vec(svec!["ende", "--allow-read", "x.ts"]);
   assert_eq!(r.unwrap().has_permission(), true);
 
-  let r = flags_from_vec(svec!["deno", "run", "--deny-read", "x.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--deny-read", "x.ts"]);
   assert_eq!(r.unwrap().has_permission(), true);
 
-  let r = flags_from_vec(svec!["deno", "run", "x.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "x.ts"]);
   assert_eq!(r.unwrap().has_permission(), false);
 }
 
 #[test]
 fn has_permission_in_argv() {
-  let r = flags_from_vec(svec!["deno", "run", "x.ts", "--allow-read"]);
+  let r = flags_from_vec(svec!["ende", "run", "x.ts", "--allow-read"]);
   assert_eq!(r.unwrap().has_permission_in_argv(), true);
 
-  let r = flags_from_vec(svec!["deno", "x.ts", "--deny-read"]);
+  let r = flags_from_vec(svec!["ende", "x.ts", "--deny-read"]);
   assert_eq!(r.unwrap().has_permission_in_argv(), true);
 
-  let r = flags_from_vec(svec!["deno", "run", "x.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "x.ts"]);
   assert_eq!(r.unwrap().has_permission_in_argv(), false);
 }
 
 #[test]
 fn script_args() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-net",
     "gist.ts",
@@ -773,7 +773,7 @@ fn script_args() {
 
 #[test]
 fn allow_all() {
-  let r = flags_from_vec(svec!["deno", "run", "--allow-all", "gist.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--allow-all", "gist.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -792,7 +792,7 @@ fn allow_all() {
 
 #[test]
 fn allow_read() {
-  let r = flags_from_vec(svec!["deno", "run", "--allow-read", "gist.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--allow-read", "gist.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -811,7 +811,7 @@ fn allow_read() {
 
 #[test]
 fn short_permission_flags() {
-  let r = flags_from_vec(svec!["deno", "run", "-RNESWI", "gist.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "-RNESWI", "gist.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -835,7 +835,7 @@ fn short_permission_flags() {
 
 #[test]
 fn deny_read() {
-  let r = flags_from_vec(svec!["deno", "--deny-read", "gist.ts"]);
+  let r = flags_from_vec(svec!["ende", "--deny-read", "gist.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -861,7 +861,7 @@ fn double_hyphen() {
   // be parsed to Flags but instead forwarded to
   // script args as Deno.args
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-write",
     "script.ts",
@@ -888,7 +888,7 @@ fn double_hyphen() {
 
 #[test]
 fn fmt() {
-  let r = flags_from_vec(svec!["deno", "fmt", "script_1.ts", "script_2.ts"]);
+  let r = flags_from_vec(svec!["ende", "fmt", "script_1.ts", "script_2.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -914,7 +914,7 @@ fn fmt() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "fmt", "--permit-no-files", "--check"]);
+  let r = flags_from_vec(svec!["ende", "fmt", "--permit-no-files", "--check"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -940,7 +940,7 @@ fn fmt() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "fmt"]);
+  let r = flags_from_vec(svec!["ende", "fmt"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -966,7 +966,7 @@ fn fmt() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "fmt", "--watch"]);
+  let r = flags_from_vec(svec!["ende", "fmt", "--watch"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -994,7 +994,7 @@ fn fmt() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "fmt",
     "--watch",
     "--no-clear-screen",
@@ -1036,7 +1036,7 @@ fn fmt() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "fmt",
     "--check",
     "--watch",
@@ -1069,7 +1069,7 @@ fn fmt() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "fmt", "--config", "ende.jsonc"]);
+  let r = flags_from_vec(svec!["ende", "fmt", "--config", "ende.jsonc"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1097,7 +1097,7 @@ fn fmt() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "fmt",
     "--config",
     "ende.jsonc",
@@ -1132,7 +1132,7 @@ fn fmt() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "fmt",
     "--use-tabs",
     "--line-width",
@@ -1171,7 +1171,7 @@ fn fmt() {
 
   // try providing =false to the booleans
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "fmt",
     "--use-tabs=false",
     "--single-quote=false",
@@ -1203,7 +1203,7 @@ fn fmt() {
   );
 
   // --no-editorconfig opts out of reading .editorconfig
-  let r = flags_from_vec(svec!["deno", "fmt", "--no-editorconfig"]);
+  let r = flags_from_vec(svec!["ende", "fmt", "--no-editorconfig"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1229,9 +1229,9 @@ fn fmt() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "fmt", "--ext", "html"]);
+  let r = flags_from_vec(svec!["ende", "fmt", "--ext", "html"]);
   assert!(r.is_err());
-  let r = flags_from_vec(svec!["deno", "fmt", "--ext", "html", "./**"]);
+  let r = flags_from_vec(svec!["ende", "fmt", "--ext", "html", "./**"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1261,7 +1261,7 @@ fn fmt() {
 
 #[test]
 fn lint() {
-  let r = flags_from_vec(svec!["deno", "lint", "script_1.ts", "script_2.ts"]);
+  let r = flags_from_vec(svec!["ende", "lint", "script_1.ts", "script_2.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1284,7 +1284,7 @@ fn lint() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "lint",
     "--permit-no-files",
     "--allow-import",
@@ -1319,7 +1319,7 @@ fn lint() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "lint",
     "--watch",
     "--no-clear-screen",
@@ -1354,7 +1354,7 @@ fn lint() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "lint",
     "--fix",
     "--ignore=script_1.ts,script_2.ts"
@@ -1380,7 +1380,7 @@ fn lint() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "lint", "--rules"]);
+  let r = flags_from_vec(svec!["ende", "lint", "--rules"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1403,7 +1403,7 @@ fn lint() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "lint",
     "--rules",
     "--rules-tags=recommended"
@@ -1430,7 +1430,7 @@ fn lint() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "lint",
     "--rules-tags=",
     "--rules-include=ban-untagged-todo,no-undef",
@@ -1457,7 +1457,7 @@ fn lint() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "lint", "--json", "script_1.ts"]);
+  let r = flags_from_vec(svec!["ende", "lint", "--json", "script_1.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1480,7 +1480,7 @@ fn lint() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "lint",
     "--config",
     "Deno.jsonc",
@@ -1510,7 +1510,7 @@ fn lint() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "lint",
     "--config",
     "Deno.jsonc",
@@ -1542,7 +1542,7 @@ fn lint() {
 
 #[test]
 fn types() {
-  let r = flags_from_vec(svec!["deno", "types"]);
+  let r = flags_from_vec(svec!["ende", "types"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1554,7 +1554,7 @@ fn types() {
 
 #[test]
 fn cache() {
-  let r = flags_from_vec(svec!["deno", "cache", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "cache", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1565,7 +1565,7 @@ fn cache() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "cache", "--env-file", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "cache", "--env-file", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1580,7 +1580,7 @@ fn cache() {
 
 #[test]
 fn check() {
-  let r = flags_from_vec(svec!["deno", "check", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "check", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1596,7 +1596,7 @@ fn check() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "check"]);
+  let r = flags_from_vec(svec!["ende", "check"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1612,7 +1612,7 @@ fn check() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "check", "--doc", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "check", "--doc", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1628,7 +1628,7 @@ fn check() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "check", "--doc-only", "markdown.md"]);
+  let r = flags_from_vec(svec!["ende", "check", "--doc-only", "markdown.md"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1646,11 +1646,11 @@ fn check() {
 
   // `--doc` and `--doc-only` are mutually exclusive
   let r =
-    flags_from_vec(svec!["deno", "check", "--doc", "--doc-only", "script.ts"]);
+    flags_from_vec(svec!["ende", "check", "--doc", "--doc-only", "script.ts"]);
   assert!(r.is_err());
 
   for all_flag in ["--remote", "--all"] {
-    let r = flags_from_vec(svec!["deno", "check", all_flag, "script.ts"]);
+    let r = flags_from_vec(svec!["ende", "check", all_flag, "script.ts"]);
     assert_eq!(
       r.unwrap(),
       Flags {
@@ -1667,7 +1667,7 @@ fn check() {
     );
 
     let r = flags_from_vec(svec![
-      "deno",
+      "ende",
       "check",
       all_flag,
       "--no-remote",
@@ -1676,7 +1676,7 @@ fn check() {
     assert!(r.is_err());
   }
 
-  let r = flags_from_vec(svec!["deno", "check", "--check-js", "script.js"]);
+  let r = flags_from_vec(svec!["ende", "check", "--check-js", "script.js"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1692,7 +1692,7 @@ fn check() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "check", "--desktop", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "check", "--desktop", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1715,7 +1715,7 @@ fn check() {
 
 #[test]
 fn info() {
-  let r = flags_from_vec(svec!["deno", "info", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "info", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1727,7 +1727,7 @@ fn info() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "info", "--reload", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "info", "--reload", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1740,7 +1740,7 @@ fn info() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "info", "--json", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "info", "--json", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1752,7 +1752,7 @@ fn info() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "info"]);
+  let r = flags_from_vec(svec!["ende", "info"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1764,7 +1764,7 @@ fn info() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "info", "--json"]);
+  let r = flags_from_vec(svec!["ende", "info", "--json"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1777,7 +1777,7 @@ fn info() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "info",
     "--no-npm",
     "--no-remote",
@@ -1802,7 +1802,7 @@ fn info() {
 #[test]
 fn tsconfig() {
   let r =
-    flags_from_vec(svec!["deno", "run", "-c", "tsconfig.json", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "-c", "tsconfig.json", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1818,7 +1818,7 @@ fn tsconfig() {
 
 #[test]
 fn eval() {
-  let r = flags_from_vec(svec!["deno", "eval", "'console.log(\"hello\")'"]);
+  let r = flags_from_vec(svec!["ende", "eval", "'console.log(\"hello\")'"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1837,7 +1837,7 @@ fn eval() {
 
 #[test]
 fn eval_p() {
-  let r = flags_from_vec(svec!["deno", "eval", "-p", "1+2"]);
+  let r = flags_from_vec(svec!["ende", "eval", "-p", "1+2"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1857,7 +1857,7 @@ fn eval_p() {
 #[test]
 fn eval_typescript() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "eval",
     "--ext=ts",
     "'console.log(\"hello\")'"
@@ -1882,7 +1882,7 @@ fn eval_typescript() {
 #[test]
 fn eval_with_flags() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "eval", "--import-map", "import_map.json", "--no-remote", "--config", "tsconfig.json", "--no-check", "--reload", "--lock", "lock.json", "--cert", "example.crt", "--cached-only", "--location", "https:foo", "--v8-flags=--help", "--seed", "1", "--inspect=127.0.0.1:9229", "--env=.example.env", "42"]);
+    let r = flags_from_vec(svec!["ende", "eval", "--import-map", "import_map.json", "--no-remote", "--config", "tsconfig.json", "--no-check", "--reload", "--lock", "lock.json", "--cert", "example.crt", "--cached-only", "--location", "https:foo", "--v8-flags=--help", "--seed", "1", "--inspect=127.0.0.1:9229", "--env=.example.env", "42"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1915,7 +1915,7 @@ fn eval_with_flags() {
 #[test]
 fn eval_args() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "eval",
     "console.log(Deno.args)",
     "arg1",
@@ -1940,7 +1940,7 @@ fn eval_args() {
 
 #[test]
 fn repl() {
-  let r = flags_from_vec(svec!["deno"]);
+  let r = flags_from_vec(svec!["ende"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -1963,9 +1963,9 @@ fn repl() {
 #[test]
 fn repl_trace_ops() {
   // Lightly test this undocumented flag
-  let r = flags_from_vec(svec!["deno", "repl", "--trace-ops"]);
+  let r = flags_from_vec(svec!["ende", "repl", "--trace-ops"]);
   assert_eq!(r.unwrap().trace_ops, Some(vec![]));
-  let r = flags_from_vec(svec!["deno", "repl", "--trace-ops=http,websocket"]);
+  let r = flags_from_vec(svec!["ende", "repl", "--trace-ops=http,websocket"]);
   assert_eq!(
     r.unwrap().trace_ops,
     Some(vec!["http".to_string(), "websocket".to_string()])
@@ -1975,7 +1975,7 @@ fn repl_trace_ops() {
 #[test]
 fn repl_with_flags() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "repl", "-A", "--import-map", "import_map.json", "--no-remote", "--config", "tsconfig.json", "--reload", "--lock", "lock.json", "--cert", "example.crt", "--cached-only", "--location", "https:foo", "--v8-flags=--help", "--seed", "1", "--inspect=127.0.0.1:9229", "--unsafely-ignore-certificate-errors", "--env=.example.env"]);
+    let r = flags_from_vec(svec!["ende", "repl", "-A", "--import-map", "import_map.json", "--no-remote", "--config", "tsconfig.json", "--reload", "--lock", "lock.json", "--cert", "example.crt", "--cached-only", "--location", "https:foo", "--v8-flags=--help", "--seed", "1", "--inspect=127.0.0.1:9229", "--unsafely-ignore-certificate-errors", "--env=.example.env"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2011,7 +2011,7 @@ fn repl_with_flags() {
 #[test]
 fn repl_with_eval_flag() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "repl", "--allow-write", "--eval", "console.log('hello');"]);
+    let r = flags_from_vec(svec!["ende", "repl", "--allow-write", "--eval", "console.log('hello');"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2033,7 +2033,7 @@ fn repl_with_eval_flag() {
 #[test]
 fn repl_with_eval_file_flag() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "repl", "--eval-file=./a.js,./b.ts,https://docs.ende.sh/hello_world.ts"]);
+    let r = flags_from_vec(svec!["ende", "repl", "--eval-file=./a.js,./b.ts,https://docs.ende.sh/hello_world.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2056,7 +2056,7 @@ fn repl_with_eval_file_flag() {
 fn repl_with_eval_file_flag_no_equals() {
   // Test without equals sign (for hashbang usage)
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "repl", "--eval-file", "./script.ts"]);
+    let r = flags_from_vec(svec!["ende", "repl", "--eval-file", "./script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2075,7 +2075,7 @@ fn repl_with_eval_file_flag_no_equals() {
 fn repl_with_eval_file_flag_multiple() {
   // Test multiple --eval-file flags
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "repl", "--eval-file", "./a.ts", "--eval-file", "./b.ts"]);
+    let r = flags_from_vec(svec!["ende", "repl", "--eval-file", "./a.ts", "--eval-file", "./b.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2099,7 +2099,7 @@ fn allow_read_allowlist() {
   let temp_dir = std::env::temp_dir().to_string_lossy().into_owned();
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     format!("--allow-read=.,{}", temp_dir),
     "script.ts"
@@ -2129,7 +2129,7 @@ fn deny_read_denylist() {
   let temp_dir = std::env::temp_dir().to_string_lossy().into_owned();
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     format!("--deny-read=.,{}", temp_dir),
     "script.ts"
@@ -2153,7 +2153,7 @@ fn deny_read_denylist() {
 #[test]
 fn ignore_read_ignorelist() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--ignore-read=something.txt",
     "script.ts"
@@ -2177,7 +2177,7 @@ fn ignore_read_ignorelist() {
 #[test]
 fn ignore_read_ignorelist_multiple() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--ignore-read=something.txt",
     "--ignore-read=something2.txt",
@@ -2202,7 +2202,7 @@ fn ignore_read_ignorelist_multiple() {
 #[test]
 fn ignore_read_ignorelist_comma_separated() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--ignore-read=something.txt,something2.txt",
     "script.ts"
@@ -2232,7 +2232,7 @@ fn allow_write_allowlist() {
   let temp_dir = std::env::temp_dir().to_string_lossy().into_owned();
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     format!("--allow-write=.,{}", temp_dir),
     "script.ts"
@@ -2262,7 +2262,7 @@ fn deny_write_denylist() {
   let temp_dir = std::env::temp_dir().to_string_lossy().into_owned();
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     format!("--deny-write=.,{}", temp_dir),
     "script.ts"
@@ -2286,7 +2286,7 @@ fn deny_write_denylist() {
 #[test]
 fn allow_net_allowlist() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--allow-net=127.0.0.1", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--allow-net=127.0.0.1", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2305,7 +2305,7 @@ fn allow_net_allowlist() {
 
 #[test]
 fn deny_net_denylist() {
-  let r = flags_from_vec(svec!["deno", "--deny-net=127.0.0.1", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "--deny-net=127.0.0.1", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2327,7 +2327,7 @@ fn deny_net_denylist() {
 
 #[test]
 fn allow_env_allowlist() {
-  let r = flags_from_vec(svec!["deno", "run", "--allow-env=HOME", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--allow-env=HOME", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2346,7 +2346,7 @@ fn allow_env_allowlist() {
 
 #[test]
 fn deny_env_denylist() {
-  let r = flags_from_vec(svec!["deno", "run", "--deny-env=HOME", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--deny-env=HOME", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2366,7 +2366,7 @@ fn deny_env_denylist() {
 #[test]
 fn ignore_env_ignorelist() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--ignore-env=HOME", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--ignore-env=HOME", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2386,7 +2386,7 @@ fn ignore_env_ignorelist() {
 #[test]
 fn allow_env_allowlist_multiple() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--allow-env=HOME,PATH", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--allow-env=HOME,PATH", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2406,7 +2406,7 @@ fn allow_env_allowlist_multiple() {
 #[test]
 fn deny_env_denylist_multiple() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--deny-env=HOME,PATH", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--deny-env=HOME,PATH", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2426,7 +2426,7 @@ fn deny_env_denylist_multiple() {
 #[test]
 fn deny_env_ignorelist_multiple() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--ignore-env=HOME,PATH", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--ignore-env=HOME,PATH", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2445,28 +2445,28 @@ fn deny_env_ignorelist_multiple() {
 
 #[test]
 fn allow_env_allowlist_validator() {
-  let r = flags_from_vec(svec!["deno", "run", "--allow-env=HOME", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--allow-env=HOME", "script.ts"]);
   assert!(r.is_ok());
-  let r = flags_from_vec(svec!["deno", "--allow-env=H=ME", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "--allow-env=H=ME", "script.ts"]);
   assert!(r.is_err());
   let r =
-    flags_from_vec(svec!["deno", "run", "--allow-env=H\0ME", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--allow-env=H\0ME", "script.ts"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn deny_env_denylist_validator() {
-  let r = flags_from_vec(svec!["deno", "run", "--deny-env=HOME", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--deny-env=HOME", "script.ts"]);
   assert!(r.is_ok());
-  let r = flags_from_vec(svec!["deno", "run", "--deny-env=H=ME", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--deny-env=H=ME", "script.ts"]);
   assert!(r.is_err());
-  let r = flags_from_vec(svec!["deno", "--deny-env=H\0ME", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "--deny-env=H\0ME", "script.ts"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn allow_sys() {
-  let r = flags_from_vec(svec!["deno", "run", "--allow-sys", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--allow-sys", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2485,7 +2485,7 @@ fn allow_sys() {
 
 #[test]
 fn deny_sys() {
-  let r = flags_from_vec(svec!["deno", "run", "--deny-sys", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--deny-sys", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2505,7 +2505,7 @@ fn deny_sys() {
 #[test]
 fn allow_sys_allowlist() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--allow-sys=hostname", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--allow-sys=hostname", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2524,7 +2524,7 @@ fn allow_sys_allowlist() {
 
 #[test]
 fn deny_sys_denylist() {
-  let r = flags_from_vec(svec!["deno", "--deny-sys=hostname", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "--deny-sys=hostname", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2547,7 +2547,7 @@ fn deny_sys_denylist() {
 #[test]
 fn allow_sys_allowlist_multiple() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-sys=hostname,osRelease",
     "script.ts"
@@ -2571,7 +2571,7 @@ fn allow_sys_allowlist_multiple() {
 #[test]
 fn deny_sys_denylist_multiple() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--deny-sys=hostname,osRelease",
     "script.ts"
@@ -2595,17 +2595,17 @@ fn deny_sys_denylist_multiple() {
 #[test]
 fn allow_sys_allowlist_validator() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--allow-sys=hostname", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--allow-sys=hostname", "script.ts"]);
   assert!(r.is_ok());
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-sys=hostname,osRelease",
     "script.ts"
   ]);
   assert!(r.is_ok());
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-sys=inspector,setuid,umask,username",
     "script.ts"
@@ -2614,10 +2614,10 @@ fn allow_sys_allowlist_validator() {
     r.unwrap().permissions.allow_sys,
     Some(svec!["inspector", "setuid", "umask", "username"])
   );
-  let r = flags_from_vec(svec!["deno", "run", "--allow-sys=foo", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--allow-sys=foo", "script.ts"]);
   assert_eq!(r.unwrap_err().message, "unknown sys descriptor: 'foo'");
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-sys=hostname,foo",
     "script.ts"
@@ -2628,17 +2628,17 @@ fn allow_sys_allowlist_validator() {
 #[test]
 fn deny_sys_denylist_validator() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--deny-sys=hostname", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--deny-sys=hostname", "script.ts"]);
   assert!(r.is_ok());
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--deny-sys=hostname,osRelease",
     "script.ts"
   ]);
   assert!(r.is_ok());
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--deny-sys=inspector,setuid,umask,username",
     "script.ts"
@@ -2647,10 +2647,10 @@ fn deny_sys_denylist_validator() {
     r.unwrap().permissions.deny_sys,
     Some(svec!["inspector", "setuid", "umask", "username"])
   );
-  let r = flags_from_vec(svec!["deno", "run", "--deny-sys=foo", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--deny-sys=foo", "script.ts"]);
   assert_eq!(r.unwrap_err().message, "unknown sys descriptor: 'foo'");
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--deny-sys=hostname,foo",
     "script.ts"
@@ -2661,7 +2661,7 @@ fn deny_sys_denylist_validator() {
 #[test]
 fn reload_validator() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--reload=http://deno.land/",
     "script.ts"
@@ -2669,7 +2669,7 @@ fn reload_validator() {
   assert!(r.is_ok(), "should accept valid urls");
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--reload=http://deno.land/a,http://deno.land/b",
     "script.ts"
@@ -2677,7 +2677,7 @@ fn reload_validator() {
   assert!(r.is_ok(), "should accept accept multiple valid urls");
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--reload=./relativeurl/",
     "script.ts"
@@ -2685,24 +2685,24 @@ fn reload_validator() {
   assert!(r.is_err(), "Should reject relative urls that start with ./");
 
   let r =
-    flags_from_vec(svec!["deno", "run", "--reload=relativeurl/", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--reload=relativeurl/", "script.ts"]);
   assert!(r.is_err(), "Should reject relative urls");
 
   let r =
-    flags_from_vec(svec!["deno", "run", "--reload=/absolute", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--reload=/absolute", "script.ts"]);
   assert!(r.is_err(), "Should reject absolute urls");
 
-  let r = flags_from_vec(svec!["deno", "--reload=/", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "--reload=/", "script.ts"]);
   assert!(r.is_err(), "Should reject absolute root url");
 
-  let r = flags_from_vec(svec!["deno", "run", "--reload=", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--reload=", "script.ts"]);
   assert!(r.is_err(), "Should reject when nothing is provided");
 
-  let r = flags_from_vec(svec!["deno", "run", "--reload=,", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--reload=,", "script.ts"]);
   assert!(r.is_err(), "Should reject when a single comma is provided");
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--reload=,http://deno.land/a",
     "script.ts"
@@ -2710,7 +2710,7 @@ fn reload_validator() {
   assert!(r.is_err(), "Should reject a leading comma");
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--reload=http://deno.land/a,",
     "script.ts"
@@ -2721,7 +2721,7 @@ fn reload_validator() {
 #[test]
 fn run_import_map() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--import-map=import_map.json",
     "script.ts"
@@ -2742,7 +2742,7 @@ fn run_import_map() {
 #[test]
 fn info_import_map() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "info",
     "--import-map=import_map.json",
     "script.ts"
@@ -2763,7 +2763,7 @@ fn info_import_map() {
 #[test]
 fn cache_import_map() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "cache",
     "--import-map=import_map.json",
     "script.ts"
@@ -2783,7 +2783,7 @@ fn cache_import_map() {
 #[test]
 fn doc_import_map() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "doc",
     "--import-map=import_map.json",
     "script.ts"
@@ -2807,7 +2807,7 @@ fn doc_import_map() {
 
 #[test]
 fn run_env_default() {
-  let r = flags_from_vec(svec!["deno", "run", "--env", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--env", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2823,7 +2823,7 @@ fn run_env_default() {
 
 #[test]
 fn run_env_file_default() {
-  let r = flags_from_vec(svec!["deno", "run", "--env-file", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--env-file", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2839,7 +2839,7 @@ fn run_env_file_default() {
 
 #[test]
 fn run_no_code_cache() {
-  let r = flags_from_vec(svec!["deno", "--no-code-cache", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "--no-code-cache", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2857,7 +2857,7 @@ fn run_no_code_cache() {
 #[test]
 fn run_env_defined() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--env=.another_env", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--env=.another_env", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -2874,7 +2874,7 @@ fn run_env_defined() {
 #[test]
 fn run_env_file_defined() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--env-file=.another_env",
     "script.ts"
@@ -2895,7 +2895,7 @@ fn run_env_file_defined() {
 #[test]
 fn run_multiple_env_file_defined() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--env-file",
     "--env-file=.two_env",
@@ -2922,29 +2922,29 @@ fn dep_and_registry_subcommands_env_file() {
   // (args, expected env_file) pairs, one per supported subcommand.
   let cases: Vec<(Vec<String>, Vec<String>)> = vec![
     (
-      svec!["deno", "add", "--env-file", "@david/which"],
+      svec!["ende", "add", "--env-file", "@david/which"],
       svec![".env"],
     ),
-    (svec!["deno", "audit", "--env-file"], svec![".env"]),
-    (svec!["deno", "why", "--env-file", "express"], svec![".env"]),
-    (svec!["deno", "outdated", "--env-file"], svec![".env"]),
-    (svec!["deno", "update", "--env-file"], svec![".env"]),
+    (svec!["ende", "audit", "--env-file"], svec![".env"]),
+    (svec!["ende", "why", "--env-file", "express"], svec![".env"]),
+    (svec!["ende", "outdated", "--env-file"], svec![".env"]),
+    (svec!["ende", "update", "--env-file"], svec![".env"]),
     (
-      svec!["deno", "bundle", "--env-file", "main.ts"],
+      svec!["ende", "bundle", "--env-file", "main.ts"],
       svec![".env"],
     ),
     (
-      svec!["deno", "check", "--env-file", "main.ts"],
+      svec!["ende", "check", "--env-file", "main.ts"],
       svec![".env"],
     ),
-    (svec!["deno", "doc", "--env-file", "main.ts"], svec![".env"]),
+    (svec!["ende", "doc", "--env-file", "main.ts"], svec![".env"]),
     (
-      svec!["deno", "info", "--env-file", "main.ts"],
+      svec!["ende", "info", "--env-file", "main.ts"],
       svec![".env"],
     ),
-    (svec!["deno", "ci", "--env-file"], svec![".env"]),
-    (svec!["deno", "publish", "--env-file"], svec![".env"]),
-    (svec!["deno", "pack", "--env-file"], svec![".env"]),
+    (svec!["ende", "ci", "--env-file"], svec![".env"]),
+    (svec!["ende", "publish", "--env-file"], svec![".env"]),
+    (svec!["ende", "pack", "--env-file"], svec![".env"]),
   ];
   for (args, expected) in cases {
     let flags = flags_from_vec(args.clone())
@@ -2961,18 +2961,18 @@ fn dep_and_registry_subcommands_env_file() {
 fn dep_and_registry_subcommands_env_file_explicit_and_multiple() {
   // An explicit path is honored.
   let flags =
-    flags_from_vec(svec!["deno", "check", "--env-file=.prod.env", "main.ts"])
+    flags_from_vec(svec!["ende", "check", "--env-file=.prod.env", "main.ts"])
       .unwrap();
   assert_eq!(flags.env_file, Some(svec![".prod.env"]));
 
   // The --env alias works the same as --env-file.
   let flags =
-    flags_from_vec(svec!["deno", "outdated", "--env=.prod.env"]).unwrap();
+    flags_from_vec(svec!["ende", "outdated", "--env=.prod.env"]).unwrap();
   assert_eq!(flags.env_file, Some(svec![".prod.env"]));
 
   // Multiple --env-file flags accumulate in order.
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "publish",
     "--env-file",
     "--env-file=.prod.env"
@@ -2986,7 +2986,7 @@ fn dep_and_registry_subcommands_env_file_explicit_and_multiple() {
 
 #[test]
 fn cache_multiple() {
-  let r = flags_from_vec(svec!["deno", "cache", "script.ts", "script_two.ts"]);
+  let r = flags_from_vec(svec!["ende", "cache", "script.ts", "script_two.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3000,7 +3000,7 @@ fn cache_multiple() {
 
 #[test]
 fn run_seed() {
-  let r = flags_from_vec(svec!["deno", "run", "--seed", "250", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--seed", "250", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3018,7 +3018,7 @@ fn run_seed() {
 #[test]
 fn run_seed_with_v8_flags() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--seed",
     "250",
@@ -3042,7 +3042,7 @@ fn run_seed_with_v8_flags() {
 #[test]
 fn install() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "install",
     "-g",
     "jsr:@std/http/file-server",
@@ -3066,7 +3066,7 @@ fn install() {
   );
 
   let r =
-    flags_from_vec(svec!["deno", "install", "-g", "jsr:@std/http/file-server"]);
+    flags_from_vec(svec!["ende", "install", "-g", "jsr:@std/http/file-server"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3088,7 +3088,7 @@ fn install() {
 #[test]
 fn install_with_flags() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "install", "--global", "--import-map", "import_map.json", "--no-remote", "--config", "tsconfig.json", "--no-check", "--unsafely-ignore-certificate-errors", "--reload", "--lock", "lock.json", "--cert", "example.crt", "--cached-only", "--allow-read", "--allow-net", "--v8-flags=--help", "--seed", "1", "--inspect=127.0.0.1:9229", "--name", "file_server", "--root", "/foo", "--force", "--env=.example.env", "jsr:@std/http/file-server", "--", "foo", "bar"]);
+    let r = flags_from_vec(svec!["ende", "install", "--global", "--import-map", "import_map.json", "--no-remote", "--config", "tsconfig.json", "--no-check", "--unsafely-ignore-certificate-errors", "--reload", "--lock", "lock.json", "--cert", "example.crt", "--cached-only", "--allow-read", "--allow-net", "--v8-flags=--help", "--seed", "1", "--inspect=127.0.0.1:9229", "--name", "file_server", "--root", "/foo", "--force", "--env=.example.env", "jsr:@std/http/file-server", "--", "foo", "bar"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3127,11 +3127,11 @@ fn install_with_flags() {
 
 #[test]
 fn uninstall() {
-  let r = flags_from_vec(svec!["deno", "uninstall"]);
+  let r = flags_from_vec(svec!["ende", "uninstall"]);
   assert!(r.is_err(),);
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "uninstall",
     "--frozen",
     "--lockfile-only",
@@ -3153,7 +3153,7 @@ fn uninstall() {
   );
 
   let r =
-    flags_from_vec(svec!["deno", "uninstall", "file_server", "@std/load"]);
+    flags_from_vec(svec!["ende", "uninstall", "file_server", "@std/load"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3168,7 +3168,7 @@ fn uninstall() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "uninstall", "-g", "file_server"]);
+  let r = flags_from_vec(svec!["ende", "uninstall", "-g", "file_server"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3183,7 +3183,7 @@ fn uninstall() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "uninstall",
     "-g",
     "--root",
@@ -3204,7 +3204,7 @@ fn uninstall() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "uninstall",
     "-g",
     "--root",
@@ -3228,14 +3228,14 @@ fn uninstall() {
 
 #[test]
 fn uninstall_with_help_flag() {
-  let r = flags_from_vec(svec!["deno", "uninstall", "--help"]);
+  let r = flags_from_vec(svec!["ende", "uninstall", "--help"]);
   assert!(r.is_ok());
 }
 
 #[test]
 fn log_level() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--log-level=debug", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--log-level=debug", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3251,7 +3251,7 @@ fn log_level() {
 
 #[test]
 fn quiet() {
-  let r = flags_from_vec(svec!["deno", "-q", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "-q", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3270,7 +3270,7 @@ fn quiet() {
 
 #[test]
 fn completions() {
-  let r = flags_from_vec(svec!["deno", "completions", "zsh"]).unwrap();
+  let r = flags_from_vec(svec!["ende", "completions", "zsh"]).unwrap();
 
   match r.subcommand {
     DenoSubcommand::Completions(CompletionsFlags::Static(buf)) => {
@@ -3283,7 +3283,7 @@ fn completions() {
 #[test]
 fn run_with_args() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "script.ts",
     "--allow-read",
@@ -3301,7 +3301,7 @@ fn run_with_args() {
     }
   );
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--location",
     "https:foo",
@@ -3330,7 +3330,7 @@ fn run_with_args() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "run", "script.ts", "foo", "bar"]);
+  let r = flags_from_vec(svec!["ende", "run", "script.ts", "foo", "bar"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3342,7 +3342,7 @@ fn run_with_args() {
       ..Flags::default()
     }
   );
-  let r = flags_from_vec(svec!["deno", "run", "script.ts", "-"]);
+  let r = flags_from_vec(svec!["ende", "run", "script.ts", "-"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3355,7 +3355,7 @@ fn run_with_args() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "run", "script.ts", "-", "foo", "bar"]);
+  let r = flags_from_vec(svec!["ende", "run", "script.ts", "-", "foo", "bar"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3371,7 +3371,7 @@ fn run_with_args() {
 
 #[test]
 fn no_check() {
-  let r = flags_from_vec(svec!["deno", "--no-check", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "--no-check", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3391,7 +3391,7 @@ fn no_check() {
 #[test]
 fn no_check_remote() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--no-check=remote", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--no-check=remote", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3408,7 +3408,7 @@ fn no_check_remote() {
 #[test]
 fn repl_with_unsafely_ignore_certificate_errors() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "repl",
     "--eval",
     "console.log('hello');",
@@ -3433,7 +3433,7 @@ fn repl_with_unsafely_ignore_certificate_errors() {
 #[test]
 fn run_with_unsafely_ignore_certificate_errors() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--unsafely-ignore-certificate-errors",
     "script.ts"
@@ -3454,7 +3454,7 @@ fn run_with_unsafely_ignore_certificate_errors() {
 #[test]
 fn run_with_unsafely_treat_insecure_origin_as_secure_with_ipv6_address() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--unsafely-ignore-certificate-errors=deno.land,localhost,[::],127.0.0.1,[::1],1.2.3.4",
     "script.ts"
@@ -3482,7 +3482,7 @@ fn run_with_unsafely_treat_insecure_origin_as_secure_with_ipv6_address() {
 #[test]
 fn repl_with_unsafely_treat_insecure_origin_as_secure_with_ipv6_address() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "repl",
     "--unsafely-ignore-certificate-errors=deno.land,localhost,[::],127.0.0.1,[::1],1.2.3.4"
   ]);
@@ -3511,7 +3511,7 @@ fn repl_with_unsafely_treat_insecure_origin_as_secure_with_ipv6_address() {
 
 #[test]
 fn no_remote() {
-  let r = flags_from_vec(svec!["deno", "run", "--no-remote", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--no-remote", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3527,7 +3527,7 @@ fn no_remote() {
 
 #[test]
 fn no_npm() {
-  let r = flags_from_vec(svec!["deno", "run", "--no-npm", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--no-npm", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3543,7 +3543,7 @@ fn no_npm() {
 
 #[test]
 fn local_npm() {
-  let r = flags_from_vec(svec!["deno", "--node-modules-dir", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "--node-modules-dir", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3562,7 +3562,7 @@ fn local_npm() {
 
 #[test]
 fn vendor_flag() {
-  let r = flags_from_vec(svec!["deno", "run", "--vendor", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--vendor", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3575,7 +3575,7 @@ fn vendor_flag() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "run", "--vendor=false", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--vendor=false", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3591,7 +3591,7 @@ fn vendor_flag() {
 
 #[test]
 fn cached_only() {
-  let r = flags_from_vec(svec!["deno", "run", "--cached-only", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--cached-only", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3608,7 +3608,7 @@ fn cached_only() {
 #[test]
 fn allow_net_allowlist_with_ports() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-net=deno.land,:8000,:4545",
     "script.ts"
@@ -3640,7 +3640,7 @@ fn allow_net_allowlist_with_ports() {
 #[test]
 fn deny_net_denylist_with_ports() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--deny-net=deno.land,:8000,:4545",
     "script.ts"
@@ -3672,7 +3672,7 @@ fn deny_net_denylist_with_ports() {
 #[test]
 fn allow_net_allowlist_with_ipv6_address() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-net=deno.land,deno.land:80,[::],127.0.0.1,[::1],1.2.3.4:5678,:5678,[::1]:8080",
     "script.ts"
@@ -3707,7 +3707,7 @@ fn allow_net_allowlist_with_ipv6_address() {
 #[test]
 fn deny_net_denylist_with_ipv6_address() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--deny-net=deno.land,deno.land:80,[::],127.0.0.1,[::1],1.2.3.4:5678,:5678,[::1]:8080",
     "script.ts"
@@ -3744,7 +3744,7 @@ fn deny_net_denylist_with_ipv6_address() {
 #[test]
 fn test_with_flags() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "test", "--no-npm", "--no-remote", "--trace-leaks", "--no-run", "--filter", "- foo", "--coverage=cov", "--clean", "--location", "https:foo", "--allow-net", "--permit-no-files", "dir1/", "dir2/", "--", "arg1", "arg2"]);
+    let r = flags_from_vec(svec!["ende", "test", "--no-npm", "--no-remote", "--trace-leaks", "--no-run", "--filter", "- foo", "--coverage=cov", "--clean", "--location", "https:foo", "--allow-net", "--permit-no-files", "dir1/", "dir2/", "--", "arg1", "arg2"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3795,7 +3795,7 @@ fn test_with_flags() {
 #[test]
 fn run_with_cafile() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--cert", "example.crt", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--cert", "example.crt", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3812,7 +3812,7 @@ fn run_with_cafile() {
 #[test]
 fn run_with_base64_cafile() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--cert",
     "base64:bWVvdw==",
@@ -3834,7 +3834,7 @@ fn run_with_base64_cafile() {
 #[test]
 fn run_with_enable_testing_features() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--enable-testing-features-do-not-use",
     "script.ts"
@@ -3854,7 +3854,7 @@ fn run_with_enable_testing_features() {
 
 #[test]
 fn test_with_fail_fast() {
-  let r = flags_from_vec(svec!["deno", "test", "--fail-fast=3"]);
+  let r = flags_from_vec(svec!["ende", "test", "--fail-fast=3"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -3896,14 +3896,14 @@ fn test_with_fail_fast() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "test", "--fail-fast=0"]);
+  let r = flags_from_vec(svec!["ende", "test", "--fail-fast=0"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn test_with_enable_testing_features() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "test",
     "--enable-testing-features-do-not-use"
   ]);
@@ -3952,7 +3952,7 @@ fn test_with_enable_testing_features() {
 
 #[test]
 fn test_changed() {
-  let r = flags_from_vec(svec!["deno", "test", "--changed"]);
+  let r = flags_from_vec(svec!["ende", "test", "--changed"]);
   assert_eq!(
     r.unwrap().subcommand,
     DenoSubcommand::Test(TestFlags {
@@ -3961,7 +3961,7 @@ fn test_changed() {
     })
   );
 
-  let r = flags_from_vec(svec!["deno", "test", "--changed=origin/main"]);
+  let r = flags_from_vec(svec!["ende", "test", "--changed=origin/main"]);
   assert_eq!(
     r.unwrap().subcommand,
     DenoSubcommand::Test(TestFlags {
@@ -3971,7 +3971,7 @@ fn test_changed() {
   );
 
   // space-separated value is not allowed (would be ambiguous with file args)
-  let r = flags_from_vec(svec!["deno", "test", "--changed", "HEAD~1"]);
+  let r = flags_from_vec(svec!["ende", "test", "--changed", "HEAD~1"]);
   assert_eq!(
     r.unwrap().subcommand,
     DenoSubcommand::Test(TestFlags {
@@ -3987,7 +3987,7 @@ fn test_changed() {
 
 #[test]
 fn test_related() {
-  let r = flags_from_vec(svec!["deno", "test", "--related=src/a.ts,src/b.ts"]);
+  let r = flags_from_vec(svec!["ende", "test", "--related=src/a.ts,src/b.ts"]);
   assert_eq!(
     r.unwrap().subcommand,
     DenoSubcommand::Test(TestFlags {
@@ -3999,15 +3999,15 @@ fn test_related() {
 
 #[test]
 fn test_changed_conflicts_with_watch() {
-  let r = flags_from_vec(svec!["deno", "test", "--changed", "--watch"]);
+  let r = flags_from_vec(svec!["ende", "test", "--changed", "--watch"]);
   assert!(r.is_err());
-  let r = flags_from_vec(svec!["deno", "test", "--related=a.ts", "--watch"]);
+  let r = flags_from_vec(svec!["ende", "test", "--related=a.ts", "--watch"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn test_reporter() {
-  let r = flags_from_vec(svec!["deno", "test", "--reporter=pretty"]);
+  let r = flags_from_vec(svec!["ende", "test", "--reporter=pretty"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4024,7 +4024,7 @@ fn test_reporter() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "test", "--reporter=dot"]);
+  let r = flags_from_vec(svec!["ende", "test", "--reporter=dot"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4042,7 +4042,7 @@ fn test_reporter() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "test", "--reporter=junit"]);
+  let r = flags_from_vec(svec!["ende", "test", "--reporter=junit"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4059,7 +4059,7 @@ fn test_reporter() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "test", "--reporter=tap"]);
+  let r = flags_from_vec(svec!["ende", "test", "--reporter=tap"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4078,7 +4078,7 @@ fn test_reporter() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "test",
     "--reporter=dot",
     "--junit-path=report.xml"
@@ -4101,13 +4101,13 @@ fn test_reporter() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "test", "--junit-path"]);
+  let r = flags_from_vec(svec!["ende", "test", "--junit-path"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn test_shuffle() {
-  let r = flags_from_vec(svec!["deno", "test", "--shuffle=1"]);
+  let r = flags_from_vec(svec!["ende", "test", "--shuffle=1"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4152,7 +4152,7 @@ fn test_shuffle() {
 
 #[test]
 fn test_retry_and_repeats() {
-  let r = flags_from_vec(svec!["deno", "test", "--retry=3", "--repeats=2"]);
+  let r = flags_from_vec(svec!["ende", "test", "--retry=3", "--repeats=2"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4197,7 +4197,7 @@ fn test_retry_and_repeats() {
 
 #[test]
 fn test_shard() {
-  let r = flags_from_vec(svec!["deno", "test", "--shard=2/3"]);
+  let r = flags_from_vec(svec!["ende", "test", "--shard=2/3"]);
   let flags = r.unwrap();
   assert!(matches!(
     flags.subcommand,
@@ -4208,15 +4208,15 @@ fn test_shard() {
   ));
 
   // Invalid shard values are rejected at parse time.
-  assert!(flags_from_vec(svec!["deno", "test", "--shard=3/2"]).is_err());
-  assert!(flags_from_vec(svec!["deno", "test", "--shard=0/2"]).is_err());
-  assert!(flags_from_vec(svec!["deno", "test", "--shard=1/0"]).is_err());
-  assert!(flags_from_vec(svec!["deno", "test", "--shard=foo"]).is_err());
+  assert!(flags_from_vec(svec!["ende", "test", "--shard=3/2"]).is_err());
+  assert!(flags_from_vec(svec!["ende", "test", "--shard=0/2"]).is_err());
+  assert!(flags_from_vec(svec!["ende", "test", "--shard=1/0"]).is_err());
+  assert!(flags_from_vec(svec!["ende", "test", "--shard=foo"]).is_err());
 }
 
 #[test]
 fn test_watch() {
-  let r = flags_from_vec(svec!["deno", "test", "--watch"]);
+  let r = flags_from_vec(svec!["ende", "test", "--watch"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4261,7 +4261,7 @@ fn test_watch() {
 }
 #[test]
 fn test_watch_explicit_cwd() {
-  let r = flags_from_vec(svec!["deno", "test", "--watch", "./"]);
+  let r = flags_from_vec(svec!["ende", "test", "--watch", "./"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4307,7 +4307,7 @@ fn test_watch_explicit_cwd() {
 
 #[test]
 fn test_watch_with_no_clear_screen() {
-  let r = flags_from_vec(svec!["deno", "test", "--watch", "--no-clear-screen"]);
+  let r = flags_from_vec(svec!["ende", "test", "--watch", "--no-clear-screen"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4358,7 +4358,7 @@ fn test_watch_with_no_clear_screen() {
 
 #[test]
 fn test_watch_with_paths() {
-  let r = flags_from_vec(svec!("deno", "test", "--watch=foo"));
+  let r = flags_from_vec(svec!("ende", "test", "--watch=foo"));
 
   let flags = r.unwrap();
   assert_eq!(
@@ -4382,7 +4382,7 @@ fn test_watch_with_paths() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "test", "--watch=foo,bar"]);
+  let r = flags_from_vec(svec!["ende", "test", "--watch=foo,bar"]);
 
   let flags = r.unwrap();
   assert_eq!(
@@ -4410,7 +4410,7 @@ fn test_watch_with_paths() {
 #[test]
 fn test_watch_with_excluded_paths() {
   let r =
-    flags_from_vec(svec!("deno", "test", "--watch", "--watch-exclude=foo",));
+    flags_from_vec(svec!("ende", "test", "--watch", "--watch-exclude=foo",));
 
   let flags = r.unwrap();
   assert_eq!(
@@ -4436,7 +4436,7 @@ fn test_watch_with_excluded_paths() {
 
   let r =
     flags_from_vec(
-      svec!("deno", "test", "--watch=foo", "--watch-exclude=bar",),
+      svec!("ende", "test", "--watch=foo", "--watch-exclude=bar",),
     );
   let flags = r.unwrap();
   assert_eq!(
@@ -4462,7 +4462,7 @@ fn test_watch_with_excluded_paths() {
 
   let r =
     flags_from_vec(
-      svec!["deno", "test", "--watch", "--watch-exclude=foo,bar",],
+      svec!["ende", "test", "--watch", "--watch-exclude=foo,bar",],
     );
 
   let flags = r.unwrap();
@@ -4488,7 +4488,7 @@ fn test_watch_with_excluded_paths() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "test",
     "--watch=foo,bar",
     "--watch-exclude=baz,qux",
@@ -4519,7 +4519,7 @@ fn test_watch_with_excluded_paths() {
 
 #[test]
 fn test_coverage_default_dir() {
-  let r = flags_from_vec(svec!["deno", "test", "--coverage"]);
+  let r = flags_from_vec(svec!["ende", "test", "--coverage"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4539,7 +4539,7 @@ fn test_coverage_default_dir() {
 
 #[test]
 fn test_hide_stacktraces() {
-  let r = flags_from_vec(svec!["deno", "test", "--hide-stacktraces"]);
+  let r = flags_from_vec(svec!["ende", "test", "--hide-stacktraces"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4560,7 +4560,7 @@ fn test_hide_stacktraces() {
 
 #[test]
 fn upgrade_with_ca_file() {
-  let r = flags_from_vec(svec!["deno", "upgrade", "--cert", "example.crt"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "--cert", "example.crt"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4585,7 +4585,7 @@ fn upgrade_with_ca_file() {
 
 #[test]
 fn upgrade_release_candidate() {
-  let r = flags_from_vec(svec!["deno", "upgrade", "--rc"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "--rc"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4606,16 +4606,16 @@ fn upgrade_release_candidate() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "upgrade", "--rc", "--canary"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "--rc", "--canary"]);
   assert!(r.is_err());
 
-  let r = flags_from_vec(svec!["deno", "upgrade", "--rc", "--version"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "--rc", "--version"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn upgrade_pr() {
-  let r = flags_from_vec(svec!["deno", "upgrade", "pr", "12345"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "pr", "12345"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4639,7 +4639,7 @@ fn upgrade_pr() {
 
 #[test]
 fn upgrade_pr_with_hash_prefix() {
-  let r = flags_from_vec(svec!["deno", "upgrade", "pr", "#6789"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "pr", "#6789"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4663,7 +4663,7 @@ fn upgrade_pr_with_hash_prefix() {
 
 #[test]
 fn upgrade_pr_with_flags() {
-  let r = flags_from_vec(svec!["deno", "upgrade", "--dry-run", "pr", "33250"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "--dry-run", "pr", "33250"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4687,20 +4687,20 @@ fn upgrade_pr_with_flags() {
 
 #[test]
 fn upgrade_pr_missing_number() {
-  let r = flags_from_vec(svec!["deno", "upgrade", "pr"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "pr"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn upgrade_pr_invalid_number() {
-  let r = flags_from_vec(svec!["deno", "upgrade", "pr", "abc"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "pr", "abc"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn cache_with_cafile() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "cache",
     "--cert",
     "example.crt",
@@ -4722,7 +4722,7 @@ fn cache_with_cafile() {
 #[test]
 fn info_with_cafile() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "info",
     "--cert",
     "example.crt",
@@ -4743,7 +4743,7 @@ fn info_with_cafile() {
 
 #[test]
 fn doc() {
-  let r = flags_from_vec(svec!["deno", "doc", "--json", "path/to/module.ts"]);
+  let r = flags_from_vec(svec!["ende", "doc", "--json", "path/to/module.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4759,11 +4759,11 @@ fn doc() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "doc", "--html", "path/to/module.ts"]);
+  let r = flags_from_vec(svec!["ende", "doc", "--html", "path/to/module.ts"]);
   assert!(r.is_ok());
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "doc",
     "--html",
     "--name=My library",
@@ -4792,7 +4792,7 @@ fn doc() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "doc",
     "--html",
     "--name=My library",
@@ -4822,11 +4822,11 @@ fn doc() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "doc", "--html", "--name=My library",]);
+  let r = flags_from_vec(svec!["ende", "doc", "--html", "--name=My library",]);
   assert!(r.is_err());
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "doc",
     "--filter",
     "SomeClass.someField",
@@ -4849,7 +4849,7 @@ fn doc() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "doc"]);
+  let r = flags_from_vec(svec!["ende", "doc"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -4866,7 +4866,7 @@ fn doc() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "doc",
     "--filter",
     "Deno.Listener",
@@ -4888,7 +4888,7 @@ fn doc() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "doc",
     "--no-npm",
     "--no-remote",
@@ -4913,7 +4913,7 @@ fn doc() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "doc",
     "path/to/module.js",
     "path/to/module2.js"
@@ -4937,7 +4937,7 @@ fn doc() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "doc",
     "path/to/module.js",
     "--builtin",
@@ -4961,11 +4961,11 @@ fn doc() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "doc", "--lint",]);
+  let r = flags_from_vec(svec!["ende", "doc", "--lint",]);
   assert!(r.is_err());
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "doc",
     "--lint",
     "path/to/module.js",
@@ -4992,7 +4992,7 @@ fn doc() {
 
 #[test]
 fn inspect_default_host() {
-  let r = flags_from_vec(svec!["deno", "run", "--inspect", "foo.js"]);
+  let r = flags_from_vec(svec!["ende", "run", "--inspect", "foo.js"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5008,7 +5008,7 @@ fn inspect_default_host() {
 
 #[test]
 fn inspect_wait() {
-  let r = flags_from_vec(svec!["deno", "--inspect-wait", "foo.js"]);
+  let r = flags_from_vec(svec!["ende", "--inspect-wait", "foo.js"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5025,7 +5025,7 @@ fn inspect_wait() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--inspect-wait=127.0.0.1:3567",
     "foo.js"
@@ -5046,7 +5046,7 @@ fn inspect_wait() {
 #[test]
 fn compile() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "compile",
     "https://examples.ende.sh/color-logging.ts"
   ]);
@@ -5080,7 +5080,7 @@ fn compile() {
 #[test]
 fn compile_and_desktop_engine() {
   let flags =
-    flags_from_vec(svec!["deno", "compile", "--engine", "quickjs", "main.ts"])
+    flags_from_vec(svec!["ende", "compile", "--engine", "quickjs", "main.ts"])
       .unwrap();
   let DenoSubcommand::Compile(compile) = flags.subcommand else {
     panic!("expected compile subcommand");
@@ -5088,7 +5088,7 @@ fn compile_and_desktop_engine() {
   assert_eq!(compile.engine, JavaScriptEngine::QuickJs);
 
   let flags =
-    flags_from_vec(svec!["deno", "desktop", "--engine", "quickjs", "main.tsx"])
+    flags_from_vec(svec!["ende", "desktop", "--engine", "quickjs", "main.tsx"])
       .unwrap();
   let DenoSubcommand::Desktop(desktop) = flags.subcommand else {
     panic!("expected desktop subcommand");
@@ -5104,7 +5104,7 @@ fn compile_target_aarch64_windows() {
   // validates `--target` against its own SUPPORTED_OS list, so the triple has
   // to be present here too (not just in clap's list).
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "compile",
     "--target=aarch64-pc-windows-msvc",
     "main.ts"
@@ -5118,7 +5118,7 @@ fn compile_target_aarch64_windows() {
   // (and this test isn't passing just because validation was dropped).
   assert!(
     flags_from_vec(svec![
-      "deno",
+      "ende",
       "compile",
       "--target=riscv64gc-unknown-linux-gnu",
       "main.ts"
@@ -5129,7 +5129,7 @@ fn compile_target_aarch64_windows() {
 
 #[test]
 fn desktop_backend_default() {
-  let r = flags_from_vec(svec!["deno", "desktop", "main.tsx"]);
+  let r = flags_from_vec(svec!["ende", "desktop", "main.tsx"]);
   let flags = r.unwrap();
   let DenoSubcommand::Desktop(desktop) = flags.subcommand else {
     panic!("expected desktop subcommand");
@@ -5143,7 +5143,7 @@ fn desktop_backend_default() {
 #[test]
 fn desktop_backend_explicit() {
   let r =
-    flags_from_vec(svec!["deno", "desktop", "--backend", "cef", "main.tsx"]);
+    flags_from_vec(svec!["ende", "desktop", "--backend", "cef", "main.tsx"]);
   let flags = r.unwrap();
   let DenoSubcommand::Desktop(desktop) = flags.subcommand else {
     panic!("expected desktop subcommand");
@@ -5153,7 +5153,7 @@ fn desktop_backend_explicit() {
 
 #[test]
 fn desktop_exclude_unused_npm() {
-  let r = flags_from_vec(svec!["deno", "desktop", "main.tsx"]);
+  let r = flags_from_vec(svec!["ende", "desktop", "main.tsx"]);
   let DenoSubcommand::Desktop(desktop) = r.unwrap().subcommand else {
     panic!("expected desktop subcommand");
   };
@@ -5162,7 +5162,7 @@ fn desktop_exclude_unused_npm() {
   assert!(!desktop.exclude_unused_npm);
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "desktop",
     "--exclude-unused-npm",
     "main.tsx"
@@ -5176,7 +5176,7 @@ fn desktop_exclude_unused_npm() {
 #[test]
 fn compile_watch_with_no_clear_screen() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "compile",
     "--watch",
     "--no-clear-screen",
@@ -5218,7 +5218,7 @@ fn compile_watch_with_no_clear_screen() {
 #[test]
 fn compile_with_flags() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "compile", "--include", "include.txt", "--exclude", "exclude.txt", "--import-map", "import_map.json", "--no-code-cache", "--no-remote", "--config", "tsconfig.json", "--no-check", "--unsafely-ignore-certificate-errors", "--reload", "--lock", "lock.json", "--cert", "example.crt", "--cached-only", "--location", "https:foo", "--allow-read", "--allow-net", "--v8-flags=--help", "--seed", "1", "--no-terminal", "--icon", "favicon.ico", "--output", "colors", "--env=.example.env", "https://examples.ende.sh/color-logging.ts", "foo", "bar", "-p", "8080"]);
+    let r = flags_from_vec(svec!["ende", "compile", "--include", "include.txt", "--exclude", "exclude.txt", "--import-map", "import_map.json", "--no-code-cache", "--no-remote", "--config", "tsconfig.json", "--no-check", "--unsafely-ignore-certificate-errors", "--reload", "--lock", "lock.json", "--cert", "example.crt", "--cached-only", "--location", "https:foo", "--allow-read", "--allow-net", "--v8-flags=--help", "--seed", "1", "--no-terminal", "--icon", "favicon.ico", "--output", "colors", "--env=.example.env", "https://examples.ende.sh/color-logging.ts", "foo", "bar", "-p", "8080"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5265,7 +5265,7 @@ fn compile_with_flags() {
 
 #[test]
 fn coverage() {
-  let r = flags_from_vec(svec!["deno", "coverage", "foo.json"]);
+  let r = flags_from_vec(svec!["ende", "coverage", "foo.json"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5286,7 +5286,7 @@ fn coverage() {
 #[test]
 fn coverage_with_threshold() {
   let r =
-    flags_from_vec(svec!["deno", "coverage", "--threshold=80", "foo.json"]);
+    flags_from_vec(svec!["ende", "coverage", "--threshold=80", "foo.json"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5309,14 +5309,14 @@ fn coverage_with_threshold() {
 fn coverage_threshold_out_of_range() {
   // Percentages above 100 are rejected by the value parser.
   let r =
-    flags_from_vec(svec!["deno", "coverage", "--threshold=150", "foo.json"]);
+    flags_from_vec(svec!["ende", "coverage", "--threshold=150", "foo.json"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn coverage_with_lcov_and_out_file() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "coverage",
     "--lcov",
     "--output=foo.lcov",
@@ -5343,7 +5343,7 @@ fn coverage_with_lcov_and_out_file() {
 
 #[test]
 fn coverage_with_default_files() {
-  let r = flags_from_vec(svec!["deno", "coverage",]);
+  let r = flags_from_vec(svec!["ende", "coverage",]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5364,7 +5364,7 @@ fn coverage_with_default_files() {
 #[test]
 fn location_with_bad_scheme() {
   #[rustfmt::skip]
-    let r = flags_from_vec(svec!["deno", "run", "--location", "foo:", "mod.ts"]);
+    let r = flags_from_vec(svec!["ende", "run", "--location", "foo:", "mod.ts"]);
   assert!(r.is_err());
   assert!(
     r.unwrap_err()
@@ -5377,7 +5377,7 @@ fn location_with_bad_scheme() {
 
 #[test]
 fn test_no_clear_watch_flag_without_watch_flag() {
-  let r = flags_from_vec(svec!["deno", "run", "--no-clear-screen", "foo.js"]);
+  let r = flags_from_vec(svec!["ende", "run", "--no-clear-screen", "foo.js"]);
   assert!(r.is_err());
   let error_message = r.unwrap_err().to_string();
   assert!(
@@ -5391,7 +5391,7 @@ fn test_no_clear_watch_flag_without_watch_flag() {
 
 #[test]
 fn task_subcommand() {
-  let r = flags_from_vec(svec!["deno", "task", "build", "hello", "world",]);
+  let r = flags_from_vec(svec!["ende", "task", "build", "hello", "world",]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5412,7 +5412,7 @@ fn task_subcommand() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "task", "build"]);
+  let r = flags_from_vec(svec!["ende", "task", "build"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5432,7 +5432,7 @@ fn task_subcommand() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "task", "--cwd", "foo", "build"]);
+  let r = flags_from_vec(svec!["ende", "task", "--cwd", "foo", "build"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5452,7 +5452,7 @@ fn task_subcommand() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "task", "--filter", "*", "build"]);
+  let r = flags_from_vec(svec!["ende", "task", "--filter", "*", "build"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5472,7 +5472,7 @@ fn task_subcommand() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "task", "--recursive", "build"]);
+  let r = flags_from_vec(svec!["ende", "task", "--recursive", "build"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5492,7 +5492,7 @@ fn task_subcommand() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "task", "-r", "build"]);
+  let r = flags_from_vec(svec!["ende", "task", "-r", "build"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5512,7 +5512,7 @@ fn task_subcommand() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "task", "--members", "build"]);
+  let r = flags_from_vec(svec!["ende", "task", "--members", "build"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5532,14 +5532,14 @@ fn task_subcommand() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "task", "--members", "-r", "build"]);
+  let r = flags_from_vec(svec!["ende", "task", "--members", "-r", "build"]);
   assert!(r.is_err());
 
   let r =
-    flags_from_vec(svec!["deno", "task", "--members", "-f", "*", "build"]);
+    flags_from_vec(svec!["ende", "task", "--members", "-f", "*", "build"]);
   assert!(r.is_err());
 
-  let r = flags_from_vec(svec!["deno", "task", "--eval", "echo 1"]);
+  let r = flags_from_vec(svec!["ende", "task", "--eval", "echo 1"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5559,7 +5559,7 @@ fn task_subcommand() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "task", "--eval"]);
+  let r = flags_from_vec(svec!["ende", "task", "--eval"]);
   assert!(r.is_err());
 }
 
@@ -5568,9 +5568,9 @@ fn task_subcommand_jobs() {
   // `--jobs`, its `--concurrency` alias, and the `-j` short form all parse
   // to the same value.
   for args in [
-    svec!["deno", "task", "--jobs", "1", "build"],
-    svec!["deno", "task", "--concurrency", "1", "build"],
-    svec!["deno", "task", "-j", "1", "build"],
+    svec!["ende", "task", "--jobs", "1", "build"],
+    svec!["ende", "task", "--concurrency", "1", "build"],
+    svec!["ende", "task", "-j", "1", "build"],
   ] {
     let r = flags_from_vec(args.clone());
     assert_eq!(
@@ -5596,7 +5596,7 @@ fn task_subcommand_jobs() {
 
   // Reject zero, negative, and non-numeric values.
   for invalid in ["0", "-1", "abc"] {
-    let r = flags_from_vec(svec!["deno", "task", "--jobs", invalid, "build"]);
+    let r = flags_from_vec(svec!["ende", "task", "--jobs", invalid, "build"]);
     assert!(r.is_err(), "expected error for value {invalid:?}");
   }
 }
@@ -5604,7 +5604,7 @@ fn task_subcommand_jobs() {
 #[test]
 fn task_subcommand_double_hyphen() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "task",
     "-c",
     "ende.json",
@@ -5635,7 +5635,7 @@ fn task_subcommand_double_hyphen() {
   );
 
   let r = flags_from_vec(svec![
-    "deno", "task", "--cwd", "foo", "build", "--", "hello", "world"
+    "ende", "task", "--cwd", "foo", "build", "--", "hello", "world"
   ]);
   assert_eq!(
     r.unwrap(),
@@ -5661,7 +5661,7 @@ fn task_subcommand_double_hyphen() {
 #[test]
 fn task_subcommand_double_hyphen_only() {
   // edge case, but it should forward
-  let r = flags_from_vec(svec!["deno", "task", "build", "--"]);
+  let r = flags_from_vec(svec!["ende", "task", "build", "--"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5685,7 +5685,7 @@ fn task_subcommand_double_hyphen_only() {
 
 #[test]
 fn task_following_arg() {
-  let r = flags_from_vec(svec!["deno", "task", "build", "-1", "--test"]);
+  let r = flags_from_vec(svec!["ende", "task", "build", "-1", "--test"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5709,7 +5709,7 @@ fn task_following_arg() {
 
 #[test]
 fn task_following_double_hyphen_arg() {
-  let r = flags_from_vec(svec!["deno", "task", "build", "--test"]);
+  let r = flags_from_vec(svec!["ende", "task", "build", "--test"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5734,7 +5734,7 @@ fn task_following_double_hyphen_arg() {
 #[test]
 fn task_with_global_flags() {
   // can fail if the custom parser in task_parse() starts at the wrong index
-  let r = flags_from_vec(svec!["deno", "--quiet", "task", "build"]);
+  let r = flags_from_vec(svec!["ende", "--quiet", "task", "build"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5758,7 +5758,7 @@ fn task_with_global_flags() {
 
 #[test]
 fn task_subcommand_empty() {
-  let r = flags_from_vec(svec!["deno", "task"]);
+  let r = flags_from_vec(svec!["ende", "task"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5781,7 +5781,7 @@ fn task_subcommand_empty() {
 
 #[test]
 fn task_subcommand_config() {
-  let r = flags_from_vec(svec!["deno", "task", "--config", "ende.jsonc"]);
+  let r = flags_from_vec(svec!["ende", "task", "--config", "ende.jsonc"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5805,7 +5805,7 @@ fn task_subcommand_config() {
 
 #[test]
 fn task_subcommand_config_short() {
-  let r = flags_from_vec(svec!["deno", "task", "-c", "ende.jsonc"]);
+  let r = flags_from_vec(svec!["ende", "task", "-c", "ende.jsonc"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5829,13 +5829,13 @@ fn task_subcommand_config_short() {
 
 #[test]
 fn task_subcommand_noconfig_invalid() {
-  let r = flags_from_vec(svec!["deno", "task", "--no-config"]);
+  let r = flags_from_vec(svec!["ende", "task", "--no-config"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn task_subcommand_env_file() {
-  let r = flags_from_vec(svec!["deno", "task", "--env-file", "build"]);
+  let r = flags_from_vec(svec!["ende", "task", "--env-file", "build"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5857,7 +5857,7 @@ fn task_subcommand_env_file() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "task",
     "--env-file=.env.dev",
     "--env-file=.env.local",
@@ -5886,7 +5886,7 @@ fn task_subcommand_env_file() {
 
 #[test]
 fn task_subcommand_if_present() {
-  let r = flags_from_vec(svec!["deno", "task", "--if-present", "build"]);
+  let r = flags_from_vec(svec!["ende", "task", "--if-present", "build"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5910,7 +5910,7 @@ fn task_subcommand_if_present() {
 #[test]
 fn bench_with_flags() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "bench",
     "--json",
     "--no-npm",
@@ -5957,7 +5957,7 @@ fn bench_with_flags() {
 
 #[test]
 fn bench_watch() {
-  let r = flags_from_vec(svec!["deno", "bench", "--watch"]);
+  let r = flags_from_vec(svec!["ende", "bench", "--watch"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -5984,7 +5984,7 @@ fn bench_watch() {
 
 #[test]
 fn bench_watch_with_paths() {
-  let r = flags_from_vec(svec!["deno", "bench", "--watch=foo,bar"]);
+  let r = flags_from_vec(svec!["ende", "bench", "--watch=foo,bar"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6011,7 +6011,7 @@ fn bench_watch_with_paths() {
 fn minimum_dependency_age_alias() {
   for flag in ["--minimum-dependency-age=0", "--min-dep-age=0"] {
     let flags =
-      flags_from_vec(svec!["deno", "run", flag, "script.ts"]).unwrap();
+      flags_from_vec(svec!["ende", "run", flag, "script.ts"]).unwrap();
     assert_eq!(
       flags.minimum_dependency_age,
       Some(NewestDependencyDate::Disabled)
@@ -6021,7 +6021,7 @@ fn minimum_dependency_age_alias() {
 
 #[test]
 fn bench_no_files() {
-  let r = flags_from_vec(svec!["deno", "bench", "--permit-no-files"]);
+  let r = flags_from_vec(svec!["ende", "bench", "--permit-no-files"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6047,7 +6047,7 @@ fn bench_no_files() {
 
 #[test]
 fn run_with_check() {
-  let r = flags_from_vec(svec!["deno", "run", "--check", "script.ts",]);
+  let r = flags_from_vec(svec!["ende", "run", "--check", "script.ts",]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6060,7 +6060,7 @@ fn run_with_check() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "run", "--check=all", "script.ts",]);
+  let r = flags_from_vec(svec!["ende", "run", "--check=all", "script.ts",]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6073,7 +6073,7 @@ fn run_with_check() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "--check=foo", "script.ts",]);
+  let r = flags_from_vec(svec!["ende", "--check=foo", "script.ts",]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6090,13 +6090,13 @@ fn run_with_check() {
   );
 
   let r =
-    flags_from_vec(svec!["deno", "run", "--no-check", "--check", "script.ts",]);
+    flags_from_vec(svec!["ende", "run", "--no-check", "--check", "script.ts",]);
   assert!(r.is_err());
 }
 
 #[test]
 fn no_config() {
-  let r = flags_from_vec(svec!["deno", "run", "--no-config", "script.ts",]);
+  let r = flags_from_vec(svec!["ende", "run", "--no-config", "script.ts",]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6110,7 +6110,7 @@ fn no_config() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--config",
     "ende.json",
@@ -6122,7 +6122,7 @@ fn no_config() {
 
 #[test]
 fn init() {
-  let r = flags_from_vec(svec!["deno", "init"]);
+  let r = flags_from_vec(svec!["ende", "init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6139,7 +6139,7 @@ fn init() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "init", "foo"]);
+  let r = flags_from_vec(svec!["ende", "init", "foo"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6156,7 +6156,7 @@ fn init() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "init", "--quiet"]);
+  let r = flags_from_vec(svec!["ende", "init", "--quiet"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6174,7 +6174,7 @@ fn init() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "init", "--lib"]);
+  let r = flags_from_vec(svec!["ende", "init", "--lib"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6191,7 +6191,7 @@ fn init() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "init", "--serve"]);
+  let r = flags_from_vec(svec!["ende", "init", "--serve"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6208,7 +6208,7 @@ fn init() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "init", "foo", "--lib"]);
+  let r = flags_from_vec(svec!["ende", "init", "foo", "--lib"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6225,13 +6225,13 @@ fn init() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "init", "--lib", "--npm", "vite"]);
+  let r = flags_from_vec(svec!["ende", "init", "--lib", "--npm", "vite"]);
   assert!(r.is_err());
 
-  let r = flags_from_vec(svec!["deno", "init", "--serve", "--npm", "vite"]);
+  let r = flags_from_vec(svec!["ende", "init", "--serve", "--npm", "vite"]);
   assert!(r.is_err());
 
-  let r = flags_from_vec(svec!["deno", "init", "--npm", "vite", "--lib"]);
+  let r = flags_from_vec(svec!["ende", "init", "--npm", "vite", "--lib"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6248,7 +6248,7 @@ fn init() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "init", "--npm", "vite", "--serve"]);
+  let r = flags_from_vec(svec!["ende", "init", "--npm", "vite", "--serve"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6265,7 +6265,7 @@ fn init() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "init", "--npm", "vite", "new_dir"]);
+  let r = flags_from_vec(svec!["ende", "init", "--npm", "vite", "new_dir"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6282,7 +6282,7 @@ fn init() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "init", "--npm", "--yes", "npm:vite"]);
+  let r = flags_from_vec(svec!["ende", "init", "--npm", "--yes", "npm:vite"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6300,7 +6300,7 @@ fn init() {
   );
 
   // --jsr basic
-  let r = flags_from_vec(svec!["deno", "init", "--jsr", "@denotest/create"]);
+  let r = flags_from_vec(svec!["ende", "init", "--jsr", "@denotest/create"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6318,7 +6318,7 @@ fn init() {
   );
 
   // --jsr with jsr: prefix already present
-  let r = flags_from_vec(svec!["deno", "init", "--jsr", "jsr:@fresh/init"]);
+  let r = flags_from_vec(svec!["ende", "init", "--jsr", "jsr:@fresh/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6337,7 +6337,7 @@ fn init() {
 
   // --jsr with --yes
   let r =
-    flags_from_vec(svec!["deno", "init", "--jsr", "--yes", "@denotest/create"]);
+    flags_from_vec(svec!["ende", "init", "--jsr", "--yes", "@denotest/create"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6356,7 +6356,7 @@ fn init() {
 
   // --jsr with extra args
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "init",
     "--jsr",
     "@denotest/create",
@@ -6379,30 +6379,30 @@ fn init() {
   );
 
   // --jsr conflicts with --npm, --lib, --serve, --empty
-  let r = flags_from_vec(svec!["deno", "init", "--jsr", "--npm", "@foo/bar"]);
+  let r = flags_from_vec(svec!["ende", "init", "--jsr", "--npm", "@foo/bar"]);
   assert!(r.is_err());
 
-  let r = flags_from_vec(svec!["deno", "init", "--jsr", "--lib", "@foo/bar"]);
+  let r = flags_from_vec(svec!["ende", "init", "--jsr", "--lib", "@foo/bar"]);
   assert!(r.is_err());
 
   // --jsr without package name
-  let r = flags_from_vec(svec!["deno", "init", "--jsr"]);
+  let r = flags_from_vec(svec!["ende", "init", "--jsr"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn create() {
-  let r = flags_from_vec(svec!["deno", "create"]);
+  let r = flags_from_vec(svec!["ende", "create"]);
   assert!(r.is_err());
 
-  let r = flags_from_vec(svec!["deno", "create", "vite"]);
+  let r = flags_from_vec(svec!["ende", "create", "vite"]);
   assert!(r.is_err());
 
-  let r = flags_from_vec(svec!["deno", "create", "npm:vite", "my-project"]);
+  let r = flags_from_vec(svec!["ende", "create", "npm:vite", "my-project"]);
   assert!(r.is_err());
 
   let r =
-    flags_from_vec(svec!["deno", "create", "npm:vite", "--", "my-project"]);
+    flags_from_vec(svec!["ende", "create", "npm:vite", "--", "my-project"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6419,7 +6419,7 @@ fn create() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "create", "--npm", "vite"]);
+  let r = flags_from_vec(svec!["ende", "create", "--npm", "vite"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6437,10 +6437,10 @@ fn create() {
   );
 
   let r =
-    flags_from_vec(svec!["deno", "create", "--npm", "vite", "my-project"]);
+    flags_from_vec(svec!["ende", "create", "--npm", "vite", "my-project"]);
   assert!(r.is_err());
 
-  let r = flags_from_vec(svec!["deno", "create", "--yes", "npm:vite"]);
+  let r = flags_from_vec(svec!["ende", "create", "--yes", "npm:vite"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6457,7 +6457,7 @@ fn create() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "create", "jsr:@std/http/file-server"]);
+  let r = flags_from_vec(svec!["ende", "create", "jsr:@std/http/file-server"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6474,7 +6474,7 @@ fn create() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "create", "jsr:@fresh/init"]);
+  let r = flags_from_vec(svec!["ende", "create", "jsr:@fresh/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6491,7 +6491,7 @@ fn create() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "create", "--yes", "jsr:@fresh/init"]);
+  let r = flags_from_vec(svec!["ende", "create", "--yes", "jsr:@fresh/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6509,7 +6509,7 @@ fn create() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "create",
     "jsr:@fresh/init",
     "--",
@@ -6532,11 +6532,11 @@ fn create() {
   );
 
   // empty jsr: prefix
-  let r = flags_from_vec(svec!["deno", "create", "jsr:"]);
+  let r = flags_from_vec(svec!["ende", "create", "jsr:"]);
   assert!(r.is_err());
 
   // --jsr flag
-  let r = flags_from_vec(svec!["deno", "create", "--jsr", "@fresh/init"]);
+  let r = flags_from_vec(svec!["ende", "create", "--jsr", "@fresh/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6555,7 +6555,7 @@ fn create() {
 
   // --jsr with --yes
   let r =
-    flags_from_vec(svec!["deno", "create", "--jsr", "--yes", "@fresh/init"]);
+    flags_from_vec(svec!["ende", "create", "--jsr", "--yes", "@fresh/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6573,24 +6573,24 @@ fn create() {
   );
 
   // --jsr with npm: specifier is contradictory
-  let r = flags_from_vec(svec!["deno", "create", "--jsr", "npm:vite"]);
+  let r = flags_from_vec(svec!["ende", "create", "--jsr", "npm:vite"]);
   assert!(r.is_err());
 
   // --jsr and --npm conflict
-  let r = flags_from_vec(svec!["deno", "create", "--jsr", "--npm", "@foo"]);
+  let r = flags_from_vec(svec!["ende", "create", "--jsr", "--npm", "@foo"]);
   assert!(r.is_err());
 
-  let r = flags_from_vec(svec!["deno", "create", "npm:"]);
+  let r = flags_from_vec(svec!["ende", "create", "npm:"]);
   assert!(r.is_err());
 
   // --npm with jsr: is contradictory
-  let r = flags_from_vec(svec!["deno", "create", "--npm", "jsr:@std/http"]);
+  let r = flags_from_vec(svec!["ende", "create", "--npm", "jsr:@std/http"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn jupyter() {
-  let r = flags_from_vec(svec!["deno", "jupyter"]);
+  let r = flags_from_vec(svec!["ende", "jupyter"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6606,7 +6606,7 @@ fn jupyter() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "jupyter", "--install"]);
+  let r = flags_from_vec(svec!["ende", "jupyter", "--install"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6622,7 +6622,7 @@ fn jupyter() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "jupyter", "--install", "--force"]);
+  let r = flags_from_vec(svec!["ende", "jupyter", "--install", "--force"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6639,7 +6639,7 @@ fn jupyter() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "jupyter",
     "--install",
     "--name",
@@ -6662,7 +6662,7 @@ fn jupyter() {
     }
   );
 
-  let r = flags_from_vec(svec!["deno", "jupyter", "-n", "debugdeno",]);
+  let r = flags_from_vec(svec!["ende", "jupyter", "-n", "debugdeno",]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6679,7 +6679,7 @@ fn jupyter() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "jupyter",
     "--kernel",
     "--conn",
@@ -6701,29 +6701,29 @@ fn jupyter() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "jupyter",
     "--install",
     "--conn",
     "path/to/conn/file"
   ]);
   r.unwrap_err();
-  let r = flags_from_vec(svec!["deno", "jupyter", "--kernel",]);
+  let r = flags_from_vec(svec!["ende", "jupyter", "--kernel",]);
   r.unwrap_err();
-  let r = flags_from_vec(svec!["deno", "jupyter", "--install", "--kernel",]);
+  let r = flags_from_vec(svec!["ende", "jupyter", "--install", "--kernel",]);
   r.unwrap_err();
-  let r = flags_from_vec(svec!["deno", "jupyter", "--display", "deno"]);
+  let r = flags_from_vec(svec!["ende", "jupyter", "--display", "deno"]);
   r.unwrap_err();
-  let r = flags_from_vec(svec!["deno", "jupyter", "--kernel", "--display"]);
+  let r = flags_from_vec(svec!["ende", "jupyter", "--kernel", "--display"]);
   r.unwrap_err();
-  let r = flags_from_vec(svec!["deno", "jupyter", "--force"]);
+  let r = flags_from_vec(svec!["ende", "jupyter", "--force"]);
   r.unwrap_err();
 }
 
 #[test]
 fn publish_args() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "publish",
     "--no-provenance",
     "--dry-run",
@@ -6751,7 +6751,7 @@ fn publish_args() {
 
 #[test]
 fn add_or_install_subcommand() {
-  let r = flags_from_vec(svec!["deno", "add"]);
+  let r = flags_from_vec(svec!["ende", "add"]);
   r.unwrap_err();
   for cmd in ["add", "install"] {
     let mk_flags = |flags: AddFlags| -> Flags {
@@ -6772,7 +6772,7 @@ fn add_or_install_subcommand() {
     };
 
     {
-      let r = flags_from_vec(svec!["deno", cmd, "@david/which"]);
+      let r = flags_from_vec(svec!["ende", cmd, "@david/which"]);
       assert_eq!(
         r.unwrap(),
         mk_flags(AddFlags {
@@ -6790,7 +6790,7 @@ fn add_or_install_subcommand() {
     }
     {
       let r = flags_from_vec(svec![
-        "deno",
+        "ende",
         cmd,
         "--frozen",
         "--lockfile-only",
@@ -6812,7 +6812,7 @@ fn add_or_install_subcommand() {
       assert_eq!(r.unwrap(), expected_flags);
     }
     {
-      let r = flags_from_vec(svec!["deno", cmd, "--dev", "npm:chalk"]);
+      let r = flags_from_vec(svec!["ende", cmd, "--dev", "npm:chalk"]);
       assert_eq!(
         r.unwrap(),
         mk_flags(AddFlags {
@@ -6829,7 +6829,7 @@ fn add_or_install_subcommand() {
       );
     }
     {
-      let r = flags_from_vec(svec!["deno", cmd, "--npm", "chalk"]);
+      let r = flags_from_vec(svec!["ende", cmd, "--npm", "chalk"]);
       assert_eq!(
         r.unwrap(),
         mk_flags(AddFlags {
@@ -6846,7 +6846,7 @@ fn add_or_install_subcommand() {
       );
     }
     {
-      let r = flags_from_vec(svec!["deno", cmd, "--jsr", "@std/fs"]);
+      let r = flags_from_vec(svec!["ende", cmd, "--jsr", "@std/fs"]);
       assert_eq!(
         r.unwrap(),
         mk_flags(AddFlags {
@@ -6863,7 +6863,7 @@ fn add_or_install_subcommand() {
       );
     }
     for arg in ["--save-optional", "-O"] {
-      let r = flags_from_vec(svec!["deno", cmd, arg, "npm:chalk"]);
+      let r = flags_from_vec(svec!["ende", cmd, arg, "npm:chalk"]);
       assert_eq!(
         r.unwrap(),
         mk_flags(AddFlags {
@@ -6880,7 +6880,7 @@ fn add_or_install_subcommand() {
       );
     }
     {
-      let r = flags_from_vec(svec!["deno", cmd, "--no-save", "npm:chalk"]);
+      let r = flags_from_vec(svec!["ende", cmd, "--no-save", "npm:chalk"]);
       assert_eq!(
         r.unwrap(),
         mk_flags(AddFlags {
@@ -6898,7 +6898,7 @@ fn add_or_install_subcommand() {
     }
     {
       let r =
-        flags_from_vec(svec!["deno", cmd, "--unscoped", "jsr:@david/which"]);
+        flags_from_vec(svec!["ende", cmd, "--unscoped", "jsr:@david/which"]);
       assert_eq!(
         r.unwrap(),
         mk_flags(AddFlags {
@@ -6917,7 +6917,7 @@ fn add_or_install_subcommand() {
     // --save-optional conflicts with --dev
     assert!(
       flags_from_vec(svec![
-        "deno",
+        "ende",
         cmd,
         "--save-optional",
         "--dev",
@@ -6927,12 +6927,12 @@ fn add_or_install_subcommand() {
     );
     // --no-save conflicts with --dev and --save-optional
     assert!(
-      flags_from_vec(svec!["deno", cmd, "--no-save", "--dev", "npm:chalk"])
+      flags_from_vec(svec!["ende", cmd, "--no-save", "--dev", "npm:chalk"])
         .is_err()
     );
     assert!(
       flags_from_vec(svec![
-        "deno",
+        "ende",
         cmd,
         "--no-save",
         "--save-optional",
@@ -6944,7 +6944,7 @@ fn add_or_install_subcommand() {
 
   {
     let r = flags_from_vec(svec![
-      "deno",
+      "ende",
       "add",
       "--allow-import=example.com",
       "@david/which"
@@ -6975,10 +6975,10 @@ fn add_or_install_subcommand() {
 
 #[test]
 fn remove_subcommand() {
-  let r = flags_from_vec(svec!["deno", "remove"]);
+  let r = flags_from_vec(svec!["ende", "remove"]);
   r.unwrap_err();
 
-  let r = flags_from_vec(svec!["deno", "remove", "@david/which"]);
+  let r = flags_from_vec(svec!["ende", "remove", "@david/which"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -6992,7 +6992,7 @@ fn remove_subcommand() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "remove",
     "--frozen",
     "--lockfile-only",
@@ -7018,7 +7018,7 @@ fn remove_global_alias_for_uninstall() {
   // `deno remove --global <name>` is an alias for `deno uninstall --global
   // <name>` and produces the exact same subcommand.
   for global_flag in ["--global", "-g"] {
-    let r = flags_from_vec(svec!["deno", "remove", global_flag, "file_server"]);
+    let r = flags_from_vec(svec!["ende", "remove", global_flag, "file_server"]);
     assert_eq!(
       r.unwrap(),
       Flags {
@@ -7035,7 +7035,7 @@ fn remove_global_alias_for_uninstall() {
 
   // `--root` is honored, just like `deno uninstall --global --root`.
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "remove",
     "-g",
     "--root",
@@ -7057,7 +7057,7 @@ fn remove_global_alias_for_uninstall() {
 
   // A global removal accepts multiple executables, like `deno uninstall
   // --global`.
-  let r = flags_from_vec(svec!["deno", "remove", "-g", "file_server", "chalk"]);
+  let r = flags_from_vec(svec!["ende", "remove", "-g", "file_server", "chalk"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -7073,11 +7073,11 @@ fn remove_global_alias_for_uninstall() {
 
   // `--root` requires `--global`.
   let r =
-    flags_from_vec(svec!["deno", "remove", "--root", "/tmp", "@std/path"]);
+    flags_from_vec(svec!["ende", "remove", "--root", "/tmp", "@std/path"]);
   assert!(r.is_err());
 
   // Without `--global`, removal stays a config-file dependency removal.
-  let r = flags_from_vec(svec!["deno", "remove", "@david/which"]);
+  let r = flags_from_vec(svec!["ende", "remove", "@david/which"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -7100,7 +7100,7 @@ fn run_with_frozen_lockfile() {
     (None, None),
   ];
   for (flag, frozen) in cases {
-    let mut args = svec!["deno", "run"];
+    let mut args = svec!["ende", "run"];
     if let Some(f) = flag {
       args.push(f.into());
     }
@@ -7149,7 +7149,7 @@ fn allow_scripts() {
     ),
   ];
   for (flag, value) in cases {
-    let mut args = svec!["deno", "cache"];
+    let mut args = svec!["ende", "cache"];
     if let Some(flag) = flag {
       args.push(flag.into());
     }
@@ -7182,7 +7182,7 @@ fn allow_scripts() {
 #[test]
 fn x_ignore_scripts() {
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "x",
     "--ignore-scripts",
     "-y",
@@ -7211,7 +7211,7 @@ fn x_ignore_scripts() {
   );
 
   let err = flags_from_vec(svec![
-    "deno",
+    "ende",
     "x",
     "--ignore-scripts",
     "--allow-scripts",
@@ -7221,7 +7221,7 @@ fn x_ignore_scripts() {
   assert!(err.to_string().contains("cannot be used with"));
 
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "x",
     "--ignore-scripts=foo,npm:bar@2",
     "npm:foo"
@@ -7261,7 +7261,7 @@ fn x_ignore_scripts() {
     ),
     ("--ignore-scripts=foo,", "Empty values are not allowed"),
   ] {
-    let err = flags_from_vec(svec!["deno", "x", flag, "npm:foo"]).unwrap_err();
+    let err = flags_from_vec(svec!["ende", "x", flag, "npm:foo"]).unwrap_err();
     assert!(
       err.to_string().contains(expected_error),
       "expected to contain '{expected_error}' got '{err}'"
@@ -7271,7 +7271,7 @@ fn x_ignore_scripts() {
 
 #[test]
 fn bare_run() {
-  let r = flags_from_vec(svec!["deno", "--no-config", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "--no-config", "script.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -7290,7 +7290,7 @@ fn bare_run() {
 
 #[test]
 fn bare_global() {
-  let r = flags_from_vec(svec!["deno", "--log-level=debug"]);
+  let r = flags_from_vec(svec!["ende", "--log-level=debug"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -7312,9 +7312,9 @@ fn bare_global() {
 
 #[test]
 fn repl_user_args() {
-  let r = flags_from_vec(svec!["deno", "repl", "foo"]);
+  let r = flags_from_vec(svec!["ende", "repl", "foo"]);
   assert!(r.is_err());
-  let r = flags_from_vec(svec!["deno", "repl", "--", "foo"]);
+  let r = flags_from_vec(svec!["ende", "repl", "--", "foo"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -7332,14 +7332,14 @@ fn repl_user_args() {
 
 #[test]
 fn bare_with_flag_no_file() {
-  let r = flags_from_vec(svec!["deno", "--no-config"]);
+  let r = flags_from_vec(svec!["ende", "--no-config"]);
 
   let err = r.unwrap_err();
-  assert!(err.to_string().contains("error: [SCRIPT_ARG] may only be omitted with --v8-flags=--help, else to use the repl with arguments, please use the `deno repl` subcommand"));
+  assert!(err.to_string().contains("error: [SCRIPT_ARG] may only be omitted with --v8-flags=--help, else to use the repl with arguments, please use the `ende repl` subcommand"));
   assert!(
     err
       .to_string()
-      .contains("Usage: deno [OPTIONS] [COMMAND] [SCRIPT_ARG]...")
+      .contains("Usage: ende [OPTIONS] [COMMAND] [SCRIPT_ARG]...")
   );
 }
 
@@ -7349,7 +7349,7 @@ fn bare_with_flag_no_file() {
 
 #[test]
 fn ci_subcommand_defaults() {
-  let r = flags_from_vec(svec!["deno", "ci"]);
+  let r = flags_from_vec(svec!["ende", "ci"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -7362,7 +7362,7 @@ fn ci_subcommand_defaults() {
 
 #[test]
 fn ci_subcommand_prod_skip_types() {
-  let r = flags_from_vec(svec!["deno", "ci", "--prod", "--skip-types"]);
+  let r = flags_from_vec(svec!["ende", "ci", "--prod", "--skip-types"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -7379,7 +7379,7 @@ fn ci_subcommand_prod_skip_types() {
 #[test]
 fn install_permissions_non_global() {
   let r =
-    flags_from_vec(svec!["deno", "install", "--allow-net", "jsr:@std/fs"]);
+    flags_from_vec(svec!["ende", "install", "--allow-net", "jsr:@std/fs"]);
 
   assert!(
     r.unwrap_err()
@@ -7395,13 +7395,13 @@ fn install_permissions_non_global() {
 #[test]
 fn install_os_arch_conflicts_with_global() {
   let r =
-    flags_from_vec(svec!["deno", "install", "-g", "--os", "linux", "mod.ts"]);
+    flags_from_vec(svec!["ende", "install", "-g", "--os", "linux", "mod.ts"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn install_production() {
-  let r = flags_from_vec(svec!["deno", "install", "--prod"]);
+  let r = flags_from_vec(svec!["ende", "install", "--prod"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -7421,7 +7421,7 @@ fn install_production() {
 #[test]
 fn install_production_with_entrypoint() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "install",
     "--prod",
     "--entrypoint",
@@ -7446,7 +7446,7 @@ fn install_production_with_entrypoint() {
 
 #[test]
 fn install_production_with_skip_types() {
-  let r = flags_from_vec(svec!["deno", "install", "--prod", "--skip-types"]);
+  let r = flags_from_vec(svec!["ende", "install", "--prod", "--skip-types"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -7465,14 +7465,14 @@ fn install_production_with_skip_types() {
 
 #[test]
 fn install_skip_types_requires_prod() {
-  let r = flags_from_vec(svec!["deno", "install", "--skip-types"]);
+  let r = flags_from_vec(svec!["ende", "install", "--skip-types"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn install_production_conflicts_with_global() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "install",
     "--prod",
     "--global",
@@ -7484,14 +7484,14 @@ fn install_production_conflicts_with_global() {
 #[test]
 fn install_production_conflicts_with_dev() {
   let r =
-    flags_from_vec(svec!["deno", "install", "--prod", "--dev", "npm:chalk"]);
+    flags_from_vec(svec!["ende", "install", "--prod", "--dev", "npm:chalk"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn jupyter_unstable_flags() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "jupyter",
     "--unstable-ffi",
     "--unstable-bare-node-builtins",
@@ -7521,7 +7521,7 @@ fn jupyter_unstable_flags() {
 
 #[test]
 fn serve_with_allow_all() {
-  let r = flags_from_vec(svec!["deno", "serve", "--allow-all", "./main.ts"]);
+  let r = flags_from_vec(svec!["ende", "serve", "--allow-all", "./main.ts"]);
   let flags = r.unwrap();
   assert_eq!(
     &flags,
@@ -7572,7 +7572,7 @@ fn escape_and_split_commas_test() {
 #[test]
 fn net_flag_with_url() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-net=https://example.com",
     "script.ts"
@@ -7586,7 +7586,7 @@ fn net_flag_with_url() {
 #[test]
 fn node_modules_dir_default() {
   let r =
-    flags_from_vec(svec!["deno", "run", "--node-modules-dir", "./foo.ts"]);
+    flags_from_vec(svec!["ende", "run", "--node-modules-dir", "./foo.ts"]);
   let flags = r.unwrap();
   assert_eq!(
     flags,
@@ -7606,7 +7606,7 @@ fn node_modules_dir_default() {
 fn flag_before_subcommand() {
   // PORT-NOTE: clap appends a `Usage: deno repl [OPTIONS] [-- [ARGS]...]`
   // trailer; the new parser reports only the error and the tip.
-  let r = flags_from_vec(svec!["deno", "--allow-net", "repl"]);
+  let r = flags_from_vec(svec!["ende", "--allow-net", "repl"]);
   assert_eq!(
     r.unwrap_err().to_string(),
     "error: unexpected argument '--allow-net' found
@@ -7621,7 +7621,7 @@ fn flag_before_subcommand_not_supported() {
   // `lint --allow-all` exists (see issue #27336).
   // PORT-NOTE: clap appends a `Usage: deno lint [OPTIONS] [files]...`
   // trailer; the new parser reports only the error.
-  let r = flags_from_vec(svec!["deno", "--allow-all", "lint"]);
+  let r = flags_from_vec(svec!["ende", "--allow-all", "lint"]);
   assert_eq!(
     r.unwrap_err().to_string(),
     "error: unexpected argument '--allow-all' found"
@@ -7641,7 +7641,7 @@ fn allow_all_conflicts_allow_perms() {
     "--allow-import",
   ];
   for flag in flags {
-    let r = flags_from_vec(svec!["deno", "run", "--allow-all", flag, "foo.ts"]);
+    let r = flags_from_vec(svec!["ende", "run", "--allow-all", flag, "foo.ts"]);
     assert!(r.is_err());
   }
 }
@@ -7649,7 +7649,7 @@ fn allow_all_conflicts_allow_perms() {
 #[test]
 fn allow_import_with_url() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-import=https://example.com",
     "script.ts"
@@ -7663,7 +7663,7 @@ fn allow_import_with_url() {
 #[test]
 fn deny_import_with_url() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--deny-import=https://example.com",
     "script.ts",
@@ -7783,7 +7783,7 @@ fn outdated_subcommand() {
     ),
   ];
   for (input, expected) in cases {
-    let mut args = svec!["deno", "outdated"];
+    let mut args = svec!["ende", "outdated"];
     args.extend(input);
     let r = flags_from_vec(args.clone()).unwrap();
     assert_eq!(
@@ -7830,7 +7830,7 @@ fn list_subcommand() {
     ),
   ];
   for (input, expected) in cases {
-    let mut args = svec!["deno", "list"];
+    let mut args = svec!["ende", "list"];
     args.extend(input);
     let r = flags_from_vec(args.clone()).unwrap();
     assert_eq!(
@@ -7842,7 +7842,7 @@ fn list_subcommand() {
   }
 
   // --prod and --dev are mutually exclusive
-  assert!(flags_from_vec(svec!["deno", "list", "--prod", "--dev"]).is_err());
+  assert!(flags_from_vec(svec!["ende", "list", "--prod", "--dev"]).is_err());
 }
 
 #[test]
@@ -7922,7 +7922,7 @@ fn update_subcommand() {
     ),
   ];
   for (input, expected) in cases {
-    let mut args = svec!["deno", "update"];
+    let mut args = svec!["ende", "update"];
     args.extend(input);
     let r = flags_from_vec(args.clone()).unwrap();
     assert_eq!(
@@ -7936,16 +7936,16 @@ fn update_subcommand() {
 
 #[test]
 fn update_subcommand_frozen_flag() {
-  let r = flags_from_vec(svec!["deno", "update", "--frozen=false"]).unwrap();
+  let r = flags_from_vec(svec!["ende", "update", "--frozen=false"]).unwrap();
   assert_eq!(r.frozen_lockfile, Some(false));
 
-  let r = flags_from_vec(svec!["deno", "update", "--frozen"]).unwrap();
+  let r = flags_from_vec(svec!["ende", "update", "--frozen"]).unwrap();
   assert_eq!(r.frozen_lockfile, Some(true));
 }
 
 #[test]
 fn outdated_subcommand_frozen_flag() {
-  let r = flags_from_vec(svec!["deno", "outdated", "--frozen=false"]).unwrap();
+  let r = flags_from_vec(svec!["ende", "outdated", "--frozen=false"]).unwrap();
   assert_eq!(r.frozen_lockfile, Some(false));
 }
 
@@ -8019,7 +8019,7 @@ fn approve_scripts_subcommand() {
     ),
   ];
   for (input, expected) in cases {
-    let mut args = svec!["deno", "approve-scripts"];
+    let mut args = svec!["ende", "approve-scripts"];
     args.extend(input);
     let r = flags_from_vec(args.clone()).unwrap();
     assert_eq!(
@@ -8074,7 +8074,7 @@ fn clean_subcommand() {
     // `--except` builds a module graph of the retained paths, so it parses
     // with `--cached-only`; other invocations (e.g. `--dry-run` alone) don't.
     let cached_only = input.iter().any(|arg| arg == "--except");
-    let mut args = svec!["deno", "clean"];
+    let mut args = svec!["ende", "clean"];
     args.extend(input);
     let r = flags_from_vec(args.clone())
       .inspect_err(|e| {
@@ -8100,7 +8100,7 @@ fn clean_subcommand() {
 #[test]
 fn conditions_test() {
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--conditions",
     "development",
@@ -8121,7 +8121,7 @@ fn conditions_test() {
   );
 
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--conditions",
     "development,production",
@@ -8142,7 +8142,7 @@ fn conditions_test() {
   );
 
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--conditions",
     "development",
@@ -8168,7 +8168,7 @@ fn conditions_test() {
 #[test]
 fn preload_flag_test() {
   let flags =
-    flags_from_vec(svec!["deno", "run", "--preload", "preload.js", "main.ts"])
+    flags_from_vec(svec!["ende", "run", "--preload", "preload.js", "main.ts"])
       .unwrap();
   assert_eq!(
     flags,
@@ -8184,7 +8184,7 @@ fn preload_flag_test() {
   );
 
   let flags =
-    flags_from_vec(svec!["deno", "run", "--preload", "data:,()", "main.ts"])
+    flags_from_vec(svec!["ende", "run", "--preload", "data:,()", "main.ts"])
       .unwrap();
   assert_eq!(
     flags,
@@ -8200,7 +8200,7 @@ fn preload_flag_test() {
   );
 
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "compile",
     "--preload",
     "p1.js",
@@ -8237,7 +8237,7 @@ fn preload_flag_test() {
   );
 
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "test",
     "--preload",
     "p1.js",
@@ -8261,7 +8261,7 @@ fn preload_flag_test() {
   );
 
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "bench",
     "--preload",
     "p1.js",
@@ -8288,7 +8288,7 @@ fn preload_flag_test() {
 #[test]
 fn require_flag_test() {
   let flags =
-    flags_from_vec(svec!["deno", "run", "--require", "require.js", "main.ts"])
+    flags_from_vec(svec!["ende", "run", "--require", "require.js", "main.ts"])
       .unwrap();
   assert_eq!(
     flags,
@@ -8304,7 +8304,7 @@ fn require_flag_test() {
   );
 
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--require",
     "r1.js",
@@ -8330,7 +8330,7 @@ fn require_flag_test() {
 #[test]
 fn check_with_v8_flags() {
   let flags =
-    flags_from_vec(svec!["deno", "check", "--v8-flags=--help", "script.ts",])
+    flags_from_vec(svec!["ende", "check", "--v8-flags=--help", "script.ts",])
       .unwrap();
   assert_eq!(
     flags,
@@ -8352,7 +8352,7 @@ fn check_with_v8_flags() {
 #[test]
 fn multiple_allow_all() {
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--allow-all",
     "--inspect",
@@ -8412,7 +8412,7 @@ fn inspect_flag_parsing() {
 
   for case in cases {
     let flags = flags_from_vec(svec![
-      "deno",
+      "ende",
       "run",
       &format!("--inspect={}", case.0),
       "script.ts",
@@ -8445,7 +8445,7 @@ fn inspect_resolves_hostnames() {
   ];
   for (input, expected_port) in cases {
     let flags = flags_from_vec(svec![
-      "deno",
+      "ende",
       "run",
       &format!("--inspect={input}"),
       "foo.ts"
@@ -8475,7 +8475,7 @@ fn inspect_address_forms() {
   ];
   for (input, expected) in cases {
     let flags = flags_from_vec(svec![
-      "deno",
+      "ende",
       "run",
       &format!("--inspect={input}"),
       "foo.ts"
@@ -8495,7 +8495,7 @@ fn inspect_address_forms() {
 fn inspect_invalid_address_is_rejected() {
   for input in ["localhost:99999", ""] {
     let r = flags_from_vec(svec![
-      "deno",
+      "ende",
       "run",
       &format!("--inspect={input}"),
       "foo.ts"
@@ -8508,7 +8508,7 @@ fn inspect_invalid_address_is_rejected() {
 fn inspect_publish_uid_flag_parsing() {
   // Test with both stderr and http
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--inspect",
     "--inspect-publish-uid=stderr,http",
@@ -8525,7 +8525,7 @@ fn inspect_publish_uid_flag_parsing() {
 
   // Test with only stderr
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--inspect",
     "--inspect-publish-uid=stderr",
@@ -8542,7 +8542,7 @@ fn inspect_publish_uid_flag_parsing() {
 
   // Test with only http
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--inspect",
     "--inspect-publish-uid=http",
@@ -8559,7 +8559,7 @@ fn inspect_publish_uid_flag_parsing() {
 
   // Test without the flag (should be None)
   let flags =
-    flags_from_vec(svec!["deno", "run", "--inspect", "script.ts",]).unwrap();
+    flags_from_vec(svec!["ende", "run", "--inspect", "script.ts",]).unwrap();
   assert_eq!(flags.inspect_publish_uid, None);
 }
 
@@ -8567,7 +8567,7 @@ fn inspect_publish_uid_flag_parsing() {
 fn node_options_require() {
   // Test NODE_OPTIONS --require when no CLI --require is passed
   set_test_node_options(Some("--require only.js"));
-  let flags = flags_from_vec(svec!["deno", "run", "script.ts",]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
   set_test_node_options(None);
   assert_eq!(flags.require, vec!["only.js"]);
 }
@@ -8577,7 +8577,7 @@ fn node_options_require_prepend_to_cli() {
   // Test NODE_OPTIONS --require is prepended to CLI --require values
   set_test_node_options(Some("--require foo.js --require bar.js"));
   let flags =
-    flags_from_vec(svec!["deno", "run", "--require", "cli.js", "script.ts",])
+    flags_from_vec(svec!["ende", "run", "--require", "cli.js", "script.ts",])
       .unwrap();
   set_test_node_options(None);
   assert_eq!(flags.require, vec!["foo.js", "bar.js", "cli.js"]);
@@ -8586,7 +8586,7 @@ fn node_options_require_prepend_to_cli() {
 #[test]
 fn node_options_inspect_publish_uid() {
   set_test_node_options(Some("--inspect-publish-uid=http"));
-  let flags = flags_from_vec(svec!["deno", "run", "script.ts",]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
   set_test_node_options(None);
   assert_eq!(
     flags.inspect_publish_uid,
@@ -8601,7 +8601,7 @@ fn node_options_inspect_publish_uid() {
 fn node_options_inspect_publish_uid_cli_precedence() {
   set_test_node_options(Some("--inspect-publish-uid=http"));
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--inspect-publish-uid=stderr",
     "script.ts",
@@ -8620,7 +8620,7 @@ fn node_options_inspect_publish_uid_cli_precedence() {
 #[test]
 fn node_options_inspect() {
   set_test_node_options(Some("--inspect=127.0.0.1:9333"));
-  let flags = flags_from_vec(svec!["deno", "run", "script.ts",]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
   set_test_node_options(None);
   assert_eq!(flags.inspect, Some("127.0.0.1:9333".parse().unwrap()));
 }
@@ -8628,7 +8628,7 @@ fn node_options_inspect() {
 #[test]
 fn node_options_inspect_default_address() {
   set_test_node_options(Some("--inspect"));
-  let flags = flags_from_vec(svec!["deno", "run", "script.ts",]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
   set_test_node_options(None);
   assert_eq!(flags.inspect, Some("127.0.0.1:9229".parse().unwrap()));
 }
@@ -8636,12 +8636,12 @@ fn node_options_inspect_default_address() {
 #[test]
 fn node_options_inspect_brk_and_wait() {
   set_test_node_options(Some("--inspect-brk=127.0.0.1:9334"));
-  let flags = flags_from_vec(svec!["deno", "run", "script.ts",]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
   set_test_node_options(None);
   assert_eq!(flags.inspect_brk, Some("127.0.0.1:9334".parse().unwrap()));
 
   set_test_node_options(Some("--inspect-wait=127.0.0.1:9335"));
-  let flags = flags_from_vec(svec!["deno", "run", "script.ts",]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
   set_test_node_options(None);
   assert_eq!(flags.inspect_wait, Some("127.0.0.1:9335".parse().unwrap()));
 }
@@ -8652,7 +8652,7 @@ fn node_options_inspect_cli_precedence() {
   // inspector family, since --inspect/-brk/-wait are mutually exclusive.
   set_test_node_options(Some("--inspect=127.0.0.1:9333"));
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--inspect-brk=127.0.0.1:9444",
     "script.ts",
@@ -8669,7 +8669,7 @@ fn node_options_combined() {
   set_test_node_options(Some(
     "--require foo.js --inspect-publish-uid=stderr,http",
   ));
-  let flags = flags_from_vec(svec!["deno", "run", "script.ts",]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
   set_test_node_options(None);
   assert_eq!(flags.require, vec!["foo.js"]);
   assert_eq!(
@@ -8684,7 +8684,7 @@ fn node_options_combined() {
 #[test]
 fn node_options_empty() {
   set_test_node_options(Some(""));
-  let flags = flags_from_vec(svec!["deno", "run", "script.ts",]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
   set_test_node_options(None);
   assert!(flags.require.is_empty());
   assert_eq!(flags.inspect_publish_uid, None);
@@ -8695,14 +8695,14 @@ fn node_options_ignores_unknown_flags() {
   set_test_node_options(Some(
     "--require known.js --unknown-flag --another-unknown",
   ));
-  let flags = flags_from_vec(svec!["deno", "run", "script.ts",]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
   set_test_node_options(None);
   assert_eq!(flags.require, vec!["known.js"]);
 }
 
 #[test]
 fn bump_version_patch() {
-  let r = flags_from_vec(svec!["deno", "bump-version", "patch"]);
+  let r = flags_from_vec(svec!["ende", "bump-version", "patch"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8717,7 +8717,7 @@ fn bump_version_patch() {
 
 #[test]
 fn bump_version_minor() {
-  let r = flags_from_vec(svec!["deno", "bump-version", "minor"]);
+  let r = flags_from_vec(svec!["ende", "bump-version", "minor"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8732,7 +8732,7 @@ fn bump_version_minor() {
 
 #[test]
 fn bump_version_major() {
-  let r = flags_from_vec(svec!["deno", "bump-version", "major"]);
+  let r = flags_from_vec(svec!["ende", "bump-version", "major"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8747,7 +8747,7 @@ fn bump_version_major() {
 
 #[test]
 fn bump_version_prerelease() {
-  let r = flags_from_vec(svec!["deno", "bump-version", "prerelease"]);
+  let r = flags_from_vec(svec!["ende", "bump-version", "prerelease"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8762,7 +8762,7 @@ fn bump_version_prerelease() {
 
 #[test]
 fn bump_version_premajor() {
-  let r = flags_from_vec(svec!["deno", "bump-version", "premajor"]);
+  let r = flags_from_vec(svec!["ende", "bump-version", "premajor"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8777,7 +8777,7 @@ fn bump_version_premajor() {
 
 #[test]
 fn bump_version_preminor() {
-  let r = flags_from_vec(svec!["deno", "bump-version", "preminor"]);
+  let r = flags_from_vec(svec!["ende", "bump-version", "preminor"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8792,7 +8792,7 @@ fn bump_version_preminor() {
 
 #[test]
 fn bump_version_prepatch() {
-  let r = flags_from_vec(svec!["deno", "bump-version", "prepatch"]);
+  let r = flags_from_vec(svec!["ende", "bump-version", "prepatch"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8807,7 +8807,7 @@ fn bump_version_prepatch() {
 
 #[test]
 fn bump_version_no_args() {
-  let r = flags_from_vec(svec!["deno", "bump-version"]);
+  let r = flags_from_vec(svec!["ende", "bump-version"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8819,14 +8819,14 @@ fn bump_version_no_args() {
 
 #[test]
 fn bump_version_invalid_increment() {
-  let r = flags_from_vec(svec!["deno", "bump-version", "invalid"]);
+  let r = flags_from_vec(svec!["ende", "bump-version", "invalid"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn bump_version_workspace_flags() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "bump-version",
     "--workspace",
     "--dry-run",
@@ -8860,7 +8860,7 @@ fn bump_version_workspace_flags() {
 #[test]
 fn bump_version_config() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "bump-version",
     "patch",
     "--config",
@@ -8879,7 +8879,7 @@ fn bump_version_config() {
   );
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "bump-version",
     "-c",
     "package.json",
@@ -8901,7 +8901,7 @@ fn bump_version_config() {
 #[test]
 fn bump_version_no_workspace() {
   let r =
-    flags_from_vec(svec!["deno", "bump-version", "patch", "--no-workspace"]);
+    flags_from_vec(svec!["ende", "bump-version", "patch", "--no-workspace"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8917,7 +8917,7 @@ fn bump_version_no_workspace() {
 
 #[test]
 fn why_package() {
-  let r = flags_from_vec(svec!["deno", "why", "express"]);
+  let r = flags_from_vec(svec!["ende", "why", "express"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8931,7 +8931,7 @@ fn why_package() {
 
 #[test]
 fn why_package_with_version() {
-  let r = flags_from_vec(svec!["deno", "why", "express@4.18.2"]);
+  let r = flags_from_vec(svec!["ende", "why", "express@4.18.2"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8945,7 +8945,7 @@ fn why_package_with_version() {
 
 #[test]
 fn why_scoped_package() {
-  let r = flags_from_vec(svec!["deno", "why", "@scope/pkg"]);
+  let r = flags_from_vec(svec!["ende", "why", "@scope/pkg"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8959,7 +8959,7 @@ fn why_scoped_package() {
 
 #[test]
 fn why_scoped_package_with_version() {
-  let r = flags_from_vec(svec!["deno", "why", "@scope/pkg@1.0.0"]);
+  let r = flags_from_vec(svec!["ende", "why", "@scope/pkg@1.0.0"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8973,13 +8973,13 @@ fn why_scoped_package_with_version() {
 
 #[test]
 fn why_missing_package() {
-  let r = flags_from_vec(svec!["deno", "why"]);
+  let r = flags_from_vec(svec!["ende", "why"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn audit_basic() {
-  let r = flags_from_vec(svec!["deno", "audit"]);
+  let r = flags_from_vec(svec!["ende", "audit"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -8997,7 +8997,7 @@ fn audit_basic() {
 
 #[test]
 fn audit_fix_flag() {
-  let r = flags_from_vec(svec!["deno", "audit", "--fix"]);
+  let r = flags_from_vec(svec!["ende", "audit", "--fix"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9016,7 +9016,7 @@ fn audit_fix_flag() {
 
 #[test]
 fn audit_fix_positional() {
-  let r = flags_from_vec(svec!["deno", "audit", "fix"]);
+  let r = flags_from_vec(svec!["ende", "audit", "fix"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9035,13 +9035,13 @@ fn audit_fix_positional() {
 
 #[test]
 fn audit_invalid_positional() {
-  let r = flags_from_vec(svec!["deno", "audit", "bogus"]);
+  let r = flags_from_vec(svec!["ende", "audit", "bogus"]);
   assert!(r.is_err());
 }
 
 #[test]
 fn transpile_single_file() {
-  let r = flags_from_vec(svec!["deno", "transpile", "main.ts"]);
+  let r = flags_from_vec(svec!["ende", "transpile", "main.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9059,7 +9059,7 @@ fn transpile_single_file() {
 
 #[test]
 fn transpile_multiple_files() {
-  let r = flags_from_vec(svec!["deno", "transpile", "main.ts", "helpers.ts"]);
+  let r = flags_from_vec(svec!["ende", "transpile", "main.ts", "helpers.ts"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9077,7 +9077,7 @@ fn transpile_multiple_files() {
 
 #[test]
 fn transpile_with_output() {
-  let r = flags_from_vec(svec!["deno", "transpile", "main.ts", "-o", "out.js"]);
+  let r = flags_from_vec(svec!["ende", "transpile", "main.ts", "-o", "out.js"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9096,7 +9096,7 @@ fn transpile_with_output() {
 #[test]
 fn transpile_with_outdir() {
   let r =
-    flags_from_vec(svec!["deno", "transpile", "main.ts", "--outdir", "dist"]);
+    flags_from_vec(svec!["ende", "transpile", "main.ts", "--outdir", "dist"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9115,7 +9115,7 @@ fn transpile_with_outdir() {
 #[test]
 fn transpile_with_source_map_inline() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "transpile",
     "main.ts",
     "--source-map",
@@ -9139,7 +9139,7 @@ fn transpile_with_source_map_inline() {
 #[test]
 fn transpile_with_source_map_separate() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "transpile",
     "main.ts",
     "--source-map",
@@ -9163,7 +9163,7 @@ fn transpile_with_source_map_separate() {
 #[test]
 fn transpile_with_declaration() {
   let r =
-    flags_from_vec(svec!["deno", "transpile", "main.ts", "--declaration"]);
+    flags_from_vec(svec!["ende", "transpile", "main.ts", "--declaration"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9182,7 +9182,7 @@ fn transpile_with_declaration() {
 #[test]
 fn transpile_all_flags() {
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "transpile",
     "main.ts",
     "-o",
@@ -9214,7 +9214,7 @@ fn transpile_all_flags() {
 #[test]
 fn tier1_test_sanitize_and_snapshot_flags() {
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "test",
     "--sanitize-ops",
     "--sanitize-resources",
@@ -9232,21 +9232,21 @@ fn tier1_test_sanitize_and_snapshot_flags() {
   assert!(t.update_snapshots);
 
   // -u is short for --update-snapshots.
-  let flags = flags_from_vec(svec!["deno", "test", "-u"]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "test", "-u"]).unwrap();
   assert!(
     matches!(flags.subcommand, DenoSubcommand::Test(t) if t.update_snapshots)
   );
 
   // --coverage-threshold requires --coverage.
   assert!(
-    flags_from_vec(svec!["deno", "test", "--coverage-threshold=80"]).is_err()
+    flags_from_vec(svec!["ende", "test", "--coverage-threshold=80"]).is_err()
   );
 }
 
 #[test]
 fn tier1_compile_bundle_flags() {
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "compile",
     "--bundle",
     "--minify",
@@ -9265,14 +9265,14 @@ fn tier1_compile_bundle_flags() {
 
   // --minify requires --bundle.
   assert!(
-    flags_from_vec(svec!["deno", "compile", "--minify", "main.ts"]).is_err()
+    flags_from_vec(svec!["ende", "compile", "--minify", "main.ts"]).is_err()
   );
 }
 
 #[test]
 fn tier1_install_os_arch_package_json() {
   let flags =
-    flags_from_vec(svec!["deno", "install", "--os", "linux", "--arch", "x64"])
+    flags_from_vec(svec!["ende", "install", "--os", "linux", "--arch", "x64"])
       .unwrap();
   let DenoSubcommand::Install(InstallFlags::Local(_, npm_target)) =
     flags.subcommand
@@ -9283,7 +9283,7 @@ fn tier1_install_os_arch_package_json() {
   assert_eq!(npm_target.arch, Some("x64".to_string()));
 
   let flags =
-    flags_from_vec(svec!["deno", "install", "--package-json", "npm:foo"])
+    flags_from_vec(svec!["ende", "install", "--package-json", "npm:foo"])
       .unwrap();
   assert!(matches!(
     flags.subcommand,
@@ -9296,7 +9296,7 @@ fn tier1_install_os_arch_package_json() {
   // --os / --arch conflict with --global.
   assert!(
     flags_from_vec(svec![
-      "deno", "install", "--global", "--os", "linux", "foo"
+      "ende", "install", "--global", "--os", "linux", "foo"
     ])
     .is_err()
   );
@@ -9305,40 +9305,40 @@ fn tier1_install_os_arch_package_json() {
 #[test]
 fn tier1_uninstall_remove_package_json() {
   let flags =
-    flags_from_vec(svec!["deno", "uninstall", "--package-json", "foo"])
+    flags_from_vec(svec!["ende", "uninstall", "--package-json", "foo"])
       .unwrap();
   assert!(matches!(flags.subcommand, DenoSubcommand::Uninstall(_)));
   let flags =
-    flags_from_vec(svec!["deno", "remove", "--package-json", "foo"]).unwrap();
+    flags_from_vec(svec!["ende", "remove", "--package-json", "foo"]).unwrap();
   assert!(matches!(flags.subcommand, DenoSubcommand::Remove(_)));
 }
 
 #[test]
 fn tier1_check_flags() {
   let flags =
-    flags_from_vec(svec!["deno", "check", "--no-code-cache", "main.ts"])
+    flags_from_vec(svec!["ende", "check", "--no-code-cache", "main.ts"])
       .unwrap();
   assert!(!flags.code_cache_enabled);
 
   let flags =
-    flags_from_vec(svec!["deno", "check", "--watch", "main.ts"]).unwrap();
+    flags_from_vec(svec!["ende", "check", "--watch", "main.ts"]).unwrap();
   assert!(flags.watch.is_some());
 }
 
 #[test]
 fn tier1_serve_open_tunnel_hmr() {
   let flags =
-    flags_from_vec(svec!["deno", "serve", "--open", "main.ts"]).unwrap();
+    flags_from_vec(svec!["ende", "serve", "--open", "main.ts"]).unwrap();
   assert!(matches!(&flags.subcommand, DenoSubcommand::Serve(s) if s.open_site));
 
   let flags =
-    flags_from_vec(svec!["deno", "serve", "--tunnel", "main.ts"]).unwrap();
+    flags_from_vec(svec!["ende", "serve", "--tunnel", "main.ts"]).unwrap();
   assert!(flags.tunnel);
 
   // serve uses `--watch-hmr` (alias `--unstable-hmr`), not `--hmr`.
   for flag in ["--watch-hmr", "--unstable-hmr"] {
     let flags =
-      flags_from_vec(svec!["deno", "serve", flag, "main.ts"]).unwrap();
+      flags_from_vec(svec!["ende", "serve", flag, "main.ts"]).unwrap();
     assert!(flags.watch.map(|w| w.hmr).unwrap_or(false));
   }
 }
@@ -9346,11 +9346,11 @@ fn tier1_serve_open_tunnel_hmr() {
 #[test]
 fn tier1_bundle_check_and_declaration() {
   let flags =
-    flags_from_vec(svec!["deno", "bundle", "--check=all", "main.ts"]).unwrap();
+    flags_from_vec(svec!["ende", "bundle", "--check=all", "main.ts"]).unwrap();
   assert_eq!(flags.type_check_mode, TypeCheckMode::All);
 
   let flags =
-    flags_from_vec(svec!["deno", "bundle", "--declaration", "main.ts"])
+    flags_from_vec(svec!["ende", "bundle", "--declaration", "main.ts"])
       .unwrap();
   assert!(
     matches!(flags.subcommand, DenoSubcommand::Bundle(b) if b.declaration)
@@ -9360,13 +9360,13 @@ fn tier1_bundle_check_and_declaration() {
 #[test]
 fn tier1_audit_why_lock_flags() {
   let flags =
-    flags_from_vec(svec!["deno", "audit", "--lock=ende.lock", "--frozen"])
+    flags_from_vec(svec!["ende", "audit", "--lock=ende.lock", "--frozen"])
       .unwrap();
   assert!(matches!(&flags.subcommand, DenoSubcommand::Audit(_)));
   assert_eq!(flags.lock, Some("ende.lock".to_string()));
   assert_eq!(flags.frozen_lockfile, Some(true));
 
-  let flags = flags_from_vec(svec!["deno", "why", "--no-lock", "foo"]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "why", "--no-lock", "foo"]).unwrap();
   assert!(matches!(&flags.subcommand, DenoSubcommand::Why(_)));
   assert!(flags.no_lock);
 }
@@ -9374,7 +9374,7 @@ fn tier1_audit_why_lock_flags() {
 #[test]
 fn tier1_node_modules_linker() {
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--node-modules-linker=isolated",
     "main.ts"
@@ -9387,7 +9387,7 @@ fn tier1_node_modules_linker() {
 
   // `--linker` is an alias.
   let flags =
-    flags_from_vec(svec!["deno", "run", "--linker=hoisted", "main.ts"])
+    flags_from_vec(svec!["ende", "run", "--linker=hoisted", "main.ts"])
       .unwrap();
   assert_eq!(
     flags.node_modules_linker,
@@ -9398,7 +9398,7 @@ fn tier1_node_modules_linker() {
 #[test]
 fn tier1_upgrade_x_env_file() {
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "upgrade",
     "--unsafely-ignore-certificate-errors=example.com"
   ])
@@ -9409,7 +9409,7 @@ fn tier1_upgrade_x_env_file() {
   );
 
   let flags =
-    flags_from_vec(svec!["deno", "x", "--package=npm:foo", "bar"]).unwrap();
+    flags_from_vec(svec!["ende", "x", "--package=npm:foo", "bar"]).unwrap();
   assert!(matches!(
     flags.subcommand,
     DenoSubcommand::X(XFlags {
@@ -9418,7 +9418,7 @@ fn tier1_upgrade_x_env_file() {
   ));
 
   for sub in ["outdated", "update", "publish"] {
-    let flags = flags_from_vec(svec!["deno", sub, "--env-file=.env"]).unwrap();
+    let flags = flags_from_vec(svec!["ende", sub, "--env-file=.env"]).unwrap();
     assert_eq!(flags.env_file, Some(svec![".env"]));
   }
 }
@@ -9426,7 +9426,7 @@ fn tier1_upgrade_x_env_file() {
 #[test]
 fn tier1_desktop_flags() {
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "desktop",
     "--output=MyApp.app",
     "--target=x86_64-unknown-linux-gnu",
@@ -9460,7 +9460,7 @@ fn tier1_desktop_flags() {
   assert_eq!(d.source_file, "main.ts");
 
   // Bare `deno desktop` defaults the entrypoint to ".".
-  let flags = flags_from_vec(svec!["deno", "desktop"]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "desktop"]).unwrap();
   assert!(
     matches!(flags.subcommand, DenoSubcommand::Desktop(d) if d.source_file == ".")
   );
@@ -9475,21 +9475,21 @@ fn tier1_desktop_flags() {
 fn tier2_choice_validation() {
   // Each of these passes an invalid value for a choice-restricted flag.
   let bad = [
-    svec!["deno", "test", "--reporter=bogus"],
-    svec!["deno", "fmt", "--prose-wrap=bogus", "x.md"],
-    svec!["deno", "fmt", "--ext=bogus", "x"],
-    svec!["deno", "run", "--ext=bogus", "x.ts"],
-    svec!["deno", "compile", "--target=bogus", "x.ts"],
-    svec!["deno", "desktop", "--backend=bogus", "x.ts"],
-    svec!["deno", "desktop", "--compress=bogus", "x.ts"],
-    svec!["deno", "transpile", "--source-map=bogus", "x.ts"],
-    svec!["deno", "completions", "bogus"],
-    svec!["deno", "install", "--os", "bogus"],
-    svec!["deno", "install", "--arch", "bogus"],
-    svec!["deno", "audit", "--level=bogus"],
-    svec!["deno", "--log-level=bogus", "run", "x.ts"],
-    svec!["deno", "run", "--node-modules-dir=bogus", "x.ts"],
-    svec!["deno", "run", "--node-modules-linker=bogus", "x.ts"],
+    svec!["ende", "test", "--reporter=bogus"],
+    svec!["ende", "fmt", "--prose-wrap=bogus", "x.md"],
+    svec!["ende", "fmt", "--ext=bogus", "x"],
+    svec!["ende", "run", "--ext=bogus", "x.ts"],
+    svec!["ende", "compile", "--target=bogus", "x.ts"],
+    svec!["ende", "desktop", "--backend=bogus", "x.ts"],
+    svec!["ende", "desktop", "--compress=bogus", "x.ts"],
+    svec!["ende", "transpile", "--source-map=bogus", "x.ts"],
+    svec!["ende", "completions", "bogus"],
+    svec!["ende", "install", "--os", "bogus"],
+    svec!["ende", "install", "--arch", "bogus"],
+    svec!["ende", "audit", "--level=bogus"],
+    svec!["ende", "--log-level=bogus", "run", "x.ts"],
+    svec!["ende", "run", "--node-modules-dir=bogus", "x.ts"],
+    svec!["ende", "run", "--node-modules-linker=bogus", "x.ts"],
   ];
   for args in bad {
     assert!(
@@ -9502,16 +9502,16 @@ fn tier2_choice_validation() {
 #[test]
 fn tier2_numeric_validation() {
   let bad = [
-    svec!["deno", "run", "--seed=abc", "x.ts"],
-    svec!["deno", "serve", "--port=abc", "x.ts"],
-    svec!["deno", "serve", "--port=99999", "x.ts"],
-    svec!["deno", "list", "--depth=abc"],
-    svec!["deno", "test", "--retry=abc"],
-    svec!["deno", "test", "--shuffle=abc"],
-    svec!["deno", "test", "--coverage=cov", "--coverage-threshold=101"],
-    svec!["deno", "fmt", "--line-width=0", "x.ts"],
-    svec!["deno", "fmt", "--indent-width=0", "x.ts"],
-    svec!["deno", "test", "--fail-fast=0"],
+    svec!["ende", "run", "--seed=abc", "x.ts"],
+    svec!["ende", "serve", "--port=abc", "x.ts"],
+    svec!["ende", "serve", "--port=99999", "x.ts"],
+    svec!["ende", "list", "--depth=abc"],
+    svec!["ende", "test", "--retry=abc"],
+    svec!["ende", "test", "--shuffle=abc"],
+    svec!["ende", "test", "--coverage=cov", "--coverage-threshold=101"],
+    svec!["ende", "fmt", "--line-width=0", "x.ts"],
+    svec!["ende", "fmt", "--indent-width=0", "x.ts"],
+    svec!["ende", "test", "--fail-fast=0"],
   ];
   for args in bad {
     assert!(
@@ -9522,11 +9522,11 @@ fn tier2_numeric_validation() {
 
   // Valid numeric values still parse.
   assert!(
-    flags_from_vec(svec!["deno", "serve", "--port=8080", "x.ts"]).is_ok()
+    flags_from_vec(svec!["ende", "serve", "--port=8080", "x.ts"]).is_ok()
   );
   assert!(
     flags_from_vec(svec![
-      "deno",
+      "ende",
       "test",
       "--coverage=cov",
       "--coverage-threshold=100"
@@ -9538,10 +9538,10 @@ fn tier2_numeric_validation() {
 #[test]
 fn tier2_bool_validation() {
   let bad = [
-    svec!["deno", "fmt", "--use-tabs=maybe", "x.ts"],
-    svec!["deno", "fmt", "--single-quote=maybe", "x.ts"],
-    svec!["deno", "run", "--vendor=maybe", "x.ts"],
-    svec!["deno", "run", "--frozen=maybe", "x.ts"],
+    svec!["ende", "fmt", "--use-tabs=maybe", "x.ts"],
+    svec!["ende", "fmt", "--single-quote=maybe", "x.ts"],
+    svec!["ende", "run", "--vendor=maybe", "x.ts"],
+    svec!["ende", "run", "--frozen=maybe", "x.ts"],
   ];
   for args in bad {
     assert!(
@@ -9550,13 +9550,13 @@ fn tier2_bool_validation() {
     );
   }
   // Bare boolean-ish flags (no value) remain valid.
-  assert!(flags_from_vec(svec!["deno", "fmt", "--use-tabs", "x.ts"]).is_ok());
+  assert!(flags_from_vec(svec!["ende", "fmt", "--use-tabs", "x.ts"]).is_ok());
 }
 
 #[test]
 fn tier2_location_strips_credentials() {
   let flags = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--location",
     "https://u:p@example.com/",
@@ -9577,13 +9577,13 @@ fn tier2_location_strips_credentials() {
 fn tier3_aliases() {
   // These previously-missing aliases/short flags now parse.
   let ok = [
-    svec!["deno", "run", "--importmap=im.json", "x.ts"],
-    svec!["deno", "run", "--unsafe-proto", "x.ts"],
-    svec!["deno", "install", "--production", "pkg"],
-    svec!["deno", "ci", "--production"],
-    svec!["deno", "fmt", "--options-use-tabs", "x.ts"],
-    svec!["deno", "jupyter", "-d", "deno", "--install"],
-    svec!["deno", "pack", "-o", "out", "x.ts"],
+    svec!["ende", "run", "--importmap=im.json", "x.ts"],
+    svec!["ende", "run", "--unsafe-proto", "x.ts"],
+    svec!["ende", "install", "--production", "pkg"],
+    svec!["ende", "ci", "--production"],
+    svec!["ende", "fmt", "--options-use-tabs", "x.ts"],
+    svec!["ende", "jupyter", "-d", "deno", "--install"],
+    svec!["ende", "pack", "-o", "out", "x.ts"],
   ];
   for args in ok {
     assert!(
@@ -9596,17 +9596,17 @@ fn tier3_aliases() {
 #[test]
 fn tier3_conflicts() {
   let bad = [
-    svec!["deno", "doc", "--html", "--json", "x.ts"],
-    svec!["deno", "doc", "--filter=x", "--json", "x.ts"],
-    svec!["deno", "run", "--coverage=c", "--inspect", "x.ts"],
-    svec!["deno", "test", "--watch", "--no-run"],
-    svec!["deno", "lint", "--rules-include=x", "--rules"],
-    svec!["deno", "outdated", "--latest", "--compatible"],
-    svec!["deno", "transpile", "--output=o", "--outdir=d", "x.ts"],
-    svec!["deno", "x", "--install-alias=dx", "script.ts"],
-    svec!["deno", "install", "--npm", "--jsr", "pkg"],
-    svec!["deno", "install", "--global", "--dev", "pkg"],
-    svec!["deno", "bump-version", "-c", "cfg", "--workspace"],
+    svec!["ende", "doc", "--html", "--json", "x.ts"],
+    svec!["ende", "doc", "--filter=x", "--json", "x.ts"],
+    svec!["ende", "run", "--coverage=c", "--inspect", "x.ts"],
+    svec!["ende", "test", "--watch", "--no-run"],
+    svec!["ende", "lint", "--rules-include=x", "--rules"],
+    svec!["ende", "outdated", "--latest", "--compatible"],
+    svec!["ende", "transpile", "--output=o", "--outdir=d", "x.ts"],
+    svec!["ende", "x", "--install-alias=dx", "script.ts"],
+    svec!["ende", "install", "--npm", "--jsr", "pkg"],
+    svec!["ende", "install", "--global", "--dev", "pkg"],
+    svec!["ende", "bump-version", "-c", "cfg", "--workspace"],
   ];
   for args in bad {
     assert!(
@@ -9620,15 +9620,15 @@ fn tier3_conflicts() {
 fn tier3_requires() {
   let bad = [
     // fmt --fail-fast requires --check
-    svec!["deno", "fmt", "--fail-fast", "x.ts"],
+    svec!["ende", "fmt", "--fail-fast", "x.ts"],
     // doc html-only decorations require --html
-    svec!["deno", "doc", "--category-docs=c", "x.ts"],
+    svec!["ende", "doc", "--category-docs=c", "x.ts"],
     // outdated --interactive requires --update
-    svec!["deno", "outdated", "--interactive"],
+    svec!["ende", "outdated", "--interactive"],
     // coverage --output requires --lcov
-    svec!["deno", "coverage", "--output=o", "cov"],
+    svec!["ende", "coverage", "--output=o", "cov"],
     // install --name requires --global
-    svec!["deno", "install", "--name", "foo", "pkg"],
+    svec!["ende", "install", "--name", "foo", "pkg"],
   ];
   for args in bad {
     assert!(
@@ -9638,12 +9638,12 @@ fn tier3_requires() {
   }
   // The dependency satisfied → ok.
   assert!(
-    flags_from_vec(svec!["deno", "fmt", "--fail-fast", "--check", "x.ts"])
+    flags_from_vec(svec!["ende", "fmt", "--fail-fast", "--check", "x.ts"])
       .is_ok()
   );
   assert!(
     flags_from_vec(svec![
-      "deno", "install", "--global", "--name", "foo", "pkg"
+      "ende", "install", "--global", "--name", "foo", "pkg"
     ])
     .is_ok()
   );
@@ -9656,7 +9656,7 @@ fn tier3_requires() {
 #[test]
 fn link_subcommand() {
   let flags =
-    flags_from_vec(svec!["deno", "link", "../a", "../b", "--lockfile-only"])
+    flags_from_vec(svec!["ende", "link", "../a", "../b", "--lockfile-only"])
       .unwrap();
   assert_eq!(
     flags.subcommand,
@@ -9668,7 +9668,7 @@ fn link_subcommand() {
 
   // lock args flow through to the top-level flags.
   let flags =
-    flags_from_vec(svec!["deno", "link", "../a", "--frozen"]).unwrap();
+    flags_from_vec(svec!["ende", "link", "../a", "--frozen"]).unwrap();
   assert_eq!(flags.frozen_lockfile, Some(true));
   assert!(matches!(
     flags.subcommand,
@@ -9679,13 +9679,13 @@ fn link_subcommand() {
   ));
 
   // at least one path is required.
-  assert!(flags_from_vec(svec!["deno", "link"]).is_err());
+  assert!(flags_from_vec(svec!["ende", "link"]).is_err());
 }
 
 #[test]
 fn unlink_subcommand() {
   let flags =
-    flags_from_vec(svec!["deno", "unlink", "@scope/name", "../c"]).unwrap();
+    flags_from_vec(svec!["ende", "unlink", "@scope/name", "../c"]).unwrap();
   assert_eq!(
     flags.subcommand,
     DenoSubcommand::Unlink(UnlinkFlags {
@@ -9694,7 +9694,7 @@ fn unlink_subcommand() {
     })
   );
 
-  assert!(flags_from_vec(svec!["deno", "unlink"]).is_err());
+  assert!(flags_from_vec(svec!["ende", "unlink"]).is_err());
 }
 
 #[test]
@@ -9702,13 +9702,13 @@ fn eval_double_dash_stripped() {
   // Unlike run/task, `deno eval` strips the `--` separator from argv
   // (clap plain trailing-var-arg, not `.last(true)`).
   let flags =
-    flags_from_vec(svec!["deno", "eval", "console.log(1)", "--", "a&b"])
+    flags_from_vec(svec!["ende", "eval", "console.log(1)", "--", "a&b"])
       .unwrap();
   assert_eq!(flags.argv, svec!["a&b"]);
 
   // run keeps it, for contrast.
   let flags =
-    flags_from_vec(svec!["deno", "run", "x.ts", "--", "a&b"]).unwrap();
+    flags_from_vec(svec!["ende", "run", "x.ts", "--", "a&b"]).unwrap();
   assert_eq!(flags.argv, svec!["--", "a&b"]);
 }
 
@@ -9716,7 +9716,7 @@ fn eval_double_dash_stripped() {
 fn double_dash_before_entrypoint() {
   // A `--` before the first positional makes the entrypoint literal
   // (it may start with a hyphen) instead of starting trailing args.
-  let flags = flags_from_vec(svec!["deno", "run", "--", "-x.ts", "a"]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "run", "--", "-x.ts", "a"]).unwrap();
   assert_eq!(
     flags.subcommand,
     DenoSubcommand::Run(RunFlags::new_default("-x.ts".to_string()))
@@ -9724,7 +9724,7 @@ fn double_dash_before_entrypoint() {
   assert_eq!(flags.argv, svec!["a"]);
 
   // Bare form without the `run` subcommand.
-  let flags = flags_from_vec(svec!["deno", "--", "-x.ts", "a"]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "--", "-x.ts", "a"]).unwrap();
   assert_eq!(
     flags.subcommand,
     DenoSubcommand::Run(RunFlags {
@@ -9734,13 +9734,13 @@ fn double_dash_before_entrypoint() {
   );
   assert_eq!(flags.argv, svec!["a"]);
 
-  let flags = flags_from_vec(svec!["deno", "eval", "--", "-1"]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "eval", "--", "-1"]).unwrap();
   assert!(
     matches!(flags.subcommand, DenoSubcommand::Eval(e) if e.code == "-1")
   );
 
   let flags =
-    flags_from_vec(svec!["deno", "task", "--", "build", "hello"]).unwrap();
+    flags_from_vec(svec!["ende", "task", "--", "build", "hello"]).unwrap();
   assert!(
     matches!(flags.subcommand, DenoSubcommand::Task(t) if t.task.as_deref() == Some("build"))
   );
@@ -9748,7 +9748,7 @@ fn double_dash_before_entrypoint() {
 
   // test/bench mirror clap's `.last(true)`: args after `--` are script
   // args, never files — even when no files were given before the `--`.
-  let flags = flags_from_vec(svec!["deno", "test", "--", "arg1"]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "test", "--", "arg1"]).unwrap();
   assert!(
     matches!(&flags.subcommand, DenoSubcommand::Test(t) if t.files.include.is_empty())
   );
@@ -9756,12 +9756,12 @@ fn double_dash_before_entrypoint() {
 
   // create's package is only recognized before the `--` (clap `.last(true)`
   // took everything after it as package args), so this stays an error.
-  assert!(flags_from_vec(svec!["deno", "create", "--", "npm:vite"]).is_err());
+  assert!(flags_from_vec(svec!["ende", "create", "--", "npm:vite"]).is_err());
 
   // `--` before the first positional of init still routes everything into
   // its trailing positional and strips a second `--` (unchanged behavior).
   let flags = flags_from_vec(svec![
-    "deno", "init", "--npm", "--", "vite", "--", "--serve"
+    "ende", "init", "--npm", "--", "vite", "--", "--serve"
   ])
   .unwrap();
   assert_eq!(
@@ -9782,11 +9782,11 @@ fn double_dash_before_entrypoint() {
 fn serve_compile_keep_double_dash() {
   // serve/compile use clap's trailing_var_arg (like run), so they keep `--`.
   let flags =
-    flags_from_vec(svec!["deno", "serve", "x.ts", "--", "-a"]).unwrap();
+    flags_from_vec(svec!["ende", "serve", "x.ts", "--", "-a"]).unwrap();
   assert_eq!(flags.argv, svec!["--", "-a"]);
 
   let flags =
-    flags_from_vec(svec!["deno", "compile", "x.ts", "--", "-a"]).unwrap();
+    flags_from_vec(svec!["ende", "compile", "x.ts", "--", "-a"]).unwrap();
   assert!(
     matches!(flags.subcommand, DenoSubcommand::Compile(c) if c.args == svec!["--", "-a"])
   );
@@ -9794,7 +9794,7 @@ fn serve_compile_keep_double_dash() {
 
 #[test]
 fn upgrade_no_delta() {
-  let r = flags_from_vec(svec!["deno", "upgrade", "--no-delta"]);
+  let r = flags_from_vec(svec!["ende", "upgrade", "--no-delta"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9820,7 +9820,7 @@ fn upgrade_no_delta() {
 fn hrtime_flags_are_accepted_as_no_ops() {
   // Removed in Deno 2, but still parsed so we can warn instead of erroring.
   for flag in ["--allow-hrtime", "--deny-hrtime"] {
-    let r = flags_from_vec(svec!["deno", "run", flag, "script.ts"]);
+    let r = flags_from_vec(svec!["ende", "run", flag, "script.ts"]);
     let flags = r.unwrap();
     assert_eq!(
       flags.subcommand,
@@ -9831,15 +9831,15 @@ fn hrtime_flags_are_accepted_as_no_ops() {
 
 #[test]
 fn use_env_proxy_flags() {
-  let r = flags_from_vec(svec!["deno", "run", "--use-env-proxy", "script.ts"]);
+  let r = flags_from_vec(svec!["ende", "run", "--use-env-proxy", "script.ts"]);
   assert!(r.is_ok());
 
   let r =
-    flags_from_vec(svec!["deno", "run", "--no-use-env-proxy", "script.ts"]);
+    flags_from_vec(svec!["ende", "run", "--no-use-env-proxy", "script.ts"]);
   assert!(r.is_ok());
 
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "run",
     "--use-env-proxy",
     "--no-use-env-proxy",
@@ -9850,7 +9850,7 @@ fn use_env_proxy_flags() {
 
 #[test]
 fn deploy_subcommand() {
-  let r = flags_from_vec(svec!["deno", "deploy"]);
+  let r = flags_from_vec(svec!["ende", "deploy"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9863,7 +9863,7 @@ fn deploy_subcommand() {
   // verbatim, exactly once. Regression test for a duplication bug where the
   // args were written to `argv` both by `deploy_parse` and by the generic
   // trailing-arg handling, turning `--prod` into `--prod --prod`.
-  let r = flags_from_vec(svec!["deno", "deploy", "--prod"]);
+  let r = flags_from_vec(svec!["ende", "deploy", "--prod"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9874,7 +9874,7 @@ fn deploy_subcommand() {
   );
 
   let r =
-    flags_from_vec(svec!["deno", "deploy", "--project=myapp", "--prod", "-y"]);
+    flags_from_vec(svec!["ende", "deploy", "--project=myapp", "--prod", "-y"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9891,7 +9891,7 @@ fn deploy_subcommand_passthrough_is_verbatim() {
   // `--`, deno-looking flags and repeated flags must all survive as-is
   // rather than being interpreted (or duplicated) by the deno parser.
   let r = flags_from_vec(svec![
-    "deno",
+    "ende",
     "deploy",
     "--prod",
     "--",
@@ -9910,7 +9910,7 @@ fn deploy_subcommand_passthrough_is_verbatim() {
 
 #[test]
 fn deploy_sandbox_subcommand() {
-  let r = flags_from_vec(svec!["deno", "sandbox", "--prod", "arg"]);
+  let r = flags_from_vec(svec!["ende", "sandbox", "--prod", "arg"]);
   assert_eq!(
     r.unwrap(),
     Flags {
@@ -9928,7 +9928,7 @@ fn bundle_sourcemap_bare_does_not_consume_entrypoint() {
   // value, so `--sourcemap main.ts` swallowed the entrypoint and left the
   // bundle with no modules at all.
   let flags =
-    flags_from_vec(svec!["deno", "bundle", "--sourcemap", "main.ts"]).unwrap();
+    flags_from_vec(svec!["ende", "bundle", "--sourcemap", "main.ts"]).unwrap();
   let DenoSubcommand::Bundle(b) = flags.subcommand else {
     unreachable!()
   };
@@ -9944,7 +9944,7 @@ fn bundle_sourcemap_values() {
     ("--sourcemap=external", SourceMapType::External),
   ];
   for (flag, expected) in cases {
-    let flags = flags_from_vec(svec!["deno", "bundle", flag, "main.ts"])
+    let flags = flags_from_vec(svec!["ende", "bundle", flag, "main.ts"])
       .unwrap_or_else(|e| panic!("{flag} should parse: {e:?}"));
     let DenoSubcommand::Bundle(b) = flags.subcommand else {
       unreachable!()
@@ -9954,7 +9954,7 @@ fn bundle_sourcemap_values() {
   }
 
   // Absent means no source map at all.
-  let flags = flags_from_vec(svec!["deno", "bundle", "main.ts"]).unwrap();
+  let flags = flags_from_vec(svec!["ende", "bundle", "main.ts"]).unwrap();
   let DenoSubcommand::Bundle(b) = flags.subcommand else {
     unreachable!()
   };
@@ -9965,6 +9965,6 @@ fn bundle_sourcemap_values() {
 fn bundle_sourcemap_rejects_invalid_value() {
   // Invalid values must error rather than being silently coerced to 'linked'.
   let r =
-    flags_from_vec(svec!["deno", "bundle", "--sourcemap=bogus", "main.ts"]);
+    flags_from_vec(svec!["ende", "bundle", "--sourcemap=bogus", "main.ts"]);
   assert!(r.is_err(), "expected --sourcemap=bogus to be rejected");
 }

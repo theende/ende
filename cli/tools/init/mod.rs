@@ -69,7 +69,7 @@ pub async fn init_project(
       ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "tasks": {
-          "dev": "deno run --watch main.ts"
+          "dev": "ende run --watch main.ts"
         }
       }),
     )?;
@@ -101,7 +101,7 @@ export default {
 
     return new Response("Not found", { status: 404 });
   },
-} satisfies Deno.ServeDefaultExport;
+} satisfies Ende.ServeDefaultExport;
 "#,
     )?;
     create_file(
@@ -110,25 +110,25 @@ export default {
       r#"import { assertEquals } from "@std/assert";
 import server from "./main.ts";
 
-Deno.test(async function serverFetch() {
+Ende.test(async function serverFetch() {
   const req = new Request("https://deno.land");
   const res = await server.fetch(req);
   assertEquals(await res.text(), "Home page");
 });
 
-Deno.test(async function serverFetchNotFound() {
+Ende.test(async function serverFetchNotFound() {
   const req = new Request("https://deno.land/404");
   const res = await server.fetch(req);
   assertEquals(res.status, 404);
 });
 
-Deno.test(async function serverFetchUsers() {
+Ende.test(async function serverFetchUsers() {
   const req = new Request("https://deno.land/users/123");
   const res = await server.fetch(req);
   assertEquals(await res.text(), "123");
 });
 
-Deno.test(async function serverFetchStatic() {
+Ende.test(async function serverFetchStatic() {
   const req = new Request("https://deno.land/static/hello.js");
   const res = await server.fetch(req);
   assertEquals(await res.text(), 'console.log("Hello, world!");\n');
@@ -151,7 +151,7 @@ Deno.test(async function serverFetchStatic() {
       ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "tasks": {
-          "dev": "deno serve --watch -R main.ts",
+          "dev": "ende serve --watch -R main.ts",
         },
         "imports": {
           "@std/assert": "jsr:@std/assert@1",
@@ -181,7 +181,7 @@ Deno.test(async function serverFetchStatic() {
       r#"import { assertEquals } from "@std/assert";
 import { add } from "./mod.ts";
 
-Deno.test(function addTest() {
+Ende.test(function addTest() {
   assertEquals(add(2, 3), 5);
 });
 "#,
@@ -195,7 +195,7 @@ Deno.test(function addTest() {
         "version": "0.1.0",
         "exports": "./mod.ts",
         "tasks": {
-          "dev": "deno test --watch"
+          "dev": "ende test --watch"
         },
         "license": "MIT",
         "imports": {
@@ -217,13 +217,13 @@ Deno.test(function addTest() {
     });
   }
 
-  return new Response("<h1>Welcome to Deno!</h1>", {
+  return new Response("<h1>Welcome to Ende!</h1>", {
     headers: { "content-type": "text/html" },
   });
 }
 
 if (import.meta.main) {
-  Deno.serve(handler);
+  Ende.serve(handler);
 }
 "#,
     )?;
@@ -233,14 +233,14 @@ if (import.meta.main) {
       r#"import { assertEquals } from "@std/assert";
 import { handler } from "./main.ts";
 
-Deno.test("returns html on /", async () => {
+Ende.test("returns html on /", async () => {
   const res = handler(new Request("http://localhost/"));
   assertEquals(res.headers.get("content-type"), "text/html");
   const body = await res.text();
-  assertEquals(body.includes("Welcome to Deno"), true);
+  assertEquals(body.includes("Welcome to Ende"), true);
 });
 
-Deno.test("returns json on /api", async () => {
+Ende.test("returns json on /api", async () => {
   const res = handler(new Request("http://localhost/api"));
   const data = await res.json();
   assertEquals(data.message, "Hello, world!");
@@ -254,7 +254,7 @@ Deno.test("returns json on /api", async () => {
       ende_config::deno_json::DEFAULT_CONFIG_FILE_NAME,
       &json!({
         "tasks": {
-          "dev": "deno run --watch --allow-net main.ts"
+          "dev": "ende run --watch --allow-net main.ts"
         },
         "imports": {
           "@std/assert": "jsr:@std/assert@1"
@@ -273,49 +273,49 @@ Deno.test("returns json on /api", async () => {
   }
   if init_flags.empty {
     info!("  {}", colors::gray("# Run the program"));
-    info!("  deno run main.ts");
+    info!("  ende run main.ts");
     info!("");
     info!(
       "  {}",
       colors::gray("# Run the program and watch for file changes")
     );
-    info!("  deno task dev");
+    info!("  ende task dev");
   } else if init_flags.serve {
     info!("  {}", colors::gray("# Run the server"));
-    info!("  deno serve -R main.ts");
+    info!("  ende serve -R main.ts");
     info!("");
     info!(
       "  {}",
       colors::gray("# Run the server and watch for file changes")
     );
-    info!("  deno task dev");
+    info!("  ende task dev");
     info!("");
     info!("  {}", colors::gray("# Run the tests"));
-    info!("  deno test -R");
+    info!("  ende test -R");
   } else if init_flags.lib {
     info!("  {}", colors::gray("# Run the tests"));
-    info!("  deno test");
+    info!("  ende test");
     info!("");
     info!(
       "  {}",
       colors::gray("# Run the tests and watch for file changes")
     );
-    info!("  deno task dev");
+    info!("  ende task dev");
     info!("");
     info!("  {}", colors::gray("# Publish to JSR (dry run)"));
-    info!("  deno publish --dry-run");
+    info!("  ende publish --dry-run");
   } else {
     info!("  {}", colors::gray("# Run the server"));
-    info!("  deno run --allow-net main.ts");
+    info!("  ende run --allow-net main.ts");
     info!("");
     info!(
       "  {}",
       colors::gray("# Run the server and watch for file changes")
     );
-    info!("  deno task dev");
+    info!("  ende task dev");
     info!("");
     info!("  {}", colors::gray("# Run the tests"));
-    info!("  deno test");
+    info!("  ende test");
   }
   Ok(0)
 }
@@ -428,7 +428,7 @@ fn confirm_package_trust(
     log::info!(
       "{}",
       cformat!(
-        "You can initialize project manually by running <u>deno run {}</> and applying desired permissions.",
+        "You can initialize project manually by running <u>ende run {}</> and applying desired permissions.",
         std::iter::once(script_name)
           .chain(args.iter().map(|a| a.as_ref()))
           .collect::<Vec<_>>()
@@ -441,7 +441,7 @@ fn confirm_package_trust(
   if std::io::stdin().is_terminal() {
     log::info!(
       cstr!(
-        "⚠️  Do you fully trust <y>{}</> package? Deno will invoke code from it with all permissions. Do you want to continue? <p(245)>[y/n]</>"
+        "⚠️  Do you fully trust <y>{}</> package? Ende will invoke code from it with all permissions. Do you want to continue? <p(245)>[y/n]</>"
       ),
       script_name
     );

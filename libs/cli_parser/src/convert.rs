@@ -433,7 +433,7 @@ fn default_parse(
     if has_run_flags && !has_v8_help {
       return Err(CliError::new(
         CliErrorKind::MissingRequired,
-        "[SCRIPT_ARG] may only be omitted with --v8-flags=--help, else to use the repl with arguments, please use the `deno repl` subcommand\n\nUsage: deno [OPTIONS] [COMMAND] [SCRIPT_ARG]...",
+        "[SCRIPT_ARG] may only be omitted with --v8-flags=--help, else to use the repl with arguments, please use the `ende repl` subcommand\n\nUsage: ende [OPTIONS] [COMMAND] [SCRIPT_ARG]...",
       ));
     }
 
@@ -590,7 +590,7 @@ fn permission_args_parse(result: &ParseResult, flags: &mut Flags) {
     #[allow(clippy::print_stderr, reason = "can't use log crate yet")]
     {
       eprintln!(
-        "{} `allow-hrtime` and `deny-hrtime` have been removed in Deno 2, as high resolution time is now always allowed",
+        "{} `allow-hrtime` and `deny-hrtime` have been removed in 2.0, as high resolution time is now always allowed",
         ende_runtime::colors::yellow("Warning")
       );
     }
@@ -1807,7 +1807,7 @@ fn upgrade_parse(
         None => {
           return Err(CliError::new(
             CliErrorKind::MissingRequired,
-            "missing PR number for 'deno upgrade pr'",
+            "missing PR number for 'ende upgrade pr'",
           ));
         }
         Some(s) => {
@@ -2294,7 +2294,7 @@ fn install_parse(
         return Err(CliError::new(
           CliErrorKind::InvalidValue,
           "Note: Permission flags can only be used in a global setting\n\
-             Use `deno install -g --allow-net jsr:@std/fs` instead",
+             Use `ende install -g --allow-net jsr:@std/fs` instead",
         ));
       }
     }
@@ -2331,7 +2331,7 @@ fn install_parse(
       if matches!(flags.config_flag, ConfigFlag::Disabled) {
         return Err(CliError::new(
           CliErrorKind::InvalidValue,
-          "deno install can't be used to add packages if `--no-config` is passed.",
+          "ende install can't be used to add packages if `--no-config` is passed.",
         )
         .with_suggestion(
           "to cache the packages without adding to a config, pass the `--entrypoint` flag",
@@ -2562,7 +2562,7 @@ fn normalize_create_package_name(
   } else {
     Err(CliError::new(
       CliErrorKind::InvalidValue,
-      "Missing `jsr:` or `npm:` prefix. For example: `deno create npm:vite`.",
+      "Missing `jsr:` or `npm:` prefix. For example: `ende create npm:vite`.",
     ))
   }
 }
@@ -3180,7 +3180,7 @@ fn bundle_parse(result: &ParseResult, flags: &mut Flags) {
     "external" => PackageHandling::External,
     _ => PackageHandling::Bundle,
   };
-  let platform_str = result.get_one("platform").unwrap_or("deno");
+  let platform_str = result.get_one("platform").unwrap_or("ende");
   let platform = match platform_str {
     "browser" => BundlePlatform::Browser,
     _ => BundlePlatform::Deno,

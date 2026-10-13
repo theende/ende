@@ -433,7 +433,7 @@ pub async fn op_net_connect_tls(
     let mut s = state.borrow_mut();
     let permissions = s.borrow_mut::<PermissionsContainer>();
     permissions
-      .check_net(&(&addr.hostname, Some(addr.port)), "Deno.connectTls()")
+      .check_net(&(&addr.hostname, Some(addr.port)), "Ende.connectTls()")
       .map_err(NetError::Permission)?;
     if let Some(path) = cert_file {
       Some(
@@ -441,7 +441,7 @@ pub async fn op_net_connect_tls(
           .check_open(
             Cow::Borrowed(Path::new(path)),
             OpenAccessKind::ReadNoFollow,
-            Some("Deno.connectTls()"),
+            Some("Ende.connectTls()"),
           )
           .map_err(NetError::Permission)?,
       )
@@ -503,7 +503,7 @@ pub async fn op_net_connect_tls(
       permissions.check_net_resolved(
         &addr.ip(),
         addr.port(),
-        "Deno.connectTls()",
+        "Ende.connectTls()",
       )?;
     }
   }
@@ -574,13 +574,13 @@ pub fn op_net_listen_tls(
   #[cppgc] keys: &TlsKeysHolder,
 ) -> Result<(ResourceId, IpAddr), NetError> {
   if args.reuse_port {
-    super::check_unstable(state, "Deno.listenTls({ reusePort: true })");
+    super::check_unstable(state, "Ende.listenTls({ reusePort: true })");
   }
 
   {
     let permissions = state.borrow_mut::<PermissionsContainer>();
     permissions
-      .check_net(&(&addr.hostname, Some(addr.port)), "Deno.listenTls()")
+      .check_net(&(&addr.hostname, Some(addr.port)), "Ende.listenTls()")
       .map_err(NetError::Permission)?;
   }
 
@@ -592,7 +592,7 @@ pub fn op_net_listen_tls(
     .check_net_resolved(
       &bind_addr.ip(),
       bind_addr.port(),
-      "Deno.listenTls()",
+      "Ende.listenTls()",
     )?;
 
   let tcp_listener = if args.load_balanced {

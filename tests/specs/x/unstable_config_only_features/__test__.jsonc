@@ -7,6 +7,6 @@
   // doing so previously errored with "unexpected argument
   // '--unstable-fmt-component'".
   "cwd": "./config_only",
-  "args": "x -y jsr:@denotest/bin-package one two",
+  "args": "x -y jsr:@endetest/bin-package one two",
   "output": "ok.out"
 }

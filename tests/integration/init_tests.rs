@@ -17,9 +17,9 @@ fn init_subcommand_without_dir() {
   let stderr = output.stderr();
   assert_contains!(stderr, "Project initialized");
   assert!(!stderr.contains("cd"));
-  assert_contains!(stderr, "deno run --allow-net main.ts");
-  assert_contains!(stderr, "deno task dev");
-  assert_contains!(stderr, "deno test");
+  assert_contains!(stderr, "ende run --allow-net main.ts");
+  assert_contains!(stderr, "ende task dev");
+  assert_contains!(stderr, "ende test");
 
   assert!(cwd.join("ende.json").exists());
 
@@ -51,9 +51,9 @@ fn init_subcommand_with_dir_arg() {
   let stderr = output.stderr();
   assert_contains!(stderr, "Project initialized");
   assert_contains!(stderr, "cd my_dir");
-  assert_contains!(stderr, "deno run --allow-net main.ts");
-  assert_contains!(stderr, "deno task dev");
-  assert_contains!(stderr, "deno test");
+  assert_contains!(stderr, "ende run --allow-net main.ts");
+  assert_contains!(stderr, "ende task dev");
+  assert_contains!(stderr, "ende test");
 
   assert!(cwd.join("my_dir/ende.json").exists());
 
@@ -117,13 +117,13 @@ fn init_subcommand_with_existing_file() {
 Run these commands to get started
 
   # Run the server
-  deno run --allow-net main.ts
+  ende run --allow-net main.ts
 
   # Run the server and watch for file changes
-  deno task dev
+  ende task dev
 
   # Run the tests
-  deno test
+  ende test
 ",
   );
 
@@ -155,9 +155,9 @@ fn init_subcommand_empty() {
   let stderr = output.stderr();
   assert_contains!(stderr, "Project initialized");
   assert!(!stderr.contains("cd"));
-  assert_contains!(stderr, "deno run main.ts");
-  assert_contains!(stderr, "deno task dev");
-  assert!(!stderr.contains("deno test"));
+  assert_contains!(stderr, "ende run main.ts");
+  assert_contains!(stderr, "ende task dev");
+  assert!(!stderr.contains("ende test"));
 
   let deno_json_path = cwd.join("ende.json");
   assert!(deno_json_path.exists());
@@ -199,9 +199,9 @@ async fn init_subcommand_serve() {
 
   let stderr = output.stderr();
   assert_contains!(stderr, "Project initialized");
-  assert_contains!(stderr, "deno serve -R main.ts");
-  assert_contains!(stderr, "deno task dev");
-  assert_contains!(stderr, "deno test -R");
+  assert_contains!(stderr, "ende serve -R main.ts");
+  assert_contains!(stderr, "ende task dev");
+  assert_contains!(stderr, "ende test -R");
 
   assert!(cwd.join("ende.json").exists());
 
@@ -259,7 +259,7 @@ fn create_jsr() {
   let cwd = context.temp_dir().path();
   context
     .new_command()
-    .args("create jsr:@denotest/create")
+    .args("create jsr:@endetest/create")
     .with_pty(|mut pty| {
       pty.expect("Do you want to continue?");
       pty.write_raw("y\n");
@@ -277,7 +277,7 @@ fn create_jsr_with_yes_flag() {
   let cwd = context.temp_dir().path();
   let output = context
     .new_command()
-    .args("create --yes jsr:@denotest/create")
+    .args("create --yes jsr:@endetest/create")
     .split_output()
     .run();
   output.assert_exit_code(0);
@@ -295,7 +295,7 @@ fn init_jsr() {
   let cwd = context.temp_dir().path();
   context
     .new_command()
-    .args("init --jsr @denotest/create")
+    .args("init --jsr @endetest/create")
     .with_pty(|mut pty| {
       pty.expect("Do you want to continue?");
       pty.write_raw("y\n");
@@ -313,7 +313,7 @@ fn init_jsr_with_yes_flag() {
   let cwd = context.temp_dir().path();
   let output = context
     .new_command()
-    .args("init --jsr --yes @denotest/create")
+    .args("init --jsr --yes @endetest/create")
     .split_output()
     .run();
   output.assert_exit_code(0);

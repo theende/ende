@@ -174,14 +174,14 @@ declare namespace Ende {
    * Bundle Typescript/Javascript code into a single file.
    *
    * This is an unstable API and requires the `--unstable-bundle` flag to be
-   * passed when running Deno:
+   * passed when running Ende:
    *
    * ```sh
-   * deno run --unstable-bundle main.ts
+   * ende run --unstable-bundle main.ts
    * ```
    *
    * ```ts
-   * const result = await Deno.bundle({
+   * const result = await Ende.bundle({
    *   entrypoints: ["./main.ts"],
    *   minify: true,
    * });
@@ -335,7 +335,7 @@ declare namespace Ende {
   /** **UNSTABLE**: New API, yet to be vetted.
    *
    * Unstable options which can be set when opening a datagram listener via
-   * {@linkcode Deno.listenDatagram}.
+   * {@linkcode Ende.listenDatagram}.
    *
    * @category Network
    * @experimental
@@ -359,11 +359,11 @@ declare namespace Ende {
    * Listen announces on the local transport address.
    *
    * ```ts
-   * const listener1 = Deno.listenDatagram({
+   * const listener1 = Ende.listenDatagram({
    *   port: 80,
    *   transport: "udp"
    * });
-   * const listener2 = Deno.listenDatagram({
+   * const listener2 = Ende.listenDatagram({
    *   hostname: "golang.org",
    *   port: 80,
    *   transport: "udp"
@@ -383,7 +383,7 @@ declare namespace Ende {
   /** **UNSTABLE**: New API, yet to be vetted.
    *
    * Unstable options which can be set when opening a `unixpacket` datagram
-   * listener via {@linkcode Deno.listenDatagram}.
+   * listener via {@linkcode Ende.listenDatagram}.
    *
    * @category Network
    * @experimental
@@ -399,7 +399,7 @@ declare namespace Ende {
    * Listen announces on the local transport address.
    *
    * ```ts
-   * const listener = Deno.listenDatagram({
+   * const listener = Ende.listenDatagram({
    *   path: "/foo/bar.sock",
    *   transport: "unixpacket"
    * });
@@ -419,16 +419,16 @@ declare namespace Ende {
 
   /** **UNSTABLE**: New API, yet to be vetted.
    *
-   * Open a new {@linkcode Deno.Kv} connection to persist data.
+   * Open a new {@linkcode Ende.Kv} connection to persist data.
    *
    * This is an unstable API and requires the `--unstable-kv` flag to be passed
-   * when running Deno.
+   * when running Ende.
    *
    * The `path` argument accepts several forms:
    *
    * - A path to a local SQLite database **file** (not a directory). The file,
    *   and any missing parent directories, are created if they don't exist. For
-   *   example `Deno.openKv("./my_database.sqlite")`. Read and write access to
+   *   example `Ende.openKv("./my_database.sqlite")`. Read and write access to
    *   the file is required.
    * - The special value `":memory:"` to open an in-memory database that is
    *   discarded when the process exits.
@@ -439,11 +439,11 @@ declare namespace Ende {
    * the current script. This location is persistent across script runs and is
    * keyed on the origin storage key (the same key that is used to determine
    * `localStorage` persistence). More information about the origin storage key
-   * can be found in the Deno Manual.
+   * can be found in the Ende Manual.
    *
    * ```ts
    * // Open (or create) a database backed by a local file.
-   * const kv = await Deno.openKv("./my_database.sqlite");
+   * const kv = await Ende.openKv("./my_database.sqlite");
    *
    * await kv.set(["users", "alice"], { name: "Alice" });
    * const entry = await kv.get(["users", "alice"]);
@@ -492,16 +492,16 @@ declare namespace Ende {
    * callback based on the specified schedule.
    *
    * This is an unstable API and requires the `--unstable-cron` flag to be
-   * passed when running Deno.
+   * passed when running Ende.
    *
    * ```ts
-   * Deno.cron("sample cron", "20 * * * *", () => {
+   * Ende.cron("sample cron", "20 * * * *", () => {
    *   console.log("cron job executed");
    * });
    * ```
    *
    * ```ts
-   * Deno.cron("sample cron", { hour: { every: 6 } }, () => {
+   * Ende.cron("sample cron", { hour: { every: 6 } }, () => {
    *   console.log("cron job executed");
    * });
    * ```
@@ -510,7 +510,7 @@ declare namespace Ende {
    * as specified by interface {@linkcode CronSchedule}, where time is specified
    * using UTC time zone.
    *
-   * Calling `Deno.cron` registers the job and immediately returns. The returned
+   * Calling `Ende.cron` registers the job and immediately returns. The returned
    * promise should not be awaited to wait for the job to run, it is provided
    * only to surface registration errors. The job keeps running in the
    * background for the lifetime of the process. To be able to stop a cron job
@@ -532,7 +532,7 @@ declare namespace Ende {
    * callback based on the specified schedule.
    *
    * ```ts
-   * Deno.cron("sample cron", "20 * * * *", {
+   * Ende.cron("sample cron", "20 * * * *", {
    *   backoffSchedule: [10, 20]
    * }, () => {
    *   console.log("cron job executed");
@@ -557,7 +557,7 @@ declare namespace Ende {
    * ```ts
    * const ac = new AbortController();
    *
-   * Deno.cron("sample cron", "20 * * * *", { signal: ac.signal }, () => {
+   * Ende.cron("sample cron", "20 * * * *", { signal: ac.signal }, () => {
    *   console.log("cron job executed");
    * });
    *
@@ -577,14 +577,14 @@ declare namespace Ende {
 
   /** **UNSTABLE**: New API, yet to be vetted.
    *
-   * A key to be persisted in a {@linkcode Deno.Kv}. A key is a sequence
-   * of {@linkcode Deno.KvKeyPart}s.
+   * A key to be persisted in a {@linkcode Ende.Kv}. A key is a sequence
+   * of {@linkcode Ende.KvKeyPart}s.
    *
    * Keys are ordered lexicographically by their parts. The first part is the
    * most significant, and the last part is the least significant. The order of
    * the parts is determined by both the type and the value of the part. The
    * relative significance of the types can be found in documentation for the
-   * {@linkcode Deno.KvKeyPart} type.
+   * {@linkcode Ende.KvKeyPart} type.
    *
    * Keys have a maximum size of 2048 bytes serialized. If the size of the key
    * exceeds this limit, an error will be thrown on the operation that this key
@@ -597,7 +597,7 @@ declare namespace Ende {
 
   /** **UNSTABLE**: New API, yet to be vetted.
    *
-   * A single part of a {@linkcode Deno.KvKey}. Parts are ordered
+   * A single part of a {@linkcode Ende.KvKey}. Parts are ordered
    * lexicographically, first by their type, and within a given type by their
    * value.
    *
@@ -653,7 +653,7 @@ declare namespace Ende {
   /** **UNSTABLE**: New API, yet to be vetted.
    *
    * A selector that selects the range of data returned by a list operation on a
-   * {@linkcode Deno.Kv}.
+   * {@linkcode Ende.Kv}.
    *
    * The selector can either be a prefix selector or a range selector. A prefix
    * selector selects all keys that start with the given prefix (optionally
@@ -671,7 +671,7 @@ declare namespace Ende {
 
   /** **UNSTABLE**: New API, yet to be vetted.
    *
-   * A mutation to a key in a {@linkcode Deno.Kv}. A mutation is a
+   * A mutation to a key in a {@linkcode Ende.Kv}. A mutation is a
    * combination of a key, a value, and a type. The type determines how the
    * mutation is applied to the key.
    *
@@ -687,16 +687,16 @@ declare namespace Ende {
    *   the key does not exist.
    * - `sum` - Adds the given value to the existing value of the key. Both the
    *   value specified in the mutation, and any existing value must be of type
-   *   `Deno.KvU64`. If the key does not exist, the value is set to the given
+   *   `Ende.KvU64`. If the key does not exist, the value is set to the given
    *   value (summed with 0). If the result of the sum overflows an unsigned
    *   64-bit integer, the result is wrapped around.
    * - `max` - Sets the value of the key to the maximum of the existing value
    *   and the given value. Both the value specified in the mutation, and any
-   *   existing value must be of type `Deno.KvU64`. If the key does not exist,
+   *   existing value must be of type `Ende.KvU64`. If the key does not exist,
    *   the value is set to the given value.
    * - `min` - Sets the value of the key to the minimum of the existing value
    *   and the given value. Both the value specified in the mutation, and any
-   *   existing value must be of type `Deno.KvU64`. If the key does not exist,
+   *   existing value must be of type `Ende.KvU64`. If the key does not exist,
    *   the value is set to the given value.
    *
    * @category Cloud
@@ -714,7 +714,7 @@ declare namespace Ende {
 
   /** **UNSTABLE**: New API, yet to be vetted.
    *
-   * An iterator over a range of data entries in a {@linkcode Deno.Kv}.
+   * An iterator over a range of data entries in a {@linkcode Ende.Kv}.
    *
    * The cursor getter returns the cursor that can be used to resume the
    * iteration from the current position in the future.
@@ -736,11 +736,11 @@ declare namespace Ende {
 
   /** **UNSTABLE**: New API, yet to be vetted.
    *
-   * A versioned pair of key and value in a {@linkcode Deno.Kv}.
+   * A versioned pair of key and value in a {@linkcode Ende.Kv}.
    *
    * The `versionstamp` is a string that represents the current version of the
    * key-value pair. It can be used to perform atomic operations on the KV store
-   * by passing it to the `check` method of a {@linkcode Deno.AtomicOperation}.
+   * by passing it to the `check` method of a {@linkcode Ende.AtomicOperation}.
    *
    * @category Cloud
    * @experimental
@@ -754,7 +754,7 @@ declare namespace Ende {
   /**
    * **UNSTABLE**: New API, yet to be vetted.
    *
-   * An optional versioned pair of key and value in a {@linkcode Deno.Kv}.
+   * An optional versioned pair of key and value in a {@linkcode Ende.Kv}.
    *
    * This is the same as a {@linkcode KvEntry}, but the `value` and `versionstamp`
    * fields may be `null` if no value exists for the given key in the KV store.
@@ -770,7 +770,7 @@ declare namespace Ende {
 
   /** **UNSTABLE**: New API, yet to be vetted.
    *
-   * Options for listing key-value pairs in a {@linkcode Deno.Kv}.
+   * Options for listing key-value pairs in a {@linkcode Ende.Kv}.
    *
    * @category Cloud
    * @experimental
@@ -799,7 +799,7 @@ declare namespace Ende {
      * The consistency level of the list operation. The default consistency
      * level is "strong". Some use cases can benefit from using a weaker
      * consistency level. For more information on consistency levels, see the
-     * documentation for {@linkcode Deno.KvConsistencyLevel}.
+     * documentation for {@linkcode Ende.KvConsistencyLevel}.
      *
      * List operations are performed in batches (in sizes specified by the
      * `batchSize` option). The consistency level of the list operation is
@@ -846,7 +846,7 @@ declare namespace Ende {
 
   /** **UNSTABLE**: New API, yet to be vetted.
    *
-   * A check to perform as part of a {@linkcode Deno.AtomicOperation}. The check
+   * A check to perform as part of a {@linkcode Ende.AtomicOperation}. The check
    * will fail if the versionstamp for the key-value pair in the KV store does
    * not match the given versionstamp. A check with a `null` versionstamp checks
    * that the key-value pair does not currently exist in the KV store.
@@ -861,14 +861,14 @@ declare namespace Ende {
 
   /** **UNSTABLE**: New API, yet to be vetted.
    *
-   * An operation on a {@linkcode Deno.Kv} that can be performed
+   * An operation on a {@linkcode Ende.Kv} that can be performed
    * atomically. Atomic operations do not auto-commit, and must be committed
    * explicitly by calling the `commit` method.
    *
    * Atomic operations can be used to perform multiple mutations on the KV store
    * in a single atomic transaction. They can also be used to perform
    * conditional mutations by specifying one or more
-   * {@linkcode Deno.AtomicCheck}s that ensure that a mutation is only performed
+   * {@linkcode Ende.AtomicCheck}s that ensure that a mutation is only performed
    * if the key-value pair in the KV has a specific versionstamp. If any of the
    * checks fail, the entire operation will fail and no mutations will be made.
    *
@@ -887,10 +887,10 @@ declare namespace Ende {
    * The `commit` method of an atomic operation returns a value indicating
    * whether checks passed and mutations were performed. If the operation failed
    * because of a failed check, the return value will be a
-   * {@linkcode Deno.KvCommitError} with an `ok: false` property. If the
+   * {@linkcode Ende.KvCommitError} with an `ok: false` property. If the
    * operation failed for any other reason (storage error, invalid value, etc.),
    * an exception will be thrown. If the operation succeeded, the return value
-   * will be a {@linkcode Deno.KvCommitResult} object with a `ok: true` property
+   * will be a {@linkcode Ende.KvCommitResult} object with a `ok: true` property
    * and the versionstamp of the value committed to KV.
    *
    * @category Cloud
@@ -908,24 +908,24 @@ declare namespace Ende {
      * Add to the operation a mutation that performs the specified mutation on
      * the specified key if all checks pass during the commit. The types and
      * semantics of all available mutations are described in the documentation
-     * for {@linkcode Deno.KvMutation}.
+     * for {@linkcode Ende.KvMutation}.
      */
     mutate(...mutations: KvMutation[]): this;
     /**
      * Shortcut for creating a `sum` mutation. This method wraps `n` in a
-     * {@linkcode Deno.KvU64}, so the value of `n` must be in the range
+     * {@linkcode Ende.KvU64}, so the value of `n` must be in the range
      * `[0, 2^64-1]`.
      */
     sum(key: KvKey, n: bigint): this;
     /**
      * Shortcut for creating a `min` mutation. This method wraps `n` in a
-     * {@linkcode Deno.KvU64}, so the value of `n` must be in the range
+     * {@linkcode Ende.KvU64}, so the value of `n` must be in the range
      * `[0, 2^64-1]`.
      */
     min(key: KvKey, n: bigint): this;
     /**
      * Shortcut for creating a `max` mutation. This method wraps `n` in a
-     * {@linkcode Deno.KvU64}, so the value of `n` must be in the range
+     * {@linkcode Ende.KvU64}, so the value of `n` must be in the range
      * `[0, 2^64-1]`.
      */
     max(key: KvKey, n: bigint): this;
@@ -962,16 +962,16 @@ declare namespace Ende {
      * Commit the operation to the KV store. Returns a value indicating whether
      * checks passed and mutations were performed. If the operation failed
      * because of a failed check, the return value will be a {@linkcode
-     * Deno.KvCommitError} with an `ok: false` property. If the operation failed
+     * Ende.KvCommitError} with an `ok: false` property. If the operation failed
      * for any other reason (storage error, invalid value, etc.), an exception
      * will be thrown. If the operation succeeded, the return value will be a
-     * {@linkcode Deno.KvCommitResult} object with a `ok: true` property and the
+     * {@linkcode Ende.KvCommitResult} object with a `ok: true` property and the
      * versionstamp of the value committed to KV.
      *
      * If the commit returns `ok: false`, one may create a new atomic operation
      * with updated checks and mutations and attempt to commit it again. See the
      * note on optimistic locking in the documentation for
-     * {@linkcode Deno.AtomicOperation}.
+     * {@linkcode Ende.AtomicOperation}.
      */
     commit(): Promise<KvCommitResult | KvCommitError>;
   }
@@ -980,16 +980,16 @@ declare namespace Ende {
    *
    * A key-value database that can be used to store and retrieve data.
    *
-   * Data is stored as key-value pairs, where the key is a {@linkcode Deno.KvKey}
+   * Data is stored as key-value pairs, where the key is a {@linkcode Ende.KvKey}
    * and the value is an arbitrary structured-serializable JavaScript value.
    * Keys are ordered lexicographically as described in the documentation for
-   * {@linkcode Deno.KvKey}. Keys are unique within a database, and the last
+   * {@linkcode Ende.KvKey}. Keys are unique within a database, and the last
    * value set for a given key is the one that is returned when reading the
    * key. Keys can be deleted from the database, in which case they will no
    * longer be returned when reading keys.
    *
    * Values can be any structured-serializable JavaScript value (objects,
-   * arrays, strings, numbers, etc.). The special value {@linkcode Deno.KvU64}
+   * arrays, strings, numbers, etc.). The special value {@linkcode Ende.KvU64}
    * can be used to store 64-bit unsigned integers in the database. This special
    * value can not be nested within other objects or arrays. In addition to the
    * regular database mutation operations, the unsigned 64-bit integer value
@@ -1016,11 +1016,11 @@ declare namespace Ende {
   export class Kv implements Disposable {
     /**
      * Retrieve the value and versionstamp for the given key from the database
-     * in the form of a {@linkcode Deno.KvEntryMaybe}. If no value exists for
+     * in the form of a {@linkcode Ende.KvEntryMaybe}. If no value exists for
      * the key, the returned entry will have a `null` value and versionstamp.
      *
      * ```ts
-     * const db = await Deno.openKv();
+     * const db = await Ende.openKv();
      * const result = await db.get(["foo"]);
      * result.key; // ["foo"]
      * result.value; // "bar"
@@ -1031,7 +1031,7 @@ declare namespace Ende {
      * for the read operation. The default consistency level is "strong". Some
      * use cases can benefit from using a weaker consistency level. For more
      * information on consistency levels, see the documentation for
-     * {@linkcode Deno.KvConsistencyLevel}.
+     * {@linkcode Ende.KvConsistencyLevel}.
      */
     get<T = unknown>(
       key: KvKey,
@@ -1040,13 +1040,13 @@ declare namespace Ende {
 
     /**
      * Retrieve multiple values and versionstamps from the database in the form
-     * of an array of {@linkcode Deno.KvEntryMaybe} objects. The returned array
+     * of an array of {@linkcode Ende.KvEntryMaybe} objects. The returned array
      * will have the same length as the `keys` array, and the entries will be in
      * the same order as the keys. If no value exists for a given key, the
      * returned entry will have a `null` value and versionstamp.
      *
      * ```ts
-     * const db = await Deno.openKv();
+     * const db = await Ende.openKv();
      * const result = await db.getMany([["foo"], ["baz"]]);
      * result[0].key; // ["foo"]
      * result[0].value; // "bar"
@@ -1060,7 +1060,7 @@ declare namespace Ende {
      * for the read operation. The default consistency level is "strong". Some
      * use cases can benefit from using a weaker consistency level. For more
      * information on consistency levels, see the documentation for
-     * {@linkcode Deno.KvConsistencyLevel}.
+     * {@linkcode Ende.KvConsistencyLevel}.
      */
     getMany<T extends readonly unknown[]>(
       keys: readonly [...{ [K in keyof T]: KvKey }],
@@ -1071,7 +1071,7 @@ declare namespace Ende {
      * exists for the key, it will be overwritten.
      *
      * ```ts
-     * const db = await Deno.openKv();
+     * const db = await Ende.openKv();
      * await db.set(["foo"], "bar");
      * ```
      *
@@ -1093,7 +1093,7 @@ declare namespace Ende {
      * for the key, this operation is a no-op.
      *
      * ```ts
-     * const db = await Deno.openKv();
+     * const db = await Ende.openKv();
      * await db.delete(["foo"]);
      * ```
      */
@@ -1101,7 +1101,7 @@ declare namespace Ende {
 
     /**
      * Retrieve a list of keys in the database. The returned list is an
-     * {@linkcode Deno.KvListIterator} which can be used to iterate over the
+     * {@linkcode Ende.KvListIterator} which can be used to iterate over the
      * entries in the database.
      *
      * Each list operation must specify a selector which is used to specify the
@@ -1125,7 +1125,7 @@ declare namespace Ende {
      *   not `["users", "noa"]` or `["users", "zoe"]`.
      *
      * ```ts
-     * const db = await Deno.openKv();
+     * const db = await Ende.openKv();
      * const entries = db.list({ prefix: ["users"] });
      * for await (const entry of entries) {
      *   entry.key; // ["users", "alice"]
@@ -1135,7 +1135,7 @@ declare namespace Ende {
      * ```
      *
      * The `options` argument can be used to specify additional options for the
-     * list operation. See the documentation for {@linkcode Deno.KvListOptions}
+     * list operation. See the documentation for {@linkcode Ende.KvListOptions}
      * for more information.
      */
     list<T = unknown>(
@@ -1145,10 +1145,10 @@ declare namespace Ende {
 
     /**
      * Add a value into the database queue to be delivered to the queue
-     * listener via {@linkcode Deno.Kv.listenQueue}.
+     * listener via {@linkcode Ende.Kv.listenQueue}.
      *
      * ```ts
-     * const db = await Deno.openKv();
+     * const db = await Ende.openKv();
      * await db.enqueue("bar");
      * ```
      *
@@ -1157,7 +1157,7 @@ declare namespace Ende {
      * delivery.
      *
      * ```ts
-     * const db = await Deno.openKv();
+     * const db = await Ende.openKv();
      * await db.enqueue("bar", { delay: 60000 });
      * ```
      *
@@ -1174,7 +1174,7 @@ declare namespace Ende {
      * between each retry.
      *
      * ```ts
-     * const db = await Deno.openKv();
+     * const db = await Ende.openKv();
      * await db.enqueue("bar", {
      *   keysIfUndelivered: [["foo", "bar"]],
      *   backoffSchedule: [1000, 5000, 10000],
@@ -1192,13 +1192,13 @@ declare namespace Ende {
 
     /**
      * Listen for queue values to be delivered from the database queue, which
-     * were enqueued with {@linkcode Deno.Kv.enqueue}. The provided handler
+     * were enqueued with {@linkcode Ende.Kv.enqueue}. The provided handler
      * callback is invoked on every dequeued value. A failed callback
      * invocation is automatically retried multiple times until it succeeds
      * or until the maximum number of retries is reached.
      *
      * ```ts
-     * const db = await Deno.openKv();
+     * const db = await Ende.openKv();
      * db.listenQueue(async (msg: unknown) => {
      *   await db.set(["foo"], msg);
      * });
@@ -1208,10 +1208,10 @@ declare namespace Ende {
     listenQueue(handler: (value: any) => Promise<void> | void): Promise<void>;
 
     /**
-     * Create a new {@linkcode Deno.AtomicOperation} object which can be used to
+     * Create a new {@linkcode Ende.AtomicOperation} object which can be used to
      * perform an atomic transaction on the database. This does not perform any
      * operations on the database - the atomic transaction must be committed
-     * explicitly using the {@linkcode Deno.AtomicOperation.commit} method once
+     * explicitly using the {@linkcode Ende.AtomicOperation.commit} method once
      * all checks and mutations have been added to the operation.
      */
     atomic(): AtomicOperation;
@@ -1220,7 +1220,7 @@ declare namespace Ende {
      * Watch for changes to the given keys in the database. The returned stream
      * is a {@linkcode ReadableStream} that emits a new value whenever any of
      * the watched keys change their versionstamp. The emitted value is an array
-     * of {@linkcode Deno.KvEntryMaybe} objects, with the same length and order
+     * of {@linkcode Ende.KvEntryMaybe} objects, with the same length and order
      * as the `keys` array. If no value exists for a given key, the returned
      * entry will have a `null` value and versionstamp.
      *
@@ -1231,7 +1231,7 @@ declare namespace Ende {
      * rather only the latest state of the key.
      *
      * ```ts
-     * const db = await Deno.openKv();
+     * const db = await Ende.openKv();
      *
      * const stream = db.watch([["foo"], ["bar"]]);
      * for await (const entries of stream) {
@@ -1279,7 +1279,7 @@ declare namespace Ende {
   /** **UNSTABLE**: New API, yet to be vetted.
    *
    * Wrapper type for 64-bit unsigned integers for use as values in a
-   * {@linkcode Deno.Kv}.
+   * {@linkcode Ende.Kv}.
    *
    * @category Cloud
    * @experimental
@@ -1392,11 +1392,11 @@ declare namespace Ende {
      * Create a Markdown view.
      *
      * ```typescript
-     * const { md } = Deno.jupyter;
+     * const { md } = Ende.jupyter;
      * md`# Notebooks in TypeScript via Deno ![Deno logo](https://github.com/denoland.png?size=32)
      *
-     * * TypeScript ${Deno.version.typescript}
-     * * V8 ${Deno.version.v8}
+     * * TypeScript ${Ende.version.typescript}
+     * * V8 ${Ende.version.v8}
      * * Ende ${Ende.version.ende}
      *
      * Interactive compute with Jupyter _built into Deno_!
@@ -1419,7 +1419,7 @@ declare namespace Ende {
      * @example
      * Create an HTML view.
      * ```typescript
-     * const { html } = Deno.jupyter;
+     * const { html } = Ende.jupyter;
      * html`<h1>Hello, world!</h1>`
      * ```
      *
@@ -1454,8 +1454,8 @@ declare namespace Ende {
      * Display a JPG or PNG image.
      *
      * ```
-     * Deno.jupyter.image("./cat.jpg");
-     * Deno.jupyter.image("./dog.png");
+     * Ende.jupyter.image("./cat.jpg");
+     * Ende.jupyter.image("./dog.png");
      * ```
      *
      * @category Jupyter
@@ -1467,8 +1467,8 @@ declare namespace Ende {
      * Display a JPG or PNG image.
      *
      * ```
-     * const img = Deno.readFileSync("./cat.jpg");
-     * Deno.jupyter.image(img);
+     * const img = Ende.readFileSync("./cat.jpg");
+     * Ende.jupyter.image(img);
      * ```
      *
      * @category Jupyter
@@ -1477,7 +1477,7 @@ declare namespace Ende {
     export function image(data: Uint8Array): Displayable;
 
     /**
-     * Format an object for displaying in Deno
+     * Format an object for displaying in Ende
      *
      * @param obj - The object to be displayed
      * @returns Promise<MediaBundle>
@@ -1491,7 +1491,7 @@ declare namespace Ende {
      * Broadcast a message on IO pub channel.
      *
      * ```
-     * await Deno.jupyter.broadcast("display_data", {
+     * await Ende.jupyter.broadcast("display_data", {
      *   data: { "text/html": "<b>Processing.</b>" },
      *   metadata: {},
      *   transient: { display_id: "progress" }
@@ -1499,7 +1499,7 @@ declare namespace Ende {
      *
      * await new Promise((resolve) => setTimeout(resolve, 500));
      *
-     * await Deno.jupyter.broadcast("update_display_data", {
+     * await Ende.jupyter.broadcast("update_display_data", {
      *   data: { "text/html": "<b>Processing..</b>" },
      *   metadata: {},
      *   transient: { display_id: "progress" }
@@ -1686,7 +1686,7 @@ declare namespace Ende {
      *        }
      *     }
      *   }
-     * } satisfies Deno.lint.Plugin
+     * } satisfies Ende.lint.Plugin
      * ```
      * @category Linter
      * @experimental
@@ -1711,7 +1711,7 @@ declare namespace Ende {
     /**
      * This API is useful for testing lint plugins.
      *
-     * It throws an error if it's not used in `deno test` subcommand.
+     * It throws an error if it's not used in `ende test` subcommand.
      * @category Linter
      * @experimental
      */
@@ -5049,7 +5049,7 @@ interface Uint8ArrayConstructor {
  * is enabled.
  *
  * Note: `cssText` is the verbatim text of one top-level rule of the style
- * sheet; Deno does not implement a full CSS object model.
+ * sheet; Ende does not implement a full CSS object model.
  *
  * @category Platform
  * @experimental
@@ -5074,7 +5074,7 @@ declare var CSSRule: {
  * `import sheet from "./styles.css" with { type: "css" }` import evaluates
  * to. Available only when the `--unstable-raw-imports` flag is enabled.
  *
- * Deno has no DOM, so a sheet can't be adopted anywhere; the implementation
+ * Ende has no DOM, so a sheet can't be adopted anywhere; the implementation
  * is backed by the raw CSS text.
  *
  * Note: `cssRules` returns a frozen array of {@linkcode CSSRule} instead of a

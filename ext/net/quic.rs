@@ -267,7 +267,7 @@ pub(crate) fn op_quic_endpoint_create(
       .borrow_mut::<PermissionsContainer>()
       .check_net(
         &(&addr.ip().to_string(), Some(addr.port())),
-        "new Deno.QuicEndpoint()",
+        "new Ende.QuicEndpoint()",
       )?
   } else {
     // If this is not a can-listen, assert that we will bind to an ephemeral port.
@@ -573,7 +573,7 @@ pub(crate) fn op_quic_endpoint_connect(
     .borrow_mut::<PermissionsContainer>()
     .check_net(
       &(&args.addr.hostname, Some(args.addr.port)),
-      "Deno.connectQuic()",
+      "Ende.connectQuic()",
     )?;
 
   let sock_addr = resolve_addr_sync(&args.addr.hostname, args.addr.port)?
@@ -585,7 +585,7 @@ pub(crate) fn op_quic_endpoint_connect(
     .check_net_resolved(
       &sock_addr.ip(),
       sock_addr.port(),
-      "Deno.connectQuic()",
+      "Ende.connectQuic()",
     )?;
 
   let root_cert_store = state

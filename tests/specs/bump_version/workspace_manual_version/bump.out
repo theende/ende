@@ -1,4 +1,4 @@
-[WILDCARD]deno bump-version is experimental and subject to change[WILDCARD]
+[WILDCARD]ende bump-version is experimental and subject to change[WILDCARD]
 Reading commits between v1.0.0 and [WILDLINE]
 Found 1 commits.
 Detected manual version change for @x/a: 1.0.0 -> 1.2.0

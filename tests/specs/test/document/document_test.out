@@ -9,7 +9,7 @@ error: ReferenceError: document is not defined
   ^
     at [WILDCARD]document_test.js:2:3
 
-    info: document global is not available in Deno.
+    info: document global is not available in Ende.
     hint: Use a library like happy-dom, deno_dom, linkedom or JSDom
           and setup the document global according to the library documentation.
 

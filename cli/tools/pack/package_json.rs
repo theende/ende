@@ -178,7 +178,7 @@ fn convert_exports(
   }
 
   ende_core::anyhow::bail!(
-    "unsupported 'exports' shape in deno.json: expected a string or object, got {}",
+    "unsupported 'exports' shape in ende.json: expected a string or object, got {}",
     exports
   )
 }

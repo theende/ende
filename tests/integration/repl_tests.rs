@@ -948,9 +948,26 @@ fn repl_with_quiet_flag() {
     Some(vec![("NO_COLOR".to_owned(), "1".to_owned())]),
     false,
   );
-  assert!(!out.contains("Deno"));
+  assert!(!out.contains("Ende"));
   assert!(!out.contains("exit using ctrl+d, ctrl+c, or close()"));
   assert_ends_with!(out, "\"done\"\n");
+  assert!(err.is_empty(), "Error: {}", err);
+}
+
+#[test(flaky)]
+fn repl_banner_names_ende() {
+  let (out, err) = util::run_and_collect_output_with_args(
+    true,
+    vec!["repl"],
+    Some(vec!["close()"]),
+    Some(vec![("NO_COLOR".to_owned(), "1".to_owned())]),
+    false,
+  );
+  let first_line = out.lines().next().unwrap_or_default();
+  let version = first_line.strip_prefix("Ende ").unwrap_or_else(|| {
+    panic!("banner should start with `Ende <version>`:\n{out}")
+  });
+  assert!(version.starts_with(|c: char| c.is_ascii_digit()), "{out}");
   assert!(err.is_empty(), "Error: {}", err);
 }
 
@@ -1275,7 +1292,7 @@ fn pty_lint_run_plugin_disabled() {
       "Deno.lint.runPlugin({ name: \"x\", rules: {} }, \"x.ts\", \"\");",
     );
     console.expect(
-      "`Deno.lint.runPlugin` is only available in `deno test` subcommand.",
+      "`Ende.lint.runPlugin` is only available in `ende test` subcommand.",
     );
   });
 }

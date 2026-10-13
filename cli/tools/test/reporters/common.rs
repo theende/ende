@@ -173,7 +173,7 @@ pub(super) fn report_exit(
 ) {
   writeln!(
     writer,
-    "\n{} A test called Deno.exit({}) while the exit sanitizer was disabled (sanitizeExit: false). Aborting the test run.",
+    "\n{} A test called Ende.exit({}) while the exit sanitizer was disabled (sanitizeExit: false). Aborting the test run.",
     colors::yellow("warning"),
     exit_code,
   )
@@ -215,7 +215,7 @@ pub(super) fn report_isolate_exit(
   };
   writeln!(
     writer,
-    "\n{} {} called `Deno.exit({})` from outside any test. The isolate was terminated; remaining test files will continue.",
+    "\n{} {} called `Ende.exit({})` from outside any test. The isolate was terminated; remaining test files will continue.",
     label,
     location,
     exit_code,

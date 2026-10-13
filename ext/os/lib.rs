@@ -528,7 +528,7 @@ fn op_loadavg(
 ) -> Result<(f64, f64, f64), PermissionCheckError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_sys("loadavg", "Deno.loadavg()")?;
+    .check_sys("loadavg", "Ende.loadavg()")?;
   Ok(sys_info::loadavg())
 }
 
@@ -537,7 +537,7 @@ fn op_loadavg(
 fn op_hostname(state: &mut OpState) -> Result<String, PermissionCheckError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_sys("hostname", "Deno.hostname()")?;
+    .check_sys("hostname", "Ende.hostname()")?;
   Ok(sys_info::hostname())
 }
 
@@ -546,7 +546,7 @@ fn op_hostname(state: &mut OpState) -> Result<String, PermissionCheckError> {
 fn op_os_release(state: &mut OpState) -> Result<String, PermissionCheckError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_sys("osRelease", "Deno.osRelease()")?;
+    .check_sys("osRelease", "Ende.osRelease()")?;
   Ok(sys_info::os_release())
 }
 
@@ -556,7 +556,7 @@ fn op_network_interfaces(
 ) -> Result<Vec<NetworkInterface>, OsError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_sys("networkInterfaces", "Deno.networkInterfaces()")?;
+    .check_sys("networkInterfaces", "Ende.networkInterfaces()")?;
   Ok(netif::up()?.map(NetworkInterface::from).collect())
 }
 
@@ -607,7 +607,7 @@ fn op_system_memory_info(
 ) -> Result<Option<sys_info::MemInfo>, PermissionCheckError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_sys("systemMemoryInfo", "Deno.systemMemoryInfo()")?;
+    .check_sys("systemMemoryInfo", "Ende.systemMemoryInfo()")?;
   Ok(sys_info::mem_info())
 }
 
@@ -617,7 +617,7 @@ fn op_system_memory_info(
 fn op_gid(state: &mut OpState) -> Result<Option<u32>, PermissionCheckError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_sys("gid", "Deno.gid()")?;
+    .check_sys("gid", "Ende.gid()")?;
   // TODO(bartlomieju):
   #[allow(clippy::undocumented_unsafe_blocks, reason = "libc call")]
   unsafe {
@@ -631,7 +631,7 @@ fn op_gid(state: &mut OpState) -> Result<Option<u32>, PermissionCheckError> {
 fn op_gid(state: &mut OpState) -> Result<Option<u32>, PermissionCheckError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_sys("gid", "Deno.gid()")?;
+    .check_sys("gid", "Ende.gid()")?;
   Ok(None)
 }
 
@@ -641,7 +641,7 @@ fn op_gid(state: &mut OpState) -> Result<Option<u32>, PermissionCheckError> {
 fn op_uid(state: &mut OpState) -> Result<Option<u32>, PermissionCheckError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_sys("uid", "Deno.uid()")?;
+    .check_sys("uid", "Ende.uid()")?;
   // TODO(bartlomieju):
   #[allow(clippy::undocumented_unsafe_blocks, reason = "libc call")]
   unsafe {
@@ -655,7 +655,7 @@ fn op_uid(state: &mut OpState) -> Result<Option<u32>, PermissionCheckError> {
 fn op_uid(state: &mut OpState) -> Result<Option<u32>, PermissionCheckError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_sys("uid", "Deno.uid()")?;
+    .check_sys("uid", "Ende.uid()")?;
   Ok(None)
 }
 
@@ -949,7 +949,7 @@ fn rss() -> u64 {
 fn os_uptime(state: &mut OpState) -> Result<u64, PermissionCheckError> {
   state
     .borrow_mut::<PermissionsContainer>()
-    .check_sys("osUptime", "Deno.osUptime()")?;
+    .check_sys("osUptime", "Ende.osUptime()")?;
   Ok(sys_info::os_uptime())
 }
 

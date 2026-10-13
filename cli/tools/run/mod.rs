@@ -33,7 +33,7 @@ pub fn check_permission_before_script(flags: &Flags) {
       crate::colors::yellow(
         r#"Permission flags have likely been incorrectly set after the script argument.
 To grant permissions, set them before the script argument. For example:
-    deno run --allow-read=. main.js"#
+    ende run --allow-read=. main.js"#
       )
     );
   }

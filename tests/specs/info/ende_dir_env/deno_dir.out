@@ -1,5 +1,5 @@
 Warning: DENO_DIR is deprecated. Use ENDE_DIR instead.
-Deno version: [WILDLINE]
+Ende version: [WILDLINE]
 ENDE_DIR location: [WILDLINE]deno_cache
 Remote modules cache: [WILDLINE]deno_cache[WILDLINE]
 npm modules cache: [WILDLINE]deno_cache[WILDLINE]

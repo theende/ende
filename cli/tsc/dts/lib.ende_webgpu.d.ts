@@ -82,26 +82,26 @@ declare class GPUAdapterInfo {
 }
 
 /**
- * The entry point to WebGPU in Deno, accessed via the global navigator.gpu property.
+ * The entry point to WebGPU in Ende, accessed via the global navigator.gpu property.
  *
  * @example
  * ```ts
- * // Basic WebGPU initialization in Deno
+ * // Basic WebGPU initialization in Ende
  * const gpu = navigator.gpu;
  * if (!gpu) {
- *   console.error("WebGPU not supported in this Deno environment");
- *   Deno.exit(1);
+ *   console.error("WebGPU not supported in this Ende environment");
+ *   Ende.exit(1);
  * }
  *
  * // Request an adapter (physical GPU device)
  * const adapter = await gpu.requestAdapter();
  * if (!adapter) {
  *   console.error("Couldn't request WebGPU adapter");
- *   Deno.exit(1);
+ *   Ende.exit(1);
  * }
  *
  * // Get the preferred format for canvas rendering
- * // Useful when working with canvas in browser/Deno environments
+ * // Useful when working with canvas in browser/Ende environments
  * const preferredFormat = gpu.getPreferredCanvasFormat();
  * console.log(`Preferred canvas format: ${preferredFormat}`);
  *
@@ -140,7 +140,7 @@ type GPUPowerPreference = "low-power" | "high-performance";
  *
  * if (!adapter) {
  *   console.error("WebGPU not supported or no appropriate adapter found");
- *   Deno.exit(1);
+ *   Ende.exit(1);
  * }
  *
  * // Check adapter capabilities
@@ -231,7 +231,7 @@ type GPUFeatureName =
  *
  * @example
  * ```ts
- * // Request a GPU adapter from the browser/Deno
+ * // Request a GPU adapter from the browser/Ende
  * const adapter = await navigator.gpu.requestAdapter();
  * if (!adapter) throw new Error("WebGPU not supported");
  *

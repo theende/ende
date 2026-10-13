@@ -1,4 +1,4 @@
-import { add } from "@denotest/add";
+import { add } from "@endetest/add";
 
 export function subtract(a: number, b: number): number {
   return add(a, -b);

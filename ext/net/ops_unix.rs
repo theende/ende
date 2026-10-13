@@ -150,7 +150,7 @@ pub async fn op_net_connect_unix(
       state.borrow_mut::<PermissionsContainer>(),
       Cow::Owned(PathBuf::from(address_path)),
       OpenAccessKind::ReadWriteNoFollow,
-      Some("Deno.connect()"),
+      Some("Ende.connect()"),
     )?
   };
   let unix_stream = UnixStream::connect(address_path).await?;
@@ -199,7 +199,7 @@ pub async fn op_net_send_unixpacket(
       s.borrow_mut::<PermissionsContainer>(),
       Cow::Owned(PathBuf::from(address_path)),
       OpenAccessKind::WriteNoFollow,
-      Some("Deno.DatagramConn.send()"),
+      Some("Ende.DatagramConn.send()"),
     )?
   };
 
@@ -253,7 +253,7 @@ pub fn net_listen_unixpacket(
         permissions,
         Cow::Borrowed(Path::new(address_path)),
         OpenAccessKind::ReadWriteNoFollow,
-        Some("Deno.listenDatagram()"),
+        Some("Ende.listenDatagram()"),
       )?;
       bind_unix_datagram(address_path.as_ref())?
     }
@@ -276,7 +276,7 @@ pub fn op_net_listen_unixpacket(
   state: &mut OpState,
   #[string] path: Option<String>, // todo: Option<&str> not supported in ops yet
 ) -> Result<(ResourceId, Option<String>), NetError> {
-  super::check_unstable(state, "Deno.listenDatagram");
+  super::check_unstable(state, "Ende.listenDatagram");
   net_listen_unixpacket(state, path.as_deref())
 }
 

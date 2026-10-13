@@ -1,4 +1,4 @@
-import { add } from "@denotest/npm-add";
+import { add } from "@endetest/npm-add";
 import { sum } from "@denotest/npm-add-0-5";
 
 console.log(add(1, 2));

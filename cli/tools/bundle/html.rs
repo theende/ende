@@ -383,7 +383,7 @@ pub fn load_html_entrypoint(
       permissions.check_open(
         Cow::Borrowed(path),
         OpenAccessKind::Read,
-        Some("Deno.bundle()"),
+        Some("Ende.bundle()"),
       )
     })
     .transpose()?;

@@ -105,7 +105,7 @@ fn op_cron_create(
     let state = state.borrow();
     state
       .borrow::<Arc<FeatureChecker>>()
-      .check_or_exit(UNSTABLE_FEATURE_NAME, "Deno.cron");
+      .check_or_exit(UNSTABLE_FEATURE_NAME, "Ende.cron");
     state.borrow::<Rc<dyn CronHandler>>().clone()
   };
 

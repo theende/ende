@@ -2,6 +2,18 @@
   "tests": {
     "spans": {
       "envs": {
+        "OTEL_ENDE": "true",
+        "OTEL_ENDE_CONSOLE": "capture",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "console",
+        "ENDE_UNSTABLE_OTEL_DETERMINISTIC": "0",
+        "OTEL_BSP_SCHEDULE_DELAY": "0"
+      },
+      "args": "run -A spans.ts",
+      "output": "spans.out"
+    },
+    // The deprecated OTEL_DENO* names are still read, with one warning each.
+    "deprecated_env_names": {
+      "envs": {
         "OTEL_DENO": "true",
         "OTEL_DENO_CONSOLE": "capture",
         "OTEL_EXPORTER_OTLP_PROTOCOL": "console",
@@ -9,7 +21,7 @@
         "OTEL_BSP_SCHEDULE_DELAY": "0"
       },
       "args": "run -A spans.ts",
-      "output": "spans.out"
+      "output": "spans_deprecated_env_names.out"
     }
   }
 }

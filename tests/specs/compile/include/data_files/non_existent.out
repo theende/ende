@@ -1,5 +1,5 @@
 Compile [WILDCARD]main.js to [WILDLINE]
-error: Writing deno compile executable to temporary file 'main[WILDLINE]'
+error: Writing ende compile executable to temporary file 'main[WILDLINE]'
 
 Caused by:
     0: Including [WILDLINE]does_not_exist.txt

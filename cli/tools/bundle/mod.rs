@@ -92,7 +92,7 @@ use crate::util::file_watcher::WatcherRestartMode;
 use crate::util::fs::canonicalize_path;
 
 static DISABLE_HACK: LazyLock<bool> =
-  LazyLock::new(|| std::env::var("NO_DENO_BUNDLE_HACK").is_err());
+  LazyLock::new(|| ende_env::var("NO_ENDE_BUNDLE_HACK").is_err());
 
 pub async fn prepare_inputs(
   resolver: &CliResolver,
@@ -2113,7 +2113,7 @@ impl DenoPluginHandler {
           permissions: self.permissions.clone(),
           file_permission_api_name: self
             .is_runtime_api
-            .then_some("Deno.bundle()"),
+            .then_some("Ende.bundle()"),
           ext_overwrite: None,
           allow_unknown_media_types: true,
           skip_graph_roots_validation: true,
@@ -2147,7 +2147,7 @@ impl DenoPluginHandler {
         let checked_path = self.permissions.check_open(
           Cow::Owned(path),
           OpenAccessKind::Read,
-          Some("Deno.bundle()"),
+          Some("Ende.bundle()"),
         )?;
         let checked_specifier = deno_path_util::url_from_file_path(
           &checked_path,
@@ -2971,7 +2971,7 @@ pub fn process_result(
         permissions.check_open(
           Cow::Owned(path.to_path_buf()),
           OpenAccessKind::Write,
-          Some("Deno.bundle()"),
+          Some("Ende.bundle()"),
         )
       })
       .transpose()?;
@@ -2986,7 +2986,7 @@ pub fn process_result(
             permissions.check_open(
               Cow::Owned(parent.to_path_buf()),
               OpenAccessKind::WriteNoFollow,
-              Some("Deno.bundle()"),
+              Some("Ende.bundle()"),
             )
           })
           .transpose()?;

@@ -64,7 +64,7 @@ declare namespace Ende {
      * If the listener has a pending accept operation, the underlying socket may
      * not be released until the pending promise is rejected. If you need to
      * listen on the same address immediately after closing the listener, await
-     * the pending accept promise before calling {@linkcode Deno.listen} again.
+     * the pending accept promise before calling {@linkcode Ende.listen} again.
      */
     close(): void;
     /** Return the address of the `Listener`. */
@@ -129,7 +129,7 @@ declare namespace Ende {
      *
      * ```ts
      * // If the text "hello world" is received by the client:
-     * const conn = await Deno.connect({ hostname: "example.com", port: 80 });
+     * const conn = await Ende.connect({ hostname: "example.com", port: 80 });
      * const buf = new Uint8Array(100);
      * const numberOfBytesRead = await conn.read(buf); // 11 bytes
      * const text = new TextDecoder().decode(buf);  // "hello world"
@@ -146,7 +146,7 @@ declare namespace Ende {
      * call.**
      *
      * ```ts
-     * const conn = await Deno.connect({ hostname: "example.com", port: 80 });
+     * const conn = await Ende.connect({ hostname: "example.com", port: 80 });
      * const encoder = new TextEncoder();
      * const data = encoder.encode("Hello world");
      * const bytesWritten = await conn.write(data); // 11
@@ -158,7 +158,7 @@ declare namespace Ende {
     /** Closes the connection, freeing the resource.
      *
      * ```ts
-     * const conn = await Deno.connect({ hostname: "example.com", port: 80 });
+     * const conn = await Ende.connect({ hostname: "example.com", port: 80 });
      *
      * // ...
      *
@@ -211,7 +211,7 @@ declare namespace Ende {
   }
 
   /** Options which can be set when opening a listener via
-   * {@linkcode Deno.listen}.
+   * {@linkcode Ende.listen}.
    *
    * @category Network */
   export interface ListenOptions {
@@ -244,7 +244,7 @@ declare namespace Ende {
   }
 
   /** Options which can be set when opening a TCP listener via
-   * {@linkcode Deno.listen}.
+   * {@linkcode Ende.listen}.
    *
    * @category Network */
   export interface TcpListenOptions extends ListenOptions {
@@ -253,10 +253,10 @@ declare namespace Ende {
   /** Listen announces on the local transport address.
    *
    * ```ts
-   * const listener1 = Deno.listen({ port: 80 })
-   * const listener2 = Deno.listen({ hostname: "192.0.2.1", port: 80 })
-   * const listener3 = Deno.listen({ hostname: "[2001:db8::1]", port: 80 });
-   * const listener4 = Deno.listen({ hostname: "golang.org", port: 80, transport: "tcp" });
+   * const listener1 = Ende.listen({ port: 80 })
+   * const listener2 = Ende.listen({ hostname: "192.0.2.1", port: 80 })
+   * const listener3 = Ende.listen({ hostname: "[2001:db8::1]", port: 80 });
+   * const listener4 = Ende.listen({ hostname: "golang.org", port: 80, transport: "tcp" });
    * ```
    *
    * Requires `allow-net` permission.
@@ -269,7 +269,7 @@ declare namespace Ende {
   ): TcpListener;
 
   /** Options which can be set when opening a Unix listener via
-   * {@linkcode Deno.listen} or {@linkcode Deno.listenDatagram}.
+   * {@linkcode Ende.listen} or {@linkcode Ende.listenDatagram}.
    *
    * @category Network
    */
@@ -281,7 +281,7 @@ declare namespace Ende {
   /** Listen announces on the local transport address.
    *
    * ```ts
-   * const listener = Deno.listen({ path: "/foo/bar.sock", transport: "unix" })
+   * const listener = Ende.listen({ path: "/foo/bar.sock", transport: "unix" })
    * ```
    *
    * Requires `allow-read`, `allow-write` and `allow-net` permission. The
@@ -297,7 +297,7 @@ declare namespace Ende {
   ): UnixListener;
 
   /** Options which can be set when opening a VSOCK listener via
-   * {@linkcode Deno.listen}.
+   * {@linkcode Ende.listen}.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
@@ -318,7 +318,7 @@ declare namespace Ende {
    * The VSOCK address family facilitates communication between virtual machines and the host they are running on: https://man7.org/linux/man-pages/man7/vsock.7.html
    *
    * ```ts
-   * const listener = Deno.listen({ cid: -1, port: 80, transport: "vsock" })
+   * const listener = Ende.listen({ cid: -1, port: 80, transport: "vsock" })
    * ```
    *
    * Requires `allow-net` permission.
@@ -337,7 +337,7 @@ declare namespace Ende {
    * `-----BEGIN-----` and `-----END-----` markers at the beginning and end of the strings. This type of key is not compatible
    * with `DER`-format keys which are binary.
    *
-   * Deno supports RSA, EC, and PKCS8-format keys.
+   * Ende supports RSA, EC, and PKCS8-format keys.
    *
    * ```ts
    * const key = {
@@ -358,7 +358,7 @@ declare namespace Ende {
   }
 
   /** Options which can be set when opening a TLS listener via
-   * {@linkcode Deno.listenTls}.
+   * {@linkcode Ende.listenTls}.
    *
    * @category Network */
   export interface ListenTlsOptions extends TcpListenOptions {
@@ -376,10 +376,10 @@ declare namespace Ende {
    * security).
    *
    * ```ts
-   * using listener = Deno.listenTls({
+   * using listener = Ende.listenTls({
    *   port: 443,
-   *   cert: Deno.readTextFileSync("./server.crt"),
-   *   key: Deno.readTextFileSync("./server.key"),
+   *   cert: Ende.readTextFileSync("./server.crt"),
+   *   key: Ende.readTextFileSync("./server.key"),
    * });
    * ```
    *
@@ -392,7 +392,7 @@ declare namespace Ende {
     options: ListenTlsOptions & TlsCertifiedKeyPem,
   ): TlsListener;
 
-  /** Options which can be set when connecting via {@linkcode Deno.connect}.
+  /** Options which can be set when connecting via {@linkcode Ende.connect}.
    *
    * @category Network */
   export interface ConnectOptions {
@@ -430,10 +430,10 @@ declare namespace Ende {
    * transport (default is "tcp"), and resolves to the connection (`Conn`).
    *
    * ```ts
-   * const conn1 = await Deno.connect({ port: 80 });
-   * const conn2 = await Deno.connect({ hostname: "192.0.2.1", port: 80 });
-   * const conn3 = await Deno.connect({ hostname: "[2001:db8::1]", port: 80 });
-   * const conn4 = await Deno.connect({ hostname: "golang.org", port: 80, transport: "tcp" });
+   * const conn1 = await Ende.connect({ port: 80 });
+   * const conn2 = await Ende.connect({ hostname: "192.0.2.1", port: 80 });
+   * const conn3 = await Ende.connect({ hostname: "[2001:db8::1]", port: 80 });
+   * const conn4 = await Ende.connect({ hostname: "golang.org", port: 80, transport: "tcp" });
    * ```
    *
    * Requires `allow-net` permission for "tcp".
@@ -472,7 +472,7 @@ declare namespace Ende {
   }
 
   /** Options which can be set when connecting to a Unix domain socket via
-   * {@linkcode Deno.connect}.
+   * {@linkcode Ende.connect}.
    *
    * @category Network */
   export interface UnixConnectOptions {
@@ -491,11 +491,11 @@ declare namespace Ende {
    * transport (default is "tcp"), and resolves to the connection (`Conn`).
    *
    * ```ts
-   * const conn1 = await Deno.connect({ port: 80 });
-   * const conn2 = await Deno.connect({ hostname: "192.0.2.1", port: 80 });
-   * const conn3 = await Deno.connect({ hostname: "[2001:db8::1]", port: 80 });
-   * const conn4 = await Deno.connect({ hostname: "golang.org", port: 80, transport: "tcp" });
-   * const conn5 = await Deno.connect({ path: "/foo/bar.sock", transport: "unix" });
+   * const conn1 = await Ende.connect({ port: 80 });
+   * const conn2 = await Ende.connect({ hostname: "192.0.2.1", port: 80 });
+   * const conn3 = await Ende.connect({ hostname: "[2001:db8::1]", port: 80 });
+   * const conn4 = await Ende.connect({ hostname: "golang.org", port: 80, transport: "tcp" });
+   * const conn5 = await Ende.connect({ path: "/foo/bar.sock", transport: "unix" });
    * ```
    *
    * Requires `allow-net` permission for "tcp", and `allow-read` and
@@ -509,7 +509,7 @@ declare namespace Ende {
   export function connect(options: UnixConnectOptions): Promise<UnixConn>;
 
   /** Options which can be set when connecting over VSOCK via
-   * {@linkcode Deno.connect}.
+   * {@linkcode Ende.connect}.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    * @category Network
@@ -534,12 +534,12 @@ declare namespace Ende {
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
    * ```ts
-   * const conn1 = await Deno.connect({ port: 80 });
-   * const conn2 = await Deno.connect({ hostname: "192.0.2.1", port: 80 });
-   * const conn3 = await Deno.connect({ hostname: "[2001:db8::1]", port: 80 });
-   * const conn4 = await Deno.connect({ hostname: "golang.org", port: 80, transport: "tcp" });
-   * const conn5 = await Deno.connect({ path: "/foo/bar.sock", transport: "unix" });
-   * const conn6 = await Deno.connect({ cid: -1, port: 80, transport: "vsock" });
+   * const conn1 = await Ende.connect({ port: 80 });
+   * const conn2 = await Ende.connect({ hostname: "192.0.2.1", port: 80 });
+   * const conn3 = await Ende.connect({ hostname: "[2001:db8::1]", port: 80 });
+   * const conn4 = await Ende.connect({ hostname: "golang.org", port: 80, transport: "tcp" });
+   * const conn5 = await Ende.connect({ path: "/foo/bar.sock", transport: "unix" });
+   * const conn6 = await Ende.connect({ cid: -1, port: 80, transport: "vsock" });
    * ```
    *
    * Requires `allow-net` permission for "tcp" and "vsock", and `allow-read` and `allow-net` for "unix". The "unix" `allow-net` grant may be scoped to the socket path with `--allow-net=unix:<absolute-path>`.
@@ -551,7 +551,7 @@ declare namespace Ende {
   export function connect(options: VsockConnectOptions): Promise<VsockConn>;
 
   /** Options which can be set when establishing a TLS connection via
-   * {@linkcode Deno.connectTls}.
+   * {@linkcode Ende.connectTls}.
    *
    * @category Network */
   export interface ConnectTlsOptions {
@@ -609,15 +609,15 @@ declare namespace Ende {
    * `key` and `cert` in the options as PEM-encoded strings.
    *
    * ```ts
-   * const caCert = await Deno.readTextFile("./certs/my_custom_root_CA.pem");
-   * const conn1 = await Deno.connectTls({ port: 80 });
-   * const conn2 = await Deno.connectTls({ caCerts: [caCert], hostname: "192.0.2.1", port: 80 });
-   * const conn3 = await Deno.connectTls({ hostname: "[2001:db8::1]", port: 80 });
-   * const conn4 = await Deno.connectTls({ caCerts: [caCert], hostname: "golang.org", port: 80});
+   * const caCert = await Ende.readTextFile("./certs/my_custom_root_CA.pem");
+   * const conn1 = await Ende.connectTls({ port: 80 });
+   * const conn2 = await Ende.connectTls({ caCerts: [caCert], hostname: "192.0.2.1", port: 80 });
+   * const conn3 = await Ende.connectTls({ hostname: "[2001:db8::1]", port: 80 });
+   * const conn4 = await Ende.connectTls({ caCerts: [caCert], hostname: "golang.org", port: 80});
    *
    * const key = "----BEGIN PRIVATE KEY----...";
    * const cert = "----BEGIN CERTIFICATE----...";
-   * const conn5 = await Deno.connectTls({ port: 80, key, cert });
+   * const conn5 = await Ende.connectTls({ port: 80, key, cert });
    * ```
    *
    * Requires `allow-net` permission.
@@ -630,7 +630,7 @@ declare namespace Ende {
   ): Promise<TlsConn>;
 
   /** Options which can be set when upgrading an existing connection to TLS via
-   * {@linkcode Deno.startTls}.
+   * {@linkcode Ende.startTls}.
    *
    * @category Network */
   export interface StartTlsOptions {
@@ -674,10 +674,10 @@ declare namespace Ende {
    * being used elsewhere. In such a case, this function will fail.
    *
    * ```ts
-   * const conn = await Deno.connect({ port: 80, hostname: "127.0.0.1" });
-   * const caCert = await Deno.readTextFile("./certs/my_custom_root_CA.pem");
-   * // `conn` becomes unusable after calling `Deno.startTls`
-   * const tlsConn = await Deno.startTls(conn, { caCerts: [caCert], hostname: "localhost" });
+   * const conn = await Ende.connect({ port: 80, hostname: "127.0.0.1" });
+   * const caCert = await Ende.readTextFile("./certs/my_custom_root_CA.pem");
+   * // `conn` becomes unusable after calling `Ende.startTls`
+   * const tlsConn = await Ende.startTls(conn, { caCerts: [caCert], hostname: "localhost" });
    * ```
    *
    * Requires `allow-net` permission.
@@ -1074,9 +1074,9 @@ declare namespace Ende {
    * be used. See also https://github.com/ctz/webpki-roots for specifics.
    *
    * ```ts
-   * const caCert = await Deno.readTextFile("./certs/my_custom_root_CA.pem");
-   * const conn1 = await Deno.connectQuic({ hostname: "example.com", port: 443, alpnProtocols: ["h3"] });
-   * const conn2 = await Deno.connectQuic({ caCerts: [caCert], hostname: "example.com", port: 443, alpnProtocols: ["h3"] });
+   * const caCert = await Ende.readTextFile("./certs/my_custom_root_CA.pem");
+   * const conn1 = await Ende.connectQuic({ hostname: "example.com", port: 443, alpnProtocols: ["h3"] });
+   * const conn2 = await Ende.connectQuic({ caCerts: [caCert], hostname: "example.com", port: 443, alpnProtocols: ["h3"] });
    * ```
    *
    * If an endpoint is shared among many connections, 0-RTT can be enabled.

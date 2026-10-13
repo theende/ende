@@ -86,7 +86,7 @@ declare interface WorkerGlobalScope extends EventTarget {
     options?: boolean | EventListenerOptions,
   ): void;
 
-  /** The Deno namespace containing runtime APIs. */
+  /** The Ende namespace containing runtime APIs. */
   Ende: typeof Ende;
   Deno: typeof Ende;
 

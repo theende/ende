@@ -21,7 +21,7 @@
     "jsr": {
       "steps": [
         {
-          "args": "add --unscoped jsr:@denotest/add",
+          "args": "add --unscoped jsr:@endetest/add",
           "output": "[WILDCARD]"
         },
         {
@@ -37,7 +37,7 @@
     "jsr_package_json_flag": {
       "steps": [
         {
-          "args": "add --unscoped --package-json jsr:@denotest/add",
+          "args": "add --unscoped --package-json jsr:@endetest/add",
           "output": "[WILDCARD]"
         },
         {

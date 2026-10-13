@@ -122,7 +122,7 @@ interface WebSocketEventMap {
  * server, as well as for sending and receiving data on the connection.
  *
  * If you are looking to create a WebSocket server, please take a look at
- * `Deno.upgradeWebSocket()`.
+ * `Ende.upgradeWebSocket()`.
  *
  * @example
  * ```ts
@@ -312,7 +312,7 @@ interface WebSocketOptions {
    * This is useful when you need to connect through a proxy or customize TLS settings.
    *
    * ```ts
-   * const client = Deno.createHttpClient({
+   * const client = Ende.createHttpClient({
    *   proxy: {
    *     transport: "unix",
    *     path: "/path/to/socket",

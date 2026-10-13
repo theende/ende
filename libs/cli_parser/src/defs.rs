@@ -234,7 +234,7 @@ pub static COMPILE_ARGS: &[ArgDef] = &[
     .long("config")
     .action(ArgAction::Set)
     .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
+.help("Configure different aspects of ende including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `ende.json` or `ende.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
   ArgDef::new("no-config")
     .long("no-config")
     .set_true()
@@ -437,7 +437,7 @@ ArgDef::new("unstable-bare-node-builtins")
     .long("unstable-cron")
     .set_true()
     .hidden()
-.help("Enable unstable `Deno.cron` API"),
+.help("Enable unstable `Ende.cron` API"),
   ArgDef::new("unstable-detect-cjs")
     .long("unstable-detect-cjs")
     .set_true()
@@ -482,7 +482,7 @@ ArgDef::new("unstable-bare-node-builtins")
     .long("unstable-no-legacy-abort")
     .set_true()
     .hidden()
-.help("Enable abort signal in Deno.serve without legacy behavior. This will not abort the server when the request is handled successfully."),
+.help("Enable abort signal in Ende.serve without legacy behavior. This will not abort the server when the request is handled successfully."),
   ArgDef::new("unstable-node-globals")
     .long("unstable-node-globals")
     .set_true()
@@ -619,7 +619,7 @@ static RUN_ARGS: &[ArgDef] = &[
     .action(ArgAction::Set)
     .num_args(NumArgs::Optional)
     .require_equals()
-.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
   ArgDef::new("watch")
     .long("watch")
     .action(ArgAction::Append)
@@ -765,7 +765,7 @@ pub static SERVE_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
     ArgDef::new("watch")
       .long("watch")
       .action(ArgAction::Append)
@@ -857,7 +857,7 @@ pub static EVAL_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
   ],
   arg_groups: &[
     UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS,
@@ -982,7 +982,7 @@ pub static FMT_SUBCOMMAND: CommandDef = CommandDef {
       .long("config")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
+.help("Configure different aspects of ende including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `ende.json` or `ende.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
     ArgDef::new("no-config").long("no-config").set_true()
 .help("Disable automatic loading of the configuration file"),
     ArgDef::new("no-editorconfig")
@@ -1097,7 +1097,7 @@ pub static LINT_SUBCOMMAND: CommandDef = CommandDef {
       .long("config")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
+.help("Configure different aspects of ende including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `ende.json` or `ende.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
     ArgDef::new("no-config").long("no-config").set_true()
 .help("Disable automatic loading of the configuration file"),
     ArgDef::new("ext")
@@ -1105,7 +1105,7 @@ pub static LINT_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
       .value_parser(ValueParser::Choices(EXECUTABLE_EXTS))
-.help("Specify the file extension to lint when reading from stdin.For example, use `jsx` to lint JSX files or `tsx` for TSX files.This argument is necessary because stdin input does not automatically infer the file type.Example usage: `cat file.jsx | deno lint - --ext=jsx`."),
+.help("Specify the file extension to lint when reading from stdin.For example, use `jsx` to lint JSX files or `tsx` for TSX files.This argument is necessary because stdin input does not automatically infer the file type.Example usage: `cat file.jsx | ende lint - --ext=jsx`."),
     ArgDef::new("allow-import")
       .short('I')
       .long("allow-import")
@@ -1154,7 +1154,7 @@ pub static TEST_SUBCOMMAND: CommandDef = CommandDef {
       .conflicts_with(&["inspect", "inspect-brk", "inspect-wait"])
 .help("Collect coverage profile data into DIR. If DIR is not specified, it uses 'coverage/'.\n  This option can also be set via the ENDE_COVERAGE_DIR environment variable."),
     ArgDef::new("clean").long("clean").set_true()
-.help("Empty the temporary coverage profile data directory before running tests.\n  Note: running multiple `deno test --clean` calls in series or parallel for the same coverage directory may cause race conditions."),
+.help("Empty the temporary coverage profile data directory before running tests.\n  Note: running multiple `ende test --clean` calls in series or parallel for the same coverage directory may cause race conditions."),
     ArgDef::new("fail-fast")
       .long("fail-fast")
       .action(ArgAction::Set)
@@ -1299,7 +1299,7 @@ pub static TEST_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
   ],
   arg_groups: &[
     UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS,
@@ -1318,7 +1318,7 @@ pub static TEST_SUBCOMMAND: CommandDef = CommandDef {
 
 pub static UPGRADE_SUBCOMMAND: CommandDef = CommandDef {
   name: "upgrade",
-  about: "Upgrade deno executable to given version",
+  about: "Upgrade ende executable to given version",
   aliases: &[],
   args: &[
     ArgDef::new("dry-run").long("dry-run").set_true()
@@ -1402,7 +1402,7 @@ pub static CACHE_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
     ArgDef::new("ext")
       .long("ext")
       .action(ArgAction::Set)
@@ -1459,7 +1459,7 @@ pub static CHECK_SUBCOMMAND: CommandDef = CommandDef {
     ArgDef::new("check-js").long("check-js").set_true().hidden()
 .help("Enable type-checking of JavaScript files (equivalent to `compilerOptions.checkJs: true`)"),
     ArgDef::new("desktop").long("desktop").set_true()
-.help("Type-check using the type definitions for `deno desktop`"),
+.help("Type-check using the type definitions for `ende desktop`"),
     ArgDef::new("no-code-cache")
       .long("no-code-cache")
       .set_true()
@@ -1611,7 +1611,7 @@ pub static TASK_SUBCOMMAND: CommandDef = CommandDef {
       .long("config")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
+.help("Configure different aspects of ende including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `ende.json` or `ende.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
     ArgDef::new("recursive")
       .short('r')
       .long("recursive")
@@ -1739,7 +1739,7 @@ pub static BENCH_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
     ArgDef::new("ext")
       .long("ext")
       .action(ArgAction::Set)
@@ -1839,7 +1839,7 @@ pub static COMPILE_SUBCOMMAND: CommandDef = CommandDef {
       .long("app-name")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Stable identity for the compiled app.\n  Determines where origin-bound storage such as the default `Deno.openKv()`,\n  `localStorage` and `caches` is persisted (under the platform's app data directory).\n  Defaults to the output file name. Set this to keep storage stable across renames."),
+.help("Stable identity for the compiled app.\n  Determines where origin-bound storage such as the default `Ende.openKv()`,\n  `localStorage` and `caches` is persisted (under the platform's app data directory).\n  Defaults to the output file name. Set this to keep storage stable across renames."),
     ArgDef::new("exclude-unused-npm")
       .long("exclude-unused-npm")
       .set_true()
@@ -1849,7 +1849,7 @@ pub static COMPILE_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
     ArgDef::new("watch")
       .long("watch")
       .action(ArgAction::Append)
@@ -1925,7 +1925,7 @@ pub static COVERAGE_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
       .require_equals()
-.help("Fail if coverage is below this percentage (0-100), applied to line, branch, and function coverage.\n  Per-metric thresholds can be set in deno.json under \"coverage\": { \"thresholds\": { ... } }. The flag takes precedence."),
+.help("Fail if coverage is below this percentage (0-100), applied to line, branch, and function coverage.\n  Per-metric thresholds can be set in ende.json under \"coverage\": { \"thresholds\": { ... } }. The flag takes precedence."),
     ArgDef::new("output")
       .long("output")
       .action(ArgAction::Set)
@@ -1944,7 +1944,7 @@ pub static COVERAGE_SUBCOMMAND: CommandDef = CommandDef {
 
 pub static REPL_SUBCOMMAND: CommandDef = CommandDef {
   name: "repl",
-  about: "Start an interactive Read-Eval-Print Loop (REPL) for Deno",
+  about: "Start an interactive Read-Eval-Print Loop (REPL) for Ende",
   aliases: &[],
   args: &[
     ArgDef::new("eval")
@@ -2081,7 +2081,7 @@ pub static INSTALL_SUBCOMMAND: CommandDef = CommandDef {
       .long("package-json")
       .set_true()
       .conflicts_with(&["entrypoint", "global"])
-.help("Force using package.json for dependency management instead of deno.json"),
+.help("Force using package.json for dependency management instead of ende.json"),
     ArgDef::new("os")
       .long("os")
       .action(ArgAction::Set)
@@ -2114,7 +2114,7 @@ pub static INSTALL_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
   ],
   arg_groups: &[
     UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS,
@@ -2157,7 +2157,7 @@ pub static UNINSTALL_SUBCOMMAND: CommandDef = CommandDef {
       .long("package-json")
       .set_true()
       .conflicts_with(&["global"])
-.help("Force using package.json for dependency management instead of deno.json"),
+.help("Force using package.json for dependency management instead of ende.json"),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS, COMPILE_ARGS],
   subcommands: &[],
@@ -2197,7 +2197,7 @@ pub static COMPLETIONS_SUBCOMMAND: CommandDef = CommandDef {
         "fig",
       ])),
     ArgDef::new("dynamic").long("dynamic").set_true()
-.help("Generate dynamic completions for the given shell (unstable), currently this only provides available tasks for `deno task`."),
+.help("Generate dynamic completions for the given shell (unstable), currently this only provides available tasks for `ende task`."),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS],
   subcommands: &[],
@@ -2225,7 +2225,7 @@ pub static INIT_SUBCOMMAND: CommandDef = CommandDef {
       .long("serve")
       .set_true()
       .conflicts_with(&["lib"])
-      .help("Generate an example project for `deno serve`"),
+      .help("Generate an example project for `ende serve`"),
     ArgDef::new("npm")
       .long("npm")
       .set_true()
@@ -2240,7 +2240,7 @@ pub static INIT_SUBCOMMAND: CommandDef = CommandDef {
       .long("empty")
       .set_true()
       .conflicts_with(&["lib", "serve", "npm", "jsr"])
-      .help("Generate a minimal project with just main.ts and deno.json"),
+      .help("Generate a minimal project with just main.ts and ende.json"),
     ArgDef::new("yes")
       .short('y')
       .long("yes")
@@ -2374,7 +2374,7 @@ pub static PUBLISH_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
     ArgDef::new("env-file")
       .long("env-file")
       .long_aliases(&["env"])
@@ -2449,7 +2449,7 @@ pub static ADD_SUBCOMMAND: CommandDef = CommandDef {
       .value_delimiter(',')
 .help("Deny importing from remote hosts. Optionally specify denied IP addresses and host names, with ports as necessary."),
     ArgDef::new("package-json").long("package-json").set_true()
-.help("Force using package.json for dependency management instead of deno.json"),
+.help("Force using package.json for dependency management instead of ende.json"),
     ArgDef::new("env-file")
       .long("env-file")
       .long_aliases(&["env"])
@@ -2494,7 +2494,7 @@ pub static REMOVE_SUBCOMMAND: CommandDef = CommandDef {
       .long("package-json")
       .set_true()
       .conflicts_with(&["global"])
-.help("Force using package.json for dependency management instead of deno.json"),
+.help("Force using package.json for dependency management instead of ende.json"),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS, COMPILE_ARGS],
   subcommands: &[],
@@ -2668,7 +2668,7 @@ pub static CLEAN_SUBCOMMAND: CommandDef = CommandDef {
 
 pub static LIST_SUBCOMMAND: CommandDef = CommandDef {
   name: "list",
-  about: "List the dependencies declared in deno.json / package.json",
+  about: "List the dependencies declared in ende.json / package.json",
   aliases: &[],
   args: &[
     ArgDef::new("filters")
@@ -2742,7 +2742,7 @@ pub static LSP_SUBCOMMAND: CommandDef = CommandDef {
 
 pub static VENDOR_SUBCOMMAND: CommandDef = CommandDef {
   name: "vendor",
-  about: "`deno vendor` was removed in Deno 2.\n\nSee the Deno 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
+  about: "`ende vendor` was removed in 2.0.\n\nSee the 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
   aliases: &[],
   args: &[
     ArgDef::new("help")
@@ -2808,8 +2808,8 @@ pub static BUNDLE_SUBCOMMAND: CommandDef = CommandDef {
       .long("platform")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-      .default_value("deno")
-.help("Platform to bundle for. Accepted values are 'browser' or 'deno'"),
+      .default_value("ende")
+.help("Platform to bundle for. Accepted values are 'browser' or 'ende'"),
     ArgDef::new("sourcemap")
       .long("sourcemap")
       .action(ArgAction::Set)
@@ -2845,7 +2845,7 @@ pub static BUNDLE_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
   ],
   arg_groups: &[
     COMPILE_ARGS,
@@ -2944,13 +2944,13 @@ pub static X_SUBCOMMAND: CommandDef = CommandDef {
       .num_args(NumArgs::Optional)
       .default_value("dx")
       .conflicts_with(&["script_arg"])
-.help("Creates a dx alias so you can run dx <command> instead of deno x <command>"),
+.help("Creates a dx alias so you can run dx <command> instead of ende x <command>"),
     ArgDef::new("check")
       .long("check")
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
     ArgDef::new("env-file")
       .long("env-file")
       .action(ArgAction::Append)
@@ -3061,7 +3061,7 @@ pub static DESKTOP_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'deno check' subcommand."),
+.help("Set type-checking behavior. This subcommand type-checks local modules by default, so passing --check is redundant; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
     ArgDef::new("inspect-renderer")
       .long("inspect-renderer")
       .action(ArgAction::Set)
@@ -3204,7 +3204,7 @@ pub static PACK_SUBCOMMAND: CommandDef = CommandDef {
       .long("config")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of deno including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `deno.json` or `deno.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
+.help("Configure different aspects of ende including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `ende.json` or `ende.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
     ArgDef::new("no-config")
       .long("no-config")
       .set_true()
@@ -3273,7 +3273,7 @@ pub static BUMP_VERSION_SUBCOMMAND: CommandDef = CommandDef {
       .set_true()
 .help("Bump every package in the workspace (auto-detected at the workspace root)"),
     ArgDef::new("no-workspace").long("no-workspace").set_true()
-.help("Disable workspace mode and only bump the deno.json/package.json in the current directory"),
+.help("Disable workspace mode and only bump the ende.json/package.json in the current directory"),
     ArgDef::new("dry-run").long("dry-run").set_true()
 .help("Print the planned changes without writing any files"),
     ArgDef::new("start")
@@ -3290,7 +3290,7 @@ pub static BUMP_VERSION_SUBCOMMAND: CommandDef = CommandDef {
       .long("import-map")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Path to the import map to rewrite jsr: version constraints in. Defaults to the root deno.json (or its importMap target)"),
+.help("Path to the import map to rewrite jsr: version constraints in. Defaults to the root ende.json (or its importMap target)"),
     ArgDef::new("release-notes")
       .long("release-notes")
       .action(ArgAction::Set)
@@ -3302,7 +3302,7 @@ pub static BUMP_VERSION_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
       .conflicts_with(&["workspace"])
-.help("Explicit path to the manifest file to bump.\n  May point to a `deno.json`/`deno.jsonc` or a `package.json`. When\n  set, single-file mode is forced (workspace auto-detection is bypassed).\n  Useful when both `deno.json` and `package.json` exist in the same\n  directory."),
+.help("Explicit path to the manifest file to bump.\n  May point to an `ende.json`/`ende.jsonc` or a `package.json`. When\n  set, single-file mode is forced (workspace auto-detection is bypassed).\n  Useful when both `ende.json` and `package.json` exist in the same\n  directory."),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS],
   subcommands: &[],
@@ -3428,7 +3428,7 @@ pub static UNLINK_SUBCOMMAND: CommandDef = CommandDef {
 };
 
 pub static DENO_ROOT: CommandDef = CommandDef {
-  name: "deno",
+  name: "ende",
   about: "A modern JavaScript and TypeScript runtime",
   aliases: &[],
   args: GLOBAL_ARGS,

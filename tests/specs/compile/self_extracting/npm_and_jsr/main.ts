@@ -1,4 +1,4 @@
-import { add } from "jsr:@denotest/add@1.0.0";
+import { add } from "jsr:@endetest/add@1.0.0";
 import { url } from "@denotest/esm-basic";
 import { hello } from "@denotest/node-addon";
 import { printHello } from "http://localhost:4545/subdir/print_hello.ts";

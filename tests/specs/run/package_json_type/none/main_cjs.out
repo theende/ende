@@ -3,7 +3,7 @@ const { add } = require("./add");
                 ^
     at file:///[WILDLINE]
 
-    info: Deno supports CommonJS modules in .cjs files, or when the closest
+    info: Ende supports CommonJS modules in .cjs files, or when the closest
           package.json has a "type": "commonjs" option.
     hint: Rewrite this module to ESM,
           or change the file extension to .cjs,

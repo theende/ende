@@ -17,9 +17,9 @@ fn svec(args: &[&str]) -> Vec<String> {
 }
 
 fn benches(c: &mut Criterion) {
-  let bare = svec(&["deno", "run", "script.ts"]);
+  let bare = svec(&["ende", "run", "script.ts"]);
   let with_flags = svec(&[
-    "deno",
+    "ende",
     "run",
     "-A",
     "--no-check",
@@ -28,7 +28,7 @@ fn benches(c: &mut Criterion) {
     "arg2",
   ]);
   let complex = svec(&[
-    "deno",
+    "ende",
     "run",
     "--allow-read=/a,/b",
     "--allow-net=example.com",
@@ -42,7 +42,7 @@ fn benches(c: &mut Criterion) {
     "arg1",
     "arg2",
   ]);
-  let bare_repl = svec(&["deno"]);
+  let bare_repl = svec(&["ende"]);
 
   // Full parse + convert into `Flags` (the production entry point).
   let mut g = c.benchmark_group("flags_from_vec");

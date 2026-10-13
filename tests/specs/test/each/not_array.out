@@ -4,7 +4,7 @@ Uncaught error from ./not_array.ts FAILED
  ERRORS[WILDLINE]
 
 ./not_array.ts (uncaught error)
-error: (in promise) TypeError: Deno.test.each: expected an array of test cases
+error: (in promise) TypeError: Ende.test.each: expected an array of test cases
 [WILDCARD]
  FAILURES[WILDLINE]
 

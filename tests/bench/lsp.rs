@@ -163,10 +163,10 @@ fn bench_big_file_edits(deno_exe: &Path) -> Duration {
   let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
   client.change_configuration(json!({ "ende": { "enable": true } }));
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
 
   client.write_notification(
     "textDocument/didOpen",
@@ -215,7 +215,7 @@ fn bench_code_lens(deno_exe: &Path) -> Duration {
   let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
   client.change_configuration(json!({ "ende": {
     "enable": true,
     "codeLens": {
@@ -225,7 +225,7 @@ fn bench_code_lens(deno_exe: &Path) -> Duration {
     },
   } }));
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
 
   client.write_notification(
     "textDocument/didOpen",
@@ -260,10 +260,10 @@ fn bench_find_replace(deno_exe: &Path) -> Duration {
   let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
   client.change_configuration(json!({ "ende": { "enable": true } }));
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
 
   for i in 0..10 {
     client.write_notification(
@@ -335,10 +335,10 @@ fn bench_startup_shutdown(deno_exe: &Path) -> Duration {
   let mut client = LspClientBuilder::new().deno_exe(deno_exe).build();
   client.initialize_default();
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
   client.change_configuration(json!({ "ende": { "enable": true } }));
   let (method, _): (String, Option<Value>) = client.read_notification();
-  assert_eq!(method, "ende/didRefreshDenoConfigurationTree");
+  assert_eq!(method, "ende/didRefreshEndeConfigurationTree");
 
   client.write_notification(
     "textDocument/didOpen",

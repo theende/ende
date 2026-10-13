@@ -513,7 +513,7 @@ class Request {
       ) {
         throw webidl.makeException(
           TypeError,
-          "`client` must be a Deno.HttpClient",
+          "`client` must be an Ende.HttpClient",
           prefix,
           "Argument 2",
         );

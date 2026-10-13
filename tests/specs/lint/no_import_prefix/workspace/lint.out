@@ -1,7 +1,7 @@
 error[no-import-prefix]: Inline 'npm:', 'jsr:' or 'https:' dependency not allowed
  --> [WILDLINE]
   | 
-1 | import { add } from "jsr:@denotest/add@1";
+1 | import { add } from "jsr:@endetest/add@1";
   |                     ^^^^^^^^^^^^^^^^^^^^^
   = hint: Add it as a dependency in a deno.json or package.json instead and reference it here via its bare specifier
 

@@ -1,1 +1,1 @@
-error: Cannot link './pkg': its deno.json has no "name" field. A linked package must declare a JSR-style "name" to be importable.
+error: Cannot link './pkg': its ende.json has no "name" field. A linked package must declare a JSR-style "name" to be importable.

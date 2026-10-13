@@ -3,7 +3,7 @@
   "steps": [{
     "args": [
       "eval",
-      "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ vendor: true, imports: { 'type-only': 'jsr:@denotest/type-only-import@1.0.0' } }))"
+      "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ vendor: true, imports: { 'type-only': 'jsr:@endetest/type-only-import@1.0.0' } }))"
     ],
     "output": ""
   }, {

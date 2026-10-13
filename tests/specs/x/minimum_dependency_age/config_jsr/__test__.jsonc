@@ -13,7 +13,7 @@
     // reject a different version than was installed). The cutoff (2025-03-01)
     // sits between the two publish dates, so 1.0.0 (2025-01-01) is selected
     // rather than the newest 2.0.0 (2025-06-01).
-    "args": "x -y jsr:@denotest/x-min-dep-age",
+    "args": "x -y jsr:@endetest/x-min-dep-age",
     "output": "[WILDCARD]\n1.0.0\n"
   }]
 }

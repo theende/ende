@@ -110,7 +110,7 @@ async fn compile_inner(
         && !matches!(flags.type_check_mode, TypeCheckMode::None)
       {
         log::info!(
-          "Disabling Deno type checking for {} compile; the framework handles app compilation itself",
+          "Disabling Ende type checking for {} compile; the framework handles app compilation itself",
           detection.name
         );
         flags.type_check_mode = TypeCheckMode::None;
@@ -188,7 +188,7 @@ async fn compile_inner(
 
   let _bundle_cleanup = if compile_flags.bundle {
     log::warn!(
-      "{} deno compile --bundle is experimental and may change.",
+      "{} ende compile --bundle is experimental and may change.",
       colors::yellow("Warning")
     );
     // Auto-include the closest `package.json` to the entrypoint, if any.
@@ -616,7 +616,7 @@ fn rewrite_absolute_bundle_paths_inner(
     };
   }
 
-  let prefix = r#"// Injected by deno compile --bundle: resolve absolute paths emitted by
+  let prefix = r#"// Injected by ende compile --bundle: resolve absolute paths emitted by
 // esbuild's CJS-from-ESM wrapper against the bundle file's runtime
 // location instead of the build-time absolute path.
 import { fileURLToPath as __internalFileURLToPath } from "node:url";
@@ -762,7 +762,7 @@ pub async fn compile_binary(
     .await
     .with_context(|| {
       format!(
-        "Writing deno compile executable to temporary file '{}'",
+        "Writing ende compile executable to temporary file '{}'",
         temp_path.display()
       )
     });

@@ -199,7 +199,7 @@ fn load_single_config(
   // package.json's version even though deno.json is also present.
   if let Some(deno_json) = deno_json {
     let path = deno_path_util::url_to_file_path(&deno_json.specifier)
-      .context("Failed to convert deno.json URL to path")?;
+      .context("Failed to convert ende.json URL to path")?;
     if deno_json.json.version.is_some() {
       return ConfigUpdater::new(path);
     }
@@ -216,7 +216,7 @@ fn load_single_config(
     return ConfigUpdater::new(pkg_json.path.clone());
   }
 
-  bail!("No deno.json or package.json found in the current directory")
+  bail!("No ende.json or package.json found in the current directory")
 }
 
 #[allow(clippy::print_stdout, reason = "user-facing output")]
@@ -393,7 +393,7 @@ fn collect_workspace_packages(
     })?;
     let config_path =
       deno_path_util::url_to_file_path(&pkg.config_file.specifier)
-        .context("Failed to convert deno.json URL to path")?;
+        .context("Failed to convert ende.json URL to path")?;
     let config_path_relative = config_path
       .strip_prefix(root_dir)
       .unwrap_or(&config_path)
@@ -1048,7 +1048,7 @@ fn rewrite_import_map(
     files.push(path);
   } else if let Some(root_deno_json) = workspace.root_deno_json() {
     let root_path = deno_path_util::url_to_file_path(&root_deno_json.specifier)
-      .context("Failed to convert root deno.json URL to path")?;
+      .context("Failed to convert root ende.json URL to path")?;
     files.push(root_path.clone());
     if let Some(target) = root_deno_json.json.import_map.as_ref() {
       let parent = root_path.parent().unwrap_or(&root_dir);

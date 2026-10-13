@@ -164,7 +164,7 @@ function installTestIsolateExitHandler() {
     // doesn't check the termination flag before some intermediate frame
     // catches the (uncatchable) termination exception. Either way, the test
     // runner detects the isolate-exit via `IsolateExitInfo` in `OpState`.
-    throw new Error(`Deno.exit(${exitCode}) called outside of a test`);
+    throw new Error(`Ende.exit(${exitCode}) called outside of a test`);
   };
   setExitHandler(defaultExitHandler);
 }
@@ -419,10 +419,10 @@ function testInner(
       throw new TypeError("The test function must have a name");
     }
     if (optionsOrFn != undefined) {
-      throw new TypeError("Unexpected second argument to Deno.test()");
+      throw new TypeError("Unexpected second argument to Ende.test()");
     }
     if (maybeFn != undefined) {
-      throw new TypeError("Unexpected third argument to Deno.test()");
+      throw new TypeError("Unexpected third argument to Ende.test()");
     }
     testDesc = {
       ...defaults,
@@ -561,7 +561,7 @@ test.afterAll = function (fn) {
 test.sanitizer = function (options) {
   if (typeof options !== "object" || options === null) {
     throw new TypeError(
-      "Deno.test.sanitizer: options must be an object",
+      "Ende.test.sanitizer: options must be an object",
     );
   }
   if (options.ops !== undefined) {
@@ -612,7 +612,7 @@ function eachResolvePath(row, path) {
 // template against the case's row and its zero-based index.
 function formatEachName(template, row, index) {
   if (typeof template !== "string") {
-    throw new TypeError("Deno.test.each: test name must be a string");
+    throw new TypeError("Ende.test.each: test name must be a string");
   }
   const isArray = ArrayIsArray(row);
   const positional = isArray ? row : [row];
@@ -656,7 +656,7 @@ function createEach(overrides) {
   return function each(cases) {
     if (!ArrayIsArray(cases)) {
       throw new TypeError(
-        "Deno.test.each: expected an array of test cases",
+        "Ende.test.each: expected an array of test cases",
       );
     }
     return function (name, optionsOrFn, maybeFn) {
@@ -669,7 +669,7 @@ function createEach(overrides) {
         fn = maybeFn;
       }
       if (typeof fn !== "function") {
-        throw new TypeError("Deno.test.each: missing test function");
+        throw new TypeError("Ende.test.each: missing test function");
       }
 
       // Report all generated tests at the user's `.each(...)(...)` call site

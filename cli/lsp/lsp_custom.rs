@@ -2,6 +2,8 @@
 
 use ende_core::serde::Deserialize;
 use ende_core::serde::Serialize;
+use ende_core::serde_json;
+use ende_core::serde_json::Value;
 use tower_lsp::lsp_types as lsp;
 
 // Custom requests are accepted under their `ende/*` names and, from legacy
@@ -10,7 +12,8 @@ pub const PERFORMANCE_REQUEST: &str = "ende/performance";
 pub const LEGACY_PERFORMANCE_REQUEST: &str = "deno/performance";
 pub const INFERRED_TYPE_REQUEST: &str = "ende/inferredType";
 pub const LEGACY_INFERRED_TYPE_REQUEST: &str = "deno/inferredType";
-pub const INFERRED_TYPE_COMMAND: &str = "deno.inferredType";
+/// Sent as `ende.inferredType`, or `deno.inferredType` to legacy clients.
+pub const INFERRED_TYPE_COMMAND: &str = "inferredType";
 pub const TASK_REQUEST: &str = "ende/taskDefinitions";
 pub const LEGACY_TASK_REQUEST: &str = "deno/taskDefinitions";
 pub const VIRTUAL_TEXT_DOCUMENT: &str = "ende/virtualTextDocument";
@@ -70,6 +73,7 @@ pub struct VirtualTextDocumentParams {
 pub struct DenoConfigurationData {
   pub scope_uri: lsp::Uri,
   pub workspace_root_scope_uri: Option<lsp::Uri>,
+  #[serde(rename = "endeJson", alias = "denoJson")]
   pub deno_json: Option<lsp::TextDocumentIdentifier>,
   pub package_json: Option<lsp::TextDocumentIdentifier>,
 }
@@ -78,21 +82,50 @@ pub struct DenoConfigurationData {
 #[serde(rename_all = "camelCase")]
 pub struct DidRefreshDenoConfigurationTreeNotificationParams {
   pub data: Vec<DenoConfigurationData>,
+  #[serde(rename = "endeDirNpmFolderUri", alias = "denoDirNpmFolderUri")]
   pub deno_dir_npm_folder_uri: Option<lsp::Uri>,
 }
 
-/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+impl DidRefreshDenoConfigurationTreeNotificationParams {
+  /// The params with the `deno*` field names that legacy clients expect.
+  pub fn into_legacy(self) -> Value {
+    let mut value = serde_json::to_value(self).unwrap();
+    rename_field(&mut value, "endeDirNpmFolderUri", "denoDirNpmFolderUri");
+    if let Some(data) = value.get_mut("data").and_then(|d| d.as_array_mut()) {
+      for data in data {
+        rename_field(data, "endeJson", "denoJson");
+      }
+    }
+    value
+  }
+}
+
+fn rename_field(value: &mut Value, from: &str, to: &str) {
+  if let Some(object) = value.as_object_mut()
+    && let Some(field) = object.remove(from)
+  {
+    object.insert(to.to_string(), field);
+  }
+}
+
+/// Sent as `ende/didRefreshEndeConfigurationTree`, or under its old
+/// `deno/didRefreshDenoConfigurationTree` name and with
+/// [`DidRefreshDenoConfigurationTreeNotificationParams::into_legacy`] params
+/// to legacy clients (`LEGACY`).
 pub enum DidRefreshDenoConfigurationTreeNotification<const LEGACY: bool> {}
 
-impl<const LEGACY: bool> lsp::notification::Notification
-  for DidRefreshDenoConfigurationTreeNotification<LEGACY>
+impl lsp::notification::Notification
+  for DidRefreshDenoConfigurationTreeNotification<false>
 {
   type Params = DidRefreshDenoConfigurationTreeNotificationParams;
-  const METHOD: &'static str = if LEGACY {
-    "deno/didRefreshDenoConfigurationTree"
-  } else {
-    "ende/didRefreshDenoConfigurationTree"
-  };
+  const METHOD: &'static str = "ende/didRefreshEndeConfigurationTree";
+}
+
+impl lsp::notification::Notification
+  for DidRefreshDenoConfigurationTreeNotification<true>
+{
+  type Params = Value;
+  const METHOD: &'static str = "deno/didRefreshDenoConfigurationTree";
 }
 
 #[derive(Debug, Eq, Hash, PartialEq, Copy, Clone, Deserialize, Serialize)]
@@ -117,6 +150,7 @@ impl DenoConfigurationChangeType {
 #[derive(Debug, Eq, Hash, PartialEq, Copy, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DenoConfigurationType {
+  #[serde(rename = "endeJson", alias = "denoJson")]
   DenoJson,
   PackageJson,
 }
@@ -137,21 +171,44 @@ pub struct DidChangeDenoConfigurationNotificationParams {
   pub changes: Vec<DenoConfigurationChangeEvent>,
 }
 
+impl DidChangeDenoConfigurationNotificationParams {
+  /// The params with the `deno*` values that legacy clients expect.
+  pub fn into_legacy(self) -> Value {
+    let mut value = serde_json::to_value(self).unwrap();
+    if let Some(changes) =
+      value.get_mut("changes").and_then(|c| c.as_array_mut())
+    {
+      for change in changes {
+        if change["configurationType"] == "endeJson" {
+          change["configurationType"] = Value::from("denoJson");
+        }
+      }
+    }
+    value
+  }
+}
+
 // TODO(nayeemrmn): This is being replaced by
 // `DidRefreshDenoConfigurationTreeNotification` for Deno > v2.0.0. Remove it
 // soon.
-/// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.
+/// Sent as `ende/didChangeEndeConfiguration`, or under its old
+/// `deno/didChangeDenoConfiguration` name and with
+/// [`DidChangeDenoConfigurationNotificationParams::into_legacy`] params to
+/// legacy clients (`LEGACY`).
 pub enum DidChangeDenoConfigurationNotification<const LEGACY: bool> {}
 
-impl<const LEGACY: bool> lsp::notification::Notification
-  for DidChangeDenoConfigurationNotification<LEGACY>
+impl lsp::notification::Notification
+  for DidChangeDenoConfigurationNotification<false>
 {
   type Params = DidChangeDenoConfigurationNotificationParams;
-  const METHOD: &'static str = if LEGACY {
-    "deno/didChangeDenoConfiguration"
-  } else {
-    "ende/didChangeDenoConfiguration"
-  };
+  const METHOD: &'static str = "ende/didChangeEndeConfiguration";
+}
+
+impl lsp::notification::Notification
+  for DidChangeDenoConfigurationNotification<true>
+{
+  type Params = Value;
+  const METHOD: &'static str = "deno/didChangeDenoConfiguration";
 }
 
 /// Sent with the `deno/` prefix to legacy clients (`LEGACY`), else `ende/`.

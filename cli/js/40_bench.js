@@ -143,10 +143,10 @@ function bench(
       throw new TypeError("The bench function must have a name");
     }
     if (optionsOrFn != undefined) {
-      throw new TypeError("Unexpected second argument to Deno.bench()");
+      throw new TypeError("Unexpected second argument to Ende.bench()");
     }
     if (maybeFn != undefined) {
-      throw new TypeError("Unexpected third argument to Deno.bench()");
+      throw new TypeError("Unexpected third argument to Ende.bench()");
     }
     benchDesc = {
       ...defaults,

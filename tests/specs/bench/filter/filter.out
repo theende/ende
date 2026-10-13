@@ -2,7 +2,7 @@ Check [WILDCARD]a_bench.ts
 Check [WILDCARD]b_bench.ts
 Check [WILDCARD]c_bench.ts
     CPU | [WILDCARD]
-Runtime | Deno [WILDCARD] ([WILDCARD])
+Runtime | Ende [WILDCARD] ([WILDCARD])
 
 [WILDCARD]/bench/filter/a_bench.ts
 

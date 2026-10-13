@@ -526,7 +526,7 @@ impl TestRun {
   }
 
   fn get_args(&self) -> Vec<Cow<'_, str>> {
-    let mut args = vec![Cow::Borrowed("deno"), Cow::Borrowed("test")];
+    let mut args = vec![Cow::Borrowed("ende"), Cow::Borrowed("test")];
     args.extend(
       self
         .workspace_settings
@@ -576,7 +576,7 @@ impl TestRun {
       for env_file in &self.test_task_env_files {
         let Some(env_file) = env_file.to_str() else {
           lsp_log!(
-            "Skipping non-UTF8 env file path from deno.json `test` task: {}",
+            "Skipping non-UTF8 env file path from ende.json `test` task: {}",
             env_file.display()
           );
           continue;
@@ -649,7 +649,9 @@ fn extract_env_files_from_command(command: &str) -> Vec<String> {
   let mut env_files = Vec::new();
   let mut index = 0;
   while index + 1 < tokens.len() {
-    if tokens[index] == "deno" && tokens[index + 1] == "test" {
+    if matches!(tokens[index].as_str(), "ende" | "deno")
+      && tokens[index + 1] == "test"
+    {
       index += 2;
       while index < tokens.len() && !is_shell_command_separator(&tokens[index])
       {
@@ -1175,6 +1177,11 @@ mod tests {
     // https://github.com/denoland/deno/issues/28797).
     assert_eq!(
       extract_env_files_from_command("deno test --env-file=.env.test -A"),
+      vec![".env.test".to_string()],
+    );
+    // `ende test` as well as `deno test`.
+    assert_eq!(
+      extract_env_files_from_command("ende test --env-file=.env.test -A"),
       vec![".env.test".to_string()],
     );
     // Bare `--env-file` defaults to `.env` (matches CLI default).

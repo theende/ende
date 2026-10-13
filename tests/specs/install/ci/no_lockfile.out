@@ -1,2 +1,2 @@
-error: deno ci requires a lockfile, but none was found.
-  hint: run `deno install` to create one.
+error: ende ci requires a lockfile, but none was found.
+  hint: run `ende install` to create one.

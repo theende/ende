@@ -594,7 +594,7 @@ pub const DESKTOP_JS: &str = r#"
       }),
     });
   } catch (e) {
-    console.error("[deno desktop] failed to install Notification permission API:", e);
+    console.error("[ende desktop] failed to install Notification permission API:", e);
   }
 
   internals.defineEventHandler(NotificationPrototype, "show");
@@ -695,7 +695,7 @@ pub const DESKTOP_JS: &str = r#"
       configurable: true,
     });
   } catch (e) {
-    console.error("[deno desktop] failed to install navigator.permissions:", e);
+    console.error("[ende desktop] failed to install navigator.permissions:", e);
   }
 
   // --- navigator.clipboard (text only) ---
@@ -764,7 +764,7 @@ pub const DESKTOP_JS: &str = r#"
       configurable: true,
     });
   } catch (e) {
-    console.error("[deno desktop] failed to install navigator.clipboard:", e);
+    console.error("[ende desktop] failed to install navigator.clipboard:", e);
   }
 
   // Start polling loops immediately. Use core.unrefOpPromise so these
@@ -1072,22 +1072,22 @@ pub fn desktop_auto_update_js(
     if (_rolledBack && typeof onRollback === "function") {{
       queueMicrotask(() => {{
         try {{ onRollback(ROLLBACK_REASON); }} catch (e) {{
-          console.error("Deno.autoUpdate onRollback threw:", e);
+          console.error("Ende.autoUpdate onRollback threw:", e);
         }}
       }});
     }}
 
     if (!_version) {{
-      console.warn("Deno.autoUpdate: no version in deno.json, skipping");
+      console.warn("Ende.autoUpdate: no version in ende.json, skipping");
       return;
     }}
     if (typeof url !== "string" || url.length === 0) {{
-      console.warn("Deno.autoUpdate: missing 'url' option, skipping");
+      console.warn("Ende.autoUpdate: missing 'url' option, skipping");
       return;
     }}
     if (!isHttpsUrl(url)) {{
       console.error(
-        "Deno.autoUpdate: refusing non-https url (got %s); ignoring.", url,
+        "Ende.autoUpdate: refusing non-https url (got %s); ignoring.", url,
       );
       return;
     }}
@@ -1107,7 +1107,7 @@ pub fn desktop_auto_update_js(
         try {{
           manifest = JSON.parse(manifestText);
         }} catch {{
-          console.warn("Deno.autoUpdate: latest.json is not valid JSON");
+          console.warn("Ende.autoUpdate: latest.json is not valid JSON");
           return;
         }}
         if (manifest.version === _version) return;
@@ -1116,7 +1116,7 @@ pub fn desktop_auto_update_js(
           const sig = manifest.signature;
           if (typeof sig !== "string" || !sig) {{
             console.error(
-              "Deno.autoUpdate: publicKey configured but manifest has no signature",
+              "Ende.autoUpdate: publicKey configured but manifest has no signature",
             );
             return;
           }}
@@ -1128,19 +1128,19 @@ pub fn desktop_auto_update_js(
           const signed = manifest.signed;
           if (typeof signed !== "string") {{
             console.error(
-              "Deno.autoUpdate: signed manifest must include a `signed` string field",
+              "Ende.autoUpdate: signed manifest must include a `signed` string field",
             );
             return;
           }}
           if (!op_desktop_verify_ed25519(publicKey, sig, te.encode(signed))) {{
-            console.error("Deno.autoUpdate: manifest signature verification failed");
+            console.error("Ende.autoUpdate: manifest signature verification failed");
             return;
           }}
           // Re-parse the signed payload — only its contents are trusted.
           try {{
             manifest = JSON.parse(signed);
           }} catch {{
-            console.error("Deno.autoUpdate: signed payload is not valid JSON");
+            console.error("Ende.autoUpdate: signed payload is not valid JSON");
             return;
           }}
           if (manifest.version === _version) return;
@@ -1148,7 +1148,7 @@ pub fn desktop_auto_update_js(
 
         const patchEntry = manifest.patches?.[_version];
         if (!patchEntry) {{
-          console.warn("Deno.autoUpdate: no patch available for",
+          console.warn("Ende.autoUpdate: no patch available for",
             _version, "->", manifest.version);
           return;
         }}
@@ -1161,12 +1161,12 @@ pub fn desktop_auto_update_js(
           ? patchEntry?.sha256
           : undefined;
         if (!patchName) {{
-          console.error("Deno.autoUpdate: malformed patch entry");
+          console.error("Ende.autoUpdate: malformed patch entry");
           return;
         }}
         if (typeof patchSha256 !== "string" || patchSha256.length !== 64) {{
           console.error(
-            "Deno.autoUpdate: manifest patch entry must include sha256",
+            "Ende.autoUpdate: manifest patch entry must include sha256",
           );
           return;
         }}
@@ -1179,7 +1179,7 @@ pub fn desktop_auto_update_js(
         op_desktop_apply_patch(patchBytes, patchSha256);
         if (typeof onUpdateReady === "function") {{
           try {{ onUpdateReady(manifest.version); }} catch (e) {{
-            console.error("Deno.autoUpdate onUpdateReady threw:", e);
+            console.error("Ende.autoUpdate onUpdateReady threw:", e);
           }}
         }}
         if (autoUpdateTimer) {{
@@ -1187,7 +1187,7 @@ pub fn desktop_auto_update_js(
           autoUpdateTimer = null;
         }}
       }} catch (e) {{
-        console.warn("Deno.autoUpdate: check failed:", e.message);
+        console.warn("Ende.autoUpdate: check failed:", e.message);
       }}
     }};
 

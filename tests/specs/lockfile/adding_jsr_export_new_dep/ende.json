@@ -3,6 +3,6 @@
     "cat": "cat"
   },
   "imports": {
-    "different-deps-per-export": "jsr:@denotest/different-deps-per-export@1"
+    "different-deps-per-export": "jsr:@endetest/different-deps-per-export@1"
   }
 }

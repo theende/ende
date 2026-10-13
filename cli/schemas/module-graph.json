@@ -30,7 +30,7 @@
         },
         "mediaType": {
           "type": "string",
-          "description": "How the file is treated within Deno.  All the possible media types that Deno considers are listed here, but in practice, several of them would never appear in a module graph.",
+          "description": "How the file is treated within Ende.  All the possible media types that Ende considers are listed here, but in practice, several of them would never appear in a module graph.",
           "enum": [
             "JavaScript",
             "TypeScript",
@@ -46,7 +46,7 @@
         },
         "local": {
           "type": "string",
-          "description": "The path to the local file. For local modules this will be the local file path, for remote modules and data URLs, this would be the path to the file in the Deno cache."
+          "description": "The path to the local file. For local modules this will be the local file path, for remote modules and data URLs, this would be the path to the file in the Ende cache."
         },
         "checksum": {
           "type": "string",
@@ -54,7 +54,7 @@
         },
         "error": {
           "type": "string",
-          "description": "If when resolving the module, Deno encountered an error and the module is unavailable, the text of that error will be indicated here."
+          "description": "If when resolving the module, Ende encountered an error and the module is unavailable, the text of that error will be indicated here."
         }
       }
     },
@@ -83,8 +83,8 @@
       }
     }
   },
-  "title": "Deno Dependency Graph Schema",
-  "description": "A JSON representation of a Deno module dependency graph.",
+  "title": "Ende Dependency Graph Schema",
+  "description": "A JSON representation of an Ende module dependency graph.",
   "type": "object",
   "required": [
     "root",

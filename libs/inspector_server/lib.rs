@@ -581,7 +581,7 @@ fn handle_ws_events_request(
       }
     };
 
-    log::debug!("Deno event session started.");
+    log::debug!("Ende event session started.");
     pump_event_notifications(websocket, restart_rx).await;
   });
 
@@ -629,7 +629,7 @@ async fn pump_event_notifications(
         match result {
           Ok(frame) => {
             if frame.opcode == OpCode::Close {
-              log::debug!("Deno event session ended");
+              log::debug!("Ende event session ended");
               break;
             }
             // Ignore other messages
@@ -810,7 +810,7 @@ async fn listen_for_new_inspectors(
       );
       log::info!("Visit chrome://inspect to connect to the debugger.");
       if info.wait_for_session {
-        log::info!("Deno is waiting for debugger to connect.");
+        log::info!("Ende is waiting for debugger to connect.");
       }
     }
     if inspector_map.borrow_mut().insert(info.uuid, info).is_some() {
@@ -932,7 +932,7 @@ impl InspectorInfo {
     let host_listen = format!("{}", self.host);
     let host = host.unwrap_or(&host_listen);
     json!({
-      "description": "deno",
+      "description": "ende",
       "devtoolsFrontendUrl": self.get_frontend_url(host),
       "faviconUrl": "https://deno.land/favicon.ico",
       "id": self.uuid.to_string(),
@@ -956,7 +956,7 @@ impl InspectorInfo {
 
   fn get_title(&self) -> String {
     format!(
-      "deno{} [pid: {}]",
+      "ende{} [pid: {}]",
       self
         .thread_name
         .as_ref()

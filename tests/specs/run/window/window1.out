@@ -3,5 +3,5 @@ error: Uncaught (in promise) ReferenceError: window is not defined
                  ^
     at [WILDCARD]window1.js:1:18
 
-    info: window global is not available in Deno 2.
+    info: window global is not available in Ende.
     hint: Replace `window` with `globalThis`.

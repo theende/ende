@@ -378,7 +378,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
         "[desktop] openDevtools(renderer={renderer}, deno={deno}) → {url}"
       );
       let window = laufey::Window::new(1200, 800);
-      window.set_title("Deno Desktop DevTools");
+      window.set_title("Ende Desktop DevTools");
       window.navigate(&url);
       let window = self.setup_window_events(window, false);
       let id = window.id();
@@ -1274,7 +1274,7 @@ laufey::main!(|| {
         } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
           s.clone()
         } else {
-          "Deno runtime panicked".to_string()
+          "Ende runtime panicked".to_string()
         };
 
         let location = panic_info
@@ -1295,7 +1295,7 @@ laufey::main!(|| {
       eprintln!(
         "\n============================================================"
       );
-      eprintln!("Deno has panicked. This is a bug in Deno. Please report this");
+      eprintln!("Ende has panicked. This is a bug in Ende. Please report this");
       eprintln!("at https://github.com/theende/ende/issues/new.");
       eprintln!();
       eprintln!("Platform: {} {}", env::consts::OS, env::consts::ARCH);
@@ -2037,10 +2037,10 @@ async fn run_desktop(
     result = run_fut => {
       match result {
         Ok(exit_code) => {
-          log::debug!("[desktop] Deno runtime exited with code {}", exit_code);
+          log::debug!("[desktop] Ende runtime exited with code {}", exit_code);
         }
         Err(err) => {
-          log::error!("[desktop] Deno runtime error: {:?}", err);
+          log::error!("[desktop] Ende runtime error: {:?}", err);
           navigate_handle.abort();
           return Err(err);
         }

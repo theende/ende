@@ -1,1 +1,1 @@
-[WILDCARD]jsr:@denotest/add[WILDCARD]npm:@denotest/esm-basic[WILDCARD]npm:@denotest/esm-import-cjs-default[WILDCARD]
+[WILDCARD]jsr:@endetest/add[WILDCARD]npm:@denotest/esm-basic[WILDCARD]npm:@denotest/esm-import-cjs-default[WILDCARD]

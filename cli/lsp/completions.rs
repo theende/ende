@@ -37,6 +37,7 @@ use super::documents::DocumentModule;
 use super::documents::DocumentModules;
 use super::documents::ServerDocumentKind;
 use super::jsr::CliJsrSearchApi;
+use super::legacy_client;
 use super::lsp_custom;
 use super::npm::CliNpmSearchApi;
 use super::registries::ModuleRegistry;
@@ -588,7 +589,7 @@ async fn get_jsr_completions(
           );
           let command = Some(lsp::Command {
             title: "".to_string(),
-            command: "deno.cache".to_string(),
+            command: legacy_client::command_id("cache"),
             arguments: Some(vec![
               json!([&specifier]),
               json!(referrer),
@@ -638,7 +639,7 @@ async fn get_jsr_completions(
         let specifier = format!("jsr:{}@{}", package_name, version);
         let command = Some(lsp::Command {
           title: "".to_string(),
-          command: "deno.cache".to_string(),
+          command: legacy_client::command_id("cache"),
           arguments: Some(vec![
             json!([&specifier]),
             json!(referrer),
@@ -678,7 +679,7 @@ async fn get_jsr_completions(
       let specifier = format!("jsr:{}", name);
       let command = Some(lsp::Command {
         title: "".to_string(),
-        command: "deno.cache".to_string(),
+        command: legacy_client::command_id("cache"),
         arguments: Some(vec![
           json!([&specifier]),
           json!(referrer),
@@ -749,7 +750,7 @@ async fn get_npm_completions(
         );
         let command = Some(lsp::Command {
           title: "".to_string(),
-          command: "deno.cache".to_string(),
+          command: legacy_client::command_id("cache"),
           arguments: Some(vec![
             json!([&specifier]),
             json!(referrer),
@@ -797,7 +798,7 @@ async fn get_npm_completions(
         let specifier = format!("npm:{}@{}", package_name, version);
         let command = Some(lsp::Command {
           title: "".to_string(),
-          command: "deno.cache".to_string(),
+          command: legacy_client::command_id("cache"),
           arguments: Some(vec![
             json!([&specifier]),
             json!(referrer),
@@ -837,7 +838,7 @@ async fn get_npm_completions(
       let specifier = format!("npm:{}", name);
       let command = Some(lsp::Command {
         title: "".to_string(),
-        command: "deno.cache".to_string(),
+        command: legacy_client::command_id("cache"),
         arguments: Some(vec![
           json!([&specifier]),
           json!(referrer),
@@ -1366,7 +1367,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["jsr:@std/assert"]),
                 json!(&referrer),
@@ -1389,7 +1390,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["jsr:@std/async"]),
                 json!(&referrer),
@@ -1449,7 +1450,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["jsr:@std/assert@0.5.0"]),
                 json!(&referrer),
@@ -1472,7 +1473,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["jsr:@std/assert@0.4.0"]),
                 json!(&referrer),
@@ -1495,7 +1496,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["jsr:@std/assert@0.3.0"]),
                 json!(&referrer),
@@ -1556,7 +1557,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["jsr:@std/path@0.1.0/common"]),
                 json!(&referrer),
@@ -1579,7 +1580,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["jsr:@std/path@0.1.0/constants"]),
                 json!(&referrer),
@@ -1639,7 +1640,7 @@ mod tests {
           })),
           command: Some(lsp::Command {
             title: "".to_string(),
-            command: "deno.cache".to_string(),
+            command: "ende.cache".to_string(),
             arguments: Some(vec![
               json!(["@std/path/common"]),
               json!(&referrer),
@@ -1693,7 +1694,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["npm:puppeteer"]),
                 json!(&referrer),
@@ -1716,7 +1717,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["npm:puppeteer-core"]),
                 json!(&referrer),
@@ -1739,7 +1740,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["npm:puppeteer-extra-plugin"]),
                 json!(&referrer),
@@ -1762,7 +1763,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["npm:puppeteer-extra-plugin-stealth"]),
                 json!(&referrer),
@@ -1817,7 +1818,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["npm:puppeteer@21.0.2"]),
                 json!(&referrer),
@@ -1840,7 +1841,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["npm:puppeteer@21.0.1"]),
                 json!(&referrer),
@@ -1863,7 +1864,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["npm:puppeteer@21.0.0"]),
                 json!(&referrer),
@@ -1886,7 +1887,7 @@ mod tests {
             })),
             command: Some(lsp::Command {
               title: "".to_string(),
-              command: "deno.cache".to_string(),
+              command: "ende.cache".to_string(),
               arguments: Some(vec![
                 json!(["npm:puppeteer@20.9.0"]),
                 json!(&referrer),
@@ -1944,7 +1945,7 @@ mod tests {
           })),
           command: Some(lsp::Command {
             title: "".to_string(),
-            command: "deno.cache".to_string(),
+            command: "ende.cache".to_string(),
             arguments: Some(vec![
               json!(["npm:@denotest/routes@1/constants"]),
               json!(&referrer),

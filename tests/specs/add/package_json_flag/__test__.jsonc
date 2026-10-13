@@ -6,7 +6,7 @@
       // all packages (including jsr) into package.json
       "steps": [
         {
-          "args": "add --package-json npm:@denotest/esm-basic jsr:@denotest/add",
+          "args": "add --package-json npm:@denotest/esm-basic jsr:@endetest/add",
           "output": "add.out"
         },
         {

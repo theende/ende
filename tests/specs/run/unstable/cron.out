@@ -3,5 +3,5 @@ Deno.cron();
      ^
     at [WILDCARD]cron.ts:1:6
 
-    info: Deno.cron() is an unstable API.
+    info: Ende.cron() is an unstable API.
     hint: Run again with `--unstable-cron` flag to enable this API.

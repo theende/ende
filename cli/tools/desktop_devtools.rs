@@ -211,8 +211,8 @@ impl TargetKind {
 
   fn title(self) -> &'static str {
     match self {
-      TargetKind::Unified => "Deno Desktop (unified)",
-      TargetKind::Deno => "Deno Runtime",
+      TargetKind::Unified => "Ende Desktop (unified)",
+      TargetKind::Deno => "Ende Runtime",
       TargetKind::Cef => "CEF Renderer",
     }
   }
@@ -471,7 +471,7 @@ fn json_version(
     .map(String::from)
     .unwrap_or_else(|| state.listen.to_string());
   let body = json!({
-    "Browser": format!("deno-desktop/{}", env!("CARGO_PKG_VERSION")),
+    "Browser": format!("ende-desktop/{}", env!("CARGO_PKG_VERSION")),
     "Protocol-Version": "1.3",
     "V8-Version": ende_core::v8::VERSION_STRING,
     // Advertise one of the two upstream WS URLs as the "browser" URL.
@@ -505,7 +505,7 @@ fn json_list(
     "id": state.unified_id.to_string(),
     "type": "page",
     "title": TargetKind::Unified.title(),
-    "description": "Unified DevTools (CEF page + Deno runtime)",
+    "description": "Unified DevTools (CEF page + Ende runtime)",
     "url": "deno-desktop://unified",
     "faviconUrl": "https://deno.land/favicon.ico",
     "devtoolsFrontendUrl": format!(
@@ -521,7 +521,7 @@ fn json_list(
     "id": state.deno_id.to_string(),
     "type": "node",
     "title": TargetKind::Deno.title(),
-    "description": "Deno runtime V8 isolate (direct)",
+    "description": "Ende runtime V8 isolate (direct)",
     "url": format!("deno://{}", state.config.deno_internal),
     "faviconUrl": "https://deno.land/favicon.ico",
     "devtoolsFrontendUrl": format!(
@@ -628,7 +628,7 @@ fn handle_upgrade(
           }
           Err(err) => {
             log::error!(
-              "[devtools-mux] failed to connect upstream for Deno: {err:?}"
+              "[devtools-mux] failed to connect upstream for Ende: {err:?}"
             );
           }
         }
@@ -1163,7 +1163,7 @@ async fn run_unified_session(
           OwnedFrame::text(rewrite_text_from_upstream(
             &payload,
             Some(&session_id),
-            "Deno",
+            "Ende",
           ))
         } else {
           OwnedFrame { opcode, payload }
@@ -1352,7 +1352,7 @@ fn attached_to_target_event(session_id: &str) -> Value {
       "targetInfo": {
         "targetId": DENO_CHILD_TARGET_ID,
         "type": "worker",
-        "title": "Deno Runtime",
+        "title": "Ende Runtime",
         "url": "deno://runtime",
         "attached": true,
         "canAccessOpener": false,
@@ -1631,7 +1631,7 @@ mod tests {
   fn rewrite_injects_session_id() {
     let input = json!({"id": 1, "result": {}});
     let payload = serde_json::to_vec(&input).unwrap();
-    let out = rewrite_text_from_upstream(&payload, Some("my-sess"), "Deno");
+    let out = rewrite_text_from_upstream(&payload, Some("my-sess"), "Ende");
     let value: Value = serde_json::from_slice(&out).unwrap();
     assert_eq!(value["sessionId"], "my-sess");
   }
@@ -1708,7 +1708,7 @@ mod tests {
 
     // Unified target.
     assert_eq!(list[0]["type"], "page");
-    assert_eq!(list[0]["title"], "Deno Desktop (unified)");
+    assert_eq!(list[0]["title"], "Ende Desktop (unified)");
     assert!(
       list[0]["webSocketDebuggerUrl"]
         .as_str()
@@ -1718,7 +1718,7 @@ mod tests {
 
     // Deno direct target.
     assert_eq!(list[1]["type"], "node");
-    assert_eq!(list[1]["title"], "Deno Runtime");
+    assert_eq!(list[1]["title"], "Ende Runtime");
     assert!(
       list[1]["webSocketDebuggerUrl"]
         .as_str()
@@ -1802,7 +1802,7 @@ mod tests {
       value["Browser"]
         .as_str()
         .unwrap()
-        .starts_with("deno-desktop/")
+        .starts_with("ende-desktop/")
     );
     assert!(value["V8-Version"].is_string());
     // The browser-level webSocketDebuggerUrl must point at the CEF
@@ -2350,7 +2350,7 @@ mod tests {
       .unwrap();
     let from_deno = read_text_value(&mut client).await;
     assert_eq!(from_deno["method"], "Runtime.executionContextCreated");
-    assert_eq!(from_deno["params"]["context"]["name"], "Deno");
+    assert_eq!(from_deno["params"]["context"]["name"], "Ende");
     assert_eq!(from_deno["sessionId"], session_id);
 
     drop(client);

@@ -2,7 +2,7 @@
   "tempDir": true,
   "steps": [{
     "if": "unix",
-    "args": "install -g --root ./bins jsr:@denotest/echo-lockfile-bad-tarball",
+    "args": "install -g --root ./bins jsr:@endetest/echo-lockfile-bad-tarball",
     "output": "install.out"
   }, {
     // Verify the lockfile does NOT contain the evil tarball URL
@@ -14,7 +14,7 @@
     "output": "no_lockfile.out"
   }, {
     "if": "windows",
-    "args": "install -g --root ./bins jsr:@denotest/echo-lockfile-bad-tarball",
+    "args": "install -g --root ./bins jsr:@endetest/echo-lockfile-bad-tarball",
     "output": "install.out"
   }, {
     "if": "windows",

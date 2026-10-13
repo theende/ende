@@ -1,3 +1,3 @@
-error: ⚠️  `deno vendor` was removed in Deno 2.
+error: ⚠️  `ende vendor` was removed in 2.0.
 
-See the Deno 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations
+See the 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations

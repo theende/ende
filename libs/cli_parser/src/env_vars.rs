@@ -46,8 +46,8 @@ pub static ENV_VARS: &[EnvVar] = &[
   },
   EnvVar {
     name: "ENDE_INSTALL_ROOT",
-    description: "Set deno install's output directory",
-    example: Some("(defaults to $HOME/.deno/bin)"),
+    description: "Set ende install's output directory",
+    example: Some("(defaults to $HOME/.ende/bin)"),
   },
   EnvVar {
     name: "ENDE_JOBS",
@@ -56,22 +56,22 @@ pub static ENV_VARS: &[EnvVar] = &[
   },
   EnvVar {
     name: "ENDE_KV_DB_MODE",
-    description: "Controls whether Deno.openKv() API should use disk based or in-memory\ndatabase.",
+    description: "Controls whether Ende.openKv() API should use disk based or in-memory\ndatabase.",
     example: None,
   },
   EnvVar {
     name: "ENDE_KV_DEFAULT_PATH",
-    description: "Set the default path for Deno.openKv() when no path is provided.",
+    description: "Set the default path for Ende.openKv() when no path is provided.",
     example: None,
   },
   EnvVar {
     name: "ENDE_KV_PATH_PREFIX",
-    description: "Set a prefix to be added to all Deno.openKv() paths.",
+    description: "Set a prefix to be added to all Ende.openKv() paths.",
     example: None,
   },
   EnvVar {
     name: "ENDE_KV_REQUIRES_DISTRIBUTED_DATABASE",
-    description: "Require Deno.openKv() to resolve to a distributed (remote) database.\nWhen set to \"error\", Deno.openKv() is always exposed and rejects with a\nclear message unless the resolved path is remote. When set to \"warn\", a\nlocal/in-memory fallback is allowed but logs a warning. Used by Deno\nDeploy to surface a clear error when no KV database is attached.",
+    description: "Require Ende.openKv() to resolve to a distributed (remote) database.\nWhen set to \"error\", Ende.openKv() is always exposed and rejects with a\nclear message unless the resolved path is remote. When set to \"warn\", a\nlocal/in-memory fallback is allowed but logs a warning. Used by\nDeno Deploy to surface a clear error when no KV database is attached.",
     example: None,
   },
   EnvVar {
@@ -91,7 +91,7 @@ pub static ENV_VARS: &[EnvVar] = &[
   },
   EnvVar {
     name: "ENDE_NO_UPDATE_CHECK",
-    description: "Set to disable checking if a newer Deno version is available",
+    description: "Set to disable checking if a newer Ende version is available",
     example: None,
   },
   EnvVar {
@@ -101,19 +101,19 @@ pub static ENV_VARS: &[EnvVar] = &[
   },
   EnvVar {
     name: "ENDE_SERVE_ADDRESS",
-    description: "Override address for Deno.serve",
+    description: "Override address for Ende.serve",
     example: Some(
-      r#"("tcp:0.0.0.0:8080", "unix:/tmp/deno.sock", or "vsock:1234:5678")"#,
+      r#"("tcp:0.0.0.0:8080", "unix:/tmp/ende.sock", or "vsock:1234:5678")"#,
     ),
   },
   EnvVar {
     name: "ENDE_SERVE_AUTOMATIC_COMPRESSION",
-    description: "Set to 1 or true to enable automatic response body compression in Deno.serve by default.",
+    description: "Set to 1 or true to enable automatic response body compression in Ende.serve by default.",
     example: None,
   },
   EnvVar {
     name: "ENDE_AUTO_SERVE",
-    description: "If the entrypoint contains export default { fetch }, `deno run`\nbehaves like `deno serve`.",
+    description: "If the entrypoint contains export default { fetch }, `ende run`\nbehaves like `ende serve`.",
     example: None,
   },
   EnvVar {
@@ -133,7 +133,7 @@ pub static ENV_VARS: &[EnvVar] = &[
   },
   EnvVar {
     name: "ENDE_TSC_BIN",
-    description: "Path to a prebuilt native TypeScript compiler (tsc/tsgo) for `deno check` to use instead of downloading the pinned one.",
+    description: "Path to a prebuilt native TypeScript compiler (tsc/tsgo) for `ende check` to use instead of downloading the pinned one.",
     example: None,
   },
   EnvVar {

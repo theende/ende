@@ -5,7 +5,7 @@
     "basic": {
       "steps": [
         {
-          "args": "add --unscoped jsr:@denotest/add npm:@denotest/esm-basic",
+          "args": "add --unscoped jsr:@endetest/add npm:@denotest/esm-basic",
           "output": "[WILDCARD]"
         },
         {
@@ -20,7 +20,7 @@
     "install_subcommand": {
       "steps": [
         {
-          "args": "install --unscoped jsr:@denotest/add",
+          "args": "install --unscoped jsr:@endetest/add",
           "output": "[WILDCARD]"
         },
         {
@@ -36,7 +36,7 @@
     "explicit_alias_wins": {
       "steps": [
         {
-          "args": "add --unscoped my-alias@jsr:@denotest/add",
+          "args": "add --unscoped my-alias@jsr:@endetest/add",
           "output": "[WILDCARD]"
         },
         {
@@ -52,7 +52,7 @@
     "collision": {
       "steps": [
         {
-          "args": "add --unscoped jsr:@denotest/add npm:@denotest/add",
+          "args": "add --unscoped jsr:@endetest/add npm:@denotest/add",
           "output": "collision.out",
           "exitCode": 1
         }

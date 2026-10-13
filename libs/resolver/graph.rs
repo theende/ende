@@ -791,17 +791,17 @@ pub fn enhanced_resolution_error_message(
         )
       } else if specifier.starts_with("@std/") {
         format!(
-          "If you want to use the JSR package, try running `deno add jsr:{}`",
+          "If you want to use the JSR package, try running `ende add jsr:{}`",
           specifier
         )
       } else if specifier.starts_with('@') {
         format!(
-          "If you want to use a JSR or npm package, try running `deno add jsr:{0}` or `deno add npm:{0}`",
+          "If you want to use a JSR or npm package, try running `ende add jsr:{0}` or `ende add npm:{0}`",
           specifier
         )
       } else {
         format!(
-          "If you want to use the npm package, try running `deno add npm:{0}`",
+          "If you want to use the npm package, try running `ende add npm:{0}`",
           specifier
         )
       }
@@ -870,7 +870,7 @@ pub fn enhanced_integrity_error_message(err: &ModuleError) -> Option<String> {
         "  Expected: {}\n\n",
         "If you modified your global cache, run again with the --reload flag to restore ",
         "its state. If you want to modify dependencies locally run again with the ",
-        "--vendor flag or specify `\"vendor\": true` in a deno.json then modify the contents ",
+        "--vendor flag or specify `\"vendor\": true` in an ende.json then modify the contents ",
         "of the vendor/ folder."
       ),
       specifier, checksum_err.actual, checksum_err.expected,

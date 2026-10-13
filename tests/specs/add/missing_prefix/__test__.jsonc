@@ -14,8 +14,8 @@
     "jsr_needs_prefix": {
       "steps": [
         {
-          "args": "add @denotest/echo",
-          "output": "error: npm:@denotest/echo was not found, but a matching jsr package exists. Did you mean `deno add jsr:@denotest/echo`?\n",
+          "args": "add @endetest/echo",
+          "output": "error: npm:@endetest/echo was not found, but a matching jsr package exists. Did you mean `ende add jsr:@endetest/echo`?\n",
           "exitCode": 1
         }
       ]
@@ -24,8 +24,8 @@
     "jsr_flag_override": {
       "steps": [
         {
-          "args": "add --jsr @denotest/add",
-          "output": "Add jsr:@denotest/add@1.0.0\n[WILDCARD]\n"
+          "args": "add --jsr @endetest/add",
+          "output": "Add jsr:@endetest/add@1.0.0\n[WILDCARD]\n"
         }
       ]
     }

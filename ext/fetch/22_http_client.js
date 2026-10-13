@@ -90,7 +90,7 @@ function createHttpClient(options) {
       proxy.transport = "http";
     }
   }
-  const keyPair = loadTlsKeyPair("Deno.createHttpClient", options);
+  const keyPair = loadTlsKeyPair("Ende.createHttpClient", options);
   return new HttpClient(
     op_fetch_custom_client(
       options,

@@ -1,2 +1,2 @@
-export { add } from "@denotest/add";
-import "@denotest/add"; // ensure it only warns once
+export { add } from "@endetest/add";
+import "@endetest/add"; // ensure it only warns once

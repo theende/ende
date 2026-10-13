@@ -201,7 +201,7 @@ declare var URLSearchParams: {
   /**
    * Creates a new URLSearchParams object for parsing query strings.
    *
-   * URLSearchParams is Deno's built-in query string parser, providing a standard
+   * URLSearchParams is Ende's built-in query string parser, providing a standard
    * way to parse, manipulate, and stringify URL query parameters. Instead of manually
    * parsing query strings with regex or string operations, use this API for robust
    * handling of URL query parameters.
@@ -246,10 +246,10 @@ declare var URLSearchParams: {
 };
 
 /** The URL interface represents an object providing static methods used for
- * creating, parsing, and manipulating URLs in Deno.
+ * creating, parsing, and manipulating URLs in Ende.
  *
  * Use the URL API for safely parsing, constructing, normalizing, and encoding URLs.
- * This is the preferred way to work with URLs in Deno rather than manual string
+ * This is the preferred way to work with URLs in Ende rather than manual string
  * manipulation which can lead to errors and security issues.
  *
  * @see https://developer.mozilla.org/docs/Web/API/URL
@@ -434,10 +434,10 @@ interface URL {
    * @example
    * ```ts
    * // Parse and access query parameters from a URL
-   * const myURL = new URL('https://example.org/search?term=deno&page=2&sort=desc');
+   * const myURL = new URL('https://example.org/search?term=ende&page=2&sort=desc');
    * const params = myURL.searchParams;
    *
-   * console.log(params.get('term'));  // Logs "deno"
+   * console.log(params.get('term'));  // Logs "ende"
    * console.log(params.get('page'));  // Logs "2"
    *
    * // Check if a parameter exists
@@ -591,7 +591,7 @@ declare var URL: {
    * const url = URL.createObjectURL(blob);
    * console.log(url);  // Logs something like "blob:null/1234-5678-9101-1121"
    *
-   * // Dynamic web worker creation in Deno
+   * // Dynamic web worker creation in Ende
    * const workerCode = `
    *   self.onmessage = (e) => {
    *     self.postMessage(e.data.toUpperCase());
@@ -602,7 +602,7 @@ declare var URL: {
    * const worker = new Worker(workerUrl, { type: "module" });
    *
    * worker.onmessage = (e) => console.log(e.data);
-   * worker.postMessage("hello from deno");
+   * worker.postMessage("hello from ende");
    *
    * // Always revoke when done to prevent memory leaks
    * URL.revokeObjectURL(workerUrl);
@@ -621,7 +621,7 @@ declare var URL: {
    * - The browser/runtime is allowed to release the memory or resources associated with it
    * - Workers created via the URL will continue to run, but the URL becomes invalid for new creations
    *
-   * For security and performance in Deno applications, always revoke object URLs as soon as
+   * For security and performance in Ende applications, always revoke object URLs as soon as
    * they're no longer needed, especially when processing large files or generating many URLs.
    *
    * @see https://developer.mozilla.org/docs/Web/API/URL/revokeObjectURL_static

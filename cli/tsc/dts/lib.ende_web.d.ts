@@ -1510,9 +1510,9 @@ declare function structuredClone<T = any>(
  *
  * @example
  * ```ts
- * await Deno.stdin.readable
+ * await Ende.stdin.readable
  *   .pipeThrough(new CompressionStream("gzip"))
- *   .pipeTo(Deno.stdout.writable);
+ *   .pipeTo(Ende.stdout.writable);
  * ```
  *
  * @category Streams
@@ -1530,9 +1530,9 @@ type CompressionFormat = "deflate" | "deflate-raw" | "gzip" | "brotli";
  *
  * @example
  * ```ts
- * await Deno.stdin.readable
+ * await Ende.stdin.readable
  *   .pipeThrough(new CompressionStream("gzip"))
- *   .pipeTo(Deno.stdout.writable);
+ *   .pipeTo(Ende.stdout.writable);
  * ```
  *
  * @category Streams
@@ -1554,8 +1554,8 @@ declare var CompressionStream: {
  *
  * @example
  * ```ts
- * const input = await Deno.open("./file.txt.gz");
- * const output = await Deno.create("./file.txt");
+ * const input = await Ende.open("./file.txt.gz");
+ * const output = await Ende.create("./file.txt");
  *
  * await input.readable
  *   .pipeThrough(new DecompressionStream("gzip"))
@@ -1574,8 +1574,8 @@ interface DecompressionStream extends GenericTransformStream {
  *
  * @example
  * ```ts
- * const input = await Deno.open("./file.txt.gz");
- * const output = await Deno.create("./file.txt");
+ * const input = await Ende.open("./file.txt.gz");
+ * const output = await Ende.create("./file.txt");
  *
  * await input.readable
  *   .pipeThrough(new DecompressionStream("gzip"))
@@ -1609,7 +1609,7 @@ declare var DecompressionStream: {
  * });
  * reportError(new Error("foo")); // Will not be reported.
  * ```
- * In Deno, this error will terminate the process if not intercepted like above.
+ * In Ende, this error will terminate the process if not intercepted like above.
  *
  * @category Platform
  */

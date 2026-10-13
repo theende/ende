@@ -12,7 +12,7 @@
     "jsr_package": {
       "steps": [
         {
-          "args": "add jsr:@denotest/unstable",
+          "args": "add jsr:@endetest/unstable",
           "output": "add_jsr.out"
         },
         {

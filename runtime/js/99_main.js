@@ -812,7 +812,7 @@ const finalDenoNs = ObjectDefineProperties(
     lint: {
       runPlugin: () => {
         throw new Error(
-          "`Deno.lint.runPlugin` is only available in `deno test` subcommand.",
+          "`Ende.lint.runPlugin` is only available in `ende test` subcommand.",
         );
       },
     },
@@ -1026,7 +1026,7 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
             // Only error if main worker
             import.meta.log(
               "error",
-              `%cerror: %cdeno serve requires %cexport default { fetch }%c in the main module, did you mean to run \"deno run\"?`,
+              `%cerror: %cende serve requires %cexport default { fetch }%c in the main module, did you mean to run \"ende run\"?`,
               "color: yellow;",
               "color: inherit;",
               "font-weight: bold;",
@@ -1040,7 +1040,7 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
           if (mode === executionModes.run && !autoServe) {
             import.meta.log(
               "error",
-              `%cwarning: %cDetected %cexport default { fetch }%c, did you mean to run \"deno serve\"?`,
+              `%cwarning: %cDetected %cexport default { fetch }%c, did you mean to run \"ende serve\"?`,
               "color: yellow;",
               "color: inherit;",
               "font-weight: bold;",

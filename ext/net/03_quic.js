@@ -145,7 +145,7 @@ class QuicEndpoint {
   }
 
   listen(options) {
-    const keyPair = loadTlsKeyPair("Deno.QuicEndpoint.listen", {
+    const keyPair = loadTlsKeyPair("Ende.QuicEndpoint.listen", {
       cert: options.cert,
       key: options.key,
     });
@@ -568,7 +568,7 @@ function connectQuic(options) {
     new QuicEndpoint({
       [kRid]: op_quic_endpoint_create({ hostname: "::", port: 0 }, 0, false),
     });
-  const keyPair = loadTlsKeyPair("Deno.connectQuic", {
+  const keyPair = loadTlsKeyPair("Ende.connectQuic", {
     cert: options.cert,
     key: options.key,
   });

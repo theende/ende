@@ -13,7 +13,7 @@
       "steps": [
         {
           "args": "transpile main.ts -o out.js",
-          "output": "[WILDCARD]deno transpile is experimental and subject to changes\nEmit [WILDCARD]out.js\n"
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nEmit [WILDCARD]out.js\n"
         },
         {
           "args": "run out.js",
@@ -63,7 +63,7 @@
     },
     "error_output_multiple_files": {
       "args": "transpile main.ts helpers.ts -o out.js",
-      "output": "[WILDCARD]deno transpile is experimental and subject to changes\nerror: Cannot use --output with multiple input files. Use --outdir instead.\n",
+      "output": "[WILDCARD]ende transpile is experimental and subject to changes\nerror: Cannot use --output with multiple input files. Use --outdir instead.\n",
       "exitCode": 1
     },
     "error_output_and_outdir": {
@@ -118,7 +118,7 @@
       "steps": [
         {
           "args": "transpile helper.mts --outdir dist",
-          "output": "[WILDCARD]deno transpile is experimental and subject to changes\nEmit [WILDCARD]dist[WILDCARD]helper.mjs\n"
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nEmit [WILDCARD]dist[WILDCARD]helper.mjs\n"
         },
         {
           "args": "run dist/helper.mjs",
@@ -130,7 +130,7 @@
       "steps": [
         {
           "args": "transpile helper.cts --outdir dist",
-          "output": "[WILDCARD]deno transpile is experimental and subject to changes\nEmit [WILDCARD]dist[WILDCARD]helper.cjs\n"
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nEmit [WILDCARD]dist[WILDCARD]helper.cjs\n"
         },
         {
           "args": "run --allow-read check_cts_outdir.ts",
@@ -142,7 +142,7 @@
       "steps": [
         {
           "args": "transpile helper.cts -o out.cjs --source-map separate",
-          "output": "[WILDCARD]deno transpile is experimental and subject to changes\nEmit [WILDCARD]out.cjs\nEmit [WILDCARD]out.cjs.map\n"
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nEmit [WILDCARD]out.cjs\nEmit [WILDCARD]out.cjs.map\n"
         },
         {
           "args": "run --allow-read check_cts_map.ts",
@@ -154,7 +154,7 @@
       "steps": [
         {
           "args": "transpile helper.mts -o out.mjs --source-map separate",
-          "output": "[WILDCARD]deno transpile is experimental and subject to changes\nEmit [WILDCARD]out.mjs\nEmit [WILDCARD]out.mjs.map\n"
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nEmit [WILDCARD]out.mjs\nEmit [WILDCARD]out.mjs.map\n"
         },
         {
           "args": "run --allow-read check_mts_map.ts",

@@ -580,7 +580,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
         }
       };
       Err(JsErrorBox::generic(format!(
-        "The lockfile is out of date. Run `deno install --frozen=false`, or rerun with `--frozen=false` to update it.\nchanges:\n{truncated_diff}"
+        "The lockfile is out of date. Run `ende install --frozen=false`, or rerun with `--frozen=false` to update it.\nchanges:\n{truncated_diff}"
       )))
     } else {
       Ok(())

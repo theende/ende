@@ -1,2 +1,2 @@
-import { add } from "@denotest/add";
+import { add } from "@endetest/add";
 console.log(add(1, 2));

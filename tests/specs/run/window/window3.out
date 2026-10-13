@@ -3,5 +3,5 @@ window.navigator;
 ^
     at [WILDCARD]window3.js:1:1
 
-    info: window global is not available in Deno 2.
+    info: window global is not available in Ende.
     hint: Replace `window` with `globalThis`.

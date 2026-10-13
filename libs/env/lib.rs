@@ -1,8 +1,10 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-//! Reads `ENDE_*` environment variables. When `ENDE_X` is not set, the
-//! deprecated `DENO_X` is read instead and a deprecation warning is printed
-//! to stderr (once per variable per process).
+//! Reads Ende environment variables (`ENDE_*`, and names with an `ENDE`
+//! segment such as `OTEL_ENDE_*`). When the variable is not set, the
+//! deprecated name with `DENO` in place of `ENDE` (`DENO_X`, `OTEL_DENO_X`) is
+//! read instead and a deprecation warning is printed to stderr (once per
+//! variable per process).
 
 use std::collections::BTreeSet;
 use std::env::VarError;
@@ -12,11 +14,8 @@ use std::sync::Mutex;
 
 use sys_traits::EnvVar;
 
-const PREFIX: &str = "ENDE_";
-const DEPRECATED_PREFIX: &str = "DENO_";
-
-/// Reads `name` (an `ENDE_*` name) from `sys`, falling back to the
-/// deprecated `DENO_*` name.
+/// Reads `name` (an Ende name, see the module docs) from `sys`, falling back
+/// to the deprecated `DENO` name.
 pub fn env_var_os(sys: &impl EnvVar, name: &str) -> Option<OsString> {
   read(name, |key| sys.env_var_os(key))
 }
@@ -34,8 +33,8 @@ pub fn env_var_path(sys: &impl EnvVar, name: &str) -> Option<PathBuf> {
     .map(PathBuf::from)
 }
 
-/// Reads `name` (an `ENDE_*` name) from the process environment, falling
-/// back to the deprecated `DENO_*` name.
+/// Reads `name` (an Ende name, see the module docs) from the process
+/// environment, falling back to the deprecated `DENO` name.
 pub fn var_os(name: &str) -> Option<OsString> {
   read(name, |key| std::env::var_os(key))
 }
@@ -49,14 +48,13 @@ fn read(
   name: &str,
   get: impl Fn(&str) -> Option<OsString>,
 ) -> Option<OsString> {
-  let Some(suffix) = name.strip_prefix(PREFIX) else {
-    debug_assert!(false, "expected an {PREFIX}* name, got {name}");
+  let Some(deprecated_name) = deprecated_name(name) else {
+    debug_assert!(false, "expected a name with an ENDE segment, got {name}");
     return get(name);
   };
   if let Some(value) = get(name) {
     return Some(value);
   }
-  let deprecated_name = format!("{DEPRECATED_PREFIX}{suffix}");
   let value = get(&deprecated_name)?;
   if first_use_of_deprecated_name(&deprecated_name) {
     #[allow(
@@ -64,10 +62,21 @@ fn read(
       reason = "env vars can be read before any logger is initialized"
     )]
     {
-      eprintln!("Warning: {deprecated_name} is deprecated. Use {name} instead.");
+      eprintln!(
+        "Warning: {deprecated_name} is deprecated. Use {name} instead."
+      );
     }
   }
   Some(value)
+}
+
+/// The deprecated name for `name`: its first `ENDE` segment (between `_`s)
+/// replaced with `DENO`, e.g. `OTEL_ENDE_CONSOLE` -> `OTEL_DENO_CONSOLE`.
+fn deprecated_name(name: &str) -> Option<String> {
+  let mut segments = name.split('_').collect::<Vec<_>>();
+  let index = segments.iter().position(|segment| *segment == "ENDE")?;
+  segments[index] = "DENO";
+  Some(segments.join("_"))
 }
 
 /// Returns `true` only the first time it's called for `deprecated_name`.
@@ -124,6 +133,47 @@ mod test {
     let sys = InMemorySys::default();
     sys.env_set_var("ENDE_TEST_EMPTY_PATH", "");
     assert_eq!(env_var_path(&sys, "ENDE_TEST_EMPTY_PATH"), None);
+  }
+
+  #[test]
+  fn falls_back_for_names_with_an_ende_segment() {
+    let sys = InMemorySys::default();
+    sys.env_set_var("OTEL_DENO", "true");
+    sys.env_set_var("OTEL_DENO_TEST_ONLY_CONSOLE", "capture");
+    sys.env_set_var("X_DENO_TEST_ONLY_TOKEN", "token");
+    sys.env_set_var("NO_DENO_TEST_ONLY_HACK", "1");
+    assert_eq!(env_var(&sys, "OTEL_ENDE").unwrap(), "true");
+    assert_eq!(
+      env_var(&sys, "OTEL_ENDE_TEST_ONLY_CONSOLE").unwrap(),
+      "capture"
+    );
+    assert_eq!(env_var(&sys, "X_ENDE_TEST_ONLY_TOKEN").unwrap(), "token");
+    assert_eq!(env_var(&sys, "NO_ENDE_TEST_ONLY_HACK").unwrap(), "1");
+  }
+
+  #[test]
+  fn ende_segment_name_wins_over_deno_segment_name() {
+    let sys = InMemorySys::default();
+    sys.env_set_var("OTEL_ENDE_TEST_BOTH", "new");
+    sys.env_set_var("OTEL_DENO_TEST_BOTH", "old");
+    assert_eq!(env_var(&sys, "OTEL_ENDE_TEST_BOTH").unwrap(), "new");
+  }
+
+  #[test]
+  fn deprecated_names() {
+    assert_eq!(deprecated_name("ENDE_DIR").as_deref(), Some("DENO_DIR"));
+    assert_eq!(deprecated_name("OTEL_ENDE").as_deref(), Some("OTEL_DENO"));
+    assert_eq!(
+      deprecated_name("OTEL_ENDE_VSOCK").as_deref(),
+      Some("OTEL_DENO_VSOCK")
+    );
+    assert_eq!(
+      deprecated_name("X_ENDE_FETCH_TOKEN").as_deref(),
+      Some("X_DENO_FETCH_TOKEN")
+    );
+    // Only a whole `ENDE` segment is replaced.
+    assert_eq!(deprecated_name("OTEL_EXPORTER_ENDPOINT"), None);
+    assert_eq!(deprecated_name("LEGENDE_X"), None);
   }
 
   #[test]

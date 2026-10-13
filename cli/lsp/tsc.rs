@@ -476,7 +476,7 @@ impl TsJsServer {
           Arc::new(
             InspectorServer::new(
               addr,
-              "deno-lsp-tsc",
+              "ende-lsp-tsc",
               InspectPublishUid::default(),
             )
             .unwrap(),

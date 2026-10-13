@@ -2,7 +2,7 @@ Check [WILDCARD]/bench/group_baseline.ts
 Check [WILDCARD]/bench/pass.ts
 Check [WILDCARD]/bench/multiple_group.ts
     CPU | [WILDCARD]
-Runtime | Deno [WILDCARD] ([WILDCARD])
+Runtime | Ende [WILDCARD] ([WILDCARD])
 
 [WILDCARD]/bench/group_baseline.ts
 

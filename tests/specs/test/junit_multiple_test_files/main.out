@@ -1,7 +1,7 @@
 Check [WILDCARD]pass.ts
 Check [WILDCARD]fail.ts
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="deno test" tests="26" failures="10" errors="0" time="[WILDCARD]">
+<testsuites name="ende test" tests="26" failures="10" errors="0" time="[WILDCARD]">
     <testsuite name="./pass.ts" tests="16" disabled="0" errors="0" failures="0">
         <testcase name="test 0" classname="./pass.ts" time="[WILDCARD]" line="1" col="6">
         </testcase>

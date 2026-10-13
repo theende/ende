@@ -277,8 +277,8 @@ fn run_js_file(
   #[cfg(not(unix))]
   {
     let mut child =
-      command.spawn().context("Failed to spawn deno subprocess")?;
-    let status = child.wait().context("Failed to wait for deno subprocess")?;
+      command.spawn().context("Failed to spawn ende subprocess")?;
+    let status = child.wait().context("Failed to wait for ende subprocess")?;
     Ok(status.code().unwrap_or(1))
   }
 }
@@ -502,7 +502,7 @@ fn write_shim(
         &out_path,
         r##"#!/bin/sh
 SCRIPT_DIR="$(dirname -- "$(readlink -f -- "$0")")"
-exec "$SCRIPT_DIR/deno" x "$@"
+exec "$SCRIPT_DIR/ende" x "$@"
 "##
           .as_bytes(),
       )?;
@@ -510,12 +510,12 @@ exec "$SCRIPT_DIR/deno" x "$@"
       permissions.set_mode(0o755);
       std::fs::set_permissions(&out_path, permissions)?;
     } else {
-      match std::os::unix::fs::symlink("./deno", &out_path) {
+      match std::os::unix::fs::symlink("./ende", &out_path) {
         Ok(_) => {}
         Err(e) => match e.kind() {
           std::io::ErrorKind::AlreadyExists => {
             std::fs::remove_file(&out_path)?;
-            std::os::unix::fs::symlink("./deno", &out_path)?;
+            std::os::unix::fs::symlink("./ende", &out_path)?;
           }
           _ => return Err(e.into()),
         },
@@ -529,7 +529,7 @@ exec "$SCRIPT_DIR/deno" x "$@"
     std::fs::write(
       out_path,
       r##"@echo off
-"%~dp0deno.exe" x %*
+"%~dp0ende.exe" x %*
 exit /b %ERRORLEVEL%
 "##,
     )?;
@@ -614,7 +614,7 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
     || Path::new(&effective_command).extension().is_some();
   if is_file_like && Path::new(&effective_command).is_file() {
     return Err(anyhow::anyhow!(
-      "Use 'deno run' to run a local file directly, 'deno x' is intended for running commands from packages."
+      "Use 'ende run' to run a local file directly, 'ende x' is intended for running commands from packages."
     ));
   }
 

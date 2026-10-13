@@ -164,7 +164,7 @@ declare interface Notification extends EventTarget {
 /** Web Notifications API.
  *
  * Construct a notification to display it. Only available in apps
- * compiled with `deno desktop`.
+ * compiled with `ende desktop`.
  *
  * Notification permission is checked against the OS (e.g. macOS User
  * Notifications). {@linkcode Notification.permission} reports the
@@ -242,7 +242,7 @@ declare interface Permissions {
 
 /** Read from and write plain text to the system clipboard. A subset of the
  * web [Clipboard API](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard);
- * only the text methods are backed by `deno desktop`. */
+ * only the text methods are backed by `ende desktop`. */
 declare interface Clipboard extends EventTarget {
   /** Resolve with the clipboard's text content, or an empty string when the
    * clipboard is empty or holds no text.
@@ -266,8 +266,8 @@ declare var Clipboard: {
   prototype: Clipboard;
 };
 
-/** Extends the {@linkcode Navigator} provided by `deno.window` with the
- * Permissions and Clipboard API surface available to `deno desktop` apps. */
+/** Extends the {@linkcode Navigator} provided by `ende.window` with the
+ * Permissions and Clipboard API surface available to `ende desktop` apps. */
 declare interface Navigator {
   readonly permissions: Permissions;
   readonly clipboard: Clipboard;
@@ -276,14 +276,14 @@ declare interface Navigator {
 declare namespace Ende {
   export {}; // stop default export type behavior
 
-  /** The application version read from `deno.json` at compile time, or
+  /** The application version read from `ende.json` at compile time, or
    * `null` if no version was configured. Only available in apps compiled
-   * with `deno desktop`. */
+   * with `ende desktop`. */
   export const desktopVersion: string | null;
 
   export interface AutoUpdateOptions {
     /** Base URL of the release server hosting `latest.json` and patch
-     * files. Defaults to `desktop.release.baseUrl` from `deno.json` when
+     * files. Defaults to `desktop.release.baseUrl` from `ende.json` when
      * configured; required otherwise.
      *
      * Must be an `https:` URL — non-HTTPS URLs are refused. */
@@ -319,7 +319,7 @@ declare namespace Ende {
    * library, so only the bytes that changed between versions are
    * downloaded. On each check, the manifest at `<url>/latest.json` is
    * fetched and its `version` compared against {@linkcode
-   * Deno.desktopVersion}:
+   * Ende.desktopVersion}:
    *
    * - If `publicKey` is set, the manifest signature is verified first and
    *   an unsigned or invalid manifest is rejected.
@@ -336,7 +336,7 @@ declare namespace Ende {
    * is invoked shortly after the next `autoUpdate` call.
    *
    * The release server URL may be passed directly, supplied via
-   * {@linkcode AutoUpdateOptions.url}, or configured once in `deno.json`
+   * {@linkcode AutoUpdateOptions.url}, or configured once in `ende.json`
    * under `desktop.release.baseUrl` (in which case it can be omitted).
    * A single check runs ~1s after the call; pass `interval` to keep
    * polling.
@@ -351,10 +351,10 @@ declare namespace Ende {
    * the failure is logged, and the update is skipped; distribute updates
    * through the system package manager instead.
    *
-   * Only available in apps compiled with `deno desktop`.
+   * Only available in apps compiled with `ende desktop`.
    *
    * ```ts
-   * Deno.autoUpdate({
+   * Ende.autoUpdate({
    *   url: "https://releases.example.com/myapp",
    *   interval: 60 * 60 * 1000, // hourly
    *   publicKey: "b64EncodedEd25519PublicKey==",
@@ -373,7 +373,7 @@ declare namespace Ende {
   export interface OpenDevtoolsOptions {
     /** Inspect the CEF renderer isolate. @default {true} */
     renderer?: boolean;
-    /** Inspect the Deno runtime isolate. @default {true} */
+    /** Inspect the Ende runtime isolate. @default {true} */
     deno?: boolean;
   }
 
@@ -458,7 +458,7 @@ declare namespace Ende {
    * This is a structural walk rather than a plain union because TypeScript
    * never gives an `interface` an implicit index signature: a union arm of
    * `{ [key: string]: unknown }` would reject every user-declared interface,
-   * including `Deno.FileInfo`. Recursing through properties instead accepts
+   * including `Ende.FileInfo`. Recursing through properties instead accepts
    * interfaces, and rejects the values that silently serialize to `{}` —
    * `Date`, `Map`, `Set`, class instances with methods, and functions.
    *
@@ -744,7 +744,7 @@ declare namespace Ende {
      * `null` to remove any menu previously set.
      *
      * macOS only. Click events are delivered as `"menuclick"` events on
-     * {@linkcode Deno.dock}. No-op on Windows and Linux. */
+     * {@linkcode Ende.dock}. No-op on Windows and Linux. */
     setMenu(menu: MenuItem[] | null): void;
 
     /** Show or hide the app's dock icon.
@@ -885,7 +885,7 @@ declare namespace Ende {
      * `frameless` + `noActivate` {@linkcode BrowserWindow} yourself.
      *
      * ```ts
-     * const tray = new Deno.Tray();
+     * const tray = new Ende.Tray();
      * tray.setIcon(iconBytes);
      * const panel = tray.attachPanel({ url: "https://localhost:8000/panel" });
      * panel.window.bind("doThing", async () => { ... });

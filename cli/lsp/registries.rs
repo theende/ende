@@ -25,6 +25,7 @@ use serde::Serialize;
 use tower_lsp::lsp_types as lsp;
 
 use super::completions::IMPORT_COMMIT_CHARS;
+use super::legacy_client;
 use super::logging::lsp_log;
 use super::path_to_regex::Compiler;
 use super::path_to_regex::Key;
@@ -810,7 +811,7 @@ impl ModuleRegistry {
                   {
                     Some(lsp::Command {
                       title: "".to_string(),
-                      command: "deno.cache".to_string(),
+                      command: legacy_client::command_id("cache"),
                       arguments: Some(vec![
                         json!([item_specifier]),
                         json!(&resolved),
@@ -954,7 +955,7 @@ impl ModuleRegistry {
                     {
                       Some(lsp::Command {
                         title: "".to_string(),
-                        command: "deno.cache".to_string(),
+                        command: legacy_client::command_id("cache"),
                         arguments: Some(vec![
                           json!([item_specifier]),
                           json!(&resolved),

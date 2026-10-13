@@ -8,7 +8,7 @@
   "steps": [
     {
       "args": "install",
-      "output": "[WILDCARD]Warning Ignoring \"jsr:@denotest/add@latest\". Version tags are not supported in jsr specifiers.\n[WILDCARD]",
+      "output": "[WILDCARD]Warning Ignoring \"jsr:@endetest/add@latest\". Version tags are not supported in jsr specifiers.\n[WILDCARD]",
       "exitCode": 0
     }
   ]

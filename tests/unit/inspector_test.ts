@@ -400,7 +400,7 @@ class InspectorTester {
     const line1 = await this.nextStderrLine();
     assertEquals(line1, "Visit chrome://inspect to connect to the debugger.");
     const line2 = await this.nextStderrLine();
-    assertEquals(line2, "Deno is waiting for debugger to connect.");
+    assertEquals(line2, "Ende is waiting for debugger to connect.");
   }
 
   async close(): Promise<void> {
@@ -1635,7 +1635,7 @@ Deno.test("inspector_runtime_evaluate_does_not_crash", async () => {
     await tester.assertStderrForInspect();
 
     const banner = await tester.nextStdoutLine();
-    assert(banner.startsWith("Deno"), `Expected Deno banner, got: ${banner}`);
+    assert(banner.startsWith("Ende"), `Expected Ende banner, got: ${banner}`);
     const exitMsg = await tester.nextStdoutLine();
     assertEquals(exitMsg, "exit using ctrl+d, ctrl+c, or close()");
 

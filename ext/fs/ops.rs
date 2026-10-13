@@ -131,7 +131,7 @@ pub fn op_fs_chdir(
     .check_open(
       Cow::Borrowed(Path::new(directory)),
       OpenAccessKind::ReadNoFollow,
-      Some("Deno.chdir()"),
+      Some("Ende.chdir()"),
     )?;
   state
     .borrow::<FileSystemRc>()
@@ -148,7 +148,7 @@ where
 {
   state
     .borrow_mut::<ende_permissions::PermissionsContainer>()
-    .check_sys("umask", "Deno.umask()")?;
+    .check_sys("umask", "Ende.umask()")?;
   state.borrow::<FileSystemRc>().umask(mask).context("umask")
 }
 
@@ -204,7 +204,7 @@ pub fn op_fs_open_sync(
     .check_open(
       Cow::Borrowed(path),
       options.access_kind(),
-      Some("Deno.openSync()"),
+      Some("Ende.openSync()"),
     )?;
   let file = fs.open_sync(&path, options).context_path("open", &path)?;
   let rid = state
@@ -235,7 +235,7 @@ pub async fn op_fs_open_async(
         .check_open(
           Cow::Owned(path),
           options.access_kind(),
-          Some("Deno.open()"),
+          Some("Ende.open()"),
         )?,
     )
   };
@@ -265,7 +265,7 @@ pub fn op_fs_mkdir_sync(
     .check_open(
       Cow::Borrowed(Path::new(path)),
       OpenAccessKind::WriteNoFollow,
-      Some("Deno.mkdirSync()"),
+      Some("Ende.mkdirSync()"),
     )?;
 
   let fs = state.borrow::<FileSystemRc>();
@@ -291,7 +291,7 @@ pub async fn op_fs_mkdir_async(
       .check_open(
         Cow::Owned(PathBuf::from(path)),
         OpenAccessKind::WriteNoFollow,
-        Some("Deno.mkdir()"),
+        Some("Ende.mkdir()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), path)
   };
@@ -315,7 +315,7 @@ pub fn op_fs_chmod_sync(
     .check_open(
       Cow::Borrowed(Path::new(path)),
       OpenAccessKind::WriteNoFollow,
-      Some("Deno.chmodSync()"),
+      Some("Ende.chmodSync()"),
     )?;
   let fs = state.borrow::<FileSystemRc>();
   fs.chmod_sync(&path, mode).context_path("chmod", &path)?;
@@ -334,7 +334,7 @@ pub fn op_fs_chmod_sync(
     .check_open(
       Cow::Borrowed(Path::new(path)),
       OpenAccessKind::WriteNoFollow,
-      Some("Deno.chmodSync()"),
+      Some("Ende.chmodSync()"),
     )?;
   let fs = state.borrow::<FileSystemRc>();
   fs.chmod_sync(&path, mode).context_path("chmod", &path)?;
@@ -355,7 +355,7 @@ pub async fn op_fs_chmod_async(
       .check_open(
         Cow::Owned(PathBuf::from(path)),
         OpenAccessKind::WriteNoFollow,
-        Some("Deno.chmod()"),
+        Some("Ende.chmod()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), path)
   };
@@ -379,7 +379,7 @@ pub async fn op_fs_chmod_async(
       .check_open(
         Cow::Owned(PathBuf::from(path)),
         OpenAccessKind::WriteNoFollow,
-        Some("Deno.chmod()"),
+        Some("Ende.chmod()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), path)
   };
@@ -401,7 +401,7 @@ pub fn op_fs_chown_sync(
     .check_open(
       Cow::Borrowed(Path::new(path)),
       OpenAccessKind::WriteNoFollow,
-      Some("Deno.chownSync()"),
+      Some("Ende.chownSync()"),
     )?;
   let fs = state.borrow::<FileSystemRc>();
   fs.chown_sync(&path, uid, gid)
@@ -423,7 +423,7 @@ pub async fn op_fs_chown_async(
       .check_open(
         Cow::Owned(PathBuf::from(path)),
         OpenAccessKind::WriteNoFollow,
-        Some("Deno.chown()"),
+        Some("Ende.chown()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), path)
   };
@@ -497,11 +497,11 @@ pub fn op_fs_remove_sync(
     // recursive delete bypass a denied descendant.
     state
       .borrow_mut::<ende_permissions::PermissionsContainer>()
-      .check_write(path, "Deno.removeSync()")?
+      .check_write(path, "Ende.removeSync()")?
   } else {
     state
       .borrow_mut::<ende_permissions::PermissionsContainer>()
-      .check_write_partial(path, "Deno.removeSync()")?
+      .check_write_partial(path, "Ende.removeSync()")?
   };
 
   let fs = state.borrow::<FileSystemRc>();
@@ -527,11 +527,11 @@ pub async fn op_fs_remove_async(
       // let a recursive delete bypass a denied descendant.
       state
         .borrow_mut::<ende_permissions::PermissionsContainer>()
-        .check_write(path, "Deno.remove()")?
+        .check_write(path, "Ende.remove()")?
     } else {
       state
         .borrow_mut::<ende_permissions::PermissionsContainer>()
-        .check_write_partial(path, "Deno.remove()")?
+        .check_write_partial(path, "Ende.remove()")?
     };
 
     (state.borrow::<FileSystemRc>().clone(), path)
@@ -555,12 +555,12 @@ pub fn op_fs_copy_file_sync(
   let from = permissions.check_open(
     Cow::Borrowed(Path::new(from)),
     OpenAccessKind::Read,
-    Some("Deno.copyFileSync()"),
+    Some("Ende.copyFileSync()"),
   )?;
   let to = permissions.check_open(
     Cow::Borrowed(Path::new(to)),
     OpenAccessKind::WriteNoFollow,
-    Some("Deno.copyFileSync()"),
+    Some("Ende.copyFileSync()"),
   )?;
 
   let fs = state.borrow::<FileSystemRc>();
@@ -583,12 +583,12 @@ pub async fn op_fs_copy_file_async(
     let from = permissions.check_open(
       Cow::Owned(PathBuf::from(from)),
       OpenAccessKind::Read,
-      Some("Deno.copyFile()"),
+      Some("Ende.copyFile()"),
     )?;
     let to = permissions.check_open(
       Cow::Owned(PathBuf::from(to)),
       OpenAccessKind::WriteNoFollow,
-      Some("Deno.copyFile()"),
+      Some("Ende.copyFile()"),
     )?;
     (state.borrow::<FileSystemRc>().clone(), from, to)
   };
@@ -610,7 +610,7 @@ pub fn op_fs_stat_sync(
     .check_open(
       Cow::Borrowed(Path::new(path)),
       OpenAccessKind::ReadNoFollow,
-      Some("Deno.statSync()"),
+      Some("Ende.statSync()"),
     )?;
   let fs = state.borrow::<FileSystemRc>();
   let stat = fs.stat_sync(&path).context_path("stat", &path)?;
@@ -631,7 +631,7 @@ pub async fn op_fs_stat_async(
     let path = permissions.check_open(
       Cow::Owned(PathBuf::from(path)),
       OpenAccessKind::ReadNoFollow,
-      Some("Deno.stat()"),
+      Some("Ende.stat()"),
     )?;
     (state.borrow::<FileSystemRc>().clone(), path)
   };
@@ -653,7 +653,7 @@ pub fn op_fs_lstat_sync(
     .check_open(
       Cow::Borrowed(Path::new(path)),
       OpenAccessKind::ReadNoFollow,
-      Some("Deno.lstatSync()"),
+      Some("Ende.lstatSync()"),
     )?;
   let fs = state.borrow::<FileSystemRc>();
   let stat = fs.lstat_sync(&path).context_path("lstat", &path)?;
@@ -674,7 +674,7 @@ pub async fn op_fs_lstat_async(
     let path = permissions.check_open(
       Cow::Owned(PathBuf::from(path)),
       OpenAccessKind::ReadNoFollow,
-      Some("Deno.lstat()"),
+      Some("Ende.lstat()"),
     )?;
     (state.borrow::<FileSystemRc>().clone(), path)
   };
@@ -697,7 +697,7 @@ pub fn op_fs_realpath_sync(
   let path = permissions.check_open(
     Cow::Borrowed(Path::new(path)),
     OpenAccessKind::ReadNoFollow,
-    Some("Deno.realPathSync()"),
+    Some("Ende.realPathSync()"),
   )?;
   let resolved_path =
     fs.realpath_sync(&path).context_path("realpath", &path)?;
@@ -720,7 +720,7 @@ pub async fn op_fs_realpath_async(
     let path = permissions.check_open(
       Cow::Owned(PathBuf::from(path)),
       OpenAccessKind::ReadNoFollow,
-      Some("Deno.realPath()"),
+      Some("Ende.realPath()"),
     )?;
     (fs, path)
   };
@@ -743,7 +743,7 @@ pub fn op_fs_read_dir_sync(
     .check_open(
       Cow::Borrowed(Path::new(path)),
       OpenAccessKind::ReadNoFollow,
-      Some("Deno.readDirSync()"),
+      Some("Ende.readDirSync()"),
     )?;
 
   let fs = state.borrow::<FileSystemRc>();
@@ -764,7 +764,7 @@ pub async fn op_fs_read_dir_async(
       .check_open(
         Cow::Owned(PathBuf::from(path)),
         OpenAccessKind::ReadNoFollow,
-        Some("Deno.readDir()"),
+        Some("Ende.readDir()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), path)
   };
@@ -806,12 +806,12 @@ pub fn op_fs_rename_sync(
   let oldpath = permissions.check_open(
     Cow::Borrowed(Path::new(oldpath)),
     OpenAccessKind::ReadWriteNoFollow,
-    Some("Deno.renameSync()"),
+    Some("Ende.renameSync()"),
   )?;
   let newpath = permissions.check_open(
     Cow::Borrowed(Path::new(newpath)),
     OpenAccessKind::WriteNoFollow,
-    Some("Deno.renameSync()"),
+    Some("Ende.renameSync()"),
   )?;
 
   let fs = state.borrow::<FileSystemRc>();
@@ -834,12 +834,12 @@ pub async fn op_fs_rename_async(
     let oldpath = permissions.check_open(
       Cow::Owned(PathBuf::from(oldpath)),
       OpenAccessKind::ReadWriteNoFollow,
-      Some("Deno.rename()"),
+      Some("Ende.rename()"),
     )?;
     let newpath = permissions.check_open(
       Cow::Owned(PathBuf::from(newpath)),
       OpenAccessKind::WriteNoFollow,
-      Some("Deno.rename()"),
+      Some("Ende.rename()"),
     )?;
     (state.borrow::<FileSystemRc>().clone(), oldpath, newpath)
   };
@@ -862,12 +862,12 @@ pub fn op_fs_link_sync(
   let oldpath = permissions.check_open(
     Cow::Borrowed(Path::new(oldpath)),
     OpenAccessKind::ReadWriteNoFollow,
-    Some("Deno.linkSync()"),
+    Some("Ende.linkSync()"),
   )?;
   let newpath = permissions.check_open(
     Cow::Borrowed(Path::new(newpath)),
     OpenAccessKind::WriteNoFollow,
-    Some("Deno.linkSync()"),
+    Some("Ende.linkSync()"),
   )?;
 
   let fs = state.borrow::<FileSystemRc>();
@@ -890,12 +890,12 @@ pub async fn op_fs_link_async(
     let oldpath = permissions.check_open(
       Cow::Owned(PathBuf::from(oldpath)),
       OpenAccessKind::ReadWriteNoFollow,
-      Some("Deno.link()"),
+      Some("Ende.link()"),
     )?;
     let newpath = permissions.check_open(
       Cow::Owned(PathBuf::from(newpath)),
       OpenAccessKind::WriteNoFollow,
-      Some("Deno.link()"),
+      Some("Ende.link()"),
     )?;
     (state.borrow::<FileSystemRc>().clone(), oldpath, newpath)
   };
@@ -946,7 +946,7 @@ pub fn op_fs_symlink_sync(
 ) -> Result<(), FsOpsError> {
   let permissions =
     state.borrow_mut::<ende_permissions::PermissionsContainer>();
-  check_symlink_permissions(permissions, "Deno.symlinkSync()")?;
+  check_symlink_permissions(permissions, "Ende.symlinkSync()")?;
 
   // PERMISSIONS: ok because we verified --allow-write and --allow-read above
   let oldpath = CheckedPath::unsafe_new(Cow::Borrowed(Path::new(oldpath)));
@@ -970,7 +970,7 @@ pub async fn op_fs_symlink_async(
     let mut state = state.borrow_mut();
     let permissions =
       state.borrow_mut::<ende_permissions::PermissionsContainer>();
-    check_symlink_permissions(permissions, "Deno.symlink()")?;
+    check_symlink_permissions(permissions, "Ende.symlink()")?;
     state.borrow::<FileSystemRc>().clone()
   };
 
@@ -1000,7 +1000,7 @@ pub fn op_fs_read_link_sync(
     .check_open(
       Cow::Borrowed(Path::new(path)),
       OpenAccessKind::ReadNoFollow,
-      Some("Deno.readLink()"),
+      Some("Ende.readLink()"),
     )?;
 
   let fs = state.borrow::<FileSystemRc>();
@@ -1023,7 +1023,7 @@ pub async fn op_fs_read_link_async(
       .check_open(
         Cow::Owned(PathBuf::from(path)),
         OpenAccessKind::ReadNoFollow,
-        Some("Deno.readLink()"),
+        Some("Ende.readLink()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), path)
   };
@@ -1047,7 +1047,7 @@ pub fn op_fs_truncate_sync(
     .check_open(
       Cow::Borrowed(Path::new(path)),
       OpenAccessKind::WriteNoFollow,
-      Some("Deno.truncateSync()"),
+      Some("Ende.truncateSync()"),
     )?;
 
   let fs = state.borrow::<FileSystemRc>();
@@ -1070,7 +1070,7 @@ pub async fn op_fs_truncate_async(
       .check_open(
         Cow::Owned(PathBuf::from(path)),
         OpenAccessKind::WriteNoFollow,
-        Some("Deno.truncate()"),
+        Some("Ende.truncate()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), path)
   };
@@ -1096,7 +1096,7 @@ pub fn op_fs_utime_sync(
     .check_open(
       Cow::Borrowed(Path::new(path)),
       OpenAccessKind::WriteNoFollow,
-      Some("Deno.utime()"),
+      Some("Ende.utime()"),
     )?;
 
   let fs = state.borrow::<FileSystemRc>();
@@ -1122,7 +1122,7 @@ pub async fn op_fs_utime_async(
       .check_open(
         Cow::Owned(PathBuf::from(path)),
         OpenAccessKind::WriteNoFollow,
-        Some("Deno.utime()"),
+        Some("Ende.utime()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), path)
   };
@@ -1149,7 +1149,7 @@ pub fn op_fs_make_temp_dir_sync(
   #[string] suffix: Option<String>,
 ) -> Result<String, FsOpsError> {
   let (dir, fs) =
-    make_temp_check_sync(state, dir_arg.as_deref(), "Deno.makeTempDirSync()")?;
+    make_temp_check_sync(state, dir_arg.as_deref(), "Ende.makeTempDirSync()")?;
 
   let mut rng = thread_rng();
 
@@ -1188,7 +1188,7 @@ pub async fn op_fs_make_temp_dir_async(
   #[string] suffix: Option<String>,
 ) -> Result<String, FsOpsError> {
   let (dir, fs) =
-    make_temp_check_async(state, dir_arg.as_deref(), "Deno.makeTempDir()")?;
+    make_temp_check_async(state, dir_arg.as_deref(), "Ende.makeTempDir()")?;
 
   let mut rng = thread_rng();
 
@@ -1231,7 +1231,7 @@ pub fn op_fs_make_temp_file_sync(
   #[string] suffix: Option<String>,
 ) -> Result<String, FsOpsError> {
   let (dir, fs) =
-    make_temp_check_sync(state, dir_arg.as_deref(), "Deno.makeTempFileSync()")?;
+    make_temp_check_sync(state, dir_arg.as_deref(), "Ende.makeTempFileSync()")?;
 
   let open_opts = OpenOptions {
     write: true,
@@ -1276,7 +1276,7 @@ pub async fn op_fs_make_temp_file_async(
   #[string] suffix: Option<String>,
 ) -> Result<String, FsOpsError> {
   let (dir, fs) =
-    make_temp_check_async(state, dir_arg.as_deref(), "Deno.makeTempFile()")?;
+    make_temp_check_async(state, dir_arg.as_deref(), "Ende.makeTempFile()")?;
 
   let open_opts = OpenOptions {
     write: true,
@@ -1466,7 +1466,7 @@ pub fn op_fs_write_file_sync(
     .check_open(
       Cow::Borrowed(path),
       OpenAccessKind::Write,
-      Some("Deno.writeFileSync()"),
+      Some("Ende.writeFileSync()"),
     )?;
 
   fs.write_file_sync(&path, options, &data)
@@ -1500,7 +1500,7 @@ pub async fn op_fs_write_file_async(
       .check_open(
         Cow::Owned(path),
         OpenAccessKind::Write,
-        Some("Deno.writeFile()"),
+        Some("Ende.writeFile()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), cancel_handle, path)
   };
@@ -1543,7 +1543,7 @@ pub fn op_fs_read_file_sync(
     .check_open(
       Cow::Borrowed(path),
       options.access_kind(),
-      Some("Deno.readFileSync()"),
+      Some("Ende.readFileSync()"),
     )?;
 
   let buf = fs
@@ -1577,7 +1577,7 @@ pub async fn op_fs_read_file_async(
       .check_open(
         Cow::Owned(path),
         options.access_kind(),
-        Some("Deno.readFile()"),
+        Some("Ende.readFile()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), cancel_handle, path)
   };
@@ -1615,7 +1615,7 @@ pub fn op_fs_read_file_text_sync(
     .check_open(
       Cow::Borrowed(path),
       OpenAccessKind::Read,
-      Some("Deno.readFileSync()"),
+      Some("Ende.readFileSync()"),
     )?;
   let str = fs
     .read_text_file_lossy_sync(&path)
@@ -1643,7 +1643,7 @@ pub async fn op_fs_read_file_text_async(
       .check_open(
         Cow::Owned(path),
         OpenAccessKind::Read,
-        Some("Deno.readFile()"),
+        Some("Ende.readFile()"),
       )?;
     (state.borrow::<FileSystemRc>().clone(), cancel_handle, path)
   };
@@ -1770,7 +1770,7 @@ pub fn op_fs_file_stat_sync(
       .check_open(
         Cow::Borrowed(path),
         OpenAccessKind::Read,
-        Some("Deno.FsFile.prototype.statSync()"),
+        Some("Ende.FsFile.prototype.statSync()"),
       )?;
   }
   let stat = file.stat_sync()?;
@@ -1793,7 +1793,7 @@ pub async fn op_fs_file_stat_async(
       .check_open(
         Cow::Borrowed(path),
         OpenAccessKind::Read,
-        Some("Deno.FsFile.prototype.stat()"),
+        Some("Ende.FsFile.prototype.stat()"),
       )?;
   }
   let stat = file.stat_async().await?;
@@ -1909,7 +1909,7 @@ pub fn op_fs_futime_sync(
       .check_open(
         Cow::Borrowed(path),
         OpenAccessKind::WriteNoFollow,
-        Some("Deno.FsFile.prototype.utimeSync()"),
+        Some("Ende.FsFile.prototype.utimeSync()"),
       )?;
   }
   file.utime_sync(atime_secs, atime_nanos, mtime_secs, mtime_nanos)?;
@@ -1934,7 +1934,7 @@ pub async fn op_fs_futime_async(
       .check_open(
         Cow::Borrowed(path),
         OpenAccessKind::WriteNoFollow,
-        Some("Deno.FsFile.prototype.utime()"),
+        Some("Ende.FsFile.prototype.utime()"),
       )?;
   }
   file

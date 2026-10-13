@@ -158,7 +158,7 @@ impl BenchReporter for ConsoleReporter {
       println!(
         "{}\n",
         colors::gray(format!(
-          "Runtime | Deno {} ({})",
+          "Runtime | Ende {} ({})",
           DENO_VERSION_INFO.deno,
           env!("TARGET")
         ))

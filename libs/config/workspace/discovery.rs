@@ -268,7 +268,7 @@ fn discover_workspace_config_files_for_single_dir<
     // causing strange behavior, so panic if someone does this
     assert!(
       opts.deno_json_cache.is_some() && opts.pkg_json_cache.is_some(),
-      "Using a workspace cache requires setting the deno.json and package.json caches"
+      "Using a workspace cache requires setting the ende.json and package.json caches"
     );
   }
 
@@ -833,7 +833,7 @@ fn resolve_workspace_for_config_folder<
     // don't discover those config files, otherwise we'd be incompatible with
     // npm workspaces if we discovered more files.
     let deno_json_paths = collect_member_config_folders(
-      "Deno",
+      "Ende",
       pattern_members,
       &deno_json.dir_path(),
       &MEMBER_CONFIG_FILE_NAMES,

@@ -1,4 +1,4 @@
-[WILDCARD]deno transpile is experimental and subject to changes
+[WILDCARD]ende transpile is experimental and subject to changes
 /**
  * Greets the user and shows their balance.
  * @param user - The user to greet.

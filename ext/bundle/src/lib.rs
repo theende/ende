@@ -50,8 +50,8 @@ impl BundleProvider for () {
     // historical "default BundleProvider does not do anything" string.
     // See denoland/deno#31597.
     Err(ende_core::anyhow::anyhow!(
-      "Deno.bundle() is not available in compiled binaries (`deno compile`). \
-       Run with `deno run` instead, or pre-bundle the entrypoints at build time."
+      "Ende.bundle() is not available in compiled binaries (`ende compile`). \
+       Run with `ende run` instead, or pre-bundle the entrypoints at build time."
     ))
   }
 }
@@ -236,7 +236,7 @@ pub async fn op_bundle(
       .cloned()
       .ok_or_else(|| {
         JsErrorBox::generic(
-          "Deno.bundle() requires a runtime permissions context",
+          "Ende.bundle() requires a runtime permissions context",
         )
       })?;
     (

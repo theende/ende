@@ -1703,7 +1703,7 @@ fn op_spawn_sync(
   let (mut command, _, _, _) = create_command(
     state,
     args,
-    "Deno.Command().outputSync()",
+    "Ende.Command().outputSync()",
     /* allow_cwd_inherit */ false,
     /* wrap_in_shell */ false,
   )?;
@@ -1734,7 +1734,7 @@ fn op_spawn_sync(
       let (mut command, _, _, _) = create_command(
         state,
         retry_args,
-        "Deno.Command().outputSync()",
+        "Ende.Command().outputSync()",
         /* allow_cwd_inherit */ false,
         /* wrap_in_shell */ true,
       )?;
@@ -2110,7 +2110,7 @@ mod deprecated {
       &run_args.env,
       /* clear env */ false,
       state,
-      "Deno.run()",
+      "Ende.run()",
       /* allow_cwd_inherit */ false,
     )?;
 

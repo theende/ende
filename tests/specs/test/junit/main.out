@@ -1,6 +1,6 @@
 Check [WILDCARD]main.ts
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="deno test" tests="16" failures="0" errors="0" time="[WILDCARD]">
+<testsuites name="ende test" tests="16" failures="0" errors="0" time="[WILDCARD]">
     <testsuite name="./main.ts" tests="16" disabled="0" errors="0" failures="0">
         <testcase name="test 0" classname="./main.ts" time="[WILDCARD]" line="1" col="6">
         </testcase>

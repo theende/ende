@@ -1,3 +1,3 @@
-import value from "jsr:@denotest/deps";
+import value from "jsr:@endetest/deps";
 
 console.log(value);

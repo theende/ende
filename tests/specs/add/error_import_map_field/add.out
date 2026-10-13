@@ -1,2 +1,2 @@
-error: `deno add` is not supported when configuration file contains an "importMap" field. Inline the import map into the Deno configuration file.
+error: `ende add` is not supported when configuration file contains an "importMap" field. Inline the import map into the Ende configuration file.
     at file:///[WILDLINE]/ende.json

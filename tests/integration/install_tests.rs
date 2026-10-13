@@ -598,8 +598,8 @@ fn installer_second_module_looks_like_script_argument() {
     .run()
     .assert_matches_text(concat!(
       "error: non_existent is missing a prefix. ",
-      "Deno 3.0 requires `--` before script arguments in `deno install -g`. ",
-      "Did you mean `deno install -g http://localhost:4545/echo.ts -- non_existent`? ",
+      "Ende 3.0 requires `--` before script arguments in `ende install -g`. ",
+      "Did you mean `ende install -g http://localhost:4545/echo.ts -- non_existent`? ",
       "Or maybe provide a `jsr:` or `npm:` prefix?\n"
     ))
     .assert_exit_code(1);

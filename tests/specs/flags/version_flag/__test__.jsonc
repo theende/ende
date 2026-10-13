@@ -2,15 +2,15 @@
   "tests": {
     "uppercase_v": {
       "args": "-V",
-      "output": "[WILDCARD]"
+      "output": "ende [WILDLINE]\n"
     },
     "lowercase_v": {
       "args": "-v",
-      "output": "[WILDCARD]"
+      "output": "ende [WILDLINE]\n"
     },
     "long_version": {
       "args": "--version",
-      "output": "[WILDCARD]"
+      "output": "ende [WILDLINE] ([WILDLINE])\nv8 [WILDLINE]\ntypescript [WILDLINE]\n"
     }
   }
 }

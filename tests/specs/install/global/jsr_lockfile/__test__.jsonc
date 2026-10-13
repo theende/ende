@@ -2,7 +2,7 @@
   "tempDir": true,
   "steps": [{
     "if": "unix",
-    "args": "install -g --root ./bins jsr:@denotest/echo-lockfile",
+    "args": "install -g --root ./bins jsr:@endetest/echo-lockfile",
     "output": "install.out"
   }, {
     // Verify the lockfile was placed in the config directory
@@ -17,7 +17,7 @@
     "exitCode": 0
   }, {
     "if": "windows",
-    "args": "install -g --root ./bins jsr:@denotest/echo-lockfile",
+    "args": "install -g --root ./bins jsr:@endetest/echo-lockfile",
     "output": "install.out"
   }, {
     "if": "windows",

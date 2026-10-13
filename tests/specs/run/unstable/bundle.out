@@ -3,5 +3,5 @@ Deno.bundle();
      ^
     at [WILDCARD]bundle.ts:1:6
 
-    info: Deno.bundle() is an unstable API.
+    info: Ende.bundle() is an unstable API.
     hint: Run again with `--unstable-bundle` flag to enable this API.

@@ -1,3 +1,3 @@
-import json from "jsr:@denotest/imports-json";
+import json from "jsr:@endetest/imports-json";
 
 console.log(json);

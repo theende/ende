@@ -247,7 +247,7 @@ impl TestContainer {
   ) -> Result<(), JsErrorBox> {
     if self.registration_phase_ended {
       return Err(JsErrorBox::type_error(
-        "Nested Deno.test() calls are not supported. Use t.step() for nested tests.",
+        "Nested Ende.test() calls are not supported. Use t.step() for nested tests.",
       ));
     }
     self.descriptions.tests.insert(description.id, description);

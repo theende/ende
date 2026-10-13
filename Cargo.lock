@@ -4206,6 +4206,7 @@ dependencies = [
  "deno_error",
  "deno_terminal",
  "ende_core",
+ "ende_env",
  "ende_net",
  "ende_signals",
  "ende_tls",

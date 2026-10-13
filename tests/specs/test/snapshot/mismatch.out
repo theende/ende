@@ -15,7 +15,7 @@ error: AssertionError: Snapshot does not match:
     }
 
 To update snapshots, run
-    deno test --update-snapshots [files]...
+    ende test --update-snapshots [files]...
 
   await t.assertSnapshot({ value: 2 });
           ^

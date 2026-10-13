@@ -1,12 +1,12 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@denotest/add@*": "1.0.0",
+    "jsr:@endetest/add@*": "1.0.0",
     "jsr:@std/testing@*": "1.0.0",
     "npm:@denotest/esm-basic@1": "1.0.0"
   },
   "jsr": {
-    "@denotest/add@1.0.0": {
+    "@endetest/add@1.0.0": {
       "integrity": "[WILDCARD]"
     },
     "@std/testing@1.0.0": {
@@ -27,7 +27,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@denotest/add@*",
+      "jsr:@endetest/add@*",
       "jsr:@std/testing@*",
       "npm:@denotest/esm-basic@1"
     ]

@@ -1559,7 +1559,7 @@ pub trait DenoJsonCache {
 pub enum ConfigFileError {
   #[class(type)]
   #[error(
-    "Only file: specifiers are supported for security reasons in import maps stored in a ende.json. To use a remote import map, use the --import-map flag and \"deno.importMap\" in the language server config"
+    "Only file: specifiers are supported for security reasons in import maps stored in an ende.json. To use a remote import map, use the --import-map flag and \"ende.importMap\" in the language server config"
   )]
   OnlyFileSpecifiersSupported,
   #[class(inherit)]
@@ -3757,8 +3757,8 @@ mod tests {
       err.to_string(),
       concat!(
         "Only file: specifiers are supported for security reasons in ",
-        "import maps stored in a ende.json. To use a remote import map, ",
-        "use the --import-map flag and \"deno.importMap\" in the ",
+        "import maps stored in an ende.json. To use a remote import map, ",
+        "use the --import-map flag and \"ende.importMap\" in the ",
         "language server config"
       )
     );

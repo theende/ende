@@ -5,7 +5,7 @@ exit ...
 output before exit
 ----- output end -----
 
-warning A test called Deno.exit(42) while the exit sanitizer was disabled (sanitizeExit: false). Aborting the test run.
+warning A test called Ende.exit(42) while the exit sanitizer was disabled (sanitizeExit: false). Aborting the test run.
 
 The following tests were pending:
 

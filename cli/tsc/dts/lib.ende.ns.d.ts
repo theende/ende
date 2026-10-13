@@ -4,8 +4,8 @@
 /// <reference lib="esnext" />
 /// <reference lib="ende.net" />
 
-/** Deno provides extra properties on `import.meta`. These are included here
- * to ensure that these are still available when using the Deno namespace in
+/** Ende provides extra properties on `import.meta`. These are included here
+ * to ensure that these are still available when using the Ende namespace in
  * conjunction with other type libs, like `dom`.
  *
  * @category Platform
@@ -59,7 +59,7 @@ interface ImportMeta {
   dirname?: string;
 
   /** A flag that indicates if the current module is the main module that was
-   * called when starting the program under Deno.
+   * called when starting the program under Ende.
    *
    * ```ts
    * if (import.meta.main) {
@@ -80,7 +80,7 @@ interface ImportMeta {
   resolve(specifier: string): string;
 }
 
-/** Deno supports [User Timing Level 3](https://w3c.github.io/user-timing)
+/** Ende supports [User Timing Level 3](https://w3c.github.io/user-timing)
  * which is not widely supported yet in other runtimes.
  *
  * Check out the
@@ -142,19 +142,19 @@ interface PerformanceMeasureOptions {
   end?: string | number;
 }
 
-/** The global namespace where Deno specific, non-standard APIs are located. */
+/** The global namespace where Ende specific, non-standard APIs are located. */
 declare namespace Ende {
-  /** A set of error constructors that are raised by Deno APIs.
+  /** A set of error constructors that are raised by Ende APIs.
    *
    * Can be used to provide more specific handling of failures within code
-   * which is using Deno APIs. For example, handling attempting to open a file
+   * which is using Ende APIs. For example, handling attempting to open a file
    * which does not exist:
    *
    * ```ts
    * try {
-   *   const file = await Deno.open("./some/file.txt");
+   *   const file = await Ende.open("./some/file.txt");
    * } catch (error) {
-   *   if (error instanceof Deno.errors.NotFound) {
+   *   if (error instanceof Ende.errors.NotFound) {
    *     console.error("the file was not found");
    *   } else {
    *     // otherwise re-throw
@@ -174,7 +174,7 @@ declare namespace Ende {
     export class NotFound extends Error {}
     /**
      * Raised when the underlying operating system indicates the current user
-     * which the Deno process is running under does not have the appropriate
+     * which the Ende process is running under does not have the appropriate
      * permissions to a file or resource.
      *
      * Before Deno 2.0, this error was raised when the user _did not_ provide
@@ -223,7 +223,7 @@ declare namespace Ende {
      * Raised when trying to write to a resource and a broken pipe error occurs.
      * This can happen when trying to write directly to `stdout` or `stderr`
      * and the operating system is unable to pipe the output for a reason
-     * external to the Deno runtime.
+     * external to the Ende runtime.
      *
      * @category Errors */
     export class BrokenPipe extends Error {}
@@ -248,7 +248,7 @@ declare namespace Ende {
     /**
      * Raised when the underlying operating system reports an `EINTR` error. In
      * many cases, this underlying IO error will be handled internally within
-     * Deno, or result in an {@link BadResource} error instead.
+     * Ende, or result in an {@link BadResource} error instead.
      *
      * @category Errors */
     export class Interrupted extends Error {}
@@ -289,7 +289,7 @@ declare namespace Ende {
      * @category Errors */
     export class Busy extends Error {}
     /**
-     * Raised when the underlying Deno API is asked to perform a function that
+     * Raised when the underlying Ende API is asked to perform a function that
      * is not currently supported.
      *
      * @category Errors */
@@ -319,7 +319,7 @@ declare namespace Ende {
     export class NotADirectory extends Error {}
 
     /**
-     * Raised when trying to perform an operation while the relevant Deno
+     * Raised when trying to perform an operation while the relevant Ende
      * permission (like `--allow-read`) has not been granted.
      *
      * Before Deno 2.0, this condition was covered by the {@link PermissionDenied}
@@ -331,10 +331,10 @@ declare namespace Ende {
     export {}; // only export exports
   }
 
-  /** The current process ID of this instance of the Deno CLI.
+  /** The current process ID of this instance of the Ende CLI.
    *
    * ```ts
-   * console.log(Deno.pid);
+   * console.log(Ende.pid);
    * ```
    *
    * @category Runtime
@@ -342,10 +342,10 @@ declare namespace Ende {
   export const pid: number;
 
   /**
-   * The process ID of parent process of this instance of the Deno CLI.
+   * The process ID of parent process of this instance of the Ende CLI.
    *
    * ```ts
-   * console.log(Deno.ppid);
+   * console.log(Ende.ppid);
    * ```
    *
    * @category Runtime
@@ -354,7 +354,7 @@ declare namespace Ende {
 
   /** @category Runtime */
   export interface MemoryUsage {
-    /** The number of bytes of the current Deno's process resident set size,
+    /** The number of bytes of the current Ende's process resident set size,
      * which is the amount of memory occupied in main memory (RAM). */
     rss: number;
     /** The total size of the heap for V8, in bytes. */
@@ -367,7 +367,7 @@ declare namespace Ende {
   }
 
   /**
-   * Returns an object describing the memory usage of the Deno process and the
+   * Returns an object describing the memory usage of the Ende process and the
    * V8 subsystem measured in bytes.
    *
    * @category Runtime
@@ -375,10 +375,10 @@ declare namespace Ende {
   export function memoryUsage(): MemoryUsage;
 
   /**
-   * Get the `hostname` of the machine the Deno process is running on.
+   * Get the `hostname` of the machine the Ende process is running on.
    *
    * ```ts
-   * console.log(Deno.hostname());
+   * console.log(Ende.hostname());
    * ```
    *
    * Requires `allow-sys` permission.
@@ -396,7 +396,7 @@ declare namespace Ende {
    * the current load, not the 1, 5 and 15 minute load averages.
    *
    * ```ts
-   * console.log(Deno.loadavg());  // e.g. [ 0.71, 0.44, 0.44 ]
+   * console.log(Ende.loadavg());  // e.g. [ 0.71, 0.44, 0.44 ]
    * ```
    *
    * Requires `allow-sys` permission.
@@ -410,7 +410,7 @@ declare namespace Ende {
 
   /**
    * The information for a network interface returned from a call to
-   * {@linkcode Deno.networkInterfaces}.
+   * {@linkcode Ende.networkInterfaces}.
    *
    * @category Network
    */
@@ -435,7 +435,7 @@ declare namespace Ende {
    * Returns an array of the network interface information.
    *
    * ```ts
-   * console.log(Deno.networkInterfaces());
+   * console.log(Ende.networkInterfaces());
    * ```
    *
    * Requires `allow-sys` permission.
@@ -452,7 +452,7 @@ declare namespace Ende {
    * This is similar to the `free` command in Linux
    *
    * ```ts
-   * console.log(Deno.systemMemoryInfo());
+   * console.log(Ende.systemMemoryInfo());
    * ```
    *
    * Requires `allow-sys` permission.
@@ -463,7 +463,7 @@ declare namespace Ende {
   export function systemMemoryInfo(): SystemMemoryInfo;
 
   /**
-   * Information returned from a call to {@linkcode Deno.systemMemoryInfo}.
+   * Information returned from a call to {@linkcode Ende.systemMemoryInfo}.
    *
    * @category Runtime
    */
@@ -490,7 +490,7 @@ declare namespace Ende {
 
   /** Reflects the `NO_COLOR` environment variable at program start.
    *
-   * When the value is `true`, the Deno CLI will attempt to not send color codes
+   * When the value is `true`, the Ende CLI will attempt to not send color codes
    * to `stderr` or `stdout` and other command line programs should also attempt
    * to respect this value.
    *
@@ -504,11 +504,11 @@ declare namespace Ende {
    * Returns the release version of the Operating System.
    *
    * ```ts
-   * console.log(Deno.osRelease());
+   * console.log(Ende.osRelease());
    * ```
    *
    * Requires `allow-sys` permission.
-   * Under consideration to possibly move to Deno.build or Deno.versions and if
+   * Under consideration to possibly move to Ende.build or Ende.versions and if
    * it should depend sys-info, which may not be desirable.
    *
    * @tags allow-sys
@@ -520,7 +520,7 @@ declare namespace Ende {
    * Returns the Operating System uptime in number of seconds.
    *
    * ```ts
-   * console.log(Deno.osUptime());
+   * console.log(Ende.osUptime());
    * ```
    *
    * Requires `allow-sys` permission.
@@ -588,13 +588,13 @@ declare namespace Ende {
      * ```ts
      * import { assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test({
+     * Ende.test({
      *   name: "inherit",
      *   permissions: {
      *     net: "inherit",
      *   },
      *   async fn() {
-     *     const status = await Deno.permissions.query({ name: "net" })
+     *     const status = await Ende.permissions.query({ name: "net" })
      *     assertEquals(status.state, "granted");
      *   },
      * });
@@ -603,13 +603,13 @@ declare namespace Ende {
      * ```ts
      * import { assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test({
+     * Ende.test({
      *   name: "true",
      *   permissions: {
      *     net: true,
      *   },
      *   async fn() {
-     *     const status = await Deno.permissions.query({ name: "net" });
+     *     const status = await Ende.permissions.query({ name: "net" });
      *     assertEquals(status.state, "granted");
      *   },
      * });
@@ -618,13 +618,13 @@ declare namespace Ende {
      * ```ts
      * import { assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test({
+     * Ende.test({
      *   name: "false",
      *   permissions: {
      *     net: false,
      *   },
      *   async fn() {
-     *     const status = await Deno.permissions.query({ name: "net" });
+     *     const status = await Ende.permissions.query({ name: "net" });
      *     assertEquals(status.state, "denied");
      *   },
      * });
@@ -633,13 +633,13 @@ declare namespace Ende {
      * ```ts
      * import { assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test({
+     * Ende.test({
      *   name: "localhost:8080",
      *   permissions: {
      *     net: ["localhost:8080"],
      *   },
      *   async fn() {
-     *     const status = await Deno.permissions.query({ name: "net", host: "localhost:8080" });
+     *     const status = await Ende.permissions.query({ name: "net", host: "localhost:8080" });
      *     assertEquals(status.state, "granted");
      *   },
      * });
@@ -711,7 +711,7 @@ declare namespace Ende {
      * If the test was ignored the promise returns `false`.
      *
      * ```ts
-     * Deno.test({
+     * Ende.test({
      *   name: "a parent test",
      *   async fn(t) {
      *     console.log("before the step");
@@ -736,7 +736,7 @@ declare namespace Ende {
      * If the test was ignored the promise returns `false`.
      *
      * ```ts
-     * Deno.test(
+     * Ende.test(
      *   "a parent test",
      *   async (t) => {
      *     console.log("before the step");
@@ -764,7 +764,7 @@ declare namespace Ende {
      * If the test was ignored the promise returns `false`.
      *
      * ```ts
-     * Deno.test(async function aParentTest(t) {
+     * Ende.test(async function aParentTest(t) {
      *   console.log("before the step");
      *   await t.step(function step1(t) {
      *     console.log("current step:", t.name);
@@ -793,7 +793,7 @@ declare namespace Ende {
      * [`@std/testing/snapshot`](https://jsr.io/@std/testing/doc/snapshot).
      *
      * ```ts
-     * Deno.test("matches snapshot", async (t) => {
+     * Ende.test("matches snapshot", async (t) => {
      *   await t.assertSnapshot({ hello: "world", example: 123 });
      * });
      * ```
@@ -807,7 +807,7 @@ declare namespace Ende {
      * using `message` as the failure message if it does not.
      *
      * ```ts
-     * Deno.test("matches snapshot", async (t) => {
+     * Ende.test("matches snapshot", async (t) => {
      *   await t.assertSnapshot(2 + 3, "should be five");
      * });
      * ```
@@ -816,7 +816,7 @@ declare namespace Ende {
   }
 
   /** Options which can be set when calling
-   * {@linkcode Deno.TestContext.assertSnapshot}.
+   * {@linkcode Ende.TestContext.assertSnapshot}.
    *
    * @category Testing */
   export interface TestSnapshotOptions<T = unknown> {
@@ -841,7 +841,7 @@ declare namespace Ende {
      * generated diff message. */
     msg?: string;
     /** Function used to serialize the value to a string before comparing it
-     * with the stored snapshot. Defaults to a `Deno.inspect()`-based
+     * with the stored snapshot. Defaults to a `Ende.inspect()`-based
      * serializer. */
     serializer?: (actual: T) => string;
   }
@@ -875,7 +875,7 @@ declare namespace Ende {
      * Defaults to the parent test or step's value. */
     sanitizeResources?: boolean;
     /** Ensure the test step does not prematurely cause the process to exit,
-     * for example via a call to {@linkcode Deno.exit}.
+     * for example via a call to {@linkcode Ende.exit}.
      *
      * Defaults to the parent test or step's value. */
     sanitizeExit?: boolean;
@@ -903,8 +903,8 @@ declare namespace Ende {
      *
      * Can also be enabled globally with the `--sanitize-ops` CLI flag,
      * the `ENDE_TEST_SANITIZE_OPS=1` environment variable, or the
-     * `test.sanitizeOps` option in `deno.json`. Can be set per-module
-     * with {@linkcode Deno.test.sanitizer}.
+     * `test.sanitizeOps` option in `ende.json`. Can be set per-module
+     * with {@linkcode Ende.test.sanitizer}.
      *
      * @default {false} */
     sanitizeOps?: boolean;
@@ -914,13 +914,13 @@ declare namespace Ende {
      *
      * Can also be enabled globally with the `--sanitize-resources` CLI flag,
      * the `ENDE_TEST_SANITIZE_RESOURCES=1` environment variable, or the
-     * `test.sanitizeResources` option in `deno.json`. Can be set per-module
-     * with {@linkcode Deno.test.sanitizer}.
+     * `test.sanitizeResources` option in `ende.json`. Can be set per-module
+     * with {@linkcode Ende.test.sanitizer}.
      *
      * @default {false} */
     sanitizeResources?: boolean;
     /** Ensure the test case does not prematurely cause the process to exit,
-     * for example via a call to {@linkcode Deno.exit}.
+     * for example via a call to {@linkcode Ende.exit}.
      *
      * @default {true} */
     sanitizeExit?: boolean;
@@ -959,39 +959,39 @@ declare namespace Ende {
     repeats?: number;
   }
 
-  /** Register a test which will be run when `deno test` is used on the command
+  /** Register a test which will be run when `ende test` is used on the command
    * line and the containing module looks like a test module.
    *
    * `fn` can be async if required.
    *
    * Tests are discovered before they are executed, so registrations must happen
    * at module load time.
-   * Nested `Deno.test()` calls are not supported.
+   * Nested `Ende.test()` calls are not supported.
    * Use `t.step()` for nested tests.
    *
    * ```ts
    * import { assertEquals } from "jsr:@std/assert";
    *
-   * Deno.test({
+   * Ende.test({
    *   name: "example test",
    *   fn() {
    *     assertEquals("world", "world");
    *   },
    * });
    *
-   * Deno.test({
+   * Ende.test({
    *   name: "example ignored test",
-   *   ignore: Deno.build.os === "windows",
+   *   ignore: Ende.build.os === "windows",
    *   fn() {
    *     // This test is ignored only on Windows machines
    *   },
    * });
    *
-   * Deno.test({
+   * Ende.test({
    *   name: "example async test",
    *   async fn() {
    *     const decoder = new TextDecoder("utf-8");
-   *     const data = await Deno.readFile("hello_world.txt");
+   *     const data = await Ende.readFile("hello_world.txt");
    *     assertEquals(decoder.decode(data), "Hello world");
    *   }
    * });
@@ -1005,7 +1005,7 @@ declare namespace Ende {
    * @category Testing
    */
   export interface DenoTest {
-    /** Register a test which will be run when `deno test` is used on the command
+    /** Register a test which will be run when `ende test` is used on the command
      * line and the containing module looks like a test module.
      *
      * `fn` can be async if required.
@@ -1013,26 +1013,26 @@ declare namespace Ende {
      * ```ts
      * import { assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test({
+     * Ende.test({
      *   name: "example test",
      *   fn() {
      *     assertEquals("world", "world");
      *   },
      * });
      *
-     * Deno.test({
+     * Ende.test({
      *   name: "example ignored test",
-     *   ignore: Deno.build.os === "windows",
+     *   ignore: Ende.build.os === "windows",
      *   fn() {
      *     // This test is ignored only on Windows machines
      *   },
      * });
      *
-     * Deno.test({
+     * Ende.test({
      *   name: "example async test",
      *   async fn() {
      *     const decoder = new TextDecoder("utf-8");
-     *     const data = await Deno.readFile("hello_world.txt");
+     *     const data = await Ende.readFile("hello_world.txt");
      *     assertEquals(decoder.decode(data), "Hello world");
      *   }
      * });
@@ -1042,7 +1042,7 @@ declare namespace Ende {
      */
     (t: TestDefinition): void;
 
-    /** Register a test which will be run when `deno test` is used on the command
+    /** Register a test which will be run when `ende test` is used on the command
      * line and the containing module looks like a test module.
      *
      * `fn` can be async if required.
@@ -1050,13 +1050,13 @@ declare namespace Ende {
      * ```ts
      * import { assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test("My test description", () => {
+     * Ende.test("My test description", () => {
      *   assertEquals("hello", "hello");
      * });
      *
-     * Deno.test("My async test description", async () => {
+     * Ende.test("My async test description", async () => {
      *   const decoder = new TextDecoder("utf-8");
-     *   const data = await Deno.readFile("hello_world.txt");
+     *   const data = await Ende.readFile("hello_world.txt");
      *   assertEquals(decoder.decode(data), "Hello world");
      * });
      * ```
@@ -1065,7 +1065,7 @@ declare namespace Ende {
      */
     (name: string, fn: (t: TestContext) => void | Promise<void>): void;
 
-    /** Register a test which will be run when `deno test` is used on the command
+    /** Register a test which will be run when `ende test` is used on the command
      * line and the containing module looks like a test module.
      *
      * `fn` can be async if required. Declared function must have a name.
@@ -1073,13 +1073,13 @@ declare namespace Ende {
      * ```ts
      * import { assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test(function myTestName() {
+     * Ende.test(function myTestName() {
      *   assertEquals("hello", "hello");
      * });
      *
-     * Deno.test(async function myOtherTestName() {
+     * Ende.test(async function myOtherTestName() {
      *   const decoder = new TextDecoder("utf-8");
-     *   const data = await Deno.readFile("hello_world.txt");
+     *   const data = await Ende.readFile("hello_world.txt");
      *   assertEquals(decoder.decode(data), "Hello world");
      * });
      * ```
@@ -1088,7 +1088,7 @@ declare namespace Ende {
      */
     (fn: (t: TestContext) => void | Promise<void>): void;
 
-    /** Register a test which will be run when `deno test` is used on the command
+    /** Register a test which will be run when `ende test` is used on the command
      * line and the containing module looks like a test module.
      *
      * `fn` can be async if required.
@@ -1096,13 +1096,13 @@ declare namespace Ende {
      * ```ts
      * import { assert, fail, assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test("My test description", { permissions: { read: true } }, (): void => {
+     * Ende.test("My test description", { permissions: { read: true } }, (): void => {
      *   assertEquals("hello", "hello");
      * });
      *
-     * Deno.test("My async test description", { permissions: { read: false } }, async (): Promise<void> => {
+     * Ende.test("My async test description", { permissions: { read: false } }, async (): Promise<void> => {
      *   const decoder = new TextDecoder("utf-8");
-     *   const data = await Deno.readFile("hello_world.txt");
+     *   const data = await Ende.readFile("hello_world.txt");
      *   assertEquals(decoder.decode(data), "Hello world");
      * });
      * ```
@@ -1115,7 +1115,7 @@ declare namespace Ende {
       fn: (t: TestContext) => void | Promise<void>,
     ): void;
 
-    /** Register a test which will be run when `deno test` is used on the command
+    /** Register a test which will be run when `ende test` is used on the command
      * line and the containing module looks like a test module.
      *
      * `fn` can be async if required.
@@ -1123,7 +1123,7 @@ declare namespace Ende {
      * ```ts
      * import { assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test(
+     * Ende.test(
      *   {
      *     name: "My test description",
      *     permissions: { read: true },
@@ -1133,14 +1133,14 @@ declare namespace Ende {
      *   },
      * );
      *
-     * Deno.test(
+     * Ende.test(
      *   {
      *     name: "My async test description",
      *     permissions: { read: false },
      *   },
      *   async () => {
      *     const decoder = new TextDecoder("utf-8");
-     *     const data = await Deno.readFile("hello_world.txt");
+     *     const data = await Ende.readFile("hello_world.txt");
      *     assertEquals(decoder.decode(data), "Hello world");
      *   },
      * );
@@ -1153,7 +1153,7 @@ declare namespace Ende {
       fn: (t: TestContext) => void | Promise<void>,
     ): void;
 
-    /** Register a test which will be run when `deno test` is used on the command
+    /** Register a test which will be run when `ende test` is used on the command
      * line and the containing module looks like a test module.
      *
      * `fn` can be async if required. Declared function must have a name.
@@ -1161,18 +1161,18 @@ declare namespace Ende {
      * ```ts
      * import { assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test(
+     * Ende.test(
      *   { permissions: { read: true } },
      *   function myTestName() {
      *     assertEquals("hello", "hello");
      *   },
      * );
      *
-     * Deno.test(
+     * Ende.test(
      *   { permissions: { read: false } },
      *   async function myOtherTestName() {
      *     const decoder = new TextDecoder("utf-8");
-     *     const data = await Deno.readFile("hello_world.txt");
+     *     const data = await Ende.readFile("hello_world.txt");
      *     assertEquals(decoder.decode(data), "Hello world");
      *   },
      * );
@@ -1202,7 +1202,7 @@ declare namespace Ende {
      * ```ts
      * import { assertEquals } from "jsr:@std/assert";
      *
-     * Deno.test.each([
+     * Ende.test.each([
      *   [1, 1, 2],
      *   [1, 2, 3],
      *   [2, 1, 3],
@@ -1210,7 +1210,7 @@ declare namespace Ende {
      *   assertEquals(a + b, expected);
      * });
      *
-     * Deno.test.each([
+     * Ende.test.each([
      *   { a: 1, b: 1, sum: 2 },
      *   { a: 1, b: 2, sum: 3 },
      * ])("$a + $b = $sum", ({ a, b, sum }) => {
@@ -1235,7 +1235,7 @@ declare namespace Ende {
      * If an exception is raised during execution of this hook, the remaining `beforeAll` hooks will not be run.
      *
      * ```ts
-     * Deno.test.beforeAll(() => {
+     * Ende.test.beforeAll(() => {
      *   // Setup code that runs once before all tests
      *   console.log("Setting up test suite");
      * });
@@ -1255,7 +1255,7 @@ declare namespace Ende {
      * test case will be marked as failed.
      *
      * ```ts
-     * Deno.test.beforeEach(() => {
+     * Ende.test.beforeEach(() => {
      *   // Setup code that runs before each test
      *   console.log("Setting up test");
      * });
@@ -1273,7 +1273,7 @@ declare namespace Ende {
      * test case will be marked as failed.
      *
      * ```ts
-     * Deno.test.afterEach(() => {
+     * Ende.test.afterEach(() => {
      *   // Cleanup code that runs after each test
      *   console.log("Cleaning up test");
      * });
@@ -1290,7 +1290,7 @@ declare namespace Ende {
      * If an exception is raised during execution of this hook, the remaining `afterAll` hooks will not be run.
      *
      * ```ts
-     * Deno.test.afterAll(() => {
+     * Ende.test.afterAll(() => {
      *   // Cleanup code that runs once after all tests
      *   console.log("Cleaning up test suite");
      * });
@@ -1304,20 +1304,20 @@ declare namespace Ende {
      * config file settings, but can still be overridden per-test via
      * `sanitizeOps` / `sanitizeResources` in test options.
      *
-     * Should be called at the top of the module, before any `Deno.test()`
+     * Should be called at the top of the module, before any `Ende.test()`
      * registrations — each call sets the defaults that subsequently registered
      * tests inherit, so tests registered before the call use the previous
      * defaults.
      *
      * ```ts
      * // Enable both sanitizers for all tests in this file
-     * Deno.test.sanitizer({ ops: true, resources: true });
+     * Ende.test.sanitizer({ ops: true, resources: true });
      *
-     * Deno.test("my test", () => {
+     * Ende.test("my test", () => {
      *   // This test will have ops and resources sanitizers enabled
      * });
      *
-     * Deno.test({
+     * Ende.test({
      *   name: "override per-test",
      *   sanitizeOps: false,
      *   fn() {
@@ -1452,8 +1452,8 @@ declare namespace Ende {
      * will still have noticeable overhead, resulting in a warning.
      *
      * ```ts
-     * Deno.bench("foo", async (t) => {
-     *   const data = await Deno.readFile("data.txt");
+     * Ende.bench("foo", async (t) => {
+     *   const data = await Ende.readFile("data.txt");
      *   t.start();
      *   // some operation on `data`...
      * });
@@ -1469,8 +1469,8 @@ declare namespace Ende {
      * will still have noticeable overhead, resulting in a warning.
      *
      * ```ts
-     * Deno.bench("foo", async (t) => {
-     *   using file = await Deno.open("data.txt");
+     * Ende.bench("foo", async (t) => {
+     *   using file = await Ende.open("data.txt");
      *   t.start();
      *   // some operation on `file`...
      *   t.end();
@@ -1481,7 +1481,7 @@ declare namespace Ende {
   }
 
   /**
-   * The interface for defining a benchmark test using {@linkcode Deno.bench}.
+   * The interface for defining a benchmark test using {@linkcode Ende.bench}.
    *
    * @category Testing
    */
@@ -1517,7 +1517,7 @@ declare namespace Ende {
      */
     warmup?: number;
     /** Ensure the bench case does not prematurely cause the process to exit,
-     * for example via a call to {@linkcode Deno.exit}.
+     * for example via a call to {@linkcode Ende.exit}.
      *
      * @default {true} */
     sanitizeExit?: boolean;
@@ -1533,12 +1533,12 @@ declare namespace Ende {
   }
 
   /**
-   * Register a benchmark test which will be run when `deno bench` is used on
+   * Register a benchmark test which will be run when `ende bench` is used on
    * the command line and the containing module looks like a bench module.
    *
-   * A module "looks like a bench module" when `deno bench` selects it for
-   * execution. When you pass explicit file paths to `deno bench`, those files
-   * are always run. When you run `deno bench` without paths, it walks the
+   * A module "looks like a bench module" when `ende bench` selects it for
+   * execution. When you pass explicit file paths to `ende bench`, those files
+   * are always run. When you run `ende bench` without paths, it walks the
    * directory looking for files whose name (ignoring the extension) ends with
    * `_bench` or `.bench`, or is exactly `bench`. Examples are `foo_bench.ts`,
    * `foo.bench.js`, or `bench.ts`. Supported extensions are the same as for
@@ -1550,26 +1550,26 @@ declare namespace Ende {
    * ```ts
    * import { assertEquals } from "jsr:@std/assert";
    *
-   * Deno.bench({
+   * Ende.bench({
    *   name: "example test",
    *   fn() {
    *     assertEquals("world", "world");
    *   },
    * });
    *
-   * Deno.bench({
+   * Ende.bench({
    *   name: "example ignored test",
-   *   ignore: Deno.build.os === "windows",
+   *   ignore: Ende.build.os === "windows",
    *   fn() {
    *     // This test is ignored only on Windows machines
    *   },
    * });
    *
-   * Deno.bench({
+   * Ende.bench({
    *   name: "example async test",
    *   async fn() {
    *     const decoder = new TextDecoder("utf-8");
-   *     const data = await Deno.readFile("hello_world.txt");
+   *     const data = await Ende.readFile("hello_world.txt");
    *     assertEquals(decoder.decode(data), "Hello world");
    *   }
    * });
@@ -1580,7 +1580,7 @@ declare namespace Ende {
   export function bench(b: BenchDefinition): void;
 
   /**
-   * Register a benchmark test which will be run when `deno bench` is used on
+   * Register a benchmark test which will be run when `ende bench` is used on
    * the command line and the containing module looks like a bench module.
    *
    * If the test function (`fn`) returns a promise or is async, the test runner
@@ -1589,13 +1589,13 @@ declare namespace Ende {
    * ```ts
    * import { assertEquals } from "jsr:@std/assert";
    *
-   * Deno.bench("My test description", () => {
+   * Ende.bench("My test description", () => {
    *   assertEquals("hello", "hello");
    * });
    *
-   * Deno.bench("My async test description", async () => {
+   * Ende.bench("My async test description", async () => {
    *   const decoder = new TextDecoder("utf-8");
-   *   const data = await Deno.readFile("hello_world.txt");
+   *   const data = await Ende.readFile("hello_world.txt");
    *   assertEquals(decoder.decode(data), "Hello world");
    * });
    * ```
@@ -1608,7 +1608,7 @@ declare namespace Ende {
   ): void;
 
   /**
-   * Register a benchmark test which will be run when `deno bench` is used on
+   * Register a benchmark test which will be run when `ende bench` is used on
    * the command line and the containing module looks like a bench module.
    *
    * If the test function (`fn`) returns a promise or is async, the test runner
@@ -1617,13 +1617,13 @@ declare namespace Ende {
    * ```ts
    * import { assertEquals } from "jsr:@std/assert";
    *
-   * Deno.bench(function myTestName() {
+   * Ende.bench(function myTestName() {
    *   assertEquals("hello", "hello");
    * });
    *
-   * Deno.bench(async function myOtherTestName() {
+   * Ende.bench(async function myOtherTestName() {
    *   const decoder = new TextDecoder("utf-8");
-   *   const data = await Deno.readFile("hello_world.txt");
+   *   const data = await Ende.readFile("hello_world.txt");
    *   assertEquals(decoder.decode(data), "Hello world");
    * });
    * ```
@@ -1633,7 +1633,7 @@ declare namespace Ende {
   export function bench(fn: (b: BenchContext) => void | Promise<void>): void;
 
   /**
-   * Register a benchmark test which will be run when `deno bench` is used on
+   * Register a benchmark test which will be run when `ende bench` is used on
    * the command line and the containing module looks like a bench module.
    *
    * If the test function (`fn`) returns a promise or is async, the test runner
@@ -1642,7 +1642,7 @@ declare namespace Ende {
    * ```ts
    * import { assertEquals } from "jsr:@std/assert";
    *
-   * Deno.bench(
+   * Ende.bench(
    *   "My test description",
    *   { permissions: { read: true } },
    *   () => {
@@ -1650,12 +1650,12 @@ declare namespace Ende {
    *   }
    * );
    *
-   * Deno.bench(
+   * Ende.bench(
    *   "My async test description",
    *   { permissions: { read: false } },
    *   async () => {
    *     const decoder = new TextDecoder("utf-8");
-   *     const data = await Deno.readFile("hello_world.txt");
+   *     const data = await Ende.readFile("hello_world.txt");
    *     assertEquals(decoder.decode(data), "Hello world");
    *   }
    * );
@@ -1670,7 +1670,7 @@ declare namespace Ende {
   ): void;
 
   /**
-   * Register a benchmark test which will be run when `deno bench` is used on
+   * Register a benchmark test which will be run when `ende bench` is used on
    * the command line and the containing module looks like a bench module.
    *
    * If the test function (`fn`) returns a promise or is async, the test runner
@@ -1679,18 +1679,18 @@ declare namespace Ende {
    * ```ts
    * import { assertEquals } from "jsr:@std/assert";
    *
-   * Deno.bench(
+   * Ende.bench(
    *   { name: "My test description", permissions: { read: true } },
    *   () => {
    *     assertEquals("hello", "hello");
    *   }
    * );
    *
-   * Deno.bench(
+   * Ende.bench(
    *   { name: "My async test description", permissions: { read: false } },
    *   async () => {
    *     const decoder = new TextDecoder("utf-8");
-   *     const data = await Deno.readFile("hello_world.txt");
+   *     const data = await Ende.readFile("hello_world.txt");
    *     assertEquals(decoder.decode(data), "Hello world");
    *   }
    * );
@@ -1704,7 +1704,7 @@ declare namespace Ende {
   ): void;
 
   /**
-   * Register a benchmark test which will be run when `deno bench` is used on
+   * Register a benchmark test which will be run when `ende bench` is used on
    * the command line and the containing module looks like a bench module.
    *
    * If the test function (`fn`) returns a promise or is async, the test runner
@@ -1713,18 +1713,18 @@ declare namespace Ende {
    * ```ts
    * import { assertEquals } from "jsr:@std/assert";
    *
-   * Deno.bench(
+   * Ende.bench(
    *   { permissions: { read: true } },
    *   function myTestName() {
    *     assertEquals("hello", "hello");
    *   }
    * );
    *
-   * Deno.bench(
+   * Ende.bench(
    *   { permissions: { read: false } },
    *   async function myOtherTestName() {
    *     const decoder = new TextDecoder("utf-8");
-   *     const data = await Deno.readFile("hello_world.txt");
+   *     const data = await Ende.readFile("hello_world.txt");
    *     assertEquals(decoder.decode(data), "Hello world");
    *   }
    * );
@@ -1737,32 +1737,32 @@ declare namespace Ende {
     fn: (b: BenchContext) => void | Promise<void>,
   ): void;
 
-  /** Exit the Deno process with optional exit code.
+  /** Exit the Ende process with optional exit code.
    *
-   * If no exit code is supplied then Deno will exit with return code of `0`.
+   * If no exit code is supplied then Ende will exit with return code of `0`.
    *
-   * In worker contexts this closes the current worker using Deno's internal
+   * In worker contexts this closes the current worker using Ende's internal
    * worker close operation. It does not call the current `self.close` property.
    *
    * ```ts
-   * Deno.exit(5);
+   * Ende.exit(5);
    * ```
    *
    * @category Runtime
    */
   export function exit(code?: number): never;
 
-  /** The exit code for the Deno process.
+  /** The exit code for the Ende process.
    *
-   * If no exit code has been supplied, then Deno will assume a return code of `0`.
+   * If no exit code has been supplied, then Ende will assume a return code of `0`.
    *
    * When setting an exit code value, a number or non-NaN string must be provided,
    * otherwise a TypeError will be thrown.
    *
    * ```ts
-   * console.log(Deno.exitCode); //-> 0
-   * Deno.exitCode = 1;
-   * console.log(Deno.exitCode); //-> 1
+   * console.log(Ende.exitCode); //-> 0
+   * Ende.exitCode = 1;
+   * console.log(Ende.exitCode); //-> 1
    * ```
    *
    * @category Runtime
@@ -1773,20 +1773,20 @@ declare namespace Ende {
    * variables.
    *
    * Environment variables can also be loaded from a `.env` file by using the
-   * `--env-file` flag when running a Deno program:
+   * `--env-file` flag when running an Ende program:
    *
    * ```sh
-   * deno run --env-file=.env --allow-env main.ts
+   * ende run --env-file=.env --allow-env main.ts
    * ```
    *
    * If `--env-file` is specified without a value, it defaults to loading `.env`
    * from the current working directory:
    *
    * ```sh
-   * deno run --env-file --allow-env main.ts
+   * ende run --env-file --allow-env main.ts
    * ```
    *
-   * Learn more at [the Deno docs](https://docs.ende.sh/runtime/reference/env_variables/).
+   * Learn more at [the Ende docs](https://docs.ende.sh/runtime/reference/env_variables/).
    *
    * @tags allow-env
    * @category Runtime
@@ -1797,8 +1797,8 @@ declare namespace Ende {
      * Returns `undefined` if the supplied environment variable is not defined.
      *
      * ```ts
-     * console.log(Deno.env.get("HOME"));  // e.g. outputs "/home/alice"
-     * console.log(Deno.env.get("MADE_UP_VAR"));  // outputs undefined
+     * console.log(Ende.env.get("HOME"));  // e.g. outputs "/home/alice"
+     * console.log(Ende.env.get("MADE_UP_VAR"));  // outputs undefined
      * ```
      *
      * Requires `allow-env` permission.
@@ -1810,8 +1810,8 @@ declare namespace Ende {
     /** Set the value of an environment variable.
      *
      * ```ts
-     * Deno.env.set("SOME_VAR", "Value");
-     * Deno.env.get("SOME_VAR");  // outputs "Value"
+     * Ende.env.set("SOME_VAR", "Value");
+     * Ende.env.get("SOME_VAR");  // outputs "Value"
      * ```
      *
      * Requires `allow-env` permission.
@@ -1823,8 +1823,8 @@ declare namespace Ende {
     /** Delete the value of an environment variable.
      *
      * ```ts
-     * Deno.env.set("SOME_VAR", "Value");
-     * Deno.env.delete("SOME_VAR");  // outputs "undefined"
+     * Ende.env.set("SOME_VAR", "Value");
+     * Ende.env.delete("SOME_VAR");  // outputs "undefined"
      * ```
      *
      * Requires `allow-env` permission.
@@ -1836,8 +1836,8 @@ declare namespace Ende {
     /** Check whether an environment variable is present or not.
      *
      * ```ts
-     * Deno.env.set("SOME_VAR", "Value");
-     * Deno.env.has("SOME_VAR");  // outputs true
+     * Ende.env.set("SOME_VAR", "Value");
+     * Ende.env.has("SOME_VAR");  // outputs true
      * ```
      *
      * Requires `allow-env` permission.
@@ -1850,10 +1850,10 @@ declare namespace Ende {
      * simple object of keys and values.
      *
      * ```ts
-     * Deno.env.set("TEST_VAR", "A");
-     * const myEnv = Deno.env.toObject();
+     * Ende.env.set("TEST_VAR", "A");
+     * const myEnv = Ende.env.toObject();
      * console.log(myEnv.SHELL);
-     * Deno.env.set("TEST_VAR", "B");
+     * Ende.env.set("TEST_VAR", "B");
      * console.log(myEnv.TEST_VAR);  // outputs "A"
      * ```
      *
@@ -1873,10 +1873,10 @@ declare namespace Ende {
   export const env: Env;
 
   /**
-   * Returns the path to the current deno executable.
+   * Returns the path to the current ende executable.
    *
    * ```ts
-   * console.log(Deno.execPath());  // e.g. "/home/alice/.local/bin/deno"
+   * console.log(Ende.execPath());  // e.g. "/home/alice/.local/bin/ende"
    * ```
    *
    * @category Runtime
@@ -1887,14 +1887,14 @@ declare namespace Ende {
    * Change the current working directory to the specified path.
    *
    * ```ts
-   * Deno.chdir("/home/userA");
-   * Deno.chdir("../userB");
-   * Deno.chdir("C:\\Program Files (x86)\\Java");
+   * Ende.chdir("/home/userA");
+   * Ende.chdir("../userB");
+   * Ende.chdir("C:\\Program Files (x86)\\Java");
    * ```
    *
-   * Throws {@linkcode Deno.errors.NotFound} if directory not found.
+   * Throws {@linkcode Ende.errors.NotFound} if directory not found.
    *
-   * Throws {@linkcode Deno.errors.PermissionDenied} if the user does not have
+   * Throws {@linkcode Ende.errors.PermissionDenied} if the user does not have
    * operating system file access rights.
    *
    * Requires `allow-read` permission.
@@ -1911,10 +1911,10 @@ declare namespace Ende {
    * links), `cwd()` may return any one of them.
    *
    * ```ts
-   * const currentWorkingDirectory = Deno.cwd();
+   * const currentWorkingDirectory = Ende.cwd();
    * ```
    *
-   * Throws {@linkcode Deno.errors.NotFound} if directory not available.
+   * Throws {@linkcode Ende.errors.NotFound} if directory not available.
    *
    * @category Runtime
    */
@@ -1924,7 +1924,7 @@ declare namespace Ende {
    * Creates `newpath` as a hard link to `oldpath`.
    *
    * ```ts
-   * await Deno.link("old/name", "new/name");
+   * await Ende.link("old/name", "new/name");
    * ```
    *
    * Requires `allow-read` and `allow-write` permissions.
@@ -1938,7 +1938,7 @@ declare namespace Ende {
    * Synchronously creates `newpath` as a hard link to `oldpath`.
    *
    * ```ts
-   * Deno.linkSync("old/name", "new/name");
+   * Ende.linkSync("old/name", "new/name");
    * ```
    *
    * Requires `allow-read` and `allow-write` permissions.
@@ -1962,14 +1962,14 @@ declare namespace Ende {
     End = 2,
   }
 
-  /** Open a file and resolve to an instance of {@linkcode Deno.FsFile}. The
+  /** Open a file and resolve to an instance of {@linkcode Ende.FsFile}. The
    * file does not need to previously exist if using the `create` or `createNew`
    * open options. The caller may have the resulting file automatically closed
    * by the runtime once it's out of scope by declaring the file variable with
    * the `using` keyword.
    *
    * ```ts
-   * using file = await Deno.open("/foo/bar.txt", { read: true, write: true });
+   * using file = await Ende.open("/foo/bar.txt", { read: true, write: true });
    * // Do work with file
    * ```
    *
@@ -1977,7 +1977,7 @@ declare namespace Ende {
    * it.
    *
    * ```ts
-   * const file = await Deno.open("/foo/bar.txt", { read: true, write: true });
+   * const file = await Ende.open("/foo/bar.txt", { read: true, write: true });
    * // Do work with file
    * file.close();
    * ```
@@ -1994,13 +1994,13 @@ declare namespace Ende {
   ): Promise<FsFile>;
 
   /** Synchronously open a file and return an instance of
-   * {@linkcode Deno.FsFile}. The file does not need to previously exist if
+   * {@linkcode Ende.FsFile}. The file does not need to previously exist if
    * using the `create` or `createNew` open options. The caller may have the
    * resulting file automatically closed by the runtime once it's out of scope
    * by declaring the file variable with the `using` keyword.
    *
    * ```ts
-   * using file = Deno.openSync("/foo/bar.txt", { read: true, write: true });
+   * using file = Ende.openSync("/foo/bar.txt", { read: true, write: true });
    * // Do work with file
    * ```
    *
@@ -2008,7 +2008,7 @@ declare namespace Ende {
    * it.
    *
    * ```ts
-   * const file = Deno.openSync("/foo/bar.txt", { read: true, write: true });
+   * const file = Ende.openSync("/foo/bar.txt", { read: true, write: true });
    * // Do work with file
    * file.close();
    * ```
@@ -2022,10 +2022,10 @@ declare namespace Ende {
   export function openSync(path: string | URL, options?: OpenOptions): FsFile;
 
   /** Creates a file if none exists or truncates an existing file and resolves to
-   *  an instance of {@linkcode Deno.FsFile}.
+   *  an instance of {@linkcode Ende.FsFile}.
    *
    * ```ts
-   * const file = await Deno.create("/foo/bar.txt");
+   * const file = await Ende.create("/foo/bar.txt");
    * ```
    *
    * Requires `allow-read` and `allow-write` permissions.
@@ -2036,10 +2036,10 @@ declare namespace Ende {
   export function create(path: string | URL): Promise<FsFile>;
 
   /** Creates a file if none exists or truncates an existing file and returns
-   *  an instance of {@linkcode Deno.FsFile}.
+   *  an instance of {@linkcode Ende.FsFile}.
    *
    * ```ts
-   * const file = Deno.createSync("/foo/bar.txt");
+   * const file = Ende.createSync("/foo/bar.txt");
    * ```
    *
    * Requires `allow-read` and `allow-write` permissions.
@@ -2049,13 +2049,13 @@ declare namespace Ende {
    */
   export function createSync(path: string | URL): FsFile;
 
-  /** The Deno abstraction for reading and writing files.
+  /** The Ende abstraction for reading and writing files.
    *
-   * This is the most straight forward way of handling files within Deno and is
-   * recommended over using the discrete functions within the `Deno` namespace.
+   * This is the most straight forward way of handling files within Ende and is
+   * recommended over using the discrete functions within the `Ende` namespace.
    *
    * ```ts
-   * using file = await Deno.open("/foo/bar.txt", { read: true });
+   * using file = await Ende.open("/foo/bar.txt", { read: true });
    * const fileInfo = await file.stat();
    * if (fileInfo.isFile) {
    *   const buf = new Uint8Array(100);
@@ -2072,7 +2072,7 @@ declare namespace Ende {
      * based APIs.
      *
      * ```ts
-     * using file = await Deno.open("my_file.txt", { read: true });
+     * using file = await Ende.open("my_file.txt", { read: true });
      * const decoder = new TextDecoder();
      * for await (const chunk of file.readable) {
      *   console.log(decoder.decode(chunk));
@@ -2091,7 +2091,7 @@ declare namespace Ende {
      *
      * ```ts
      * const items = ["hello", "world"];
-     * using file = await Deno.open("my_file.txt", { write: true });
+     * using file = await Ende.open("my_file.txt", { write: true });
      * const encoder = new TextEncoder();
      * const writer = file.writable.getWriter();
      * for (const item of items) {
@@ -2114,7 +2114,7 @@ declare namespace Ende {
      * ```ts
      * const encoder = new TextEncoder();
      * const data = encoder.encode("Hello world");
-     * using file = await Deno.open("/foo/bar.txt", { write: true });
+     * using file = await Ende.open("/foo/bar.txt", { write: true });
      * const bytesWritten = await file.write(data); // 11
      * ```
      *
@@ -2131,7 +2131,7 @@ declare namespace Ende {
      * ```ts
      * const encoder = new TextEncoder();
      * const data = encoder.encode("Hello world");
-     * using file = Deno.openSync("/foo/bar.txt", { write: true });
+     * using file = Ende.openSync("/foo/bar.txt", { write: true });
      * const bytesWritten = file.writeSync(data); // 11
      * ```
      */
@@ -2142,7 +2142,7 @@ declare namespace Ende {
      * ### Truncate the entire file
      *
      * ```ts
-     * using file = await Deno.open("my_file.txt", { write: true });
+     * using file = await Ende.open("my_file.txt", { write: true });
      * await file.truncate();
      * ```
      *
@@ -2150,7 +2150,7 @@ declare namespace Ende {
      *
      * ```ts
      * // if "my_file.txt" contains the text "hello world":
-     * using file = await Deno.open("my_file.txt", { write: true });
+     * using file = await Ende.open("my_file.txt", { write: true });
      * await file.truncate(7);
      * const buf = new Uint8Array(100);
      * await file.read(buf);
@@ -2165,7 +2165,7 @@ declare namespace Ende {
      * ### Truncate the entire file
      *
      * ```ts
-     * using file = Deno.openSync("my_file.txt", { write: true });
+     * using file = Ende.openSync("my_file.txt", { write: true });
      * file.truncateSync();
      * ```
      *
@@ -2173,7 +2173,7 @@ declare namespace Ende {
      *
      * ```ts
      * // if "my_file.txt" contains the text "hello world":
-     * using file = Deno.openSync("my_file.txt", { write: true });
+     * using file = Ende.openSync("my_file.txt", { write: true });
      * file.truncateSync(7);
      * const buf = new Uint8Array(100);
      * file.readSync(buf);
@@ -2194,7 +2194,7 @@ declare namespace Ende {
      *
      * ```ts
      * // if "/foo/bar.txt" contains the text "hello world":
-     * using file = await Deno.open("/foo/bar.txt");
+     * using file = await Ende.open("/foo/bar.txt");
      * const buf = new Uint8Array(100);
      * const numberOfBytesRead = await file.read(buf); // 11 bytes
      * const text = new TextDecoder().decode(buf);  // "hello world"
@@ -2214,7 +2214,7 @@ declare namespace Ende {
      *
      * ```ts
      * // if "/foo/bar.txt" contains the text "hello world":
-     * using file = Deno.openSync("/foo/bar.txt");
+     * using file = Ende.openSync("/foo/bar.txt");
      * const buf = new Uint8Array(100);
      * const numberOfBytesRead = file.readSync(buf); // 11 bytes
      * const text = new TextDecoder().decode(buf);  // "hello world"
@@ -2226,14 +2226,14 @@ declare namespace Ende {
      *
      * ```ts
      * // Given the file contains "Hello world" text, which is 11 bytes long:
-     * using file = await Deno.open(
+     * using file = await Ende.open(
      *   "hello.txt",
      *   { read: true, write: true, truncate: true, create: true },
      * );
      * await file.write(new TextEncoder().encode("Hello world"));
      *
      * // advance cursor 6 bytes
-     * const cursorPosition = await file.seek(6, Deno.SeekMode.Start);
+     * const cursorPosition = await file.seek(6, Ende.SeekMode.Start);
      * console.log(cursorPosition);  // 6
      * const buf = new Uint8Array(100);
      * await file.read(buf);
@@ -2244,18 +2244,18 @@ declare namespace Ende {
      *
      * ```ts
      * // Given the file contains "Hello world" text, which is 11 bytes long:
-     * const file = await Deno.open(
+     * const file = await Ende.open(
      *   "hello.txt",
      *   { read: true, write: true, truncate: true, create: true },
      * );
      * await file.write(new TextEncoder().encode("Hello world"));
      *
      * // Seek 6 bytes from the start of the file
-     * console.log(await file.seek(6, Deno.SeekMode.Start)); // "6"
+     * console.log(await file.seek(6, Ende.SeekMode.Start)); // "6"
      * // Seek 2 more bytes from the current position
-     * console.log(await file.seek(2, Deno.SeekMode.Current)); // "8"
+     * console.log(await file.seek(2, Ende.SeekMode.Current)); // "8"
      * // Seek backwards 2 bytes from the end of the file
-     * console.log(await file.seek(-2, Deno.SeekMode.End)); // "9" (i.e. 11-2)
+     * console.log(await file.seek(-2, Ende.SeekMode.End)); // "9" (i.e. 11-2)
      * ```
      */
     seek(offset: number | bigint, whence: SeekMode): Promise<number>;
@@ -2263,14 +2263,14 @@ declare namespace Ende {
      * The new position within the resource (bytes from the start) is returned.
      *
      * ```ts
-     * using file = Deno.openSync(
+     * using file = Ende.openSync(
      *   "hello.txt",
      *   { read: true, write: true, truncate: true, create: true },
      * );
      * file.writeSync(new TextEncoder().encode("Hello world"));
      *
      * // advance cursor 6 bytes
-     * const cursorPosition = file.seekSync(6, Deno.SeekMode.Start);
+     * const cursorPosition = file.seekSync(6, Ende.SeekMode.Start);
      * console.log(cursorPosition);  // 6
      * const buf = new Uint8Array(100);
      * file.readSync(buf);
@@ -2281,38 +2281,38 @@ declare namespace Ende {
      *
      * ```ts
      * // Given the file contains "Hello world" text, which is 11 bytes long:
-     * using file = Deno.openSync(
+     * using file = Ende.openSync(
      *   "hello.txt",
      *   { read: true, write: true, truncate: true, create: true },
      * );
      * file.writeSync(new TextEncoder().encode("Hello world"));
      *
      * // Seek 6 bytes from the start of the file
-     * console.log(file.seekSync(6, Deno.SeekMode.Start)); // "6"
+     * console.log(file.seekSync(6, Ende.SeekMode.Start)); // "6"
      * // Seek 2 more bytes from the current position
-     * console.log(file.seekSync(2, Deno.SeekMode.Current)); // "8"
+     * console.log(file.seekSync(2, Ende.SeekMode.Current)); // "8"
      * // Seek backwards 2 bytes from the end of the file
-     * console.log(file.seekSync(-2, Deno.SeekMode.End)); // "9" (i.e. 11-2)
+     * console.log(file.seekSync(-2, Ende.SeekMode.End)); // "9" (i.e. 11-2)
      * ```
      */
     seekSync(offset: number | bigint, whence: SeekMode): number;
-    /** Resolves to a {@linkcode Deno.FileInfo} for the file.
+    /** Resolves to a {@linkcode Ende.FileInfo} for the file.
      *
      * ```ts
      * import { assert } from "jsr:@std/assert";
      *
-     * using file = await Deno.open("hello.txt");
+     * using file = await Ende.open("hello.txt");
      * const fileInfo = await file.stat();
      * assert(fileInfo.isFile);
      * ```
      */
     stat(): Promise<FileInfo>;
-    /** Synchronously returns a {@linkcode Deno.FileInfo} for the file.
+    /** Synchronously returns a {@linkcode Ende.FileInfo} for the file.
      *
      * ```ts
      * import { assert } from "jsr:@std/assert";
      *
-     * using file = Deno.openSync("hello.txt")
+     * using file = Ende.openSync("hello.txt")
      * const fileInfo = file.statSync();
      * assert(fileInfo.isFile);
      * ```
@@ -2323,14 +2323,14 @@ declare namespace Ende {
      * stream to disk.
      *
      * ```ts
-     * const file = await Deno.open(
+     * const file = await Ende.open(
      *   "my_file.txt",
      *   { read: true, write: true, create: true },
      * );
      * await file.write(new TextEncoder().encode("Hello World"));
      * await file.truncate(1);
      * await file.sync();
-     * console.log(await Deno.readTextFile("my_file.txt")); // H
+     * console.log(await Ende.readTextFile("my_file.txt")); // H
      * ```
      *
      * @category I/O
@@ -2341,14 +2341,14 @@ declare namespace Ende {
      * file stream to disk.
      *
      * ```ts
-     * const file = Deno.openSync(
+     * const file = Ende.openSync(
      *   "my_file.txt",
      *   { read: true, write: true, create: true },
      * );
      * file.writeSync(new TextEncoder().encode("Hello World"));
      * file.truncateSync(1);
      * file.syncSync();
-     * console.log(Deno.readTextFileSync("my_file.txt")); // H
+     * console.log(Ende.readTextFileSync("my_file.txt")); // H
      * ```
      *
      * @category I/O
@@ -2357,13 +2357,13 @@ declare namespace Ende {
     /**
      * Flushes any pending data operations of the given file stream to disk.
      *  ```ts
-     * using file = await Deno.open(
+     * using file = await Ende.open(
      *   "my_file.txt",
      *   { read: true, write: true, create: true },
      * );
      * await file.write(new TextEncoder().encode("Hello World"));
      * await file.syncData();
-     * console.log(await Deno.readTextFile("my_file.txt")); // Hello World
+     * console.log(await Ende.readTextFile("my_file.txt")); // Hello World
      * ```
      *
      * @category I/O
@@ -2374,13 +2374,13 @@ declare namespace Ende {
      * to disk.
      *
      *  ```ts
-     * using file = Deno.openSync(
+     * using file = Ende.openSync(
      *   "my_file.txt",
      *   { read: true, write: true, create: true },
      * );
      * file.writeSync(new TextEncoder().encode("Hello World"));
      * file.syncDataSync();
-     * console.log(Deno.readTextFileSync("my_file.txt")); // Hello World
+     * console.log(Ende.readTextFileSync("my_file.txt")); // Hello World
      * ```
      *
      * @category I/O
@@ -2392,7 +2392,7 @@ declare namespace Ende {
      * time) or as `Date` objects.
      *
      * ```ts
-     * using file = await Deno.open("file.txt", { create: true, write: true });
+     * using file = await Ende.open("file.txt", { create: true, write: true });
      * await file.utime(1556495550, new Date());
      * ```
      *
@@ -2405,7 +2405,7 @@ declare namespace Ende {
      * (UNIX epoch time) or as `Date` objects.
      *
      * ```ts
-     * using file = Deno.openSync("file.txt", { create: true, write: true });
+     * using file = Ende.openSync("file.txt", { create: true, write: true });
      * file.utime(1556495550, new Date());
      * ```
      *
@@ -2417,7 +2417,7 @@ declare namespace Ende {
      *
      * ```ts
      * // This example is system and context specific
-     * using file = await Deno.open("/dev/tty6");
+     * using file = await Ende.open("/dev/tty6");
      * file.isTerminal(); // true
      * ```
      */
@@ -2430,7 +2430,7 @@ declare namespace Ende {
      * from a TTY device in canonical mode.
      *
      * ```ts
-     * using file = await Deno.open("/dev/tty6");
+     * using file = await Ende.open("/dev/tty6");
      * file.setRaw(true, { cbreak: true });
      * ```
      */
@@ -2451,7 +2451,7 @@ declare namespace Ende {
      * Try to acquire an advisory file-system lock for the file. Returns `true`
      * if the lock was acquired, `false` if the file is already locked.
      *
-     * Unlike {@linkcode Deno.FsFile.lock}, this method will not block if the
+     * Unlike {@linkcode Ende.FsFile.lock}, this method will not block if the
      * lock cannot be acquired.
      *
      * @param [exclusive=false]
@@ -2461,7 +2461,7 @@ declare namespace Ende {
      * Synchronously try to acquire an advisory file-system lock for the file.
      * Returns `true` if the lock was acquired, `false` if the file is already locked.
      *
-     * Unlike {@linkcode Deno.FsFile.lockSync}, this method will not block if the
+     * Unlike {@linkcode Ende.FsFile.lockSync}, this method will not block if the
      * lock cannot be acquired.
      *
      * @param [exclusive=false]
@@ -2479,7 +2479,7 @@ declare namespace Ende {
      * important to avoid leaking resources.
      *
      * ```ts
-     * using file = await Deno.open("my_file.txt");
+     * using file = await Ende.open("my_file.txt");
      * // do work with "file" object
      * ```
      */
@@ -2491,7 +2491,7 @@ declare namespace Ende {
   /** Gets the size of the console as columns/rows.
    *
    * ```ts
-   * const { columns, rows } = Deno.consoleSize();
+   * const { columns, rows } = Ende.consoleSize();
    * ```
    *
    * This returns the size of the console window as reported by the operating
@@ -2499,7 +2499,7 @@ declare namespace Ende {
    * console window, but can be used as part of that calculation.
    *
    * Throws if none of stdin, stdout, or stderr is connected to a terminal
-   * (e.g. all are piped or redirected). Use {@linkcode Deno.stdout.isTerminal}
+   * (e.g. all are piped or redirected). Use {@linkcode Ende.stdout.isTerminal}
    * to check before calling.
    *
    * @category I/O
@@ -2522,7 +2522,7 @@ declare namespace Ende {
 
   /** A reference to `stdin` which can be used to read directly from `stdin`.
    *
-   * It implements the Deno specific
+   * It implements the Ende specific
    * {@linkcode https://jsr.io/@std/io/doc/types/~/Reader | Reader},
    * {@linkcode https://jsr.io/@std/io/doc/types/~/ReaderSync | ReaderSync},
    * and {@linkcode https://jsr.io/@std/io/doc/types/~/Closer | Closer}
@@ -2532,7 +2532,7 @@ declare namespace Ende {
    *
    * ```ts
    * const decoder = new TextDecoder();
-   * for await (const chunk of Deno.stdin.readable) {
+   * for await (const chunk of Ende.stdin.readable) {
    *   const text = decoder.decode(chunk);
    *   // do something with the text
    * }
@@ -2555,7 +2555,7 @@ declare namespace Ende {
      * ```ts
      * // If the text "hello world" is piped into the script:
      * const buf = new Uint8Array(100);
-     * const numberOfBytesRead = await Deno.stdin.read(buf); // 11 bytes
+     * const numberOfBytesRead = await Ende.stdin.read(buf); // 11 bytes
      * const text = new TextDecoder().decode(buf);  // "hello world"
      * ```
      *
@@ -2577,7 +2577,7 @@ declare namespace Ende {
      * ```ts
      * // If the text "hello world" is piped into the script:
      * const buf = new Uint8Array(100);
-     * const numberOfBytesRead = Deno.stdin.readSync(buf); // 11 bytes
+     * const numberOfBytesRead = Ende.stdin.readSync(buf); // 11 bytes
      * const text = new TextDecoder().decode(buf);  // "hello world"
      * ```
      *
@@ -2587,7 +2587,7 @@ declare namespace Ende {
     /** Closes `stdin`, freeing the resource.
      *
      * ```ts
-     * Deno.stdin.close();
+     * Ende.stdin.close();
      * ```
      */
     close(): void;
@@ -2601,7 +2601,7 @@ declare namespace Ende {
      * from a TTY device in canonical mode.
      *
      * ```ts
-     * Deno.stdin.setRaw(true, { cbreak: true });
+     * Ende.stdin.setRaw(true, { cbreak: true });
      * ```
      *
      * @category I/O
@@ -2612,7 +2612,7 @@ declare namespace Ende {
      *
      * ```ts
      * // This example is system and context specific
-     * Deno.stdin.isTerminal(); // true
+     * Ende.stdin.isTerminal(); // true
      * ```
      *
      * @category I/O
@@ -2620,7 +2620,7 @@ declare namespace Ende {
     isTerminal(): boolean;
   };
   /** A reference to `stdout` which can be used to write directly to `stdout`.
-   * It implements the Deno specific
+   * It implements the Ende specific
    * {@linkcode https://jsr.io/@std/io/doc/types/~/Writer | Writer},
    * {@linkcode https://jsr.io/@std/io/doc/types/~/WriterSync | WriterSync},
    * and {@linkcode https://jsr.io/@std/io/doc/types/~/Closer | Closer} interfaces as well as provides a
@@ -2642,7 +2642,7 @@ declare namespace Ende {
      * ```ts
      * const encoder = new TextEncoder();
      * const data = encoder.encode("Hello world");
-     * const bytesWritten = await Deno.stdout.write(data); // 11
+     * const bytesWritten = await Ende.stdout.write(data); // 11
      * ```
      *
      * @category I/O
@@ -2658,14 +2658,14 @@ declare namespace Ende {
      * ```ts
      * const encoder = new TextEncoder();
      * const data = encoder.encode("Hello world");
-     * const bytesWritten = Deno.stdout.writeSync(data); // 11
+     * const bytesWritten = Ende.stdout.writeSync(data); // 11
      * ```
      */
     writeSync(p: Uint8Array): number;
     /** Closes `stdout`, freeing the resource.
      *
      * ```ts
-     * Deno.stdout.close();
+     * Ende.stdout.close();
      * ```
      */
     close(): void;
@@ -2676,7 +2676,7 @@ declare namespace Ende {
      *
      * ```ts
      * // This example is system and context specific
-     * Deno.stdout.isTerminal(); // true
+     * Ende.stdout.isTerminal(); // true
      * ```
      *
      * @category I/O
@@ -2684,7 +2684,7 @@ declare namespace Ende {
     isTerminal(): boolean;
   };
   /** A reference to `stderr` which can be used to write directly to `stderr`.
-   * It implements the Deno specific
+   * It implements the Ende specific
    * {@linkcode https://jsr.io/@std/io/doc/types/~/Writer | Writer},
    * {@linkcode https://jsr.io/@std/io/doc/types/~/WriterSync | WriterSync},
    * and {@linkcode https://jsr.io/@std/io/doc/types/~/Closer | Closer} interfaces as well as provides a
@@ -2706,7 +2706,7 @@ declare namespace Ende {
      * ```ts
      * const encoder = new TextEncoder();
      * const data = encoder.encode("Hello world");
-     * const bytesWritten = await Deno.stderr.write(data); // 11
+     * const bytesWritten = await Ende.stderr.write(data); // 11
      * ```
      *
      * @category I/O
@@ -2722,14 +2722,14 @@ declare namespace Ende {
      * ```ts
      * const encoder = new TextEncoder();
      * const data = encoder.encode("Hello world");
-     * const bytesWritten = Deno.stderr.writeSync(data); // 11
+     * const bytesWritten = Ende.stderr.writeSync(data); // 11
      * ```
      */
     writeSync(p: Uint8Array): number;
     /** Closes `stderr`, freeing the resource.
      *
      * ```ts
-     * Deno.stderr.close();
+     * Ende.stderr.close();
      * ```
      */
     close(): void;
@@ -2740,7 +2740,7 @@ declare namespace Ende {
      *
      * ```ts
      * // This example is system and context specific
-     * Deno.stderr.isTerminal(); // true
+     * Ende.stderr.isTerminal(); // true
      * ```
      *
      * @category I/O
@@ -2749,8 +2749,8 @@ declare namespace Ende {
   };
 
   /**
-   * Options which can be set when doing {@linkcode Deno.open} and
-   * {@linkcode Deno.openSync}.
+   * Options which can be set when doing {@linkcode Ende.open} and
+   * {@linkcode Ende.openSync}.
    *
    * @category File System */
   export interface OpenOptions {
@@ -2802,8 +2802,8 @@ declare namespace Ende {
   }
 
   /**
-   * Options which can be set when using {@linkcode Deno.readFile} or
-   * {@linkcode Deno.readFileSync}.
+   * Options which can be set when using {@linkcode Ende.readFile} or
+   * {@linkcode Ende.readFileSync}.
    *
    * @category File System */
   export interface ReadFileOptions {
@@ -2816,8 +2816,8 @@ declare namespace Ende {
   }
 
   /**
-   * Options which can be set when using {@linkcode Deno.mkdir} and
-   * {@linkcode Deno.mkdirSync}.
+   * Options which can be set when using {@linkcode Ende.mkdir} and
+   * {@linkcode Ende.mkdirSync}.
    *
    * @category File System */
   export interface MkdirOptions {
@@ -2842,9 +2842,9 @@ declare namespace Ende {
   /** Creates a new directory with the specified path.
    *
    * ```ts
-   * await Deno.mkdir("new_dir");
-   * await Deno.mkdir("nested/directories", { recursive: true });
-   * await Deno.mkdir("restricted_access_dir", { mode: 0o700 });
+   * await Ende.mkdir("new_dir");
+   * await Ende.mkdir("nested/directories", { recursive: true });
+   * await Ende.mkdir("restricted_access_dir", { mode: 0o700 });
    * ```
    *
    * Throws if the directory already exists, unless `recursive` is set to
@@ -2863,9 +2863,9 @@ declare namespace Ende {
   /** Synchronously creates a new directory with the specified path.
    *
    * ```ts
-   * Deno.mkdirSync("new_dir");
-   * Deno.mkdirSync("nested/directories", { recursive: true });
-   * Deno.mkdirSync("restricted_access_dir", { mode: 0o700 });
+   * Ende.mkdirSync("new_dir");
+   * Ende.mkdirSync("nested/directories", { recursive: true });
+   * Ende.mkdirSync("restricted_access_dir", { mode: 0o700 });
    * ```
    *
    * Throws if the directory already exists, unless `recursive` is set to
@@ -2879,9 +2879,9 @@ declare namespace Ende {
   export function mkdirSync(path: string | URL, options?: MkdirOptions): void;
 
   /**
-   * Options which can be set when using {@linkcode Deno.makeTempDir},
-   * {@linkcode Deno.makeTempDirSync}, {@linkcode Deno.makeTempFile}, and
-   * {@linkcode Deno.makeTempFileSync}.
+   * Options which can be set when using {@linkcode Ende.makeTempDir},
+   * {@linkcode Ende.makeTempDirSync}, {@linkcode Ende.makeTempFile}, and
+   * {@linkcode Ende.makeTempFileSync}.
    *
    * @category File System */
   export interface MakeTempOptions {
@@ -2912,8 +2912,8 @@ declare namespace Ende {
    * no longer needed.
    *
    * ```ts
-   * const tempDirName0 = await Deno.makeTempDir();  // e.g. /tmp/2894ea76
-   * const tempDirName1 = await Deno.makeTempDir({ prefix: 'my_temp' }); // e.g. /tmp/my_temp339c944d
+   * const tempDirName0 = await Ende.makeTempDir();  // e.g. /tmp/2894ea76
+   * const tempDirName1 = await Ende.makeTempDir({ prefix: 'my_temp' }); // e.g. /tmp/my_temp339c944d
    * ```
    *
    * Requires `allow-write` permission.
@@ -2936,8 +2936,8 @@ declare namespace Ende {
    * no longer needed.
    *
    * ```ts
-   * const tempDirName0 = Deno.makeTempDirSync();  // e.g. /tmp/2894ea76
-   * const tempDirName1 = Deno.makeTempDirSync({ prefix: 'my_temp' });  // e.g. /tmp/my_temp339c944d
+   * const tempDirName0 = Ende.makeTempDirSync();  // e.g. /tmp/2894ea76
+   * const tempDirName1 = Ende.makeTempDirSync({ prefix: 'my_temp' });  // e.g. /tmp/my_temp339c944d
    * ```
    *
    * Requires `allow-write` permission.
@@ -2961,8 +2961,8 @@ declare namespace Ende {
    * no longer needed.
    *
    * ```ts
-   * const tmpFileName0 = await Deno.makeTempFile();  // e.g. /tmp/419e0bf2
-   * const tmpFileName1 = await Deno.makeTempFile({ prefix: 'my_temp' });  // e.g. /tmp/my_temp754d3098
+   * const tmpFileName0 = await Ende.makeTempFile();  // e.g. /tmp/419e0bf2
+   * const tmpFileName1 = await Ende.makeTempFile({ prefix: 'my_temp' });  // e.g. /tmp/my_temp754d3098
    * ```
    *
    * Requires `allow-write` permission.
@@ -2985,8 +2985,8 @@ declare namespace Ende {
    * no longer needed.
    *
    * ```ts
-   * const tempFileName0 = Deno.makeTempFileSync(); // e.g. /tmp/419e0bf2
-   * const tempFileName1 = Deno.makeTempFileSync({ prefix: 'my_temp' });  // e.g. /tmp/my_temp754d3098
+   * const tempFileName0 = Ende.makeTempFileSync(); // e.g. /tmp/419e0bf2
+   * const tempFileName1 = Ende.makeTempFileSync({ prefix: 'my_temp' });  // e.g. /tmp/my_temp754d3098
    * ```
    *
    * Requires `allow-write` permission.
@@ -3000,7 +3000,7 @@ declare namespace Ende {
    * Ignores the process's umask.
    *
    * ```ts
-   * await Deno.chmod("/path/to/file", 0o666);
+   * await Ende.chmod("/path/to/file", 0o666);
    * ```
    *
    * The mode is a sequence of 3 octal numbers. The first/left-most number
@@ -3035,10 +3035,10 @@ declare namespace Ende {
    * specified path. Ignores the process's umask.
    *
    * ```ts
-   * Deno.chmodSync("/path/to/file", 0o666);
+   * Ende.chmodSync("/path/to/file", 0o666);
    * ```
    *
-   * For a full description, see {@linkcode Deno.chmod}.
+   * For a full description, see {@linkcode Ende.chmod}.
    *
    * Requires `allow-write` permission.
    *
@@ -3052,7 +3052,7 @@ declare namespace Ende {
    * This functionality is not available on Windows.
    *
    * ```ts
-   * await Deno.chown("myFile.txt", 1000, 1002);
+   * await Ende.chown("myFile.txt", 1000, 1002);
    * ```
    *
    * Requires `allow-write` permission.
@@ -3077,7 +3077,7 @@ declare namespace Ende {
    * This functionality is not available on Windows.
    *
    * ```ts
-   * Deno.chownSync("myFile.txt", 1000, 1002);
+   * Ende.chownSync("myFile.txt", 1000, 1002);
    * ```
    *
    * Requires `allow-write` permission.
@@ -3098,8 +3098,8 @@ declare namespace Ende {
   ): void;
 
   /**
-   * Options which can be set when using {@linkcode Deno.remove} and
-   * {@linkcode Deno.removeSync}.
+   * Options which can be set when using {@linkcode Ende.remove} and
+   * {@linkcode Ende.removeSync}.
    *
    * @category File System */
   export interface RemoveOptions {
@@ -3112,8 +3112,8 @@ declare namespace Ende {
   /** Removes the named file or directory.
    *
    * ```ts
-   * await Deno.remove("/path/to/empty_dir/or/file");
-   * await Deno.remove("/path/to/populated_dir/or/file", { recursive: true });
+   * await Ende.remove("/path/to/empty_dir/or/file");
+   * await Ende.remove("/path/to/populated_dir/or/file", { recursive: true });
    * ```
    *
    * Throws error if permission denied, path not found, or path is a non-empty
@@ -3132,8 +3132,8 @@ declare namespace Ende {
   /** Synchronously removes the named file or directory.
    *
    * ```ts
-   * Deno.removeSync("/path/to/empty_dir/or/file");
-   * Deno.removeSync("/path/to/populated_dir/or/file", { recursive: true });
+   * Ende.removeSync("/path/to/empty_dir/or/file");
+   * Ende.removeSync("/path/to/populated_dir/or/file", { recursive: true });
    * ```
    *
    * Throws error if permission denied, path not found, or path is a non-empty
@@ -3152,7 +3152,7 @@ declare namespace Ende {
    * `oldpath` and `newpath` are in different directories.
    *
    * ```ts
-   * Deno.renameSync("old/path", "new/path");
+   * Ende.renameSync("old/path", "new/path");
    * ```
    *
    * On Unix-like OSes, this operation does not follow symlinks at either path.
@@ -3176,7 +3176,7 @@ declare namespace Ende {
    * different directories.
    *
    * ```ts
-   * await Deno.rename("old/path", "new/path");
+   * await Ende.rename("old/path", "new/path");
    * ```
    *
    * On Unix-like OSes, this operation does not follow symlinks at either path.
@@ -3199,14 +3199,14 @@ declare namespace Ende {
    *  decoded string.
    *
    * ```ts
-   * const data = await Deno.readTextFile("hello.txt");
+   * const data = await Ende.readTextFile("hello.txt");
    * console.log(data);
    * ```
    *
    * The returned promise rejects if the operation fails, for example with
-   * {@linkcode Deno.errors.NotFound} if the file does not exist,
-   * {@linkcode Deno.errors.IsADirectory} if `path` refers to a directory, or
-   * {@linkcode Deno.errors.PermissionDenied} if the required permission has not
+   * {@linkcode Ende.errors.NotFound} if the file does not exist,
+   * {@linkcode Ende.errors.IsADirectory} if `path` refers to a directory, or
+   * {@linkcode Ende.errors.PermissionDenied} if the required permission has not
    * been granted.
    *
    * Requires `allow-read` permission.
@@ -3223,14 +3223,14 @@ declare namespace Ende {
    *  decoded string.
    *
    * ```ts
-   * const data = Deno.readTextFileSync("hello.txt");
+   * const data = Ende.readTextFileSync("hello.txt");
    * console.log(data);
    * ```
    *
    * Throws if the operation fails, for example with
-   * {@linkcode Deno.errors.NotFound} if the file does not exist,
-   * {@linkcode Deno.errors.IsADirectory} if `path` refers to a directory, or
-   * {@linkcode Deno.errors.PermissionDenied} if the required permission has not
+   * {@linkcode Ende.errors.NotFound} if the file does not exist,
+   * {@linkcode Ende.errors.IsADirectory} if `path` refers to a directory, or
+   * {@linkcode Ende.errors.PermissionDenied} if the required permission has not
    * been granted.
    *
    * Requires `allow-read` permission.
@@ -3246,7 +3246,7 @@ declare namespace Ende {
    *
    * ```ts
    * const decoder = new TextDecoder("utf-8");
-   * const data = await Deno.readFile("hello.txt");
+   * const data = await Ende.readFile("hello.txt");
    * console.log(decoder.decode(data));
    * ```
    *
@@ -3266,7 +3266,7 @@ declare namespace Ende {
    *
    * ```ts
    * const decoder = new TextDecoder("utf-8");
-   * const data = Deno.readFileSync("hello.txt");
+   * const data = Ende.readFileSync("hello.txt");
    * console.log(decoder.decode(data));
    * ```
    *
@@ -3278,9 +3278,9 @@ declare namespace Ende {
   export function readFileSync(path: string | URL): Uint8Array<ArrayBuffer>;
 
   /** Provides information about a file and is returned by
-   * {@linkcode Deno.stat}, {@linkcode Deno.lstat}, {@linkcode Deno.statSync},
-   * and {@linkcode Deno.lstatSync} or from calling `stat()` and `statSync()`
-   * on an {@linkcode Deno.FsFile} instance.
+   * {@linkcode Ende.stat}, {@linkcode Ende.lstat}, {@linkcode Ende.statSync},
+   * and {@linkcode Ende.lstatSync} or from calling `stat()` and `statSync()`
+   * on an {@linkcode Ende.FsFile} instance.
    *
    * @category File System
    */
@@ -3364,9 +3364,9 @@ declare namespace Ende {
    *
    * ```ts
    * // e.g. given /home/alice/file.txt and current directory /home/alice
-   * await Deno.symlink("file.txt", "symlink_file.txt");
-   * const realPath = await Deno.realPath("./file.txt");
-   * const realSymLinkPath = await Deno.realPath("./symlink_file.txt");
+   * await Ende.symlink("file.txt", "symlink_file.txt");
+   * const realPath = await Ende.realPath("./file.txt");
+   * const realSymLinkPath = await Ende.realPath("./symlink_file.txt");
    * console.log(realPath);  // outputs "/home/alice/file.txt"
    * console.log(realSymLinkPath);  // outputs "/home/alice/file.txt"
    * ```
@@ -3386,9 +3386,9 @@ declare namespace Ende {
    *
    * ```ts
    * // e.g. given /home/alice/file.txt and current directory /home/alice
-   * Deno.symlinkSync("file.txt", "symlink_file.txt");
-   * const realPath = Deno.realPathSync("./file.txt");
-   * const realSymLinkPath = Deno.realPathSync("./symlink_file.txt");
+   * Ende.symlinkSync("file.txt", "symlink_file.txt");
+   * const realPath = Ende.realPathSync("./file.txt");
+   * const realSymLinkPath = Ende.realPathSync("./symlink_file.txt");
    * console.log(realPath);  // outputs "/home/alice/file.txt"
    * console.log(realSymLinkPath);  // outputs "/home/alice/file.txt"
    * ```
@@ -3404,8 +3404,8 @@ declare namespace Ende {
   export function realPathSync(path: string | URL): string;
 
   /**
-   * Information about a directory entry returned from {@linkcode Deno.readDir}
-   * and {@linkcode Deno.readDirSync}.
+   * Information about a directory entry returned from {@linkcode Ende.readDir}
+   * and {@linkcode Ende.readDirSync}.
    *
    * @category File System */
   export interface DirEntry {
@@ -3424,10 +3424,10 @@ declare namespace Ende {
   }
 
   /** Reads the directory given by `path` and returns an async iterable of
-   * {@linkcode Deno.DirEntry}. The order of entries is not guaranteed.
+   * {@linkcode Ende.DirEntry}. The order of entries is not guaranteed.
    *
    * ```ts
-   * for await (const dirEntry of Deno.readDir("/")) {
+   * for await (const dirEntry of Ende.readDir("/")) {
    *   console.log(dirEntry.name);
    * }
    * ```
@@ -3442,10 +3442,10 @@ declare namespace Ende {
   export function readDir(path: string | URL): AsyncIterable<DirEntry>;
 
   /** Synchronously reads the directory given by `path` and returns an iterable
-   * of {@linkcode Deno.DirEntry}. The order of entries is not guaranteed.
+   * of {@linkcode Ende.DirEntry}. The order of entries is not guaranteed.
    *
    * ```ts
-   * for (const dirEntry of Deno.readDirSync("/")) {
+   * for (const dirEntry of Ende.readDirSync("/")) {
    *   console.log(dirEntry.name);
    * }
    * ```
@@ -3464,7 +3464,7 @@ declare namespace Ende {
    * path is a directory or is unwritable.
    *
    * ```ts
-   * await Deno.copyFile("from.txt", "to.txt");
+   * await Ende.copyFile("from.txt", "to.txt");
    * ```
    *
    * Requires `allow-read` permission on `fromPath`.
@@ -3484,7 +3484,7 @@ declare namespace Ende {
    * Fails if target path is a directory or is unwritable.
    *
    * ```ts
-   * Deno.copyFileSync("from.txt", "to.txt");
+   * Ende.copyFileSync("from.txt", "to.txt");
    * ```
    *
    * Requires `allow-read` permission on `fromPath`.
@@ -3502,8 +3502,8 @@ declare namespace Ende {
   /** Resolves to the full path destination of the named symbolic link.
    *
    * ```ts
-   * await Deno.symlink("./test.txt", "./test_link.txt");
-   * const target = await Deno.readLink("./test_link.txt"); // full path of ./test.txt
+   * await Ende.symlink("./test.txt", "./test_link.txt");
+   * const target = await Ende.readLink("./test_link.txt"); // full path of ./test.txt
    * ```
    *
    * Throws TypeError if called with a hard link.
@@ -3519,8 +3519,8 @@ declare namespace Ende {
    * link.
    *
    * ```ts
-   * Deno.symlinkSync("./test.txt", "./test_link.txt");
-   * const target = Deno.readLinkSync("./test_link.txt"); // full path of ./test.txt
+   * Ende.symlinkSync("./test.txt", "./test_link.txt");
+   * const target = Ende.readLinkSync("./test_link.txt"); // full path of ./test.txt
    * ```
    *
    * Throws TypeError if called with a hard link.
@@ -3532,13 +3532,13 @@ declare namespace Ende {
    */
   export function readLinkSync(path: string | URL): string;
 
-  /** Resolves to a {@linkcode Deno.FileInfo} for the specified `path`. If
+  /** Resolves to a {@linkcode Ende.FileInfo} for the specified `path`. If
    * `path` is a symlink, information for the symlink will be returned instead
    * of what it points to.
    *
    * ```ts
    * import { assert } from "jsr:@std/assert";
-   * const fileInfo = await Deno.lstat("hello.txt");
+   * const fileInfo = await Ende.lstat("hello.txt");
    * assert(fileInfo.isFile);
    * ```
    *
@@ -3549,13 +3549,13 @@ declare namespace Ende {
    */
   export function lstat(path: string | URL): Promise<FileInfo>;
 
-  /** Synchronously returns a {@linkcode Deno.FileInfo} for the specified
+  /** Synchronously returns a {@linkcode Ende.FileInfo} for the specified
    * `path`. If `path` is a symlink, information for the symlink will be
    * returned instead of what it points to.
    *
    * ```ts
    * import { assert } from "jsr:@std/assert";
-   * const fileInfo = Deno.lstatSync("hello.txt");
+   * const fileInfo = Ende.lstatSync("hello.txt");
    * assert(fileInfo.isFile);
    * ```
    *
@@ -3566,12 +3566,12 @@ declare namespace Ende {
    */
   export function lstatSync(path: string | URL): FileInfo;
 
-  /** Resolves to a {@linkcode Deno.FileInfo} for the specified `path`. Will
+  /** Resolves to a {@linkcode Ende.FileInfo} for the specified `path`. Will
    * always follow symlinks.
    *
    * ```ts
    * import { assert } from "jsr:@std/assert";
-   * const fileInfo = await Deno.stat("hello.txt");
+   * const fileInfo = await Ende.stat("hello.txt");
    * assert(fileInfo.isFile);
    * ```
    *
@@ -3582,12 +3582,12 @@ declare namespace Ende {
    */
   export function stat(path: string | URL): Promise<FileInfo>;
 
-  /** Synchronously returns a {@linkcode Deno.FileInfo} for the specified
+  /** Synchronously returns a {@linkcode Ende.FileInfo} for the specified
    * `path`. Will always follow symlinks.
    *
    * ```ts
    * import { assert } from "jsr:@std/assert";
-   * const fileInfo = Deno.statSync("hello.txt");
+   * const fileInfo = Ende.statSync("hello.txt");
    * assert(fileInfo.isFile);
    * ```
    *
@@ -3634,10 +3634,10 @@ declare namespace Ende {
    * ```ts
    * const encoder = new TextEncoder();
    * const data = encoder.encode("Hello world\n");
-   * await Deno.writeFile("hello1.txt", data);  // overwrite "hello1.txt" or create it
-   * await Deno.writeFile("hello2.txt", data, { create: false });  // only works if "hello2.txt" exists
-   * await Deno.writeFile("hello3.txt", data, { mode: 0o777 });  // set permissions on new file
-   * await Deno.writeFile("hello4.txt", data, { append: true });  // add data to the end of the file
+   * await Ende.writeFile("hello1.txt", data);  // overwrite "hello1.txt" or create it
+   * await Ende.writeFile("hello2.txt", data, { create: false });  // only works if "hello2.txt" exists
+   * await Ende.writeFile("hello3.txt", data, { mode: 0o777 });  // set permissions on new file
+   * await Ende.writeFile("hello4.txt", data, { append: true });  // add data to the end of the file
    * ```
    *
    * Requires `allow-write` permission, and `allow-read` if `options.create` is
@@ -3658,10 +3658,10 @@ declare namespace Ende {
    * ```ts
    * const encoder = new TextEncoder();
    * const data = encoder.encode("Hello world\n");
-   * Deno.writeFileSync("hello1.txt", data);  // overwrite "hello1.txt" or create it
-   * Deno.writeFileSync("hello2.txt", data, { create: false });  // only works if "hello2.txt" exists
-   * Deno.writeFileSync("hello3.txt", data, { mode: 0o777 });  // set permissions on new file
-   * Deno.writeFileSync("hello4.txt", data, { append: true });  // add data to the end of the file
+   * Ende.writeFileSync("hello1.txt", data);  // overwrite "hello1.txt" or create it
+   * Ende.writeFileSync("hello2.txt", data, { create: false });  // only works if "hello2.txt" exists
+   * Ende.writeFileSync("hello3.txt", data, { mode: 0o777 });  // set permissions on new file
+   * Ende.writeFileSync("hello4.txt", data, { append: true });  // add data to the end of the file
    * ```
    *
    * Requires `allow-write` permission, and `allow-read` if `options.create` is
@@ -3680,15 +3680,15 @@ declare namespace Ende {
    * needed, else overwriting.
    *
    * ```ts
-   * await Deno.writeTextFile("hello1.txt", "Hello world\n");  // overwrite "hello1.txt" or create it
+   * await Ende.writeTextFile("hello1.txt", "Hello world\n");  // overwrite "hello1.txt" or create it
    * ```
    *
    * The data is written to the file and the file is closed, but this does not
    * guarantee that the contents have been flushed from the operating system's
    * buffers to the physical storage device. If you need such a durability
    * guarantee (for example before signalling that a write has been committed),
-   * open the file with {@linkcode Deno.open} and call
-   * {@linkcode Deno.FsFile.sync} before closing it.
+   * open the file with {@linkcode Ende.open} and call
+   * {@linkcode Ende.FsFile.sync} before closing it.
    *
    * Requires `allow-write` permission, and `allow-read` if `options.create` is
    * `false`.
@@ -3706,14 +3706,14 @@ declare namespace Ende {
    * a new file if needed, else overwriting.
    *
    * ```ts
-   * Deno.writeTextFileSync("hello1.txt", "Hello world\n");  // overwrite "hello1.txt" or create it
+   * Ende.writeTextFileSync("hello1.txt", "Hello world\n");  // overwrite "hello1.txt" or create it
    * ```
    *
-   * As with {@linkcode Deno.writeTextFile}, the data is written and the file is
+   * As with {@linkcode Ende.writeTextFile}, the data is written and the file is
    * closed, but this does not guarantee the contents have been flushed from the
    * operating system's buffers to the physical storage device. If you need such
-   * a durability guarantee, open the file with {@linkcode Deno.openSync} and
-   * call {@linkcode Deno.FsFile.syncSync} before closing it.
+   * a durability guarantee, open the file with {@linkcode Ende.openSync} and
+   * call {@linkcode Ende.FsFile.syncSync} before closing it.
    *
    * Requires `allow-write` permission, and `allow-read` if `options.create` is
    * `false`.
@@ -3732,16 +3732,16 @@ declare namespace Ende {
    *
    * ### Truncate the entire file
    * ```ts
-   * await Deno.truncate("my_file.txt");
+   * await Ende.truncate("my_file.txt");
    * ```
    *
    * ### Truncate part of the file
    *
    * ```ts
-   * const file = await Deno.makeTempFile();
-   * await Deno.writeTextFile(file, "Hello World");
-   * await Deno.truncate(file, 7);
-   * const data = await Deno.readFile(file);
+   * const file = await Ende.makeTempFile();
+   * await Ende.writeTextFile(file, "Hello World");
+   * await Ende.truncate(file, 7);
+   * const data = await Ende.readFile(file);
    * console.log(new TextDecoder().decode(data));  // "Hello W"
    * ```
    *
@@ -3759,16 +3759,16 @@ declare namespace Ende {
    * ### Truncate the entire file
    *
    * ```ts
-   * Deno.truncateSync("my_file.txt");
+   * Ende.truncateSync("my_file.txt");
    * ```
    *
    * ### Truncate part of the file
    *
    * ```ts
-   * const file = Deno.makeTempFileSync();
-   * Deno.writeFileSync(file, new TextEncoder().encode("Hello World"));
-   * Deno.truncateSync(file, 7);
-   * const data = Deno.readFileSync(file);
+   * const file = Ende.makeTempFileSync();
+   * Ende.writeFileSync(file, new TextEncoder().encode("Hello World"));
+   * Ende.truncateSync(file, 7);
+   * const data = Ende.readFileSync(file);
    * console.log(new TextDecoder().decode(data));
    * ```
    *
@@ -3796,7 +3796,7 @@ declare namespace Ende {
 
   /**
    * Represents a unique file system event yielded by a
-   * {@linkcode Deno.FsWatcher}.
+   * {@linkcode Ende.FsWatcher}.
    *
    * @category File System */
   export interface FsEvent {
@@ -3816,7 +3816,7 @@ declare namespace Ende {
   }
 
   /**
-   * Returned by {@linkcode Deno.watchFs}. It is an async iterator yielding up
+   * Returned by {@linkcode Ende.watchFs}. It is an async iterator yielding up
    * system events. To stop watching the file system by calling `.close()`
    * method.
    *
@@ -3845,7 +3845,7 @@ declare namespace Ende {
    * systems.
    *
    * ```ts
-   * const watcher = Deno.watchFs("/");
+   * const watcher = Ende.watchFs("/");
    * for await (const event of watcher) {
    *    console.log(">>>> event", event);
    *    // { kind: "create", paths: [ "/foo.txt" ] }
@@ -3860,13 +3860,13 @@ declare namespace Ende {
    *
    * ```ts
    * // Watch the project but skip the `.git` directory and `build` output.
-   * const watcher = Deno.watchFs(".", { ignore: [".git", "build"] });
+   * const watcher = Ende.watchFs(".", { ignore: [".git", "build"] });
    * ```
    *
    * Call `watcher.close()` to stop watching.
    *
    * ```ts
-   * const watcher = Deno.watchFs("/");
+   * const watcher = Ende.watchFs("/");
    *
    * setTimeout(() => {
    *   watcher.close();
@@ -3932,7 +3932,7 @@ declare namespace Ende {
   /** Registers the given function as a listener of the given signal event.
    *
    * ```ts
-   * Deno.addSignalListener(
+   * Ende.addSignalListener(
    *   "SIGTERM",
    *   () => {
    *     console.log("SIGTERM!")
@@ -3948,14 +3948,14 @@ declare namespace Ende {
   export function addSignalListener(signal: Signal, handler: () => void): void;
 
   /** Removes the given signal listener that has been registered with
-   * {@linkcode Deno.addSignalListener}.
+   * {@linkcode Ende.addSignalListener}.
    *
    * ```ts
    * const listener = () => {
    *   console.log("SIGTERM!")
    * };
-   * Deno.addSignalListener("SIGTERM", listener);
-   * Deno.removeSignalListener("SIGTERM", listener);
+   * Ende.addSignalListener("SIGTERM", listener);
+   * Ende.removeSignalListener("SIGTERM", listener);
    * ```
    *
    * _Note_: On Windows only `"SIGINT"` (CTRL+C), `"SIGBREAK"` (CTRL+Break),
@@ -3982,7 +3982,7 @@ declare namespace Ende {
    * @example Spawn a subprocess and pipe the output to a file
    *
    * ```ts
-   * const command = new Deno.Command(Deno.execPath(), {
+   * const command = new Ende.Command(Ende.execPath(), {
    *   args: [
    *     "eval",
    *     "console.log('Hello World')",
@@ -3994,7 +3994,7 @@ declare namespace Ende {
    *
    * // open a file and pipe the subprocess output to it.
    * child.stdout.pipeTo(
-   *   Deno.openSync("output", { write: true, create: true }).writable,
+   *   Ende.openSync("output", { write: true, create: true }).writable,
    * );
    *
    * // manually close stdin
@@ -4005,7 +4005,7 @@ declare namespace Ende {
    * @example Spawn a subprocess and collect its output
    *
    * ```ts
-   * const command = new Deno.Command(Deno.execPath(), {
+   * const command = new Ende.Command(Ende.execPath(), {
    *   args: [
    *     "eval",
    *     "console.log('hello'); console.error('world')",
@@ -4020,7 +4020,7 @@ declare namespace Ende {
    * @example Spawn a subprocess and collect its output synchronously
    *
    * ```ts
-   * const command = new Deno.Command(Deno.execPath(), {
+   * const command = new Ende.Command(Ende.execPath(), {
    *   args: [
    *     "eval",
    *     "console.log('hello'); console.error('world')",
@@ -4038,23 +4038,23 @@ declare namespace Ende {
   export class Command {
     constructor(command: string | URL, options?: CommandOptions);
     /**
-     * Executes the {@linkcode Deno.Command}, waiting for it to finish and
+     * Executes the {@linkcode Ende.Command}, waiting for it to finish and
      * collecting all of its output.
      *
      * Will throw an error if `stdin: "piped"` is set.
      *
      * If options `stdout` or `stderr` are not set to `"piped"`, accessing the
-     * corresponding field on {@linkcode Deno.CommandOutput} will throw a `TypeError`.
+     * corresponding field on {@linkcode Ende.CommandOutput} will throw a `TypeError`.
      */
     output(): Promise<CommandOutput>;
     /**
-     * Synchronously executes the {@linkcode Deno.Command}, waiting for it to
+     * Synchronously executes the {@linkcode Ende.Command}, waiting for it to
      * finish and collecting all of its output.
      *
      * Will throw an error if `stdin: "piped"` is set.
      *
      * If options `stdout` or `stderr` are not set to `"piped"`, accessing the
-     * corresponding field on {@linkcode Deno.CommandOutput} will throw a `TypeError`.
+     * corresponding field on {@linkcode Ende.CommandOutput} will throw a `TypeError`.
      */
     outputSync(): CommandOutput;
     /**
@@ -4065,7 +4065,7 @@ declare namespace Ende {
 
   /**
    * The interface for handling a child process returned from
-   * {@linkcode Deno.Command.spawn}.
+   * {@linkcode Ende.Command.spawn}.
    *
    * @category Subprocess
    */
@@ -4077,14 +4077,14 @@ declare namespace Ende {
     /** A promise that resolves once the child process has exited, with its
      * exit code and terminating signal (if any). The promise never rejects; if
      * the process is still running the promise is pending. Accessing this
-     * property does not, on its own, prevent the Deno process from exiting -
+     * property does not, on its own, prevent the Ende process from exiting -
      * see {@linkcode ChildProcess.ref}. */
     readonly status: Promise<CommandStatus>;
 
     /** Waits for the child to exit completely, returning all its output and
      * status. */
     output(): Promise<CommandOutput>;
-    /** Kills the process with given {@linkcode Deno.Signal} or numeric signal.
+    /** Kills the process with given {@linkcode Ende.Signal} or numeric signal.
      *
      * Defaults to `SIGTERM` if no signal is provided.
      *
@@ -4092,10 +4092,10 @@ declare namespace Ende {
      */
     kill(signo?: Signal | number): void;
 
-    /** Ensure that the status of the child process prevents the Deno process
+    /** Ensure that the status of the child process prevents the Ende process
      * from exiting. */
     ref(): void;
-    /** Ensure that the status of the child process does not block the Deno
+    /** Ensure that the status of the child process does not block the Ende
      * process from exiting. */
     unref(): void;
 
@@ -4104,7 +4104,7 @@ declare namespace Ende {
 
   /**
    * The interface for stdout and stderr streams for child process returned from
-   * {@linkcode Deno.Command.spawn}.
+   * {@linkcode Ende.Command.spawn}.
    *
    * @category Subprocess
    */
@@ -4133,7 +4133,7 @@ declare namespace Ende {
   }
 
   /**
-   * Options which can be set when calling {@linkcode Deno.Command}.
+   * Options which can be set when calling {@linkcode Ende.Command}.
    *
    * @category Subprocess
    */
@@ -4169,7 +4169,7 @@ declare namespace Ende {
      * corresponding {@linkcode AbortController} by sending the process a
      * SIGTERM signal.
      *
-     * Not supported in {@linkcode Deno.Command.outputSync}.
+     * Not supported in {@linkcode Ende.Command.outputSync}.
      */
     signal?: AbortSignal;
 
@@ -4224,8 +4224,8 @@ declare namespace Ende {
   }
 
   /**
-   * The interface returned from calling {@linkcode Deno.Command.output} or
-   * {@linkcode Deno.Command.outputSync} which represents the result of spawning the
+   * The interface returned from calling {@linkcode Ende.Command.output} or
+   * {@linkcode Ende.Command.outputSync} which represents the result of spawning the
    * child process.
    *
    * @category Subprocess
@@ -4237,18 +4237,18 @@ declare namespace Ende {
     readonly stderr: Uint8Array<ArrayBuffer>;
   }
 
-  /** Spawns a new subprocess, returning a {@linkcode Deno.ChildProcess} handle.
+  /** Spawns a new subprocess, returning a {@linkcode Ende.ChildProcess} handle.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
-   * This is a shorthand for `new Deno.Command(command, options).spawn()`.
+   * This is a shorthand for `new Ende.Command(command, options).spawn()`.
    *
    * By default, `stdin`, `stdout`, and `stderr` are set to `"inherit"`.
    *
    * @example Spawn a subprocess
    *
    * ```ts
-   * const child = Deno.spawn(Deno.execPath(), {
+   * const child = Ende.spawn(Ende.execPath(), {
    *   args: ["eval", "console.log('hello')"],
    *   stdout: "piped",
    * });
@@ -4265,18 +4265,18 @@ declare namespace Ende {
     options?: CommandOptions,
   ): ChildProcess;
   /** Spawns a new subprocess with the given arguments, returning a
-   * {@linkcode Deno.ChildProcess} handle.
+   * {@linkcode Ende.ChildProcess} handle.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
-   * This is a shorthand for `new Deno.Command(command, { ...options, args }).spawn()`.
+   * This is a shorthand for `new Ende.Command(command, { ...options, args }).spawn()`.
    *
    * By default, `stdin`, `stdout`, and `stderr` are set to `"inherit"`.
    *
    * @example Spawn a subprocess with args
    *
    * ```ts
-   * const child = Deno.spawn(Deno.execPath(), ["eval", "console.log('hello')"], {
+   * const child = Ende.spawn(Ende.execPath(), ["eval", "console.log('hello')"], {
    *   stdout: "piped",
    * });
    * const output = await child.stdout.text();
@@ -4297,14 +4297,14 @@ declare namespace Ende {
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
-   * This is a shorthand for `new Deno.Command(command, options).output()`.
+   * This is a shorthand for `new Ende.Command(command, options).output()`.
    *
    * Will throw an error if `stdin: "piped"` is set.
    *
    * @example Spawn and wait for output
    *
    * ```ts
-   * const { code, stdout, stderr } = await Deno.spawnAndWait(Deno.execPath(), {
+   * const { code, stdout, stderr } = await Ende.spawnAndWait(Ende.execPath(), {
    *   args: ["eval", "console.log('hello')"],
    * });
    * console.log(new TextDecoder().decode(stdout)); // "hello\n"
@@ -4322,15 +4322,15 @@ declare namespace Ende {
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
-   * This is a shorthand for `new Deno.Command(command, { ...options, args }).output()`.
+   * This is a shorthand for `new Ende.Command(command, { ...options, args }).output()`.
    *
    * Will throw an error if `stdin: "piped"` is set.
    *
    * @example Spawn and wait with args
    *
    * ```ts
-   * const { code, stdout } = await Deno.spawnAndWait(
-   *   Deno.execPath(),
+   * const { code, stdout } = await Ende.spawnAndWait(
+   *   Ende.execPath(),
    *   ["eval", "console.log('hello')"],
    * );
    * console.log(new TextDecoder().decode(stdout)); // "hello\n"
@@ -4350,14 +4350,14 @@ declare namespace Ende {
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
-   * This is a shorthand for `new Deno.Command(command, options).outputSync()`.
+   * This is a shorthand for `new Ende.Command(command, options).outputSync()`.
    *
    * Will throw an error if `stdin: "piped"` is set.
    *
    * @example Spawn and wait synchronously
    *
    * ```ts
-   * const { code, stdout } = Deno.spawnAndWaitSync(Deno.execPath(), {
+   * const { code, stdout } = Ende.spawnAndWaitSync(Ende.execPath(), {
    *   args: ["eval", "console.log('hello')"],
    * });
    * console.log(new TextDecoder().decode(stdout)); // "hello\n"
@@ -4376,15 +4376,15 @@ declare namespace Ende {
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
    * This is a shorthand for
-   * `new Deno.Command(command, { ...options, args }).outputSync()`.
+   * `new Ende.Command(command, { ...options, args }).outputSync()`.
    *
    * Will throw an error if `stdin: "piped"` is set.
    *
    * @example Spawn and wait synchronously with args
    *
    * ```ts
-   * const { code, stdout } = Deno.spawnAndWaitSync(
-   *   Deno.execPath(),
+   * const { code, stdout } = Ende.spawnAndWaitSync(
+   *   Ende.execPath(),
    *   ["eval", "console.log('hello')"],
    * );
    * console.log(new TextDecoder().decode(stdout)); // "hello\n"
@@ -4399,7 +4399,7 @@ declare namespace Ende {
     options?: Omit<CommandOptions, "args">,
   ): CommandOutput;
 
-  /** Option which can be specified when performing {@linkcode Deno.inspect}.
+  /** Option which can be specified when performing {@linkcode Ende.inspect}.
    *
    * @category I/O */
   export interface InspectOptions {
@@ -4460,7 +4460,7 @@ declare namespace Ende {
    *   a: 10,
    *   b: "hello",
    * };
-   * const objAsString = Deno.inspect(obj); // { a: 10, b: "hello" }
+   * const objAsString = Ende.inspect(obj); // { a: 10, b: "hello" }
    * console.log(obj);  // prints same value as objAsString, e.g. { a: 10, b: "hello" }
    * ```
    *
@@ -4477,14 +4477,14 @@ declare namespace Ende {
    *   }
    * }
    *
-   * const inStringFormat = Deno.inspect(new A()); // "x=10, y=hello"
+   * const inStringFormat = Ende.inspect(new A()); // "x=10, y=hello"
    * console.log(inStringFormat);  // prints "x=10, y=hello"
    * ```
    *
    * A depth can be specified by using the `depth` option:
    *
    * ```ts
-   * Deno.inspect({a: {b: {c: {d: 'hello'}}}}, {depth: 2}); // { a: { b: [Object] } }
+   * Ende.inspect({a: {b: {c: {d: 'hello'}}}}, {depth: 2}); // { a: { b: [Object] } }
    * ```
    *
    * @category I/O
@@ -4515,7 +4515,7 @@ declare namespace Ende {
   export type PermissionState = "granted" | "denied" | "prompt";
 
   /** The permission descriptor for the `allow-run` and `deny-run` permissions, which controls
-   * access to what sub-processes can be executed by Deno. The option `command`
+   * access to what sub-processes can be executed by Ende. The option `command`
    * allows scoping the permission to a specific executable.
    *
    * **Warning, in practice, `allow-run` is effectively the same as `allow-all`
@@ -4526,7 +4526,7 @@ declare namespace Ende {
   export interface RunPermissionDescriptor {
     name: "run";
     /** An `allow-run` or `deny-run` permission can be scoped to a specific executable,
-     * which would be relative to the start-up CWD of the Deno CLI. */
+     * which would be relative to the start-up CWD of the Ende CLI. */
     command?: string | URL;
   }
 
@@ -4622,7 +4622,7 @@ declare namespace Ende {
   /** The permission descriptor for the `allow-ffi` and `deny-ffi` permissions, which controls
    * access to loading _foreign_ code and interfacing with it via the
    * [Foreign Function Interface API](https://docs.ende.sh/runtime/manual/runtime/ffi_api)
-   * available in Deno.  The option `path` allows scoping the permission to a
+   * available in Ende.  The option `path` allows scoping the permission to a
    * specific path on the host.
    *
    * @category Permissions */
@@ -4673,7 +4673,7 @@ declare namespace Ende {
     change: Event;
   }
 
-  /** An {@linkcode EventTarget} returned from the {@linkcode Deno.permissions}
+  /** An {@linkcode EventTarget} returned from the {@linkcode Ende.permissions}
    * API which can provide updates to any state changes of the permission.
    *
    * @category Permissions */
@@ -4717,17 +4717,17 @@ declare namespace Ende {
   }
 
   /**
-   * Deno's permission management API.
+   * Ende's permission management API.
    *
-   * The class which provides the interface for the {@linkcode Deno.permissions}
+   * The class which provides the interface for the {@linkcode Ende.permissions}
    * global instance and is based on the web platform
    * [Permissions API](https://developer.mozilla.org/en-US/docs/Web/API/Permissions_API),
    * though some proposed parts of the API which are useful in a server side
    * runtime context were removed or abandoned in the web platform specification
-   * which is why it was chosen to locate it in the {@linkcode Deno} namespace
+   * which is why it was chosen to locate it in the {@linkcode Ende} namespace
    * instead.
    *
-   * By default, if the `stdin`/`stdout` is TTY for the Deno CLI (meaning it can
+   * By default, if the `stdin`/`stdout` is TTY for the Ende CLI (meaning it can
    * send and receive text), then the CLI will prompt the user to grant
    * permission when an un-granted permission is requested. This behavior can
    * be changed by using the `--no-prompt` command at startup. When prompting
@@ -4746,7 +4746,7 @@ declare namespace Ende {
      * or prompt the user to modify them.
      *
      * ```ts
-     * const status = await Deno.permissions.query({ name: "read", path: "/etc" });
+     * const status = await Ende.permissions.query({ name: "read", path: "/etc" });
      * console.log(status.state);
      * ```
      */
@@ -4760,7 +4760,7 @@ declare namespace Ende {
      * or prompt the user to modify them.
      *
      * ```ts
-     * const status = Deno.permissions.querySync({ name: "read", path: "/etc" });
+     * const status = Ende.permissions.querySync({ name: "read", path: "/etc" });
      * console.log(status.state);
      * ```
      */
@@ -4771,7 +4771,7 @@ declare namespace Ende {
      * ```ts
      * import { assert } from "jsr:@std/assert";
      *
-     * const status = await Deno.permissions.revoke({ name: "run" });
+     * const status = await Ende.permissions.revoke({ name: "run" });
      * assert(status.state !== "granted")
      * ```
      */
@@ -4782,7 +4782,7 @@ declare namespace Ende {
      * ```ts
      * import { assert } from "jsr:@std/assert";
      *
-     * const status = Deno.permissions.revokeSync({ name: "run" });
+     * const status = Ende.permissions.revokeSync({ name: "run" });
      * assert(status.state !== "granted")
      * ```
      */
@@ -4794,7 +4794,7 @@ declare namespace Ende {
      * grant the permission again.
      *
      * ```ts
-     * const status = await Deno.permissions.request({ name: "env" });
+     * const status = await Ende.permissions.request({ name: "env" });
      * if (status.state === "granted") {
      *   console.log("'env' permission is granted.");
      * } else {
@@ -4810,7 +4810,7 @@ declare namespace Ende {
      * grant the permission again.
      *
      * ```ts
-     * const status = Deno.permissions.requestSync({ name: "env" });
+     * const status = Ende.permissions.requestSync({ name: "env" });
      * if (status.state === "granted") {
      *   console.log("'env' permission is granted.");
      * } else {
@@ -4821,17 +4821,17 @@ declare namespace Ende {
     requestSync(desc: PermissionDescriptor): PermissionStatus;
   }
 
-  /** Deno's permission management API.
+  /** Ende's permission management API.
    *
    * It is a singleton instance of the {@linkcode Permissions} object and is
    * based on the web platform
    * [Permissions API](https://developer.mozilla.org/en-US/docs/Web/API/Permissions_API),
    * though some proposed parts of the API which are useful in a server side
    * runtime context were removed or abandoned in the web platform specification
-   * which is why it was chosen to locate it in the {@linkcode Deno} namespace
+   * which is why it was chosen to locate it in the {@linkcode Ende} namespace
    * instead.
    *
-   * By default, if the `stdin`/`stdout` is TTY for the Deno CLI (meaning it can
+   * By default, if the `stdin`/`stdout` is TTY for the Ende CLI (meaning it can
    * send and receive text), then the CLI will prompt the user to grant
    * permission when an un-granted permission is requested. This behavior can
    * be changed by using the `--no-prompt` command at startup. When prompting
@@ -4846,12 +4846,12 @@ declare namespace Ende {
    * ### Querying
    *
    * ```ts
-   * const status = await Deno.permissions.query({ name: "read", path: "/etc" });
+   * const status = await Ende.permissions.query({ name: "read", path: "/etc" });
    * console.log(status.state);
    * ```
    *
    * ```ts
-   * const status = Deno.permissions.querySync({ name: "read", path: "/etc" });
+   * const status = Ende.permissions.querySync({ name: "read", path: "/etc" });
    * console.log(status.state);
    * ```
    *
@@ -4860,21 +4860,21 @@ declare namespace Ende {
    * ```ts
    * import { assert } from "jsr:@std/assert";
    *
-   * const status = await Deno.permissions.revoke({ name: "run" });
+   * const status = await Ende.permissions.revoke({ name: "run" });
    * assert(status.state !== "granted")
    * ```
    *
    * ```ts
    * import { assert } from "jsr:@std/assert";
    *
-   * const status = Deno.permissions.revokeSync({ name: "run" });
+   * const status = Ende.permissions.revokeSync({ name: "run" });
    * assert(status.state !== "granted")
    * ```
    *
    * ### Requesting
    *
    * ```ts
-   * const status = await Deno.permissions.request({ name: "env" });
+   * const status = await Ende.permissions.request({ name: "env" });
    * if (status.state === "granted") {
    *   console.log("'env' permission is granted.");
    * } else {
@@ -4883,7 +4883,7 @@ declare namespace Ende {
    * ```
    *
    * ```ts
-   * const status = Deno.permissions.requestSync({ name: "env" });
+   * const status = Ende.permissions.requestSync({ name: "env" });
    * if (status.state === "granted") {
    *   console.log("'env' permission is granted.");
    * } else {
@@ -4895,7 +4895,7 @@ declare namespace Ende {
    */
   export const permissions: Permissions;
 
-  /** Information related to the build of the current Deno runtime.
+  /** Information related to the build of the current Ende runtime.
    *
    * Users are discouraged from code branching based on this information, as
    * assumptions about what is available in what build environment might change
@@ -4911,9 +4911,9 @@ declare namespace Ende {
      * of `${arch}-${vendor}-${os}` and represent the specific build target that
      * the current runtime was built for. */
     target: string;
-    /** Instruction set architecture that the Deno CLI was built for. */
+    /** Instruction set architecture that the Ende CLI was built for. */
     arch: "x86_64" | "aarch64";
-    /** The operating system that the Deno CLI was built for. `"darwin"` is
+    /** The operating system that the Ende CLI was built for. `"darwin"` is
      * also known as OSX or MacOS. */
     os:
       | "darwin"
@@ -4926,13 +4926,13 @@ declare namespace Ende {
       | "solaris"
       | "illumos";
     standalone: boolean;
-    /** The computer vendor that the Deno CLI was built for. */
+    /** The computer vendor that the Ende CLI was built for. */
     vendor: string;
-    /** Optional environment flags that were set for this build of Deno CLI. */
+    /** Optional environment flags that were set for this build of Ende CLI. */
     env?: string;
   };
 
-  /** Version information related to the current Deno CLI runtime environment.
+  /** Version information related to the current Ende CLI runtime environment.
    *
    * Users are discouraged from code branching based on this information, as
    * assumptions about what is available in what build environment might change
@@ -4946,27 +4946,27 @@ declare namespace Ende {
   export const version: {
     /** Ende CLI's version. For example: `"1.26.0"`. */
     ende: string;
-    /** The V8 version used by Deno. For example: `"10.7.100.0"`.
+    /** The V8 version used by Ende. For example: `"10.7.100.0"`.
      *
-     * V8 is the underlying JavaScript runtime platform that Deno is built on
+     * V8 is the underlying JavaScript runtime platform that Ende is built on
      * top of. */
     v8: string;
-    /** The TypeScript version used by Deno. For example: `"4.8.3"`.
+    /** The TypeScript version used by Ende. For example: `"4.8.3"`.
      *
      * A version of the TypeScript type checker and language server is built-in
-     * to the Deno CLI. */
+     * to the Ende CLI. */
     typescript: string;
   };
 
   /** Returns the script arguments to the program.
    *
-   * Give the following command line invocation of Deno:
+   * Give the following command line invocation of Ende:
    *
    * ```sh
-   * deno eval "console.log(Deno.args)" Sushi Maguro Hamachi
+   * ende eval "console.log(Ende.args)" Sushi Maguro Hamachi
    * ```
    *
-   * Then `Deno.args` will contain:
+   * Then `Ende.args` will contain:
    *
    * ```ts
    * [ "Sushi", "Maguro", "Hamachi" ]
@@ -5007,7 +5007,7 @@ declare namespace Ende {
    * This argument is only available on Windows and ignored on other platforms.
    *
    * ```ts
-   * await Deno.symlink("old/name", "new/name");
+   * await Ende.symlink("old/name", "new/name");
    * ```
    *
    * Requires `allow-read` and `allow-write` permissions granted *without* a
@@ -5033,7 +5033,7 @@ declare namespace Ende {
    * This argument is only available on Windows and ignored on other platforms.
    *
    * ```ts
-   * Deno.symlinkSync("old/name", "new/name");
+   * Ende.symlinkSync("old/name", "new/name");
    * ```
    *
    * Requires `allow-read` and `allow-write` permissions granted *without* a
@@ -5058,7 +5058,7 @@ declare namespace Ende {
    * seconds (UNIX epoch time) or as `Date` objects.
    *
    * ```ts
-   * Deno.utimeSync("myfile.txt", 1556495550, new Date());
+   * Ende.utimeSync("myfile.txt", 1556495550, new Date());
    * ```
    *
    * Requires `allow-write` permission.
@@ -5078,7 +5078,7 @@ declare namespace Ende {
    * (UNIX epoch time) or as `Date` objects.
    *
    * ```ts
-   * await Deno.utime("myfile.txt", 1556495550, new Date());
+   * await Ende.utime("myfile.txt", 1556495550, new Date());
    * ```
    *
    * Requires `allow-write` permission.
@@ -5096,9 +5096,9 @@ declare namespace Ende {
    * This call always returns what the umask was before the call.
    *
    * ```ts
-   * console.log(Deno.umask());  // e.g. 18 (0o022)
-   * const prevUmaskValue = Deno.umask(0o077);  // e.g. 18 (0o022)
-   * console.log(Deno.umask());  // e.g. 63 (0o077)
+   * console.log(Ende.umask());  // e.g. 18 (0o022)
+   * const prevUmaskValue = Ende.umask(0o077);  // e.g. 18 (0o022)
+   * console.log(Ende.umask());  // e.g. 63 (0o077)
    * ```
    *
    * Requires `allow-sys="umask"` permission.
@@ -5110,7 +5110,7 @@ declare namespace Ende {
    */
   export function umask(mask?: number): number;
 
-  /** The object that is returned from a {@linkcode Deno.upgradeWebSocket}
+  /** The object that is returned from a {@linkcode Ende.upgradeWebSocket}
    * request.
    *
    * @category WebSockets */
@@ -5125,7 +5125,7 @@ declare namespace Ende {
   }
 
   /** Options which can be set when performing a
-   * {@linkcode Deno.upgradeWebSocket} upgrade of a {@linkcode Request}
+   * {@linkcode Ende.upgradeWebSocket} upgrade of a {@linkcode Request}
    *
    * @category WebSockets */
   export interface UpgradeWebSocketOptions {
@@ -5144,7 +5144,7 @@ declare namespace Ende {
     idleTimeout?: number;
     /** A `node:net` `Socket` from a `node:http` server's `"upgrade"` event.
      * When provided, the WebSocket upgrade is performed over this existing
-     * TCP connection instead of through `Deno.serve`'s built-in upgrade
+     * TCP connection instead of through `Ende.serve`'s built-in upgrade
      * mechanism. The 101 Switching Protocols response is written
      * automatically.
      *
@@ -5153,7 +5153,7 @@ declare namespace Ende {
      *
      * const server = http.createServer();
      * server.on("upgrade", (req, socket, head) => {
-     *   const { socket: ws } = Deno.upgradeWebSocket(
+     *   const { socket: ws } = Ende.upgradeWebSocket(
      *     new Request(`http://${req.headers.host}/`, {
      *       headers: req.headers as HeadersInit,
      *     }),
@@ -5179,11 +5179,11 @@ declare namespace Ende {
    * with the returned response for the websocket upgrade to be successful.
    *
    * ```ts
-   * Deno.serve((req) => {
+   * Ende.serve((req) => {
    *   if (req.headers.get("upgrade") !== "websocket") {
    *     return new Response(null, { status: 501 });
    *   }
-   *   const { socket, response } = Deno.upgradeWebSocket(req);
+   *   const { socket, response } = Ende.upgradeWebSocket(req);
    *   socket.addEventListener("open", () => {
    *     console.log("a client connected!");
    *   });
@@ -5222,10 +5222,10 @@ declare namespace Ende {
    * Windows.
    *
    * ```ts
-   * const command = new Deno.Command("sleep", { args: ["10000"] });
+   * const command = new Ende.Command("sleep", { args: ["10000"] });
    * const child = command.spawn();
    *
-   * Deno.kill(child.pid, "SIGINT");
+   * Ende.kill(child.pid, "SIGINT");
    * ```
    *
    * As a special case, a signal of 0 can be used to test for the existence of a process.
@@ -5238,7 +5238,7 @@ declare namespace Ende {
   export function kill(pid: number, signo?: Signal | number): void;
 
   /** The type of the resource record to resolve via DNS using
-   * {@linkcode Deno.resolveDns}.
+   * {@linkcode Ende.resolveDns}.
    *
    * Only the listed types are supported currently.
    *
@@ -5259,7 +5259,7 @@ declare namespace Ende {
     | "TXT";
 
   /**
-   * Options which can be set when using {@linkcode Deno.resolveDns}.
+   * Options which can be set when using {@linkcode Ende.resolveDns}.
    *
    * @category Network */
   export interface ResolveDnsOptions {
@@ -5283,7 +5283,7 @@ declare namespace Ende {
     signal?: AbortSignal;
   }
 
-  /** If {@linkcode Deno.resolveDns} is called with `"CAA"` record type
+  /** If {@linkcode Ende.resolveDns} is called with `"CAA"` record type
    * specified, it will resolve with an array of objects with this interface.
    *
    * @category Network
@@ -5304,7 +5304,7 @@ declare namespace Ende {
     value: string;
   }
 
-  /** If {@linkcode Deno.resolveDns} is called with `"MX"` record type
+  /** If {@linkcode Ende.resolveDns} is called with `"MX"` record type
    * specified, it will return an array of objects with this interface.
    *
    * @category Network */
@@ -5316,7 +5316,7 @@ declare namespace Ende {
     exchange: string;
   }
 
-  /** If {@linkcode Deno.resolveDns} is called with `"NAPTR"` record type
+  /** If {@linkcode Ende.resolveDns} is called with `"NAPTR"` record type
    * specified, it will return an array of objects with this interface.
    *
    * @category Network */
@@ -5329,7 +5329,7 @@ declare namespace Ende {
     replacement: string;
   }
 
-  /** If {@linkcode Deno.resolveDns} is called with `"SOA"` record type
+  /** If {@linkcode Ende.resolveDns} is called with `"SOA"` record type
    * specified, it will return an array of objects with this interface.
    *
    * @category Network */
@@ -5343,7 +5343,7 @@ declare namespace Ende {
     minimum: number;
   }
 
-  /** If {@linkcode Deno.resolveDns} is called with `"SRV"` record type
+  /** If {@linkcode Ende.resolveDns} is called with `"SRV"` record type
    * specified, it will return an array of objects with this interface.
    *
    * @category Network
@@ -5370,10 +5370,10 @@ declare namespace Ende {
    * resolve to an array of strings.
    *
    * ```ts
-   * const a = await Deno.resolveDns("example.com", "A");
+   * const a = await Ende.resolveDns("example.com", "A");
    * // ["93.184.215.14"]
    *
-   * const aaaa = await Deno.resolveDns("example.com", "AAAA", {
+   * const aaaa = await Ende.resolveDns("example.com", "AAAA", {
    *   nameServer: { ipAddr: "8.8.8.8", port: 53 },
    * });
    * // ["2606:2800:21f:cb07:6820:80da:af6b:8b2c"]
@@ -5402,10 +5402,10 @@ declare namespace Ende {
    * - the request timed out.
    *
    * The `"CAA"` record type resolves to an array of
-   * {@linkcode Deno.CaaRecord} objects.
+   * {@linkcode Ende.CaaRecord} objects.
    *
    * ```ts
-   * const caa = await Deno.resolveDns("example.com", "CAA");
+   * const caa = await Ende.resolveDns("example.com", "CAA");
    * // [{ critical: false, tag: "issue", value: "letsencrypt.org" }]
    * ```
    *
@@ -5432,10 +5432,10 @@ declare namespace Ende {
    * - the request timed out.
    *
    * The `"MX"` record type resolves to an array of
-   * {@linkcode Deno.MxRecord} objects.
+   * {@linkcode Ende.MxRecord} objects.
    *
    * ```ts
-   * const mx = await Deno.resolveDns("example.com", "MX");
+   * const mx = await Ende.resolveDns("example.com", "MX");
    * // [{ preference: 10, exchange: "mail.example.com" }]
    * ```
    *
@@ -5462,10 +5462,10 @@ declare namespace Ende {
    * - the request timed out.
    *
    * The `"NAPTR"` record type resolves to an array of
-   * {@linkcode Deno.NaptrRecord} objects.
+   * {@linkcode Ende.NaptrRecord} objects.
    *
    * ```ts
-   * const naptr = await Deno.resolveDns("example.com", "NAPTR");
+   * const naptr = await Ende.resolveDns("example.com", "NAPTR");
    * // [{
    * //   order: 100,
    * //   preference: 10,
@@ -5499,10 +5499,10 @@ declare namespace Ende {
    * - the request timed out.
    *
    * The `"SOA"` record type resolves to an array of
-   * {@linkcode Deno.SoaRecord} objects.
+   * {@linkcode Ende.SoaRecord} objects.
    *
    * ```ts
-   * const soa = await Deno.resolveDns("example.com", "SOA");
+   * const soa = await Ende.resolveDns("example.com", "SOA");
    * // [{
    * //   mname: "ns.example.com",
    * //   rname: "hostmaster.example.com",
@@ -5537,10 +5537,10 @@ declare namespace Ende {
    * - the request timed out.
    *
    * The `"SRV"` record type resolves to an array of
-   * {@linkcode Deno.SrvRecord} objects.
+   * {@linkcode Ende.SrvRecord} objects.
    *
    * ```ts
-   * const srv = await Deno.resolveDns("_sip._tcp.example.com", "SRV");
+   * const srv = await Ende.resolveDns("_sip._tcp.example.com", "SRV");
    * // [{ priority: 10, weight: 5, port: 5060, target: "sip.example.com" }]
    * ```
    *
@@ -5570,7 +5570,7 @@ declare namespace Ende {
    * single TXT record can be split into multiple character strings.
    *
    * ```ts
-   * const txt = await Deno.resolveDns("example.com", "TXT");
+   * const txt = await Ende.resolveDns("example.com", "TXT");
    * // [["v=spf1 include:_spf.example.com ~all"]]
    * ```
    *
@@ -5597,13 +5597,13 @@ declare namespace Ende {
    * - the request timed out.
    *
    * This overload is selected when the record type is only known at runtime. The
-   * shape of each resolved record depends on the {@linkcode Deno.RecordType}
+   * shape of each resolved record depends on the {@linkcode Ende.RecordType}
    * that was requested - see the more specific overloads above for the exact
    * return type of each record type.
    *
    * ```ts
-   * const recordType: Deno.RecordType = "A";
-   * const records = await Deno.resolveDns("example.com", recordType, {
+   * const recordType: Ende.RecordType = "A";
+   * const records = await Ende.resolveDns("example.com", recordType, {
    *   nameServer: { ipAddr: "8.8.8.8", port: 53 },
    * });
    * ```
@@ -5645,7 +5645,7 @@ declare namespace Ende {
    * Returns the user id of the process on POSIX platforms. Returns null on Windows.
    *
    * ```ts
-   * console.log(Deno.uid());
+   * console.log(Ende.uid());
    * ```
    *
    * Requires `allow-sys` permission.
@@ -5659,7 +5659,7 @@ declare namespace Ende {
    * Returns the group id of the process on POSIX platforms. Returns null on windows.
    *
    * ```ts
-   * console.log(Deno.gid());
+   * console.log(Ende.gid());
    * ```
    *
    * Requires `allow-sys` permission.
@@ -5681,7 +5681,7 @@ declare namespace Ende {
      *
      * It resolves once the response (including its body) has been completely
      * delivered to the client. It **rejects** with a
-     * {@linkcode Deno.errors.Interrupted} error if the response could not be
+     * {@linkcode Ende.errors.Interrupted} error if the response could not be
      * sent successfully — for example when the client
      * disconnects before the response body has been fully written. Attach a
      * `.catch()` (or wrap an `await` in `try`/`catch`) if you need to observe
@@ -5694,7 +5694,7 @@ declare namespace Ende {
    * The `request` argument is a standard Web platform {@linkcode Request}, and
    * the handler must return a standard Web platform {@linkcode Response} (or a
    * promise resolving to one). These are the same `Request` and `Response`
-   * classes available as globals in Deno and in browsers, so the body, headers,
+   * classes available as globals in Ende and in browsers, so the body, headers,
    * URL, and method can all be read from the incoming `Request`.
    *
    * If a handler throws, the server calling the handler will assume the impact
@@ -5708,9 +5708,9 @@ declare namespace Ende {
     info: ServeHandlerInfo<Addr>,
   ) => Response | Promise<Response>;
 
-  /** Interface that module run with `deno serve` subcommand must conform to.
+  /** Interface that module run with `ende serve` subcommand must conform to.
    *
-   * To ensure your code is type-checked properly, make sure to add `satisfies Deno.ServeDefaultExport`
+   * To ensure your code is type-checked properly, make sure to add `satisfies Ende.ServeDefaultExport`
    * to the `export default { ... }` like so:
    *
    * ```ts
@@ -5718,7 +5718,7 @@ declare namespace Ende {
    *   fetch(req) {
    *     return new Response("Hello world");
    *   }
-   * } satisfies Deno.ServeDefaultExport;
+   * } satisfies Ende.ServeDefaultExport;
    * ```
    *
    * @category HTTP Server
@@ -5741,7 +5741,7 @@ declare namespace Ende {
     onListen?: (localAddr: Ende.Addr) => void;
   }
 
-  /** Options which can be set when calling {@linkcode Deno.serve}.
+  /** Options which can be set when calling {@linkcode Ende.serve}.
    *
    * @category HTTP Server
    */
@@ -5765,7 +5765,7 @@ declare namespace Ende {
   }
 
   /**
-   * Options that can be passed to `Deno.serve` to create a server listening on
+   * Options that can be passed to `Ende.serve` to create a server listening on
    * a TCP port.
    *
    * @category HTTP Server
@@ -5808,7 +5808,7 @@ declare namespace Ende {
   }
 
   /**
-   * Options that can be passed to `Deno.serve` to create a server listening on
+   * Options that can be passed to `Ende.serve` to create a server listening on
    * a Unix domain socket.
    *
    * @category HTTP Server
@@ -5822,7 +5822,7 @@ declare namespace Ende {
   }
 
   /**
-   * Options that can be passed to `Deno.serve` to create a server listening on
+   * Options that can be passed to `Ende.serve` to create a server listening on
    * a VSOCK socket.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
@@ -5848,7 +5848,7 @@ declare namespace Ende {
     handler: ServeHandler<Addr>;
   }
 
-  /** An instance of the server created using `Deno.serve()` API.
+  /** An instance of the server created using `Ende.serve()` API.
    *
    * @category HTTP Server
    */
@@ -5884,7 +5884,7 @@ declare namespace Ende {
    * The below example serves with the port `8000` on hostname `"127.0.0.1"`.
    *
    * ```ts
-   * Deno.serve((_req) => new Response("Hello, world"));
+   * Ende.serve((_req) => new Response("Hello, world"));
    * ```
    *
    * @category HTTP Server
@@ -5897,7 +5897,7 @@ declare namespace Ende {
    * You can specify the socket path with `path` option.
    *
    * ```ts
-   * Deno.serve(
+   * Ende.serve(
    *   { path: "path/to/socket" },
    *   (_req) => new Response("Hello, world")
    * );
@@ -5906,12 +5906,12 @@ declare namespace Ende {
    * You can stop the server with an {@linkcode AbortSignal}. The abort signal
    * needs to be passed as the `signal` option in the options bag. The server
    * aborts when the abort signal is aborted. To wait for the server to close,
-   * await the promise returned from the `Deno.serve` API.
+   * await the promise returned from the `Ende.serve` API.
    *
    * ```ts
    * const ac = new AbortController();
    *
-   * const server = Deno.serve(
+   * const server = Ende.serve(
    *    { signal: ac.signal, path: "path/to/socket" },
    *    (_req) => new Response("Hello, world")
    * );
@@ -5921,12 +5921,12 @@ declare namespace Ende {
    * ac.abort();
    * ```
    *
-   * By default `Deno.serve` prints the message
+   * By default `Ende.serve` prints the message
    * `Listening on path/to/socket` on listening. If you like to
    * change this behavior, you can specify a custom `onListen` callback.
    *
    * ```ts
-   * Deno.serve({
+   * Ende.serve({
    *   onListen({ path }) {
    *     console.log(`Server started at ${path}`);
    *     // ... more info specific to your server ..
@@ -5950,7 +5950,7 @@ declare namespace Ende {
    * The VSOCK address family facilitates communication between virtual machines and the host they are running on: https://man7.org/linux/man-pages/man7/vsock.7.html
    *
    * ```ts
-   * Deno.serve(
+   * Ende.serve(
    *   { cid: -1, port: 3000 },
    *   (_req) => new Response("Hello, world")
    * );
@@ -5959,12 +5959,12 @@ declare namespace Ende {
    * You can stop the server with an {@linkcode AbortSignal}. The abort signal
    * needs to be passed as the `signal` option in the options bag. The server
    * aborts when the abort signal is aborted. To wait for the server to close,
-   * await the promise returned from the `Deno.serve` API.
+   * await the promise returned from the `Ende.serve` API.
    *
    * ```ts
    * const ac = new AbortController();
    *
-   * const server = Deno.serve(
+   * const server = Ende.serve(
    *    { signal: ac.signal, cid: -1, port: 3000 },
    *    (_req) => new Response("Hello, world")
    * );
@@ -5974,12 +5974,12 @@ declare namespace Ende {
    * ac.abort();
    * ```
    *
-   * By default `Deno.serve` prints the message `Listening on cid:port`.
+   * By default `Ende.serve` prints the message `Listening on cid:port`.
    * If you want to change this behavior, you can specify a custom `onListen`
    * callback.
    *
    * ```ts
-   * Deno.serve({
+   * Ende.serve({
    *   onListen({ cid, port }) {
    *     console.log(`Server started at ${cid}:${port}`);
    *     // ... more info specific to your server ..
@@ -6004,7 +6004,7 @@ declare namespace Ende {
    * options. The below example serves on port `3000` and hostname `"127.0.0.1"`.
    *
    * ```ts
-   * Deno.serve(
+   * Ende.serve(
    *   { port: 3000, hostname: "127.0.0.1" },
    *   (_req) => new Response("Hello, world")
    * );
@@ -6013,12 +6013,12 @@ declare namespace Ende {
    * You can stop the server with an {@linkcode AbortSignal}. The abort signal
    * needs to be passed as the `signal` option in the options bag. The server
    * aborts when the abort signal is aborted. To wait for the server to close,
-   * await the promise returned from the `Deno.serve` API.
+   * await the promise returned from the `Ende.serve` API.
    *
    * ```ts
    * const ac = new AbortController();
    *
-   * const server = Deno.serve(
+   * const server = Ende.serve(
    *    { signal: ac.signal },
    *    (_req) => new Response("Hello, world")
    * );
@@ -6028,12 +6028,12 @@ declare namespace Ende {
    * ac.abort();
    * ```
    *
-   * By default `Deno.serve` prints the message
+   * By default `Ende.serve` prints the message
    * `Listening on http://<hostname>:<port>/` on listening. If you like to
    * change this behavior, you can specify a custom `onListen` callback.
    *
    * ```ts
-   * Deno.serve({
+   * Ende.serve({
    *   onListen({ port, hostname }) {
    *     console.log(`Server started at http://${hostname}:${port}`);
    *     // ... more info specific to your server ..
@@ -6046,7 +6046,7 @@ declare namespace Ende {
    * ```ts
    * const cert = "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n";
    * const key = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n";
-   * Deno.serve({ cert, key }, (_req) => new Response("Hello, world"));
+   * Ende.serve({ cert, key }, (_req) => new Response("Hello, world"));
    * ```
    *
    * @category HTTP Server
@@ -6063,7 +6063,7 @@ declare namespace Ende {
    * ```ts
    * const ac = new AbortController();
    *
-   * const server = Deno.serve({
+   * const server = Ende.serve({
    *   path: "path/to/socket",
    *   handler: (_req) => new Response("Hello, world"),
    *   signal: ac.signal,
@@ -6093,7 +6093,7 @@ declare namespace Ende {
    * ```ts
    * const ac = new AbortController();
    *
-   * const server = Deno.serve({
+   * const server = Ende.serve({
    *   cid: -1,
    *   port: 3000,
    *   handler: (_req) => new Response("Hello, world"),
@@ -6121,7 +6121,7 @@ declare namespace Ende {
    * ```ts
    * const ac = new AbortController();
    *
-   * const server = Deno.serve({
+   * const server = Ende.serve({
    *   port: 3000,
    *   hostname: "127.0.0.1",
    *   handler: (_req) => new Response("Hello, world"),
@@ -6664,17 +6664,17 @@ declare namespace Ende {
    * The function pointer remains valid until the `close()` method is called.
    *
    * All `UnsafeCallback` are always thread safe in that they can be called from
-   * foreign threads without crashing. However, they do not wake up the Deno event
+   * foreign threads without crashing. However, they do not wake up the Ende event
    * loop by default.
    *
    * If a callback is to be called from foreign threads, use the `threadSafe()`
    * static constructor or explicitly call `ref()` to have the callback wake up
-   * the Deno event loop when called from foreign threads. This also stops
-   * Deno's process from exiting while the callback still exists and is not
+   * the Ende event loop when called from foreign threads. This also stops
+   * Ende's process from exiting while the callback still exists and is not
    * unref'ed.
    *
-   * Use `deref()` to then allow Deno's process to exit. Calling `deref()` on
-   * a ref'ed callback does not stop it from waking up the Deno event loop when
+   * Use `deref()` to then allow Ende's process to exit. Calling `deref()` on
+   * a ref'ed callback does not stop it from waking up the Ende event loop when
    * called from foreign threads.
    *
    * @category FFI
@@ -6703,9 +6703,9 @@ declare namespace Ende {
 
     /**
      * Creates an {@linkcode UnsafeCallback} and calls `ref()` once to allow it to
-     * wake up the Deno event loop when called from foreign threads.
+     * wake up the Ende event loop when called from foreign threads.
      *
-     * This also stops Deno's process from exiting while the callback still
+     * This also stops Ende's process from exiting while the callback still
      * exists and is not unref'ed.
      */
     static threadSafe<
@@ -6723,9 +6723,9 @@ declare namespace Ende {
      * reference count.
      *
      * After `ref()` has been called, the callback always wakes up the
-     * Deno event loop when called from foreign threads.
+     * Ende event loop when called from foreign threads.
      *
-     * If the callback's reference count is non-zero, it keeps Deno's
+     * If the callback's reference count is non-zero, it keeps Ende's
      * process from exiting.
      */
     ref(): number;
@@ -6734,11 +6734,11 @@ declare namespace Ende {
      * Decrements the callback's reference counting and returns the new
      * reference count.
      *
-     * Calling `unref()` does not stop a callback from waking up the Deno
+     * Calling `unref()` does not stop a callback from waking up the Ende
      * event loop when called from foreign threads.
      *
      * If the callback's reference counter is zero, it no longer keeps
-     * Deno's process from exiting.
+     * Ende's process from exiting.
      */
     unref(): number;
 
@@ -6749,13 +6749,13 @@ declare namespace Ende {
      * the `UnsafeCallback` will lead to errors and crashes.
      *
      * Calling this method sets the callback's reference counting to zero,
-     * stops the callback from waking up the Deno event loop when called from
-     * foreign threads and no longer keeps Deno's process from exiting.
+     * stops the callback from waking up the Ende event loop when called from
+     * foreign threads and no longer keeps Ende's process from exiting.
      */
     close(): void;
   }
 
-  /** A dynamic library resource.  Use {@linkcode Deno.dlopen} to load a dynamic
+  /** A dynamic library resource.  Use {@linkcode Ende.dlopen} to load a dynamic
    * library and return this interface.
    *
    * @category FFI
@@ -6769,7 +6769,7 @@ declare namespace Ende {
      * errors and crashes.
      *
      * Calling this method will also immediately set any references to zero and
-     * will no longer keep Deno's process from exiting.
+     * will no longer keep Ende's process from exiting.
      */
     close(): void;
   }
@@ -6788,7 +6788,7 @@ declare namespace Ende {
    * // Determine library extension based on
    * // your OS.
    * let libSuffix = "";
-   * switch (Deno.build.os) {
+   * switch (Ende.build.os) {
    *   case "windows":
    *     libSuffix = "dll";
    *     break;
@@ -6802,7 +6802,7 @@ declare namespace Ende {
    *
    * const libName = `./libadd.${libSuffix}`;
    * // Open library and define exported symbols
-   * const dylib = Deno.dlopen(
+   * const dylib = Ende.dlopen(
    *   libName,
    *   {
    *     "add": { parameters: ["isize", "isize"], result: "isize" },
@@ -6828,8 +6828,8 @@ declare namespace Ende {
    * designed to allow custom certificates or proxies to be used with `fetch()`.
    *
    * @example ```ts
-   * const caCert = await Deno.readTextFile("./ca.pem");
-   * const client = Deno.createHttpClient({ caCerts: [ caCert ] });
+   * const caCert = await Ende.readTextFile("./ca.pem");
+   * const client = Ende.createHttpClient({ caCerts: [ caCert ] });
    * const req = await fetch("https://myserver.com", { client });
    * ```
    *
@@ -6843,7 +6843,7 @@ declare namespace Ende {
   }
 
   /**
-   * The options used when creating a {@linkcode Deno.HttpClient}.
+   * The options used when creating a {@linkcode Ende.HttpClient}.
    *
    * @category Fetch
    */
@@ -6887,7 +6887,7 @@ declare namespace Ende {
 
   /**
    * The definition for alternative transports (or proxies) in
-   * {@linkcode Deno.CreateHttpClientOptions}.
+   * {@linkcode Ende.CreateHttpClientOptions}.
    *
    * Supported proxies:
    *  - HTTP/HTTPS proxy: this uses passthrough to tunnel HTTP requests, or HTTP
@@ -6935,8 +6935,8 @@ declare namespace Ende {
   };
 
   /**
-   * Basic authentication credentials to be used with a {@linkcode Deno.Proxy}
-   * server when specifying {@linkcode Deno.CreateHttpClientOptions}.
+   * Basic authentication credentials to be used with a {@linkcode Ende.Proxy}
+   * server when specifying {@linkcode Ende.CreateHttpClientOptions}.
    *
    * @category Fetch
    */
@@ -6948,7 +6948,7 @@ declare namespace Ende {
   }
 
   /** Create a custom HttpClient to use with {@linkcode fetch}. This is an
-   * extension of the web platform Fetch API which allows Deno to use custom
+   * extension of the web platform Fetch API which allows Ende to use custom
    * TLS CA certificates and connect via a proxy while using `fetch()`.
    *
    * The `cert` and `key` options can be used to specify a client certificate
@@ -6957,13 +6957,13 @@ declare namespace Ende {
    * provided in PEM format.
    *
    * @example ```ts
-   * const caCert = await Deno.readTextFile("./ca.pem");
-   * const client = Deno.createHttpClient({ caCerts: [ caCert ] });
+   * const caCert = await Ende.readTextFile("./ca.pem");
+   * const client = Ende.createHttpClient({ caCerts: [ caCert ] });
    * const response = await fetch("https://myserver.com", { client });
    * ```
    *
    * @example ```ts
-   * const client = Deno.createHttpClient({
+   * const client = Ende.createHttpClient({
    *   proxy: { url: "http://myproxy.com:8080" }
    * });
    * const response = await fetch("https://myserver.com", { client });
@@ -6972,7 +6972,7 @@ declare namespace Ende {
    * @example ```ts
    * const key = "----BEGIN PRIVATE KEY----...";
    * const cert = "----BEGIN CERTIFICATE----...";
-   * const client = Deno.createHttpClient({ key, cert });
+   * const client = Ende.createHttpClient({ key, cert });
    * const response = await fetch("https://myserver.com", { client });
    * ```
    *
@@ -6985,11 +6985,11 @@ declare namespace Ende {
   ): HttpClient;
 
   /**
-   * APIs for working with the OpenTelemetry observability framework. Deno can
+   * APIs for working with the OpenTelemetry observability framework. Ende can
    * export traces, metrics, and logs to OpenTelemetry compatible backends via
    * the OTLP protocol.
    *
-   * Deno automatically instruments the runtime with OpenTelemetry traces and
+   * Ende automatically instruments the runtime with OpenTelemetry traces and
    * metrics. This data is exported via OTLP to OpenTelemetry compatible
    * backends. User logs from the `console` API are exported as OpenTelemetry
    * logs via OTLP.
@@ -6998,9 +6998,9 @@ declare namespace Ende {
    * OpenTelemetry API. This is done using the official OpenTelemetry package
    * for JavaScript:
    * [`npm:@opentelemetry/api`](https://opentelemetry.io/docs/languages/js/).
-   * Deno integrates with this package to provide tracing, metrics, and trace
-   * context propagation between native Deno APIs (like `Deno.serve` or `fetch`)
-   * and custom user code. Deno automatically registers the providers with the
+   * Ende integrates with this package to provide tracing, metrics, and trace
+   * context propagation between native Ende APIs (like `Ende.serve` or `fetch`)
+   * and custom user code. Ende automatically registers the providers with the
    * OpenTelemetry API, so users can start creating custom traces, metrics, and
    * logs without any additional setup.
    *
@@ -7018,7 +7018,7 @@ declare namespace Ende {
    *   });
    * }
    *
-   * Deno.serve(async (req) => {
+   * Ende.serve(async (req) => {
    *   await doWork();
    *   const resp = await fetch("https://example.com");
    *   return resp;

@@ -37,22 +37,22 @@ use crate::util::fs::canonicalize_path;
 
 pub static UPGRADE_USAGE: &str = cstr!(
   "<g>Latest</>
-  <bold>deno upgrade</>
+  <bold>ende upgrade</>
 
 <g>Specific version</>
-  <bold>deno upgrade</> <p(245)>1.45.0</>
-  <bold>deno upgrade</> <p(245)>1.46.0-rc.1</>
-  <bold>deno upgrade</> <p(245)>9bc2dd29ad6ba334fd57a20114e367d3c04763d4</>
+  <bold>ende upgrade</> <p(245)>1.45.0</>
+  <bold>ende upgrade</> <p(245)>1.46.0-rc.1</>
+  <bold>ende upgrade</> <p(245)>9bc2dd29ad6ba334fd57a20114e367d3c04763d4</>
 
 <g>Channel</>
-  <bold>deno upgrade</> <p(245)>stable</>
-  <bold>deno upgrade</> <p(245)>alpha</>
-  <bold>deno upgrade</> <p(245)>beta</>
-  <bold>deno upgrade</> <p(245)>rc</>
-  <bold>deno upgrade</> <p(245)>canary</>
+  <bold>ende upgrade</> <p(245)>stable</>
+  <bold>ende upgrade</> <p(245)>alpha</>
+  <bold>ende upgrade</> <p(245)>beta</>
+  <bold>ende upgrade</> <p(245)>rc</>
+  <bold>ende upgrade</> <p(245)>canary</>
 
 <g>From a pull request</> <p(245)>(requires gh CLI)</>
-  <bold>deno upgrade</> <p(245)>pr 12345</>"
+  <bold>ende upgrade</> <p(245)>pr 12345</>"
 );
 
 fn join_paths(allowlist: &[String], d: &str) -> String {
@@ -416,7 +416,15 @@ impl FlagsExt for Flags {
   }
 
   fn otel_config(&self) -> OtelConfig {
-    let otel_var = |name| match std::env::var(name) {
+    // `OTEL_ENDE*` names fall back to the deprecated `OTEL_DENO*` names.
+    let read_var = |name: &str| {
+      if name.starts_with("OTEL_ENDE") {
+        ende_env::var(name)
+      } else {
+        std::env::var(name)
+      }
+    };
+    let otel_var = |name: &str| match read_var(name) {
       Ok(s) if s.eq_ignore_ascii_case("true") => Some(true),
       Ok(s) if s.eq_ignore_ascii_case("false") => Some(false),
       Ok(_) => {
@@ -429,7 +437,7 @@ impl FlagsExt for Flags {
     };
 
     let disabled = otel_var("OTEL_SDK_DISABLED").unwrap_or(false);
-    let default = !disabled && otel_var("OTEL_DENO").unwrap_or(false);
+    let default = !disabled && otel_var("OTEL_ENDE").unwrap_or(false);
 
     let propagators = if default {
       if let Ok(propagators) = std::env::var("OTEL_PROPAGATORS") {
@@ -450,18 +458,18 @@ impl FlagsExt for Flags {
 
     OtelConfig {
       tracing_enabled: !disabled
-        && otel_var("OTEL_DENO_TRACING").unwrap_or(default),
+        && otel_var("OTEL_ENDE_TRACING").unwrap_or(default),
       metrics_enabled: !disabled
-        && otel_var("OTEL_DENO_METRICS").unwrap_or(default),
+        && otel_var("OTEL_ENDE_METRICS").unwrap_or(default),
       propagators,
-      console: match std::env::var("OTEL_DENO_CONSOLE").as_deref() {
+      console: match read_var("OTEL_ENDE_CONSOLE").as_deref() {
         Ok(_) if disabled => OtelConsoleConfig::Ignore,
         Ok("ignore") => OtelConsoleConfig::Ignore,
         Ok("capture") => OtelConsoleConfig::Capture,
         Ok("replace") => OtelConsoleConfig::Replace,
         res => {
           if res.is_ok() {
-            log::warn!("'OTEL_DENO_CONSOLE' env var value not recognized, only 'ignore', 'capture', or 'replace' are accepted");
+            log::warn!("'OTEL_ENDE_CONSOLE' env var value not recognized, only 'ignore', 'capture', or 'replace' are accepted");
           }
           if default {
             OtelConsoleConfig::Capture
@@ -760,7 +768,7 @@ pub fn render_version(long: bool) -> String {
   if long {
     debug_assert_eq!(DENO_VERSION_INFO.typescript, ende_snapshots::TS_VERSION);
     format!(
-      "deno {} ({}, {}, {})\nv8 {}\ntypescript {}\n",
+      "ende {} ({}, {}, {})\nv8 {}\ntypescript {}\n",
       DENO_VERSION_INFO.deno,
       DENO_VERSION_INFO.release_channel.name(),
       env!("PROFILE"),
@@ -769,7 +777,7 @@ pub fn render_version(long: bool) -> String {
       DENO_VERSION_INFO.typescript,
     )
   } else {
-    format!("deno {}\n", DENO_VERSION_INFO.deno)
+    format!("ende {}\n", DENO_VERSION_INFO.deno)
   }
 }
 
@@ -818,12 +826,12 @@ pub fn handle_dynamic_shell_completion(shell: &str) -> Result<(), AnyError> {
   let completer = std::env::args_os()
     .next()
     .map(|s| s.to_string_lossy().into_owned())
-    .unwrap_or_else(|| "deno".to_string());
+    .unwrap_or_else(|| "ende".to_string());
   let completer = shlex::try_quote(&completer)
     .map(|c| c.into_owned())
     .unwrap_or(completer);
   let script =
-    ende_cli_parser::completions::generate_dynamic(shell, "deno", &completer);
+    ende_cli_parser::completions::generate_dynamic(shell, "ende", &completer);
   ende_print::drop_write_stdout(&script);
   Ok(())
 }
@@ -914,11 +922,11 @@ mod tests {
     // Cases where the fast path SHOULD fire; its output must equal the full
     // parse (neither sets `initial_cwd`, so both default to `None`).
     let fires: &[&[&str]] = &[
-      &["deno", "run", "script.ts"],
-      &["deno", "run", "./path/to/mod.ts"],
-      &["deno", "run", "script.ts", "a", "b"],
-      &["deno", "run", "script.ts", "--", "--foo", "-x"],
-      &["deno", "run", "https://example.com/mod.ts", "arg"],
+      &["ende", "run", "script.ts"],
+      &["ende", "run", "./path/to/mod.ts"],
+      &["ende", "run", "script.ts", "a", "b"],
+      &["ende", "run", "script.ts", "--", "--foo", "-x"],
+      &["ende", "run", "https://example.com/mod.ts", "arg"],
     ];
     for case in fires {
       let os_args: Vec<OsString> = case.iter().map(OsString::from).collect();
@@ -937,11 +945,11 @@ mod tests {
 
     // Cases where the fast path must decline and fall through to the parser.
     let declines: &[&[&str]] = &[
-      &["deno", "run"],                    // no script
-      &["deno", "run", "-"],               // stdin
-      &["deno", "run", "-A", "script.ts"], // flag before script
-      &["deno", "run", "--watch", "s.ts"], // flag before script
-      &["deno", "test", "script.ts"],      // not `run`
+      &["ende", "run"],                    // no script
+      &["ende", "run", "-"],               // stdin
+      &["ende", "run", "-A", "script.ts"], // flag before script
+      &["ende", "run", "--watch", "s.ts"], // flag before script
+      &["ende", "test", "script.ts"],      // not `run`
     ];
     for case in declines {
       let os_args: Vec<OsString> = case.iter().map(OsString::from).collect();
@@ -955,7 +963,7 @@ mod tests {
   #[test]
   fn install_os_arch_flags() {
     let r = flags_from_vec(svec![
-      "deno", "install", "--os", "linux", "--arch", "arm64"
+      "ende", "install", "--os", "linux", "--arch", "arm64"
     ]);
     let flags = r.unwrap();
     assert_eq!(
@@ -983,7 +991,7 @@ mod tests {
 
   #[test]
   fn install_os_only_flag() {
-    let r = flags_from_vec(svec!["deno", "install", "--os", "win32"]);
+    let r = flags_from_vec(svec!["ende", "install", "--os", "win32"]);
     let flags = r.unwrap();
     assert_eq!(
       flags.subcommand,
@@ -1008,9 +1016,9 @@ mod tests {
     // The package management subcommands that resolve versions must accept the
     // flag so users can act on the "blocked by minimum dependency age" hint.
     let cases = [
-      svec!["deno", "add", "--min-dep-age=0", "jsr:@std/path"],
-      svec!["deno", "add", "--minimum-dependency-age=0", "jsr:@std/path"],
-      svec!["deno", "remove", "--min-dep-age=0", "@std/path"],
+      svec!["ende", "add", "--min-dep-age=0", "jsr:@std/path"],
+      svec!["ende", "add", "--minimum-dependency-age=0", "jsr:@std/path"],
+      svec!["ende", "remove", "--min-dep-age=0", "@std/path"],
     ];
     for args in cases {
       let flags = flags_from_vec(args.clone())
@@ -1025,12 +1033,12 @@ mod tests {
 
   #[test]
   fn test_config_path_args() {
-    let flags = flags_from_vec(svec!["deno", "run", "foo.js"]).unwrap();
+    let flags = flags_from_vec(svec!["ende", "run", "foo.js"]).unwrap();
     let cwd = resolve_cwd(None).unwrap().into_owned();
 
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.clone()]));
 
-    let flags = flags_from_vec(svec!["deno", "run", "sub_dir/foo.js"]).unwrap();
+    let flags = flags_from_vec(svec!["ende", "run", "sub_dir/foo.js"]).unwrap();
     let cwd = resolve_cwd(None).unwrap().into_owned();
     assert_eq!(
       flags.config_path_args(&cwd),
@@ -1038,38 +1046,38 @@ mod tests {
     );
 
     let flags =
-      flags_from_vec(svec!["deno", "https://example.com/foo.js"]).unwrap();
+      flags_from_vec(svec!["ende", "https://example.com/foo.js"]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), None);
 
-    let flags = flags_from_vec(svec!["deno", "run", "jsr:@scope/foo"]).unwrap();
+    let flags = flags_from_vec(svec!["ende", "run", "jsr:@scope/foo"]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.clone()]));
 
-    let flags = flags_from_vec(svec!["deno", "run", "npm:@scope/foo"]).unwrap();
+    let flags = flags_from_vec(svec!["ende", "run", "npm:@scope/foo"]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.clone()]));
 
     let flags =
-      flags_from_vec(svec!["deno", "lint", "dir/a/a.js", "dir/b/b.js"])
+      flags_from_vec(svec!["ende", "lint", "dir/a/a.js", "dir/b/b.js"])
         .unwrap();
     assert_eq!(
       flags.config_path_args(&cwd),
       Some(vec![cwd.join("dir/a/a.js"), cwd.join("dir/b/b.js")])
     );
 
-    let flags = flags_from_vec(svec!["deno", "lint"]).unwrap();
+    let flags = flags_from_vec(svec!["ende", "lint"]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.clone()]));
 
-    let flags = flags_from_vec(svec!["deno", "cache", "sub/test.js"]).unwrap();
+    let flags = flags_from_vec(svec!["ende", "cache", "sub/test.js"]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.join("sub")]));
 
-    let flags = flags_from_vec(svec!["deno", "cache", "."]).unwrap();
+    let flags = flags_from_vec(svec!["ende", "cache", "."]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.clone()]));
 
     let flags =
-      flags_from_vec(svec!["deno", "install", "-e", "sub/test.js"]).unwrap();
+      flags_from_vec(svec!["ende", "install", "-e", "sub/test.js"]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.join("sub")]));
 
     let flags = flags_from_vec(svec![
-      "deno",
+      "ende",
       "fmt",
       "dir/a/a.js",
       "dir/a/a2.js",
@@ -1088,15 +1096,15 @@ mod tests {
     // `deno desktop .` (and bare `deno desktop`) runs framework detection on
     // the current directory, so config discovery must start in that directory
     // rather than its parent. See issue #35653.
-    let flags = flags_from_vec(svec!["deno", "desktop", "."]).unwrap();
+    let flags = flags_from_vec(svec!["ende", "desktop", "."]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.clone()]));
 
-    let flags = flags_from_vec(svec!["deno", "desktop"]).unwrap();
+    let flags = flags_from_vec(svec!["ende", "desktop"]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.clone()]));
 
     // An explicit file entrypoint resolves to its containing directory.
     let flags =
-      flags_from_vec(svec!["deno", "desktop", "sub/main.ts"]).unwrap();
+      flags_from_vec(svec!["ende", "desktop", "sub/main.ts"]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.join("sub")]));
   }
   /// `deno <sub> --help`, `deno <sub> -h` and `deno help <sub>` must all render
@@ -1117,9 +1125,9 @@ mod tests {
           _ => unreachable!("{} did not render help", command.name),
         };
 
-      let long_flag = render(svec!["deno", command.name, "--help"]);
-      let short_flag = render(svec!["deno", command.name, "-h"]);
-      let subcommand = render(svec!["deno", "help", command.name]);
+      let long_flag = render(svec!["ende", command.name, "--help"]);
+      let short_flag = render(svec!["ende", command.name, "-h"]);
+      let subcommand = render(svec!["ende", "help", command.name]);
 
       assert_eq!(long_flag, short_flag, "{} subcommand", command.name);
       assert_eq!(long_flag, subcommand, "{} subcommand", command.name);

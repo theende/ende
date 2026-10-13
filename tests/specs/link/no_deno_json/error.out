@@ -1,1 +1,1 @@
-error: Cannot link './empty': no deno.json found in directory. A linked package must contain a deno.json with a "name" field.
+error: Cannot link './empty': no ende.json found in directory. A linked package must contain an ende.json with a "name" field.

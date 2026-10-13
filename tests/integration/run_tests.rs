@@ -167,8 +167,8 @@ fn _090_run_permissions_request() {
     .args_vec(["run", "--quiet", "run/090_run_permissions_request.ts"])
     .with_pty(|mut console| {
       console.expect(concat!(
-        "┏ ⚠️  Deno requests run access to \"ls\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests run access to \"ls\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
@@ -178,8 +178,8 @@ fn _090_run_permissions_request() {
       console.write_line_raw("y");
       console.expect("Granted run access to \"ls\".");
       console.expect(concat!(
-        "┏ ⚠️  Deno requests run access to \"cat\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests run access to \"cat\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
@@ -200,8 +200,8 @@ fn _090_run_permissions_request_sync() {
     .args_vec(["run", "--quiet", "run/090_run_permissions_request_sync.ts"])
     .with_pty(|mut console| {
       console.expect(concat!(
-        "┏ ⚠️  Deno requests run access to \"ls\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests run access to \"ls\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
@@ -211,8 +211,8 @@ fn _090_run_permissions_request_sync() {
       console.write_line_raw("y");
       console.expect("Granted run access to \"ls\".");
       console.expect(concat!(
-        "┏ ⚠️  Deno requests run access to \"cat\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests run access to \"cat\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
@@ -234,8 +234,8 @@ fn permissions_prompt_allow_all() {
     .with_pty(|mut console| {
       // "run" permissions
       console.expect(concat!(
-        "┏ ⚠️  Deno requests run access to \"FOO\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests run access to \"FOO\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
@@ -246,8 +246,8 @@ fn permissions_prompt_allow_all() {
       console.expect("Granted all run access.");
       // "read" permissions
       console.expect(concat!(
-        "┏ ⚠️  Deno requests read access to \"FOO\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests read access to \"FOO\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
         "┠─ Run again with --allow-read to bypass this prompt.\r\n",
@@ -258,8 +258,8 @@ fn permissions_prompt_allow_all() {
       console.expect("Granted all read access.");
       // "write" permissions
       console.expect(concat!(
-        "┏ ⚠️  Deno requests write access to \"FOO\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests write access to \"FOO\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-write\r\n",
         "┠─ Run again with --allow-write to bypass this prompt.\r\n",
@@ -270,8 +270,8 @@ fn permissions_prompt_allow_all() {
       console.expect("Granted all write access.");
       // "net" permissions
       console.expect(concat!(
-        "┏ ⚠️  Deno requests net access to \"foo\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests net access to \"foo\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-net\r\n",
         "┠─ Run again with --allow-net to bypass this prompt.\r\n",
@@ -282,8 +282,8 @@ fn permissions_prompt_allow_all() {
       console.expect("Granted all net access.");
       // "env" permissions
       console.expect(concat!(
-        "┏ ⚠️  Deno requests env access to \"FOO\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests env access to \"FOO\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-env\r\n",
         "┠─ Run again with --allow-env to bypass this prompt.\r\n",
@@ -294,8 +294,8 @@ fn permissions_prompt_allow_all() {
       console.expect("Granted all env access.");
       // "sys" permissions
       console.expect(concat!(
-        "┏ ⚠️  Deno requests sys access to \"loadavg\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests sys access to \"loadavg\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-sys\r\n",
         "┠─ Run again with --allow-sys to bypass this prompt.\r\n",
@@ -306,8 +306,8 @@ fn permissions_prompt_allow_all() {
       console.expect("Granted all sys access.");
       // "ffi" permissions
       console.expect(concat!(
-        "┏ ⚠️  Deno requests ffi access to \"FOO\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests ffi access to \"FOO\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-ffi\r\n",
         "┠─ Run again with --allow-ffi to bypass this prompt.\r\n",
@@ -328,7 +328,7 @@ fn permissions_prompt_allow_all_2() {
     .with_pty(|mut console| {
       // "env" permissions
       console.expect(concat!(
-        "┏ ⚠️  Deno requests env access to \"FOO\".\r\n",
+        "┏ ⚠️  Ende requests env access to \"FOO\".\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-env\r\n",
         "┠─ Run again with --allow-env to bypass this prompt.\r\n",
@@ -340,8 +340,8 @@ fn permissions_prompt_allow_all_2() {
 
       // "sys" permissions
       console.expect(concat!(
-        "┏ ⚠️  Deno requests sys access to \"loadavg\".\r\n",
-        "┠─ Requested by `Deno.loadavg()` API.\r\n",
+        "┏ ⚠️  Ende requests sys access to \"loadavg\".\r\n",
+        "┠─ Requested by `Ende.loadavg()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-sys\r\n",
         "┠─ Run again with --allow-sys to bypass this prompt.\r\n",
@@ -355,8 +355,8 @@ fn permissions_prompt_allow_all_2() {
       // "read" permissions
       test_util::assertions::assert_wildcard_match(&text, concat!(
         "\r\n",
-        "┏ ⚠️  Deno requests read access to \"[WILDCARD]tests[WILDCHAR]testdata\".\r\n",
-        "┠─ Requested by `Deno.lstatSync()` API.\r\n",
+        "┏ ⚠️  Ende requests read access to \"[WILDCARD]tests[WILDCHAR]testdata\".\r\n",
+        "┠─ Requested by `Ende.lstatSync()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
         "┠─ Run again with --allow-read to bypass this prompt.\r\n",
@@ -376,8 +376,8 @@ fn permissions_prompt_allow_all_lowercase_a() {
     .with_pty(|mut console| {
       // "run" permissions
       console.expect(concat!(
-        "┏ ⚠️  Deno requests run access to \"FOO\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests run access to \"FOO\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-run\r\n",
         "┠─ Run again with --allow-run to bypass this prompt.\r\n",
@@ -428,8 +428,8 @@ fn permissions_cache() {
     .with_pty(|mut console| {
       console.expect(concat!(
         "prompt\r\n",
-        "┏ ⚠️  Deno requests read access to \"foo\".\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests read access to \"foo\".\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
         "┠─ Run again with --allow-read to bypass this prompt.\r\n",
@@ -452,8 +452,8 @@ fn permissions_trace() {
     .with_pty(|mut console| {
       let text = console.read_until("Allow? [y/n/A] (y = yes, allow; n = no, deny; A = allow all sys permissions)");
       test_util::assertions::assert_wildcard_match(&text, concat!(
-      "┏ ⚠️  Deno requests sys access to \"hostname\".\r\n",
-      "┠─ Requested by `Deno.hostname()` API.\r\n",
+      "┏ ⚠️  Ende requests sys access to \"hostname\".\r\n",
+      "┠─ Requested by `Ende.hostname()` API.\r\n",
       "┃  ├─ Object.hostname (ext:ende_os/30_os.js:[WILDLINE]:[WILDLINE])\r\n",
       "┃  ├─ foo (file://[WILDCARD]/run/permissions_trace.ts:2:8)\r\n",
       "┃  ├─ bar (file://[WILDCARD]/run/permissions_trace.ts:6:3)\r\n",
@@ -625,7 +625,7 @@ fn lock_deno_json_package_json_deps() {
     "nodeModulesDir": "auto",
     "imports": {
       "esm-basic": "npm:@denotest/esm-basic",
-      "module_graph": "jsr:@denotest/module-graph@1.4",
+      "module_graph": "jsr:@endetest/module-graph@1.4",
     }
   }));
   let main_ts = temp_dir.join("main.ts");
@@ -641,11 +641,11 @@ fn lock_deno_json_package_json_deps() {
   lockfile.assert_matches_json(json!({
     "version": "5",
     "specifiers": {
-      "jsr:@denotest/module-graph@1.4": "1.4.0",
+      "jsr:@endetest/module-graph@1.4": "1.4.0",
       "npm:@denotest/esm-basic@*": "1.0.0"
     },
     "jsr": {
-      "@denotest/module-graph@1.4.0": {
+      "@endetest/module-graph@1.4.0": {
         "integrity": "32de0973c5fa55772326fcd504a757f386d2b010db3e13e78f3bcf851e69473d"
       }
     },
@@ -657,7 +657,7 @@ fn lock_deno_json_package_json_deps() {
     },
     "workspace": {
       "dependencies": [
-        "jsr:@denotest/module-graph@1.4",
+        "jsr:@endetest/module-graph@1.4",
         "npm:@denotest/esm-basic@*"
       ]
     }
@@ -668,7 +668,7 @@ fn lock_deno_json_package_json_deps() {
   deno_json.write_json(&json!({
     "nodeModulesDir": "auto",
     "imports": {
-      "module_graph": "jsr:@denotest/module-graph@1.4",
+      "module_graph": "jsr:@endetest/module-graph@1.4",
     }
   }));
   package_json.write_json(&json!({
@@ -691,11 +691,11 @@ fn lock_deno_json_package_json_deps() {
   lockfile.assert_matches_json(json!({
     "version": "5",
     "specifiers": {
-      "jsr:@denotest/module-graph@1.4": "1.4.0",
+      "jsr:@endetest/module-graph@1.4": "1.4.0",
       "npm:@denotest/esm-basic@*": "1.0.0"
     },
     "jsr": {
-      "@denotest/module-graph@1.4.0": {
+      "@endetest/module-graph@1.4.0": {
         "integrity": "32de0973c5fa55772326fcd504a757f386d2b010db3e13e78f3bcf851e69473d"
       }
     },
@@ -707,7 +707,7 @@ fn lock_deno_json_package_json_deps() {
     },
     "workspace": {
       "dependencies": [
-        "jsr:@denotest/module-graph@1.4"
+        "jsr:@endetest/module-graph@1.4"
       ],
       "packageJson": {
         "dependencies": [
@@ -729,16 +729,16 @@ fn lock_deno_json_package_json_deps() {
   lockfile.assert_matches_json(json!({
     "version": "5",
     "specifiers": {
-      "jsr:@denotest/module-graph@1.4": "1.4.0",
+      "jsr:@endetest/module-graph@1.4": "1.4.0",
     },
     "jsr": {
-      "@denotest/module-graph@1.4.0": {
+      "@endetest/module-graph@1.4.0": {
         "integrity": "32de0973c5fa55772326fcd504a757f386d2b010db3e13e78f3bcf851e69473d"
       }
     },
     "workspace": {
       "dependencies": [
-        "jsr:@denotest/module-graph@1.4"
+        "jsr:@endetest/module-graph@1.4"
       ]
     }
   }));
@@ -1558,8 +1558,8 @@ mod permissions {
       .args_vec(["run", "--quiet", "run/061_permissions_request.ts"])
       .with_pty(|mut console| {
         console.expect(concat!(
-          "┏ ⚠️  Deno requests read access to \"foo\".\r\n",
-          "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+          "┏ ⚠️  Ende requests read access to \"foo\".\r\n",
+          "┠─ Requested by `Ende.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
           "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
@@ -1568,8 +1568,8 @@ mod permissions {
         console.human_delay();
         console.write_line_raw("y");
         console.expect(concat!(
-          "┏ ⚠️  Deno requests read access to \"bar\".\r\n",
-          "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+          "┏ ⚠️  Ende requests read access to \"bar\".\r\n",
+          "┠─ Requested by `Ende.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
           "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
@@ -1590,8 +1590,8 @@ mod permissions {
       .args_vec(["run", "--quiet", "run/061_permissions_request_sync.ts"])
       .with_pty(|mut console| {
         console.expect(concat!(
-          "┏ ⚠️  Deno requests read access to \"foo\".\r\n",
-          "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+          "┏ ⚠️  Ende requests read access to \"foo\".\r\n",
+          "┠─ Requested by `Ende.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
           "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
@@ -1600,8 +1600,8 @@ mod permissions {
         console.human_delay();
         console.write_line_raw("y");
         console.expect(concat!(
-          "┏ ⚠️  Deno requests read access to \"bar\".\r\n",
-          "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+          "┏ ⚠️  Ende requests read access to \"bar\".\r\n",
+          "┠─ Requested by `Ende.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
           "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
@@ -1622,8 +1622,8 @@ mod permissions {
       .args_vec(["run", "--quiet", "run/062_permissions_request_global.ts"])
       .with_pty(|mut console| {
         console.expect(concat!(
-          "┏ ⚠️  Deno requests read access.\r\n",
-          "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+          "┏ ⚠️  Ende requests read access.\r\n",
+          "┠─ Requested by `Ende.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
           "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
@@ -1647,8 +1647,8 @@ mod permissions {
       .args_vec(["run", "--quiet", "run/062_permissions_request_global_sync.ts"])
       .with_pty(|mut console| {
         console.expect(concat!(
-          "┏ ⚠️  Deno requests read access.\r\n",
-          "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+          "┏ ⚠️  Ende requests read access.\r\n",
+          "┠─ Requested by `Ende.permissions.request()` API.\r\n",
           "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
           "┠─ Learn more at: https://docs.ende.sh/go/--allow-read\r\n",
           "┠─ Run again with --allow-read to bypass this prompt.\r\n",
@@ -1769,8 +1769,8 @@ fn issue9750() {
       console.expect("Enter 'yy':");
       console.write_line_raw("yy");
       console.expect(concat!(
-        "┏ ⚠️  Deno requests env access.\r\n",
-        "┠─ Requested by `Deno.permissions.request()` API.\r\n",
+        "┏ ⚠️  Ende requests env access.\r\n",
+        "┠─ Requested by `Ende.permissions.request()` API.\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-env\r\n",
         "┠─ Run again with --allow-env to bypass this prompt.\r\n",
@@ -1780,7 +1780,7 @@ fn issue9750() {
       console.write_line_raw("n");
       console.expect("Denied env access.");
       console.expect(concat!(
-        "┏ ⚠️  Deno requests env access to \"SECRET\".\r\n",
+        "┏ ⚠️  Ende requests env access to \"SECRET\".\r\n",
         "┠─ To see a stack trace for this prompt, set the ENDE_TRACE_PERMISSIONS environmental variable.\r\n",
         "┠─ Learn more at: https://docs.ende.sh/go/--allow-env\r\n",
         "┠─ Run again with --allow-env to bypass this prompt.\r\n",
@@ -2649,7 +2649,7 @@ fn broken_stdout_no_panic_banner() {
     .unwrap();
 
   let stderr = std::str::from_utf8(output.stderr.as_ref()).unwrap();
-  assert_not_contains!(stderr, "Deno has panicked");
+  assert_not_contains!(stderr, "Ende has panicked");
   assert_not_contains!(stderr, "panicked at");
 }
 
@@ -2924,7 +2924,7 @@ fn permission_prompt_escapes_ansi_codes_and_control_chars() {
       "\\rDo you like ice cream? y/n"
     };
     console.expect(format!(
-      "\u{250f} \u{26a0}\u{fe0f}  Deno requests env access to \"{}\".",
+      "\u{250f} \u{26a0}\u{fe0f}  Ende requests env access to \"{}\".",
       env_name
     ))
   });
@@ -2951,7 +2951,7 @@ fn permission_prompt_escapes_ansi_codes_and_control_chars() {
           r#"new Deno.Command(`./${boldANSI}cat${unboldANSI}`).spawn();"#,
         );
         console
-          .expect("\u{250f} \u{26a0}\u{fe0f}  Deno requests run access to \"");
+          .expect("\u{250f} \u{26a0}\u{fe0f}  Ende requests run access to \"");
         console.expect("\\u{1b}[1mcat\\u{1b}[22m\"."); // ensure escaped
       });
   }
@@ -3752,7 +3752,7 @@ fn readline_permission_prompt_interleaving_pty() {
       console.expect("Project?");
       console.write_line("demo");
       console.expect("ANSWER:demo");
-      console.expect("Deno requests read access to");
+      console.expect("Ende requests read access to");
       console.expect("Allow?");
       console.human_delay();
       console.write_line_raw("n");
