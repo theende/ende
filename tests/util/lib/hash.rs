@@ -79,8 +79,16 @@ fn collect_entries_recursive(dir: &Path, out: &mut Vec<PathBuf>) {
   }
 }
 
-// repo at https://github.com/denoland/hashy
-const HASHY_URL: &str = "https://hashy.deno.deno.net";
+/// Base URL of the test-result cache service (see
+/// https://github.com/denoland/hashy). Opt-in through `HASHY_URL` so CI never
+/// reads from or writes to a service this repo doesn't run.
+fn hashy_url() -> Option<String> {
+  hashy_url_from(std::env::var("HASHY_URL").ok())
+}
+
+fn hashy_url_from(value: Option<String>) -> Option<String> {
+  value.filter(|url| !url.is_empty())
+}
 
 pub enum CiHashStatus {
   /// Not on CI — always run tests.
@@ -92,13 +100,14 @@ pub enum CiHashStatus {
 }
 
 pub struct CiHashPending {
+  hashy_url: String,
   key: String,
 }
 
 impl CiHashPending {
   /// Mark the hash as known-good after tests pass.
   pub fn commit(self) {
-    let url = format!("{}/hashes/{}", HASHY_URL, self.key);
+    let url = format!("{}/hashes/{}", self.hashy_url, self.key);
     match std::process::Command::new("curl")
       .args(["-sf", "-X", "PUT", "--max-time", "5", &url])
       .output()
@@ -151,6 +160,9 @@ pub fn check_ci_hash(
   if !*crate::IS_CI {
     return CiHashStatus::Run;
   }
+  let Some(hashy_url) = hashy_url() else {
+    return CiHashStatus::Run;
+  };
 
   let start = std::time::Instant::now();
   let mut hasher = InputHasher::new_with_cli_args();
@@ -160,14 +172,16 @@ pub fn check_ci_hash(
 
   eprintln!("ci hash took {}ms", start.elapsed().as_millis());
 
-  // On main/tag builds, always run tests but still commit on success
+  // On primary/tag builds, always run tests but still commit on success
   // to seed the cache for PR builds.
-  if is_main_or_tag() {
-    eprintln!("hashy: main/tag build, running tests (will commit on success)");
-    return CiHashStatus::RunThenCommit(CiHashPending { key });
+  if is_primary_or_tag() {
+    eprintln!(
+      "hashy: primary/tag build, running tests (will commit on success)"
+    );
+    return CiHashStatus::RunThenCommit(CiHashPending { hashy_url, key });
   }
 
-  let url = format!("{}/hashes/{}", HASHY_URL, key);
+  let url = format!("{}/hashes/{}", hashy_url, key);
   match std::process::Command::new("curl")
     .args(["-sf", "--max-time", "5", &url])
     .output()
@@ -178,7 +192,7 @@ pub fn check_ci_hash(
     }
     Ok(_) => {
       eprintln!("hashy: {name} hash not found ({key}), will run tests");
-      CiHashStatus::RunThenCommit(CiHashPending { key })
+      CiHashStatus::RunThenCommit(CiHashPending { hashy_url, key })
     }
     Err(e) => {
       eprintln!("hashy: failed to check hash, running tests: {e}");
@@ -187,8 +201,35 @@ pub fn check_ci_hash(
   }
 }
 
-fn is_main_or_tag() -> bool {
+fn is_primary_or_tag() -> bool {
   std::env::var("GITHUB_REF")
-    .map(|r| r == "refs/heads/main" || r.starts_with("refs/tags/"))
+    .map(|r| is_primary_or_tag_ref(&r))
     .unwrap_or(false)
+}
+
+fn is_primary_or_tag_ref(git_ref: &str) -> bool {
+  git_ref == "refs/heads/primary" || git_ref.starts_with("refs/tags/")
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn hashy_url_is_opt_in() {
+    assert_eq!(hashy_url_from(None), None);
+    assert_eq!(hashy_url_from(Some(String::new())), None);
+    assert_eq!(
+      hashy_url_from(Some("https://hashy.example".to_string())),
+      Some("https://hashy.example".to_string())
+    );
+  }
+
+  #[test]
+  fn primary_branch_and_tags_seed_the_cache() {
+    assert!(is_primary_or_tag_ref("refs/heads/primary"));
+    assert!(is_primary_or_tag_ref("refs/tags/v2.9.7"));
+    assert!(!is_primary_or_tag_ref("refs/heads/main"));
+    assert!(!is_primary_or_tag_ref("refs/pull/1/merge"));
+  }
 }

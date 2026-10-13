@@ -463,7 +463,12 @@ function collectEntriesRecursive(dir, out) {
   }
 }
 
-const HASHY_URL = "https://hashy.deno.deno.net";
+// Base URL of the test-result cache service (see
+// https://github.com/denoland/hashy). Opt-in through `HASHY_URL` so CI never
+// reads from or writes to a service this repo doesn't run.
+function hashyUrl() {
+  return Deno.env.get("HASHY_URL") || undefined;
+}
 
 /**
  * Check if tests can be skipped on CI by comparing input hashes
@@ -477,7 +482,8 @@ const HASHY_URL = "https://hashy.deno.deno.net";
  */
 export async function checkCiHash(name, configure) {
   const noop = { skip: false, commit: async () => {} };
-  if (!Deno.env.get("CI")) {
+  const HASHY_URL = hashyUrl();
+  if (!Deno.env.get("CI") || !HASHY_URL) {
     return noop;
   }
 
@@ -503,11 +509,11 @@ export async function checkCiHash(name, configure) {
     }
   };
 
-  // On main/tag builds, always run tests but still commit on success
+  // On primary/tag builds, always run tests but still commit on success
   // to seed the cache for PR builds.
-  if (isMainOrTag()) {
+  if (isPrimaryOrTag()) {
     console.log(
-      `hashy: main/tag build, running tests (will commit on success)`,
+      `hashy: primary/tag build, running tests (will commit on success)`,
     );
     return { skip: false, commit: commitFn };
   }
@@ -530,7 +536,7 @@ export async function checkCiHash(name, configure) {
   return { skip: false, commit: commitFn };
 }
 
-function isMainOrTag() {
+function isPrimaryOrTag() {
   const ref = Deno.env.get("GITHUB_REF") ?? "";
-  return ref === "refs/heads/main" || ref.startsWith("refs/tags/");
+  return ref === "refs/heads/primary" || ref.startsWith("refs/tags/");
 }
