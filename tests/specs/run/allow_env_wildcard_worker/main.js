@@ -4,7 +4,7 @@ console.log("main3", Deno.env.get("AWS_HELLO"));
 
 new Worker(import.meta.resolve("./worker.js"), {
   type: "module",
-  deno: {
+  ende: {
     permissions: {
       env: ["DENO_*"],
     },

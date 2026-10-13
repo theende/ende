@@ -101,7 +101,7 @@ postMessage(results);
     );
     const worker = new Worker(workerUrl, {
       type: "module",
-      deno: { permissions: "none" },
+      ende: { permissions: "none" },
     });
 
     try {

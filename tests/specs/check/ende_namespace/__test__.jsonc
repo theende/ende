@@ -11,6 +11,12 @@
       "output": "alias/type_error.out",
       "exitCode": 1
     },
+    // Deprecated `deno`-named members of the namespace and of option bags
+    // type-check alongside their `ende`-named replacements.
+    "deprecated_aliases": {
+      "args": "check --quiet deprecated_aliases/main.ts",
+      "output": ""
+    },
     // Old `deno.*` lib names in compilerOptions keep working, with a
     // one-time deprecation warning per name.
     "deprecated_lib_config": {

@@ -617,7 +617,7 @@ fn get_message_suggestions_inner(
         ]),
         FixSuggestion::hint_multiline(&[
           "To run code in a separate isolate, use a `Worker`: it executes in its",
-          "own isolate and thread and can be sandboxed via the `deno.permissions`",
+          "own isolate and thread and can be sandboxed via the `ende.permissions`",
           "option. For in-process sandboxing, the `node:vm` module is also available.",
         ]),
       ];

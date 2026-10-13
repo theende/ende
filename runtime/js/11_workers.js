@@ -92,6 +92,8 @@ function hostRecvMessage(id) {
 
 const privateWorkerRef = Symbol();
 
+let warnedDenoOption = false;
+
 class Worker extends EventTarget {
   #id = 0;
   #name = "";
@@ -110,10 +112,18 @@ class Worker extends EventTarget {
     super();
     specifier = String(specifier);
     const {
+      ende,
       deno,
       name,
       type = "classic",
     } = options;
+
+    if (deno !== undefined && !warnedDenoOption) {
+      warnedDenoOption = true;
+      globalThis.console.warn(
+        'Warning: The Worker option "deno" is deprecated. Use "ende" instead.',
+      );
+    }
 
     if (options.env !== undefined || options.workerData !== undefined) {
       const unsupported = [];
@@ -157,7 +167,7 @@ class Worker extends EventTarget {
       specifier,
       hasSourceCode,
       sourceCode,
-      deno?.permissions,
+      (ende ?? deno)?.permissions,
       this.#name,
       workerType,
       false,

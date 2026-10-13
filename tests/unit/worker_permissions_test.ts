@@ -10,7 +10,7 @@ Deno.test(
       import.meta.resolve(
         "../testdata/workers/env_read_check_worker.js",
       ),
-      { type: "module", deno: { permissions: { env: ["test", "OTHER"] } } },
+      { type: "module", ende: { permissions: { env: ["test", "OTHER"] } } },
     );
 
     worker.onmessage = ({ data }) => {

@@ -313,7 +313,7 @@ Deno.test({
   fn: async function () {
     const denoWorker = new Worker(
       resolveWorker("deno_worker.ts"),
-      { type: "module", deno: { permissions: "inherit" } },
+      { type: "module", ende: { permissions: "inherit" } },
     );
 
     const { promise, resolve } = Promise.withResolvers<string>();
@@ -414,7 +414,7 @@ Deno.test({
 Deno.test("Worker inherits permissions", async function () {
   const worker = new Worker(
     resolveWorker("read_check_worker.js"),
-    { type: "module", deno: { permissions: "inherit" } },
+    { type: "module", ende: { permissions: "inherit" } },
   );
 
   const { promise, resolve } = Promise.withResolvers<boolean>();
@@ -430,7 +430,7 @@ Deno.test("Worker inherits permissions", async function () {
 Deno.test("Worker limit children permissions", async function () {
   const worker = new Worker(
     resolveWorker("read_check_worker.js"),
-    { type: "module", deno: { permissions: { read: false } } },
+    { type: "module", ende: { permissions: { read: false } } },
   );
 
   const { promise, resolve } = Promise.withResolvers<boolean>();
@@ -473,7 +473,7 @@ Deno.test("Worker limit children permissions granularly", async function () {
     workerUrl,
     {
       type: "module",
-      deno: {
+      ende: {
         permissions: {
           env: ["foo"],
           net: ["foo", "bar:8000"],
@@ -537,7 +537,7 @@ Deno.test("Nested worker limit children permissions", async function () {
   /** This worker has permissions but doesn't grant them to its children */
   const worker = new Worker(
     resolveWorker("parent_read_check_worker.js"),
-    { type: "module", deno: { permissions: "inherit" } },
+    { type: "module", ende: { permissions: "inherit" } },
   );
   // deno-lint-ignore no-explicit-any
   const { promise, resolve } = Promise.withResolvers<any>();
@@ -590,7 +590,7 @@ Deno.test({
       () => {
         const worker = new Worker(
           resolveWorker("deno_worker.ts"),
-          { type: "module", deno: { permissions: { env: true } } },
+          { type: "module", ende: { permissions: { env: true } } },
         );
         worker.terminate();
       },
@@ -603,7 +603,7 @@ Deno.test({
 Deno.test("Worker with disabled permissions", async function () {
   const worker = new Worker(
     resolveWorker("no_permissions_worker.js"),
-    { type: "module", deno: { permissions: "none" } },
+    { type: "module", ende: { permissions: "none" } },
   );
 
   const { promise, resolve } = Promise.withResolvers<boolean>();
@@ -619,7 +619,7 @@ Deno.test("Worker with disabled permissions", async function () {
 Deno.test("Worker permissions are not inherited with empty permission object", async function () {
   const worker = new Worker(
     resolveWorker("permission_echo.js"),
-    { type: "module", deno: { permissions: {} } },
+    { type: "module", ende: { permissions: {} } },
   );
 
   // deno-lint-ignore no-explicit-any
@@ -644,7 +644,7 @@ Deno.test("Worker permissions are not inherited with empty permission object", a
 Deno.test("Worker permissions are not inherited with single specified permission", async function () {
   const worker = new Worker(
     resolveWorker("permission_echo.js"),
-    { type: "module", deno: { permissions: { net: true } } },
+    { type: "module", ende: { permissions: { net: true } } },
   );
 
   // deno-lint-ignore no-explicit-any
@@ -672,10 +672,10 @@ Deno.test("Worker with invalid permission arg", function () {
       new Worker(`data:,close();`, {
         type: "module",
         // @ts-expect-error invalid env value
-        deno: { permissions: { env: "foo" } },
+        ende: { permissions: { env: "foo" } },
       }),
     TypeError,
-    '(deno.permissions.env) invalid value: string "foo", expected "inherit" or boolean or string[]',
+    '(ende.permissions.env) invalid value: string "foo", expected "inherit" or boolean or string[]',
   );
 });
 
@@ -722,7 +722,7 @@ Deno.test({
     const { promise, resolve } = Promise.withResolvers<void>();
     const worker = new Worker(
       resolveWorker("http_worker.js"),
-      { type: "module", deno: { permissions: "inherit" } },
+      { type: "module", ende: { permissions: "inherit" } },
     );
     worker.onmessage = () => {
       resolve();

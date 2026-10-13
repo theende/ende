@@ -15,6 +15,20 @@
         }
       ]
     },
+    "endex": {
+      "if": "${IF}",
+      "steps": [
+        {
+          "args": "x --install-alias endex",
+          "output": ""
+        },
+        {
+          "commandName": "endex${COMMAND_SUFFIX}",
+          "args": "",
+          "output": "alias.out"
+        }
+      ]
+    },
     "dnx": {
       "if": "${IF}",
       "steps": [

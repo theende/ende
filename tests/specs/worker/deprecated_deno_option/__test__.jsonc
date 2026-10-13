@@ -1,0 +1,16 @@
+{
+  "tests": {
+    // The Worker option `deno` is a deprecated alias of `ende`: it keeps
+    // working, with a one-time deprecation warning.
+    "deno_alias": {
+      "args": "run --quiet --allow-read --unstable-worker-options main.ts",
+      "output": "main.out"
+    },
+    // When both are given, `ende` wins, and the presence of `deno` still
+    // warns.
+    "both": {
+      "args": "run --quiet --allow-read --unstable-worker-options both.ts",
+      "output": "both.out"
+    }
+  }
+}

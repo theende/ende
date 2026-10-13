@@ -374,6 +374,11 @@ declare namespace Ende {
     /** Inspect the CEF renderer isolate. @default {true} */
     renderer?: boolean;
     /** Inspect the Ende runtime isolate. @default {true} */
+    ende?: boolean;
+    /** Inspect the Ende runtime isolate.
+     *
+     * @deprecated Use {@linkcode OpenDevtoolsOptions.ende} instead. When both
+     * are given, `ende` is used. */
     deno?: boolean;
   }
 

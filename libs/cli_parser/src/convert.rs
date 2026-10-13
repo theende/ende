@@ -3277,7 +3277,7 @@ fn x_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
     } else {
       let name = match alias {
         "dx" => EndeXShimName::Dx,
-        "denox" => EndeXShimName::Denox,
+        "endex" => EndeXShimName::Endex,
         "dnx" => EndeXShimName::Dnx,
         other => EndeXShimName::Other(other.to_string()),
       };

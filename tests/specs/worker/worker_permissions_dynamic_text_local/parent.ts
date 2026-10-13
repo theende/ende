@@ -4,7 +4,7 @@
 // worker's own (restricted) permissions, not the parent's, so it is denied.
 const worker = new Worker(import.meta.resolve("./worker.ts"), {
   type: "module",
-  deno: {
+  ende: {
     permissions: {
       read: false,
     },

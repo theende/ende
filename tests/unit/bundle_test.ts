@@ -415,7 +415,7 @@ Deno.test("bundle: worker permissions override parent permissions", async () => 
       );
       const worker = new Worker(workerUrl, {
         type: "module",
-        deno: {
+        ende: {
           permissions: {
             read: [${JSON.stringify(sourceDir)}],
             write: false,

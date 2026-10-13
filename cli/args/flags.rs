@@ -710,11 +710,11 @@ pub fn flags_from_vec_with_initial_cwd(
   // is a no-op on already-stripped args.)
   let args: Vec<OsString> = args.into_iter().map(strip_trailing_cr).collect();
 
-  // dx/denox/dnx shim: rewrite the binary name into an explicit `x` subcommand
+  // dx/endex/dnx shim: rewrite the binary name into an explicit `x` subcommand
   // before parsing (the hand-written parser doesn't special-case argv[0]).
   let args = if !args.is_empty()
     && (args[0].as_encoded_bytes().ends_with(b"dx")
-      || args[0].as_encoded_bytes().ends_with(b"denox")
+      || args[0].as_encoded_bytes().ends_with(b"endex")
       || args[0].as_encoded_bytes().ends_with(b"dnx"))
   {
     let mut new_args = Vec::with_capacity(args.len() + 1);
@@ -910,6 +910,28 @@ mod tests {
 
   fn flags_from_vec(args: Vec<OsString>) -> Result<Flags, CliError> {
     flags_from_vec_with_initial_cwd(args, None)
+  }
+
+  /// Invoking the binary through an `x` shim (argv[0] ending in a built-in
+  /// shim name) runs `ende x`; other names keep the normal parse.
+  #[test]
+  fn x_shim_argv0() {
+    for argv0 in ["dx", "endex", "dnx", "/usr/local/bin/endex", "./endex"] {
+      let flags = flags_from_vec(svec![argv0, "npm:foo"]).unwrap();
+      assert!(
+        matches!(flags.subcommand, EndeSubcommand::X(_)),
+        "{argv0} should run `x`, got {:?}",
+        flags.subcommand
+      );
+    }
+    for argv0 in ["ende", "/usr/local/bin/ende", "denox", "index", "endexe"] {
+      let flags = flags_from_vec(svec![argv0, "run", "main.ts"]).unwrap();
+      assert!(
+        matches!(flags.subcommand, EndeSubcommand::Run(_)),
+        "{argv0} should not run `x`, got {:?}",
+        flags.subcommand
+      );
+    }
   }
 
   /// The bare-run fast path in `flags_from_vec_with_initial_cwd` bypasses the

@@ -999,12 +999,12 @@ declare namespace Ende {
    *
    * @category Testing
    */
-  export const test: DenoTest;
+  export const test: EndeTest;
 
   /**
    * @category Testing
    */
-  export interface DenoTest {
+  export interface EndeTest {
     /** Register a test which will be run when `ende test` is used on the command
      * line and the containing module looks like a test module.
      *
@@ -1336,7 +1336,14 @@ declare namespace Ende {
     }): void;
   }
 
-  /** Register a parameterized group of tests. See {@linkcode DenoTest.each}.
+  /**
+   * @deprecated Use {@linkcode EndeTest} instead.
+   *
+   * @category Testing
+   */
+  export type DenoTest = EndeTest;
+
+  /** Register a parameterized group of tests. See {@linkcode EndeTest.each}.
    *
    * The first overload handles array cases (their values are spread as
    * positional arguments); the second handles object or primitive cases (each
@@ -1378,7 +1385,7 @@ declare namespace Ende {
   }
 
   /** Shorthand property for ignoring a particular test case. See
-   * {@linkcode DenoTest.ignore}.
+   * {@linkcode EndeTest.ignore}.
    *
    * @category Testing
    */
@@ -1400,12 +1407,12 @@ declare namespace Ende {
       fn: (t: TestContext) => void | Promise<void>,
     ): void;
     /** Register a parameterized group of ignored tests. See
-     * {@linkcode DenoTest.each}. */
+     * {@linkcode EndeTest.each}. */
     each: TestEach;
   }
 
   /** Shorthand property for focusing a particular test case. See
-   * {@linkcode DenoTest.only}.
+   * {@linkcode EndeTest.only}.
    *
    * @category Testing
    */
@@ -1427,7 +1434,7 @@ declare namespace Ende {
       fn: (t: TestContext) => void | Promise<void>,
     ): void;
     /** Register a parameterized group of focused tests. See
-     * {@linkcode DenoTest.each}. */
+     * {@linkcode EndeTest.each}. */
     each: TestEach;
   }
 

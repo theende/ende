@@ -356,7 +356,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
     laufey::Window::from_id(window_id).focus();
   }
 
-  fn open_devtools(&self, window_id: u32, renderer: bool, deno: bool) {
+  fn open_devtools(&self, window_id: u32, renderer: bool, ende: bool) {
     if let Ok(mux) = env::var("ENDE_DESKTOP_MUX_WS") {
       // Reuse an existing DevTools window when one is already open, so
       // repeated `openDevtools()` calls don't pile up windows.
@@ -367,7 +367,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
         return;
       }
 
-      let (endpoint, frontend) = match (renderer, deno) {
+      let (endpoint, frontend) = match (renderer, ende) {
         (true, true) => ("/unified", "inspector.html"),
         (true, false) => ("/cef", "inspector.html"),
         (false, true) => ("/ende", "js_app.html"),
@@ -375,7 +375,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
       };
       let url = format!("http://{mux}/devtools/{frontend}?ws={mux}{endpoint}");
       log::info!(
-        "[desktop] openDevtools(renderer={renderer}, deno={deno}) → {url}"
+        "[desktop] openDevtools(renderer={renderer}, ende={ende}) → {url}"
       );
       let window = laufey::Window::new(1200, 800);
       window.set_title("Ende Desktop DevTools");

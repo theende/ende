@@ -2,7 +2,7 @@ const scope = import.meta.url.slice(-7) === "#worker" ? "worker" : "main";
 
 new Worker(`data:application/javascript;base64,${btoa(`postMessage("ok");`)}`, {
   type: "module",
-  deno: {
+  ende: {
     permissions: {
       read: true,
     },

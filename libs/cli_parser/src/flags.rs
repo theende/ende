@@ -540,7 +540,7 @@ impl RunFlags {
 pub enum EndeXShimName {
   #[default]
   Dx,
-  Denox,
+  Endex,
   Dnx,
   Other(String),
 }
@@ -549,7 +549,7 @@ impl EndeXShimName {
   pub fn name(&self) -> &str {
     match self {
       Self::Dx => "dx",
-      Self::Denox => "denox",
+      Self::Endex => "endex",
       Self::Dnx => "dnx",
       Self::Other(name) => name,
     }

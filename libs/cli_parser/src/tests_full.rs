@@ -7180,6 +7180,36 @@ fn allow_scripts() {
 }
 
 #[test]
+fn x_install_alias() {
+  let cases = [
+    (svec!["ende", "x", "--install-alias=dx"], EndeXShimName::Dx),
+    (
+      svec!["ende", "x", "--install-alias=endex"],
+      EndeXShimName::Endex,
+    ),
+    (
+      svec!["ende", "x", "--install-alias=dnx"],
+      EndeXShimName::Dnx,
+    ),
+    // `denox` is no longer a built-in name, so it gets a script shim.
+    (
+      svec!["ende", "x", "--install-alias=denox"],
+      EndeXShimName::Other("denox".to_string()),
+    ),
+  ];
+  for (args, name) in cases {
+    let flags = flags_from_vec(args.clone()).unwrap();
+    assert_eq!(
+      flags.subcommand,
+      EndeSubcommand::X(XFlags {
+        kind: XFlagsKind::InstallAlias(name),
+      }),
+      "{args:?}"
+    );
+  }
+}
+
+#[test]
 fn x_ignore_scripts() {
   let flags = flags_from_vec(svec![
     "ende",

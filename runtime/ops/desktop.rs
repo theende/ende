@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::OnceLock;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
@@ -302,11 +303,37 @@ impl<'a> ToV8<'a> for ExecuteJsResult {
   }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Default, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenDevtoolsOptions {
   pub renderer: Option<bool>,
+  pub ende: Option<bool>,
+  /// Deprecated alias of `ende`.
   pub deno: Option<bool>,
+}
+
+impl OpenDevtoolsOptions {
+  /// Which isolates to inspect: `(renderer, ende)`. `ende` wins over the
+  /// deprecated `deno`.
+  fn targets(&self) -> (bool, bool) {
+    (
+      self.renderer.unwrap_or(true),
+      self.ende.or(self.deno).unwrap_or(true),
+    )
+  }
+}
+
+/// Warns about the deprecated `deno` option of `openDevtools()`, once per
+/// process. Returns whether the warning was printed.
+fn warn_deprecated_devtools_deno_option() -> bool {
+  static WARNED: AtomicBool = AtomicBool::new(false);
+  if WARNED.swap(true, Ordering::Relaxed) {
+    return false;
+  }
+  log::warn!(
+    "Warning: The openDevtools() option \"deno\" is deprecated. Use \"ende\" instead."
+  );
+  true
 }
 
 /// A single event type that flows from the laufey backend to the Ende runtime.
@@ -589,7 +616,7 @@ pub trait DesktopApi: Send + Sync + 'static {
     deno_error::JsErrorBox,
   >;
 
-  fn open_devtools(&self, window_id: u32, renderer: bool, deno: bool);
+  fn open_devtools(&self, window_id: u32, renderer: bool, ende: bool);
 
   fn execute_js(
     &self,
@@ -968,16 +995,17 @@ impl BrowserWindow {
     &self,
     #[serde] options: Option<OpenDevtoolsOptions>,
   ) -> Result<(), deno_error::JsErrorBox> {
-    let (renderer, deno) = match options {
-      Some(opts) => (opts.renderer.unwrap_or(true), opts.deno.unwrap_or(true)),
-      None => (true, true),
-    };
-    if !renderer && !deno {
+    let options = options.unwrap_or_default();
+    if options.deno.is_some() {
+      warn_deprecated_devtools_deno_option();
+    }
+    let (renderer, ende) = options.targets();
+    if !renderer && !ende {
       return Err(deno_error::JsErrorBox::type_error(
-        "At least one of 'renderer' or 'deno' must be true",
+        "At least one of 'renderer' or 'ende' must be true",
       ));
     }
-    self.api.open_devtools(self.window_id, renderer, deno);
+    self.api.open_devtools(self.window_id, renderer, ende);
     Ok(())
   }
 
@@ -2216,6 +2244,7 @@ mod tests {
   use super::DesktopEvent;
   use super::DesktopValue;
   use super::MenuItem;
+  use super::OpenDevtoolsOptions;
   use super::PendingBindResponses;
   use super::PermissionState;
   use super::Tray;
@@ -2223,6 +2252,7 @@ mod tests {
   use super::permission_state_to_web_string;
   use super::register_bind_call;
   use super::verify_ed25519_b64;
+  use super::warn_deprecated_devtools_deno_option;
 
   // These tests pin the wire format that the DESKTOP_JS event-loop
   // IIFE consumes. Changing any of these shapes is a breaking change
@@ -2265,6 +2295,37 @@ mod tests {
         );
       }
     }
+  }
+
+  #[test]
+  fn open_devtools_options_ende_replaces_deprecated_deno() {
+    let targets = |value| {
+      serde_json::from_value::<OpenDevtoolsOptions>(value)
+        .unwrap()
+        .targets()
+    };
+    assert_eq!(targets(json!({})), (true, true));
+    assert_eq!(targets(json!({ "ende": false })), (true, false));
+    assert_eq!(targets(json!({ "deno": false })), (true, false));
+    assert_eq!(
+      targets(json!({ "renderer": false, "deno": true })),
+      (false, true)
+    );
+    // `ende` wins over the deprecated `deno`.
+    assert_eq!(
+      targets(json!({ "ende": true, "deno": false })),
+      (true, true)
+    );
+    assert_eq!(
+      targets(json!({ "ende": false, "deno": true })),
+      (true, false)
+    );
+  }
+
+  #[test]
+  fn open_devtools_deprecated_deno_option_warns_once() {
+    assert!(warn_deprecated_devtools_deno_option());
+    assert!(!warn_deprecated_devtools_deno_option());
   }
 
   #[test]

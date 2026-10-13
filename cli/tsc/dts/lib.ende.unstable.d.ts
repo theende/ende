@@ -4684,9 +4684,9 @@ interface WorkerOptions {
    * ```ts
    * // mod.ts
    * const worker = new Worker(
-   *   new URL("deno_worker.ts", import.meta.url).href, {
+   *   new URL("ende_worker.ts", import.meta.url).href, {
    *     type: "module",
-   *     deno: {
+   *     ende: {
    *       permissions: {
    *         read: true,
    *       },
@@ -4694,6 +4694,15 @@ interface WorkerOptions {
    *   }
    * );
    * ```
+   */
+  ende?: {
+    /** Set to `"none"` to disable all the permissions in the worker. */
+    permissions?: Ende.PermissionOptions;
+  };
+  /** **UNSTABLE**: New API, yet to be vetted.
+   *
+   * @deprecated Use {@linkcode WorkerOptions.ende} instead. When both are
+   * given, `ende` is used.
    */
   deno?: {
     /** Set to `"none"` to disable all the permissions in the worker. */

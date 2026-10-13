@@ -1,0 +1,5 @@
+ende none: false
+Warning: The Worker option "deno" is deprecated. Use "ende" instead.
+deno none: false
+deno none: false
+deno inherit: true

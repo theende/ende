@@ -317,7 +317,7 @@ fn op_create_worker(
     super::check_unstable(
       state,
       UNSTABLE_FEATURE_NAME,
-      "Worker.deno.permissions",
+      "Worker.ende.permissions",
     );
   }
 

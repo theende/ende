@@ -498,6 +498,13 @@ fn write_shim(
     use std::os::unix::fs::PermissionsExt;
     let out_path = out_dir.join(shim_name.name());
     if let EndeXShimName::Other(_) = shim_name {
+      // Remove any existing entry first: writing through a symlink left by
+      // an earlier built-in alias would overwrite the `ende` binary itself.
+      match std::fs::remove_file(&out_path) {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e.into()),
+      }
       std::fs::write(
         &out_path,
         r##"#!/bin/sh
@@ -1004,4 +1011,48 @@ enum ReqRefOrUrl {
   Npm(NpmPackageReqReference),
   Jsr(JsrPackageReqReference),
   Url(ende_core::url::Url),
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+  use test_util::TempDir;
+
+  use super::*;
+
+  #[test]
+  fn write_shim_builtin_name_is_symlink() {
+    let temp_dir = TempDir::new();
+    let dir = temp_dir.path().as_path();
+    write_shim(dir, EndeXShimName::Endex).unwrap();
+    let link = dir.join("endex");
+    assert!(link.symlink_metadata().unwrap().is_symlink());
+    assert_eq!(std::fs::read_link(link).unwrap(), Path::new("./ende"));
+  }
+
+  #[test]
+  fn write_shim_other_name_is_script() {
+    let temp_dir = TempDir::new();
+    let dir = temp_dir.path().as_path();
+    write_shim(dir, EndeXShimName::Other("denox".to_string())).unwrap();
+    let shim = dir.join("denox");
+    assert!(shim.symlink_metadata().unwrap().is_file());
+    assert!(
+      std::fs::read_to_string(shim)
+        .unwrap()
+        .contains("exec \"$SCRIPT_DIR/ende\" x \"$@\"")
+    );
+  }
+
+  /// A `denox` symlink installed when `denox` was a built-in name must be
+  /// replaced, not written through (which would overwrite the binary).
+  #[test]
+  fn write_shim_script_replaces_existing_symlink() {
+    let temp_dir = TempDir::new();
+    temp_dir.write("ende", "binary");
+    temp_dir.symlink_file("ende", "denox");
+    let dir = temp_dir.path().as_path();
+    write_shim(dir, EndeXShimName::Other("denox".to_string())).unwrap();
+    assert_eq!(temp_dir.read_to_string("ende"), "binary");
+    assert!(dir.join("denox").symlink_metadata().unwrap().is_file());
+  }
 }

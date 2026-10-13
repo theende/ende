@@ -2944,7 +2944,7 @@ pub static X_SUBCOMMAND: CommandDef = CommandDef {
       .num_args(NumArgs::Optional)
       .default_value("dx")
       .conflicts_with(&["script_arg"])
-.help("Creates a dx alias so you can run dx <command> instead of ende x <command>"),
+.help("Creates a dx alias (or one with the given name, e.g. endex or dnx) so you can run dx <command> instead of ende x <command>"),
     ArgDef::new("check")
       .long("check")
       .action(ArgAction::Set)
