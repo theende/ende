@@ -33,7 +33,7 @@ class StdoutReader {
   }
 }
 
-const command = new Deno.Command("deno", {
+const command = new Ende.Command("ende", {
   args: ["task", "start"],
   stdout: "piped",
 });

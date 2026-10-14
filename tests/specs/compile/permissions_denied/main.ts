@@ -1,1 +1,1 @@
-new Deno.Command("deno").outputSync();
+new Ende.Command("ende").outputSync();

@@ -1,2 +1,2 @@
-error: Uncaught (in promise) NotCapable: Requires run access to "deno", specify the required permissions during compilation using `ende compile --allow-run`
+error: Uncaught (in promise) NotCapable: Requires run access to "ende", specify the required permissions during compilation using `ende compile --allow-run`
 [WILDCARD]
