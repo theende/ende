@@ -30,11 +30,6 @@ pub static ENV_VARS: &[EnvVar] = &[
     example: None,
   },
   EnvVar {
-    name: "ENDE_CONDITIONS",
-    description: "Comma-separated list of custom conditions to resolve npm package\nexports and imports with. Equivalent to using the --conditions flag.",
-    example: None,
-  },
-  EnvVar {
     name: "ENDE_COVERAGE_DIR",
     description: "Set the directory for collecting code coverage profiles.\nEquivalent to using the --coverage flag.",
     example: None,

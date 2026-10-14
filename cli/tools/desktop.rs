@@ -522,7 +522,6 @@ async fn compile_desktop(
     exclude: desktop_flags.exclude.clone(),
     eszip: false,
     self_extracting,
-    exclude_unused_npm: desktop_flags.exclude_unused_npm,
     engine: desktop_flags.engine,
   };
 
@@ -7405,7 +7404,6 @@ def456  other.zip
       codesign_identity: None,
       inspect_renderer: None,
       compress: None,
-      exclude_unused_npm: false,
     }
   }
 

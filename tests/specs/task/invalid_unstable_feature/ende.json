@@ -4,8 +4,6 @@
   },
   "unstable": [
     "abc",
-    "byonm",
-    "bare-node-builtins",
     "sloppy-imports",
     "unsafe-proto",
     "webgpu",

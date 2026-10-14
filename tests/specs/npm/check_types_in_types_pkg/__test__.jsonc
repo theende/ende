@@ -10,16 +10,6 @@
         "exitCode": 1,
         "output": "expected.out"
       }]
-    },
-    "auto_install": {
-      "args": "check --node-modules-dir=auto --quiet main_auto_install.ts",
-      "exitCode": 1,
-      "output": "expected.out"
-    },
-    "global_folder": {
-      "args": "check --node-modules-dir=none --quiet main_auto_install.ts",
-      "exitCode": 1,
-      "output": "expected.out"
     }
   }
 }

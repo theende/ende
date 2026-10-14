@@ -1,15 +1,6 @@
 {
   "tempDir": true,
   "tests": {
-    "node_modules_dir_none": {
-      "args": "run --node-modules-dir=none main/main.ts",
-      "exitCode": 1,
-      "output": "node_modules_dir_none.out"
-    },
-    "node_modules_dir_auto": {
-      "args": "run --node-modules-dir=auto main/main.ts",
-      "output": "Download http://localhost:4260/cowsay\n3\n"
-    },
     "node_modules_dir_manual": {
       "steps": [{
         "args": "run -RW backup_cowsay.ts",

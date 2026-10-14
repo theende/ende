@@ -2,9 +2,6 @@
 
 use std::sync::Arc;
 
-use deno_semver::jsr::JsrDepPackageReq;
-use deno_semver::package::PackageKind;
-use deno_semver::package::PackageReq;
 use ende_cache_dir::npm::NpmCacheDir;
 use ende_npm::resolution::PackageIdNotFoundError;
 use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
@@ -285,56 +282,13 @@ impl<
   pub fn lifecycle_scripts_config(
     &self,
   ) -> Result<&Arc<LifecycleScriptsConfig>, anyhow::Error> {
-    use crate::PackagesAllowedScripts;
-
-    fn jsr_deps_to_reqs(deps: Vec<JsrDepPackageReq>) -> Vec<PackageReq> {
-      deps
-        .into_iter()
-        .filter_map(|p| {
-          if p.kind == PackageKind::Npm {
-            Some(p.req)
-          } else {
-            None
-          }
-        })
-        .collect::<Vec<_>>()
-    }
-
     self.lifecycle_scripts_config.get_or_try_init(|| {
-      let workspace_factory = self.workspace_factory();
-      let workspace = &workspace_factory.workspace_directory()?.workspace;
-      let allow_scripts = workspace.allow_scripts()?;
+      // Lifecycle scripts only run when a subcommand allows them internally
+      // (there is no flag or config option for it).
       let args = &self.options.lifecycle_scripts_config;
       Ok(Arc::new(LifecycleScriptsConfig {
-        allowed: match &args.allowed {
-          PackagesAllowedScripts::All => PackagesAllowedScripts::All,
-          PackagesAllowedScripts::Some(package_reqs) => {
-            PackagesAllowedScripts::Some(package_reqs.clone())
-          }
-          PackagesAllowedScripts::None => match allow_scripts.allow {
-            ende_config::ende_json::AllowScriptsValueConfig::All => {
-              PackagesAllowedScripts::All
-            }
-            ende_config::ende_json::AllowScriptsValueConfig::Limited(deps) => {
-              let reqs = jsr_deps_to_reqs(deps);
-              if reqs.is_empty() {
-                PackagesAllowedScripts::None
-              } else {
-                PackagesAllowedScripts::Some(reqs)
-              }
-            }
-          },
-        },
-        denied: match &args.allowed {
-          PackagesAllowedScripts::All | PackagesAllowedScripts::Some(_) => {
-            args.denied.clone()
-          }
-          PackagesAllowedScripts::None => {
-            let mut denied = jsr_deps_to_reqs(allow_scripts.deny);
-            denied.extend(args.denied.clone());
-            denied
-          }
-        },
+        allowed: args.allowed.clone(),
+        denied: args.denied.clone(),
         initial_cwd: args.initial_cwd.clone(),
         root_dir: args.root_dir.clone(),
         explicit_install: args.explicit_install,
@@ -373,7 +327,7 @@ impl<
         workspace_factory.npm_cache_dir()?.clone(),
         workspace_factory.sys().clone(),
         self.options.cache_setting.clone(),
-        workspace_factory.npmrc()?.clone(),
+        workspace_factory.npmrc().clone(),
       ))
     })
   }
@@ -411,7 +365,7 @@ impl<
         let workspace_factory = self.workspace_factory();
         Ok(Arc::new(NpmResolutionInitializer::new(
           self.resolver_factory.npm_resolution().clone(),
-          workspace_factory.npmrc()?.clone(),
+          workspace_factory.npmrc().clone(),
           workspace_factory.workspace_npm_link_packages()?.clone(),
           match (self.options.resolve_npm_resolution_snapshot)()? {
             Some(snapshot) => {
@@ -510,11 +464,6 @@ impl<
               lifecycle_scripts: self.lifecycle_scripts_config()?.clone(),
               system_info: self.resolver_factory.npm_system_info().clone(),
               workspace_link_packages: workspace_npm_link_packages.clone(),
-              jsr_deps_in_node_modules: workspace_factory
-                .workspace_directory()?
-                .workspace
-                .jsr_deps_in_node_modules()
-                .unwrap_or(false),
             },
           )))
         }
@@ -544,7 +493,7 @@ impl<
       Ok(create_registry_info_provider(
         self.npm_cache()?.clone(),
         self.http_client().clone(),
-        self.workspace_factory().npmrc()?.clone(),
+        self.workspace_factory().npmrc().clone(),
         packument_format,
       ))
     })
@@ -559,7 +508,7 @@ impl<
         self.npm_cache()?.clone(),
         self.http_client.clone(),
         workspace_factory.sys().clone(),
-        workspace_factory.npmrc()?.clone(),
+        workspace_factory.npmrc().clone(),
         self
           .install_reporter
           .as_ref()

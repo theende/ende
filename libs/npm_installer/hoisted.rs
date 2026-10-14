@@ -1150,9 +1150,8 @@ impl LifecycleScriptsStrategy for HoistedLifecycleScripts {
       _ = writeln!(&mut output, "{}", colors::yellow("│"));
       _ = writeln!(
         &mut output,
-        "{}  Run \"{}\" to run build scripts.",
+        "{}  Ende does not run npm lifecycle scripts.",
         colors::yellow("│"),
-        colors::bold("deno approve-scripts")
       );
       _ = write!(&mut output, "{}", colors::yellow("╰─"));
 

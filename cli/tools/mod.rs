@@ -18,7 +18,6 @@ pub mod init;
 pub mod installer;
 pub mod jupyter;
 pub mod lint;
-pub mod pack;
 pub mod pm;
 pub mod publish;
 pub mod repl;

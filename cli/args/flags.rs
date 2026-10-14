@@ -1156,36 +1156,6 @@ mod tests {
     }
   }
 
-  /// When `ende <subcommand>` is spawned via `node:child_process`, the args are
-  /// passed through unchanged only if node_shim recognizes the subcommand.
-  /// Otherwise it is misinterpreted as a script for `ende run` (see #35591).
-  /// This test fails if a subcommand is added to the CLI without also adding it
-  /// to `DENO_SUBCOMMANDS` in `libs/node_shim/lib.rs`.
-  ///
-  /// Aliases are checked too. Under clap this only covered *visible* aliases
-  /// (`install`'s `i`), which let the hidden-but-working `rm` and
-  /// `approve-builds` slip through; `CommandDef` does not record alias
-  /// visibility, and every alias is equally spawnable, so all are required.
-  #[test]
-  fn subcommands_recognized_by_node_shim() {
-    for command in ENDE_ROOT.subcommands {
-      let name = command.name;
-      assert!(
-        node_shim::is_deno_subcommand(name),
-        "subcommand `{name}` is missing from node_shim's DENO_SUBCOMMANDS list; \
-         add it to `libs/node_shim/lib.rs` so it is passed through when spawned \
-         via node:child_process",
-      );
-      for alias in command.aliases {
-        assert!(
-          node_shim::is_deno_subcommand(alias),
-          "alias `{alias}` of subcommand `{name}` is missing from node_shim's \
-           DENO_SUBCOMMANDS list; add it to `libs/node_shim/lib.rs`",
-        );
-      }
-    }
-  }
-
   /// A `value_name` containing a `:` breaks shell completions for zsh, which
   /// uses `:` to separate a completion candidate from its description.
   #[test]

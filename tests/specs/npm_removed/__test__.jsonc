@@ -1,0 +1,60 @@
+// Copyright 2026 the Ende authors. MIT license.
+// npm-only subcommands, flags and config keys are not part of Ende.
+{
+  "tempDir": true,
+  "tests": {
+    "subcommand_audit": {
+      "args": "audit",
+      "output": "audit.out",
+      "exitCode": 1
+    },
+    "subcommand_approve_scripts": {
+      "args": "approve-scripts",
+      "output": "approve_scripts.out",
+      "exitCode": 1
+    },
+    "subcommand_pack": {
+      "args": "pack",
+      "output": "pack.out",
+      "exitCode": 1
+    },
+    "flag_node_modules_dir": {
+      "args": "run --node-modules-dir=auto main.ts",
+      "output": "flag_node_modules_dir.out",
+      "exitCode": 1
+    },
+    "flag_allow_scripts": {
+      "args": "install --allow-scripts",
+      "output": "flag_allow_scripts.out",
+      "exitCode": 1
+    },
+    "flag_unstable_byonm": {
+      "args": "run --unstable-byonm main.ts",
+      "output": "flag_unstable_byonm.out",
+      "exitCode": 1
+    },
+    "config_keys_warn": {
+      "cwd": "config_keys",
+      "args": "run main.ts",
+      "output": "config_keys/main.out"
+    },
+    "binary_named_node": {
+      "if": "unix",
+      "steps": [{
+        "args": ["eval", "Deno.symlinkSync(Deno.execPath(), 'node')"],
+        "output": ""
+      }, {
+        // runs as Ende, not as a Node.js CLI shim
+        "commandName": "./node",
+        "args": ["eval", "console.log(typeof Ende)"],
+        "output": "object\n"
+      }, {
+        // `-e` is a Node.js flag, not an Ende one
+        "commandName": "./node",
+        "args": ["-e", "console.log(1)"],
+        "output": "binary_named_node.out",
+        "exitCode": 1
+      }]
+    }
+  }
+}

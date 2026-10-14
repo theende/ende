@@ -701,10 +701,6 @@ impl CliOptions {
     self.flags.eszip
   }
 
-  pub fn node_conditions(&self) -> &[String] {
-    self.flags.node_conditions.as_ref()
-  }
-
   pub fn otel_config(&self) -> OtelConfig {
     self.flags.otel_config()
   }
@@ -931,19 +927,12 @@ impl CliOptions {
     npm_process_state(&CliSys::default()).is_some()
   }
 
-  /// Gets the explicitly specified NodeModulesDir setting.
+  /// Gets the NodeModulesDir mode set internally by a subcommand (there is
+  /// no flag or config option for it).
   ///
   /// Use `WorkspaceFactory.node_modules_dir_mode()` to get the resolved value.
-  pub fn specified_node_modules_dir(
-    &self,
-  ) -> Result<
-    Option<NodeModulesDirMode>,
-    ende_config::ende_json::NodeModulesDirParseError,
-  > {
-    if let Some(flag) = self.flags.node_modules_dir {
-      return Ok(Some(flag));
-    }
-    self.workspace().node_modules_dir()
+  pub fn specified_node_modules_dir(&self) -> Option<NodeModulesDirMode> {
+    self.flags.node_modules_dir
   }
 
   pub fn vendor_dir_path(&self) -> Option<&PathBuf> {
@@ -1432,7 +1421,6 @@ impl CliOptions {
 
   pub fn unstable_detect_cjs(&self) -> bool {
     self.flags.unstable_config.detect_cjs
-      || self.workspace().has_unstable("detect-cjs")
   }
 
   pub fn detect_cjs(&self) -> bool {
@@ -1477,7 +1465,7 @@ impl CliOptions {
       let all_valid_unstable_flags: Vec<&str> = ende_runtime::UNSTABLE_FEATURES
         .iter()
         .map(|feature| feature.name)
-        .chain(["fmt-component", "fmt-sql", "npm-lazy-caching"])
+        .chain(["fmt-component", "fmt-sql"])
         .collect();
 
       // check and warn if the unstable flag of config file isn't supported, by
@@ -1576,11 +1564,6 @@ impl CliOptions {
     }
   }
 
-  pub fn unstable_npm_lazy_caching(&self) -> bool {
-    self.flags.unstable_config.npm_lazy_caching
-      || self.workspace().has_unstable("npm-lazy-caching")
-  }
-
   pub fn default_npm_caching_strategy(&self) -> NpmCachingStrategy {
     if matches!(
       self.sub_command(),
@@ -1597,8 +1580,6 @@ impl CliOptions {
         | EndeSubcommand::Outdated(_)
     ) {
       NpmCachingStrategy::Manual
-    } else if self.unstable_npm_lazy_caching() {
-      NpmCachingStrategy::Lazy
     } else {
       NpmCachingStrategy::Eager
     }

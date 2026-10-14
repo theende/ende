@@ -1624,7 +1624,6 @@ export { d, e, f };
           "name": "@denotest/main",
           "version": "1.0.0",
           "exports": "./mod.ts",
-          "nodeModulesDir": "manual",
           "imports": {
             "@types/package": "npm:@types/package@^1",
             "package": "npm:package@^1.2.3"
@@ -1664,7 +1663,6 @@ export { d, e, f };
           "name": "@denotest/main",
           "version": "1.0.0",
           "exports": "./mod.ts",
-          "nodeModulesDir": "manual",
           "importMap": "./import_map.json",
         }),
       );
@@ -1860,6 +1858,10 @@ export * from "jsr:@std/semver@1";
       cwd.to_path_buf(),
       WorkspaceFactoryOptions {
         maybe_custom_ende_dir_root: Some(cwd.join("deno_dir")),
+        // use the node_modules directory set up by the tests
+        node_modules_dir: Some(
+          ende_config::ende_json::NodeModulesDirMode::Manual,
+        ),
         ..Default::default()
       },
     ));

@@ -243,17 +243,6 @@ impl<TSys: NpmCacheSys> LifecycleScriptsStrategy
       "{}  Lifecycle scripts are only supported when using a `node_modules` directory.",
       colors::yellow("│")
     );
-    _ = writeln!(
-      &mut output,
-      "{}  Enable it in your deno config file:",
-      colors::yellow("│")
-    );
-    _ = writeln!(
-      &mut output,
-      "{}  {}",
-      colors::yellow("│"),
-      colors::bold("\"nodeModulesDir\": \"auto\"")
-    );
     _ = write!(&mut output, "{}", colors::yellow("╰─"));
 
     if let Some(install_reporter) = &self.install_reporter {

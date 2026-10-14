@@ -501,10 +501,7 @@ fn get_message_suggestions_inner(
           "Rewrite this module to ESM,",
           cstr!("or change the file extension to <u>.cjs</u>,"),
           cstr!(
-            "or add <u>package.json</> next to the file with <i>\"type\": \"commonjs\"</> option,"
-          ),
-          cstr!(
-            "or pass <i>--unstable-detect-cjs</> flag to detect CommonJS when loading."
+            "or add <u>package.json</> next to the file with <i>\"type\": \"commonjs\"</> option."
           ),
         ]),
         FixSuggestion::docs("https://docs.ende.sh/go/commonjs"),
@@ -634,16 +631,10 @@ fn get_message_suggestions_inner(
       || (msg.contains("Could not locate the bindings file")
         && msg.contains(".node"))
     {
-      return vec![
-        FixSuggestion::info_multiline(&[
-          "Trying to execute an npm package using Node-API addons,",
-          "these packages require local `node_modules` directory to be present.",
-        ]),
-        FixSuggestion::hint_multiline(&[
-          "Add `\"nodeModulesDir\": \"auto\" option to `ende.json`, and then run",
-          "`ende install --allow-scripts=npm:<package> --entrypoint <script>` to setup `node_modules` directory.",
-        ]),
-      ];
+      return vec![FixSuggestion::info_multiline(&[
+        "Trying to execute an npm package using Node-API addons,",
+        "these packages require local `node_modules` directory to be present.",
+      ])];
     // Captures the error thrown by `ext/napi` when a native addon was built
     // against the legacy Node.js native addon ABI (the `NODE_MODULE` macro /
     // `nan`) instead of Node-API. Such addons link against V8's C++ internals,

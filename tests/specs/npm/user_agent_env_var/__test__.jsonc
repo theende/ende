@@ -13,14 +13,6 @@
         }
       ]
     },
-    "unset_for_local_file": {
-      "steps": [
-        {
-          "args": "run -A main.ts",
-          "output": "Download [WILDCARD]\nnpm_config_user_agent: undefined\n"
-        }
-      ]
-    },
     "set_for_tasks": {
       "steps": [
         {
@@ -30,15 +22,6 @@
         {
           "args": "task run-via-bin",
           "output": "bin_command.out"
-        }
-      ]
-    },
-    "set_for_lifecycle_scripts": {
-      "steps": [
-        {
-          "args": "install --allow-scripts",
-          "output": "postinstall.out",
-          "exitCode": 1
         }
       ]
     }

@@ -4,10 +4,6 @@
     "global_cache": {
       "args": "run --allow-read main.ts",
       "output": "main.out"
-    },
-    "node_modules_dir": {
-      "args": "run --allow-read --node-modules-dir=auto main.ts",
-      "output": "main_node_modules.out"
     }
   }
 }

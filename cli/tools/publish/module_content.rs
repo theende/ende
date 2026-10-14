@@ -374,7 +374,7 @@ mod test {
     run_test(&[
       (
         "/deno.json",
-        r#"{ "nodeModulesDir": "manual", "workspace": ["package-a", "package-b", "package-c", "package-d"] }"#,
+        r#"{ "workspace": ["package-a", "package-b", "package-c", "package-d"] }"#,
         None,
       ),
       (
@@ -526,7 +526,6 @@ mod test {
           "name": "@scope/pkg",
           "version": "1.0.0",
           "exports": "./main.wasm",
-          "nodeModulesDir": "manual",
           "imports": {
             "@std/foo": "jsr:@std/foo@1",
             "chalk": "npm:chalk@5"

@@ -214,6 +214,11 @@ function stdioStringToArray(
   return options;
 }
 
+// Internal env var telling a child Ende process run as `node` to detect
+// CommonJS like Node.js (Ende has no CLI flag for it). Kept in sync with
+// cli/lib.rs.
+const kDetectCjsEnvVar = "ENDE_INTERNAL_NODE_DETECT_CJS";
+
 const kClosesNeeded = Symbol("_closesNeeded");
 const kClosesReceived = Symbol("_closesReceived");
 const kCanDisconnect = Symbol("_canDisconnect");
@@ -1618,6 +1623,9 @@ function transformDenoShellCommand(
 
   try {
     const result = op_node_translate_cli_args(args, false, false);
+    if (env && result.detectCjs) {
+      env[kDetectCjsEnvVar] = "1";
+    }
     // Shell-quote translated args that contain metacharacters so they are
     // safe to embed in a shell command string.
     const quotedArgs = isWindows
@@ -1755,6 +1763,9 @@ function buildCommand(
     const result = op_node_translate_cli_args(args, scriptInNpmPackage, true);
     args = result.denoArgs;
     includeNpmProcessState = result.needsNpmProcessState;
+    if (result.detectCjs) {
+      env[kDetectCjsEnvVar] = "1";
+    }
     if (result.caStores?.length) {
       env.ENDE_TLS_CA_STORE = ArrayPrototypeJoin(result.caStores, ",");
     }
@@ -1816,7 +1827,7 @@ function buildCommand(
   // When spawning a non-deno process that has Deno.execPath() in its args
   // (e.g. Python given deno's path to re-invoke it), pre-translate the args
   // that follow so the child deno process gets the correct Node.js compat
-  // flags (-A, --unstable-bare-node-builtins, etc.).
+  // flags (-A, etc.).
   // This covers cases like test-stdio-closed.js on Windows, where a Python
   // intermediary closes stdio then calls deno directly via subprocess.call.
   if (file !== Deno.execPath()) {
@@ -1830,6 +1841,9 @@ function buildCommand(
       if (argsForDeno.length > 0) {
         try {
           const result = op_node_translate_cli_args(argsForDeno, false, true);
+          if (result.detectCjs) {
+            env[kDetectCjsEnvVar] = "1";
+          }
           args = [
             ...new SafeArrayIterator(
               ArrayPrototypeSlice(args, 0, denoArgIndex + 1),

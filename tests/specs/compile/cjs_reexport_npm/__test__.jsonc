@@ -3,7 +3,7 @@
   "canonicalizedTempDir": true,
   "steps": [{
     "if": "unix",
-    "args": "compile --node-modules-dir=manual --output main main.mjs",
+    "args": "compile --output main main.mjs",
     "output": "[WILDCARD]"
   }, {
     "if": "unix",
@@ -12,7 +12,7 @@
     "output": "main.out"
   }, {
     "if": "windows",
-    "args": "compile --node-modules-dir=manual --output main.exe main.mjs",
+    "args": "compile --output main.exe main.mjs",
     "output": "[WILDCARD]"
   }, {
     "if": "windows",

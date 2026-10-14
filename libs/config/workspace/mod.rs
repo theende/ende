@@ -40,7 +40,6 @@ use url::Url;
 
 use crate::UrlToFilePathError;
 use crate::ende_json;
-use crate::ende_json::AllowScriptsConfig;
 use crate::ende_json::BenchConfig;
 use crate::ende_json::CompileConfig;
 use crate::ende_json::CompilerOptions;
@@ -58,10 +57,6 @@ use crate::ende_json::LinkConfigParseError;
 use crate::ende_json::LintConfig;
 use crate::ende_json::LintRulesConfig;
 use crate::ende_json::MinimumDependencyAgeConfig;
-use crate::ende_json::NodeModulesDirMode;
-use crate::ende_json::NodeModulesDirParseError;
-use crate::ende_json::NodeModulesLinkerMode;
-use crate::ende_json::NodeModulesLinkerParseError;
 use crate::ende_json::PermissionsConfig;
 use crate::ende_json::PermissionsObjectWithBase;
 use crate::ende_json::PublishConfig;
@@ -235,15 +230,8 @@ pub enum WorkspaceDiagnosticKind {
     "\"imports\" and \"scopes\" field is ignored when \"importMap\" is specified in the root config file."
   )]
   MemberImportsScopesIgnored,
-  #[error(
-    "`\"nodeModulesDir\": {previous}` is deprecated in Deno 2.0. Use `\"nodeModulesDir\": \"{suggestion}\"` instead."
-  )]
-  DeprecatedNodeModulesDirOption {
-    previous: bool,
-    suggestion: NodeModulesDirMode,
-  },
-  #[error("\"patch\" property was renamed to \"links\".")]
-  DeprecatedPatch,
+  #[error("\"{0}\" field is not supported in Ende and is ignored.")]
+  UnsupportedOption(&'static str),
   #[error(
     "Invalid workspace member name \"{name}\". Ensure the name is in the format '@scope/name'."
   )]
@@ -256,14 +244,6 @@ pub enum WorkspaceDiagnosticKind {
     "\"minimumDependencyAge.exclude\" entry \"{entry}\" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. \"npm:@scope/*\")."
   )]
   MinimumDependencyAgeExcludeInvalidWildcard { entry: String },
-  #[error(
-    "Invalid version requirement '{version_req}' for catalog entry '{name}'."
-  )]
-  InvalidCatalogVersionReq { name: String, version_req: String },
-  #[error(
-    "\"imports\" and \"scopes\" in the config file are ignored for dependency management when \"preferPackageJson\" is enabled. Move these dependencies to package.json."
-  )]
-  PreferPackageJsonWithImports,
 }
 
 #[derive(Debug, Error, JsError, Clone, PartialEq, Eq)]
@@ -555,37 +535,19 @@ impl Workspace {
   ) -> Self {
     let root_dir_url = new_rc(root.folder_url());
 
-    // Load catalogs: prefer package.json, fall back to deno.json
+    // Load catalogs from package.json (ende.json catalogs are not supported).
     let catalogs = {
-      let from_pkg_json = root.pkg_json().and_then(|pj| {
-        let has_catalog = pj.catalog.is_some();
-        let has_catalogs = pj.catalogs.is_some();
-        if !has_catalog && !has_catalogs {
-          return None;
-        }
-        let mut result: IndexMap<String, IndexMap<String, String>> =
-          IndexMap::new();
+      let mut result: IndexMap<String, IndexMap<String, String>> =
+        IndexMap::new();
+      if let Some(pj) = root.pkg_json() {
         if let Some(c) = &pj.catalog {
           result.insert("default".to_string(), c.clone());
         }
         if let Some(cs) = &pj.catalogs {
           result.extend(cs.clone());
         }
-        Some(result)
-      });
-      from_pkg_json.unwrap_or_else(|| {
-        let mut result: IndexMap<String, IndexMap<String, String>> =
-          IndexMap::new();
-        if let Some(dj) = root.ende_json() {
-          if let Some(c) = dj.catalog() {
-            result.insert("default".to_string(), c.clone());
-          }
-          if let Some(cs) = dj.catalogs() {
-            result.extend(cs.clone());
-          }
-        }
-        result
-      })
+      }
+      result
     };
 
     let mut config_folders = IndexMap::with_capacity(members.len() + 1);
@@ -1237,24 +1199,6 @@ impl Workspace {
           kind: WorkspaceDiagnosticKind::RootOnlyOption("minimumDependencyAge"),
         });
       }
-      if member_config.json.node_modules_dir.is_some() {
-        diagnostics.push(WorkspaceDiagnostic {
-          config_url: member_config.specifier.clone(),
-          kind: WorkspaceDiagnosticKind::RootOnlyOption("nodeModulesDir"),
-        });
-      }
-      if member_config.json.catalog.is_some() {
-        diagnostics.push(WorkspaceDiagnostic {
-          config_url: member_config.specifier.clone(),
-          kind: WorkspaceDiagnosticKind::RootOnlyOption("catalog"),
-        });
-      }
-      if member_config.json.catalogs.is_some() {
-        diagnostics.push(WorkspaceDiagnostic {
-          config_url: member_config.specifier.clone(),
-          kind: WorkspaceDiagnosticKind::RootOnlyOption("catalogs"),
-        });
-      }
       if member_config.json.links.is_some() {
         diagnostics.push(WorkspaceDiagnostic {
           config_url: member_config.specifier.clone(),
@@ -1285,18 +1229,6 @@ impl Workspace {
           kind: WorkspaceDiagnosticKind::RootOnlyOption("workspace"),
         });
       }
-      if member_config.json.allow_scripts.is_some() {
-        diagnostics.push(WorkspaceDiagnostic {
-          config_url: member_config.specifier.clone(),
-          kind: WorkspaceDiagnosticKind::RootOnlyOption("allowScripts"),
-        });
-      }
-      if member_config.json.prefer_package_json.is_some() {
-        diagnostics.push(WorkspaceDiagnostic {
-          config_url: member_config.specifier.clone(),
-          kind: WorkspaceDiagnosticKind::RootOnlyOption("preferPackageJson"),
-        });
-      }
       if let Some(value) = &member_config.json.lint
         && value.get("report").is_some()
       {
@@ -1305,16 +1237,6 @@ impl Workspace {
           kind: WorkspaceDiagnosticKind::RootOnlyOption("lint.report"),
         });
       }
-    }
-
-    // Whether the config's `imports`/`scopes` contain `npm:`/`jsr:`
-    // dependency specifiers. Path-alias imports (e.g. `"#/": "./src/"`)
-    // can't move to package.json, so they shouldn't trigger the
-    // `preferPackageJson` warning.
-    fn has_dependency_imports(config: &ConfigFile) -> bool {
-      crate::import_map::imports_values(config.json.imports.as_ref())
-        .chain(crate::import_map::scope_values(config.json.scopes.as_ref()))
-        .any(|value| crate::import_map::value_to_dep_req(value).is_some())
     }
 
     fn check_all_configs(
@@ -1337,10 +1259,10 @@ impl Workspace {
           kind: WorkspaceDiagnosticKind::InvalidWorkspacesOption,
         });
       }
-      if config.json.deprecated_patch.is_some() {
+      for key in config.json.unsupported_keys() {
         diagnostics.push(WorkspaceDiagnostic {
           config_url: config.specifier.clone(),
-          kind: WorkspaceDiagnosticKind::DeprecatedPatch,
+          kind: WorkspaceDiagnosticKind::UnsupportedOption(key),
         });
       }
       if config.json.name.is_some() && config.json.exports.is_none() {
@@ -1354,23 +1276,6 @@ impl Workspace {
         diagnostics.push(WorkspaceDiagnostic {
           config_url: config.specifier.clone(),
           kind: WorkspaceDiagnosticKind::ImportMapReferencingImportMap,
-        });
-      }
-      if let Some(serde_json::Value::Bool(enabled)) =
-        &config.json.node_modules_dir
-      {
-        diagnostics.push(WorkspaceDiagnostic {
-          config_url: config.specifier.clone(),
-          kind: WorkspaceDiagnosticKind::DeprecatedNodeModulesDirOption {
-            previous: *enabled,
-            suggestion: if config.json.unstable.iter().any(|v| v == "byonm") {
-              NodeModulesDirMode::Manual
-            } else if *enabled {
-              NodeModulesDirMode::Auto
-            } else {
-              NodeModulesDirMode::None
-            },
-          },
         });
       }
       if let Some(serde_json::Value::Object(obj)) =
@@ -1399,34 +1304,6 @@ impl Workspace {
                   },
                 });
               }
-            }
-          }
-        }
-      }
-      if let Some(catalog) = &config.json.catalog {
-        for (name, version_req) in catalog {
-          if VersionReq::parse_from_npm(version_req).is_err() {
-            diagnostics.push(WorkspaceDiagnostic {
-              config_url: config.specifier.clone(),
-              kind: WorkspaceDiagnosticKind::InvalidCatalogVersionReq {
-                name: name.clone(),
-                version_req: version_req.clone(),
-              },
-            });
-          }
-        }
-      }
-      if let Some(catalogs) = &config.json.catalogs {
-        for catalog in catalogs.values() {
-          for (name, version_req) in catalog {
-            if VersionReq::parse_from_npm(version_req).is_err() {
-              diagnostics.push(WorkspaceDiagnostic {
-                config_url: config.specifier.clone(),
-                kind: WorkspaceDiagnosticKind::InvalidCatalogVersionReq {
-                  name: name.clone(),
-                  version_req: version_req.clone(),
-                },
-              });
             }
           }
         }
@@ -1463,19 +1340,6 @@ impl Workspace {
             self.root_ende_json().map(|r| r.as_ref()),
             &mut diagnostics,
           );
-        }
-
-        // `preferPackageJson` is a root-only setting, so only warn about
-        // lingering dependency imports on the root config. Members that set it
-        // get a `RootOnlyOption` diagnostic instead.
-        if is_root
-          && config.json.prefer_package_json == Some(true)
-          && has_dependency_imports(config)
-        {
-          diagnostics.push(WorkspaceDiagnostic {
-            config_url: config.specifier.clone(),
-            kind: WorkspaceDiagnosticKind::PreferPackageJsonWithImports,
-          });
         }
 
         check_all_configs(config, &mut diagnostics);
@@ -1777,61 +1641,11 @@ impl Workspace {
       .unwrap_or(false)
   }
 
-  /// Whether dependencies should be managed via `package.json` rather than
-  /// `ende.json`, as configured by the `preferPackageJson` field in the root
-  /// `ende.json`.
-  pub fn prefer_package_json(&self) -> bool {
-    self
-      .with_root_config_only(|ende_json| {
-        ende_json.json.prefer_package_json.unwrap_or(false)
-      })
-      .unwrap_or(false)
-  }
-
   fn with_root_config_only<'a, R>(
     &'a self,
     with_root: impl Fn(&'a ConfigFile) -> R,
   ) -> Option<R> {
     self.root_ende_json().map(|c| with_root(c))
-  }
-
-  /// Whether `jsr:` dependencies should be installed into `node_modules` via
-  /// JSR's npm compatibility registry (the `jsrDepsInNodeModules` config
-  /// option on the root ende.json).
-  pub fn jsr_deps_in_node_modules(&self) -> Option<bool> {
-    self
-      .root_ende_json()
-      .and_then(|c| c.json.jsr_deps_in_node_modules)
-  }
-
-  pub fn node_modules_dir(
-    &self,
-  ) -> Result<Option<NodeModulesDirMode>, ende_json::NodeModulesDirParseError>
-  {
-    self
-      .root_ende_json()
-      .and_then(|c| c.json.node_modules_dir.as_ref())
-      .map(|v| {
-        serde_json::from_value::<NodeModulesDirMode>(v.clone())
-          .map_err(|err| NodeModulesDirParseError { source: err })
-      })
-      .transpose()
-  }
-
-  pub fn node_modules_linker(
-    &self,
-  ) -> Result<
-    Option<NodeModulesLinkerMode>,
-    ende_json::NodeModulesLinkerParseError,
-  > {
-    self
-      .root_ende_json()
-      .and_then(|c| c.json.node_modules_linker.as_ref())
-      .map(|v| {
-        serde_json::from_value::<NodeModulesLinkerMode>(v.clone())
-          .map_err(|err| NodeModulesLinkerParseError { source: err })
-      })
-      .transpose()
   }
 
   pub fn minimum_dependency_age(
@@ -1844,16 +1658,6 @@ impl Workspace {
     self
       .root_ende_json()
       .map(|c| c.to_minimum_dependency_age_config(sys))
-      .transpose()
-      .map(|v| v.unwrap_or_default())
-  }
-
-  pub fn allow_scripts(
-    &self,
-  ) -> Result<AllowScriptsConfig, ende_json::ToInvalidConfigError> {
-    self
-      .root_ende_json()
-      .map(|c| c.to_allow_scripts_config())
       .transpose()
       .map(|v| v.unwrap_or_default())
   }
@@ -4008,7 +3812,7 @@ pub mod test {
   }
 
   #[test]
-  fn test_deprecated_patch() {
+  fn test_unsupported_patch() {
     let workspace_dir = workspace_for_root_and_member_with_fs(
       json!({
         "patch": ["../dir"],
@@ -4021,11 +3825,12 @@ pub mod test {
     assert_eq!(
       workspace_dir.workspace.diagnostics(),
       vec![WorkspaceDiagnostic {
-        kind: WorkspaceDiagnosticKind::DeprecatedPatch,
+        kind: WorkspaceDiagnosticKind::UnsupportedOption("patch"),
         config_url: url_from_file_path(&root_dir().join("ende.json")).unwrap(),
       }]
     );
-    assert_eq!(workspace_dir.workspace.link_folders().len(), 1); // should still work though
+    // no longer an alias for "links"
+    assert_eq!(workspace_dir.workspace.link_folders().len(), 0);
   }
 
   #[test]
@@ -4649,17 +4454,6 @@ pub mod test {
       None
     );
     assert_eq!(
-      workspace_dir.workspace.node_modules_dir().unwrap(),
-      Some(NodeModulesDirMode::None)
-    );
-    assert_eq!(
-      workspace_dir
-        .workspace
-        .resolve_lockfile_path(&InMemorySys::default())
-        .unwrap(),
-      None
-    );
-    assert_eq!(
       workspace_dir.workspace.vendor_dir_path().unwrap(),
       &root_dir().join("vendor")
     );
@@ -4667,10 +4461,7 @@ pub mod test {
       workspace_dir.workspace.diagnostics(),
       vec![
         WorkspaceDiagnostic {
-          kind: WorkspaceDiagnosticKind::DeprecatedNodeModulesDirOption {
-            previous: false,
-            suggestion: NodeModulesDirMode::Manual,
-          },
+          kind: WorkspaceDiagnosticKind::UnsupportedOption("nodeModulesDir"),
           config_url: url_from_file_path(&root_dir().join("ende.json"))
             .unwrap(),
         },
@@ -4685,17 +4476,17 @@ pub mod test {
             .unwrap(),
         },
         WorkspaceDiagnostic {
-          kind: WorkspaceDiagnosticKind::RootOnlyOption("nodeModulesDir"),
-          config_url: url_from_file_path(&root_dir().join("member/ende.json"))
-            .unwrap(),
-        },
-        WorkspaceDiagnostic {
           kind: WorkspaceDiagnosticKind::RootOnlyOption("unstable"),
           config_url: url_from_file_path(&root_dir().join("member/ende.json"))
             .unwrap(),
         },
         WorkspaceDiagnostic {
           kind: WorkspaceDiagnosticKind::RootOnlyOption("vendor"),
+          config_url: url_from_file_path(&root_dir().join("member/ende.json"))
+            .unwrap(),
+        },
+        WorkspaceDiagnostic {
+          kind: WorkspaceDiagnosticKind::UnsupportedOption("nodeModulesDir"),
           config_url: url_from_file_path(&root_dir().join("member/ende.json"))
             .unwrap(),
         },
@@ -4742,131 +4533,35 @@ pub mod test {
   }
 
   #[test]
-  fn test_prefer_package_json_imports_warning() {
-    fn diagnostics_for(value: serde_json::Value) -> Vec<WorkspaceDiagnostic> {
-      let sys = InMemorySys::default();
-      sys.fs_insert_json(root_dir().join("ende.json"), value);
-      workspace_at_start_dir(&sys, &root_dir())
-        .workspace
-        .diagnostics()
-    }
-
-    let expected = vec![WorkspaceDiagnostic {
-      kind: WorkspaceDiagnosticKind::PreferPackageJsonWithImports,
-      config_url: url_from_file_path(&root_dir().join("ende.json")).unwrap(),
-    }];
-
-    // A `jsr:`/`npm:` dependency specifier in `imports` triggers the warning.
-    assert_eq!(
-      diagnostics_for(json!({
-        "preferPackageJson": true,
-        "imports": { "@std/assert": "jsr:@std/assert@^1" }
-      })),
-      expected
-    );
-    // A dependency specifier nested in `scopes` also triggers it.
-    assert_eq!(
-      diagnostics_for(json!({
-        "preferPackageJson": true,
-        "scopes": { "./sub/": { "chalk": "npm:chalk@5" } }
-      })),
-      expected
-    );
-    // Path-alias imports can't move to package.json, so they don't warn.
-    assert_eq!(
-      diagnostics_for(json!({
-        "preferPackageJson": true,
-        "imports": { "#utils": "./utils.ts", "@/": "./src/" }
-      })),
-      vec![]
-    );
-    // No warning when the setting is off.
-    assert_eq!(
-      diagnostics_for(json!({
-        "imports": { "@std/assert": "jsr:@std/assert@^1" }
-      })),
-      vec![]
-    );
-  }
-
-  #[test]
-  fn test_prefer_package_json_member_root_only() {
-    // `preferPackageJson` on a member is ignored (the setting is read from the
-    // root only), so it surfaces a `RootOnlyOption` diagnostic. The lingering
-    // imports warning must not fire on the member, since the setting has no
-    // effect there.
-    let workspace_dir = workspace_for_root_and_member(
-      json!({}),
-      json!({
-        "preferPackageJson": true,
-        "imports": { "@std/assert": "jsr:@std/assert@^1" }
-      }),
-    );
-    assert_eq!(
-      workspace_dir.workspace.diagnostics(),
-      vec![WorkspaceDiagnostic {
-        kind: WorkspaceDiagnosticKind::RootOnlyOption("preferPackageJson"),
-        config_url: url_from_file_path(&root_dir().join("member/ende.json"))
-          .unwrap(),
-      }]
-    );
-  }
-
-  #[test]
-  fn test_root_member_node_modules_dir_suggestions() {
-    fn suggest(
-      previous: bool,
-      suggestion: NodeModulesDirMode,
-    ) -> WorkspaceDiagnostic {
-      WorkspaceDiagnostic {
-        kind: WorkspaceDiagnosticKind::DeprecatedNodeModulesDirOption {
-          previous,
-          suggestion,
-        },
-        config_url: url_from_file_path(&root_dir().join("ende.json")).unwrap(),
-      }
-    }
-
-    let cases = [
-      (
-        json!({
-            "unstable": ["byonm"],
-            "nodeModulesDir": true,
-        }),
-        true,
-        NodeModulesDirMode::Manual,
-      ),
-      (
-        json!({
-            "unstable": ["byonm"],
-            "nodeModulesDir": false,
-        }),
-        false,
-        NodeModulesDirMode::Manual,
-      ),
-      (
-        json!({
-            "nodeModulesDir": true,
-        }),
-        true,
-        NodeModulesDirMode::Auto,
-      ),
-      (
-        json!({
-            "nodeModulesDir": false,
-        }),
-        false,
-        NodeModulesDirMode::None,
-      ),
+  fn test_unsupported_npm_options() {
+    let keys = [
+      "nodeModulesDir",
+      "nodeModulesLinker",
+      "jsrDepsInNodeModules",
+      "preferPackageJson",
+      "allowScripts",
+      "catalog",
+      "catalogs",
+      "patch",
     ];
-
-    for (config, previous, suggestion) in cases {
-      let workspace_dir = workspace_for_root_and_member(config, json!({}));
-      assert_eq!(
-        workspace_dir.workspace.diagnostics(),
-        vec![suggest(previous, suggestion)]
-      );
-    }
+    let config = serde_json::Value::Object(
+      keys
+        .iter()
+        .map(|key| (key.to_string(), json!(true)))
+        .collect(),
+    );
+    let workspace_dir = workspace_for_root_and_member(config.clone(), config);
+    let diagnostic = |path: &str, key: &'static str| WorkspaceDiagnostic {
+      kind: WorkspaceDiagnosticKind::UnsupportedOption(key),
+      config_url: url_from_file_path(&root_dir().join(path)).unwrap(),
+    };
+    let expected = keys
+      .iter()
+      .map(|key| diagnostic("ende.json", key))
+      .chain(keys.iter().map(|key| diagnostic("member/ende.json", key)))
+      .collect::<Vec<_>>();
+    assert_eq!(workspace_dir.workspace.diagnostics(), expected);
+    assert!(workspace_dir.workspace.catalogs().is_empty());
   }
 
   #[test]
@@ -7055,10 +6750,7 @@ pub mod test {
   #[test]
   fn workspace_discovery_ende_json_cache() {
     let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("ende.json"),
-      json!({ "nodeModulesDir": true }),
-    );
+    sys.fs_insert_json(root_dir().join("ende.json"), json!({ "vendor": true }));
     let cache = EndeJsonMemCache::default();
     let workspace_dir = WorkspaceDirectory::discover(
       &sys,
@@ -7071,12 +6763,9 @@ pub mod test {
     )
     .unwrap();
     assert_eq!(cache.0.borrow().len(), 1); // writes to the cache
-    assert_eq!(
-      workspace_dir.workspace.node_modules_dir().unwrap(),
-      Some(NodeModulesDirMode::Auto)
-    );
+    assert!(workspace_dir.workspace.vendor_dir_path().is_some());
     let new_config_file = ConfigFile::new(
-      r#"{ "nodeModulesDir": false }"#,
+      r#"{ "vendor": false }"#,
       deno_path_util::url_from_file_path(&root_dir().join("ende.json"))
         .unwrap(),
     )
@@ -7095,10 +6784,8 @@ pub mod test {
       },
     )
     .unwrap();
-    assert_eq!(
-      workspace_dir.workspace.node_modules_dir().unwrap(),
-      Some(NodeModulesDirMode::None) // reads from the cache
-    );
+    // reads from the cache
+    assert!(workspace_dir.workspace.vendor_dir_path().is_none());
   }
 
   #[test]

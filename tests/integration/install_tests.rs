@@ -608,7 +608,7 @@ fn installer_second_module_looks_like_script_argument() {
 #[test]
 fn install_npm_global_config_dir() {
   // installing an npm: package should create a .<name>/ config dir
-  // with ende.json containing nodeModulesDir
+  // with an ende.json
   let context = TestContextBuilder::new()
     .add_npm_env_vars()
     .use_http_server()
@@ -629,12 +629,10 @@ fn install_npm_global_config_dir() {
   let config_dir = bin_dir.join(".cli-esm");
   assert!(config_dir.exists(), "config dir should exist");
 
-  // ende.json should exist with nodeModulesDir
+  // ende.json should exist
   let ende_json = config_dir.join("ende.json");
   assert!(ende_json.exists(), "ende.json should exist");
   let ende_json_content = ende_json.read_to_string();
-  assert_contains!(ende_json_content, "nodeModulesDir");
-  assert_contains!(ende_json_content, "manual");
   // should have workspace field to stop workspace discovery
   assert_contains!(ende_json_content, "workspace");
 
@@ -658,46 +656,4 @@ fn install_npm_global_config_dir() {
 
   assert!(!shim_path.exists(), "shim should be removed");
   assert!(!config_dir.exists(), "config dir should be removed");
-}
-
-#[test]
-fn install_npm_global_allow_scripts() {
-  // installing with --allow-scripts should run lifecycle scripts
-  let context = TestContextBuilder::new()
-    .add_npm_env_vars()
-    .use_http_server()
-    .use_temp_cwd()
-    .build();
-  let temp_dir = context.temp_dir();
-  let root_dir = temp_dir.path().join("root");
-  let bin_dir = root_dir.join("bin");
-
-  let output = context
-    .new_command()
-    .args("install -g --allow-scripts --root ./root npm:@denotest/lifecycle-scripts-simple")
-    .run();
-
-  output.assert_exit_code(0);
-  let output_text = output.combined_output();
-  assert_contains!(output_text, "Successfully installed");
-
-  // config dir should exist with node_modules
-  let config_dir = bin_dir.join(".lifecycle-scripts-simple");
-  assert!(config_dir.exists(), "config dir should exist");
-
-  // ende.json should have nodeModulesDir
-  let ende_json = config_dir.join("ende.json");
-  assert!(ende_json.exists(), "ende.json should exist");
-  let ende_json_content = ende_json.read_to_string();
-  assert_contains!(ende_json_content, "nodeModulesDir");
-
-  // node_modules should exist (populated by cache_top_level_deps)
-  let node_modules = config_dir.join("node_modules");
-  assert!(node_modules.exists(), "node_modules should exist");
-
-  // package.json should exist with the dependency
-  let package_json = config_dir.join("package.json");
-  assert!(package_json.exists(), "package.json should exist");
-  let package_json_content = package_json.read_to_string();
-  assert_contains!(package_json_content, "@denotest/lifecycle-scripts-simple");
 }

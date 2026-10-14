@@ -6,26 +6,11 @@
       "output": "no_lockfile.out",
       "exitCode": 1
     },
-    "happy_path": {
-      "steps": [{
-        "args": [
-          "eval",
-          "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic' }, nodeModulesDir: 'auto' }))"
-        ],
-        "output": ""
-      }, {
-        "args": "install",
-        "output": "[WILDCARD]"
-      }, {
-        "args": "ci",
-        "output": "happy_path.out"
-      }]
-    },
     "stale_lockfile_errors": {
       "steps": [{
         "args": [
           "eval",
-          "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic' }, nodeModulesDir: 'auto' }))"
+          "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic' } }))"
         ],
         "output": ""
       }, {
@@ -34,7 +19,7 @@
       }, {
         "args": [
           "eval",
-          "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic', 'bin': 'npm:@denotest/bin' }, nodeModulesDir: 'auto' }))"
+          "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ imports: { 'esm-basic': 'npm:@denotest/esm-basic', 'bin': 'npm:@denotest/bin' } }))"
         ],
         "output": ""
       }, {

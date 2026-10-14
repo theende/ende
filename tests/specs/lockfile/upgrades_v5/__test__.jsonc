@@ -29,7 +29,7 @@
         {
           "args": [
             "eval",
-            "Deno.writeTextFileSync('ende.json', '{\"nodeModulesDir\":\"auto\"}')"
+            "Deno.writeTextFileSync('ende.json', '{}')"
           ],
           "output": ""
         },

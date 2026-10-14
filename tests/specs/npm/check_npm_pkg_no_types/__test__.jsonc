@@ -11,14 +11,6 @@
         "args": "check --quiet main.ts",
         "output": ""
       }]
-    },
-    "auto_install": {
-      "args": "check --quiet --node-modules-dir=auto main.ts",
-      "output": ""
-    },
-    "global_folder": {
-      "args": "check --quiet --node-modules-dir=none main.ts",
-      "output": ""
     }
   }
 }

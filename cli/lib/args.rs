@@ -279,11 +279,12 @@ pub fn resolve_npm_resolution_snapshot(
 pub struct UnstableConfig {
   // TODO(bartlomieju): remove in Deno 2.5
   pub legacy_flag_enabled: bool, // --unstable
+  /// Internal only (no CLI flag): set for `ENDE_COMPAT`, Node child
+  /// processes and some npm entrypoints.
   pub detect_cjs: bool,
   pub lazy_dynamic_imports: bool,
   pub raw_imports: bool,
   pub sloppy_imports: bool,
-  pub npm_lazy_caching: bool,
   pub tsgo: bool,
   pub features: Vec<String>, // --unstabe-kv --unstable-cron
 }
@@ -300,11 +301,6 @@ impl UnstableConfig {
       sys,
       &mut self.lazy_dynamic_imports,
       UNSTABLE_ENV_VAR_NAMES.lazy_dynamic_imports,
-    );
-    maybe_set(
-      sys,
-      &mut self.npm_lazy_caching,
-      UNSTABLE_ENV_VAR_NAMES.npm_lazy_caching,
     );
     maybe_set(sys, &mut self.tsgo, UNSTABLE_ENV_VAR_NAMES.tsgo);
     maybe_set(

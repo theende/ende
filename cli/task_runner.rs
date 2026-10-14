@@ -398,12 +398,10 @@ impl ShellCommand for NodeCommand {
         .execute(context);
     }
 
-    let mut args: Vec<OsString> = Vec::with_capacity(7 + context.args.len());
+    let mut args: Vec<OsString> = Vec::with_capacity(5 + context.args.len());
     args.extend([
       "run".into(),
       "-A".into(),
-      "--unstable-bare-node-builtins".into(),
-      "--unstable-detect-cjs".into(),
       "--unstable-sloppy-imports".into(),
       "--unstable-unsafe-proto".into(),
     ]);
@@ -412,6 +410,10 @@ impl ShellCommand for NodeCommand {
     let mut state = context.state;
     state.apply_env_var(
       OsStr::new(USE_PKG_JSON_HIDDEN_ENV_VAR_NAME),
+      OsStr::new("1"),
+    );
+    state.apply_env_var(
+      OsStr::new(crate::NODE_CHILD_DETECT_CJS_ENV_VAR),
       OsStr::new("1"),
     );
     ExecutableCommand::new(

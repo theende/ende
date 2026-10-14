@@ -1576,7 +1576,6 @@ fn args_have_help_text() {
     "json",
     "no-use-env-proxy",
     "pr",
-    "unstable-byonm",
   ];
 
   fn walk(cmd: &CommandDef, path: &str, missing: &mut Vec<String>) {

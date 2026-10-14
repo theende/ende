@@ -682,11 +682,7 @@ fn compile_npm_specifiers() {
     temp_dir.path().join("binary")
   };
 
-  // try with and without --node-modules-dir
-  let compile_commands = &[
-    "compile --output binary main.ts",
-    "compile --node-modules-dir --output binary main.ts",
-  ];
+  let compile_commands = &["compile --output binary main.ts"];
 
   for compile_command in compile_commands {
     let output = context.new_command().args(compile_command).run();
@@ -784,7 +780,6 @@ fn compile_npm_bin_esm() {
     compile_args: vec![],
     run_args: vec!["this", "is", "a", "test"],
     output_file: "npm/deno_run_esm.out",
-    node_modules_local: false,
     input_name: None,
     expected_name: "cli-esm",
     exit_code: 0,
@@ -799,7 +794,6 @@ fn compile_npm_bin_cjs() {
     compile_args: vec![],
     run_args: vec!["this", "is", "a", "test"],
     output_file: "npm/deno_run_cjs.out",
-    node_modules_local: false,
     input_name: None,
     expected_name: "cli-cjs",
     exit_code: 0,
@@ -814,7 +808,6 @@ fn compile_npm_cowsay_main() {
     compile_args: vec!["--allow-read", "--allow-env"],
     run_args: vec!["Hello"],
     output_file: "npm/deno_run_cowsay.out",
-    node_modules_local: false,
     input_name: None,
     expected_name: "cowsay",
     exit_code: 0,
@@ -829,7 +822,6 @@ fn compile_npm_no_permissions() {
     compile_args: vec!["-o", "denotest"],
     run_args: vec!["Hello"],
     output_file: "npm/compile_npm_no_permissions.out",
-    node_modules_local: false,
     input_name: None,
     expected_name: "denotest",
     exit_code: 1,
@@ -844,7 +836,6 @@ fn compile_npm_cowsay_explicit() {
     compile_args: vec!["--allow-read", "--allow-env"],
     run_args: vec!["Hello"],
     output_file: "npm/deno_run_cowsay.out",
-    node_modules_local: false,
     input_name: None,
     expected_name: "cowsay",
     exit_code: 0,
@@ -854,7 +845,6 @@ fn compile_npm_cowsay_explicit() {
 struct RunNpmBinCompileOptions<'a> {
   input_specifier: &'a str,
   copy_temp_dir: Option<&'a str>,
-  node_modules_local: bool,
   output_file: &'a str,
   input_name: Option<&'a str>,
   expected_name: &'a str,
@@ -874,10 +864,6 @@ fn run_npm_bin_compile_test(opts: RunNpmBinCompileOptions) {
   let mut args = vec!["compile".to_string()];
 
   args.extend(opts.compile_args.iter().map(|s| s.to_string()));
-
-  if opts.node_modules_local {
-    args.push("--node-modules-dir=auto".to_string());
-  }
 
   if let Some(bin_name) = opts.input_name {
     args.push("--output".to_string());
@@ -908,117 +894,6 @@ fn run_npm_bin_compile_test(opts: RunNpmBinCompileOptions) {
     .run();
   output.assert_exit_code(opts.exit_code);
   output.assert_matches_file(opts.output_file);
-}
-
-#[test]
-fn compile_node_modules_symlink_outside() {
-  // this code is using a canonicalized temp dir because otherwise
-  // it fails on the Windows CI because Ende makes the root directory
-  // a common ancestor of the symlinked temp dir and the canonicalized
-  // temp dir, which causes the warnings to not be surfaced
-  #[allow(deprecated, reason = "needed for canonicalized temp dir")]
-  let context = TestContextBuilder::for_npm()
-    .use_canonicalized_temp_dir()
-    .use_copy_temp_dir("compile/node_modules_symlink_outside")
-    .cwd("compile/node_modules_symlink_outside")
-    .build();
-
-  let temp_dir = context.temp_dir();
-  let project_dir = temp_dir
-    .path()
-    .join("compile")
-    .join("node_modules_symlink_outside");
-  let symlink_target_dir = temp_dir.path().join("some_folder");
-  project_dir.join("node_modules").create_dir_all();
-  symlink_target_dir.create_dir_all();
-  symlink_target_dir.join("file.txt").write("5");
-  let symlink_target_file = temp_dir.path().join("target.txt");
-  symlink_target_file.write("5");
-  let symlink_dir = project_dir.join("node_modules").join("symlink_dir");
-
-  // create a symlink in the node_modules directory that points to a folder outside the project
-  temp_dir.symlink_dir(&symlink_target_dir, &symlink_dir);
-  // compile folder
-  let output = context
-    .new_command()
-    .args("compile --allow-read --node-modules-dir=auto --output bin main.ts")
-    .run();
-  output.assert_exit_code(0);
-  output.assert_matches_file(
-    "compile/node_modules_symlink_outside/main_compile_folder.out",
-  );
-  assert!(symlink_dir.exists());
-
-  // Cleanup and remove the folder. The folder test is done separately from
-  // the file symlink test because different systems would traverse
-  // the directory items in different order.
-  symlink_dir.remove_dir_all();
-
-  // create a symlink in the node_modules directory that points to a file in the cwd
-  temp_dir.symlink_file(
-    &symlink_target_file,
-    project_dir.join("node_modules").join("test.txt"),
-  );
-  assert!(project_dir.join("node_modules/test.txt").exists());
-
-  // compile
-  let output = context
-    .new_command()
-    .args("compile --allow-read --node-modules-dir=auto --output bin main.ts")
-    .run();
-  output.assert_exit_code(0);
-  output.assert_matches_file(
-    "compile/node_modules_symlink_outside/main_compile_file.out",
-  );
-
-  // run
-  let binary_path =
-    project_dir.join(if cfg!(windows) { "bin.exe" } else { "bin" });
-  let output = context.new_command().name(binary_path).run();
-  output.assert_matches_file("compile/node_modules_symlink_outside/main.out");
-}
-
-#[test]
-fn compile_node_modules_symlink_non_existent() {
-  let context = TestContextBuilder::for_npm().use_temp_cwd().build();
-  let temp_dir = context.temp_dir().path();
-  temp_dir.join("main.ts").write(
-    r#"import { getValue, setValue } from "npm:@denotest/esm-basic";
-setValue(4);
-console.log(getValue());"#,
-  );
-  let node_modules_dir = temp_dir.join("node_modules");
-  node_modules_dir.create_dir_all();
-  // create a symlink that points to a non_existent file
-  node_modules_dir.symlink_dir("non_existent", "folder");
-  // compile folder
-  let output = context
-    .new_command()
-    .args("compile --allow-read --node-modules-dir=auto --output bin main.ts")
-    .run();
-  output.assert_exit_code(0);
-  output.assert_matches_text(
-    r#"Download http://localhost:4260/@denotest%2fesm-basic
-Download http://localhost:4260/@denotest/esm-basic/1.0.0.tgz
-Initialize @denotest/esm-basic@1.0.0
-Check main.ts
-Compile main.ts to [WILDCARD]
-Warning Failed resolving symlink. Ignoring.
-    Path: [WILDCARD]
-    Message: [WILDCARD])
-
-Embedded Files
-
-[WILDCARD]
-
-"#,
-  );
-
-  // run
-  let binary_path =
-    temp_dir.join(if cfg!(windows) { "bin.exe" } else { "bin" });
-  let output = context.new_command().name(binary_path).run();
-  output.assert_matches_text("4\n");
 }
 
 #[test]

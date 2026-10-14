@@ -1269,14 +1269,13 @@ impl Config {
 pub enum ConfigWatchedFileType {
   EndeJson,
   Lockfile,
-  NpmRc,
   PackageJson,
   ImportMap,
 }
 
 /// Parts of [`ConfigData`] that are shared by every member of a workspace.
 ///
-/// These are resolved from the workspace root (single lockfile, `.npmrc`,
+/// These are resolved from the workspace root (single lockfile, npm registry config,
 /// `node_modules` directory, etc.), so they're computed once per workspace
 /// root and reused across members instead of being rebuilt for every scope.
 struct WorkspaceConfigData {
@@ -1293,10 +1292,7 @@ impl WorkspaceConfigData {
     http_client_provider: Option<&Arc<HttpClientProvider>>,
     add_watched_file: &mut impl FnMut(ModuleSpecifier, ConfigWatchedFileType),
   ) -> Self {
-    let byonm = match workspace.node_modules_dir().unwrap_or_default() {
-      Some(mode) => mode == NodeModulesDirMode::Manual,
-      None => workspace.root_pkg_json().is_some(),
-    };
+    let byonm = workspace.root_pkg_json().is_some();
     if byonm {
       lsp_log!("  Enabled 'bring your own node_modules'.");
     }
@@ -1312,11 +1308,10 @@ impl WorkspaceConfigData {
         frozen_lockfile: None,
         lock_arg: None,
         lockfile_skip_write: true,
-        node_modules_dir: Some(resolve_node_modules_dir_mode(workspace, byonm)),
-        node_modules_linker: None,
+        // The language server never modifies the node_modules directory.
+        node_modules_dir: Some(NodeModulesDirMode::None),
         no_lock: false,
         no_npm: false,
-        import_npm_lockfile: false,
         npm_process_state: None,
         root_node_modules_dir_override: None,
         vendor: None,
@@ -1373,25 +1368,7 @@ impl WorkspaceConfigData {
       },
     );
 
-    let npmrc = npm_installer_factory
-      .workspace_factory()
-      .npmrc_with_path()
-      .inspect(|(_, path)| {
-        if let Some(path) = path {
-          lsp_log!("  Resolved .npmrc: \"{}\"", path.display());
-          if let Ok(specifier) = ModuleSpecifier::from_file_path(path) {
-            add_watched_file(specifier, ConfigWatchedFileType::NpmRc);
-          }
-        }
-      })
-      .inspect_err(|err| {
-        lsp_warn!(
-          "  Couldn't read .npmrc for \"{}\": {err}",
-          workspace.root_dir_path().display()
-        );
-      })
-      .ok()
-      .map(|value| value.0.clone());
+    let npmrc = Some(npm_installer_factory.workspace_factory().npmrc().clone());
 
     let vendor_dir = workspace.vendor_dir_path().cloned();
     let lockfile = npm_installer_factory
@@ -1610,7 +1587,7 @@ impl ConfigData {
       );
     }
 
-    // The lockfile, .npmrc, node_modules dir, etc. are resolved from the
+    // The lockfile, npm registry config, node_modules dir, etc. are resolved from the
     // workspace root, so they're shared by every member. Load them once per
     // workspace root and reuse the result across members.
     let ws_root_url = member_dir.workspace.root_dir_url();
@@ -1942,7 +1919,7 @@ impl ConfigTree {
     let ende_json_cache = EndeJsonMemCache::default();
     let pkg_json_cache = PackageJsonMemCache::default();
     let workspace_cache = WorkspaceMemCache::default();
-    // Shared per-workspace-root data (lockfile, .npmrc, node_modules dir),
+    // Shared per-workspace-root data (lockfile, npm registry config, node_modules dir),
     // computed once per root and reused across its members.
     let mut ws_data_cache = HashMap::<UrlRc, WorkspaceConfigData>::new();
     let mut scopes = BTreeMap::new();
@@ -2081,31 +2058,6 @@ impl ConfigTree {
     assert!(data.maybe_ende_json().is_some());
     self.scopes = Arc::new([(scope, data)].into_iter().collect());
   }
-}
-
-fn resolve_node_modules_dir_mode(
-  workspace: &Workspace,
-  byonm: bool,
-) -> NodeModulesDirMode {
-  // For the language server, require an explicit opt-in via the
-  // `nodeModulesDir: true` setting in the ende.json file. This is to
-  // reduce the chance of modifying someone's node_modules directory
-  // without them having asked us to do so.
-  let node_modules_mode = workspace.node_modules_dir().ok().flatten();
-  let explicitly_disabled = node_modules_mode == Some(NodeModulesDirMode::None);
-  if explicitly_disabled {
-    return NodeModulesDirMode::None;
-  }
-  let enabled = byonm
-    || node_modules_mode
-      .map(|m| m.uses_node_modules_dir())
-      .unwrap_or(false)
-    || workspace.vendor_dir_path().is_some();
-
-  if !enabled {
-    return NodeModulesDirMode::None;
-  }
-  node_modules_mode.unwrap_or(NodeModulesDirMode::None)
 }
 
 // todo(dsherret): switch to RefCell once the lsp no longer requires Sync

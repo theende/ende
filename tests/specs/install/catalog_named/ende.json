@@ -1,8 +1,0 @@
-{
-  "workspace": ["./packages/a"],
-  "catalogs": {
-    "my-deps": {
-      "@denotest/esm-basic": "^1.0.0"
-    }
-  }
-}

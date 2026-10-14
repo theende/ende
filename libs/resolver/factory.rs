@@ -86,9 +86,8 @@ use crate::npm::NpmResolverCreateOptions;
 use crate::npm::managed::ManagedInNpmPkgCheckerCreateOptions;
 use crate::npm::managed::ManagedNpmResolverCreateOptions;
 use crate::npm::managed::NpmResolutionCellRc;
-use crate::npmrc::NpmRcDiscoverError;
 use crate::npmrc::ResolvedNpmRcRc;
-use crate::npmrc::discover_npmrc_from_workspace;
+use crate::npmrc::create_default_npmrc;
 use crate::workspace::FsCacheOptions;
 use crate::workspace::PackageJsonDepResolution;
 use crate::workspace::SloppyImportsOptions;
@@ -142,19 +141,6 @@ pub struct NpmCacheDirCreateError(pub Box<NpmCacheDirCreateErrorKind>);
 pub enum NpmCacheDirCreateErrorKind {
   #[error(transparent)]
   EndeDirResolution(#[from] EndeDirResolutionError),
-  #[error(transparent)]
-  NpmRcCreate(#[from] NpmRcCreateError),
-}
-
-#[derive(Debug, Boxed)]
-pub struct NpmRcCreateError(pub Box<NpmRcCreateErrorKind>);
-
-#[derive(Debug, Error)]
-pub enum NpmRcCreateErrorKind {
-  #[error(transparent)]
-  WorkspaceDiscover(#[from] WorkspaceDiscoverError),
-  #[error(transparent)]
-  NpmRcDiscover(#[from] NpmRcDiscoverError),
 }
 
 #[derive(Debug, Default)]
@@ -214,12 +200,8 @@ pub struct WorkspaceFactoryOptions {
   pub lockfile_skip_write: bool,
   pub maybe_custom_ende_dir_root: Option<PathBuf>,
   pub node_modules_dir: Option<NodeModulesDirMode>,
-  pub node_modules_linker: Option<NodeModulesLinkerMode>,
   pub no_lock: bool,
   pub no_npm: bool,
-  /// When no lockfile exists, attempt to seed one by translating a
-  /// sibling `package-lock.json`. Currently set by `ende install`.
-  pub import_npm_lockfile: bool,
   /// The process state if using ext/node and the current process was "forked".
   /// This value is found at `ende_lib::args::NPM_PROCESS_STATE`
   /// but in most scenarios this can probably just be `None`.
@@ -255,7 +237,7 @@ pub struct WorkspaceFactory<TSys: WorkspaceFactorySys> {
   lockfile: async_once_cell::OnceCell<Option<LockfileLockRc<TSys>>>,
   node_modules_dir_path: Deferred<Option<PathBuf>>,
   npm_cache_dir: Deferred<NpmCacheDirRc>,
-  npmrc: Deferred<(ResolvedNpmRcRc, Option<PathBuf>)>,
+  npmrc: Deferred<ResolvedNpmRcRc>,
   node_modules_dir_mode: Deferred<NodeModulesDirMode>,
   node_modules_linker_mode: Deferred<NodeModulesLinkerMode>,
   workspace_directory: Deferred<WorkspaceDirectoryRc>,
@@ -355,10 +337,6 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
     if let Some(flag) = self.options.node_modules_dir {
       return Ok(flag);
     }
-    let workspace = &self.workspace_directory()?.workspace;
-    if let Some(mode) = workspace.node_modules_dir()? {
-      return Ok(mode);
-    }
 
     let workspace = &self.workspace_directory()?.workspace;
 
@@ -411,30 +389,16 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
     self
       .node_modules_linker_mode
       .get_or_try_init(|| {
-        if let Some(process_state) = &self.options.npm_process_state
-          && let Some(mode) = process_state.linker_mode
-        {
-          return Ok(mode);
-        }
-        let mode = if let Some(flag) = self.options.node_modules_linker {
-          flag
-        } else {
-          let workspace = &self.workspace_directory()?.workspace;
-          workspace
-            .node_modules_linker()?
-            .unwrap_or_default()
-        };
-        if mode == NodeModulesLinkerMode::Hoisted {
-          let dir_mode = self.raw_node_modules_dir_mode()?;
-          if dir_mode != NodeModulesDirMode::Manual {
-            bail!(
-              "The hoisted node_modules linker requires --node-modules-dir=manual. \
-               Add \"nodeModulesDir\": \"manual\" to your ende.json or pass \
-               --node-modules-dir=manual on the command line."
-            );
-          }
-        }
-        Ok(mode)
+        // There is no flag or config option for the linker mode; only a
+        // parent process's npm state can select it.
+        Ok(
+          self
+            .options
+            .npm_process_state
+            .as_ref()
+            .and_then(|process_state| process_state.linker_mode)
+            .unwrap_or_default(),
+        )
       })
       .copied()
   }
@@ -554,7 +518,6 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
               ConfigDiscoveryOption::Disabled
             ),
             no_npm: self.options.no_npm,
-            import_npm_lockfile: self.options.import_npm_lockfile,
           },
           &workspace_directory.workspace,
           maybe_external_import_map.as_ref().map(|v| &v.value),
@@ -577,25 +540,15 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
       Ok(new_rc(NpmCacheDir::new(
         &self.sys,
         npm_cache_dir,
-        self.npmrc()?.get_all_known_registries_urls(),
+        self.npmrc().get_all_known_registries_urls(),
       )))
     })
   }
 
-  pub fn npmrc(&self) -> Result<&ResolvedNpmRcRc, NpmRcCreateError> {
-    self.npmrc_with_path().map(|(npmrc, _)| npmrc)
-  }
-
-  pub fn npmrc_with_path(
-    &self,
-  ) -> Result<&(ResolvedNpmRcRc, Option<PathBuf>), NpmRcCreateError> {
-    self.npmrc.get_or_try_init(|| {
-      let (npmrc, path) = discover_npmrc_from_workspace(
-        &self.sys,
-        &self.workspace_directory()?.workspace,
-      )?;
-      Ok((new_rc(npmrc), path))
-    })
+  pub fn npmrc(&self) -> &ResolvedNpmRcRc {
+    self
+      .npmrc
+      .get_or_init(|| new_rc(create_default_npmrc(&self.sys)))
   }
 
   pub fn sys(&self) -> &TSys {
@@ -694,7 +647,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
           workspace_dir.workspace.as_ref(),
         );
         if !npm_packages.0.is_empty() && !matches!(self.node_modules_dir_mode()?, NodeModulesDirMode::Auto | NodeModulesDirMode::Manual) {
-          bail!("Linking npm packages requires using a node_modules directory. Ensure you have a package.json or set the \"nodeModulesDir\" option to \"auto\" or \"manual\" in your workspace root ende.json.")
+          bail!("Linking npm packages requires using a node_modules directory. Ensure you have a package.json in your workspace root.")
         } else {
           Ok(npm_packages)
         }
@@ -1024,7 +977,7 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
       if config.age.is_none() {
         apply_minimum_dependency_age_fallbacks(
           &mut config,
-          workspace_factory.npmrc()?.min_release_age_days,
+          workspace_factory.npmrc().min_release_age_days,
           chrono::DateTime::<chrono::Utc>::from(
             workspace_factory.sys().sys_time_now(),
           ),
@@ -1141,7 +1094,7 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
             .node_modules_dir_path()?
             .map(|p| p.to_path_buf()),
           npm_system_info: self.options.npm_system_info.clone(),
-          npmrc: self.workspace_factory.npmrc()?.clone(),
+          npmrc: self.workspace_factory.npmrc().clone(),
           linker_mode: self.workspace_factory.node_modules_linker_mode()?,
         })
       }))
@@ -1161,7 +1114,7 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
 
       // the `trust-policy` / `trust-policy-ignore-after` npmrc settings drive
       // the `no-downgrade` publishing-trust policy
-      let npmrc = self.workspace_factory.npmrc()?;
+      let npmrc = self.workspace_factory.npmrc();
       let trust_policy = ende_npm::resolution::TrustPolicyOptions {
         policy: match npmrc.trust_policy {
           ende_npmrc::TrustPolicyConfig::NoDowngrade => {

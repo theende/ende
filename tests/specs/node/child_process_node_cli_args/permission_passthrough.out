@@ -1,2 +1,0 @@
-run without perms: env-ok
-run with --allow-env: env-ok

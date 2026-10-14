@@ -36,7 +36,6 @@ fn benches(c: &mut Criterion) {
     "--unstable-sloppy-imports",
     "--v8-flags=--max-old-space-size=4096",
     "--import-map=import_map.json",
-    "--node-modules-dir=auto",
     "--reload",
     "script.ts",
     "arg1",

@@ -99,7 +99,6 @@ ende_telemetry.workspace = true
 eszip.workspace = true
 libsui.workspace = true
 node_resolver = { workspace = true, features = ["graph", "sync"] }
-node_shim.workspace = true
 v8.workspace = true
 
 anstream.workspace = true

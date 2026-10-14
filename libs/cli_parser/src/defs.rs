@@ -205,15 +205,6 @@ pub static COMPILE_ARGS: &[ArgDef] = &[
 .help("Do not resolve remote modules"),
   ArgDef::new("no-npm").long("no-npm").set_true()
 .help("Do not resolve npm modules"),
-  ArgDef::new("node-modules-dir")
-    .long("node-modules-dir")
-    .action(ArgAction::Set)
-    .num_args(NumArgs::Optional)
-    .require_equals()
-    .value_parser(ValueParser::Choices(&[
-      "auto", "true", "manual", "none", "false",
-    ]))
-.help("Selects the node_modules directory mode for npm packages (not a path). One of: auto (create a local node_modules directory and install npm packages into it), manual (use the existing local node_modules directory, do not modify it), none (do not use a local node_modules directory; resolve npm packages from the global cache). Defaults to auto when the flag is passed without a value."),
   ArgDef::new("vendor")
     .long("vendor")
     .action(ArgAction::Set)
@@ -221,14 +212,6 @@ pub static COMPILE_ARGS: &[ArgDef] = &[
     .require_equals()
     .value_parser(ValueParser::Bool)
 .help("Toggles local vendor folder usage for remote modules and a node_modules folder for npm packages"),
-  ArgDef::new("node-modules-linker")
-    .long("node-modules-linker")
-    .long_aliases(&["linker"])
-    .action(ArgAction::Set)
-    .num_args(NumArgs::Exact(1))
-    .require_equals()
-    .value_parser(ValueParser::Choices(&["isolated", "hoisted"]))
-.help("Sets the linker mode for npm packages (isolated or hoisted)"),
   ArgDef::new("config")
     .short('c')
     .long("config")
@@ -349,21 +332,9 @@ pub static RUNTIME_MISC_ARGS: &[ArgDef] = &[
     .hidden(),
   ArgDef::new("preload")
     .long("preload")
-    .long_aliases(&["import"])
     .action(ArgAction::Append)
     .num_args(NumArgs::Exact(1))
 .help("A list of files that will be executed before the main module"),
-  ArgDef::new("require")
-    .long("require")
-    .action(ArgAction::Append)
-    .num_args(NumArgs::Exact(1))
-.help("A list of CommonJS modules that will be executed before the main module"),
-  ArgDef::new("node-conditions")
-    .long("conditions")
-    .action(ArgAction::Append)
-    .num_args(NumArgs::OneOrMore)
-    .value_delimiter(',')
-.help("Use this argument to specify custom conditions for npm package exports. You can also use ENDE_CONDITIONS env var.\n\nDocs: https://docs.ende.sh/go/conditional-exports"),
 ];
 
 pub static CPU_PROF_ARGS: &[ArgDef] = &[
@@ -414,30 +385,16 @@ pub static UNSTABLE_DEPRECATED_ARG: &[ArgDef] = &[
 /// subcommand, so any command that omits them will reject flags the old
 /// parser accepted.
 pub static UNSTABLE_FEATURE_ARGS: &[ArgDef] = &[
-ArgDef::new("unstable-bare-node-builtins")
-    .long("unstable-bare-node-builtins")
-    .set_true()
-    .hidden()
-.help("Enable unstable bare node builtins feature"),
   ArgDef::new("unstable-broadcast-channel")
     .long("unstable-broadcast-channel")
     .set_true()
     .hidden()
 .help("Enable unstable `BroadcastChannel` API"),
-  ArgDef::new("unstable-byonm")
-    .long("unstable-byonm")
-    .set_true()
-    .hidden(),
   ArgDef::new("unstable-cron")
     .long("unstable-cron")
     .set_true()
     .hidden()
 .help("Enable unstable `Ende.cron` API"),
-  ArgDef::new("unstable-detect-cjs")
-    .long("unstable-detect-cjs")
-    .set_true()
-    .hidden()
-.help("Treats ambiguous .js, .jsx, .ts, .tsx files as CommonJS modules in more cases"),
   ArgDef::new("unstable-ffi")
     .long("unstable-ffi")
     .set_true()
@@ -478,11 +435,6 @@ ArgDef::new("unstable-bare-node-builtins")
     .set_true()
     .hidden()
 .help("Enable abort signal in Ende.serve without legacy behavior. This will not abort the server when the request is handled successfully."),
-  ArgDef::new("unstable-npm-lazy-caching")
-    .long("unstable-npm-lazy-caching")
-    .set_true()
-    .hidden()
-.help("Enable unstable lazy caching of npm dependencies, downloading them only as needed (disabled: all npm packages in package.json are installed on startup; enabled: only npm packages that are actually referenced in an import are installed"),
   ArgDef::new("unstable-otel")
     .long("unstable-otel")
     .set_true()
@@ -562,14 +514,6 @@ pub static IMPORT_PERMISSION_ARGS: &[ArgDef] = &[
     .value_delimiter(',')
     .help("Deny importing from remote hosts. Optionally specify denied IP addresses and host names, with ports as necessary."),
 ];
-
-pub static ALLOW_SCRIPTS_ARG: &[ArgDef] = &[ArgDef::new("allow-scripts")
-  .long("allow-scripts")
-  .action(ArgAction::Append)
-  .num_args(NumArgs::ZeroOrMore)
-  .require_equals()
-  .value_delimiter(',')
-.help("Allow running npm lifecycle scripts for the given packages\n  Note: Scripts will only be executed when using a node_modules directory (`--node-modules-dir`)")];
 
 // Standalone lock flags for subcommands that don't pull in COMPILE_ARGS
 // (which also defines these). Do not combine LOCK_ARGS with COMPILE_ARGS on the
@@ -678,7 +622,6 @@ static RUN_ARGS: &[ArgDef] = &[
     .set_true()
     .conflicts_with(&["use-env-proxy"])
     .hidden(),
-  // Allow --allow-scripts on run (through arg_groups, but also directly)
 ];
 
 static RUN_ARG_GROUPS: &[&[ArgDef]] = &[
@@ -689,7 +632,6 @@ static RUN_ARG_GROUPS: &[&[ArgDef]] = &[
   INSPECT_ARGS,
   RUNTIME_MISC_ARGS,
   CPU_PROF_ARGS,
-  ALLOW_SCRIPTS_ARG,
 ];
 
 pub static RUN_SUBCOMMAND: CommandDef = CommandDef {
@@ -808,7 +750,6 @@ pub static SERVE_SUBCOMMAND: CommandDef = CommandDef {
     INSPECT_ARGS,
     RUNTIME_MISC_ARGS,
     CPU_PROF_ARGS,
-    ALLOW_SCRIPTS_ARG,
   ],
   subcommands: &[],
   default_subcommand: None,
@@ -1297,7 +1238,6 @@ pub static TEST_SUBCOMMAND: CommandDef = CommandDef {
     COMPILE_ARGS,
     INSPECT_ARGS,
     RUNTIME_MISC_ARGS,
-    ALLOW_SCRIPTS_ARG,
   ],
   subcommands: &[],
   default_subcommand: None,
@@ -1410,7 +1350,6 @@ pub static CACHE_SUBCOMMAND: CommandDef = CommandDef {
     COMPILE_ARGS,
     INSPECT_ARGS,
     IMPORT_PERMISSION_ARGS,
-    ALLOW_SCRIPTS_ARG,
   ],
   subcommands: &[],
   default_subcommand: None,
@@ -1638,12 +1577,6 @@ pub static TASK_SUBCOMMAND: CommandDef = CommandDef {
       .num_args(NumArgs::Optional)
       .require_equals()
 .help("Load environment variables from local file\n  Only the first environment variable with a given key is used.\n  Existing process environment variables are not overwritten, so if variables with the same names already exist in the environment, their values will be preserved.\n  Where multiple declarations for the same environment variable exist in your .env file, the first one encountered is applied. This is determined by the order of the files you pass as arguments."),
-    ArgDef::new("node-modules-dir")
-      .long("node-modules-dir")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Optional)
-      .require_equals()
-.help("Selects the node_modules directory mode for npm packages (not a path). One of: auto (create a local node_modules directory and install npm packages into it), manual (use the existing local node_modules directory, do not modify it), none (do not use a local node_modules directory; resolve npm packages from the global cache). Defaults to auto when the flag is passed without a value."),
     ArgDef::new("tunnel").long("tunnel").set_true().hidden()
 .help("Execute tasks with a tunnel to Deno Deploy.\n\n    Create a secure connection between your local machine and Deno Deploy,\n    providing access to centralised environment variables, logging,\n    and serving from your local environment to the public internet"),
     ArgDef::new("lock")
@@ -1823,10 +1756,6 @@ pub static COMPILE_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
 .help("Stable identity for the compiled app.\n  Determines where origin-bound storage such as the default `Ende.openKv()`,\n  `localStorage` and `caches` is persisted (under the platform's app data directory).\n  Defaults to the output file name. Set this to keep storage stable across renames."),
-    ArgDef::new("exclude-unused-npm")
-      .long("exclude-unused-npm")
-      .set_true()
-.help("Embed only the npm packages reachable from the module graph (managed npm; no node_modules directory).\n  Without this flag the full managed npm snapshot from the lockfile / package.json is embedded.\n  Reduces binary size when the lockfile contains packages the entrypoint does not import.\n  Skips packages that are only reached through non-statically-analyzable dynamic imports;\n  pass those with --include npm:<pkg> if needed."),
     ArgDef::new("check")
       .long("check")
       .action(ArgAction::Set)
@@ -2060,11 +1989,6 @@ pub static INSTALL_SUBCOMMAND: CommandDef = CommandDef {
       .set_true()
       .conflicts_with(&["entrypoint", "global"])
 .help("Use the package name without its scope as the alias (ex. `jsr:@david/jsonc-morph` is added as `jsonc-morph`). Packages given an explicit alias are unaffected."),
-    ArgDef::new("package-json")
-      .long("package-json")
-      .set_true()
-      .conflicts_with(&["entrypoint", "global"])
-.help("Force using package.json for dependency management instead of ende.json"),
     ArgDef::new("os")
       .long("os")
       .action(ArgAction::Set)
@@ -2105,7 +2029,6 @@ pub static INSTALL_SUBCOMMAND: CommandDef = CommandDef {
     COMPILE_ARGS,
     INSPECT_ARGS,
     RUNTIME_MISC_ARGS,
-    ALLOW_SCRIPTS_ARG,
   ],
   subcommands: &[],
   default_subcommand: None,
@@ -2124,23 +2047,21 @@ pub static UNINSTALL_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Append)
       .num_args(NumArgs::OneOrMore)
       .required(),
-    ArgDef::new("global").short('g').long("global").set_true()
-.help("Remove globally installed packages or modules"),
+    ArgDef::new("global")
+      .short('g')
+      .long("global")
+      .set_true()
+      .help("Remove globally installed packages or modules"),
     ArgDef::new("root")
       .long("root")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
       .requires(&["global"])
-.help("Installation root"),
+      .help("Installation root"),
     ArgDef::new("lockfile-only")
       .long("lockfile-only")
       .set_true()
-.help("Install only updating the lockfile"),
-    ArgDef::new("package-json")
-      .long("package-json")
-      .set_true()
-      .conflicts_with(&["global"])
-.help("Force using package.json for dependency management instead of ende.json"),
+      .help("Install only updating the lockfile"),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS, COMPILE_ARGS],
   subcommands: &[],
@@ -2250,11 +2171,6 @@ pub static CREATE_SUBCOMMAND: CommandDef = CommandDef {
       .required(),
     // Extra package args are only accepted after `--` (clap's `last(true)`)
     // and land in `result.trailing`.
-    ArgDef::new("npm")
-      .long("npm")
-      .set_true()
-      .conflicts_with(&["jsr"])
-      .help("Treat unprefixed package names as npm packages"),
     ArgDef::new("jsr")
       .long("jsr")
       .set_true()
@@ -2431,8 +2347,6 @@ pub static ADD_SUBCOMMAND: CommandDef = CommandDef {
       .require_equals()
       .value_delimiter(',')
 .help("Deny importing from remote hosts. Optionally specify denied IP addresses and host names, with ports as necessary."),
-    ArgDef::new("package-json").long("package-json").set_true()
-.help("Force using package.json for dependency management instead of ende.json"),
     ArgDef::new("env-file")
       .long("env-file")
       .long_aliases(&["env"])
@@ -2441,7 +2355,7 @@ pub static ADD_SUBCOMMAND: CommandDef = CommandDef {
       .require_equals()
 .help("Load environment variables from local file\n  Only the first environment variable with a given key is used.\n  Existing process environment variables are not overwritten, so if variables with the same names already exist in the environment, their values will be preserved.\n  Where multiple declarations for the same environment variable exist in your .env file, the first one encountered is applied. This is determined by the order of the files you pass as arguments."),
   ],
-  arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS, ALLOW_SCRIPTS_ARG, COMPILE_ARGS],
+  arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS, COMPILE_ARGS],
   subcommands: &[],
   default_subcommand: None,
   trailing_var_arg: false,
@@ -2459,25 +2373,23 @@ pub static REMOVE_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Append)
       .num_args(NumArgs::OneOrMore)
       .required()
-.help("List of packages to remove"),
-    ArgDef::new("global").short('g').long("global").set_true()
-.help("Remove globally installed package or module"),
+      .help("List of packages to remove"),
+    ArgDef::new("global")
+      .short('g')
+      .long("global")
+      .set_true()
+      .help("Remove globally installed package or module"),
     ArgDef::new("root")
       .long("root")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
       .requires(&["global"])
-.help("Installation root"),
+      .help("Installation root"),
     ArgDef::new("lockfile-only")
       .long("lockfile-only")
       .set_true()
       .conflicts_with(&["global"])
-.help("Install only updating the lockfile"),
-    ArgDef::new("package-json")
-      .long("package-json")
-      .set_true()
-      .conflicts_with(&["global"])
-.help("Force using package.json for dependency management instead of ende.json"),
+      .help("Install only updating the lockfile"),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS, COMPILE_ARGS],
   subcommands: &[],
@@ -2620,26 +2532,12 @@ pub static CLEAN_SUBCOMMAND: CommandDef = CommandDef {
 .help("Retain cache data needed by the given files"),
     ArgDef::new("dry-run").long("dry-run").set_true()
 .help("Show what would be removed without performing any actions"),
-    ArgDef::new("node-modules-dir")
-      .long("node-modules-dir")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Optional)
-      .require_equals()
-.help("Selects the node_modules directory mode for npm packages (not a path). One of: auto (create a local node_modules directory and install npm packages into it), manual (use the existing local node_modules directory, do not modify it), none (do not use a local node_modules directory; resolve npm packages from the global cache). Defaults to auto when the flag is passed without a value."),
     ArgDef::new("vendor")
       .long("vendor")
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
 .help("Toggles local vendor folder usage for remote modules and a node_modules folder for npm packages"),
-    ArgDef::new("node-modules-linker")
-      .long("node-modules-linker")
-      .long_aliases(&["linker"])
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-      .require_equals()
-      .requires(&["except"])
-.help("Sets the linker mode for npm packages (isolated or hoisted)"),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS],
   subcommands: &[],
@@ -2679,30 +2577,6 @@ pub static LIST_SUBCOMMAND: CommandDef = CommandDef {
 .help("Include all workspace members"),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS],
-  subcommands: &[],
-  default_subcommand: None,
-  trailing_var_arg: false,
-  passthrough: false,
-  keep_double_dash: false,
-};
-
-pub static APPROVE_SCRIPTS_SUBCOMMAND: CommandDef = CommandDef {
-  name: "approve-scripts",
-  about: "Approve npm lifecycle scripts",
-  aliases: &["approve-builds"],
-  args: &[
-    ArgDef::new("packages")
-      .positional()
-      .action(ArgAction::Append)
-      .num_args(NumArgs::ZeroOrMore)
-      .value_delimiter(',')
-.help("Packages to approve (npm specifiers). When omitted, you will be prompted to select from installed packages with lifecycle scripts."),
-    ArgDef::new("lockfile-only")
-      .long("lockfile-only")
-      .set_true()
-.help("Install only updating the lockfile"),
-  ],
-  arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS, COMPILE_ARGS],
   subcommands: &[],
   default_subcommand: None,
   trailing_var_arg: false,
@@ -2756,53 +2630,6 @@ pub static VENDOR_SUBCOMMAND: CommandDef = CommandDef {
   keep_double_dash: false,
 };
 
-pub static AUDIT_SUBCOMMAND: CommandDef = CommandDef {
-  name: "audit",
-  about: "Audit currently installed dependencies",
-  aliases: &[],
-  args: &[
-    ArgDef::new("level")
-      .long("level")
-      .long_aliases(&["audit-level", "severity"])
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-      .default_value("low")
-      .value_parser(ValueParser::Choices(&[
-        "low", "moderate", "high", "critical",
-      ]))
-.help("Only show advisories with severity greater or equal to the one specified"),
-    ArgDef::new("ignore-unfixable")
-      .long("ignore-unfixable")
-      .set_true()
-.help("Ignore advisories that don't have any actions to resolve them"),
-    ArgDef::new("ignore-registry-errors")
-      .long("ignore-registry-errors")
-      .set_true()
-.help("Return exit code 0 if remote service(s) responds with an error."),
-    ArgDef::new("socket").long("socket").set_true()
-.help("Check against socket.dev vulnerability database"),
-    ArgDef::new("fix").long("fix").set_true()
-.help("Automatically fix vulnerabilities by upgrading packages"),
-    ArgDef::new("action")
-      .positional()
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Optional),
-    ArgDef::new("ignore")
-      .long("ignore")
-      .action(ArgAction::Append)
-      .num_args(NumArgs::ZeroOrMore)
-      .require_equals()
-      .value_delimiter(',')
-.help("Ignore advisories matching the given CVE IDs"),
-  ],
-  arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS, LOCK_ARGS],
-  subcommands: &[],
-  default_subcommand: None,
-  trailing_var_arg: false,
-  passthrough: false,
-  keep_double_dash: false,
-};
-
 pub static X_SUBCOMMAND: CommandDef = CommandDef {
   name: "x",
   about: "Execute a binary from npm or jsr, like npx",
@@ -2827,13 +2654,6 @@ pub static X_SUBCOMMAND: CommandDef = CommandDef {
       .num_args(NumArgs::Exact(1))
       .conflicts_with(&["install-alias"])
 .help("Package to install (use when the binary name differs from the package name)"),
-    ArgDef::new("ignore-scripts")
-      .long("ignore-scripts")
-      .action(ArgAction::Append)
-      .num_args(NumArgs::ZeroOrMore)
-      .require_equals()
-      .conflicts_with(&["allow-scripts", "install-alias"])
-.help("Do not run npm lifecycle scripts for the given packages"),
     ArgDef::new("install-alias")
       .long("install-alias")
       .action(ArgAction::Set)
@@ -2855,7 +2675,6 @@ pub static X_SUBCOMMAND: CommandDef = CommandDef {
 .help("Load environment variables from local file\n  Only the first environment variable with a given key is used.\n  Existing process environment variables are not overwritten, so if variables with the same names already exist in the environment, their values will be preserved.\n  Where multiple declarations for the same environment variable exist in your .env file, the first one encountered is applied. This is determined by the order of the files you pass as arguments."),
   ],
   arg_groups: &[
-    ALLOW_SCRIPTS_ARG,
     UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS,
     COMPILE_ARGS,
     PERMISSION_ARGS,
@@ -2975,10 +2794,6 @@ pub static DESKTOP_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Append)
       .num_args(NumArgs::Exact(1))
 .help("Excludes a file/directory in the compiled executable.\n  Use this flag to exclude a specific file or directory within the included files."),
-    ArgDef::new("exclude-unused-npm")
-      .long("exclude-unused-npm")
-      .set_true()
-.help("Embed only the npm packages reachable from the module graph (managed npm; no node_modules directory).\n  Without this flag the full managed npm snapshot from the lockfile / package.json is embedded.\n  Reduces binary size when the lockfile contains packages the entrypoint does not import.\n  Skips packages that are only reached through non-statically-analyzable dynamic imports;\n  pass those with --include npm:<pkg> if needed."),
     ArgDef::new("output")
       .short('o')
       .long("output")
@@ -3046,80 +2861,12 @@ pub static DESKTOP_SUBCOMMAND: CommandDef = CommandDef {
     INSPECT_ARGS,
     RUNTIME_MISC_ARGS,
     CPU_PROF_ARGS,
-    ALLOW_SCRIPTS_ARG,
   ],
   subcommands: &[],
   default_subcommand: None,
   trailing_var_arg: true,
   passthrough: false,
   keep_double_dash: true,
-};
-
-pub static PACK_SUBCOMMAND: CommandDef = CommandDef {
-  name: "pack",
-  about: "Create a tarball of the package",
-  aliases: &[],
-  args: &[
-    ArgDef::new("files")
-      .positional()
-      .action(ArgAction::Append)
-      .num_args(NumArgs::ZeroOrMore)
-.help("List of file patterns to include"),
-    ArgDef::new("output")
-      .short('o')
-      .long("output")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-.help("Output file path (defaults to <name>-<version>.tgz)"),
-    ArgDef::new("dry-run").long("dry-run").set_true()
-.help("Show what would be packed without creating the tarball"),
-    ArgDef::new("allow-slow-types")
-      .long("allow-slow-types")
-      .set_true()
-.help("Skip fast-check type extraction; .d.ts files are omitted from the output"),
-    ArgDef::new("allow-dirty").long("allow-dirty").set_true()
-.help("Allow packing if the repository has uncommitted changes"),
-    ArgDef::new("set-version")
-      .long("set-version")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-.help("Override the version in the tarball"),
-    ArgDef::new("no-source-maps")
-      .long("no-source-maps")
-      .set_true()
-.help("Don't include source maps in the output"),
-    ArgDef::new("ignore")
-      .long("ignore")
-      .action(ArgAction::Append)
-      .num_args(NumArgs::ZeroOrMore)
-      .require_equals()
-      .value_delimiter(',')
-.help("Ignore files matching these patterns"),
-    ArgDef::new("config")
-      .short('c')
-      .long("config")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-.help("Configure different aspects of ende including TypeScript, linting, and code formatting.\n  Typically the configuration file will be called `ende.json` or `ende.jsonc` and\n  automatically detected; in that case this flag is not necessary.\n  Docs: https://docs.ende.sh/go/config"),
-    ArgDef::new("no-config")
-      .long("no-config")
-      .set_true()
-      .conflicts_with(&["config"])
-.help("Disable automatic loading of the configuration file"),
-    ArgDef::new("env-file")
-      .long("env-file")
-      .long_aliases(&["env"])
-      .action(ArgAction::Append)
-      .num_args(NumArgs::Optional)
-      .require_equals()
-.help("Load environment variables from local file\n  Only the first environment variable with a given key is used.\n  Existing process environment variables are not overwritten, so if variables with the same names already exist in the environment, their values will be preserved.\n  Where multiple declarations for the same environment variable exist in your .env file, the first one encountered is applied. This is determined by the order of the files you pass as arguments."),
-  ],
-  arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS],
-  subcommands: &[],
-  default_subcommand: None,
-  trailing_var_arg: false,
-  passthrough: false,
-  keep_double_dash: false,
 };
 
 pub static CI_SUBCOMMAND: CommandDef = CommandDef {
@@ -3365,16 +3112,13 @@ pub static ENDE_ROOT: CommandDef = CommandDef {
     LIST_SUBCOMMAND,
     LINK_SUBCOMMAND,
     UNLINK_SUBCOMMAND,
-    APPROVE_SCRIPTS_SUBCOMMAND,
     LSP_SUBCOMMAND,
     VENDOR_SUBCOMMAND,
-    AUDIT_SUBCOMMAND,
     WHY_SUBCOMMAND,
     TRANSPILE_SUBCOMMAND,
     BUMP_VERSION_SUBCOMMAND,
     CI_SUBCOMMAND,
     DESKTOP_SUBCOMMAND,
-    PACK_SUBCOMMAND,
     X_SUBCOMMAND,
     JSON_REFERENCE_SUBCOMMAND,
     HELP_SUBCOMMAND,

@@ -2971,7 +2971,6 @@ dependencies = [
  "msi",
  "nix 0.30.1",
  "node_resolver",
- "node_shim",
  "notify",
  "once_cell",
  "open",
@@ -4073,7 +4072,6 @@ dependencies = [
  "thiserror 2.0.12",
  "twox-hash 2.1.2",
  "url",
- "yaml_parser",
 ]
 
 [[package]]
@@ -7065,7 +7063,6 @@ name = "node_shim"
 version = "0.34.0"
 dependencies = [
  "serde_json",
- "url",
 ]
 
 [[package]]

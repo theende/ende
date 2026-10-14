@@ -1,5 +1,0 @@
-{
-  "imports": {
-    "@denotest3/gitlab-pkg": "npm:@denotest3/gitlab-pkg@1.0.0"
-  }
-}

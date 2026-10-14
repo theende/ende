@@ -10351,71 +10351,6 @@ fn lsp_npm_reexport_from_non_export() {
   client.shutdown();
 }
 
-// Regression test for https://github.com/denoland/deno/issues/28412.
-#[test(timeout = 300)]
-fn lsp_npm_reexport_from_non_export_add_import_quick_fix() {
-  let context = TestContextBuilder::new()
-    .use_http_server()
-    .use_temp_cwd()
-    .add_npm_env_vars()
-    .build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "ende.json",
-    json!({
-      "nodeModulesDir": "auto",
-    })
-    .to_string(),
-  );
-  context.run_ende("add npm:@denotest/reexport-from-non-export");
-  temp_dir.write(
-    "other.ts",
-    "import \"@denotest/reexport-from-non-export\";\n",
-  );
-  let file = temp_dir.source_file("file.ts", "getValue;\n");
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  let diagnostics = client.did_open_file(&file);
-  let res = client.write_request(
-    "textDocument/codeAction",
-    json!(json!({
-      "textDocument": { "uri": file.uri() },
-      "range": {
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 0, "character": 8 },
-      },
-      "context": {
-        "diagnostics": diagnostics.all(),
-        "only": ["quickfix"],
-      },
-    })),
-  );
-  assert_eq!(
-    res,
-    json!([
-      {
-        "title": "Add import from \"@denotest/reexport-from-non-export\"",
-        "kind": "quickfix",
-        "diagnostics": diagnostics.all(),
-        "edit": {
-          "changes": {
-            file.uri().as_str(): [
-              {
-                "range": {
-                  "start": { "line": 0, "character": 0 },
-                  "end": { "line": 0, "character": 0 },
-                },
-                "newText": "import { getValue } from \"@denotest/reexport-from-non-export\";\n\n",
-              },
-            ],
-          },
-        },
-      },
-    ]),
-  );
-  client.shutdown();
-}
-
 // Regression test for https://github.com/denoland/deno/issues/28676.
 #[test(timeout = 300)]
 fn lsp_npm_managed_import_map_no_duplicate_completions() {
@@ -11764,79 +11699,10 @@ fn lsp_completions_npm_package_exports() {
 }
 
 #[test(timeout = 300)]
-fn lsp_auto_import_npm_export_node_modules_dir_auto() {
-  let context = TestContextBuilder::for_npm().use_temp_cwd().build();
-  let temp_dir_path = context.temp_dir().path();
-  temp_dir_path.join("ende.json").write_json(&json!({
-    "nodeModulesDir": "auto",
-    "imports": {
-      "preact": "npm:preact@^10.19.6",
-    },
-  }));
-  // add a file that uses the import so that typescript knows about it
-  temp_dir_path
-    .join("mod.ts")
-    .write("import { useEffect } from 'preact/hooks'; console.log(useEffect);");
-  context.run_ende("cache mod.ts");
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  let file_uri = temp_dir_path.join("file.ts").uri_file();
-  let mut diagnostics = client
-    .did_open(json!({
-      "textDocument": {
-        "uri": file_uri,
-        "languageId": "typescript",
-        "version": 1,
-        "text": "useEffect",
-      }
-    }))
-    .all();
-  assert_eq!(diagnostics.len(), 1);
-  let diagnostic = diagnostics.remove(0);
-  let res = client.write_request(
-    "textDocument/codeAction",
-    json!({
-      "textDocument": {
-        "uri": file_uri,
-      },
-      "range": {
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 0, "character": 9 }
-      },
-      "context": {
-        "diagnostics": [diagnostic],
-        "only": ["quickfix"]
-      }
-    }),
-  );
-  assert_eq!(
-    res
-      .as_array()
-      .unwrap()
-      .first()
-      .unwrap()
-      .as_object()
-      .unwrap()
-      .get("title")
-      .unwrap()
-      .as_str()
-      .unwrap(),
-    "Add import from \"preact/hooks\""
-  );
-  client.shutdown();
-}
-
-#[test(timeout = 300)]
 fn lsp_auto_import_npm_export_node_modules_dir_manual() {
   let context = TestContextBuilder::for_npm().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "ende.json",
-    json!({
-      "nodeModulesDir": "manual",
-    })
-    .to_string(),
-  );
+  temp_dir.write("ende.json", json!({}).to_string());
   temp_dir.write(
     "package.json",
     json!({
@@ -11898,68 +11764,6 @@ fn lsp_auto_import_npm_export_node_modules_dir_manual() {
   client.shutdown();
 }
 
-#[test(timeout = 300)]
-fn lsp_auto_import_npm_export_node_modules_dir_no_package_json() {
-  let context = TestContextBuilder::for_npm().use_temp_cwd().build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "ende.json",
-    json!({
-      "nodeModulesDir": "manual",
-    })
-    .to_string(),
-  );
-  temp_dir.write(
-    "ende.json",
-    json!({
-      "imports": {
-        "preact": "npm:preact",
-      },
-    })
-    .to_string(),
-  );
-  temp_dir.write(
-    "mod.ts",
-    "import { useEffect } from 'preact/hooks'; console.log(useEffect);",
-  );
-  let file = temp_dir.source_file("file.ts", "useEffect;\n");
-  context.run_ende("install");
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  let diagnostics = client.did_open_file(&file).all();
-  assert_eq!(diagnostics.len(), 1);
-  let diagnostic = diagnostics.first().unwrap();
-  let res = client.write_request(
-    "textDocument/codeAction",
-    json!({
-      "textDocument": { "uri": file.uri() },
-      "range": {
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 0, "character": 9 },
-      },
-      "context": {
-        "diagnostics": [diagnostic],
-        "only": ["quickfix"],
-      },
-    }),
-  );
-  assert_eq!(
-    res
-      .as_array()
-      .unwrap()
-      .first()
-      .unwrap()
-      .as_object()
-      .unwrap()
-      .get("title")
-      .unwrap()
-      .as_str()
-      .unwrap(),
-    "Add import from \"preact/hooks\"",
-  );
-  client.shutdown();
-}
-
 // The lockfile, .npmrc and node_modules directory are resolved once per
 // workspace root and shared across members. This checks that npm resolution
 // still works for a member that reuses the cached workspace data (i.e. is not
@@ -11972,7 +11776,6 @@ fn lsp_npm_export_shared_workspace_data_across_members() {
     "ende.json",
     json!({
       "workspace": ["member_a", "member_b"],
-      "nodeModulesDir": "manual",
     })
     .to_string(),
   );
@@ -12038,7 +11841,6 @@ fn lsp_auto_import_npm_export_import_map_workspace_member() {
     "ende.json",
     json!({
       "workspace": ["member"],
-      "nodeModulesDir": "manual",
     })
     .to_string(),
   );
@@ -12094,13 +11896,7 @@ fn lsp_auto_import_npm_export_import_map_workspace_member() {
 fn lsp_auto_import_node_modules_alias_only_configured_deps() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "ende.json",
-    json!({
-      "nodeModulesDir": "manual",
-    })
-    .to_string(),
-  );
+  temp_dir.write("ende.json", json!({}).to_string());
   temp_dir.write(
     "package.json",
     json!({
@@ -12399,66 +12195,6 @@ fn lsp_completions_node_builtin() {
   assert!(list.items.iter().any(|i| i.label == "writeFile"));
   assert!(list.items.iter().any(|i| i.label == "writeFileSync"));
 
-  client.shutdown();
-}
-
-#[test(timeout = 300)]
-fn lsp_completions_node_specifier_node_modules_dir() {
-  let context = TestContextBuilder::new()
-    .use_http_server()
-    .use_temp_cwd()
-    .build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    temp_dir.path().join("ende.json"),
-    json!({
-      "nodeModulesDir": "auto",
-    })
-    .to_string(),
-  );
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  client.did_open(json!({
-    "textDocument": {
-      "uri": url_to_uri(&temp_dir.url().join("file.ts").unwrap()).unwrap(),
-      "languageId": "typescript",
-      "version": 1,
-      "text": "import fs from \"node:fs\";\n",
-    },
-  }));
-  client.cache_specifier(temp_dir.url().join("file.ts").unwrap());
-  client.read_diagnostics();
-  client.write_notification(
-    "textDocument/didChange",
-    json!({
-      "textDocument": {
-        "uri": url_to_uri(&temp_dir.url().join("file.ts").unwrap()).unwrap(),
-        "version": 2,
-      },
-      "contentChanges": [
-        {
-          "range": {
-            "start": { "line": 1, "character": 0 },
-            "end": { "line": 1, "character": 0 },
-          },
-          "text": "fs.",
-        },
-      ],
-    }),
-  );
-  let list = client.get_completion_list(
-    url_to_uri(&temp_dir.url().join("file.ts").unwrap())
-      .unwrap()
-      .as_str(),
-    (1, 3),
-    json!({
-      "triggerKind": 2,
-      "triggerCharacter": ".",
-    }),
-  );
-  assert!(!list.is_incomplete);
-  assert!(list.items.iter().any(|i| i.label == "writeFile"));
-  assert!(list.items.iter().any(|i| i.label == "writeFileSync"));
   client.shutdown();
 }
 
@@ -12792,77 +12528,6 @@ fn lsp_tls_cert() {
         "end": { "line": 7, "character": 53 }
       }
     })
-  );
-  client.shutdown();
-}
-
-#[test(timeout = 300)]
-fn lsp_npmrc() {
-  let context = TestContextBuilder::new()
-    .use_http_server()
-    .use_temp_cwd()
-    .add_npm_env_vars()
-    .build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    temp_dir.path().join("ende.json"),
-    json!({
-      "nodeModulesDir": "auto",
-    })
-    .to_string(),
-  );
-  temp_dir.write(
-    temp_dir.path().join("package.json"),
-    json!({
-      "name": "npmrc_test",
-      "version": "0.0.1",
-      "dependencies": {
-        "@denotest/basic": "1.0.0",
-      },
-    })
-    .to_string(),
-  );
-  temp_dir.write(
-    temp_dir.path().join(".npmrc"),
-    "\
-@denotest:registry=http://localhost:4261/
-//localhost:4261/:_authToken=private-reg-token
-",
-  );
-  let file = source_file(
-    temp_dir.path().join("main.ts"),
-    r#"
-      import { getValue, setValue } from "@denotest/basic";
-      setValue(42);
-      const n: string = getValue();
-      console.log(n);
-    "#,
-  );
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  client.cache_specifier(file.url());
-  client.read_diagnostics();
-  let diagnostics = client.did_open_file(&file);
-  assert_eq!(
-    json!(diagnostics.all()),
-    json!([
-      {
-        "range": {
-          "start": {
-            "line": 3,
-            "character": 12,
-          },
-          "end": {
-            "line": 3,
-            "character": 13,
-          },
-        },
-        "severity": 1,
-        "code": 2322,
-        "source": "ende-ts",
-        "message": "Type 'number' is not assignable to type 'string'.",
-      },
-    ]),
   );
   client.shutdown();
 }
@@ -16777,10 +16442,7 @@ fn lsp_testing_api_describe_it_failure() {
     .add_npm_env_vars()
     .build();
   let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "ende.json",
-    json!({ "nodeModulesDir": "manual" }).to_string(),
-  );
+  temp_dir.write("ende.json", json!({}).to_string());
   let file = temp_dir.source_file(
     "test.ts",
     r#"
@@ -16982,10 +16644,7 @@ fn lsp_testing_api_describe_it() {
     .add_npm_env_vars()
     .build();
   let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "ende.json",
-    json!({ "nodeModulesDir": "manual" }).to_string(),
-  );
+  temp_dir.write("ende.json", json!({}).to_string());
   let file = temp_dir.source_file(
     "test.ts",
     r#"
@@ -17354,136 +17013,6 @@ fn lsp_data_urls_with_jsx_compiler_option() {
         "end": {"line": 0, "character": 14 },
       },
     }])
-  );
-
-  client.shutdown();
-}
-
-#[test(timeout = 300)]
-fn lsp_node_modules_dir() {
-  let context = TestContextBuilder::new()
-    .use_http_server()
-    .use_temp_cwd()
-    .build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "ende.json",
-    json!({
-      "nodeModulesDir": "none",
-    })
-    .to_string(),
-  );
-
-  // having a package.json should have no effect on whether
-  // a node_modules dir is created
-  temp_dir.write("package.json", "{}");
-
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  let file_url = temp_dir.url().join("file.ts").unwrap();
-  let file_uri = url_to_uri(&file_url).unwrap();
-  let _initial_diagnostics = client.did_open(json!({
-    "textDocument": {
-      "uri": file_uri,
-      "languageId": "typescript",
-      "version": 1,
-      "text": "import chalk from 'npm:chalk';\nimport path from 'node:path';\n\nconsole.log(chalk.green(path.join('a', 'b')));",
-    }
-  }));
-  let cache = |client: &mut LspClient| {
-    client.cache(["npm:chalk"], &file_url);
-    client.handle_refresh_diagnostics_request();
-    client.read_diagnostics()
-  };
-
-  cache(&mut client);
-
-  assert!(!temp_dir.path().join("node_modules").exists());
-
-  temp_dir.write(
-    temp_dir.path().join("ende.json"),
-    "{ \"nodeModulesDir\": \"auto\" }\n",
-  );
-  let refresh_config = |client: &mut LspClient| {
-    client.change_configuration(json!({ "ende": {
-      "enable": true,
-      "config": "./ende.json",
-      "codeLens": {
-        "implementations": true,
-        "references": true,
-      },
-      "importMap": null,
-      "lint": false,
-      "suggest": {
-        "autoImports": true,
-        "completeFunctionCalls": false,
-        "names": true,
-        "paths": true,
-        "imports": {},
-      },
-      "unstable": [],
-    } }))
-  };
-  refresh_config(&mut client);
-  let diagnostics = client.read_diagnostics();
-  assert_eq!(diagnostics.all().len(), 1, "{:#?}", diagnostics); // not cached
-
-  cache(&mut client);
-
-  assert!(temp_dir.path().join("node_modules/chalk").exists());
-
-  // now add a lockfile and cache
-  temp_dir.write(
-    temp_dir.path().join("ende.json"),
-    "{ \"nodeModulesDir\": \"auto\" }\n",
-  );
-  refresh_config(&mut client);
-  // The npm package requirements are registered with the resolver lazily, when
-  // a document module is created. That can happen concurrently on the tsc
-  // thread, in which case the requirements are recorded before they've actually
-  // been resolved and the diagnostics for this request can still see the
-  // package as not installed. Caching again rebuilds the resolver, so retry a
-  // few times before giving up.
-  let mut diagnostics = cache(&mut client);
-  for _ in 0..5 {
-    if diagnostics.all().is_empty() {
-      break;
-    }
-    diagnostics = cache(&mut client);
-  }
-  assert_eq!(diagnostics.all().len(), 0, "{:#?}", diagnostics);
-
-  // the declaration should be found in the node_modules directory
-  let res = client.write_request(
-    "textDocument/references",
-    json!({
-      "textDocument": {
-        "uri": file_uri,
-      },
-      "position": { "line": 0, "character": 7 }, // chalk
-      "context": {
-        "includeDeclaration": false
-      }
-    }),
-  );
-
-  // ensure that it's using the node_modules directory
-  let references = res.as_array().unwrap();
-  assert_eq!(references.len(), 2, "references: {:#?}", references);
-  let uri = references[1]
-    .as_object()
-    .unwrap()
-    .get("uri")
-    .unwrap()
-    .as_str()
-    .unwrap();
-  // canonicalize for mac
-  let path = temp_dir.path().join("node_modules").canonicalize();
-  assert_starts_with!(
-    uri,
-    url_to_uri(&Url::from_file_path(&path).unwrap())
-      .unwrap()
-      .as_str()
   );
 
   client.shutdown();
@@ -18071,142 +17600,6 @@ fn lsp_ende_json_scopes_vendor_dir() {
         },
       }])
     },
-  );
-  client.shutdown();
-}
-
-#[test(timeout = 300)]
-fn lsp_ende_json_scopes_node_modules_dir() {
-  let context = TestContextBuilder::new()
-    .use_http_server()
-    .use_temp_cwd()
-    .build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "project1/ende.json",
-    json!({
-      "nodeModulesDir": "auto",
-    })
-    .to_string(),
-  );
-  temp_dir.write(
-    "project2/ende.json",
-    json!({
-      "nodeModulesDir": "auto",
-    })
-    .to_string(),
-  );
-  temp_dir.write(
-    "project2/project3/ende.json",
-    json!({
-      "nodeModulesDir": "auto",
-    })
-    .to_string(),
-  );
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  client.did_open(json!({
-    "textDocument": {
-      "uri": url_to_uri(&temp_dir.url().join("project1/file.ts").unwrap()).unwrap(),
-      "languageId": "typescript",
-      "version": 1,
-      "text": "import \"npm:@denotest/add@1\";\n",
-    },
-  }));
-  client.cache_specifier(temp_dir.url().join("project1/file.ts").unwrap());
-  client.read_diagnostics();
-  let res = client.write_request(
-    "textDocument/definition",
-    json!({
-      "textDocument": {
-        "uri": url_to_uri(&temp_dir.url().join("project1/file.ts").unwrap()).unwrap(),
-      },
-      "position": { "line": 0, "character": 7 },
-    }),
-  );
-  // The temp dir is symlinked in macos, and `node_modules` is canonicalized.
-  let canon_temp_dir =
-    Url::from_directory_path(temp_dir.path().canonicalize()).unwrap();
-  assert_eq!(
-    res,
-    json!([{
-      "targetUri": url_to_uri(&canon_temp_dir.join("project1/node_modules/.ende/@denotest+add@1.0.0/node_modules/@denotest/add/index.d.ts").unwrap()).unwrap(),
-      "targetRange": {
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 1, "character": 0 },
-      },
-      "targetSelectionRange": {
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 1, "character": 0 },
-      },
-    }]),
-  );
-  client.did_open(json!({
-    "textDocument": {
-      "uri": url_to_uri(&temp_dir.url().join("project2/file.ts").unwrap()).unwrap(),
-      "languageId": "typescript",
-      "version": 1,
-      "text": "import \"npm:@denotest/add@1\";\n",
-    },
-  }));
-  client.cache_specifier(temp_dir.url().join("project2/file.ts").unwrap());
-  client.read_diagnostics();
-  let res = client.write_request(
-    "textDocument/definition",
-    json!({
-      "textDocument": {
-        "uri": url_to_uri(&temp_dir.url().join("project2/file.ts").unwrap()).unwrap(),
-      },
-      "position": { "line": 0, "character": 7 },
-    }),
-  );
-  assert_eq!(
-    res,
-    json!([{
-      "targetUri": url_to_uri(&canon_temp_dir.join("project2/node_modules/.ende/%40denotest%2Badd%401.0.0/node_modules/%40denotest/add/index.d.ts").unwrap()).unwrap(),
-      "targetRange": {
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 1, "character": 0 },
-      },
-      "targetSelectionRange": {
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 1, "character": 0 },
-      },
-    }]),
-  );
-  client.did_open(json!({
-    "textDocument": {
-      "uri": url_to_uri(&temp_dir.url().join("project2/project3/file.ts").unwrap()).unwrap(),
-      "languageId": "typescript",
-      "version": 1,
-      "text": "import \"npm:@denotest/add@1\";\n",
-    },
-  }));
-  client
-    .cache_specifier(temp_dir.url().join("project2/project3/file.ts").unwrap());
-  client.read_diagnostics();
-  let res = client.write_request(
-    "textDocument/definition",
-    json!({
-      "textDocument": {
-        "uri": url_to_uri(&temp_dir.url().join("project2/project3/file.ts").unwrap()).unwrap(),
-      },
-      "position": { "line": 0, "character": 7 },
-    }),
-  );
-  assert_eq!(
-    res,
-    json!([{
-      "targetUri": url_to_uri(&canon_temp_dir.join("project2/project3/node_modules/.ende/%40denotest%2Badd%401.0.0/node_modules/%40denotest/add/index.d.ts").unwrap()).unwrap(),
-      "targetRange": {
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 1, "character": 0 },
-      },
-      "targetSelectionRange": {
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 1, "character": 0 },
-      },
-    }]),
   );
   client.shutdown();
 }
@@ -19423,82 +18816,6 @@ fn lsp_ende_json_workspace_vendor_dir() {
 }
 
 #[test(timeout = 300)]
-fn lsp_ende_json_workspace_node_modules_dir() {
-  let context = TestContextBuilder::new()
-    .use_http_server()
-    .use_temp_cwd()
-    .build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "project1/ende.json",
-    json!({
-      "workspace": ["project2"],
-      "nodeModulesDir": "auto",
-    })
-    .to_string(),
-  );
-  temp_dir.write("project1/project2/ende.json", json!({}).to_string());
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  client.did_open(json!({
-    "textDocument": {
-      "uri": url_to_uri(&temp_dir.url().join("project1/project2/file.ts").unwrap()).unwrap(),
-      "languageId": "typescript",
-      "version": 1,
-      "text": "import \"npm:@denotest/add@1\";\n",
-    },
-  }));
-  client
-    .cache_specifier(temp_dir.url().join("project1/project2/file.ts").unwrap());
-  client.read_diagnostics();
-  let res = client.write_request(
-    "textDocument/definition",
-    json!({
-      "textDocument": {
-        "uri": url_to_uri(&temp_dir.url().join("project1/project2/file.ts").unwrap()).unwrap(),
-      },
-      "position": { "line": 0, "character": 7 },
-    }),
-  );
-  // The temp dir is symlinked in macos, and `node_modules` is canonicalized.
-  let canon_temp_dir =
-    Url::from_directory_path(temp_dir.path().canonicalize()).unwrap();
-  assert_eq!(
-    res,
-    if false {
-      json!([{
-        "originSelectionRange": {
-          "start": { "line": 0, "character": 7 },
-          "end": { "line": 0, "character": 28 },
-        },
-        "targetUri": url_to_uri(&canon_temp_dir.join("project1/node_modules/.ende/@denotest+add@1.0.0/node_modules/@denotest/add/index.d.ts").unwrap()).unwrap(),
-        "targetRange": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 1, "character": 0 },
-        },
-        "targetSelectionRange": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 1, "character": 0 },
-        },
-      }])
-    } else {
-      json!([{
-        "targetUri": url_to_uri(&canon_temp_dir.join("project1/node_modules/.ende/@denotest+add@1.0.0/node_modules/@denotest/add/index.d.ts").unwrap()).unwrap(),
-        "targetRange": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 1, "character": 0 },
-        },
-        "targetSelectionRange": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 1, "character": 0 },
-        },
-      }])
-    },
-  );
-  client.shutdown();
-}
-
-#[test(timeout = 300)]
 fn lsp_ende_json_workspace_jsr_resolution() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
@@ -19817,138 +19134,6 @@ fn lsp_tsconfig_references_extends_include() {
 }
 
 #[test(timeout = 300)]
-fn lsp_tsconfig_node_modules_dts_diagnostics() {
-  let context = TestContextBuilder::new()
-    .use_http_server()
-    .use_temp_cwd()
-    .build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "ende.json",
-    json!({
-      "nodeModulesDir": "manual",
-    })
-    .to_string(),
-  );
-  temp_dir.write(
-    "tsconfig.json",
-    json!({
-      "include": ["main.ts"],
-      "compilerOptions": {
-        "lib": ["esnext", "dom"],
-      },
-    })
-    .to_string(),
-  );
-  let file1 = temp_dir.source_file("main.ts", "import type {} from \"foo\";\n");
-  let file2 = source_file(
-    // Canonicalize for mac.
-    temp_dir
-      .path()
-      .canonicalize()
-      .join("node_modules/foo/index.d.ts"),
-    r#"
-      export type foo = typeof Deno;
-      export type bar = typeof document;
-    "#,
-  );
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  client.did_open_file(&file1);
-  let diagnostics = client.did_open_file(&file2);
-  assert_eq!(
-    json!(diagnostics.all()),
-    json!([
-      {
-        "range": {
-          "start": { "line": 1, "character": 31 },
-          "end": { "line": 1, "character": 35 },
-        },
-        "severity": 1,
-        "code": 2304,
-        "source": "ende-ts",
-        "message": "Cannot find name 'Deno'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'ende.ns' or add a triple-slash directive to the top of your entrypoint (main file): /// <reference lib=\"ende.ns\" />",
-      },
-    ]),
-  );
-  client.shutdown();
-}
-
-// Regression test for https://github.com/denoland/deno/issues/33955 — with
-// `moduleResolution: "bundler"`, importing a subpath of an npm package whose
-// `package.json` doesn't list it under `exports` should not error in the LSP
-// when the subpath is a directory that contains an `index` declaration.
-#[test(timeout = 300)]
-fn lsp_tsconfig_module_resolution_bundler_dir_import() {
-  let context = TestContextBuilder::new().use_temp_cwd().build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "ende.json",
-    json!({
-      "nodeModulesDir": "manual",
-    })
-    .to_string(),
-  );
-  temp_dir.write(
-    "tsconfig.json",
-    json!({
-      "compilerOptions": {
-        "moduleResolution": "bundler",
-        "lib": ["esnext", "dom"],
-      },
-    })
-    .to_string(),
-  );
-  // The package only declares `main` — no `exports` field, so subpath
-  // resolution falls back to the legacy node algorithm.
-  temp_dir.write(
-    "node_modules/some-pkg/package.json",
-    json!({
-      "name": "some-pkg",
-      "main": "./index.js",
-    })
-    .to_string(),
-  );
-  source_file(
-    temp_dir
-      .path()
-      .canonicalize()
-      .join("node_modules/some-pkg/index.d.ts"),
-    "export const root: number;\n",
-  );
-  // The subpath `some-pkg/text-box` is a directory with no `package.json` —
-  // Node's strict ESM resolution would refuse this with
-  // `ERR_UNSUPPORTED_DIR_IMPORT`, but a bundler-mode resolver should probe
-  // for an `index` file.
-  source_file(
-    temp_dir
-      .path()
-      .canonicalize()
-      .join("node_modules/some-pkg/text-box/index.js"),
-    "export const value = 1;\n",
-  );
-  source_file(
-    temp_dir
-      .path()
-      .canonicalize()
-      .join("node_modules/some-pkg/text-box/index.d.ts"),
-    "export const value: number;\n",
-  );
-  let file = temp_dir.source_file(
-    "main.ts",
-    r#"
-      import { value } from "some-pkg/text-box";
-      console.log(value);
-    "#,
-  );
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  let diagnostics = client.did_open_file(&file);
-  assert_eq!(json!(diagnostics.all()), json!([]));
-  client.shutdown();
-}
-
-#[test(timeout = 300)]
 fn lsp_tsconfig_root_dirs() {
   let context = TestContextBuilder::new()
     .use_http_server()
@@ -20040,114 +19225,6 @@ fn lsp_tsconfig_watched() {
   }));
   let diagnostics = client.read_diagnostics();
   assert_eq!(json!(diagnostics.all()), json!([]));
-  client.shutdown();
-}
-
-#[test(timeout = 300)]
-fn lsp_npm_workspace() {
-  let context = TestContextBuilder::new()
-    .use_http_server()
-    .use_temp_cwd()
-    .build();
-  let temp_dir = context.temp_dir();
-  // TODO(nayeemrmn): Goto definition for local npm package imports should work
-  // even with byonm. Remove this when fixed.
-  temp_dir.write(
-    "ende.json",
-    json!({
-      "nodeModulesDir": "auto",
-    })
-    .to_string(),
-  );
-  temp_dir.write(
-    "package.json",
-    json!({
-      "workspaces": ["packages/*"]
-    })
-    .to_string(),
-  );
-  {
-    temp_dir.write(
-      "packages/add/package.json",
-      json!({
-        "name": "add",
-        "version": "1.0.0",
-        "exports": "./index.ts"
-      })
-      .to_string(),
-    );
-    temp_dir.write(
-      "packages/add/index.ts",
-      "export function add(a: number, b: number): number { return a + b; }",
-    );
-  }
-  {
-    temp_dir.write(
-      "packages/subtract/package.json",
-      json!({
-        "name": "add",
-        "version": "1.0.0",
-        "exports": "./index.ts",
-        "dependencies": {
-          "add": "^1.0.0"
-        }
-      })
-      .to_string(),
-    );
-  }
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  let diagnostics = client.did_open(json!({
-    "textDocument": {
-      "uri": url_to_uri(&temp_dir.url().join("packages/subtract/index.ts").unwrap()).unwrap(),
-      "languageId": "typescript",
-      "version": 1,
-      "text": "import { add } from 'add';\nexport function subtract(a: number, b: number): number { return add(a, -b); }",
-    },
-  }));
-  assert_eq!(json!(diagnostics.all()), json!([]));
-  let res = client.write_request(
-    "textDocument/definition",
-    json!({
-      "textDocument": {
-        "uri": url_to_uri(&temp_dir.url().join("packages/subtract/index.ts").unwrap()).unwrap(),
-      },
-      "position": { "line": 0, "character": 9 },
-    }),
-  );
-  // The temp dir is symlinked on the CI
-  assert_eq!(
-    res,
-    if false {
-      json!([{
-        "originSelectionRange": {
-          "start": { "line": 0, "character": 9 },
-          "end": { "line": 0, "character": 12 },
-        },
-        "targetUri": url_to_uri(&temp_dir.url().join("packages/add/index.ts").unwrap()).unwrap(),
-        "targetRange": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 1, "character": 0 },
-        },
-        "targetSelectionRange": {
-          "start": { "line": 0, "character": 16 },
-          "end": { "line": 0, "character": 19 },
-        },
-      }])
-    } else {
-      json!([{
-        "targetUri": url_to_uri(&temp_dir.url().join("packages/add/index.ts").unwrap()).unwrap(),
-        "targetRange": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 0, "character": 67 },
-        },
-        "targetSelectionRange": {
-          "start": { "line": 0, "character": 16 },
-          "end": { "line": 0, "character": 19 },
-        },
-      }])
-    },
-  );
   client.shutdown();
 }
 
@@ -20334,7 +19411,7 @@ fn lsp_byonm() {
         "severity": 1,
         "code": "resolver-error",
         "source": "ende",
-        "message": "Could not find a matching package for 'npm:chalk@5' in the node_modules directory. Ensure you have all your JSR and npm dependencies listed in your deno.json or package.json, then run `deno install`. Alternatively, turn on auto-install by specifying `\"nodeModulesDir\": \"auto\"` in your deno.json file.",
+        "message": "Could not find a matching package for 'npm:chalk@5' in the node_modules directory. Ensure you have all your JSR and npm dependencies listed in your deno.json or package.json, then run `deno install`.",
       },
       {
         "range": {
@@ -20379,7 +19456,7 @@ fn lsp_byonm() {
         "severity": 1,
         "code": "resolver-error",
         "source": "ende",
-        "message": "Could not find a matching package for 'npm:chalk@5' in the node_modules directory. Ensure you have all your JSR and npm dependencies listed in your deno.json or package.json, then run `deno install`. Alternatively, turn on auto-install by specifying `\"nodeModulesDir\": \"auto\"` in your deno.json file.",
+        "message": "Could not find a matching package for 'npm:chalk@5' in the node_modules directory. Ensure you have all your JSR and npm dependencies listed in your deno.json or package.json, then run `deno install`.",
       },
     ])
   );
@@ -20762,77 +19839,6 @@ fn lsp_byonm_js_import_resolves_to_dts() {
     }
   }));
   assert_eq!(json!(diagnostics.all()), json!([]));
-  client.shutdown();
-}
-
-// Regression test for https://github.com/denoland/deno/issues/35170.
-#[test(timeout = 300)]
-fn lsp_open_file_in_managed_node_modules_dir() {
-  let context = TestContextBuilder::for_npm().use_temp_cwd().build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "ende.json",
-    json!({
-      "nodeModulesDir": "auto",
-      "imports": {
-        "add": "npm:@denotest/add@1",
-      },
-    })
-    .to_string(),
-  );
-  context.run_ende("install");
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  // The temp dir is symlinked on macos, and `node_modules` is canonicalized.
-  let canon_temp_dir =
-    Url::from_directory_path(temp_dir.path().canonicalize()).unwrap();
-  let dts_url = canon_temp_dir
-    .join("node_modules/.ende/@denotest+add@1.0.0/node_modules/@denotest/add/index.d.ts")
-    .unwrap();
-  // Open a file from the node_modules dir directly, like go-to-definition in
-  // the editor would, without anything importing it. The text contains an
-  // intentional type error to check that diagnostics are generated for it.
-  let diagnostics = client.did_open(json!({
-    "textDocument": {
-      "uri": url_to_uri(&dts_url).unwrap(),
-      "languageId": "typescript",
-      "version": 1,
-      "text": "export function add(a: number, b: number): number;\nexport const foo: strang;\n",
-    }
-  }));
-  assert_eq!(
-    json!(diagnostics.all()),
-    json!([{
-      "range": {
-        "start": { "line": 1, "character": 18 },
-        "end": { "line": 1, "character": 24 },
-      },
-      "severity": 1,
-      "code": 2552,
-      "source": "ende-ts",
-      "message": "Cannot find name 'strang'. Did you mean 'string'?",
-    }]),
-  );
-  let res = client.write_request(
-    "textDocument/hover",
-    json!({
-      "textDocument": { "uri": url_to_uri(&dts_url).unwrap() },
-      "position": { "line": 0, "character": 17 },
-    }),
-  );
-  assert_eq!(
-    res,
-    json!({
-      "contents": {
-        "kind": "markdown",
-        "value": "```tsx\nfunction add(a: number, b: number): number\n```\n",
-      },
-      "range": {
-        "start": { "line": 0, "character": 16 },
-        "end": { "line": 0, "character": 19 },
-      },
-    }),
-  );
   client.shutdown();
 }
 
@@ -21555,9 +20561,7 @@ fn compiler_options_types() {
 
   client.initialize_default();
 
-  for node_modules_dir in ["none", "auto", "manual"] {
-    let mut ende_json = ende_json.clone();
-    ende_json["nodeModulesDir"] = json!(node_modules_dir);
+  {
     temp.write("ende.json", ende_json.to_string());
     context.run_ende("install");
     client.did_change_watched_files(json!({
@@ -21628,9 +20632,7 @@ fn type_reference_import_meta() {
 
   client.initialize_default();
 
-  for node_modules_dir in ["none", "auto", "manual"] {
-    let mut ende_json = ende_json.clone();
-    ende_json["nodeModulesDir"] = json!(node_modules_dir);
+  {
     temp.write("ende.json", ende_json.to_string());
     context.run_ende("install");
     client.did_change_watched_files(json!({
@@ -21722,9 +20724,7 @@ fn definitely_typed_fallback() {
 
   client.initialize_default();
 
-  for node_modules_dir in ["none", "auto", "manual"] {
-    let mut ende_json = ende_json.clone();
-    ende_json["nodeModulesDir"] = json!(node_modules_dir);
+  {
     temp.write("ende.json", ende_json.to_string());
     context.run_ende("install");
     client.did_change_watched_files(json!({
@@ -21756,8 +20756,7 @@ fn definitely_typed_fallback() {
 
 #[test(timeout = 300)]
 fn do_not_auto_import_from_definitely_typed() {
-  for node_modules_dir in ["none", "auto", "manual"] {
-    eprintln!("node_modules_dir: {node_modules_dir}");
+  {
     let context = TestContextBuilder::for_npm().use_temp_cwd().build();
     let mut client = context.new_lsp_command().build();
     let temp = context.temp_dir();
@@ -21775,16 +20774,13 @@ fn do_not_auto_import_from_definitely_typed() {
       "imports": {
         "@denotest/index-export-no-types": "npm:@denotest/index-export-no-types@1.0.0",
         "@types/denotest__index-export-no-types": "npm:@types/denotest__index-export-no-types@1.0.0",
-      },
-      "nodeModulesDir": node_modules_dir
+      }
     });
     temp.write("ende.json", ende_json.to_string());
     context.run_ende("install");
 
     client.initialize_default();
 
-    let mut ende_json = ende_json.clone();
-    ende_json["nodeModulesDir"] = json!(node_modules_dir);
     temp.write("ende.json", ende_json.to_string());
     client.did_change_watched_files(json!({
       "changes": [{

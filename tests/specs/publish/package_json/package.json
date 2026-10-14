@@ -1,7 +1,0 @@
-{
-  "name": "@ende/foo",
-  "version": "0.0.1",
-  "dependencies": {
-    "picocolors": "1"
-  }
-}

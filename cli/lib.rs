@@ -12,7 +12,6 @@ mod jsr;
 mod lsp;
 mod module_loader;
 mod node;
-mod node_compat_shim;
 mod npm;
 mod ops;
 mod registry;
@@ -59,6 +58,13 @@ use ende_runtime::tokio_util::create_and_run_current_thread_with_maybe_metrics;
 use ende_telemetry::OtelConfig;
 use factory::CliFactory;
 use util::fs::canonicalize_path;
+
+/// Internal env var telling an Ende process started for a `node` command
+/// (by the Node compat child_process layer or `ende task`) to detect CommonJS
+/// like Node.js. Kept in sync with ext/node/polyfills/child_process.ts and
+/// ext/node/polyfills/internal/child_process.ts.
+pub(crate) const NODE_CHILD_DETECT_CJS_ENV_VAR: &str =
+  "ENDE_INTERNAL_NODE_DETECT_CJS";
 
 const MODULE_NOT_FOUND: &str = "Module not found";
 const UNSUPPORTED_SCHEME: &str = "Unsupported scheme";
@@ -131,14 +137,6 @@ async fn run_subcommand(
       tools::pm::add(Arc::new(flags), add_flags, tools::pm::AddCommandName::Add)
         .await
     }),
-    EndeSubcommand::Audit(audit_flags) => spawn_subcommand(async {
-      tools::pm::audit(Arc::new(flags), audit_flags).await
-    }),
-    EndeSubcommand::ApproveScripts(approve_scripts_flags) => {
-      spawn_subcommand(async move {
-        tools::pm::approve_scripts(Arc::new(flags), approve_scripts_flags).await
-      })
-    }
     EndeSubcommand::Remove(remove_flags) => spawn_subcommand(async {
       tools::pm::remove(Arc::new(flags), remove_flags).await
     }),
@@ -513,9 +511,6 @@ async fn run_subcommand(
     EndeSubcommand::Publish(publish_flags) => spawn_subcommand(async {
       tools::publish::publish(Arc::new(flags), publish_flags).await
     }),
-    EndeSubcommand::Pack(pack_flags) => spawn_subcommand(async {
-      tools::pack::pack(flags.into(), pack_flags).await
-    }),
     EndeSubcommand::Help(help_flags) => spawn_subcommand(async move {
       use std::io::Write;
 
@@ -882,10 +877,6 @@ pub fn main() {
   boot_phase("after aws_lc install");
 
   let args: Vec<_> = env::args_os().collect();
-  // If we were invoked through a `node` shim (a symlink/hardlink named `node`
-  // pointing at this binary), translate the Node.js CLI args to Ende args.
-  // Done here, before any threads are spawned, because it may set env vars.
-  let args = node_compat_shim::maybe_rewrite_node_arg0(args);
   let future = async move {
     let roots = LibWorkerFactoryRoots::default();
 
@@ -1008,30 +999,14 @@ async fn resolve_flags_and_init(
 
   let sys = crate::sys::CliSys::default();
 
-  // Best-effort: make a `node` available on PATH (pointing back at this binary)
-  // when no real Node.js is installed, so child processes that spawn `node`
-  // natively (e.g. Next.js Turbopack) can find one. Must run before any threads
-  // spawn since it mutates PATH (the tunnel below can spawn threads), and only
-  // for subcommands that execute user code, so unrelated commands (`fmt`,
-  // `lint`, `check`, `lsp`, ...) don't pay for the `node` PATH scan on startup.
-  if node_compat_shim::subcommand_may_spawn_node(&flags.subcommand) {
-    match ende_cache_dir::resolve_ende_dir(
-      &sys,
-      ende_cache_dir::ResolveEndeDirOptions {
-        maybe_initial_cwd: initial_cwd.as_deref(),
-        maybe_custom_root: None,
-      },
-    ) {
-      Ok(ende_dir_root) => {
-        if let Err(err) = node_compat_shim::ensure_node_on_path(&ende_dir_root)
-        {
-          log::debug!("node compat shim setup failed (best-effort): {err}");
-        }
-      }
-      Err(err) => {
-        log::debug!("could not resolve ENDE_DIR for node compat shim: {err}");
-      }
-    }
+  // Set by the Node compat layer when it runs a `node` command through Ende
+  // (child_process, `ende task`). Applies to this process only, so remove it
+  // before user code can spawn children. Must run before any threads spawn
+  // since it mutates the environment (the tunnel below can spawn threads).
+  if ende_env::var(NODE_CHILD_DETECT_CJS_ENV_VAR).is_ok() {
+    flags.unstable_config.detect_cjs = true;
+    // SAFETY: We're doing this before any threads are created.
+    unsafe { std::env::remove_var(NODE_CHILD_DETECT_CJS_ENV_VAR) };
   }
 
   if ende_lib::args::has_flag_env_var(&sys, "ENDE_CONNECTED") {
@@ -1058,14 +1033,6 @@ async fn resolve_flags_and_init(
   flags.unstable_config.fill_with_env(&sys);
   if ende_env::var("ENDE_COMPAT").is_ok() {
     flags.unstable_config.enable_node_compat();
-  }
-  if flags.node_conditions.is_empty()
-    && let Ok(conditions) = ende_env::var("ENDE_CONDITIONS")
-  {
-    flags.node_conditions = conditions
-      .split(",")
-      .map(|c| c.trim().to_string())
-      .collect();
   }
 
   let otel_config = flags.otel_config();

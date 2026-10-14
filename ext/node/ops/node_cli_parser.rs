@@ -51,6 +51,9 @@ pub struct TranslatedArgs {
   /// Comma-separated trace event categories from --trace-event-categories,
   /// to be propagated via ENDE_NODE_TRACE_EVENT_CATEGORIES.
   pub trace_event_categories: Option<String>,
+  /// Whether the child should detect CommonJS like Node.js, signalled to it
+  /// through the ENDE_INTERNAL_NODE_DETECT_CJS environment variable.
+  pub detect_cjs: bool,
 }
 
 /// Translate parsed Node.js CLI arguments to Deno CLI arguments.
@@ -92,6 +95,7 @@ fn translate_to_deno_args(
     use_openssl_ca,
     needs_npm_process_state: script_in_npm_package,
     trace_event_categories,
+    detect_cjs: result.detect_cjs,
   }
 }
 
@@ -120,6 +124,7 @@ pub fn op_node_translate_cli_args(
       use_openssl_ca: false,
       needs_npm_process_state: script_in_npm_package,
       trace_event_categories: None,
+      detect_cjs: false,
     });
   }
 
@@ -226,16 +231,8 @@ mod tests {
   fn test_translate_basic_script() {
     let parsed = parse_args(svec!["script.js"]).unwrap();
     let result = translate_to_deno_args(parsed, false, true);
-    assert_eq!(
-      result.deno_args,
-      svec![
-        "run",
-        "-A",
-        "--unstable-bare-node-builtins",
-        "--unstable-detect-cjs",
-        "script.js"
-      ]
-    );
+    assert_eq!(result.deno_args, svec!["run", "-A", "script.js"]);
+    assert!(result.detect_cjs);
     assert!(result.node_options.is_empty());
     assert!(!result.needs_npm_process_state);
   }
@@ -306,39 +303,18 @@ mod tests {
   }
 
   #[test]
-  fn test_translate_conditions() {
-    let parsed =
-      parse_args(svec!["--conditions", "development", "script.js"]).unwrap();
-    let result = translate_to_deno_args(parsed, false, true);
-    assert!(
-      result
-        .deno_args
-        .contains(&"--conditions=development".to_string())
-    );
-  }
-
-  #[test]
-  fn test_translate_conditions_equals_format() {
-    // Test the --conditions=custom format (with equals sign)
-    let parsed = parse_args(svec!["--conditions=custom", "script.js"]).unwrap();
-    let result = translate_to_deno_args(parsed, false, true);
-    assert!(
-      result
-        .deno_args
-        .contains(&"--conditions=custom".to_string()),
-    );
-  }
-
-  #[test]
-  fn test_translate_conditions_short_alias() {
-    // Test -C custom format (short alias)
-    let parsed = parse_args(svec!["-C", "custom", "script.js"]).unwrap();
-    let result = translate_to_deno_args(parsed, false, true);
-    assert!(
-      result
-        .deno_args
-        .contains(&"--conditions=custom".to_string()),
-    );
+  fn test_translate_conditions_not_forwarded() {
+    // Ende has no `--conditions` flag, so Node's `-C`/`--conditions` are
+    // accepted but not forwarded.
+    for args in [
+      svec!["--conditions", "development", "script.js"],
+      svec!["--conditions=custom", "script.js"],
+      svec!["-C", "custom", "script.js"],
+    ] {
+      let parsed = parse_args(args).unwrap();
+      let result = translate_to_deno_args(parsed, false, true);
+      assert_eq!(result.deno_args, svec!["run", "-A", "script.js"]);
+    }
   }
 
   #[test]

@@ -451,7 +451,7 @@ pub async fn maybe_npm_install(factory: &CliFactory) -> Result<(), AnyError> {
   let cli_options = factory.cli_options()?;
   // ensure an "npm install" is done if the user has explicitly
   // opted into using a managed node_modules directory
-  if cli_options.specified_node_modules_dir()? == Some(NodeModulesDirMode::Auto)
+  if cli_options.specified_node_modules_dir() == Some(NodeModulesDirMode::Auto)
     && let Some(npm_installer) = factory.npm_installer_if_managed().await?
   {
     let _clear_guard = factory

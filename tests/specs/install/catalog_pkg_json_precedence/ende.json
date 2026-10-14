@@ -1,6 +1,0 @@
-{
-  "workspace": ["./packages/a"],
-  "catalog": {
-    "@denotest/esm-basic": "99.99.99"
-  }
-}

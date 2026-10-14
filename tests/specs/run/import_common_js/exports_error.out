@@ -7,6 +7,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
           package.json has a "type": "commonjs" option.
     hint: Rewrite this module to ESM,
           or change the file extension to .cjs,
-          or add package.json next to the file with "type": "commonjs" option,
-          or pass --unstable-detect-cjs flag to detect CommonJS when loading.
+          or add package.json next to the file with "type": "commonjs" option.
     docs: https://docs.ende.sh/go/commonjs

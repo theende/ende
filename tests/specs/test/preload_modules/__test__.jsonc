@@ -1,5 +1,5 @@
 {
-  "args": "test --preload preload.js --import import.js",
+  "args": "test --preload preload.js --preload import.js",
   "exitCode": 0,
   "output": "main.out"
 }

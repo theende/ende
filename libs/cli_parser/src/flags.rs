@@ -13,7 +13,6 @@ use std::path::PathBuf;
 use deno_semver::package::PackageReq;
 pub use ende_config::ende_json::NewestDependencyDate;
 pub use ende_config::ende_json::NodeModulesDirMode;
-pub use ende_config::ende_json::NodeModulesLinkerMode;
 pub use ende_core::url::Url;
 pub use ende_lib::args::CaData;
 pub use ende_lib::args::UnstableConfig;
@@ -52,7 +51,6 @@ pub struct AddFlags {
   pub default_registry: Option<DefaultRegistry>,
   pub lockfile_only: bool,
   pub save_exact: bool,
-  pub package_json: bool,
   pub unscoped: bool,
 }
 
@@ -62,23 +60,9 @@ pub struct WhyFlags {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct AuditFlags {
-  pub severity: String,
-  pub ignore_registry_errors: bool,
-  pub ignore_unfixable: bool,
-  pub dev: bool,
-  pub prod: bool,
-  pub optional: bool,
-  pub ignore: Vec<String>,
-  pub socket: bool,
-  pub fix: bool,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RemoveFlags {
   pub packages: Vec<String>,
   pub lockfile_only: bool,
-  pub package_json: bool,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -196,11 +180,6 @@ pub struct CompileFlags {
   /// storage (default `Ende.openKv()`, `localStorage`, `caches`) is persisted.
   /// Defaults to the output file name when not set.
   pub app_name: Option<String>,
-  /// Prune the embedded managed npm snapshot to only those packages reachable
-  /// from npm specifiers in the module graph. Opt-in because non-statically
-  /// analyzable dynamic imports may not appear in the graph; pass
-  /// `--include npm:<pkg>` for any such packages.
-  pub exclude_unused_npm: bool,
   /// JS engine the compiled binary should run on. Named `engine` because
   /// `ende desktop --backend` already means the render backend.
   pub engine: JavaScriptEngine,
@@ -258,10 +237,6 @@ pub struct DesktopFlags {
   /// just a small download artifact. Value is the compressor: `"xz"` (LZMA)
   /// or `"zstd"`.
   pub compress: Option<String>,
-  /// Embed only the npm packages reachable from the module graph instead of
-  /// the full managed snapshot. Same opt-in semantics as
-  /// `ende compile --exclude-unused-npm`.
-  pub exclude_unused_npm: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -557,7 +532,6 @@ pub enum XFlagsKind {
 pub struct XCommandFlags {
   pub yes: bool,
   pub command: String,
-  pub ignore_scripts: PackagesAllowedScripts,
   /// When set via `--package`/`-p`, specifies the package to install
   /// while `command` is the binary name to execute from that package.
   pub package: Option<String>,
@@ -704,17 +678,6 @@ pub struct PublishFlags {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PackFlags {
-  pub files: FileFlags,
-  pub output: Option<String>,
-  pub dry_run: bool,
-  pub allow_slow_types: bool,
-  pub allow_dirty: bool,
-  pub set_version: Option<String>,
-  pub no_source_maps: bool,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HelpFlags {
   pub help: String,
 }
@@ -728,8 +691,6 @@ pub struct CleanFlags {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EndeSubcommand {
   Add(AddFlags),
-  Audit(AuditFlags),
-  ApproveScripts(ApproveScriptsFlags),
   Remove(RemoveFlags),
   Bench(BenchFlags),
   Cache(CacheFlags),
@@ -768,7 +729,6 @@ pub enum EndeSubcommand {
   Why(WhyFlags),
   BumpVersion(VersionFlags),
   Publish(PublishFlags),
-  Pack(PackFlags),
   Help(HelpFlags),
   X(XFlags),
 }
@@ -790,12 +750,6 @@ pub struct OutdatedFlags {
   pub filters: Vec<String>,
   pub recursive: bool,
   pub kind: OutdatedKind,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ApproveScriptsFlags {
-  pub lockfile_only: bool,
-  pub packages: Vec<String>,
 }
 
 impl EndeSubcommand {
@@ -879,8 +833,9 @@ pub struct Flags {
   pub cached_only: bool,
   pub type_check_mode: TypeCheckMode,
   pub config_flag: ConfigFlag,
+  /// Internal only (no CLI flag): set by subcommands that need a specific
+  /// node_modules mode, e.g. `compile` of an `npm:` entrypoint.
   pub node_modules_dir: Option<NodeModulesDirMode>,
-  pub node_modules_linker: Option<NodeModulesLinkerMode>,
   pub vendor: Option<bool>,
   pub enable_testing_features: bool,
   pub ext: Option<String>,
@@ -908,12 +863,14 @@ pub struct Flags {
   pub v8_flags: Vec<String>,
   pub code_cache_enabled: bool,
   pub permissions: PermissionFlags,
+  /// Internal only (no CLI flag): lifecycle scripts allowed by `ende x` and
+  /// `ende init --npm`.
   pub allow_scripts: PackagesAllowedScripts,
   pub deny_scripts: Vec<PackageReq>,
   pub permission_set: Option<String>,
   pub eszip: bool,
-  pub node_conditions: Vec<String>,
   pub preload: Vec<String>,
+  /// `--require` modules from `NODE_OPTIONS` (Node compat child processes).
   pub require: Vec<String>,
   pub tunnel: bool,
   pub cpu_prof: Option<CpuProfFlags>,

@@ -19,14 +19,12 @@ use ende_cache_dir::file_fetcher::CacheSetting;
 use ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME;
 use ende_config::ende_json::DEPRECATED_LOCKFILE_NAME;
 use ende_config::ende_json::LOCKFILE_NAME;
-use ende_config::ende_json::NodeModulesDirMode;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::anyhow;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
 use ende_core::url::Url;
-use ende_npm_installer::PackagesAllowedScripts;
 use jsonc_parser::cst::CstInputValue;
 use log::Level;
 use once_cell::sync::Lazy;
@@ -397,7 +395,6 @@ async fn install_global_compiled(
     eszip: false,
     self_extracting: false,
     app_name: None,
-    exclude_unused_npm: false,
     engine: Default::default(),
   };
 
@@ -430,23 +427,6 @@ async fn setup_config_dir(
   force: bool,
   extra_imports: &[(String, String)],
 ) -> Result<(), AnyError> {
-  fn resolve_implicit_node_modules_dir(
-    flags: &Flags,
-    module_url: &Url,
-  ) -> Option<NodeModulesDirMode> {
-    // npm: specifier always implies manual
-    if module_url.scheme() == "npm" {
-      return Some(NodeModulesDirMode::Manual);
-    }
-
-    // --allow-scripts implies manual
-    if !matches!(flags.allow_scripts, PackagesAllowedScripts::None) {
-      return Some(NodeModulesDirMode::Manual);
-    }
-
-    None
-  }
-
   let dir = installation_dir.join(format!(".{}", bin_name_and_url.name));
   fs::create_dir_all(&dir)
     .with_context(|| format!("failed creating '{}'", dir.display()))?;
@@ -533,15 +513,6 @@ async fn setup_config_dir(
     }
   }
   config_obj.append("workspace", CstInputValue::Array(Vec::new())); // stop workspace discovery
-  if config_obj.get("nodeModulesDir").is_none()
-    && let Some(mode) =
-      resolve_implicit_node_modules_dir(flags, &bin_name_and_url.module_url)
-  {
-    config_obj.append(
-      "nodeModulesDir",
-      CstInputValue::String(mode.as_str().to_string()),
-    );
-  }
   fs::write(dir.join(DEFAULT_CONFIG_FILE_NAME), config.to_string())?;
 
   // write package.json for npm specifiers
@@ -1024,11 +995,6 @@ fn resolve_shim_data(
   let ende_json_path = config_dir.join(DEFAULT_CONFIG_FILE_NAME);
   executable_args.push("--config".to_string());
   executable_args.push(ende_json_path.to_string_lossy().into_owned());
-
-  if let Some(node_modules_dir) = flags.node_modules_dir {
-    executable_args
-      .push(format!("--node-modules-dir={}", node_modules_dir.as_str()));
-  }
 
   if flags.no_lock {
     executable_args.push("--no-lock".to_string());

@@ -15,25 +15,6 @@
           "output": "package.json.out"
         }
       ]
-    },
-    "deno_json": {
-      "steps": [
-        {
-          "args": ["eval", "Deno.removeSync('package.json')"],
-          "output": ""
-        },
-        {
-          "args": "add --dev npm:@denotest/esm-basic",
-          "output": "add.out"
-        },
-        {
-          "args": [
-            "eval",
-            "console.log(Deno.readTextFileSync('ende.json').trim())"
-          ],
-          "output": "ende.json.out"
-        }
-      ]
     }
   }
 }

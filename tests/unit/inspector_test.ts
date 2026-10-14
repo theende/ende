@@ -2214,7 +2214,9 @@ Deno.test("inspector_node_wait_for_debugger_no_pause", async () => {
   const helloPath = `${tempDir}/hello.txt`;
 
   const command = new Deno.Command(Deno.execPath(), {
-    args: ["run", "-A", "--require", preload, script],
+    args: ["run", "-A", script],
+    // Ende has no `--require` flag; Node compat reads it from NODE_OPTIONS.
+    env: { NODE_OPTIONS: `--require ${preload}` },
     stdin: "piped",
     stdout: "piped",
     stderr: "piped",
@@ -2313,7 +2315,9 @@ Deno.test("inspector_console_api_late_open", async () => {
   const script = `${testdataPath}/console_api_late_open_logger.js`;
 
   const command = new Deno.Command(Deno.execPath(), {
-    args: ["run", "-A", "--require", preload, script],
+    args: ["run", "-A", script],
+    // Ende has no `--require` flag; Node compat reads it from NODE_OPTIONS.
+    env: { NODE_OPTIONS: `--require ${preload}` },
     stdin: "piped",
     stdout: "piped",
     stderr: "piped",

@@ -57,38 +57,6 @@
         }
       ]
     },
-    "error_when_package_json_changed": {
-      "steps": [
-        {
-          "args": [
-            "eval",
-            "Deno.writeTextFileSync('ende.json', `{ \"nodeModulesDir\": \"auto\" }`)"
-          ],
-          "output": "[WILDCARD]"
-        },
-        {
-          "args": "cache add.ts",
-          "output": "[WILDCARD]"
-        },
-        {
-          "args": [
-            "eval",
-            "Deno.writeTextFileSync(\"package.json\", JSON.stringify({ dependencies: { \"@denotest/bin\": \"0.7.0\" } }))"
-          ],
-          "output": ""
-        },
-        {
-          "args": "cache --frozen add.ts",
-          "output": "frozen_package_json_changed.out",
-          "exitCode": 1
-        },
-        {
-          "args": "install --frozen",
-          "output": "frozen_package_json_changed_install.out",
-          "exitCode": 1
-        }
-      ]
-    },
     "no_error_when_in_lockfile": {
       "steps": [
         {

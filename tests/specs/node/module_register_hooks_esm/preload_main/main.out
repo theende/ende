@@ -1,5 +1,0 @@
-hook module loaded
-hook:load [WILDCARD]main.mjs
-hook:resolve ./mod.mjs
-hook:load [WILDCARD]mod.mjs
-hello from main 42

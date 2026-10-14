@@ -474,7 +474,7 @@ fn create_package_temp_dir(
   std::fs::write(&package_json_path, "{}")?;
   let ende_json_path =
     temp_dir.join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME);
-  let mut ende_json_value = serde_json::json!({"nodeModulesDir": "auto"});
+  let mut ende_json_value = serde_json::json!({});
   if let Some(min_dep_age) =
     minimum_dependency_age_config_json(min_dep_age_config)
   {
@@ -696,7 +696,6 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
         &flags,
         reload,
         command_flags.yes,
-        &command_flags.ignore_scripts,
         &factory.ende_dir()?.root,
         &min_dep_age_config,
         resolve_import_deny_rules(cli_options)?,
@@ -775,7 +774,6 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
         &flags,
         reload,
         command_flags.yes,
-        &command_flags.ignore_scripts,
         &factory.ende_dir()?.root,
         &min_dep_age_config,
         resolve_import_deny_rules(cli_options)?,
@@ -837,7 +835,6 @@ async fn autoinstall_package(
   old_flags: &Flags,
   reload: bool,
   yes: bool,
-  ignore_scripts: &PackagesAllowedScripts,
   ende_dir: &Path,
   min_dep_age_config: &MinimumDependencyAgeConfig,
   import_deny_rules: Option<Vec<String>>,
@@ -845,7 +842,6 @@ async fn autoinstall_package(
   fn make_new_flags(
     old_flags: &Flags,
     temp_dir: &Path,
-    ignore_scripts: &PackagesAllowedScripts,
     import_deny_rules: Option<Vec<String>>,
   ) -> Arc<Flags> {
     let mut new_flags = (*old_flags).clone();
@@ -863,23 +859,9 @@ async fn autoinstall_package(
         .to_string_lossy()
         .into_owned(),
     );
-    match ignore_scripts {
-      PackagesAllowedScripts::All => {
-        new_flags.allow_scripts = PackagesAllowedScripts::None;
-        new_flags.deny_scripts.clear();
-      }
-      PackagesAllowedScripts::Some(package_reqs) => {
-        if matches!(old_flags.allow_scripts, PackagesAllowedScripts::None) {
-          new_flags.allow_scripts = PackagesAllowedScripts::All;
-        }
-        new_flags.deny_scripts = package_reqs.clone();
-      }
-      PackagesAllowedScripts::None => {
-        if matches!(old_flags.allow_scripts, PackagesAllowedScripts::None) {
-          new_flags.allow_scripts = PackagesAllowedScripts::All;
-        }
-      }
-    };
+    if matches!(old_flags.allow_scripts, PackagesAllowedScripts::None) {
+      new_flags.allow_scripts = PackagesAllowedScripts::All;
+    }
 
     log::debug!("new_flags: {:?}", new_flags);
 
@@ -893,12 +875,7 @@ async fn autoinstall_package(
     min_dep_age_config,
   )?;
 
-  let new_flags = make_new_flags(
-    old_flags,
-    temp_dir.path(),
-    ignore_scripts,
-    import_deny_rules,
-  );
+  let new_flags = make_new_flags(old_flags, temp_dir.path(), import_deny_rules);
   let new_factory = CliFactory::from_flags(new_flags.clone());
 
   match temp_dir {
@@ -945,7 +922,6 @@ async fn autoinstall_package(
             serde_json::Value::String(format!("jsr:{}", req_ref.req())),
           );
           let mut ende_json_value = serde_json::json!({
-            "nodeModulesDir": "manual",
             "imports": imports,
           });
           if let Some(min_dep_age) =

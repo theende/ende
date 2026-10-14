@@ -1,4 +1,3 @@
 {
-  "workspace": ["./packages/child"],
-  "unstable": ["byonm"]
+  "workspace": ["./packages/child"]
 }

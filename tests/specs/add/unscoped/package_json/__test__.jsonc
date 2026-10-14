@@ -32,22 +32,6 @@
           "output": "jsr_deno.json.out"
         }
       ]
-    },
-    // a jsr package forced into package.json uses the @jsr npm alias
-    "jsr_package_json_flag": {
-      "steps": [
-        {
-          "args": "add --unscoped --package-json jsr:@endetest/add",
-          "output": "[WILDCARD]"
-        },
-        {
-          "args": [
-            "eval",
-            "console.log(Deno.readTextFileSync('package.json').trim())"
-          ],
-          "output": "jsr_package.json.out"
-        }
-      ]
     }
   }
 }

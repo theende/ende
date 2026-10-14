@@ -38,8 +38,6 @@ use crate::file_fetcher::create_cli_file_fetcher;
 use crate::jsr::JsrFetchResolver;
 use crate::npm::NpmFetchResolver;
 
-mod approve_scripts;
-mod audit;
 mod cache_deps;
 pub(crate) mod deps;
 pub(crate) mod interactive_picker;
@@ -47,8 +45,6 @@ mod list;
 pub(crate) mod outdated;
 mod why;
 
-pub use approve_scripts::approve_scripts;
-pub use audit::audit;
 pub use cache_deps::CacheTopLevelDepsOptions;
 pub use cache_deps::cache_top_level_deps;
 pub use list::list;
@@ -340,19 +336,6 @@ impl ConfigUpdater {
     removed
   }
 
-  fn set_allow_scripts_value(
-    &mut self,
-    value: jsonc_parser::cst::CstInputValue,
-  ) {
-    if let Some(prop) = self.root_object.get("allowScripts") {
-      prop.set_value(value);
-    } else {
-      let index = self.root_object.properties().len();
-      self.root_object.insert(index, "allowScripts", value);
-    }
-    self.modified = true;
-  }
-
   fn commit(&self) -> Result<(), AnyError> {
     if !self.modified {
       return Ok(());
@@ -429,60 +412,14 @@ impl std::fmt::Display for AddCommandName {
   }
 }
 
-fn create_package_json(
-  flags: &Arc<Flags>,
-  options: &CliOptions,
-) -> Result<CliFactory, AnyError> {
-  std::fs::write(options.initial_cwd().join("package.json"), "{}\n")
-    .context("Failed to create package.json file")?;
-  log::info!("Created package.json configuration file.");
-  let factory = CliFactory::from_flags(flags.clone());
-  Ok(factory)
-}
-
 fn load_configs(
   flags: &Arc<Flags>,
   has_jsr_specifiers: impl FnOnce() -> bool,
-  force_package_json: bool,
-  honor_prefer_package_json: bool,
-) -> Result<
-  (
-    CliFactory,
-    bool,
-    Option<ConfigUpdater>,
-    Option<ConfigUpdater>,
-  ),
-  AnyError,
-> {
+) -> Result<(CliFactory, Option<ConfigUpdater>, Option<ConfigUpdater>), AnyError>
+{
   let cli_factory = CliFactory::from_flags(flags.clone());
   let options = cli_factory.cli_options()?;
   let start_dir = &options.start_dir;
-
-  // The `--package-json` flag or the `preferPackageJson` config setting both
-  // force dependencies to be managed via package.json. `link`/`unlink` opt out
-  // of the config setting because the `"links"` field lives in ende.json.
-  let force_package_json = force_package_json
-    || (honor_prefer_package_json && start_dir.workspace.prefer_package_json());
-
-  if force_package_json {
-    let npm_config = match start_dir.member_pkg_json() {
-      Some(pkg_json) => Some(ConfigUpdater::new(
-        ConfigKind::PackageJson,
-        pkg_json.path.clone(),
-      )?),
-      None => {
-        let pkg_json_path = options.initial_cwd().join("package.json");
-        let factory = create_package_json(flags, options)?;
-        return Ok((
-          factory,
-          force_package_json,
-          Some(ConfigUpdater::new(ConfigKind::PackageJson, pkg_json_path)?),
-          None,
-        ));
-      }
-    };
-    return Ok((cli_factory, force_package_json, npm_config, None));
-  }
 
   let npm_config = match start_dir.member_pkg_json() {
     Some(pkg_json) => Some(ConfigUpdater::new(
@@ -527,12 +464,7 @@ fn load_configs(
     }
   };
   assert!(ende_json_config.is_some() || npm_config.is_some());
-  Ok((
-    cli_factory,
-    force_package_json,
-    npm_config,
-    ende_json_config,
-  ))
+  Ok((cli_factory, npm_config, ende_json_config))
 }
 
 fn path_distance(a: &Path, b: &Path) -> usize {
@@ -549,13 +481,10 @@ pub async fn add(
   cmd_name: AddCommandName,
 ) -> Result<(), AnyError> {
   let save_exact = add_flags.save_exact;
-  let (cli_factory, force_package_json, mut npm_config, mut ende_json_config) =
-    load_configs(
-      &flags,
-      || add_flags.packages.iter().any(|s| s.starts_with("jsr:")),
-      add_flags.package_json,
-      true,
-    )?;
+  let (cli_factory, mut npm_config, mut ende_json_config) =
+    load_configs(&flags, || {
+      add_flags.packages.iter().any(|s| s.starts_with("jsr:"))
+    })?;
 
   if let Some(ende_json) = &ende_json_config
     && ende_json.obj().get("importMap").is_some()
@@ -794,11 +723,7 @@ pub async fn add(
       continue;
     }
 
-    if force_package_json {
-      npm_config.as_mut().unwrap().add(selected_package, kind);
-    } else if selected_package.package_name.starts_with("npm:")
-      && prefer_npm_config
-    {
+    if selected_package.package_name.starts_with("npm:") && prefer_npm_config {
       if let Some(npm) = &mut npm_config {
         npm.add(selected_package, kind);
       } else {
@@ -1199,14 +1124,9 @@ pub async fn remove(
   flags: Arc<Flags>,
   remove_flags: RemoveFlags,
 ) -> Result<(), AnyError> {
-  let (_, force_package_json, npm_config, ende_json_config) =
-    load_configs(&flags, || false, remove_flags.package_json, true)?;
+  let (_, npm_config, ende_json_config) = load_configs(&flags, || false)?;
 
-  let mut configs = if force_package_json {
-    [npm_config, None]
-  } else {
-    [npm_config, ende_json_config]
-  };
+  let mut configs = [npm_config, ende_json_config];
 
   let mut removed_packages = vec![];
 
@@ -1257,70 +1177,6 @@ pub async fn remove(
   }
 
   Ok(())
-}
-
-pub(crate) async fn create_dep_manager_and_resolvers(
-  factory: &CliFactory,
-) -> Result<(deps::DepManager, Arc<crate::jsr::JsrFetchResolver>), AnyError> {
-  let cli_options = factory.cli_options()?;
-  let workspace = cli_options.workspace();
-  let http_client = factory.http_client_provider();
-  let deps_http_cache = factory.global_http_cache()?;
-  let file_fetcher = create_cli_file_fetcher(
-    ende_runtime::ende_web::BlobStore::default_arc(),
-    GlobalOrLocalHttpCache::Global(deps_http_cache.clone()),
-    http_client.clone(),
-    factory.memory_files().clone(),
-    factory.sys(),
-    CreateCliFileFetcherOptions {
-      allow_remote: true,
-      cache_setting: CacheSetting::RespectHeaders,
-      download_log_level: log::Level::Trace,
-      progress_bar: None,
-    },
-  );
-  let file_fetcher = Arc::new(file_fetcher);
-  let npm_fetch_resolver = Arc::new(NpmFetchResolver::new(
-    file_fetcher.clone(),
-    factory.npmrc()?.clone(),
-    factory.npm_version_resolver()?.clone(),
-  ));
-  let jsr_fetch_resolver = Arc::new(JsrFetchResolver::new(
-    file_fetcher.clone(),
-    factory.jsr_version_resolver()?.clone(),
-  ));
-
-  let args = deps::DepManagerArgs {
-    module_load_preparer: factory.module_load_preparer().await?.clone(),
-    jsr_fetch_resolver: jsr_fetch_resolver.clone(),
-    npm_fetch_resolver,
-    npm_resolver: factory.npm_resolver().await?.clone(),
-    npm_installer: factory.npm_installer().await?.clone(),
-    npm_version_resolver: factory.npm_version_resolver()?.clone(),
-    progress_bar: factory.text_only_progress_bar().clone(),
-    permissions_container: factory.root_permissions_container()?.clone(),
-    main_module_graph_container: factory
-      .main_module_graph_container()
-      .await?
-      .clone(),
-    lockfile: factory.maybe_lockfile().await?.cloned(),
-  };
-
-  let filter_fn = |_alias: Option<&str>,
-                   _req: &deno_semver::package::PackageReq,
-                   _: deps::DepKind| true;
-
-  let deps = if cli_options.start_dir.has_ende_or_pkg_json() {
-    deps::DepManager::from_workspace_dir(
-      &cli_options.start_dir,
-      filter_fn,
-      args,
-    )?
-  } else {
-    deps::DepManager::from_workspace(workspace, filter_fn, args)?
-  };
-
-  Ok((deps, jsr_fetch_resolver))
 }
 
 async fn npm_install_after_modification(
@@ -1450,8 +1306,8 @@ fn load_ende_config_for_link(
     // For `link`, force creation of ende.json if missing; the `"links"` field
     // lives there. We achieve this by claiming jsr specifiers are present,
     // which makes `load_configs` materialise an ende.json when one isn't found.
-    let (cli_factory, _force_package_json, _npm_config, ende_json_config) =
-      load_configs(flags, || true, false, false)?;
+    let (cli_factory, _npm_config, ende_json_config) =
+      load_configs(flags, || true)?;
     let ende_json_config = ende_json_config.ok_or_else(|| {
       ende_core::anyhow::anyhow!("Could not load or create ende.json")
     })?;

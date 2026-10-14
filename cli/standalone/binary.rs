@@ -21,7 +21,6 @@ use deno_graph::ModuleGraph;
 use deno_path_util::fs::atomic_write_file_with_retries;
 use deno_path_util::url_from_directory_path;
 use deno_path_util::url_to_file_path;
-use deno_semver::npm::NpmPackageReqReference;
 use ende_cache_dir::CACHE_PERM;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::bail;
@@ -652,27 +651,12 @@ impl<'a> EndeCompileBinaryWriter<'a> {
     let npm_snapshot = match &self.npm_resolver {
       CliNpmResolver::Managed(managed) => {
         if graph.modules().any(|m| m.npm().is_some()) {
-          let snapshot = managed.resolution().snapshot();
-          // When the user opts in (or via the existing unstable lazy-caching
-          // path), prune the resolution snapshot to packages reachable from
-          // npm specifiers in the graph. Otherwise embed the full snapshot
-          // so non-statically-analyzable dynamic imports keep working.
-          let snapshot = if compile_flags.exclude_unused_npm
-            || self.cli_options.unstable_npm_lazy_caching()
-          {
-            let reqs = graph
-              .specifiers()
-              .filter_map(|(s, _)| {
-                NpmPackageReqReference::from_specifier(s)
-                  .ok()
-                  .map(|req_ref| req_ref.into_inner().req)
-              })
-              .collect::<Vec<_>>();
-            snapshot.subset(&reqs)
-          } else {
-            snapshot
-          }
-          .as_valid_serialized_for_system(&self.npm_system_info);
+          // Embed the full snapshot so non-statically-analyzable dynamic
+          // imports keep working.
+          let snapshot = managed
+            .resolution()
+            .snapshot()
+            .as_valid_serialized_for_system(&self.npm_system_info);
           if !snapshot.as_serialized().packages.is_empty() {
             self
               .fill_npm_vfs(&mut vfs, Some(&snapshot), &progress_bar)
@@ -1164,7 +1148,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
           .map(|s| s.to_string())
           .collect(),
         lazy_dynamic_imports: self.cli_options.unstable_lazy_dynamic_imports(),
-        npm_lazy_caching: self.cli_options.unstable_npm_lazy_caching(),
         raw_imports: self.cli_options.unstable_raw_imports(),
         sloppy_imports: self.cli_options.unstable_sloppy_imports(),
         tsgo: self.cli_options.unstable_tsgo(),

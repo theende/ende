@@ -449,9 +449,8 @@ fn add_deps_from_catalogs(
   mut filter: impl DepFilter,
   deps: &mut Vec<Dep>,
 ) {
-  // Mirror `Workspace`'s own resolution: a root package.json catalog takes
-  // precedence over ende.json, and if it's present ende.json catalogs are
-  // ignored entirely.
+  // Mirror `Workspace`'s own resolution: catalogs only come from the root
+  // package.json (ende.json catalogs are not supported).
   let pkg_json = workspace
     .root_pkg_json()
     .filter(|pj| pj.catalog.is_some() || pj.catalogs.is_some());
@@ -464,17 +463,6 @@ fn add_deps_from_catalogs(
       pj.catalogs.as_ref(),
       // package.json may declare catalogs nested under `workspaces`.
       true,
-    )
-  } else if let Some(dj) = workspace.root_ende_json() {
-    let Ok(path) = dj.specifier.to_file_path() else {
-      return;
-    };
-    (
-      path,
-      super::ConfigKind::EndeJson,
-      dj.catalog(),
-      dj.catalogs(),
-      false,
     )
   } else {
     return;

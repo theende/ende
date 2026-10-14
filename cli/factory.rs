@@ -600,7 +600,7 @@ impl CliFactory {
   }
 
   pub fn npmrc(&self) -> Result<&Arc<ResolvedNpmRc>, AnyError> {
-    Ok(self.workspace_factory()?.npmrc()?)
+    Ok(self.workspace_factory()?.npmrc())
   }
 
   pub async fn npm_graph_resolver(
@@ -627,20 +627,11 @@ impl CliFactory {
     self.services.npm_installer_factory.get_or_try_init(|| {
       let cli_options = self.cli_options()?;
       let resolver_factory = self.resolver_factory()?;
-      // the `no-downgrade` trust policy reads `_npmUser`/`attestations`, which
-      // are only present in the full packument
-      let needs_full_packument_for_trust = resolver_factory
-        .workspace_factory()
-        .npmrc()
+      let needs_full_packument = resolver_factory
+        .minimum_dependency_age_config()
         .ok()
-        .map(|rc| rc.trust_policy != ende_npmrc::TrustPolicyConfig::Off)
-        .unwrap_or(false);
-      let needs_full_packument = needs_full_packument_for_trust
-        || resolver_factory
-          .minimum_dependency_age_config()
-          .ok()
-          .and_then(|c| c.age.as_ref().and_then(|d| d.into_option()))
-          .is_some();
+        .and_then(|c| c.age.as_ref().and_then(|d| d.into_option()))
+        .is_some();
       Ok(CliNpmInstallerFactory::new(
         resolver_factory.clone(),
         Arc::new(CliNpmCacheHttpClient::new(
@@ -672,7 +663,6 @@ impl CliFactory {
         NpmInstallerFactoryOptions {
           clean_on_install: match cli_options.sub_command() {
             EndeSubcommand::Add { .. }
-            | EndeSubcommand::ApproveScripts { .. }
             | EndeSubcommand::Remove { .. }
             | EndeSubcommand::Link { .. }
             | EndeSubcommand::Unlink { .. }
@@ -690,8 +680,7 @@ impl CliFactory {
               },
               InstallFlags::Global(_) => false,
             },
-            EndeSubcommand::Audit { .. }
-            | EndeSubcommand::Bench { .. }
+            EndeSubcommand::Bench { .. }
             | EndeSubcommand::Check { .. }
             | EndeSubcommand::Clean { .. }
             | EndeSubcommand::Compile { .. }
@@ -720,7 +709,6 @@ impl CliFactory {
             | EndeSubcommand::Upgrade { .. }
             | EndeSubcommand::Vendor
             | EndeSubcommand::Why { .. }
-            | EndeSubcommand::Pack { .. }
             | EndeSubcommand::Publish { .. }
             | EndeSubcommand::Help { .. }
             | EndeSubcommand::X { .. }
@@ -1443,11 +1431,7 @@ impl CliFactory {
           node_analysis_cache: Some(node_analysis_cache),
           node_resolver_options: NodeResolverOptions {
             conditions: NodeConditionOptions {
-              conditions: options
-                .node_conditions()
-                .iter()
-                .map(|c| Cow::Owned(c.clone()))
-                .collect(),
+              conditions: Vec::new(),
               import_conditions_override: None,
               require_conditions_override: None,
             },
@@ -1530,7 +1514,6 @@ fn new_workspace_factory_options(
     is_package_manager_subcommand: matches!(
       flags.subcommand,
       EndeSubcommand::Add(_)
-        | EndeSubcommand::Audit(_)
         | EndeSubcommand::Ci(_)
         | EndeSubcommand::Clean(_)
         | EndeSubcommand::Init(_)
@@ -1541,7 +1524,6 @@ fn new_workspace_factory_options(
         | EndeSubcommand::Remove(_)
         | EndeSubcommand::Unlink(_)
         | EndeSubcommand::Uninstall(_)
-        | EndeSubcommand::ApproveScripts(_)
     ),
     no_lock: flags.no_lock
       || matches!(
@@ -1549,18 +1531,11 @@ fn new_workspace_factory_options(
         EndeSubcommand::Install(InstallFlags::Global(..))
           | EndeSubcommand::Uninstall(_)
       ),
-    // Seed the lockfile from package-lock.json only when the user is explicitly
-    // setting up dependencies via `ende install` (local form).
-    import_npm_lockfile: matches!(
-      flags.subcommand,
-      EndeSubcommand::Install(InstallFlags::Local(..))
-    ),
     frozen_lockfile: flags.frozen_lockfile,
     lock_arg: flags.lock.as_ref().map(|l| initial_cwd.join(l)),
     lockfile_skip_write: flags.internal.lockfile_skip_write,
     no_npm: flags.no_npm,
     node_modules_dir: flags.node_modules_dir,
-    node_modules_linker: flags.node_modules_linker,
     npm_process_state: npm_process_state(&CliSys::default()).as_ref().map(
       |s| {
         use ende_npm_installer::process_state::NpmProcessStateLinkerMode;

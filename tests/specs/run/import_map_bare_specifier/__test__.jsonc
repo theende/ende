@@ -13,22 +13,14 @@
         }
       ]
     },
-    "npm_nmd_none": {
-      "args": "run --node-modules-dir=none bar hello test",
-      "output": "npm.out"
-    },
-    "npm_nmd_auto": {
-      "args": "run --node-modules-dir=auto bar hello test",
-      "output": "npm.out"
-    },
     "npm_nmd_manual": {
       "steps": [
         {
-          "args": "i --node-modules-dir=manual",
+          "args": "i",
           "output": "[WILDCARD]"
         },
         {
-          "args": "run --node-modules-dir=manual bar hello test",
+          "args": "run bar hello test",
           "output": "npm.out"
         }
       ]

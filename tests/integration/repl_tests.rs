@@ -1140,45 +1140,6 @@ fn pty_tab_indexable_props() {
 }
 
 #[test(flaky)]
-fn package_json_uncached_no_error() {
-  let test_context = TestContextBuilder::for_npm()
-    .use_temp_cwd()
-    .use_http_server()
-    .env("RUST_BACKTRACE", "1")
-    .build();
-  let temp_dir = test_context.temp_dir();
-  temp_dir.write("ende.json", "{ \"nodeModulesDir\": \"auto\" }");
-  temp_dir.write(
-    "package.json",
-    r#"{
-  "dependencies": {
-    "@denotest/esm-basic": "1.0.0"
-  }
-}
-"#,
-  );
-  test_context.new_command().with_pty(|mut console| {
-    console.write_line("console.log(123 + 456);");
-    console.expect_all(&["579", "undefined"]);
-    assert_not_contains!(
-      console.all_output(),
-      "Could not set npm package requirements",
-    );
-
-    // should support getting the package now though
-    console
-      .write_line("import { getValue, setValue } from '@denotest/esm-basic';");
-    console.expect("undefined");
-    console.write_line("setValue(12 + 30);");
-    console.expect("undefined");
-    console.write_line("getValue()");
-    console.expect("42");
-
-    assert!(temp_dir.path().join("node_modules").exists());
-  });
-}
-
-#[test(flaky)]
 fn env_file() {
   TestContext::default()
     .new_command()

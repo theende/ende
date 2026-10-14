@@ -6,5 +6,3 @@ throw new Error(
 
     info: Trying to execute an npm package using Node-API addons,
           these packages require local `node_modules` directory to be present.
-    hint: Add `"nodeModulesDir": "auto" option to `ende.json`, and then run
-          `ende install --allow-scripts=npm:<package> --entrypoint <script>` to setup `node_modules` directory.

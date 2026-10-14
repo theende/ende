@@ -6,63 +6,17 @@
       "output": "check.out",
       "exitCode": 1
     },
-    "check_node_modules_dir_none": {
-      "args": "check --node-modules-dir=none main.ts",
-      "output": "check.out",
-      "exitCode": 1
-    },
-    "check_node_modules_dir_auto": {
-      "args": "check --node-modules-dir=auto main.ts",
-      "output": "check.out",
-      "exitCode": 1
-    },
     "info": {
       "args": ["info", "#add"],
-      "output": "info.out"
-    },
-    "info_node_modules_dir_none": {
-      "args": ["info", "--node-modules-dir=none", "#add"],
-      "output": "info.out"
-    },
-    "info_node_modules_dir_auto": {
-      "args": ["info", "--node-modules-dir=auto", "#add"],
       "output": "info.out"
     },
     "run": {
       "args": "run main.ts",
       "output": "run.out"
     },
-    "run_node_modules_dir_none": {
-      "args": "run --node-modules-dir=none main.ts",
-      "output": "run.out"
-    },
-    "run_node_modules_dir_auto": {
-      "args": "run --node-modules-dir=auto main.ts",
-      "output": "run.out"
-    },
     "compile": {
       "steps": [{
         "args": "compile --no-check --output bin main.ts",
-        "output": "[WILDCARD]"
-      }, {
-        "commandName": "./bin",
-        "args": [],
-        "output": "run.out"
-      }]
-    },
-    "compile_node_modules_dir_auto": {
-      "steps": [{
-        "args": "compile --node-modules-dir=auto --no-check --output bin main.ts",
-        "output": "[WILDCARD]"
-      }, {
-        "commandName": "./bin",
-        "args": [],
-        "output": "run.out"
-      }]
-    },
-    "compile_node_modules_dir_none": {
-      "steps": [{
-        "args": "compile --node-modules-dir=none --no-check --output bin main.ts",
         "output": "[WILDCARD]"
       }, {
         "commandName": "./bin",

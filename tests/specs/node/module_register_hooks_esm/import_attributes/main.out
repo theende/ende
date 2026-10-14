@@ -1,2 +1,0 @@
-hook:load importAttributes {"type":"json"}
-value: 42

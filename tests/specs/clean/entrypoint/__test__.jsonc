@@ -2,42 +2,6 @@
   "tempDir": true,
 
   "tests": {
-    "npm": {
-      "steps": [
-        {
-          "envs": { "ENDE_DIR": "./denodir" },
-          "args": "install --node-modules-dir npm:chalk npm:@denotest/add",
-          "output": "[WILDCARD]"
-        },
-        {
-          "args": "run -A ./print-dir.ts --max-level=5 ./denodir --max-level=5 ./node_modules",
-          "output": "npm_init.out"
-        },
-        {
-          "envs": { "ENDE_DIR": "./denodir" },
-          "args": "clean -e --node-modules-dir npm:@denotest/add",
-          "output": "Removed [WILDCARD] files, [WILDCARD] from [WILDCARD]\n"
-        },
-        {
-          "args": "run -A ./print-dir.ts --max-level=5 ./denodir --max-level=5 ./node_modules",
-          "output": "npm_cleaned.out"
-        },
-        {
-          "envs": { "ENDE_DIR": "./denodir" },
-          "args": "install --node-modules-dir npm:chalk npm:@denotest/add",
-          "output": "[WILDCARD]"
-        },
-        {
-          "args": "run -A ./print-dir.ts --max-level=5 ./denodir --max-level=5 ./node_modules",
-          "output": "npm_init.out"
-        },
-        {
-          "envs": { "ENDE_DIR": "./denodir" },
-          "args": "clean -e --node-modules-dir --dry-run npm:@denotest/add",
-          "output": "npm_clean_dry_run.out"
-        }
-      ]
-    },
     "jsr_http": {
       "steps": [
         {
@@ -78,7 +42,7 @@
       "steps": [
         {
           "envs": { "ENDE_DIR": "./denodir" },
-          "args": "run -A --node-modules-dir --vendor vendor1.ts",
+          "args": "run -A --vendor vendor1.ts",
           "output": "[WILDCARD]"
         },
         {
@@ -87,7 +51,7 @@
         },
         {
           "envs": { "ENDE_DIR": "./denodir" },
-          "args": "clean -e --node-modules-dir --vendor vendor2.ts",
+          "args": "clean -e --vendor vendor2.ts",
           "output": "vendor_clean_output.out"
         },
         {

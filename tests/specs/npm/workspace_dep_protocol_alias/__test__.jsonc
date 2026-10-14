@@ -1,14 +1,6 @@
 {
   "tempDir": true,
   "tests": {
-    "global_cache": {
-      "args": "run --node-modules-dir=none app/main.ts",
-      "output": "main.out"
-    },
-    "node_modules_dir": {
-      "args": "run --node-modules-dir=auto app/main.ts",
-      "output": "main.out"
-    },
     "byonm": {
       "steps": [
         {

@@ -14,8 +14,6 @@ use std::num::NonZeroU8;
 use std::num::NonZeroU32;
 use std::num::NonZeroUsize;
 
-use deno_semver::jsr::JsrDepPackageReq;
-use deno_semver::package::PackageKind;
 use ende_permissions::SysDescriptor;
 
 use crate::error::CliError;
@@ -205,21 +203,16 @@ pub fn convert(result: ParseResult) -> Result<Flags, CliError> {
     Some("list") => list_parse(&result, &mut flags),
     Some("link") => link_parse(&result, &mut flags),
     Some("unlink") => unlink_parse(&result, &mut flags),
-    Some("approve-scripts" | "approve-builds") => {
-      approve_scripts_parse(&result, &mut flags)
-    }
     Some("types") => types_parse(&mut flags),
     Some("lsp") => lsp_parse(&mut flags),
     Some("vendor") => vendor_parse(&mut flags),
     Some("deploy") => deploy_parse(&mut flags, false),
     Some("sandbox") => deploy_parse(&mut flags, true),
-    Some("audit") => audit_parse(&result, &mut flags)?,
     Some("why") => why_parse(&result, &mut flags),
     Some("transpile") => transpile_parse(&result, &mut flags),
     Some("bump-version") => bump_version_parse(&result, &mut flags)?,
     Some("ci") => ci_parse(&result, &mut flags),
     Some("desktop") => desktop_parse(&result, &mut flags)?,
-    Some("pack") => pack_parse(&result, &mut flags),
     Some("x") => x_parse(&result, &mut flags)?,
     Some("json_reference") => json_reference_parse(&mut flags),
     Some("help") => help_subcommand_parse(&result, &mut flags),
@@ -245,10 +238,6 @@ pub fn convert(result: ParseResult) -> Result<Flags, CliError> {
       ));
     }
   }
-
-  // Validate and apply `--allow-scripts` (no-op when the subcommand's def does
-  // not include the flag, so it is only set where it is accepted).
-  allow_scripts_arg_parse(&result, &mut flags)?;
 
   // Validate permission args
   validate_permission_args(&result, &flags)?;
@@ -282,15 +271,22 @@ fn default_parse(
   // Check if there's a script_arg (from default subcommand = run)
   let script = result.get_one("script_arg");
   if let Some(script) = script {
-    // `ende bundle` is not part of Ende. Report it as an unknown subcommand
-    // instead of trying to run a file named `bundle`.
-    if script == "bundle" {
+    // Subcommands Ende removed. Report them as unknown subcommands instead of
+    // trying to run a file with that name.
+    const REMOVED_SUBCOMMANDS: &[&str] = &[
+      "bundle",
+      "approve-scripts",
+      "approve-builds",
+      "audit",
+      "pack",
+    ];
+    if REMOVED_SUBCOMMANDS.contains(&script) {
       return Err(
         CliError::new(
           CliErrorKind::UnknownSubcommand,
-          "unrecognized subcommand 'bundle'",
+          format!("unrecognized subcommand '{script}'"),
         )
-        .with_suggestion("`ende bundle` is not supported in Ende"),
+        .with_suggestion(format!("`ende {script}` is not supported in Ende")),
       );
     }
     // Check if the script name is actually a known subcommand name.
@@ -325,13 +321,11 @@ fn default_parse(
       "outdated",
       "update",
       "clean",
-      "approve-scripts",
       "types",
       "lsp",
       "vendor",
       "deploy",
       "sandbox",
-      "audit",
       "x",
     ];
     if known_subcommands.contains(&script) {
@@ -486,8 +480,7 @@ fn compile_args_without_check_parse(result: &ParseResult, flags: &mut Flags) {
   import_map_arg_parse(result, flags);
   no_remote_arg_parse(result, flags);
   no_npm_arg_parse(result, flags);
-  node_modules_and_vendor_dir_arg_parse(result, flags);
-  node_conditions_args_parse(result, flags);
+  vendor_dir_arg_parse(result, flags);
   config_args_parse(result, flags);
   reload_arg_parse(result, flags);
   lock_args_parse(result, flags);
@@ -510,8 +503,6 @@ fn runtime_args_parse(
   if include_inspector {
     inspect_arg_parse(result, flags)?;
   }
-  // `--allow-scripts` is validated and applied centrally in `convert()` so the
-  // fallible parsing lives in one place (see `allow_scripts_arg_parse`).
   location_arg_parse(result, flags);
   v8_flags_arg_parse(result, flags);
   seed_arg_parse(result, flags);
@@ -520,7 +511,6 @@ fn runtime_args_parse(
   trace_ops_parse(result, flags);
   eszip_arg_parse(result, flags);
   preload_arg_parse(result, flags);
-  require_arg_parse(result, flags);
   Ok(())
 }
 
@@ -671,47 +661,10 @@ fn no_npm_arg_parse(result: &ParseResult, flags: &mut Flags) {
   }
 }
 
-fn node_modules_arg_parse(result: &ParseResult, flags: &mut Flags) {
-  if result.contains("node-modules-dir") {
-    let value = result.get_one("node-modules-dir");
-    flags.node_modules_dir = Some(match value {
-      Some("auto" | "true") | None => NodeModulesDirMode::Auto,
-      Some("manual") => NodeModulesDirMode::Manual,
-      Some("none" | "false") => NodeModulesDirMode::None,
-      Some(_) => NodeModulesDirMode::Auto,
-    });
-  }
-}
-
 fn vendor_dir_arg_parse(result: &ParseResult, flags: &mut Flags) {
   if result.contains("vendor") {
     let value = result.get_one("vendor");
     flags.vendor = Some(!matches!(value, Some("false")));
-  }
-}
-
-fn node_modules_and_vendor_dir_arg_parse(
-  result: &ParseResult,
-  flags: &mut Flags,
-) {
-  node_modules_arg_parse(result, flags);
-  node_modules_linker_arg_parse(result, flags);
-  vendor_dir_arg_parse(result, flags);
-}
-
-fn node_modules_linker_arg_parse(result: &ParseResult, flags: &mut Flags) {
-  flags.node_modules_linker = match result.get_one("node-modules-linker") {
-    Some("isolated") => Some(NodeModulesLinkerMode::Isolated),
-    Some("hoisted") => Some(NodeModulesLinkerMode::Hoisted),
-    // Invalid values are left as clap would reject them; validation is a
-    // separate (Tier 2) concern.
-    _ => None,
-  };
-}
-
-fn node_conditions_args_parse(result: &ParseResult, flags: &mut Flags) {
-  if let Some(values) = result.get_many("node-conditions") {
-    flags.node_conditions = values.iter().map(|s| s.to_string()).collect();
   }
 }
 
@@ -905,12 +858,6 @@ fn preload_arg_parse(result: &ParseResult, flags: &mut Flags) {
   }
 }
 
-fn require_arg_parse(result: &ParseResult, flags: &mut Flags) {
-  if let Some(values) = result.get_many("require") {
-    flags.require = values.iter().map(|s| s.to_string()).collect();
-  }
-}
-
 fn ext_arg_parse(result: &ParseResult, flags: &mut Flags) {
   if let Some(ext) = result.get_one("ext") {
     flags.ext = Some(ext.to_string());
@@ -924,11 +871,6 @@ fn unstable_args_parse(result: &ParseResult, flags: &mut Flags) {
 
   // Map each unstable feature flag to features list and individual bools
   let unstable_features: &[UnstableFeatureEntry] = &[
-    ("unstable-bare-node-builtins", None),
-    (
-      "unstable-detect-cjs",
-      Some(|c: &mut UnstableConfig| c.detect_cjs = true),
-    ),
     (
       "unstable-lazy-dynamic-imports",
       Some(|c: &mut UnstableConfig| c.lazy_dynamic_imports = true),
@@ -936,10 +878,6 @@ fn unstable_args_parse(result: &ParseResult, flags: &mut Flags) {
     (
       "unstable-sloppy-imports",
       Some(|c: &mut UnstableConfig| c.sloppy_imports = true),
-    ),
-    (
-      "unstable-npm-lazy-caching",
-      Some(|c: &mut UnstableConfig| c.npm_lazy_caching = true),
     ),
     (
       "unstable-raw-imports",
@@ -952,7 +890,6 @@ fn unstable_args_parse(result: &ParseResult, flags: &mut Flags) {
     ("unstable-ffi", None),
     ("unstable-worker-options", None),
     ("unstable-broadcast-channel", None),
-    ("unstable-byonm", None),
     ("unstable-cron", None),
     ("unstable-fs", None),
     ("unstable-http", None),
@@ -982,92 +919,6 @@ fn unstable_args_parse(result: &ParseResult, flags: &mut Flags) {
 
   // Sort features for deterministic output
   flags.unstable_config.features.sort();
-}
-
-fn allow_scripts_arg_parse(
-  result: &ParseResult,
-  flags: &mut Flags,
-) -> Result<(), CliError> {
-  let Some(values) = result.get_many("allow-scripts") else {
-    return Ok(());
-  };
-  if values.is_empty() {
-    flags.allow_scripts = PackagesAllowedScripts::All;
-    return Ok(());
-  }
-  let mut packages = Vec::new();
-  for value in values {
-    // The `--allow-scripts` value parser requires an explicit `npm:` prefix
-    // (unlike `--ignore-scripts`, which auto-prepends it).
-    if !value.starts_with("npm:") {
-      return Err(CliError::new(
-        CliErrorKind::InvalidValue,
-        format!(
-          "Invalid package for --allow-scripts: '{value}'. An 'npm:' specifier is required"
-        ),
-      ));
-    }
-    for value in escape_and_split_commas(value.to_string())? {
-      let dep = JsrDepPackageReq::from_str_loose(&value).map_err(|e| {
-        CliError::new(CliErrorKind::InvalidValue, e.to_string())
-      })?;
-      if dep.kind != PackageKind::Npm {
-        return Err(CliError::new(
-          CliErrorKind::InvalidValue,
-          format!("Only npm package constraints are supported: {value}"),
-        ));
-      }
-      if dep.req.version_req.tag().is_some() {
-        return Err(CliError::new(
-          CliErrorKind::InvalidValue,
-          format!("Tags are not supported in --allow-scripts: {value}"),
-        ));
-      }
-      packages.push(dep.req);
-    }
-  }
-  flags.allow_scripts = PackagesAllowedScripts::Some(packages);
-  Ok(())
-}
-
-fn ignore_scripts_value(
-  result: &ParseResult,
-) -> Result<PackagesAllowedScripts, CliError> {
-  let Some(values) = result.get_many("ignore-scripts") else {
-    return Ok(PackagesAllowedScripts::None);
-  };
-  if values.is_empty() {
-    return Ok(PackagesAllowedScripts::All);
-  }
-
-  let mut packages = Vec::new();
-  for value in values {
-    for value in escape_and_split_commas(value.to_string())? {
-      let value = if value.starts_with("npm:") || value.starts_with("jsr:") {
-        value
-      } else {
-        format!("npm:{value}")
-      };
-      let dep = JsrDepPackageReq::from_str_loose(&value).map_err(|e| {
-        CliError::new(CliErrorKind::InvalidValue, e.to_string())
-      })?;
-      if dep.kind != PackageKind::Npm {
-        return Err(CliError::new(
-          CliErrorKind::InvalidValue,
-          format!("Only npm package constraints are supported: {value}"),
-        ));
-      }
-      if dep.req.version_req.tag().is_some() {
-        return Err(CliError::new(
-          CliErrorKind::InvalidValue,
-          format!("Tags are not supported in --ignore-scripts: {value}"),
-        ));
-      }
-      packages.push(dep.req);
-    }
-  }
-
-  Ok(PackagesAllowedScripts::Some(packages))
 }
 
 fn no_check_arg_parse(result: &ParseResult, flags: &mut Flags) {
@@ -1909,7 +1760,7 @@ fn info_parse(result: &ParseResult, flags: &mut Flags) {
   location_arg_parse(result, flags);
   ca_file_arg_parse(result, flags);
   unsafely_ignore_certificate_errors_parse(result, flags);
-  node_modules_and_vendor_dir_arg_parse(result, flags);
+  vendor_dir_arg_parse(result, flags);
   lock_args_parse(result, flags);
   no_remote_arg_parse(result, flags);
   no_npm_arg_parse(result, flags);
@@ -2004,7 +1855,6 @@ fn doc_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
 
 fn task_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
   config_args_parse(result, flags);
-  node_modules_arg_parse(result, flags);
   lock_args_parse(result, flags);
   env_file_arg_parse(result, flags);
 
@@ -2137,7 +1987,6 @@ fn compile_parse(
     eszip,
     self_extracting,
     app_name: result.get_one("app-name").map(|s| s.to_string()),
-    exclude_unused_npm: result.get_bool("exclude-unused-npm"),
     engine: result
       .get_one("engine")
       .map(|value| value.parse().expect("engine is validated by the parser"))
@@ -2358,7 +2207,6 @@ fn install_parse(
           default_registry,
           lockfile_only,
           save_exact: result.get_bool("save-exact"),
-          package_json: result.get_bool("package-json"),
           unscoped: result.get_bool("unscoped"),
         }),
         npm_target,
@@ -2402,7 +2250,6 @@ fn uninstall_parse(result: &ParseResult, flags: &mut Flags) {
     UninstallKind::Local(RemoveFlags {
       packages,
       lockfile_only: result.get_bool("lockfile-only"),
-      package_json: result.get_bool("package-json"),
     })
   };
 
@@ -2507,13 +2354,12 @@ fn create_parse(
     .get_one("package")
     .map(|s| s.to_string())
     .unwrap_or_default();
-  let use_npm = result.get_bool("npm");
   let use_jsr = result.get_bool("jsr");
   // Extra package args are only accepted after `--` (clap's `last(true)`),
   // so they arrive via `result.trailing`.
   let package_args: Vec<String> = result.trailing.clone();
 
-  let package = normalize_create_package_name(package, use_npm, use_jsr)?;
+  let package = normalize_create_package_name(package, use_jsr)?;
 
   flags.subcommand = EndeSubcommand::Init(InitFlags {
     package: Some(package),
@@ -2529,16 +2375,10 @@ fn create_parse(
 
 fn normalize_create_package_name(
   package: String,
-  use_npm: bool,
   use_jsr: bool,
 ) -> Result<String, CliError> {
   if let Some(name) = package.strip_prefix("jsr:") {
-    if use_npm {
-      Err(CliError::new(
-        CliErrorKind::InvalidValue,
-        "Cannot use `--npm` with a `jsr:` specifier.",
-      ))
-    } else if name.is_empty() {
+    if name.is_empty() {
       Err(CliError::new(
         CliErrorKind::InvalidValue,
         "Missing package name after 'jsr:' prefix.",
@@ -2560,14 +2400,12 @@ fn normalize_create_package_name(
     } else {
       Ok(package)
     }
-  } else if use_npm {
-    Ok(format!("npm:{package}"))
   } else if use_jsr {
     Ok(format!("jsr:{package}"))
   } else {
     Err(CliError::new(
       CliErrorKind::InvalidValue,
-      "Missing `jsr:` or `npm:` prefix. For example: `ende create npm:vite`.",
+      "Missing `jsr:` prefix. For example: `ende create jsr:@fresh/init`, or pass `--jsr`.",
     ))
   }
 }
@@ -2633,31 +2471,7 @@ fn add_parse(result: &ParseResult, flags: &mut Flags) {
     default_registry,
     lockfile_only: result.get_bool("lockfile-only"),
     save_exact: result.get_bool("save-exact"),
-    package_json: result.get_bool("package-json"),
     unscoped: result.get_bool("unscoped"),
-  });
-}
-
-fn pack_parse(result: &ParseResult, flags: &mut Flags) {
-  flags.type_check_mode = TypeCheckMode::Local; // local by default
-  config_args_parse(result, flags);
-  env_file_arg_parse(result, flags);
-  let include = result
-    .get_many("files")
-    .map(|v| v.iter().map(|s| s.to_string()).collect())
-    .unwrap_or_default();
-  let ignore = result
-    .get_many("ignore")
-    .map(|v| v.iter().map(|s| s.to_string()).collect())
-    .unwrap_or_default();
-  flags.subcommand = EndeSubcommand::Pack(PackFlags {
-    files: FileFlags { include, ignore },
-    output: result.get_one("output").map(|s| s.to_string()),
-    dry_run: result.get_bool("dry-run"),
-    allow_slow_types: result.get_bool("allow-slow-types"),
-    allow_dirty: result.get_bool("allow-dirty"),
-    set_version: result.get_one("set-version").map(|s| s.to_string()),
-    no_source_maps: result.get_bool("no-source-maps"),
   });
 }
 
@@ -2724,7 +2538,6 @@ fn desktop_parse(
     codesign_identity: None,
     inspect_renderer,
     compress,
-    exclude_unused_npm: result.get_bool("exclude-unused-npm"),
     engine: result
       .get_one("engine")
       .map(|value| value.parse().expect("engine is validated by the parser"))
@@ -2835,7 +2648,6 @@ fn remove_parse(result: &ParseResult, flags: &mut Flags) {
   flags.subcommand = EndeSubcommand::Remove(RemoveFlags {
     packages,
     lockfile_only: result.get_bool("lockfile-only"),
-    package_json: result.get_bool("package-json"),
   });
 }
 
@@ -2878,7 +2690,7 @@ fn clean_parse(result: &ParseResult, flags: &mut Flags) {
       .map(|v| v.iter().map(|s| s.to_string()).collect())
       .unwrap_or_default();
     flags.cached_only = true;
-    node_modules_and_vendor_dir_arg_parse(result, flags);
+    vendor_dir_arg_parse(result, flags);
   }
   let dry_run = result.get_bool("dry-run");
 
@@ -2921,16 +2733,6 @@ fn unlink_parse(result: &ParseResult, flags: &mut Flags) {
   flags.subcommand = EndeSubcommand::Unlink(UnlinkFlags {
     names_or_paths: result
       .get_many("names_or_paths")
-      .map(|v| v.iter().map(|s| s.to_string()).collect())
-      .unwrap_or_default(),
-    lockfile_only: result.get_bool("lockfile-only"),
-  });
-}
-
-fn approve_scripts_parse(result: &ParseResult, flags: &mut Flags) {
-  flags.subcommand = EndeSubcommand::ApproveScripts(ApproveScriptsFlags {
-    packages: result
-      .get_many("packages")
       .map(|v| v.iter().map(|s| s.to_string()).collect())
       .unwrap_or_default(),
     lockfile_only: result.get_bool("lockfile-only"),
@@ -3093,9 +2895,9 @@ pub fn apply_node_options(flags: &mut Flags) {
     }
   }
 
-  // Prepend NODE_OPTIONS --require values before CLI --require values
+  // `--require` is only accepted from NODE_OPTIONS (Node compat child
+  // processes); Ende has no `--require` flag.
   if !node_require.is_empty() {
-    node_require.append(&mut flags.require);
     flags.require = node_require;
   }
 
@@ -3159,45 +2961,6 @@ fn node_inspect_addr(word: &str, flag: &str) -> Option<SocketAddr> {
   }
 }
 
-fn audit_parse(
-  result: &ParseResult,
-  flags: &mut Flags,
-) -> Result<(), CliError> {
-  lock_args_parse(result, flags);
-
-  // The only accepted positional is the literal `fix`.
-  if let Some(action) = result.get_one("action")
-    && action != "fix"
-  {
-    return Err(CliError::new(
-      CliErrorKind::UnexpectedPositional,
-      format!("unexpected argument '{action}' found"),
-    ));
-  }
-
-  let severity = result.get_one("level").unwrap_or("low").to_string();
-  let ignore_unfixable = result.get_bool("ignore-unfixable");
-  let ignore_registry_errors = result.get_bool("ignore-registry-errors");
-  let socket = result.get_bool("socket");
-  let ignore = result
-    .get_many("ignore")
-    .map(|v| v.to_vec())
-    .unwrap_or_default();
-
-  flags.subcommand = EndeSubcommand::Audit(AuditFlags {
-    severity,
-    dev: true,
-    prod: true,
-    optional: true,
-    ignore_registry_errors,
-    ignore_unfixable,
-    ignore,
-    socket,
-    fix: result.get_bool("fix") || result.get_one("action") == Some("fix"),
-  });
-  Ok(())
-}
-
 fn x_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
   let kind = if let Some(alias) = result.get_one("install-alias") {
     if !result.contains("install-alias") {
@@ -3230,7 +2993,6 @@ fn x_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
         XFlagsKind::Command(XCommandFlags {
           yes,
           command,
-          ignore_scripts: ignore_scripts_value(result)?,
           package: result.get_one("package").map(|s| s.to_string()),
         })
       } else {

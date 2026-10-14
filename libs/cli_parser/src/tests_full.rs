@@ -13,7 +13,6 @@ use std::num::NonZeroU8;
 use std::num::NonZeroU32;
 use std::num::NonZeroUsize;
 
-use deno_semver::package::PackageReq;
 use pretty_assertions::assert_eq;
 
 use crate::CliErrorKind;
@@ -2925,7 +2924,6 @@ fn dep_and_registry_subcommands_env_file() {
       svec!["ende", "add", "--env-file", "@david/which"],
       svec![".env"],
     ),
-    (svec!["ende", "audit", "--env-file"], svec![".env"]),
     (svec!["ende", "why", "--env-file", "express"], svec![".env"]),
     (svec!["ende", "outdated", "--env-file"], svec![".env"]),
     (svec!["ende", "update", "--env-file"], svec![".env"]),
@@ -2940,7 +2938,6 @@ fn dep_and_registry_subcommands_env_file() {
     ),
     (svec!["ende", "ci", "--env-file"], svec![".env"]),
     (svec!["ende", "publish", "--env-file"], svec![".env"]),
-    (svec!["ende", "pack", "--env-file"], svec![".env"]),
   ];
   for (args, expected) in cases {
     let flags = flags_from_vec(args.clone())
@@ -3140,7 +3137,6 @@ fn uninstall() {
         kind: UninstallKind::Local(RemoveFlags {
           packages: vec!["@std/load".to_string()],
           lockfile_only: true,
-          package_json: false,
         }),
       }),
       frozen_lockfile: Some(true),
@@ -3157,7 +3153,6 @@ fn uninstall() {
         kind: UninstallKind::Local(RemoveFlags {
           packages: vec!["file_server".to_string(), "@std/load".to_string()],
           lockfile_only: false,
-          package_json: false,
         }),
       }),
       ..Flags::default()
@@ -3531,25 +3526,6 @@ fn no_npm() {
         "script.ts".to_string(),
       )),
       no_npm: true,
-      code_cache_enabled: true,
-      ..Flags::default()
-    }
-  );
-}
-
-#[test]
-fn local_npm() {
-  let r = flags_from_vec(svec!["ende", "--node-modules-dir", "script.ts"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Run(RunFlags {
-        script: "script.ts".to_string(),
-        bare: true,
-        coverage_dir: None,
-        print_task_list: false,
-      }),
-      node_modules_dir: Some(NodeModulesDirMode::Auto),
       code_cache_enabled: true,
       ..Flags::default()
     }
@@ -5061,7 +5037,6 @@ fn compile() {
         eszip: false,
         self_extracting: false,
         app_name: None,
-        exclude_unused_npm: false,
         engine: Default::default(),
       }),
       type_check_mode: TypeCheckMode::Local,
@@ -5146,28 +5121,6 @@ fn desktop_backend_explicit() {
 }
 
 #[test]
-fn desktop_exclude_unused_npm() {
-  let r = flags_from_vec(svec!["ende", "desktop", "main.tsx"]);
-  let EndeSubcommand::Desktop(desktop) = r.unwrap().subcommand else {
-    panic!("expected desktop subcommand");
-  };
-  // Off by default: the full managed npm snapshot keeps
-  // non-statically-analyzable dynamic imports working.
-  assert!(!desktop.exclude_unused_npm);
-
-  let r = flags_from_vec(svec![
-    "ende",
-    "desktop",
-    "--exclude-unused-npm",
-    "main.tsx"
-  ]);
-  let EndeSubcommand::Desktop(desktop) = r.unwrap().subcommand else {
-    panic!("expected desktop subcommand");
-  };
-  assert!(desktop.exclude_unused_npm);
-}
-
-#[test]
 fn compile_watch_with_no_clear_screen() {
   let r = flags_from_vec(svec![
     "ende",
@@ -5191,7 +5144,6 @@ fn compile_watch_with_no_clear_screen() {
         eszip: false,
         self_extracting: false,
         app_name: None,
-        exclude_unused_npm: false,
         engine: Default::default(),
       }),
       type_check_mode: TypeCheckMode::Local,
@@ -5226,7 +5178,6 @@ fn compile_with_flags() {
         eszip: false,
         self_extracting: false,
         app_name: None,
-        exclude_unused_npm: false,
         engine: Default::default(),
       }),
       import_map_path: Some("import_map.json".to_string()),
@@ -6409,12 +6360,16 @@ fn create() {
     }
   );
 
+  // `--npm` was removed; `--jsr` treats unprefixed names as JSR packages.
   let r = flags_from_vec(svec!["ende", "create", "--npm", "vite"]);
+  assert!(r.is_err());
+
+  let r = flags_from_vec(svec!["ende", "create", "--jsr", "@fresh/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
       subcommand: EndeSubcommand::Init(InitFlags {
-        package: Some("npm:vite".to_string()),
+        package: Some("jsr:@fresh/init".to_string()),
         package_args: vec![],
         dir: None,
         lib: false,
@@ -6425,10 +6380,6 @@ fn create() {
       ..Flags::default()
     }
   );
-
-  let r =
-    flags_from_vec(svec!["ende", "create", "--npm", "vite", "my-project"]);
-  assert!(r.is_err());
 
   let r = flags_from_vec(svec!["ende", "create", "--yes", "npm:vite"]);
   assert_eq!(
@@ -6773,7 +6724,6 @@ fn add_or_install_subcommand() {
           default_registry: Some(DefaultRegistry::Npm),
           lockfile_only: false,
           save_exact: false,
-          package_json: false,
           unscoped: false,
         })
       );
@@ -6795,7 +6745,6 @@ fn add_or_install_subcommand() {
         default_registry: Some(DefaultRegistry::Npm),
         lockfile_only: true,
         save_exact: false,
-        package_json: false,
         unscoped: false,
       });
       expected_flags.frozen_lockfile = Some(true);
@@ -6813,7 +6762,6 @@ fn add_or_install_subcommand() {
           default_registry: Some(DefaultRegistry::Npm),
           lockfile_only: false,
           save_exact: false,
-          package_json: false,
           unscoped: false,
         }),
       );
@@ -6830,7 +6778,6 @@ fn add_or_install_subcommand() {
           default_registry: Some(DefaultRegistry::Npm),
           lockfile_only: false,
           save_exact: false,
-          package_json: false,
           unscoped: false,
         }),
       );
@@ -6847,7 +6794,6 @@ fn add_or_install_subcommand() {
           default_registry: Some(DefaultRegistry::Jsr),
           lockfile_only: false,
           save_exact: false,
-          package_json: false,
           unscoped: false,
         }),
       );
@@ -6864,7 +6810,6 @@ fn add_or_install_subcommand() {
           default_registry: Some(DefaultRegistry::Npm),
           lockfile_only: false,
           save_exact: false,
-          package_json: false,
           unscoped: false,
         }),
       );
@@ -6881,7 +6826,6 @@ fn add_or_install_subcommand() {
           default_registry: Some(DefaultRegistry::Npm),
           lockfile_only: false,
           save_exact: false,
-          package_json: false,
           unscoped: false,
         }),
       );
@@ -6899,7 +6843,6 @@ fn add_or_install_subcommand() {
           default_registry: Some(DefaultRegistry::Npm),
           lockfile_only: false,
           save_exact: false,
-          package_json: false,
           unscoped: true,
         }),
       );
@@ -6950,7 +6893,6 @@ fn add_or_install_subcommand() {
           default_registry: Some(DefaultRegistry::Npm),
           lockfile_only: false,
           save_exact: false,
-          package_json: false,
           unscoped: false,
         }),
         permissions: PermissionFlags {
@@ -6975,7 +6917,6 @@ fn remove_subcommand() {
       subcommand: EndeSubcommand::Remove(RemoveFlags {
         packages: svec!["@david/which"],
         lockfile_only: false,
-        package_json: false,
       }),
       ..Flags::default()
     }
@@ -6995,7 +6936,6 @@ fn remove_subcommand() {
       subcommand: EndeSubcommand::Remove(RemoveFlags {
         packages: svec!["@david/which", "@luca/hello"],
         lockfile_only: true,
-        package_json: false,
       }),
       frozen_lockfile: Some(true),
       ..Flags::default()
@@ -7074,7 +7014,6 @@ fn remove_global_alias_for_uninstall() {
       subcommand: EndeSubcommand::Remove(RemoveFlags {
         packages: svec!["@david/which"],
         lockfile_only: false,
-        package_json: false,
       }),
       ..Flags::default()
     }
@@ -7111,65 +7050,6 @@ fn run_with_frozen_lockfile() {
 }
 
 #[test]
-fn allow_scripts() {
-  let cases = [
-    (Some("--allow-scripts"), Ok(PackagesAllowedScripts::All)),
-    (None, Ok(PackagesAllowedScripts::None)),
-    (
-      Some("--allow-scripts=npm:foo"),
-      Ok(PackagesAllowedScripts::Some(vec![
-        PackageReq::from_str("foo").unwrap(),
-      ])),
-    ),
-    (
-      Some("--allow-scripts=npm:foo,npm:bar@2"),
-      Ok(PackagesAllowedScripts::Some(vec![
-        PackageReq::from_str("foo").unwrap(),
-        PackageReq::from_str("bar@2").unwrap(),
-      ])),
-    ),
-    (Some("--allow-scripts=foo"), Err("Invalid package")),
-    (
-      Some("--allow-scripts=npm:foo@next"),
-      Err("Tags are not supported in --allow-scripts: npm:foo@next"),
-    ),
-    (
-      Some("--allow-scripts=jsr:@foo/bar"),
-      Err("An 'npm:' specifier is required"),
-    ),
-  ];
-  for (flag, value) in cases {
-    let mut args = svec!["ende", "cache"];
-    if let Some(flag) = flag {
-      args.push(flag.into());
-    }
-    args.push("script.ts".into());
-    let r = flags_from_vec(args);
-    match value {
-      Ok(value) => {
-        assert_eq!(
-          r.unwrap(),
-          Flags {
-            subcommand: EndeSubcommand::Cache(CacheFlags {
-              files: svec!["script.ts"],
-            }),
-            allow_scripts: value,
-            ..Flags::default()
-          }
-        );
-      }
-      Err(e) => {
-        let err = r.unwrap_err();
-        assert!(
-          err.to_string().contains(e),
-          "expected to contain '{e}' got '{err}'"
-        );
-      }
-    }
-  }
-}
-
-#[test]
 fn x_install_alias() {
   let cases = [
     (svec!["ende", "x", "--install-alias=dx"], EndeXShimName::Dx),
@@ -7195,96 +7075,6 @@ fn x_install_alias() {
         kind: XFlagsKind::InstallAlias(name),
       }),
       "{args:?}"
-    );
-  }
-}
-
-#[test]
-fn x_ignore_scripts() {
-  let flags = flags_from_vec(svec![
-    "ende",
-    "x",
-    "--ignore-scripts",
-    "-y",
-    "npm:foo",
-    "--bar"
-  ])
-  .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::X(XFlags {
-        kind: XFlagsKind::Command(XCommandFlags {
-          yes: true,
-          command: "npm:foo".to_string(),
-          ignore_scripts: PackagesAllowedScripts::All,
-          package: None,
-        }),
-      }),
-      argv: svec!["--bar"],
-      permissions: PermissionFlags {
-        allow_all: true,
-        ..Default::default()
-      },
-      ..Flags::default()
-    }
-  );
-
-  let err = flags_from_vec(svec![
-    "ende",
-    "x",
-    "--ignore-scripts",
-    "--allow-scripts",
-    "npm:foo"
-  ])
-  .unwrap_err();
-  assert!(err.to_string().contains("cannot be used with"));
-
-  let flags = flags_from_vec(svec![
-    "ende",
-    "x",
-    "--ignore-scripts=foo,npm:bar@2",
-    "npm:foo"
-  ])
-  .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::X(XFlags {
-        kind: XFlagsKind::Command(XCommandFlags {
-          yes: false,
-          command: "npm:foo".to_string(),
-          ignore_scripts: PackagesAllowedScripts::Some(vec![
-            PackageReq::from_str("foo").unwrap(),
-            PackageReq::from_str("bar@2").unwrap(),
-          ]),
-          package: None,
-        }),
-      }),
-      permissions: PermissionFlags {
-        allow_all: true,
-        ..Default::default()
-      },
-      ..Flags::default()
-    }
-  );
-
-  for (flag, expected_error) in [
-    ("--ignore-scripts=npm:", "Invalid package requirement"),
-    (
-      "--ignore-scripts=jsr:@foo/bar",
-      "Only npm package constraints are supported",
-    ),
-    (
-      "--ignore-scripts=foo@latest",
-      "Tags are not supported in --ignore-scripts",
-    ),
-    ("--ignore-scripts=foo,", "Empty values are not allowed"),
-  ] {
-    let err = flags_from_vec(svec!["ende", "x", flag, "npm:foo"]).unwrap_err();
-    assert!(
-      err.to_string().contains(expected_error),
-      "expected to contain '{expected_error}' got '{err}'"
     );
   }
 }
@@ -7514,7 +7304,6 @@ fn jupyter_unstable_flags() {
     "ende",
     "jupyter",
     "--unstable-ffi",
-    "--unstable-bare-node-builtins",
     "--unstable-worker-options"
   ]);
 
@@ -7531,7 +7320,7 @@ fn jupyter_unstable_flags() {
       }),
       unstable_config: UnstableConfig {
         sloppy_imports: false,
-        features: svec!["bare-node-builtins", "ffi", "worker-options"],
+        features: svec!["ffi", "worker-options"],
         ..Default::default()
       },
       ..Flags::default()
@@ -7601,25 +7390,6 @@ fn net_flag_with_url() {
     r.unwrap_err().to_string(),
     "error: invalid value 'https://example.com': URLs are not supported, only domains and IPs"
   );
-}
-
-#[test]
-fn node_modules_dir_default() {
-  let r =
-    flags_from_vec(svec!["ende", "run", "--node-modules-dir", "./foo.ts"]);
-  let flags = r.unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Run(RunFlags {
-        script: "./foo.ts".into(),
-        ..Default::default()
-      }),
-      node_modules_dir: Some(NodeModulesDirMode::Auto),
-      code_cache_enabled: true,
-      ..Default::default()
-    }
-  )
 }
 
 #[test]
@@ -7970,88 +7740,6 @@ fn outdated_subcommand_frozen_flag() {
 }
 
 #[test]
-fn approve_scripts_subcommand() {
-  let cases = [
-    (
-      svec![],
-      ApproveScriptsFlags {
-        packages: vec![],
-        lockfile_only: false,
-      },
-    ),
-    (
-      svec!["npm:pkg@1.0.0"],
-      ApproveScriptsFlags {
-        packages: vec!["npm:pkg@1.0.0".to_string()],
-        lockfile_only: false,
-      },
-    ),
-    (
-      svec!["npm:pkg1@1.0.0", "npm:pkg2@2.0.0"],
-      ApproveScriptsFlags {
-        packages: vec![
-          "npm:pkg1@1.0.0".to_string(),
-          "npm:pkg2@2.0.0".to_string(),
-        ],
-        lockfile_only: false,
-      },
-    ),
-    (
-      svec!["npm:pkg1@1.0.0,npm:pkg2@2.0.0"],
-      ApproveScriptsFlags {
-        packages: vec![
-          "npm:pkg1@1.0.0".to_string(),
-          "npm:pkg2@2.0.0".to_string(),
-        ],
-        lockfile_only: false,
-      },
-    ),
-    (
-      svec!["--lockfile-only"],
-      ApproveScriptsFlags {
-        packages: vec![],
-        lockfile_only: true,
-      },
-    ),
-    (
-      svec!["--lockfile-only", "npm:pkg@1.0.0"],
-      ApproveScriptsFlags {
-        packages: vec!["npm:pkg@1.0.0".to_string()],
-        lockfile_only: true,
-      },
-    ),
-    (
-      svec!["npm:pkg@1.0.0", "--lockfile-only"],
-      ApproveScriptsFlags {
-        packages: vec!["npm:pkg@1.0.0".to_string()],
-        lockfile_only: true,
-      },
-    ),
-    (
-      svec!["npm:pkg1@1.0.0", "npm:pkg2@2.0.0", "--lockfile-only"],
-      ApproveScriptsFlags {
-        packages: vec![
-          "npm:pkg1@1.0.0".to_string(),
-          "npm:pkg2@2.0.0".to_string(),
-        ],
-        lockfile_only: true,
-      },
-    ),
-  ];
-  for (input, expected) in cases {
-    let mut args = svec!["ende", "approve-scripts"];
-    args.extend(input);
-    let r = flags_from_vec(args.clone()).unwrap();
-    assert_eq!(
-      r.subcommand,
-      EndeSubcommand::ApproveScripts(expected),
-      "incorrect result for args: {:?}",
-      args
-    );
-  }
-}
-
-#[test]
 fn clean_subcommand() {
   let cases = [
     (
@@ -8115,234 +7803,6 @@ fn clean_subcommand() {
       args
     );
   }
-}
-
-#[test]
-fn conditions_test() {
-  let flags = flags_from_vec(svec![
-    "ende",
-    "run",
-    "--conditions",
-    "development",
-    "main.ts"
-  ])
-  .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Run(RunFlags {
-        script: "main.ts".into(),
-        ..Default::default()
-      }),
-      node_conditions: svec!["development"],
-      code_cache_enabled: true,
-      ..Default::default()
-    }
-  );
-
-  let flags = flags_from_vec(svec![
-    "ende",
-    "run",
-    "--conditions",
-    "development,production",
-    "main.ts"
-  ])
-  .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Run(RunFlags {
-        script: "main.ts".into(),
-        ..Default::default()
-      }),
-      node_conditions: svec!["development", "production"],
-      code_cache_enabled: true,
-      ..Default::default()
-    }
-  );
-
-  let flags = flags_from_vec(svec![
-    "ende",
-    "run",
-    "--conditions",
-    "development",
-    "--conditions",
-    "production",
-    "main.ts"
-  ])
-  .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Run(RunFlags {
-        script: "main.ts".into(),
-        ..Default::default()
-      }),
-      node_conditions: svec!["development", "production"],
-      code_cache_enabled: true,
-      ..Default::default()
-    }
-  );
-}
-
-#[test]
-fn preload_flag_test() {
-  let flags =
-    flags_from_vec(svec!["ende", "run", "--preload", "preload.js", "main.ts"])
-      .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Run(RunFlags {
-        script: "main.ts".into(),
-        ..Default::default()
-      }),
-      preload: svec!["preload.js"],
-      code_cache_enabled: true,
-      ..Default::default()
-    }
-  );
-
-  let flags =
-    flags_from_vec(svec!["ende", "run", "--preload", "data:,()", "main.ts"])
-      .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Run(RunFlags {
-        script: "main.ts".into(),
-        ..Default::default()
-      }),
-      preload: svec!["data:,()"],
-      code_cache_enabled: true,
-      ..Default::default()
-    }
-  );
-
-  let flags = flags_from_vec(svec![
-    "ende",
-    "compile",
-    "--preload",
-    "p1.js",
-    "--preload",
-    "./p2.js",
-    "main.ts"
-  ])
-  .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Compile(CompileFlags {
-        source_file: "main.ts".into(),
-        output: None,
-        args: vec![],
-        target: None,
-        no_terminal: false,
-        icon: None,
-        include: Default::default(),
-        exclude: Default::default(),
-        eszip: false,
-        self_extracting: false,
-        app_name: None,
-        exclude_unused_npm: false,
-        engine: Default::default(),
-      }),
-      type_check_mode: TypeCheckMode::Local,
-      preload: svec!["p1.js", "./p2.js"],
-      code_cache_enabled: true,
-      ..Default::default()
-    }
-  );
-
-  let flags = flags_from_vec(svec![
-    "ende",
-    "test",
-    "--preload",
-    "p1.js",
-    "--import",
-    "./p2.js",
-  ])
-  .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Test(TestFlags::default()),
-      preload: svec!["p1.js", "./p2.js"],
-      type_check_mode: TypeCheckMode::Local,
-      code_cache_enabled: false,
-      permissions: PermissionFlags {
-        no_prompt: true,
-        ..Default::default()
-      },
-      ..Default::default()
-    }
-  );
-
-  let flags = flags_from_vec(svec![
-    "ende",
-    "bench",
-    "--preload",
-    "p1.js",
-    "--import",
-    "./p2.js",
-  ])
-  .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Bench(BenchFlags::default()),
-      preload: svec!["p1.js", "./p2.js"],
-      type_check_mode: TypeCheckMode::Local,
-      code_cache_enabled: false,
-      permissions: PermissionFlags {
-        no_prompt: true,
-        ..Default::default()
-      },
-      ..Default::default()
-    }
-  );
-}
-
-#[test]
-fn require_flag_test() {
-  let flags =
-    flags_from_vec(svec!["ende", "run", "--require", "require.js", "main.ts"])
-      .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Run(RunFlags {
-        script: "main.ts".into(),
-        ..Default::default()
-      }),
-      require: svec!["require.js"],
-      code_cache_enabled: true,
-      ..Default::default()
-    }
-  );
-
-  let flags = flags_from_vec(svec![
-    "ende",
-    "run",
-    "--require",
-    "r1.js",
-    "--require",
-    "./r2.js",
-    "main.ts"
-  ])
-  .unwrap();
-  assert_eq!(
-    flags,
-    Flags {
-      subcommand: EndeSubcommand::Run(RunFlags {
-        script: "main.ts".into(),
-        ..Default::default()
-      }),
-      require: svec!["r1.js", "./r2.js"],
-      code_cache_enabled: true,
-      ..Default::default()
-    }
-  );
 }
 
 #[test]
@@ -8588,17 +8048,6 @@ fn node_options_require() {
   let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
   set_test_node_options(None);
   assert_eq!(flags.require, vec!["only.js"]);
-}
-
-#[test]
-fn node_options_require_prepend_to_cli() {
-  // Test NODE_OPTIONS --require is prepended to CLI --require values
-  set_test_node_options(Some("--require foo.js --require bar.js"));
-  let flags =
-    flags_from_vec(svec!["ende", "run", "--require", "cli.js", "script.ts",])
-      .unwrap();
-  set_test_node_options(None);
-  assert_eq!(flags.require, vec!["foo.js", "bar.js", "cli.js"]);
 }
 
 #[test]
@@ -8996,68 +8445,6 @@ fn why_missing_package() {
 }
 
 #[test]
-fn audit_basic() {
-  let r = flags_from_vec(svec!["ende", "audit"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Audit(AuditFlags {
-        severity: "low".to_string(),
-        dev: true,
-        prod: true,
-        optional: true,
-        ..Default::default()
-      }),
-      ..Flags::default()
-    }
-  );
-}
-
-#[test]
-fn audit_fix_flag() {
-  let r = flags_from_vec(svec!["ende", "audit", "--fix"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Audit(AuditFlags {
-        severity: "low".to_string(),
-        dev: true,
-        prod: true,
-        optional: true,
-        fix: true,
-        ..Default::default()
-      }),
-      ..Flags::default()
-    }
-  );
-}
-
-#[test]
-fn audit_fix_positional() {
-  let r = flags_from_vec(svec!["ende", "audit", "fix"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Audit(AuditFlags {
-        severity: "low".to_string(),
-        dev: true,
-        prod: true,
-        optional: true,
-        fix: true,
-        ..Default::default()
-      }),
-      ..Flags::default()
-    }
-  );
-}
-
-#[test]
-fn audit_invalid_positional() {
-  let r = flags_from_vec(svec!["ende", "audit", "bogus"]);
-  assert!(r.is_err());
-}
-
-#[test]
 fn transpile_single_file() {
   let r = flags_from_vec(svec!["ende", "transpile", "main.ts"]);
   assert_eq!(
@@ -9263,19 +8650,185 @@ fn tier1_test_sanitize_and_snapshot_flags() {
 
 #[test]
 fn tier1_compile_flags() {
-  let flags = flags_from_vec(svec![
-    "ende",
-    "compile",
-    "--app-name=MyApp",
-    "--exclude-unused-npm",
-    "main.ts"
-  ])
-  .unwrap();
+  let flags =
+    flags_from_vec(svec!["ende", "compile", "--app-name=MyApp", "main.ts"])
+      .unwrap();
   let EndeSubcommand::Compile(c) = flags.subcommand else {
     unreachable!()
   };
   assert_eq!(c.app_name, Some("MyApp".to_string()));
-  assert!(c.exclude_unused_npm);
+}
+
+#[test]
+fn preload_flag_test() {
+  let flags =
+    flags_from_vec(svec!["ende", "run", "--preload", "preload.js", "main.ts"])
+      .unwrap();
+  assert_eq!(
+    flags,
+    Flags {
+      subcommand: EndeSubcommand::Run(RunFlags {
+        script: "main.ts".into(),
+        ..Default::default()
+      }),
+      preload: svec!["preload.js"],
+      code_cache_enabled: true,
+      ..Default::default()
+    }
+  );
+
+  let flags =
+    flags_from_vec(svec!["ende", "run", "--preload", "data:,()", "main.ts"])
+      .unwrap();
+  assert_eq!(
+    flags,
+    Flags {
+      subcommand: EndeSubcommand::Run(RunFlags {
+        script: "main.ts".into(),
+        ..Default::default()
+      }),
+      preload: svec!["data:,()"],
+      code_cache_enabled: true,
+      ..Default::default()
+    }
+  );
+
+  let flags = flags_from_vec(svec![
+    "ende",
+    "compile",
+    "--preload",
+    "p1.js",
+    "--preload",
+    "./p2.js",
+    "main.ts"
+  ])
+  .unwrap();
+  assert_eq!(
+    flags,
+    Flags {
+      subcommand: EndeSubcommand::Compile(CompileFlags {
+        source_file: "main.ts".into(),
+        output: None,
+        args: vec![],
+        target: None,
+        no_terminal: false,
+        icon: None,
+        include: Default::default(),
+        exclude: Default::default(),
+        eszip: false,
+        self_extracting: false,
+        app_name: None,
+        engine: Default::default(),
+      }),
+      type_check_mode: TypeCheckMode::Local,
+      preload: svec!["p1.js", "./p2.js"],
+      code_cache_enabled: true,
+      ..Default::default()
+    }
+  );
+
+  let flags = flags_from_vec(svec![
+    "ende",
+    "test",
+    "--preload",
+    "p1.js",
+    "--preload",
+    "./p2.js",
+  ])
+  .unwrap();
+  assert_eq!(
+    flags,
+    Flags {
+      subcommand: EndeSubcommand::Test(TestFlags::default()),
+      preload: svec!["p1.js", "./p2.js"],
+      type_check_mode: TypeCheckMode::Local,
+      code_cache_enabled: false,
+      permissions: PermissionFlags {
+        no_prompt: true,
+        ..Default::default()
+      },
+      ..Default::default()
+    }
+  );
+
+  let flags = flags_from_vec(svec![
+    "ende",
+    "bench",
+    "--preload",
+    "p1.js",
+    "--preload",
+    "./p2.js",
+  ])
+  .unwrap();
+  assert_eq!(
+    flags,
+    Flags {
+      subcommand: EndeSubcommand::Bench(BenchFlags::default()),
+      preload: svec!["p1.js", "./p2.js"],
+      type_check_mode: TypeCheckMode::Local,
+      code_cache_enabled: false,
+      permissions: PermissionFlags {
+        no_prompt: true,
+        ..Default::default()
+      },
+      ..Default::default()
+    }
+  );
+}
+
+#[test]
+fn npm_subcommands_removed() {
+  for name in ["approve-scripts", "approve-builds", "audit", "pack"] {
+    let err = flags_from_vec(svec!["ende", name]).unwrap_err();
+    assert_eq!(err.kind, CliErrorKind::UnknownSubcommand, "{name}");
+    assert_eq!(err.message, format!("unrecognized subcommand '{name}'"));
+    assert_eq!(
+      err.suggestion,
+      Some(format!("`ende {name}` is not supported in Ende"))
+    );
+  }
+}
+
+#[test]
+fn npm_flags_removed() {
+  let removed = [
+    svec!["ende", "run", "--node-modules-dir", "main.ts"],
+    svec!["ende", "run", "--node-modules-dir=auto", "main.ts"],
+    svec!["ende", "test", "--node-modules-linker=hoisted"],
+    svec!["ende", "install", "--allow-scripts"],
+    svec!["ende", "x", "--ignore-scripts", "cowsay"],
+    svec!["ende", "run", "--conditions=development", "main.ts"],
+    svec!["ende", "run", "--import=setup.ts", "main.ts"],
+    svec!["ende", "run", "--require=setup.cjs", "main.ts"],
+    svec!["ende", "compile", "--exclude-unused-npm", "main.ts"],
+    svec!["ende", "create", "--npm", "vite"],
+    svec!["ende", "add", "--package-json", "npm:chalk"],
+    svec!["ende", "remove", "--package-json", "chalk"],
+    svec!["ende", "task", "--node-modules-dir", "dev"],
+    svec!["ende", "cache", "--node-modules-dir", "main.ts"],
+    svec!["ende", "check", "--node-modules-dir", "main.ts"],
+    svec!["ende", "bench", "--node-modules-dir"],
+    svec!["ende", "run", "--unstable-bare-node-builtins", "main.ts"],
+    svec!["ende", "run", "--unstable-byonm", "main.ts"],
+    svec!["ende", "run", "--unstable-detect-cjs", "main.ts"],
+    svec!["ende", "run", "--unstable-npm-lazy-caching", "main.ts"],
+  ];
+  for args in removed {
+    assert!(
+      flags_from_vec(args.clone()).is_err(),
+      "expected error for {args:?}"
+    );
+  }
+}
+
+#[test]
+fn preload_flag_kept() {
+  // `--preload` is a general Ende feature (unlike Node's `--import` /
+  // `--require` spellings, which are rejected above).
+  let flags =
+    flags_from_vec(svec!["ende", "run", "--preload=setup.ts", "main.ts"])
+      .unwrap();
+  assert_eq!(flags.preload, svec!["setup.ts"]);
 }
 
 #[test]
@@ -9289,7 +8842,7 @@ fn compile_bundle_flags_removed() {
 }
 
 #[test]
-fn tier1_install_os_arch_package_json() {
+fn tier1_install_os_arch() {
   let flags =
     flags_from_vec(svec!["ende", "install", "--os", "linux", "--arch", "x64"])
       .unwrap();
@@ -9301,17 +8854,6 @@ fn tier1_install_os_arch_package_json() {
   assert_eq!(npm_target.os, Some("linux".to_string()));
   assert_eq!(npm_target.arch, Some("x64".to_string()));
 
-  let flags =
-    flags_from_vec(svec!["ende", "install", "--package-json", "npm:foo"])
-      .unwrap();
-  assert!(matches!(
-    flags.subcommand,
-    EndeSubcommand::Install(InstallFlags::Local(
-      InstallFlagsLocal::Add(a),
-      _
-    )) if a.package_json
-  ));
-
   // --os / --arch conflict with --global.
   assert!(
     flags_from_vec(svec![
@@ -9319,17 +8861,6 @@ fn tier1_install_os_arch_package_json() {
     ])
     .is_err()
   );
-}
-
-#[test]
-fn tier1_uninstall_remove_package_json() {
-  let flags =
-    flags_from_vec(svec!["ende", "uninstall", "--package-json", "foo"])
-      .unwrap();
-  assert!(matches!(flags.subcommand, EndeSubcommand::Uninstall(_)));
-  let flags =
-    flags_from_vec(svec!["ende", "remove", "--package-json", "foo"]).unwrap();
-  assert!(matches!(flags.subcommand, EndeSubcommand::Remove(_)));
 }
 
 #[test]
@@ -9363,41 +8894,10 @@ fn tier1_serve_open_tunnel_hmr() {
 }
 
 #[test]
-fn tier1_audit_why_lock_flags() {
-  let flags =
-    flags_from_vec(svec!["ende", "audit", "--lock=ende.lock", "--frozen"])
-      .unwrap();
-  assert!(matches!(&flags.subcommand, EndeSubcommand::Audit(_)));
-  assert_eq!(flags.lock, Some("ende.lock".to_string()));
-  assert_eq!(flags.frozen_lockfile, Some(true));
-
+fn tier1_why_lock_flags() {
   let flags = flags_from_vec(svec!["ende", "why", "--no-lock", "foo"]).unwrap();
   assert!(matches!(&flags.subcommand, EndeSubcommand::Why(_)));
   assert!(flags.no_lock);
-}
-
-#[test]
-fn tier1_node_modules_linker() {
-  let flags = flags_from_vec(svec![
-    "ende",
-    "run",
-    "--node-modules-linker=isolated",
-    "main.ts"
-  ])
-  .unwrap();
-  assert_eq!(
-    flags.node_modules_linker,
-    Some(NodeModulesLinkerMode::Isolated)
-  );
-
-  // `--linker` is an alias.
-  let flags =
-    flags_from_vec(svec!["ende", "run", "--linker=hoisted", "main.ts"])
-      .unwrap();
-  assert_eq!(
-    flags.node_modules_linker,
-    Some(NodeModulesLinkerMode::Hoisted)
-  );
 }
 
 #[test]
@@ -9442,7 +8942,6 @@ fn tier1_desktop_flags() {
     "--include=extra.ts",
     "--exclude=skip.ts",
     "--compress=zstd",
-    "--exclude-unused-npm",
     "--allow-read",
     "main.ts"
   ])
@@ -9459,7 +8958,6 @@ fn tier1_desktop_flags() {
   assert!(d.all_targets);
   assert_eq!(d.backend, Some("cef".to_string()));
   assert_eq!(d.compress, Some("zstd".to_string()));
-  assert!(d.exclude_unused_npm);
   assert_eq!(d.include, svec!["extra.ts"]);
   assert_eq!(d.exclude, svec!["skip.ts"]);
   assert_eq!(d.source_file, "main.ts");
@@ -9491,10 +8989,7 @@ fn tier2_choice_validation() {
     svec!["ende", "completions", "bogus"],
     svec!["ende", "install", "--os", "bogus"],
     svec!["ende", "install", "--arch", "bogus"],
-    svec!["ende", "audit", "--level=bogus"],
     svec!["ende", "--log-level=bogus", "run", "x.ts"],
-    svec!["ende", "run", "--node-modules-dir=bogus", "x.ts"],
-    svec!["ende", "run", "--node-modules-linker=bogus", "x.ts"],
   ];
   for args in bad {
     assert!(
@@ -9588,7 +9083,6 @@ fn tier3_aliases() {
     svec!["ende", "ci", "--production"],
     svec!["ende", "fmt", "--options-use-tabs", "x.ts"],
     svec!["ende", "jupyter", "-d", "deno", "--install"],
-    svec!["ende", "pack", "-o", "out", "x.ts"],
   ];
   for args in ok {
     assert!(

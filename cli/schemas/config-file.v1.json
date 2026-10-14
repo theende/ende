@@ -49,14 +49,6 @@
         "$ref": "#/$defs/allowDenyPermissionConfig"
       }]
     },
-    "allowScriptsList": {
-      "type": "array",
-      "description": "List of npm package constraints to allow or deny for lifecycle scripts.",
-      "items": {
-        "type": "string",
-        "pattern": "^(?:npm:).+"
-      }
-    },
     "permissionSet": {
       "type": "object",
       "description": "Collection of permissions.",
@@ -96,32 +88,6 @@
     }
   },
   "properties": {
-    "allowScripts": {
-      "oneOf": [{
-        "description": "Whether to allow npm lifecycle scripts.",
-        "type": "boolean"
-      }, {
-        "$ref": "#/$defs/allowScriptsList"
-      }, {
-        "type": "object",
-        "description": "Allow or deny config for lifecycle scripts.",
-        "additionalProperties": false,
-        "properties": {
-          "allow": {
-            "oneOf": [{
-              "description": "Whether to allow running npm lifecycle scripts.",
-              "type": "boolean"
-            }, {
-              "$ref": "#/$defs/allowScriptsList"
-            }]
-          },
-          "deny": {
-            "description": "List of npm package constraints to deny running lifecycle scripts for.",
-            "$ref": "#/$defs/allowScriptsList"
-          }
-        }
-      }]
-    },
     "compile": {
       "type": "object",
       "description": "Configuration for `ende compile`.",
@@ -640,24 +606,6 @@
       "description": "The location of an import map to be used when resolving modules. If an import map is specified as an `--importmap` flag or using \"imports\" and \"scopes\" properties, they will override this value.",
       "type": "string"
     },
-    "catalog": {
-      "description": "A map of package names to version requirements for the default catalog, used with the catalog: protocol in workspace member package.json files.",
-      "type": "object",
-      "additionalProperties": {
-        "description": "The key is the npm package name, with a value that is the version requirement string.",
-        "type": "string"
-      }
-    },
-    "catalogs": {
-      "description": "Named catalogs mapping catalog names to package name/version requirement mappings, used with the catalog:<name> protocol.",
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "additionalProperties": {
-          "type": "string"
-        }
-      }
-    },
     "imports": {
       "description": "A map of specifiers to their remapped specifiers.",
       "type": "object",
@@ -973,30 +921,8 @@
         }
       }]
     },
-    "nodeModulesDir": {
-      "oneOf": [
-        {
-          "description": "Sets the node_modules management mode for npm packages. Alternatively, use the `--node-modules-dir=<MODE>` flag. Requires Deno 2.0-rc.1 or later.",
-          "default": "none",
-          "enum": ["auto", "manual", "none"]
-        },
-        {
-          "description": "Enables or disables the use of a local node_modules folder for npm packages. Alternatively, use the `--node-modules-dir` flag or override the config via `--node-modules-dir=false`. Requires Deno 1.34 or later.",
-          "type": "boolean",
-          "deprecated": false
-        }
-      ]
-    },
     "vendor": {
       "description": "Enables or disables the use of a local vendor folder as a local cache for remote modules and node_modules folder for npm packages. Alternatively, use the `--vendor` flag or override the config via `--vendor=false`. Requires Deno 1.36.1 or later.",
-      "type": "boolean"
-    },
-    "jsrDepsInNodeModules": {
-      "description": "Installs `jsr:` dependencies into the `node_modules` directory via JSR's npm compatibility registry (`@jsr/<scope>__<name>`), the same way pnpm and npm handle JSR packages. When enabled Ende also writes a `@jsr:registry` entry to a `.npmrc` file in your project directory so external tooling can resolve these packages; this file is created on install and you may want to commit it (or add it to `.gitignore`). Has no effect unless a `node_modules` directory is in use.",
-      "type": "boolean"
-    },
-    "preferPackageJson": {
-      "description": "When enabled, `ende add`, `ende install` and `ende remove` manage dependencies in package.json instead of ende.json, creating a package.json if one does not exist. Equivalent to passing `--package-json` to those commands.",
       "type": "boolean"
     },
     "tasks": {
@@ -1192,10 +1118,7 @@
       "items": {
         "type": "string",
         "examples": [
-          "bare-node-builtins",
-          "byonm",
           "cron",
-          "detect-cjs",
           "ffi",
           "fs",
           "fmt-component",
@@ -1249,14 +1172,6 @@
       "type": "object",
       "description": "Named permission sets that can be selected with -P/--permission-set or referenced in \"test\", \"bench\", or \"compile\" permissions. A special name \"default\" is used when -P is passed without a value.",
       "additionalProperties": { "$ref": "#/$defs/permissionSet" }
-    },
-    "patch": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "deprecated": true,
-      "description": "This unstable property was renamed to \"links\" in Deno 2.3.6."
     },
     "links": {
       "type": "array",

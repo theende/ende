@@ -27,7 +27,6 @@ use deno_path_util::url_to_file_path;
 use deno_semver::SmallStackString;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::npm::NpmPackageReqReference;
-use ende_config::ende_json;
 use ende_config::ende_json::CompilerOptionTypesDeserializeError;
 use ende_config::ende_json::NodeModulesDirMode;
 use ende_config::workspace::JsrPackageConfig;
@@ -472,10 +471,6 @@ impl ModuleGraphCreator {
     }
   }
 
-  pub fn module_graph_builder(&self) -> &Arc<ModuleGraphBuilder> {
-    &self.module_graph_builder
-  }
-
   pub async fn create_graph(
     &self,
     graph_kind: GraphKind,
@@ -740,13 +735,10 @@ pub enum BuildGraphWithNpmResolutionError {
   ToMaybeJsxImportSourceConfig(#[from] ToMaybeJsxImportSourceConfigError),
   #[class(inherit)]
   #[error(transparent)]
-  NodeModulesDirParse(#[from] ende_json::NodeModulesDirParseError),
-  #[class(inherit)]
-  #[error(transparent)]
   Other(#[from] JsErrorBox),
   #[class(generic)]
   #[error(
-    "Resolving npm specifier entrypoints this way is currently not supported with \"nodeModules\": \"manual\". In the meantime, try with --node-modules-dir=auto instead"
+    "Resolving npm specifier entrypoints this way is currently not supported with a manually managed node_modules directory"
   )]
   UnsupportedNpmSpecifierEntrypointResolutionWay,
 }
@@ -986,7 +978,7 @@ impl ModuleGraphBuilder {
     // opted into using a node_modules directory
     if self
       .cli_options
-      .specified_node_modules_dir()?
+      .specified_node_modules_dir()
       .map(|m| m == NodeModulesDirMode::Auto)
       .unwrap_or(false)
       && let Some(npm_installer) = &self.npm_installer

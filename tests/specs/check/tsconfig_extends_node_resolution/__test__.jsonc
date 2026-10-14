@@ -1,5 +1,0 @@
-{
-  "args": "check --quiet",
-  "output": "main.out",
-  "exitCode": 1
-}

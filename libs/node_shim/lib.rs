@@ -3144,36 +3144,18 @@ pub fn parse_args(args: Vec<String>) -> Result<ParseResult, Vec<String>> {
 /// Options for controlling translation behavior
 #[derive(Debug, Clone, Default)]
 pub struct TranslateOptions {
-  /// Use "deno node" as base command (for standalone CLI)
-  /// When false, uses "deno run" (for child_process spawning)
-  pub use_node_subcommand: bool,
-  /// Add unstable Node.js compat flags (--unstable-bare-node-builtins,
-  /// --unstable-detect-cjs)
-  pub add_unstable_flags: bool,
-  /// Add standalone config overrides (--node-modules-dir=manual, --no-config)
-  /// Only appropriate for the standalone node shim CLI, not for child processes
-  pub add_standalone_config: bool,
+  /// Ask the spawned process to detect CommonJS (see
+  /// [`TranslatedArgs::detect_cjs`]).
+  pub detect_cjs: bool,
   /// Wrap eval code for Node.js compatibility (builtin modules as globals)
   pub wrap_eval_code: bool,
 }
 
 impl TranslateOptions {
-  /// Options for standalone node shim CLI
-  pub fn for_node_cli() -> Self {
-    Self {
-      use_node_subcommand: true,
-      add_unstable_flags: true,
-      add_standalone_config: true,
-      wrap_eval_code: false,
-    }
-  }
-
   /// Options for child_process spawning within Deno
   pub fn for_child_process() -> Self {
     Self {
-      use_node_subcommand: false,
-      add_unstable_flags: true,
-      add_standalone_config: false,
+      detect_cjs: true,
       wrap_eval_code: true,
     }
   }
@@ -3183,9 +3165,7 @@ impl TranslateOptions {
   /// handles quoting and wrapping would introduce metacharacters.
   pub fn for_shell_command() -> Self {
     Self {
-      use_node_subcommand: false,
-      add_unstable_flags: true,
-      add_standalone_config: false,
+      detect_cjs: true,
       wrap_eval_code: false,
     }
   }
@@ -3203,6 +3183,10 @@ pub struct TranslatedArgs {
   /// Comma-separated trace event categories from --trace-event-categories,
   /// propagated to the spawned process via ENDE_NODE_TRACE_EVENT_CATEGORIES.
   pub trace_event_categories: String,
+  /// Whether the spawned process should treat ambiguous modules as CommonJS
+  /// like Node.js does. Ende has no CLI flag for this, so the caller passes
+  /// it to the child through an internal environment variable.
+  pub detect_cjs: bool,
 }
 
 /// Wraps eval code for Node.js compatibility.
@@ -3358,102 +3342,6 @@ fn has_permission_flag(args: &[String]) -> bool {
   args.iter().any(|a| is_permission_flag(a))
 }
 
-/// Resolve a Node-style entrypoint to a specifier that Deno's `run` subcommand
-/// understands.
-///
-/// If the entrypoint is an absolute path, or a relative path that exists on
-/// disk, it is returned unchanged. Otherwise we shell out to `deno_exe` to
-/// resolve it using Node's module resolution semantics (via `resolve.js`).
-///
-/// `deno_exe` is the path or name used to invoke deno for the resolution
-/// fallback. The standalone shim passes `"deno"` (relying on PATH); callers
-/// running inside the deno process should pass `std::env::current_exe()`.
-///
-/// Infrastructure failures (no current dir, can't spawn deno, non-UTF8 output)
-/// fall back to returning the entrypoint unchanged, letting deno's own `run`
-/// resolution surface a normal error rather than panicking. A non-zero exit
-/// from the resolution script itself is still propagated via process exit, as
-/// that carries the user-facing "module not found" diagnostic.
-#[allow(
-  clippy::disallowed_methods,
-  reason = "CLI shim resolving a node entrypoint, mirrors the standalone binary"
-)]
-pub fn resolve_entrypoint(
-  deno_exe: &std::path::Path,
-  entrypoint: &str,
-) -> String {
-  use std::process::Stdio;
-
-  let Ok(cwd) = std::env::current_dir() else {
-    return entrypoint.to_string();
-  };
-  // If the entrypoint is either an absolute path, or a relative path that
-  // exists, return it as is.
-  if cwd.join(entrypoint).symlink_metadata().is_ok() {
-    return entrypoint.to_string();
-  }
-
-  let Ok(url) = url::Url::from_file_path(cwd.join("$file.js")) else {
-    return entrypoint.to_string();
-  };
-
-  // Otherwise, shell out to `deno` to try to resolve the entrypoint.
-  let mut command = std::process::Command::new(deno_exe);
-  command
-    .arg("eval")
-    .arg("--no-config")
-    .arg(include_str!("./resolve.js"))
-    .arg(url.to_string())
-    .arg(format!("./{}", entrypoint))
-    .env_clear()
-    .stdout(Stdio::piped())
-    .stderr(Stdio::inherit());
-  // A fully-cleared environment breaks process creation / DLL loading on
-  // Windows, so keep the essential system variables.
-  #[cfg(windows)]
-  for key in ["SystemRoot", "SystemDrive"] {
-    if let Some(value) = std::env::var_os(key) {
-      command.env(key, value);
-    }
-  }
-  let output = match command.output() {
-    Ok(output) => output,
-    Err(_) => return entrypoint.to_string(),
-  };
-  if !output.status.success() {
-    std::process::exit(output.status.code().unwrap_or(1));
-  }
-  match String::from_utf8(output.stdout) {
-    Ok(stdout) => stdout.trim().to_string(),
-    Err(_) => entrypoint.to_string(),
-  }
-}
-
-/// For a translated `deno run ...` argv, resolve the entrypoint argument in
-/// place using [`resolve_entrypoint`].
-///
-/// No-op unless `deno_args` is a `run` invocation with an entrypoint (the first
-/// non-flag argument after `run`). Shared by the standalone shim binary and the
-/// in-process arg0 dispatch so the entrypoint-finding logic lives in one place.
-pub fn resolve_run_entrypoint(
-  deno_exe: &std::path::Path,
-  deno_args: &mut [String],
-) {
-  if deno_args.len() < 3 || deno_args.get(1).map(|s| s.as_str()) != Some("run")
-  {
-    return;
-  }
-  let entrypoint_idx = deno_args
-    .iter()
-    .enumerate()
-    .skip(2)
-    .find(|(_, arg)| !arg.starts_with('-'))
-    .map(|(i, _)| i);
-  if let Some(idx) = entrypoint_idx {
-    deno_args[idx] = resolve_entrypoint(deno_exe, &deno_args[idx]);
-  }
-}
-
 fn append_remaining_args(
   deno_args: &mut Vec<String>,
   remaining_args: Vec<String>,
@@ -3514,29 +3402,18 @@ pub fn translate_to_deno_args(
 
   // Handle --version flag
   if opts.print_version {
-    if options.use_node_subcommand {
-      deno_args.push("node".to_string());
-    }
     deno_args.push("--version".to_string());
     return result;
   }
 
   // Handle --v8-options flag (print V8 help and exit)
   if opts.print_v8_help {
-    if options.use_node_subcommand {
-      deno_args.push("node".to_string());
-      deno_args.push("run".to_string());
-    }
     deno_args.push("--v8-flags=--help".to_string());
     return result;
   }
 
   // Handle --help flag
   if opts.print_help {
-    if options.use_node_subcommand {
-      // For CLI, we handle help specially
-      deno_args.push("node".to_string());
-    }
     deno_args.push("--help".to_string());
     return result;
   }
@@ -3550,9 +3427,6 @@ pub fn translate_to_deno_args(
 
   // Handle --run flag (run package.json script via deno task)
   if !opts.run.is_empty() {
-    if options.use_node_subcommand {
-      deno_args.push("node".to_string());
-    }
     deno_args.push("task".to_string());
     deno_args.push(opts.run.clone());
     append_remaining_args(
@@ -3575,20 +3449,10 @@ pub fn translate_to_deno_args(
   };
 
   if env_opts.has_eval_string || eval_string_for_print.is_some() {
-    if options.use_node_subcommand {
-      deno_args.push("node".to_string());
-    }
     deno_args.push("eval".to_string());
     // Note: deno eval has implicit permissions, so we don't add -A
 
-    if options.add_unstable_flags {
-      deno_args.push("--unstable-bare-node-builtins".to_string());
-      deno_args.push("--unstable-detect-cjs".to_string());
-    }
-    if options.add_standalone_config {
-      deno_args.push("--node-modules-dir=manual".to_string());
-      deno_args.push("--no-config".to_string());
-    }
+    result.detect_cjs = options.detect_cjs;
 
     if env_opts.has_env_file_string {
       if env_opts.env_file.is_empty() {
@@ -3606,8 +3470,7 @@ pub fn translate_to_deno_args(
       deno_args.push(format!("--v8-flags={}", parsed_args.v8_args.join(",")));
     }
 
-    // Add conditions and inspector flags for eval
-    add_conditions(deno_args, env_opts);
+    // Add inspector flags for eval
     add_inspector_flags(deno_args, env_opts);
 
     // Get the eval code from either the explicit eval_string or the first remaining arg (for -p)
@@ -3639,9 +3502,6 @@ pub fn translate_to_deno_args(
     };
     deno_args.push(eval_code);
 
-    if options.use_node_subcommand {
-      deno_args.push("--".to_string());
-    }
     // For -p with first arg as eval code, skip that arg
     let remaining_args = if eval_string_for_print.is_some() {
       parsed_args.remaining_args[1..].to_vec()
@@ -3654,20 +3514,10 @@ pub fn translate_to_deno_args(
 
   // Handle --test flag (run tests via deno test)
   if env_opts.test_runner {
-    if options.use_node_subcommand {
-      deno_args.push("node".to_string());
-    }
     deno_args.push("test".to_string());
     deno_args.push("-A".to_string());
 
-    if options.add_unstable_flags {
-      deno_args.push("--unstable-bare-node-builtins".to_string());
-      deno_args.push("--unstable-detect-cjs".to_string());
-    }
-    if options.add_standalone_config {
-      deno_args.push("--node-modules-dir=manual".to_string());
-      deno_args.push("--no-config".to_string());
-    }
+    result.detect_cjs = options.detect_cjs;
 
     add_common_flags(deno_args, &parsed_args, env_opts);
     append_remaining_args(
@@ -3680,44 +3530,18 @@ pub fn translate_to_deno_args(
 
   // Handle REPL (no arguments or force_repl)
   if parsed_args.remaining_args.is_empty() || env_opts.force_repl {
-    if options.use_node_subcommand {
-      deno_args.push("node".to_string());
-      deno_args.push("repl".to_string());
-      deno_args.push("-A".to_string());
-
-      if !parsed_args.v8_args.is_empty() {
-        deno_args.push(format!("--v8-flags={}", parsed_args.v8_args.join(",")));
-      }
-
-      add_conditions(deno_args, env_opts);
-      add_inspector_flags(deno_args, env_opts);
-
-      deno_args.push("--".to_string());
-      deno_args.extend(parsed_args.remaining_args);
-    } else {
-      // For child_process, return empty args to trigger REPL behavior
-      if !parsed_args.v8_args.is_empty() {
-        deno_args.push(format!("--v8-flags={}", parsed_args.v8_args.join(",")));
-      }
+    // For child_process, return empty args to trigger REPL behavior
+    if !parsed_args.v8_args.is_empty() {
+      deno_args.push(format!("--v8-flags={}", parsed_args.v8_args.join(",")));
     }
     return result;
   }
 
   // Handle running a script
-  if options.use_node_subcommand {
-    deno_args.push("node".to_string());
-  }
   deno_args.push("run".to_string());
   deno_args.push("-A".to_string());
 
-  if options.add_unstable_flags {
-    deno_args.push("--unstable-bare-node-builtins".to_string());
-    deno_args.push("--unstable-detect-cjs".to_string());
-  }
-  if options.add_standalone_config {
-    deno_args.push("--node-modules-dir=manual".to_string());
-    deno_args.push("--no-config".to_string());
-  }
+  result.detect_cjs = options.detect_cjs;
 
   add_common_flags(deno_args, &parsed_args, env_opts);
 
@@ -3816,19 +3640,8 @@ fn add_common_flags(
     deno_args.push(format!("--v8-flags={}", parsed_args.v8_args.join(",")));
   }
 
-  // Add conditions
-  add_conditions(deno_args, env_opts);
-
   // Add inspector flags
   add_inspector_flags(deno_args, env_opts);
-}
-
-fn add_conditions(deno_args: &mut Vec<String>, env_opts: &EnvironmentOptions) {
-  if !env_opts.conditions.is_empty() {
-    for condition in &env_opts.conditions {
-      deno_args.push(format!("--conditions={}", condition));
-    }
-  }
 }
 
 fn add_inspector_flags(
@@ -5329,36 +5142,6 @@ mod tests {
     assert_eq!(result.remaining_args, svec!["script.js"]);
   }
 
-  /// Test that takes a `input: ["node"]` and `expected: ["deno", "repl", "-A", "--"] `
-  macro_rules! test {
-      ($name:ident, $input:tt , $expected:tt) => {
-          #[test]
-          fn $name() {
-              let parsed_args = parse_args(svec! $input).unwrap();
-              let options = TranslateOptions::for_node_cli();
-              let result = translate_to_deno_args(parsed_args, &options);
-              assert_eq!(result.deno_args, svec! $expected);
-          }
-      };
-  }
-
-  test!(test_repl_no_args, [], ["node", "repl", "-A", "--"]);
-
-  test!(
-    test_run_script,
-    ["foo.js"],
-    [
-      "node",
-      "run",
-      "-A",
-      "--unstable-bare-node-builtins",
-      "--unstable-detect-cjs",
-      "--node-modules-dir=manual",
-      "--no-config",
-      "foo.js"
-    ]
-  );
-
   /// Helper for the deno-subcommand pass-through path (used when a tool spawns
   /// Deno with deno-style args). Translation is mode-independent here, so use
   /// the child_process options.
@@ -5438,15 +5221,7 @@ mod tests {
     let result = translate_to_deno_args(parsed, &options);
     assert_eq!(
       result.deno_args,
-      svec![
-        "run",
-        "-A",
-        "--unstable-bare-node-builtins",
-        "--unstable-detect-cjs",
-        "--",
-        "eval",
-        "console.log('not a subcommand')"
-      ]
+      svec!["run", "-A", "--", "eval", "console.log('not a subcommand')"]
     );
   }
 
@@ -5458,15 +5233,7 @@ mod tests {
     let result = translate_to_deno_args(parsed, &options);
     assert_eq!(
       result.deno_args,
-      svec![
-        "run",
-        "-A",
-        "--unstable-bare-node-builtins",
-        "--unstable-detect-cjs",
-        "--",
-        "--import-map=config.json",
-        "script.js"
-      ]
+      svec!["run", "-A", "--", "--import-map=config.json", "script.js"]
     );
   }
 }

@@ -80,6 +80,11 @@ const MAX_BUFFER = 1024 * 1024;
 // baked-in entrypoint. Kept in sync with cli/rt/run.rs.
 const INTERNAL_CHILD_ENTRYPOINT_ENV_VAR = "ENDE_INTERNAL_CHILD_ENTRYPOINT";
 
+// Internal env var telling a child Ende process run as `node` to detect
+// CommonJS like Node.js (Ende has no CLI flag for it). Kept in sync with
+// cli/lib.rs.
+const INTERNAL_DETECT_CJS_ENV_VAR = "ENDE_INTERNAL_NODE_DETECT_CJS";
+
 // `Buffer.prototype.slice` is Buffer-specific (not the Array/String primordial),
 // so the lint match on `.slice` and the spread are false positives here.
 function bufferSlice(buf: string | Buffer, ...args: number[]) {
@@ -209,10 +214,15 @@ function fork(
     const result = op_node_translate_cli_args(nodeArgs, false, true);
     const denoArgs = result.denoArgs;
     const bootstrapArgs = op_bootstrap_unstable_args();
+    if (result.detectCjs) {
+      options.env = {
+        ...(options.env ?? lazyProcess().default.env),
+        [INTERNAL_DETECT_CJS_ENV_VAR]: "1",
+      };
+    }
 
     // Insert bootstrap unstable args after "run" but before other args.
-    // Filter out any that the translator already added to avoid duplicates
-    // (e.g. --unstable-bare-node-builtins).
+    // Filter out any that the translator already added to avoid duplicates.
     // denoArgs is like ["run", "-A", "--unstable-...", "script.js", ...]
     // We need ["run", ...uniqueBootstrapArgs, "-A", "--unstable-...", "script.js", ...]
     const denoArgSet = new SafeSet(denoArgs);

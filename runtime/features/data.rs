@@ -18,13 +18,6 @@ pub struct UnstableFeatureDescription {
 
 pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
   UnstableFeatureDescription {
-    name: "bare-node-builtins",
-    help_text: "Enable unstable bare node builtins feature",
-    show_in_help: false,
-    kind: UnstableFeatureKind::Cli,
-    env_var: Some("ENDE_UNSTABLE_BARE_NODE_BUILTINS"),
-  },
-  UnstableFeatureDescription {
     name: "broadcast-channel",
     help_text: "Enable unstable `BroadcastChannel` API",
     show_in_help: false,
@@ -32,24 +25,10 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     env_var: None,
   },
   UnstableFeatureDescription {
-    name: "byonm",
-    help_text: "",
-    show_in_help: false,
-    kind: UnstableFeatureKind::Cli,
-    env_var: None,
-  },
-  UnstableFeatureDescription {
     name: "cron",
     help_text: "Enable unstable `Ende.cron` API",
     show_in_help: true,
     kind: UnstableFeatureKind::Runtime,
-    env_var: None,
-  },
-  UnstableFeatureDescription {
-    name: "detect-cjs",
-    help_text: "Treats ambiguous .js, .jsx, .ts, .tsx files as CommonJS modules in more cases",
-    show_in_help: true,
-    kind: UnstableFeatureKind::Cli,
     env_var: None,
   },
   UnstableFeatureDescription {
@@ -107,13 +86,6 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     show_in_help: true,
     kind: UnstableFeatureKind::Runtime,
     env_var: None,
-  },
-  UnstableFeatureDescription {
-    name: "npm-lazy-caching",
-    help_text: "Enable unstable lazy caching of npm dependencies, downloading them only as needed (disabled: all npm packages in package.json are installed on startup; enabled: only npm packages that are actually referenced in an import are installed",
-    show_in_help: true,
-    kind: UnstableFeatureKind::Cli,
-    env_var: Some("ENDE_UNSTABLE_NPM_LAZY_CACHING"),
   },
   UnstableFeatureDescription {
     name: "otel",

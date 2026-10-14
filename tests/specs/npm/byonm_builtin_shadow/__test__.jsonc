@@ -4,7 +4,7 @@
   // always gives built-ins priority, and Deno matches that behavior.
   "tests": {
     "byonm_builtin_shadow": {
-      "args": "run --node-modules-dir=manual main.mts",
+      "args": "run main.mts",
       "output": "builtin\n"
     }
   }

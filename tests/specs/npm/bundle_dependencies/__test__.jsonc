@@ -1,14 +1,6 @@
 {
   "tempDir": true,
   "tests": {
-    "global": {
-      "args": "run --node-modules-dir=none main.ts",
-      "output": "global.out"
-    },
-    "local": {
-      "args": "run --node-modules-dir=auto main.ts",
-      "output": "local.out"
-    },
     "manual": {
       "steps": [{
         "args": "install",

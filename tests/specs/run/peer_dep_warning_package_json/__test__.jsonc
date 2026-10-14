@@ -1,5 +1,0 @@
-{
-  "tempDir": true,
-  "args": "cache main.ts",
-  "output": "main.out"
-}
