@@ -1204,7 +1204,6 @@
           "http",
           "kv",
           "net",
-          "node-globals",
           "raw-imports",
           "sloppy-imports",
           "unsafe-proto",

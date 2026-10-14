@@ -322,8 +322,5 @@ impl UnstableConfig {
   pub fn enable_node_compat(&mut self) {
     self.sloppy_imports = true;
     self.detect_cjs = true;
-    if !self.features.iter().any(|f| f == "node-globals") {
-      self.features.push("node-globals".to_string());
-    }
   }
 }

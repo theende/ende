@@ -109,15 +109,6 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     env_var: None,
   },
   UnstableFeatureDescription {
-    // Deprecated: Node.js `setTimeout`/`setInterval` globals are now the
-    // default, so this flag is a no-op kept only for backwards compatibility.
-    name: "node-globals",
-    help_text: "Deprecated. Node.js `setTimeout` and `setInterval` globals are now always enabled, so this flag has no effect.",
-    show_in_help: false,
-    kind: UnstableFeatureKind::Runtime,
-    env_var: None,
-  },
-  UnstableFeatureDescription {
     name: "npm-lazy-caching",
     help_text: "Enable unstable lazy caching of npm dependencies, downloading them only as needed (disabled: all npm packages in package.json are installed on startup; enabled: only npm packages that are actually referenced in an import are installed",
     show_in_help: true,

@@ -483,11 +483,6 @@ ArgDef::new("unstable-bare-node-builtins")
     .set_true()
     .hidden()
 .help("Enable abort signal in Ende.serve without legacy behavior. This will not abort the server when the request is handled successfully."),
-  ArgDef::new("unstable-node-globals")
-    .long("unstable-node-globals")
-    .set_true()
-    .hidden()
-.help("Deprecated. Node.js `setTimeout` and `setInterval` globals are now always enabled, so this flag has no effect."),
   ArgDef::new("unstable-npm-lazy-caching")
     .long("unstable-npm-lazy-caching")
     .set_true()

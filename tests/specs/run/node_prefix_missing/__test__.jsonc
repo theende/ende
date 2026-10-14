@@ -19,14 +19,6 @@
       },
       "output": "feature_enabled.out"
     },
-    "unstable_node_globals_enabled": {
-      "args": "run --unstable-node-globals node_globals.ts",
-      "output": "node_globals.out"
-    },
-    "unstable_node_globals_enabled_check": {
-      "args": "check --unstable-node-globals node_globals.ts",
-      "output": "node_globals_check.out"
-    },
     "unstable_node_globals_enabled2": {
       "args": "run node_globals.ts",
       "envs": {

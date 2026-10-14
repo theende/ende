@@ -952,7 +952,6 @@ fn unstable_args_parse(result: &ParseResult, flags: &mut Flags) {
     ("unstable-lockfile-v5", None),
     ("unstable-net", None),
     ("unstable-no-legacy-abort", None),
-    ("unstable-node-globals", None),
     ("unstable-otel", None),
     ("unstable-process", None),
     ("unstable-subdomain-wildcards", None),

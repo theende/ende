@@ -10019,3 +10019,14 @@ fn bundle_sourcemap_rejects_invalid_value() {
     flags_from_vec(svec!["ende", "bundle", "--sourcemap=bogus", "main.ts"]);
   assert!(r.is_err(), "expected --sourcemap=bogus to be rejected");
 }
+
+#[test]
+fn unstable_node_globals_flag_removed() {
+  let r = flags_from_vec(svec![
+    "ende",
+    "run",
+    "--unstable-node-globals",
+    "script.ts"
+  ]);
+  assert!(r.is_err());
+}

@@ -4,7 +4,7 @@
     "spawn_self_no_args": {
       "steps": [
         {
-          "args": "compile -A --unstable-node-globals --unstable-bare-node-builtins --unstable-detect-cjs --output main main.ts",
+          "args": "compile -A --unstable-bare-node-builtins --unstable-detect-cjs --output main main.ts",
           "output": "[WILDCARD]"
         },
         {
@@ -17,7 +17,7 @@
     "spawn_self_with_args": {
       "steps": [
         {
-          "args": "compile -A --unstable-node-globals --unstable-bare-node-builtins --unstable-detect-cjs --output main main.ts",
+          "args": "compile -A --unstable-bare-node-builtins --unstable-detect-cjs --output main main.ts",
           "output": "[WILDCARD]"
         },
         {
