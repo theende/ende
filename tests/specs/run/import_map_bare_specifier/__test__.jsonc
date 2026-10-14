@@ -13,18 +13,6 @@
         }
       ]
     },
-    "npm_nmd_manual": {
-      "steps": [
-        {
-          "args": "i",
-          "output": "[WILDCARD]"
-        },
-        {
-          "args": "run bar hello test",
-          "output": "npm.out"
-        }
-      ]
-    },
     "jsr_bin": {
       "args": "run baz",
       "output": "jsr_specifier.out",

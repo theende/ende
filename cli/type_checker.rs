@@ -899,7 +899,6 @@ struct GraphWalker<'a> {
   maybe_hasher: Option<FastInsecureHasher>,
   seen: FxHashSet<&'a Url>,
   pending: VecDeque<PendingGraphWalkSpecifier<'a>>,
-  has_seen_node_builtin: bool,
   roots: Vec<(ModuleSpecifier, MediaType)>,
   missing_diagnostics: tsc::Diagnostics,
   used_ts_expect_error_directives: HashSet<TsDirective>,
@@ -949,7 +948,6 @@ impl<'a> GraphWalker<'a> {
         Default::default(),
       ),
       pending: VecDeque::new(),
-      has_seen_node_builtin: false,
       roots: Vec::with_capacity(graph.imports.len() + graph.specifiers_count()),
       missing_diagnostics: Default::default(),
       used_ts_expect_error_directives: Default::default(),
@@ -1006,14 +1004,7 @@ impl<'a> GraphWalker<'a> {
   /// redirects resolved. We need to include all the emittable files in
   /// the roots, so they get type checked and optionally emitted,
   /// otherwise they would be ignored if only imported into JavaScript.
-  pub fn into_tsc_roots(mut self) -> TscRoots {
-    if self.has_seen_node_builtin && !self.roots.is_empty() {
-      // inject a specifier that will force node types to be resolved
-      self.roots.push((
-        ModuleSpecifier::parse("asset:///reference_types_node.d.ts").unwrap(),
-        MediaType::Dts,
-      ));
-    }
+  pub fn into_tsc_roots(self) -> TscRoots {
     TscRoots {
       roots: self.roots,
       missing_diagnostics: self.missing_diagnostics,
@@ -1129,11 +1120,7 @@ impl<'a> GraphWalker<'a> {
             self.roots.push((module.specifier.clone(), media_type));
           }
         }
-        Module::Node(_) => {
-          if !self.has_seen_node_builtin {
-            self.has_seen_node_builtin = true;
-          }
-        }
+        Module::Node(_) => {}
       }
 
       if module.media_type().is_declaration() {
@@ -1264,12 +1251,7 @@ impl<'a> GraphWalker<'a> {
         }
         result
       }
-      Module::Node(_) => {
-        // the @types/node package will be in the resolved
-        // snapshot so don't bother including it in the hash
-        None
-      }
-      Module::Npm(_) => {
+      Module::Node(_) | Module::Npm(_) => {
         // don't bother adding this specifier to the hash
         // because what matters is the resolved npm snapshot,
         // which is hashed below

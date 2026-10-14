@@ -76,7 +76,7 @@ function longStream() {
 
 // Long stream with Lorem Ipsum text.
 function longAsyncStream(cancelResolve?: (value: unknown) => void) {
-  let currentTimeout: NodeJS.Timeout | undefined = undefined;
+  let currentTimeout: number | undefined = undefined;
   return new ReadableStream({
     async start(controller) {
       for (let i = 0; i < 100; i++) {
@@ -764,7 +764,7 @@ Deno.test(async function readableStreamFromWithStringThrows() {
   function startUpstreamServer() {
     Deno.serve({ port: upstreamServerPort, signal: stopSignal.signal }, (_) => {
       // Create an infinite readable stream that emits 'a'
-      let pushTimeout: NodeJS.Timeout | null = null;
+      let pushTimeout: number | null = null;
       const readableStream = new ReadableStream({
         start(controller) {
           const encoder = new TextEncoder();

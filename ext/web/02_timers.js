@@ -4,7 +4,7 @@
 // Adds WHATWG-specific behavior on top:
 // - webidl type coercion
 // - string callback eval (WHATWG spec)
-// - timer nesting depth tracking (WHATWG spec)
+// - timer nesting depth tracking and 4ms clamping (WHATWG spec)
 // - numeric timer IDs
 // - AsyncContext propagation across the callback boundary
 
@@ -39,6 +39,12 @@ const activeTimers = new SafeMap();
 // WHATWG timer nesting depth tracking.
 let timerDepth = 0;
 
+// WHATWG timer initialization steps: once the nesting level of the task that
+// schedules a timer is greater than 5, timeouts below 4ms are raised to 4ms.
+function clampTimeout(timeout, nestingLevel) {
+  return nestingLevel > 5 && timeout < 4 ? 4 : timeout;
+}
+
 function checkThis(thisArg) {
   if (thisArg !== null && thisArg !== undefined && thisArg !== globalThis) {
     throw new TypeError("Illegal invocation");
@@ -71,7 +77,7 @@ function setTimeout(callback, timeout = 0, ...args) {
       MapPrototypeDelete(activeTimers, id);
     }
   };
-  timeout = webidl.converters.long(timeout);
+  timeout = clampTimeout(webidl.converters.long(timeout), depth);
   const timer = createTimer(wrappedCallback, timeout, undefined, false, true);
   id = timer._timerId;
   MapPrototypeSet(activeTimers, id, timer);
@@ -89,20 +95,24 @@ function setInterval(callback, timeout = 0, ...args) {
   }
   const unboundCallback = callback;
   const asyncContext = getAsyncContext();
-  const depth = timerDepth;
+  // Nesting level of this interval's task; it grows with every repetition,
+  // so short intervals are clamped to 4ms after the fifth one.
+  let depth = timerDepth + 1;
   const wrappedCallback = function () {
     const oldContext = getAsyncContext();
     const prevDepth = timerDepth;
     try {
       setAsyncContext(asyncContext);
-      timerDepth = depth + 1;
+      timerDepth = depth;
       ReflectApply(unboundCallback, globalThis, args);
     } finally {
       timerDepth = prevDepth;
       setAsyncContext(oldContext);
+      timer._repeat = clampTimeout(timer._repeat, depth);
+      depth++;
     }
   };
-  timeout = webidl.converters.long(timeout);
+  timeout = clampTimeout(webidl.converters.long(timeout), depth - 1);
   const timer = createTimer(wrappedCallback, timeout, undefined, true, true);
   const id = timer._timerId;
   MapPrototypeSet(activeTimers, id, timer);
@@ -139,11 +149,6 @@ function clearInterval(id = 0) {
  * Mark a timer as not blocking event loop exit.
  */
 function unrefTimer(id) {
-  if (typeof id !== "number") {
-    // NodeJS.Timeout (or compatible): delegate to its own unref().
-    id?.unref?.();
-    return;
-  }
   const timer = MapPrototypeGet(activeTimers, id);
   if (timer) {
     coreUnrefTimer(timer);
@@ -154,10 +159,6 @@ function unrefTimer(id) {
  * Mark a timer as blocking event loop exit.
  */
 function refTimer(id) {
-  if (typeof id !== "number") {
-    id?.ref?.();
-    return;
-  }
   const timer = MapPrototypeGet(activeTimers, id);
   if (timer) {
     coreRefTimer(timer);

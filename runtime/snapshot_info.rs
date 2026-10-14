@@ -3,8 +3,6 @@
 use std::sync::Arc;
 
 use ende_core::Extension;
-use ende_resolver::npm::DenoInNpmPackageChecker;
-use ende_resolver::npm::NpmResolver;
 
 use crate::ops;
 use crate::shared::runtime;
@@ -41,19 +39,11 @@ pub fn get_extensions_in_snapshot() -> Vec<Extension> {
     ende_cron::ende_cron::init(Box::new(
       ende_cron::local::LocalCronHandler::new(),
     )),
-    ende_napi::ende_napi::init(None),
     ende_http::ende_http::init(ende_http::Options::default()),
     ende_io::ende_io::init(Some(Default::default())),
-    ende_fs::ende_fs::init(fs.clone()),
+    ende_fs::ende_fs::init(fs),
     ende_os::ende_os::init(Default::default()),
     ende_process::ende_process::init(Default::default()),
-    ende_node_crypto::ende_node_crypto::init(),
-    ende_node_sqlite::ende_node_sqlite::init(),
-    ende_node::ende_node::init::<
-      DenoInNpmPackageChecker,
-      NpmResolver<sys_traits::impls::RealSys>,
-      sys_traits::impls::RealSys,
-    >(None, fs.clone()),
     ops::runtime::ende_runtime::init("deno:runtime".parse().unwrap()),
     ops::worker_host::ende_worker_host::init(
       Arc::new(|_| unreachable!("not used in snapshot.")),

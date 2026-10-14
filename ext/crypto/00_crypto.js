@@ -15,7 +15,7 @@
 // forwarder that gives the spec-mandated `Function.length === 2`.
 
 (function () {
-const { core, primordials, internals } = __bootstrap;
+const { core, primordials } = __bootstrap;
 const {
   op_crypto_is_seeded,
   op_crypto_random_uuid_batch,
@@ -30,6 +30,7 @@ const {
   ObjectPrototypeIsPrototypeOf,
   SafeArrayIterator,
   StringPrototypeSlice,
+  Symbol,
   SymbolFor,
 } = primordials;
 
@@ -37,7 +38,9 @@ const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const { createFilteredInspectProxy } = core.loadExtScript(
   "ext:ende_web/01_console.js",
 );
-const { kKeyObject } = internals;
+// Brand stamped on every CryptoKey (alongside `webidl.brand`) that carries
+// the key's raw material, see `ext/crypto/make_key.rs`.
+const kKeyObject = Symbol("kKeyObject");
 
 // op2-generated interface constructors expose the macro's internal
 // new-target signal (`_: bool`) as a formal parameter, giving the

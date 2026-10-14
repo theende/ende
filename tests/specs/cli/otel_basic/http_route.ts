@@ -1,4 +1,4 @@
-import { trace } from "npm:@opentelemetry/api@1.9.0";
+import { trace } from "./otel_api.ts";
 
 let port: number;
 const server = Deno.serve(

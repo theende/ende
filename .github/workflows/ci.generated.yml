@@ -260,11 +260,6 @@ jobs:
             shard_index: '0'
             shard_total: '1'
             shard_label: ''
-          - test_crate: unit_node
-            test_package: unit_node_tests
-            shard_index: '0'
-            shard_total: '1'
-            shard_label: ''
       fail-fast: false
     env:
       CARGO_TERM_COLOR: always
@@ -282,9 +277,6 @@ jobs:
         with:
           fetch-depth: 5
           submodules: false
-      - name: Clone submodule ./tests/node_compat/runner/suite
-        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'') && matrix.test_crate == ''node_compat'''
-        run: git submodule update --init --recursive --depth=1 -- ./tests/node_compat/runner/suite
       - name: Clone submodule ./tests/util/std
         if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'')'
         run: git submodule update --init --recursive --depth=1 -- ./tests/util/std
@@ -383,12 +375,12 @@ jobs:
         run: chmod +x target/debug/endert
       - name: Download artifact debug-macos-aarch64-test-server
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
-        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'') && (matrix.test_crate == ''integration'' || matrix.test_crate == ''specs'' || matrix.test_crate == ''unit'' || matrix.test_crate == ''unit_node'')'
+        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'') && (matrix.test_crate == ''integration'' || matrix.test_crate == ''specs'' || matrix.test_crate == ''unit'')'
         with:
           name: debug-macos-aarch64-test-server
           path: target/debug
       - name: Set target/debug/test_server permissions
-        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'') && (matrix.test_crate == ''integration'' || matrix.test_crate == ''specs'' || matrix.test_crate == ''unit'' || matrix.test_crate == ''unit_node'')'
+        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'') && (matrix.test_crate == ''integration'' || matrix.test_crate == ''specs'' || matrix.test_crate == ''unit'')'
         run: chmod +x target/debug/test_server
       - name: Set up playwright cache
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
@@ -889,11 +881,6 @@ jobs:
             shard_index: '0'
             shard_total: '1'
             shard_label: ''
-          - test_crate: unit_node
-            test_package: unit_node_tests
-            shard_index: '0'
-            shard_total: '1'
-            shard_label: ''
       fail-fast: false
     env:
       CARGO_TERM_COLOR: always
@@ -911,9 +898,6 @@ jobs:
         with:
           fetch-depth: 5
           submodules: false
-      - name: Clone submodule ./tests/node_compat/runner/suite
-        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'') && matrix.test_crate == ''node_compat'''
-        run: git submodule update --init --recursive --depth=1 -- ./tests/node_compat/runner/suite
       - name: Clone submodule ./tests/util/std
         if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'')'
         run: git submodule update --init --recursive --depth=1 -- ./tests/util/std
@@ -1095,12 +1079,12 @@ jobs:
         run: chmod +x target/debug/endert
       - name: Download artifact debug-linux-x86_64-test-server
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
-        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'') && (matrix.test_crate == ''integration'' || matrix.test_crate == ''specs'' || matrix.test_crate == ''unit'' || matrix.test_crate == ''unit_node'')'
+        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'') && (matrix.test_crate == ''integration'' || matrix.test_crate == ''specs'' || matrix.test_crate == ''unit'')'
         with:
           name: debug-linux-x86_64-test-server
           path: target/debug
       - name: Set target/debug/test_server permissions
-        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'') && (matrix.test_crate == ''integration'' || matrix.test_crate == ''specs'' || matrix.test_crate == ''unit'' || matrix.test_crate == ''unit_node'')'
+        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.shard_index == 0 || github.event_name == ''pull_request'') && (matrix.test_crate == ''integration'' || matrix.test_crate == ''specs'' || matrix.test_crate == ''unit'')'
         run: chmod +x target/debug/test_server
       - name: Set up playwright cache
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7

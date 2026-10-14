@@ -7012,20 +7012,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "node_compat_tests"
-version = "0.0.0"
-dependencies = [
- "chrono",
- "deno_terminal",
- "file_test_runner",
- "jsonc-parser",
- "regex",
- "serde",
- "serde_json",
- "test_util",
-]
-
-[[package]]
 name = "node_resolver"
 version = "0.97.0"
 dependencies = [
@@ -10313,14 +10299,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_napi"
-version = "0.1.0"
-dependencies = [
- "libuv-sys-lite",
- "napi_sys",
-]
-
-[[package]]
 name = "test_server"
 version = "0.1.0"
 dependencies = [
@@ -11082,14 +11060,6 @@ name = "uniset"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40789245bbff5f31eb773c9ac4ee5c4e15eab9640d975e124d6ce4c34a6410d7"
-
-[[package]]
-name = "unit_node_tests"
-version = "0.0.0"
-dependencies = [
- "file_test_runner",
- "test_util",
-]
 
 [[package]]
 name = "unit_tests"

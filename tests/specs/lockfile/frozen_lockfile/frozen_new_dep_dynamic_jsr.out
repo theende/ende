@@ -1,15 +1,6 @@
-Download http://127.0.0.1:4250/@endetest/add/meta.json
-Download http://127.0.0.1:4250/@endetest/add/1.0.0_meta.json
-Download http://127.0.0.1:4250/@endetest/add/1.0.0/mod.ts
-error: Uncaught (in promise) TypeError: The lockfile is out of date. Run `ende install --frozen=false`, or rerun with `--frozen=false` to update it.
+[WILDCARD]error: Uncaught (in promise) TypeError: The lockfile is out of date. Run `ende install --frozen=false`, or rerun with `--frozen=false` to update it.
 changes:
- 4 | +    "jsr:@endetest/add@1": "1.0.0",
-   | ...
- 7 | +  "jsr": {
- 8 | +    "@endetest/add@1.0.0": {
- 9 | +      "integrity": "[WILDCARD]"
-10 | +    }
-11 | +  },
+[WILDCARD]
 const { add } = await import(scheme + "@endetest/add@1");
                 ^
     at [WILDCARD]

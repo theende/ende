@@ -1,0 +1,19 @@
+{
+  "tests": {
+    "main": {
+      "args": "run main.ts",
+      "output": "main.out"
+    },
+    "worker": {
+      "args": "run --allow-read worker_main.ts",
+      "output": "main.out"
+    },
+    "eval": {
+      "args": [
+        "eval",
+        "console.log([typeof process, typeof Buffer, typeof global, typeof setImmediate, typeof clearImmediate].join(' '))"
+      ],
+      "output": "main.out"
+    }
+  }
+}

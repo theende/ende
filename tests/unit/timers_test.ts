@@ -195,7 +195,7 @@ Deno.test(async function intervalCancelSuccess() {
 });
 
 Deno.test(async function intervalOrdering() {
-  const timers = [] as NodeJS.Timeout[];
+  const timers = [] as number[];
   let timeouts = 0;
   function onTimeout() {
     ++timeouts;
@@ -773,4 +773,48 @@ Deno.test({
   fn: () => {
     AbortSignal.timeout(2000);
   },
+});
+
+Deno.test(async function timersReturnNumericIds() {
+  let fired = false;
+  const timeout = setTimeout(() => {
+    fired = true;
+  }, 0);
+  const interval = setInterval(() => {}, 1000);
+  assertEquals(typeof timeout, "number");
+  assertEquals(typeof interval, "number");
+  assert(timeout > 0);
+  assertNotEquals(timeout, interval);
+  clearTimeout(timeout);
+  clearInterval(interval);
+  await delay(10);
+  assert(!fired);
+});
+
+Deno.test(async function refTimerAndUnrefTimerTakeNumericIds() {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  const id = setTimeout(resolve, 1);
+  assertEquals(typeof id, "number");
+  Deno.unrefTimer(id);
+  Deno.refTimer(id);
+  await promise;
+});
+
+Deno.test(async function nestedTimeoutsAreClampedTo4ms() {
+  // Per the HTML spec, timeouts scheduled from a timer task whose nesting
+  // level is greater than 5 are raised to at least 4ms.
+  const start = performance.now();
+  const { promise, resolve } = Promise.withResolvers<void>();
+  let depth = 0;
+  function tick() {
+    if (++depth === 10) {
+      resolve();
+    } else {
+      setTimeout(tick, 0);
+    }
+  }
+  setTimeout(tick, 0);
+  await promise;
+  // The last four timeouts are clamped to 4ms each.
+  assert(performance.now() - start >= 15);
 });

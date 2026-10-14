@@ -1,6 +1,13 @@
-TS25[WILDLINE] [ERROR]: Cannot find name '$'. Did you mean to import jQuery? Try adding `import $ from "npm:jquery";`.
+TS2592 [ERROR]: Cannot find name '$'.
 $;
 ^
     at file:///[WILDCARD]/main.ts:1:1
+
+TS2591 [ERROR]: Cannot find name 'process'.
+process;
+~~~~~~~
+    at file:///[WILDCARD]/main.ts:2:1
+
+Found 2 errors.
 
 error: Type checking failed.

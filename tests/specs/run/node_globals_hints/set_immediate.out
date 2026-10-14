@@ -1,0 +1,7 @@
+error: Uncaught (in promise) ReferenceError: setImmediate is not defined
+setImmediate(() => {});
+^
+    at [WILDCARD]set_immediate.js:1:1
+
+    info: setImmediate global is not available in Ende.
+    hint: Use setTimeout(fn, 0) or queueMicrotask() instead.

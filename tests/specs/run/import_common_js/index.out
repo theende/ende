@@ -1,1 +1,1 @@
-[WILDLINE]import_common_js
+error: "file:///[WILDLINE]/index.cjs" — CommonJS modules are not supported in Ende.

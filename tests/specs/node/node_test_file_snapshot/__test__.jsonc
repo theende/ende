@@ -1,5 +1,0 @@
-{
-  "tempDir": true,
-  "args": "test -A test.js",
-  "output": "test.out"
-}

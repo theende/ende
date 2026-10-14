@@ -78,6 +78,7 @@ use ende_runtime::ende_web::Blob;
 use ende_runtime::ende_web::BlobStore;
 use ende_runtime::permissions::RuntimePermissionDescriptorParser;
 use node_resolver::DenoIsBuiltInNodeModuleChecker;
+use node_resolver::IsBuiltInNodeModuleChecker;
 use node_resolver::NodeResolutionKind;
 use node_resolver::NodeResolver;
 use node_resolver::PackageJsonResolver;
@@ -255,6 +256,8 @@ impl EmbeddedModuleLoader {
         Ok(specifier)
       }
       Ok(MappedResolution::Normal { specifier, .. }) => {
+        ende_resolver::check_specifier_supported(&specifier)
+          .map_err(JsErrorBox::from_err)?;
         if let Ok(reference) =
           NpmPackageReqReference::from_specifier(&specifier)
         {
@@ -290,6 +293,16 @@ impl EmbeddedModuleLoader {
             .handle_if_in_node_modules(&specifier)
             .unwrap_or(specifier),
         )
+      }
+      Err(_)
+        if DenoIsBuiltInNodeModuleChecker
+          .is_builtin_node_module(raw_specifier) =>
+      {
+        Err(JsErrorBox::from_err(
+          ende_resolver::UnsupportedSpecifierError::NodeBuiltin(
+            raw_specifier.to_string(),
+          ),
+        ))
       }
       Err(err)
         if err.is_unmapped_bare_specifier() && referrer.scheme() == "file" =>
@@ -1676,18 +1689,13 @@ pub async fn run_with_options(
           event_loop_result?;
           let web_continue = worker.dispatch_beforeunload_event()?;
           if !web_continue {
-            let node_continue =
-              worker.dispatch_process_beforeexit_event()?;
-            if !node_continue {
-              break;
-            }
+            break;
           }
         }
       }
     }
 
     worker.dispatch_unload_event()?;
-    worker.dispatch_process_exit_event()?;
     Ok(worker.exit_code())
   } else if has_desktop {
     // Same as `LibMainWorker::run()`, but tag any failure from the load phase

@@ -3,7 +3,6 @@
 use test_util as util;
 use test_util::TempDir;
 use test_util::assert_contains;
-use test_util::env_vars_for_npm_tests;
 use test_util::eprintln;
 use test_util::test;
 use tokio::io::AsyncBufReadExt;
@@ -1205,42 +1204,6 @@ async fn serve_watch_with_excluded_paths() {
   check_alive_then_kill(child);
 }
 
-#[test(flaky)]
-async fn run_watch_npm_specifier() {
-  let _g = util::http_server();
-  let t = TempDir::new();
-
-  let file_to_watch = t.path().join("file_to_watch.txt");
-  file_to_watch.write("Hello world");
-
-  let mut child = util::ende_cmd()
-    .current_dir(t.path())
-    .envs(env_vars_for_npm_tests())
-    .arg("run")
-    .arg("--watch=file_to_watch.txt")
-    .arg("-L")
-    .arg("debug")
-    .arg("npm:@denotest/bin/cli-cjs")
-    .arg("Hello world")
-    .env("NO_COLOR", "1")
-    .piped_output()
-    .spawn()
-    .unwrap();
-  let (mut stdout_lines, mut stderr_lines) = child_lines(&mut child);
-
-  wait_contains("Hello world", &mut stdout_lines).await;
-  wait_for_watcher("file_to_watch.txt", &mut stderr_lines).await;
-
-  // Change content of the file
-  file_to_watch.write("Hello world2");
-
-  wait_contains("Restarting", &mut stderr_lines).await;
-  wait_contains("Hello world", &mut stdout_lines).await;
-  wait_for_watcher("file_to_watch.txt", &mut stderr_lines).await;
-
-  check_alive_then_kill(child);
-}
-
 // TODO(bartlomieju): this test became flaky on macOS runner; it is unclear
 // if that's because of a bug in code or the runner itself. We should reenable
 // it once we upgrade to XL runners for macOS.
@@ -2132,55 +2095,6 @@ async fn run_watch_unload_on_restart() {
   check_alive_then_kill(child);
 }
 
-/// Test that Node.js process "exit" event fires on watch restart.
-#[test(flaky)]
-async fn run_watch_process_exit_on_restart() {
-  let t = TempDir::new();
-  let file_to_watch = t.path().join("file_to_watch.js");
-  file_to_watch.write(
-    r#"
-      import process from "node:process";
-      process.on("exit", () => {
-        console.log("process exit fired");
-      });
-      setInterval(() => {}, 1000);
-    "#,
-  );
-
-  let mut child = util::ende_cmd()
-    .current_dir(t.path())
-    .arg("run")
-    .arg("--watch")
-    .arg("-L")
-    .arg("debug")
-    .arg("--allow-all")
-    .arg(&file_to_watch)
-    .env("NO_COLOR", "1")
-    .piped_output()
-    .spawn()
-    .unwrap();
-  let (mut stdout_lines, mut stderr_lines) = child_lines(&mut child);
-
-  wait_for_watcher("file_to_watch.js", &mut stderr_lines).await;
-
-  // Trigger a restart by modifying the file
-  file_to_watch.write(
-    r#"
-      import process from "node:process";
-      process.on("exit", () => {
-        console.log("process exit fired");
-      });
-      setInterval(() => {}, 1000);
-      // changed
-    "#,
-  );
-
-  // The process exit handler should fire before the process restarts
-  wait_contains("process exit fired", &mut stdout_lines).await;
-  wait_contains("Restarting", &mut stderr_lines).await;
-  check_alive_then_kill(child);
-}
-
 /// Wait, in either order, for the watcher to both report the requested exit
 /// code and start watching `file_name`.
 ///
@@ -2226,7 +2140,7 @@ async fn wait_for_exit_code_and_watcher<R>(
   }
 }
 
-/// Shared body for the `Ende.exit()` / `process.exit()` under-watch tests: the
+/// Shared body for the `Ende.exit()` under-watch tests: the
 /// exit call ends the current run with the requested code, the `unload` event
 /// still fires, code after the exit call does not run, and the watcher stays
 /// alive and restarts on the next file change.
@@ -2236,7 +2150,6 @@ async fn run_watch_exit_keeps_watcher_alive(watch_flag: &str, exit_call: &str) {
   let file_to_watch = t.path().join("file_to_watch.js");
   file_to_watch.write(format!(
     r#"
-      import process from "node:process";
       globalThis.addEventListener("unload", () => {{
         console.log("unload event fired");
       }});
@@ -2284,13 +2197,6 @@ async fn run_watch_exit_keeps_watcher_alive(watch_flag: &str, exit_call: &str) {
 #[test(flaky)]
 async fn run_watch_ende_exit() {
   run_watch_exit_keeps_watcher_alive("--watch", "Deno.exit(42)").await;
-}
-
-/// Like [`run_watch_ende_exit`], but using `process.exit()` from `node:process`,
-/// which routes through the same `op_exit` chokepoint.
-#[test(flaky)]
-async fn run_watch_process_exit() {
-  run_watch_exit_keeps_watcher_alive("--watch", "process.exit(42)").await;
 }
 
 /// Like [`run_watch_ende_exit`], but for HMR mode (`--watch-hmr`), which runs

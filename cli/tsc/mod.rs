@@ -144,9 +144,6 @@ macro_rules! maybe_compressed_lib {
   };
 }
 
-// Include the auto-generated node type libs macro
-include!(concat!(env!("OUT_DIR"), "/node_types.rs"));
-
 /// Libs that keep the old `deno.*` lib names working in
 /// `/// <reference lib="deno.*" />` directives. Each one only references its
 /// `ende.*` replacement. (`compilerOptions.lib` entries are rewritten to the
@@ -345,28 +342,13 @@ pub static LAZILY_LOADED_STATIC_ASSETS: Lazy<
     maybe_compressed_lib!("lib.esnext.string.d.ts"),
     maybe_compressed_lib!("lib.esnext.temporal.d.ts"),
     maybe_compressed_lib!("lib.esnext.typedarrays.d.ts"),
-    maybe_compressed_lib!("lib.node.d.ts"),
     maybe_compressed_lib!("lib.scripthost.d.ts"),
     maybe_compressed_lib!("lib.webworker.asynciterable.d.ts"),
     maybe_compressed_lib!("lib.webworker.d.ts"),
     maybe_compressed_lib!("lib.webworker.importscripts.d.ts"),
     maybe_compressed_lib!("lib.webworker.iterable.d.ts"),
-    (
-      // Special file that can be used to inject the @types/node package.
-      // This is used for `node:` specifiers.
-      "reference_types_node.d.ts",
-      StaticAsset {
-        is_lib: false,
-        source: StaticAssetSource::Uncompressed(
-          // causes either the built-in node types to be used or it
-          // prefers the @types/node if it exists
-          "/// <reference lib=\"node\" />\n/// <reference types=\"npm:@types/node\" />\n",
-        ),
-      },
-    ),
   ])
   .into_iter()
-  .chain(node_type_libs!())
   .chain(deprecated_deno_libs!(
     "ns",
     "window",
@@ -1008,12 +990,6 @@ pub fn resolve_specifier_for_tsc(
   referrer_module: Option<&Module>,
   remapped_specifiers: &mut HashMap<String, ModuleSpecifier>,
 ) -> Result<(String, Option<&'static str>), ResolveError> {
-  if specifier.starts_with("node:")
-    && let Ok(specifier) = ModuleSpecifier::parse(&specifier)
-  {
-    return Ok((specifier.into(), Some(MediaType::Dts.as_ts_extension())));
-  }
-
   if specifier.starts_with("asset:///") {
     let ext = MediaType::from_str(&specifier).as_ts_extension();
     return Ok((specifier, Some(ext)));
@@ -1054,12 +1030,6 @@ pub fn resolve_specifier_for_tsc(
         resolution_mode,
         maybe_npm,
       );
-      if result.is_err() && specifier == "node" {
-        return Ok((
-          "asset:///reference_types_node.d.ts".to_string(),
-          Some(MediaType::Dts.as_ts_extension()),
-        ));
-      }
       match result {
         Ok(maybe_result) => maybe_result,
         Err(
@@ -1070,10 +1040,7 @@ pub fn resolve_specifier_for_tsc(
         ) => {
           // it's most likely requesting the jsxImportSource, which isn't loaded
           // into the graph when not using jsx, so just ignore this error
-          if specifier.ends_with("/jsx-runtime")
-            // ignore in order to support attempt to load when it doesn't exist
-            || specifier == "npm:@types/node"
-          {
+          if specifier.ends_with("/jsx-runtime") {
             None
           } else {
             return Err(err.into());
@@ -1332,7 +1299,7 @@ pub static IGNORED_DIAGNOSTIC_CODES: LazyLock<HashSet<u64>> =
       5070,
       // TS6200: Definitions of the following identifiers conflict with those in another file.
       // Ende provides its own web API types (WebAssembly, BufferSource, etc.) that intentionally
-      // overlap with lib.dom.d.ts or @types/node. This is expected when both are loaded together.
+      // overlap with lib.dom.d.ts. This is expected when both are loaded together.
       6200,
       // TS7016: Could not find a declaration file for module '...'. '...'
       // implicitly has an 'any' type.  This is due to `allowJs` being off by
@@ -1346,93 +1313,3 @@ pub static IGNORED_DIAGNOSTIC_CODES: LazyLock<HashSet<u64>> =
     .into_iter()
     .collect()
   });
-
-// Names of globals that `@types/node` redeclares but that Ende already
-// declares natively (typically in `lib.ende.web.d.ts`). When the TypeScript
-// fork merges `@types/node` into the global symbol table, declarations for
-// these names are dropped so the user-visible global remains Ende's.
-//
-// This keeps `new AbortController().signal` assignable to the `AbortSignal`
-// parameters of `node:fs`, `node:timers/promises`, etc., and avoids the
-// `TS2300` / `TS2320` duplicate-identifier diagnostics reported in
-// https://github.com/denoland/deno/issues/19527.
-pub static TYPES_NODE_IGNORABLE_NAMES: &[&str] = &[
-  "AbortController",
-  "AbortSignal",
-  "AsyncIteratorObject",
-  "atob",
-  "Blob",
-  "BroadcastChannel",
-  "btoa",
-  "ByteLengthQueuingStrategy",
-  "CloseEvent",
-  "CompressionStream",
-  "CountQueuingStrategy",
-  "Crypto",
-  "CryptoKey",
-  "CustomEvent",
-  "DecompressionStream",
-  "Disposable",
-  "DOMException",
-  "ErrorEvent",
-  "Event",
-  "EventListenerObject",
-  "EventSource",
-  "EventTarget",
-  "fetch",
-  "File",
-  "Float32Array",
-  "Float64Array",
-  "FormData",
-  "Headers",
-  "ImportMeta",
-  "MessageChannel",
-  "MessageEvent",
-  "MessagePort",
-  "navigator",
-  "Navigator",
-  "performance",
-  "Performance",
-  "PerformanceEntry",
-  "PerformanceMark",
-  "PerformanceMeasure",
-  "QueuingStrategy",
-  "QueuingStrategySize",
-  "QuotaExceededError",
-  "QuotaExceededErrorOptions",
-  "ReadableByteStreamController",
-  "ReadableStream",
-  "ReadableStreamBYOBReader",
-  "ReadableStreamBYOBRequest",
-  "ReadableStreamDefaultController",
-  "ReadableStreamDefaultReader",
-  "ReadonlyArray",
-  "Request",
-  "RequestInit",
-  "Response",
-  "ResponseInit",
-  "Storage",
-  "SubtleCrypto",
-  "TextDecoder",
-  "TextDecoderStream",
-  "TextEncoder",
-  "TextEncoderStream",
-  "TransformStream",
-  "TransformStreamDefaultController",
-  "URL",
-  "URLPattern",
-  "URLSearchParams",
-  "WebSocket",
-  "WritableStream",
-  "WritableStreamDefaultController",
-  "WritableStreamDefaultWriter",
-];
-
-pub static NODE_ONLY_GLOBALS: &[&str] = &[
-  "console",
-  "Console",
-  "crypto",
-  "gc",
-  "localStorage",
-  "sessionStorage",
-];

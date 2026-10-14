@@ -263,16 +263,11 @@ impl CliMainWorker {
 
       let web_continue = self.worker.dispatch_beforeunload_event()?;
       if !web_continue {
-        let node_continue = self.worker.dispatch_process_beforeexit_event()?;
-        if !node_continue {
-          break;
-        }
+        break;
       }
     }
 
     self.worker.dispatch_unload_event()?;
-    self.worker.dispatch_process_exit_event()?;
-    self.worker.run_napi_ref_finalizers();
 
     Ok(())
   }
@@ -326,11 +321,7 @@ impl CliMainWorker {
           }
           let web_continue = self.inner.worker.dispatch_beforeunload_event()?;
           if !web_continue {
-            let node_continue =
-              self.inner.worker.dispatch_process_beforeexit_event()?;
-            if !node_continue {
-              break Ok(());
-            }
+            break Ok(());
           }
         };
         self.pending_unload = false;
@@ -338,8 +329,6 @@ impl CliMainWorker {
         result?;
 
         self.inner.worker.dispatch_unload_event()?;
-        self.inner.worker.dispatch_process_exit_event()?;
-        self.inner.worker.run_napi_ref_finalizers();
 
         Ok(())
       }
@@ -349,7 +338,6 @@ impl CliMainWorker {
       fn drop(&mut self) {
         if self.pending_unload {
           let _ = self.inner.worker.dispatch_unload_event();
-          let _ = self.inner.worker.dispatch_process_exit_event();
         }
       }
     }

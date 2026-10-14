@@ -1,8 +1,0 @@
-{
-  "tests": {
-    "cipheriv_update_handles_spoofed_length": {
-      "args": "run main.mjs",
-      "output": "main.out"
-    }
-  }
-}

@@ -66,16 +66,12 @@ fn op_resolve(
 
 #[derive(Debug, ToV8)]
 pub struct TscConstants {
-  types_node_ignorable_names: Vec<&'static str>,
-  node_only_globals: Vec<&'static str>,
   ignored_diagnostic_codes: Vec<u64>,
 }
 
 impl TscConstants {
   pub fn new() -> Self {
     Self {
-      types_node_ignorable_names: super::TYPES_NODE_IGNORABLE_NAMES.to_vec(),
-      node_only_globals: super::NODE_ONLY_GLOBALS.to_vec(),
       ignored_diagnostic_codes: super::IGNORED_DIAGNOSTIC_CODES
         .iter()
         .copied()
@@ -669,7 +665,7 @@ mod tests {
       "jsx": "react",
       "jsxFactory": "React.createElement",
       "jsxFragmentFactory": "React.Fragment",
-      "lib": ["ende.window", "node"],
+      "lib": ["ende.window"],
       "noEmit": true,
       "outDir": "internal:///",
       "strict": true,

@@ -1,0 +1,1 @@
+TypeError: Worker type "node" is not supported in Ende: use type "module" instead.

@@ -438,6 +438,7 @@ pub struct SpawnArgs {
 
   extra_stdio: Vec<StdioOrFd>,
   detached: bool,
+  #[serde(default)]
   needs_npm_process_state: bool,
   #[cfg(unix)]
   argv0: Option<String>,

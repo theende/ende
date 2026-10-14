@@ -1,4 +1,7 @@
 {
+  "imports": {
+    "@fresh/core": "jsr:@fresh/core@^2"
+  },
   "tasks": {
     "build": "deno run -A build.ts"
   }

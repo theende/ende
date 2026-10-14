@@ -159,7 +159,7 @@ impl Crypto {
   /// `Crypto.registerSymbols(webidlBrand, kKeyObject)` — internal static
   /// method called by the crypto module bootstrap to hand the WebIDL brand
   /// symbol (a private of `ext:ende_webidl/00_webidl.js`) and the
-  /// `kKeyObject` symbol (a private of ext/node) over to the crypto cppgc
+  /// `kKeyObject` symbol (a private of `00_crypto.js`) over to the crypto cppgc
   /// methods, which need them to brand every freshly-constructed
   /// `CryptoKey`. Idempotent and effect-only; returns `true` on success.
   #[fast]

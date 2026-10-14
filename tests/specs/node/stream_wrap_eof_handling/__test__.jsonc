@@ -1,8 +1,0 @@
-{
-  "tests": {
-    "stream_wrap_eof_handling": {
-      "args": "run --allow-net main.ts",
-      "output": "main.out"
-    }
-  }
-}

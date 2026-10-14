@@ -1,13 +1,11 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@denotest/say-hello@*": "1.0.0"
+    "jsr:@endetest/add@*": "1.0.0"
   },
-  "npm": {
-    "@denotest/say-hello@1.0.0": {
-      "integrity": "sha512-hgZvkHYIZK+rZP7SzHh5ga5HChPhQUzTs56XZT1v23oE1ZZCTgb3kW38BcBQud8SNfbQCIvoUdbcjjl02vzFfw==",
-      "bin": true,
-      "tarball": "http://localhost:4260/@denotest/say-hello/1.0.0.tgz"
+  "jsr": {
+    "@endetest/add@1.0.0": {
+      "integrity": "3b2e675c1ad7fba2a45bc251992e01aff08a3c974ac09079b11e6a5b95d4bfcb"
     }
   }
 }

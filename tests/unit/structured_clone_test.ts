@@ -167,3 +167,52 @@ Deno.test("structuredClone CryptoKey", async () => {
   assertEquals(edClone.type, "private");
   assertEquals(edClone.algorithm.name, "Ed25519");
 });
+
+Deno.test("structuredClone CryptoKey", async () => {
+  const key = await crypto.subtle.generateKey(
+    { name: "HMAC", hash: "SHA-256" },
+    true,
+    ["sign", "verify"],
+  );
+  const clone = structuredClone(key);
+  assert(clone instanceof CryptoKey);
+  assert(clone !== key);
+  assertEquals(clone.type, key.type);
+  assertEquals(clone.extractable, key.extractable);
+  assertEquals(clone.usages, key.usages);
+  assertEquals(clone.algorithm, key.algorithm);
+  assertEquals(
+    await crypto.subtle.exportKey("raw", clone),
+    await crypto.subtle.exportKey("raw", key),
+  );
+  const data = new TextEncoder().encode("hello");
+  const signature = await crypto.subtle.sign("HMAC", key, data);
+  assert(await crypto.subtle.verify("HMAC", clone, signature, data));
+});
+
+Deno.test("CryptoKey can be posted to a worker", async () => {
+  const key = await crypto.subtle.generateKey(
+    { name: "HMAC", hash: "SHA-256" },
+    true,
+    ["sign", "verify"],
+  );
+  const url = URL.createObjectURL(
+    new Blob([
+      `self.onmessage = async (e) => {
+        const raw = await crypto.subtle.exportKey("raw", e.data);
+        self.postMessage([e.data instanceof CryptoKey, raw.byteLength]);
+      };`,
+    ], { type: "application/javascript" }),
+  );
+  const worker = new Worker(url, { type: "module" });
+  try {
+    const { promise, resolve } = Promise.withResolvers<[boolean, number]>();
+    worker.onmessage = (e) => resolve(e.data);
+    worker.postMessage(key);
+    const raw = await crypto.subtle.exportKey("raw", key);
+    assertEquals(await promise, [true, raw.byteLength]);
+  } finally {
+    worker.terminate();
+    URL.revokeObjectURL(url);
+  }
+});

@@ -5,7 +5,6 @@
 import { assertIsError, assertMatch, assertRejects } from "@std/assert";
 import { Buffer, type Reader } from "@std/io";
 import { delay } from "@std/async/delay";
-import * as http2 from "node:http2";
 import { TextProtoReader } from "../testdata/run/textproto.ts";
 import {
   assert,
@@ -4118,34 +4117,21 @@ Deno.test(
     });
 
     await listeningDeferred.promise;
-    const client = http2.connect(`http://localhost:${servePort}`);
+    // HTTP/2 with prior knowledge over cleartext.
+    const client = Deno.createHttpClient({ http1: false, http2: true });
     try {
-      const req = client.request({
-        ":path": "/",
-        "accept-encoding": "br",
+      const resp = await fetch(`http://localhost:${servePort}/`, {
+        client,
+        headers: { "accept-encoding": "br" },
       });
-      let headers: http2.IncomingHttpHeaders | undefined;
-      let compressedLength = 0;
-      req.on("response", (responseHeaders) => {
-        headers = responseHeaders;
-      });
-      req.on("data", (chunk) => {
-        compressedLength += chunk.length;
-      });
-
-      req.end();
-      await new Promise<void>((resolve, reject) => {
-        req.on("end", resolve);
-        req.on("error", reject);
-        client.on("error", reject);
-      });
-
-      assert(headers);
-      assertEquals(Number(headers[":status"]), 200);
-      assertEquals(headers["content-encoding"], "br");
-      assertEquals(headers["vary"], "Accept-Encoding");
-      assertEquals(headers["content-length"], `${compressedLength}`);
+      assertEquals(resp.status, 200);
+      assertEquals(resp.headers.get("content-encoding"), "br");
+      assertEquals(resp.headers.get("vary"), "Accept-Encoding");
+      const compressedLength = Number(resp.headers.get("content-length"));
+      assert(compressedLength > 0);
       assert(compressedLength < body.length);
+      // fetch transparently decompresses the body.
+      assertEquals(await resp.text(), body);
     } finally {
       client.close();
       ac.abort();
@@ -4175,35 +4161,18 @@ Deno.test(
     });
 
     await listeningDeferred.promise;
-    const client = http2.connect(`http://localhost:${servePort}`);
+    // HTTP/2 with prior knowledge over cleartext.
+    const client = Deno.createHttpClient({ http1: false, http2: true });
     try {
-      const req = client.request({
-        ":path": "/",
-        "accept-encoding": "br",
+      const resp = await fetch(`http://localhost:${servePort}/`, {
+        client,
+        headers: { "accept-encoding": "br" },
       });
-      let headers: http2.IncomingHttpHeaders | undefined;
-      let responseBody = "";
-      req.setEncoding("utf8");
-      req.on("response", (responseHeaders) => {
-        headers = responseHeaders;
-      });
-      req.on("data", (chunk) => {
-        responseBody += chunk;
-      });
-
-      req.end();
-      await new Promise<void>((resolve, reject) => {
-        req.on("end", resolve);
-        req.on("error", reject);
-        client.on("error", reject);
-      });
-
-      assert(headers);
-      assertEquals(Number(headers[":status"]), 200);
-      assertEquals(headers["content-encoding"], undefined);
-      assertEquals(headers["vary"], undefined);
-      assertEquals(headers["content-length"], `${body.length}`);
-      assertEquals(responseBody, body);
+      assertEquals(resp.status, 200);
+      assertEquals(resp.headers.get("content-encoding"), null);
+      assertEquals(resp.headers.get("vary"), null);
+      assertEquals(resp.headers.get("content-length"), `${body.length}`);
+      assertEquals(await resp.text(), body);
     } finally {
       client.close();
       ac.abort();
@@ -4242,38 +4211,35 @@ Deno.test(
 
     await listeningDeferred.promise;
 
-    const client = http2.connect(`https://localhost:${servePort}`, {
-      ca: cert,
-      rejectUnauthorized: false,
+    const client = Deno.createHttpClient({
+      caCerts: [Deno.readTextFileSync("tests/testdata/tls/RootCA.pem")],
+      http1: false,
+      http2: true,
     });
-    client.on("error", () => {});
     try {
+      const pending = [];
       for (let i = 0; i < 50; i++) {
-        const req = client.request({ ":path": "/", ":method": "GET" });
-        req.on("error", () => {});
-        req.end();
-        // Cancel the stream while the handler is still pending.
+        const controller = new AbortController();
+        pending.push(
+          fetch(`https://localhost:${servePort}/`, {
+            client,
+            signal: controller.signal,
+          }).catch(() => {}),
+        );
+        // Cancel the stream (RST_STREAM) while the handler is still pending.
         await new Promise((r) => setTimeout(r, 2 + (i % 5)));
-        req.close(http2.constants.NGHTTP2_CANCEL);
+        controller.abort();
       }
+      await Promise.all(pending);
 
       // Give the pending handlers time to commit their (now orphaned)
       // responses; without the fix the server would have panicked by now.
       await new Promise((r) => setTimeout(r, 200));
 
       // The server must still be healthy and able to serve a normal request.
-      const req = client.request({ ":path": "/", ":method": "GET" });
-      let status: number | undefined;
-      req.on("response", (headers) => {
-        status = Number(headers[":status"]);
-      });
-      req.on("data", () => {});
-      req.end();
-      await new Promise<void>((resolve, reject) => {
-        req.on("end", resolve);
-        req.on("error", reject);
-      });
-      assertEquals(status, 200);
+      const resp = await fetch(`https://localhost:${servePort}/`, { client });
+      await resp.body?.cancel();
+      assertEquals(resp.status, 200);
     } finally {
       client.close();
       ac.abort();
@@ -5096,7 +5062,7 @@ Deno.test(
     const { resolve } = Promise.withResolvers<void>();
 
     let reqCount = -1;
-    let timerId: NodeJS.Timeout | undefined;
+    let timerId: number | undefined;
     await using server = Deno.serve({
       handler: (_req) => {
         reqCount++;
@@ -5965,7 +5931,7 @@ Deno.test(
     const ac = new AbortController();
 
     console.log("Starting server", servePort);
-    let timer: NodeJS.Timeout | undefined = undefined;
+    let timer: number | undefined = undefined;
     let _controller;
 
     await using server = Deno.serve(

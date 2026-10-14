@@ -687,14 +687,14 @@ Deno.serve({ signal: ac.signal }, () => new Response("Hello World"));
 );
 
 Deno.test({
-  name: "process.ppid matches parent process",
+  name: "Deno.ppid matches parent process",
   permissions: { run: true, read: true },
   ignore: Deno.build.os === "windows",
   async fn() {
     const command = new Deno.Command(Deno.execPath(), {
       args: [
         "eval",
-        "import { ppid } from 'node:process'; console.log(ppid);",
+        "console.log(Deno.ppid);",
       ],
       stdout: "piped",
     });

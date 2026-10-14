@@ -18,7 +18,6 @@ use crate::args::CompileFlags;
 use crate::args::DesktopFlags;
 use crate::args::EndeSubcommand;
 use crate::args::Flags;
-use crate::args::TypeCheckMode;
 use crate::factory::CliFactory;
 use crate::http_util::HttpClientProvider;
 use crate::util::progress_bar::ProgressBar;
@@ -174,7 +173,7 @@ fn apply_desktop_config_to_flags(
 }
 
 async fn compile_desktop(
-  mut flags: Flags,
+  flags: Flags,
   mut desktop_flags: DesktopFlags,
   cli_options: &Arc<CliOptions>,
   laufey_resolver: &LaufeyBackendResolver,
@@ -323,25 +322,10 @@ async fn compile_desktop(
   let desktop_entrypoint_file = if desktop_flags.source_file == "." {
     let cwd = &detection_cwd;
     if let Some(detection) = detected_framework.as_ref() {
-      let use_framework_hmr = desktop_flags.hmr
-        && (detection.hmr_entrypoint_code().is_some()
-          || detection.hmr_command.is_some());
+      let use_framework_hmr =
+        desktop_flags.hmr && detection.hmr_command.is_some();
       let entrypoint_code = if use_framework_hmr {
-        match detection.hmr_entrypoint_code() {
-          Some(code) => {
-            // The generated dev shim imports the framework's dev-server API
-            // (e.g. Vite's); type-checking it would demand the project ship
-            // `@types/node` and checks nothing user-authored, so skip it.
-            flags.type_check_mode = TypeCheckMode::None;
-            // The dev server used to run as an unsandboxed `ende task dev`
-            // subprocess; now that it runs inside the desktop runtime, keep
-            // that behavior — a sandboxed Vite immediately dies on env reads
-            // (e.g. NAPI_RS_WASI_FLAVOR from its napi loader).
-            flags.permissions.allow_all = true;
-            code.to_string()
-          }
-          None => NOOP_ENTRYPOINT.to_string(),
-        }
+        NOOP_ENTRYPOINT.to_string()
       } else {
         detection.entrypoint_code.clone()
       };
@@ -352,14 +336,6 @@ async fn compile_desktop(
         // below; otherwise the include points at a directory that doesn't exist
         // yet and the compile fails (#35535). Mirrors `ende compile .`.
         super::framework::run_build_command(detection, cwd)?;
-      }
-      if detection.name == "Next.js"
-        && !matches!(flags.type_check_mode, TypeCheckMode::None)
-      {
-        log::info!(
-          "Disabling Ende type checking for Next.js desktop compile; Next handles app compilation itself"
-        );
-        flags.type_check_mode = TypeCheckMode::None;
       }
       // Sweep stale entrypoints leaked by previous interrupted runs. The
       // NamedTempFile below cleans up on drop, but a Ctrl-C delivers SIGINT
@@ -415,7 +391,7 @@ async fn compile_desktop(
       Some(entrypoint_temp)
     } else {
       bail!(
-        "Could not detect a supported framework in the current directory.\nSupported frameworks: Next.js, Astro, Fresh, Remix, React Router, SvelteKit, Nuxt, SolidStart, TanStack Start, Vite\nProvide an explicit entrypoint instead."
+        "Could not detect a supported framework in the current directory.\nSupported frameworks: Fresh\nProvide an explicit entrypoint instead."
       );
     }
   } else {
@@ -430,7 +406,7 @@ async fn compile_desktop(
   // leak the entrypoint for the whole dev session.
 
   // No explicit icon, but a framework was detected — try to use its
-  // favicon (e.g. `public/favicon.ico`, `app/icon.png`) as the app icon
+  // favicon (e.g. `static/favicon.ico`) as the app icon
   // so the bundle gets the project's branding for free.
   if desktop_flags.icon.is_none()
     && let Some(detection) = detected_framework.as_ref()
@@ -1243,11 +1219,7 @@ async fn spawn_framework_dev_server(
 
 /// Launch the desktop app with HMR enabled after compilation.
 ///
-/// Framework dev servers provide HMR via websocket. Since they run inside
-/// the Ende desktop runtime, `Ende.desktop` APIs remain available.
-/// `child_process.fork()` works because forked workers use
-/// `override_main_module` to run the target script instead of the
-/// embedded entrypoint.
+/// Framework dev servers provide HMR via websocket.
 async fn run_desktop_hmr(
   dylib_path: &Path,
   source_dir: &Path,
@@ -1341,20 +1313,7 @@ async fn run_desktop_hmr(
     cmd.env("ENDE_DESKTOP_HMR", &source_abs);
   }
 
-  // In-runtime framework dev: the compiled entrypoint boots the framework's
-  // dev server inside the desktop runtime (see `hmr_entrypoint_code`), so
-  // server-side code keeps access to `Ende.desktop` (#35899). Signal
-  // rt_desktop to restore CWD to the source dir and leave hot reloading to
-  // the framework; the webview finds the server via the regular
-  // ENDE_SERVE_ADDRESS poll, so no external process and no URL scraping.
-  let in_runtime_dev = desktop_flags.hmr
-    && framework.is_some_and(|f| f.hmr_entrypoint_code().is_some());
-  if in_runtime_dev {
-    cmd.env("ENDE_DESKTOP_FRAMEWORK_DEV", "1");
-  }
-
   let _dev_server_child = if desktop_flags.hmr
-    && !in_runtime_dev
     && let Some(fw) = framework
     && let Some(dev_cmd) = &fw.hmr_command
   {

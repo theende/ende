@@ -1,7 +1,0 @@
-{
-  "name": "main-project",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": { "pkg-a": "*", "pkg-b": "*" },
-  "exports": { ".": "./src/index.ts" }
-}

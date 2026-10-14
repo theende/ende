@@ -1,4 +1,4 @@
-import { metrics } from "npm:@opentelemetry/api@1";
+import { metrics } from "./otel_api.ts";
 
 // Regression test: OTEL_METRIC_EXPORT_INTERVAL=0 must not panic. A zero
 // interval falls back to the default, and the metric is still flushed on

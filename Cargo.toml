@@ -71,11 +71,8 @@ members = [
   "tests/bench_util",
   "tests/ffi",
   "tests/integration",
-  "tests/napi",
-  "tests/node_compat",
   "tests/specs",
   "tests/unit",
-  "tests/unit_node",
   "tests/util/lib",
   "tests/util/server",
   "tests/util/test_macro",
@@ -596,8 +593,6 @@ opt-level = 3
 [profile.release.package.serde_v8]
 opt-level = 3
 [profile.release.package.libsui]
-opt-level = 3
-[profile.release.package.test_napi]
 opt-level = 3
 [profile.release.package.tokio]
 opt-level = 3

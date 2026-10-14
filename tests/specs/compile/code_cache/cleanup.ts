@@ -1,4 +1,11 @@
-import { tmpdir } from "node:os";
+// Same directory `std::env::temp_dir()` uses for the code cache file.
+function tmpdir(): string {
+  if (Deno.build.os === "windows") {
+    return Deno.env.get("TMP") ?? Deno.env.get("TEMP") ??
+      Deno.env.get("USERPROFILE") ?? "C:\\Windows";
+  }
+  return (Deno.env.get("TMPDIR") ?? "/tmp").replace(/\/$/, "");
+}
 
 // cleanup the code cache file from a previous run
 try {

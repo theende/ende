@@ -1,9 +1,0 @@
-{
-  "tests": {
-    "register_hooks_traversal": {
-      "args": "run main_register_hooks.mjs",
-      "output": "main_register_hooks.out",
-      "exitCode": 1
-    }
-  }
-}

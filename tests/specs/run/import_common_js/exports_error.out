@@ -3,9 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
                       ^
     at [WILDCARD]exports_error.js:1:23
 
-    info: Ende supports CommonJS modules in .cjs files, or when the closest
-          package.json has a "type": "commonjs" option.
-    hint: Rewrite this module to ESM,
-          or change the file extension to .cjs,
-          or add package.json next to the file with "type": "commonjs" option.
-    docs: https://docs.ende.sh/go/commonjs
+    info: CommonJS modules are not supported in Ende.
+    hint: Rewrite this module as an ES module: use import/export instead of
+          require(), module.exports and exports.

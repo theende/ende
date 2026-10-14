@@ -26,7 +26,6 @@ use crate::cache::ParsedSourceCacheRc;
 use crate::cjs::CjsTrackerRc;
 use crate::emit::EmitParsedSourceHelperError;
 use crate::emit::EmitterRc;
-use crate::factory::EndeNodeCodeTranslatorRc;
 use crate::graph::EnhanceGraphErrorMode;
 use crate::graph::EnhancedGraphError;
 use crate::graph::enhance_graph_error;
@@ -56,6 +55,9 @@ pub enum LoadPreparedModuleErrorKind {
   #[class(inherit)]
   #[error(transparent)]
   Emit(#[from] EmitParsedSourceHelperError),
+  #[class(inherit)]
+  #[error(transparent)]
+  UnsupportedSpecifier(#[from] crate::UnsupportedSpecifierError),
 }
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
@@ -143,14 +145,16 @@ enum CodeOrDeferredEmit<'a> {
     media_type: MediaType,
     source: &'a ArcStr,
   },
-  Cjs {
-    specifier: &'a Url,
-    media_type: MediaType,
-    source: &'a ArcStr,
-  },
   ExternalAsset {
     specifier: &'a Url,
   },
+}
+
+fn commonjs_not_supported(specifier: &Url) -> LoadPreparedModuleError {
+  LoadPreparedModuleErrorKind::UnsupportedSpecifier(
+    crate::UnsupportedSpecifierError::CommonJs(specifier.to_string()),
+  )
+  .into_box()
 }
 
 pub struct ModuleLoader<TSys: ModuleLoaderSys> {
@@ -166,7 +170,6 @@ impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
     cjs_tracker: CjsTrackerRc<DenoInNpmPackageChecker, TSys>,
     emitter: EmitterRc<DenoInNpmPackageChecker, TSys>,
     in_npm_pkg_checker: DenoInNpmPackageChecker,
-    node_code_translator: EndeNodeCodeTranslatorRc<TSys>,
     npm_module_loader: DenoNpmModuleLoaderRc<TSys>,
     parsed_source_cache: ParsedSourceCacheRc,
     sys: TSys,
@@ -178,7 +181,6 @@ impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
       prepared_module_loader: PreparedModuleLoader {
         cjs_tracker,
         emitter,
-        node_code_translator,
         parsed_source_cache,
         sys,
       },
@@ -202,12 +204,7 @@ impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
   ) -> Result<LoadedModuleOrAsset<'a>, LoadCodeSourceError> {
     let source = match self
       .prepared_module_loader
-      .load_prepared_module(
-        graph,
-        specifier,
-        requested_module_type,
-        cjs_analysis_source_provider,
-      )
+      .load_prepared_module(graph, specifier, requested_module_type)
       .await
       .map_err(LoadCodeSourceError::from)?
     {
@@ -338,7 +335,6 @@ impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
 struct PreparedModuleLoader<TSys: ModuleLoaderSys> {
   cjs_tracker: CjsTrackerRc<DenoInNpmPackageChecker, TSys>,
   emitter: EmitterRc<DenoInNpmPackageChecker, TSys>,
-  node_code_translator: EndeNodeCodeTranslatorRc<TSys>,
   parsed_source_cache: ParsedSourceCacheRc,
   sys: TSys,
 }
@@ -349,7 +345,6 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
     graph: &'graph ModuleGraph,
     specifier: &Url,
     requested_module_type: &RequestedModuleType<'_>,
-    cjs_analysis_source_provider: Option<&dyn CjsAnalysisSourceProvider>,
   ) -> Result<Option<LoadedModuleOrAsset<'graph>>, LoadPreparedModuleError> {
     // Note: keep this in sync with the sync version below
     match self.load_prepared_module_or_defer_emit(
@@ -380,27 +375,6 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
           media_type,
         })))
       }
-      Some(CodeOrDeferredEmit::Cjs {
-        specifier,
-        media_type,
-        source,
-      }) => self
-        .load_maybe_cjs(
-          graph,
-          specifier,
-          media_type,
-          source,
-          cjs_analysis_source_provider,
-        )
-        .await
-        .map(|text| {
-          Some(LoadedModuleOrAsset::Module(LoadedModule {
-            specifier: Cow::Borrowed(specifier),
-            media_type,
-            source: LoadedModuleSource::ArcStr(text),
-          }))
-        })
-        .map_err(|e| LoadPreparedModuleErrorKind::LoadMaybeCjs(e).into_box()),
       Some(CodeOrDeferredEmit::ExternalAsset { specifier }) => {
         Ok(Some(LoadedModuleOrAsset::ExternalAsset {
           specifier: Cow::Borrowed(specifier),
@@ -447,9 +421,7 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
           media_type,
         }))
       }
-      Some(CodeOrDeferredEmit::Cjs { .. })
-      | Some(CodeOrDeferredEmit::ExternalAsset { .. })
-      | None => Ok(None),
+      Some(CodeOrDeferredEmit::ExternalAsset { .. }) | None => Ok(None),
     }
   }
 
@@ -482,26 +454,6 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
 
         Ok(Some(LoadedModule {
           // note: it's faster to provide a string if we know it's a string
-          source: LoadedModuleSource::ArcStr(transpile_result),
-          specifier: Cow::Borrowed(specifier),
-          media_type,
-        }))
-      }
-      Some(CodeOrDeferredEmit::Cjs {
-        specifier,
-        media_type,
-        source,
-      }) => {
-        let transpile_result = self.emitter.maybe_emit_source_sync(
-          specifier,
-          media_type,
-          ModuleKind::Cjs,
-          source,
-        )?;
-
-        self.parsed_source_cache.free(specifier);
-
-        Ok(Some(LoadedModule {
           source: LoadedModuleSource::ArcStr(transpile_result),
           specifier: Cow::Borrowed(specifier),
           media_type,
@@ -579,16 +531,15 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
           })))
         }
         _ => {
-          if self.cjs_tracker.is_cjs_with_known_is_script(
-            specifier,
-            *media_type,
-            *is_script,
-          )? {
-            return Ok(Some(CodeOrDeferredEmit::Cjs {
+          // declaration files have no runtime code, so they're fine
+          if !media_type.is_declaration()
+            && self.cjs_tracker.is_cjs_with_known_is_script(
               specifier,
-              media_type: *media_type,
-              source: &source.text,
-            }));
+              *media_type,
+              *is_script,
+            )?
+          {
+            return Err(commonjs_not_supported(specifier));
           }
           let code = match media_type {
             MediaType::JavaScript
@@ -599,11 +550,7 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
               Default::default()
             }
             MediaType::Cjs | MediaType::Cts => {
-              return Ok(Some(CodeOrDeferredEmit::Cjs {
-                specifier,
-                media_type: *media_type,
-                source: &source.text,
-              }));
+              return Err(commonjs_not_supported(specifier));
             }
             MediaType::TypeScript
             | MediaType::Mts
@@ -656,51 +603,6 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
         Ok(None)
       }
     }
-  }
-
-  async fn load_maybe_cjs(
-    &self,
-    graph: &ModuleGraph,
-    specifier: &Url,
-    media_type: MediaType,
-    original_source: &ArcStr,
-    fallback_source_provider: Option<&dyn CjsAnalysisSourceProvider>,
-  ) -> Result<ArcStr, LoadMaybeCjsError> {
-    let js_source = self
-      .emitter
-      .maybe_emit_source(
-        specifier,
-        media_type,
-        ModuleKind::Cjs,
-        original_source,
-      )
-      .await?;
-    let source_provider =
-      GraphCjsAnalysisSourceProvider::new(graph, fallback_source_provider);
-    let text = self
-      .node_code_translator
-      .translate_cjs_to_esm_with_source_provider(
-        specifier,
-        Some(Cow::Borrowed(js_source.as_ref())),
-        Some(&source_provider),
-      )
-      .await?;
-    // Apply load-time security mitigations for known React Server Components
-    // CVEs to the translated source. Opt in via `ENDE_PATCH_REACT_CVE`.
-    let text = if crate::is_react_cve_patch_enabled(&self.sys) {
-      crate::patch_react_cves(specifier.as_str(), text)
-    } else {
-      text
-    };
-    // at this point, we no longer need the parsed source in memory, so free it
-    self.parsed_source_cache.free(specifier);
-    Ok(match text {
-      // perf: if the text is borrowed, that means it didn't make any changes
-      // to the original source, so we can just provide that instead of cloning
-      // the borrowed text
-      Cow::Borrowed(_) => js_source.clone(),
-      Cow::Owned(text) => text.into(),
-    })
   }
 }
 

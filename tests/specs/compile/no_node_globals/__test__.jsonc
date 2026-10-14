@@ -1,0 +1,15 @@
+{
+  "tempDir": true,
+  "tests": {
+    "compiled": {
+      "steps": [{
+        "args": "compile --output main main.ts",
+        "output": "[WILDCARD]"
+      }, {
+        "commandName": "./main",
+        "args": [],
+        "output": "undefined undefined undefined undefined undefined\nnumber\n"
+      }]
+    }
+  }
+}

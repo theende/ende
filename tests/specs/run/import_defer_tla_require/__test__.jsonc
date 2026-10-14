@@ -1,9 +1,0 @@
-{
-  "tests": {
-    // https://github.com/denoland/deno/issues/35697
-    "defer_tla_with_require_esm": {
-      "args": "run --allow-read main.ts",
-      "output": "main.out"
-    }
-  }
-}

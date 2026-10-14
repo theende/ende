@@ -1,5 +1,3 @@
-import { setTimeout } from "node:timers/promises";
-
 const echoServer = Deno.serve(
   { hostname: "127.0.0.1", port: 0, onListen() {} },
   async (req: Request) => {
@@ -96,10 +94,15 @@ const splitStartedTimeout = new AbortController();
 try {
   await Promise.race([
     splitStartedPromise,
-    setTimeout(5_000, undefined, {
-      signal: splitStartedTimeout.signal,
-    }).then(() => {
-      throw new Error("Timed out waiting for split request to start");
+    new Promise((_, reject) => {
+      const id = setTimeout(
+        () => reject(new Error("Timed out waiting for split request to start")),
+        5_000,
+      );
+      splitStartedTimeout.signal.addEventListener(
+        "abort",
+        () => clearTimeout(id),
+      );
     }),
   ]);
 } finally {

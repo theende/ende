@@ -1,8 +1,0 @@
-{
-  "tests": {
-    "destroyed_socket_is_collected": {
-      "args": "run --allow-net --v8-flags=--expose-gc main.ts",
-      "output": "ok\n"
-    }
-  }
-}

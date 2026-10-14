@@ -2,7 +2,7 @@
   "name": "bar",
   "version": "0.0.0",
   "imports": {
-    "chalk": "npm:chalk"
+    "add": "jsr:@endetest/add@1"
   },
   "exports": "./hello.ts"
 }

@@ -1,0 +1,7 @@
+error: Uncaught (in promise) ReferenceError: process is not defined
+process.exit(1);
+^
+    at [WILDCARD]process.js:1:1
+
+    info: process global is not available in Ende.
+    hint: Use Ende.env, Ende.args, Ende.exit(), Ende.cwd(), Ende.build.os or Ende.pid instead.

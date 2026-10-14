@@ -3,7 +3,6 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fmt;
 use std::fs;
 use std::future::Future;
@@ -36,7 +35,6 @@ use ende_core::resolve_url;
 use ende_core::url::Position;
 use ende_core::url::Url;
 use ende_resolver::ende_json::CompilerOptionsKey;
-use ende_runtime::ende_node;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use lsp_types::Uri;
@@ -1760,11 +1758,6 @@ impl DocumentModules {
         for dependency in module.dependencies.values() {
           let code_specifier = dependency.get_code();
           let type_specifier = dependency.get_type();
-          if let Some(dep) = code_specifier
-            && dep.scheme() == "node"
-          {
-            dep_info.has_node_specifier = true;
-          }
           if dependency.maybe_deno_types_specifier.is_some()
             && let (Some(code_specifier), Some(type_specifier)) =
               (code_specifier, type_specifier)
@@ -1844,15 +1837,6 @@ impl DocumentModules {
         )
       })
       .clone()
-  }
-
-  pub fn scopes_with_node_specifier(&self) -> HashSet<Option<Arc<Url>>> {
-    self
-      .dep_info_by_scope()
-      .iter()
-      .filter(|(_, i)| i.has_node_specifier)
-      .map(|(s, _)| s.clone())
-      .collect::<HashSet<_>>()
   }
 
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
@@ -1941,13 +1925,6 @@ impl DocumentModules {
     scope: Option<&Url>,
     compiler_options_key: Option<&CompilerOptionsKey>,
   ) -> Option<(Url, MediaType, Option<Arc<Uri>>)> {
-    if let Some(module_name) = specifier.as_str().strip_prefix("node:")
-      && ende_node::is_builtin_node_module(module_name)
-    {
-      // Don't resolve node: specifiers because during type checking we resolve
-      // to the ambient modules in the @types/node package.
-      return None;
-    }
     let mut specifier = specifier.clone();
     let mut media_type = None;
     if let Ok(npm_ref) = NpmPackageReqReference::from_specifier(&specifier) {

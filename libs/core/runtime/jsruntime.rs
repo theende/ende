@@ -1305,27 +1305,6 @@ impl JsRuntime {
       js_runtime.files_loaded_from_fs_during_snapshot = files_loaded;
     }
 
-    // Every runtime gets a uv loop for the libuv compat layer (timers,
-    // I/O, setImmediate, etc.). Stored in both OpState (for ext/node ops
-    // that need the raw pointer) and ContextState (for event loop phases).
-    if !will_snapshot {
-      // SAFETY: zeroed memory is valid for uv_loop_t before uv_loop_init.
-      let mut uv_loop =
-        Box::new(unsafe { std::mem::zeroed::<uv_compat::UvLoop>() });
-      // SAFETY: uv_loop points to valid zeroed memory.
-      unsafe { uv_compat::uv_loop_init(&mut *uv_loop) };
-      let loop_ptr: *mut uv_compat::UvLoop = &mut *uv_loop;
-      // SAFETY: loop_ptr is valid and initialized.
-      unsafe { js_runtime.register_uv_loop(loop_ptr) };
-      js_runtime.inner.state.op_state.borrow_mut().put(uv_loop);
-      js_runtime
-        .inner
-        .state
-        .op_state
-        .borrow_mut()
-        .put(uv_compat::AsyncId::default());
-    }
-
     // ...and we've made it; `JsRuntime` is ready to execute user code.
     Ok(js_runtime)
   }
@@ -1940,6 +1919,26 @@ impl JsRuntime {
   /// or `None` if no loop is registered.
   pub fn uv_loop_ptr(&self) -> Option<*mut uv_compat::uv_loop_t> {
     self.inner.main_realm.0.context_state.uv_loop_ptr.get()
+  }
+
+  /// Creates a uv loop for the libuv compat layer and registers it with this
+  /// runtime. Runtimes don't get one by default. The loop is stored in both
+  /// OpState (for ops that need the raw pointer) and ContextState (for event
+  /// loop phases).
+  pub fn init_uv_loop(&mut self) {
+    // SAFETY: zeroed memory is valid for uv_loop_t before uv_loop_init.
+    let mut uv_loop =
+      Box::new(unsafe { std::mem::zeroed::<uv_compat::UvLoop>() });
+    // SAFETY: uv_loop points to valid zeroed memory.
+    unsafe { uv_compat::uv_loop_init(&mut *uv_loop) };
+    let loop_ptr: *mut uv_compat::UvLoop = &mut *uv_loop;
+    // SAFETY: loop_ptr is valid and initialized, and it is kept alive in
+    // OpState for as long as the runtime.
+    unsafe { self.register_uv_loop(loop_ptr) };
+    let op_state = self.op_state();
+    let mut op_state = op_state.borrow_mut();
+    op_state.put(uv_loop);
+    op_state.put(uv_compat::AsyncId::default());
   }
 
   /// Returns the runtime's source mapper, which can be used to apply

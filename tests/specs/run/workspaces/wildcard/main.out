@@ -1,7 +1,7 @@
 [WILDCARD]Workspace config generated this import map {
   "imports": {
-    "chalk": "npm:chalk",
-    "chalk/": "npm:/chalk/"
+    "add": "jsr:@endetest/add@1",
+    "add/": "jsr:/@endetest/add@1/"
   },
   "scopes": {
     "./packages/bar/": {
@@ -19,4 +19,5 @@ hello from foo
 buzz from foo
 hello from bar
 buzz from bar
-[Function: chalk][WILDCARD]
+3
+[WILDCARD]

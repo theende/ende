@@ -176,7 +176,6 @@ function run({
 
 const kExtraStdio = Symbol("extraStdio");
 const kIpc = Symbol("ipc");
-const kNeedsNpmProcessState = Symbol("needsNpmProcessState");
 const kSerialization = Symbol("serialization");
 const kArgv0 = Symbol("argv0");
 
@@ -198,7 +197,6 @@ function spawnChildInner(command, apiName, {
   [kSerialization]: serialization = "json",
   [kExtraStdio]: extraStdio = [],
   [kIpc]: ipc = -1,
-  [kNeedsNpmProcessState]: needsNpmProcessState = false,
   [kArgv0]: argv0 = undefined,
 } = { __proto__: null }) {
   const child = op_spawn_child({
@@ -218,7 +216,6 @@ function spawnChildInner(command, apiName, {
     serialization,
     extraStdio,
     detached,
-    needsNpmProcessState,
   }, apiName);
   return new ChildProcess(illegalConstructorKey, {
     ...child,
@@ -640,7 +637,6 @@ function spawnInner(command, {
   stdout = "piped",
   stderr = "piped",
   windowsRawArguments = false,
-  [kNeedsNpmProcessState]: needsNpmProcessState = false,
 } = { __proto__: null }) {
   if (stdin === "piped") {
     throw new TypeError(
@@ -668,7 +664,6 @@ function spawnInner(command, {
     serialization: "json",
     extraStdio: [],
     detached: false,
-    needsNpmProcessState,
   }, "Ende.Command().output()");
 
   const stdoutRid = child.stdoutRid;
@@ -733,7 +728,6 @@ function spawnSyncInner(command, {
   stderr = "piped",
   windowsRawArguments = false,
   [kInputOption]: input,
-  [kNeedsNpmProcessState]: needsNpmProcessState = false,
   [kTimeoutOption]: timeout,
   [kKillSignalOption]: killSignal,
   [kArgv0]: argv0 = undefined,
@@ -757,7 +751,6 @@ function spawnSyncInner(command, {
     windowsRawArguments,
     extraStdio: [],
     detached: false,
-    needsNpmProcessState,
     input,
     argv0,
   };
@@ -875,7 +868,6 @@ return {
   kIpc,
   kInputOption,
   kKillSignalOption,
-  kNeedsNpmProcessState,
   kSerialization,
   kTimeoutOption,
   kill,

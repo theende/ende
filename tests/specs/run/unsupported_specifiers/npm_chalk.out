@@ -1,0 +1,2 @@
+error: "npm:chalk" — npm packages are not supported in Ende.
+    at file:///[WILDLINE]/npm_chalk.ts:2:19

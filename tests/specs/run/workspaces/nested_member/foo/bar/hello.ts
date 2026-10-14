@@ -1,3 +1,3 @@
-import chalk from "chalk";
+import { add } from "add";
 
-export default chalk;
+export default add;

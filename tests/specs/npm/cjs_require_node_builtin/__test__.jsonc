@@ -1,9 +1,0 @@
-{
-  "tempDir": true,
-  "tests": {
-    "global_cache": {
-      "args": "run --allow-read main.ts",
-      "output": "main.out"
-    }
-  }
-}

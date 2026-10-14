@@ -37,10 +37,10 @@ use ende_core::error::JsError;
 use ende_core::v8;
 use ende_cron::CronHandler;
 use ende_cron::CronHandlerImpl;
+use ende_ffi::EndeRtNativeAddonLoaderRc;
 use ende_fs::FileSystem;
 use ende_io::Stdio;
 use ende_kv::dynamic::MultiBackendDbHandler;
-use ende_napi::EndeRtNativeAddonLoaderRc;
 use ende_node::ExtNodeSys;
 use ende_node::NodeExtInitServices;
 use ende_os::ExitCode;
@@ -102,21 +102,6 @@ pub fn create_validate_import_attributes_callback(
     move |scope: &mut v8::PinScope<'_, '_>,
           attributes: &HashMap<String, String>,
           context: &ende_core::ImportAttributesContext| {
-      // If `module.registerHooks()` has installed user hooks, defer
-      // import-attribute validation to the user hooks so they can
-      // implement custom module types and attributes
-      // (e.g. `with { type: "x-css" }`). Without this, the builtin
-      // validator rejects anything outside the small allow-list before
-      // hooks ever get a chance to handle the import.
-      let op_state = JsRuntime::op_state_from(&*scope);
-      if let Ok(op_state) = op_state.try_borrow()
-        && let Some(registry) = op_state
-          .try_borrow::<ende_node::ops::module_hooks::LoaderHookRegistry>(
-        )
-        && registry.hooks_active.get()
-      {
-        return;
-      }
       let valid_attribute = |kind: &str| {
         matches!(kind, "json" | "text")
           || (enable_raw_imports.load(Ordering::Relaxed)
@@ -200,8 +185,6 @@ pub struct MainWorker {
   dispatch_load_event_fn_global: v8::Global<v8::Function>,
   dispatch_beforeunload_event_fn_global: v8::Global<v8::Function>,
   dispatch_unload_event_fn_global: v8::Global<v8::Function>,
-  dispatch_process_beforeexit_event_fn_global: v8::Global<v8::Function>,
-  dispatch_process_exit_event_fn_global: v8::Global<v8::Function>,
   memory_trim_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
@@ -534,11 +517,8 @@ impl MainWorker {
 
       js_runtime
     } else {
-      let mut extensions = common_extensions::<
-        TInNpmPackageChecker,
-        TNpmPackageFolderResolver,
-        TExtNodeSys,
-      >(options.startup_snapshot.is_some(), false);
+      let mut extensions =
+        common_extensions(options.startup_snapshot.is_some(), false);
 
       extensions.extend(std::mem::take(&mut options.extensions));
 
@@ -655,9 +635,6 @@ impl MainWorker {
           )),
           ende_kv::KvConfig::builder().build(),
         ),
-        ende_napi::ende_napi::args(
-          services.ende_rt_native_addon_loader.clone(),
-        ),
         ende_http::ende_http::args(ende_http::Options {
           no_legacy_abort: options.bootstrap.no_legacy_abort,
           ..Default::default()
@@ -666,11 +643,6 @@ impl MainWorker {
         ende_fs::ende_fs::args(services.fs.clone()),
         ende_os::ende_os::args(Some(exit_code.clone())),
         ende_process::ende_process::args(services.npm_process_state_provider),
-        ende_node::ende_node::args::<
-          TInNpmPackageChecker,
-          TNpmPackageFolderResolver,
-          TExtNodeSys,
-        >(services.node_services, services.fs.clone()),
         ops::runtime::ende_runtime::args(main_module.clone()),
         ops::worker_host::ende_worker_host::args(
           options.create_web_worker_cb.clone(),
@@ -692,9 +664,6 @@ impl MainWorker {
       state.put(services.feature_checker);
     }
 
-    // Register the uv_loop_t (created by ende_node extension state callback)
-    // The uv loop is auto-created and registered by JsRuntime::new_inner.
-
     if let Some(server) = get_inspector_server() {
       let inspector_url = server.register_inspector(
         main_module.to_string(),
@@ -710,8 +679,6 @@ impl MainWorker {
       dispatch_load_event_fn_global,
       dispatch_beforeunload_event_fn_global,
       dispatch_unload_event_fn_global,
-      dispatch_process_beforeexit_event_fn_global,
-      dispatch_process_exit_event_fn_global,
     ) = {
       let context = js_runtime.main_context();
       ende_core::scope!(scope, &mut js_runtime);
@@ -758,39 +725,11 @@ impl MainWorker {
         .unwrap();
       let dispatch_unload_event_fn =
         v8::Local::<v8::Function>::try_from(dispatch_unload_event_fn).unwrap();
-      let dispatch_process_beforeexit_event =
-        v8::String::new_external_onebyte_static(
-          scope,
-          b"dispatchProcessBeforeExitEvent",
-        )
-        .unwrap();
-      let dispatch_process_beforeexit_event_fn = bootstrap_ns
-        .get(scope, dispatch_process_beforeexit_event.into())
-        .unwrap();
-      let dispatch_process_beforeexit_event_fn =
-        v8::Local::<v8::Function>::try_from(
-          dispatch_process_beforeexit_event_fn,
-        )
-        .unwrap();
-      let dispatch_process_exit_event =
-        v8::String::new_external_onebyte_static(
-          scope,
-          b"dispatchProcessExitEvent",
-        )
-        .unwrap();
-      let dispatch_process_exit_event_fn = bootstrap_ns
-        .get(scope, dispatch_process_exit_event.into())
-        .unwrap();
-      let dispatch_process_exit_event_fn =
-        v8::Local::<v8::Function>::try_from(dispatch_process_exit_event_fn)
-          .unwrap();
       (
         v8::Global::new(scope, bootstrap_fn),
         v8::Global::new(scope, dispatch_load_event_fn),
         v8::Global::new(scope, dispatch_beforeunload_event_fn),
         v8::Global::new(scope, dispatch_unload_event_fn),
-        v8::Global::new(scope, dispatch_process_beforeexit_event_fn),
-        v8::Global::new(scope, dispatch_process_exit_event_fn),
       )
     };
 
@@ -804,8 +743,6 @@ impl MainWorker {
       dispatch_load_event_fn_global,
       dispatch_beforeunload_event_fn_global,
       dispatch_unload_event_fn_global,
-      dispatch_process_beforeexit_event_fn_global,
-      dispatch_process_exit_event_fn_global,
       memory_trim_handle: None,
     };
     (worker, options.bootstrap)
@@ -825,9 +762,6 @@ impl MainWorker {
       let op_state = self.js_runtime.op_state();
       let mut state = op_state.borrow_mut();
       state.put(options.clone());
-      if let Some((fd, serialization)) = options.node_ipc_init {
-        state.put(ende_node::ChildPipeFd(fd, serialization));
-      }
     }
 
     ende_core::scope!(scope, &mut self.js_runtime);
@@ -1092,55 +1026,6 @@ impl MainWorker {
     Ok(())
   }
 
-  /// Dispatches process.emit("exit") event for node compat.
-  pub fn dispatch_process_exit_event(&mut self) -> Result<(), Box<JsError>> {
-    ende_core::scope!(scope, &mut self.js_runtime);
-    v8::tc_scope!(tc_scope, scope);
-    let dispatch_process_exit_event_fn =
-      v8::Local::new(tc_scope, &self.dispatch_process_exit_event_fn_global);
-    let undefined = v8::undefined(tc_scope);
-    dispatch_process_exit_event_fn.call(tc_scope, undefined.into(), &[]);
-    if let Some(exception) = tc_scope.exception() {
-      return Err(ende_core::exception_to_err(
-        tc_scope, exception, false, true,
-      ));
-    }
-    Ok(())
-  }
-
-  /// Runs pending NAPI ref/wrap finalizers by calling them directly while V8
-  /// is still alive. This matches Node.js behavior where `napi_env::DeleteMe()`
-  /// calls `RefTracker::FinalizeAll()` during environment teardown.
-  pub fn run_napi_ref_finalizers(&mut self) {
-    let finalizers = {
-      let op_state = self.js_runtime.op_state();
-      let op_state = op_state.borrow();
-      match op_state.try_borrow::<ende_napi::NapiState>() {
-        Some(s) => s.ref_tracker.borrow_mut().take_pending(),
-        None => return,
-      }
-    };
-    if finalizers.is_empty() {
-      return;
-    }
-
-    // Call each finalizer in reverse (LIFO) order within a proper HandleScope
-    // so native addon code can use NAPI functions during cleanup. LIFO matches
-    // Node.js's linked list behavior (head insertion → reverse iteration).
-    {
-      ende_core::scope!(scope, &mut self.js_runtime);
-      let _scope = v8::HandleScope::new(scope);
-      for f in finalizers.into_iter().rev() {
-        // SAFETY: The pointers (env, data, hint) were stored when the native
-        // addon called napi_wrap/napi_create_external/napi_add_finalizer and
-        // V8 is still alive (we have an active HandleScope).
-        unsafe {
-          (f.cb)(f.env, f.data, f.hint);
-        }
-      }
-    }
-  }
-
   /// Dispatches "beforeunload" event to the JavaScript runtime. Returns a boolean
   /// indicating if the event was prevented and thus event loop should continue
   /// running.
@@ -1160,38 +1045,9 @@ impl MainWorker {
     let ret_val = ret_val.unwrap();
     Ok(ret_val.is_false())
   }
-
-  /// Dispatches process.emit("beforeExit") event for node compat.
-  pub fn dispatch_process_beforeexit_event(
-    &mut self,
-  ) -> Result<bool, Box<JsError>> {
-    ende_core::scope!(scope, &mut self.js_runtime);
-    v8::tc_scope!(tc_scope, scope);
-    let dispatch_process_beforeexit_event_fn = v8::Local::new(
-      tc_scope,
-      &self.dispatch_process_beforeexit_event_fn_global,
-    );
-    let undefined = v8::undefined(tc_scope);
-    let ret_val = dispatch_process_beforeexit_event_fn.call(
-      tc_scope,
-      undefined.into(),
-      &[],
-    );
-    if let Some(exception) = tc_scope.exception() {
-      return Err(ende_core::exception_to_err(
-        tc_scope, exception, false, true,
-      ));
-    }
-    let ret_val = ret_val.unwrap();
-    Ok(ret_val.is_true())
-  }
 }
 
-fn common_extensions<
-  TInNpmPackageChecker: InNpmPackageChecker + 'static,
-  TNpmPackageFolderResolver: NpmPackageFolderResolver + 'static,
-  TExtNodeSys: ExtNodeSys + 'static,
->(
+fn common_extensions(
   has_snapshot: bool,
   unconfigured_runtime: bool,
 ) -> Vec<Extension> {
@@ -1216,19 +1072,11 @@ fn common_extensions<
     ende_tls::ende_tls::init(),
     ende_kv::ende_kv::lazy_init(),
     ende_cron::ende_cron::init(Box::new(CronHandlerImpl::create_from_env())),
-    ende_napi::ende_napi::lazy_init(),
     ende_http::ende_http::lazy_init(),
     ende_io::ende_io::lazy_init(),
     ende_fs::ende_fs::lazy_init(),
     ende_os::ende_os::lazy_init(),
     ende_process::ende_process::lazy_init(),
-    ende_node_crypto::ende_node_crypto::init(),
-    ende_node_sqlite::ende_node_sqlite::init(),
-    ende_node::ende_node::lazy_init::<
-      TInNpmPackageChecker,
-      TNpmPackageFolderResolver,
-      TExtNodeSys,
-    >(),
     // Ops from this crate
     ops::runtime::ende_runtime::lazy_init(),
     ops::worker_host::ende_worker_host::lazy_init(),
@@ -1353,11 +1201,7 @@ impl UnconfiguredRuntime {
   >(
     options: UnconfiguredRuntimeOptions,
   ) -> Self {
-    let mut extensions = common_extensions::<
-      TInNpmPackageChecker,
-      TNpmPackageFolderResolver,
-      TExtNodeSys,
-    >(true, true);
+    let mut extensions = common_extensions(true, true);
 
     extensions.extend(options.additional_extensions);
 

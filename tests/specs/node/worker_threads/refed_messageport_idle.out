@@ -1,3 +1,0 @@
-main: worker is idle, waiting before sending work
-main: sending work after idle period
-main: got reply: done:work

@@ -1,8 +1,0 @@
-{
-  "tests": {
-    "unicode_subpath": {
-      "args": "run -A --quiet main.ts",
-      "output": "main.out"
-    }
-  }
-}

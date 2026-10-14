@@ -920,25 +920,8 @@ impl LibMainWorker {
   }
 
   #[inline]
-  pub fn dispatch_process_beforeexit_event(
-    &mut self,
-  ) -> Result<bool, Box<JsError>> {
-    self.worker.dispatch_process_beforeexit_event()
-  }
-
-  #[inline]
   pub fn dispatch_unload_event(&mut self) -> Result<(), Box<JsError>> {
     self.worker.dispatch_unload_event()
-  }
-
-  #[inline]
-  pub fn dispatch_process_exit_event(&mut self) -> Result<(), Box<JsError>> {
-    self.worker.dispatch_process_exit_event()
-  }
-
-  #[inline]
-  pub fn run_napi_ref_finalizers(&mut self) {
-    self.worker.run_napi_ref_finalizers()
   }
 
   pub async fn execute_main_module(&mut self) -> Result<(), CoreError> {
@@ -1023,16 +1006,11 @@ impl LibMainWorker {
 
       let web_continue = self.worker.dispatch_beforeunload_event()?;
       if !web_continue {
-        let node_continue = self.worker.dispatch_process_beforeexit_event()?;
-        if !node_continue {
-          break;
-        }
+        break;
       }
     }
 
     self.worker.dispatch_unload_event()?;
-    self.worker.dispatch_process_exit_event()?;
-    self.worker.run_napi_ref_finalizers();
 
     Ok(self.worker.exit_code())
   }

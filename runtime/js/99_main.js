@@ -16,7 +16,6 @@ import {
   op_get_ext_import_meta_proto,
   op_internal_log,
   op_main_module,
-  op_node_has_child_ipc_pipe,
   op_ppid,
   op_proto_get_attempted,
   op_proto_set_attempted,
@@ -53,15 +52,12 @@ const {
   PromisePrototypeThen,
   PromiseResolve,
   queueMicrotask,
-  ReflectApply,
   ReflectOwnKeys,
   StringPrototypePadEnd,
   Symbol,
   SymbolDispose,
   SymbolIterator,
   TypeError,
-  Uint8ArrayPrototype,
-  uncurryThis,
 } = primordials;
 
 function getSafeOwnPropertyDescriptors(object) {
@@ -287,7 +283,7 @@ let closeOnIdle;
 
 function hasMessageEventListener() {
   // the function name is kind of a misnomer, but we want to behave
-  // as if we have message event listeners if a node message port is explicitly
+  // as if we have message event listeners if a message port is explicitly
   // refed (and the inverse as well)
   return (event.listenerCount(globalThis, "message") > 0 &&
     !globalThis[messagePort.unrefParentPort]) ||
@@ -353,8 +349,8 @@ async function pollForMessages() {
   }
   while (!isClosing) {
     const recvMessage = op_worker_recv_message();
-    // In a Node.js worker, unref() the op promise to prevent it from
-    // keeping the event loop alive. This avoids the need to explicitly
+    // When the worker closes on idle, unref() the op promise to prevent it
+    // from keeping the event loop alive. This avoids the need to explicitly
     // call self.close() or worker.terminate().
     if (closeOnIdle) {
       core.unrefOpPromise(recvMessage);
@@ -580,15 +576,6 @@ function processUnhandledPromiseRejection(promise, reason) {
   // Note that the handler may throw, causing a recursive "error" event
   globalThis_.dispatchEvent(rejectionEvent);
 
-  // If event was not yet prevented, try handing it off to Node compat layer
-  // (if it was initialized)
-  if (
-    !rejectionEvent.defaultPrevented &&
-    typeof internals.nodeProcessUnhandledRejectionCallback !== "undefined"
-  ) {
-    internals.nodeProcessUnhandledRejectionCallback(rejectionEvent);
-  }
-
   // If event was not prevented (or "unhandledrejection" listeners didn't
   // throw) we will let Rust side handle it.
   if (rejectionEvent.defaultPrevented) {
@@ -606,10 +593,6 @@ function processRejectionHandled(promise, reason) {
 
   // Note that the handler may throw, causing a recursive "error" event
   globalThis_.dispatchEvent(rejectionHandledEvent);
-
-  if (typeof internals.nodeProcessRejectionHandledCallback !== "undefined") {
-    internals.nodeProcessRejectionHandledCallback(rejectionHandledEvent);
-  }
 }
 
 function dispatchLoadEvent() {
@@ -711,7 +694,6 @@ const NOT_IMPORTED_OPS = [
   // TODO(bartlomieju): used in various integration tests - figure out a way
   // to not depend on them.
   "op_set_exit_code",
-  "op_napi_open",
 
   // Related to `Ende.desktop` API (ende compile --desktop)
   "BrowserWindow",
@@ -925,38 +907,15 @@ function disableProtoAccessor() {
   });
 }
 
-// The TC39 arraybuffer-base64 methods land on Uint8Array.prototype during
-// V8's InstallConditionalFeatures, after snapshot deserialization, so the
-// snapshotted primordials cannot include them. Capture them here, before any
-// user code runs, for ext:ende_node/internal/buffer.mjs; when a method is
-// unavailable the slot stays undefined and the consumer uses its JS codec.
-// TODO(tomas-zijdemans): move these to primordials once V8 ships the methods
-// unconditionally (no --js-arraybuffer-base64 flag).
-function captureHexMethods() {
-  const toHex = Uint8ArrayPrototype.toHex;
-  const setFromHex = Uint8ArrayPrototype.setFromHex;
-  internals.uint8ArrayToHex = typeof toHex === "function"
-    ? uncurryThis(toHex)
-    : undefined;
-  internals.uint8ArraySetFromHex = typeof setFromHex === "function"
-    ? uncurryThis(setFromHex)
-    : undefined;
-}
-
 function bootstrapMainRuntime(runtimeOptions, warmup = false) {
   if (!warmup) {
     if (hasBootstrapped) {
       throw new Error("Worker runtime already bootstrapped");
     }
-    captureHexMethods();
-
     const {
       0: endeVersion,
       1: location_,
       2: unstableFeatures,
-      5: hasNodeModulesDir,
-      6: argv0,
-      7: nodeDebug,
       8: mode,
       9: servePort,
       10: serveHost,
@@ -965,8 +924,6 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
       13: otelConfig,
       15: standalone,
       16: autoServe,
-      17: nodeClusterUniqueId,
-      18: nodeClusterSchedPolicy,
       19: disableOffscreenCanvas,
     } = runtimeOptions;
 
@@ -1111,7 +1068,7 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
 
     // Wrap the console unconditionally (like the worker bootstrap does)
     // rather than only under --inspect*: the inspector can also be
-    // activated later at runtime (node:inspector open(), SIGUSR1), and
+    // activated later at runtime (SIGUSR1), and
     // without the wrap those sessions never receive
     // Runtime.consoleAPICalled events.
     core.wrapConsole(globalThis.console, core.v8Console);
@@ -1163,43 +1120,6 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
     }
 
     installEndeNamespace(finalEndeNs);
-
-    const nodeBootstrapArgs = {
-      usesLocalNodeModulesDir: hasNodeModulesDir,
-      runningOnMainThread: true,
-      argv0,
-      nodeDebug,
-      nodeClusterUniqueId,
-      nodeClusterSchedPolicy,
-      // Stashed so process.ts's self-trigger can call __bootstrapNodeProcess
-      // without reading Deno.* (the no-deno-api-in-polyfills lint counts
-      // Deno.* references in node polyfills; passing them in keeps process.ts
-      // at zero new violations).
-      denoArgs: finalEndeNs.args,
-      denoVersion: finalEndeNs.version,
-    };
-    if (nodeBootstrap) {
-      nodeBootstrap(nodeBootstrapArgs);
-    } else if (op_node_has_child_ipc_pipe()) {
-      // node-defer: this main process is a forked child with an IPC pipe. It
-      // needs the IPC channel (set up in the full `initialize`) ready
-      // synchronously before its main module calls process.send /
-      // process.on("message"). Run the full node bootstrap EAGERLY (like
-      // workers) -- a forked IPC child is a node process, so the deser win
-      // doesn't apply. node:process first (fully evaluates), then node:module
-      // (its closure captures a finished node:process, so no cold-bootstrap
-      // TDZ), then `initialize`.
-      core.createLazyLoader("node:process")();
-      core.createLazyLoader("node:module")();
-      globalThis.nodeBootstrap(nodeBootstrapArgs);
-    } else {
-      // node-defer: node:module (01_require.js) is `lazy_loaded_esm`, so its
-      // top-level `globalThis.nodeBootstrap = initialize` hasn't run yet and
-      // `nodeBootstrap` is undefined here. Stash the args so node:process and
-      // 01_require.js self-bootstrap from them when first lazily loaded (on
-      // the first node:* use), so non-node programs never pay node bootstrap.
-      internals.__nodeBootstrapArgs = nodeBootstrapArgs;
-    }
   } else {
     // Warmup
   }
@@ -1209,29 +1129,22 @@ function bootstrapWorkerRuntime(
   runtimeOptions,
   name,
   internalName,
-  workerId,
-  workerType,
-  maybeWorkerMetadata,
+  _workerId,
+  _workerType,
+  _maybeWorkerMetadata,
   warmup = false,
 ) {
   if (!warmup) {
     if (hasBootstrapped) {
       throw new Error("Worker runtime already bootstrapped");
     }
-    captureHexMethods();
-
     const {
       0: endeVersion,
       1: location_,
       2: unstableFeatures,
       4: enableTestingFeaturesFlag,
-      5: hasNodeModulesDir,
-      6: argv0,
-      7: nodeDebug,
       13: otelConfig,
       15: standalone,
-      17: nodeClusterUniqueId,
-      18: nodeClusterSchedPolicy,
       19: disableOffscreenCanvas,
     } = runtimeOptions;
 
@@ -1254,10 +1167,6 @@ function bootstrapWorkerRuntime(
     delete globalThis.bootstrap;
     hasBootstrapped = true;
 
-    if (workerType === "node") {
-      delete workerRuntimeGlobalProperties["WorkerGlobalScope"];
-      delete workerRuntimeGlobalProperties["self"];
-    }
     ObjectDefineProperties(globalThis, workerRuntimeGlobalProperties);
     ObjectDefineProperties(globalThis, {
       name: core.propWritable(name),
@@ -1316,7 +1225,6 @@ function bootstrapWorkerRuntime(
     }
 
     // Not available in workers
-    const moduleSpecifier = finalEndeNs.mainModule;
     delete finalEndeNs.mainModule;
 
     if (!ArrayPrototypeIncludes(unstableFeatures, unstableIds.unsafeProto)) {
@@ -1324,64 +1232,11 @@ function bootstrapWorkerRuntime(
     }
 
     installEndeNamespace(finalEndeNs);
-
-    const workerMetadata = maybeWorkerMetadata
-      ? messagePort.deserializeJsMessageData(maybeWorkerMetadata)
-      : undefined;
-
-    const nodeBootstrapArgs = {
-      usesLocalNodeModulesDir: hasNodeModulesDir,
-      runningOnMainThread: false,
-      argv0,
-      workerId,
-      maybeWorkerMetadata: workerMetadata,
-      nodeDebug,
-      nodeClusterUniqueId,
-      nodeClusterSchedPolicy,
-      moduleSpecifier: workerType === "node" ? moduleSpecifier : null,
-      // Stashed so process.ts's self-trigger can call __bootstrapNodeProcess
-      // without reading Deno.* (see the main-thread branch above).
-      denoArgs: finalEndeNs.args,
-      denoVersion: finalEndeNs.version,
-    };
-    if (nodeBootstrap) {
-      nodeBootstrap(nodeBootstrapArgs);
-    } else if (workerType === "node") {
-      // node-defer: node worker_threads need the FULL node bootstrap eagerly:
-      // require, workerData, SharedArrayBuffer, etc. must be ready before the
-      // worker's first line runs. Web workers stay lazy like the main thread
-      // so non-node workers never pay node bootstrap.
-      // Load node:process FIRST (fully evaluates + runs the process bootstrap),
-      // THEN node:module (its closure now captures a fully-evaluated
-      // node:process, avoiding the cold-bootstrap TDZ), then run `initialize`.
-      core.createLazyLoader("node:process")();
-      core.createLazyLoader("node:module")();
-      globalThis.nodeBootstrap(nodeBootstrapArgs);
-    } else {
-      internals.__nodeBootstrapArgs = nodeBootstrapArgs;
-    }
   } else {
     // Warmup
     return;
   }
 }
-
-const nodeBootstrap = globalThis.nodeBootstrap;
-delete globalThis.nodeBootstrap;
-// node-defer: node:process sets internals.dispatchProcess{Exit,BeforeExit}Event
-// during its bootstrap, which is now deferred to first node:* use -- i.e. AFTER
-// this module evaluates. Capturing the values here would freeze the no-op
-// (node not yet bootstrapped). Instead dispatch dynamically: look up the
-// current internals handler at call time. No-op when node was never
-// bootstrapped (a non-node program has no process exit listeners).
-const dispatchProcessExitEvent = (...args) =>
-  internals.dispatchProcessExitEvent
-    ? ReflectApply(internals.dispatchProcessExitEvent, internals, args)
-    : undefined;
-const dispatchProcessBeforeExitEvent = (...args) =>
-  internals.dispatchProcessBeforeExitEvent
-    ? ReflectApply(internals.dispatchProcessBeforeExitEvent, internals, args)
-    : false;
 
 globalThis.bootstrap = {
   mainRuntime: bootstrapMainRuntime,
@@ -1389,8 +1244,6 @@ globalThis.bootstrap = {
   dispatchLoadEvent,
   dispatchUnloadEvent,
   dispatchBeforeUnloadEvent,
-  dispatchProcessExitEvent,
-  dispatchProcessBeforeExitEvent,
 };
 
 event.setEventTargetData(globalThis);
@@ -1402,7 +1255,7 @@ event.defineEventHandler(globalThis, "unhandledrejection");
 
 removeImportedOps();
 
-// Run the warmup path through node and runtime/worker bootstrap functions
+// Run the warmup path through the runtime/worker bootstrap functions
 bootstrapMainRuntime(undefined, true);
 bootstrapWorkerRuntime(
   undefined,
@@ -1413,9 +1266,3 @@ bootstrapWorkerRuntime(
   undefined,
   true,
 );
-// Skip warmup. The warmup branch creates placeholder stdin/stdout/stderr
-// streams that the runtime bootstrap (__bootstrapNodeProcess(warmup=false))
-// then unconditionally overwrites with fresh TTYWriteStream instances, so
-// the only observable effect of warmup was pulling node:stream and friends
-// into the snapshot via createWritableStdioStream/initStdin.
-// nodeBootstrap({ warmup: true });

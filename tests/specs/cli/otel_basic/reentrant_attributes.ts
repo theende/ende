@@ -1,10 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-import {
-  metrics,
-  type ObservableResult,
-  trace,
-} from "npm:@opentelemetry/api@1.9.0";
+import { metrics, type ObservableResult, trace } from "./otel_api.ts";
 
 function assertGetterError(callback: () => void, expected: Error) {
   let actual: unknown;

@@ -1,2 +1,2 @@
-[WILDCARD]
-error: npm packages are not supported in Ende (found 'npm:@denotest/esm-basic@1').
+[WILDCARD]error: "npm:@denotest/esm-basic@1" — npm packages are not supported in Ende.
+    at [WILDLINE]main.ts:3:22

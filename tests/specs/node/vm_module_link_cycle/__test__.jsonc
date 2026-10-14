@@ -1,8 +1,0 @@
-{
-  "tests": {
-    "module_link_cycle": {
-      "args": "run main.mjs",
-      "output": "ok diamond\nok cycle\nok shared-synthetic\n"
-    }
-  }
-}

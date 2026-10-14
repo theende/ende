@@ -1,5 +1,5 @@
-import chalk from "chalk";
+import { add } from "add";
 import "./foo/mod.ts";
 import "./bar/mod.ts";
 
-console.log(chalk);
+console.log(add(1, 2));

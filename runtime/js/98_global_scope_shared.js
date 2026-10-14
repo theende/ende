@@ -14,23 +14,12 @@ const loadEncoding = () =>
 const console = core.loadExtScript("ext:ende_web/01_console.js");
 const worker = core.loadExtScript("ext:runtime/11_workers.js");
 const performance = core.loadExtScript("ext:ende_web/15_performance.js");
-// `internals.kKeyObject` (set by this tiny, dependency-free node module) brands
-// WebCrypto CryptoKeys so node's crypto recognizes them (`00_crypto.js` below
-// reads it for `Crypto.registerSymbols`, and node's key bridge checks
-// `obj[kKeyObject]`). It used to be set as a side effect of the eager
-// `import "node:buffer"` chain; now that buffer/timers are deferred, set it
-// explicitly before crypto evaluates.
-core.loadExtScript("ext:ende_node/internal/crypto/constants.ts");
 // crypto is installed eagerly: evaluating 00_crypto.js at startup runs its
 // `registerCloneableResource("CryptoKey", ...)` side effect, which workers need
 // to deserialize a CryptoKey transferred via postMessage/workerData. The impl
 // is a thin cppgc port, so eager eval is cheap. `crypto.crypto` itself is a
 // getter that mints the cppgc Crypto instance lazily (see propGetterOnly below).
 const crypto = core.loadExtScript("ext:ende_crypto/00_crypto.js");
-// Eagerly register node host-object structured-clone deserializers (crypto
-// keys, histograms) so workers can resurrect them before the (deferred) node
-// modules load. The deserialization impls stay lazy. See the module comment.
-core.loadExtScript("ext:ende_node/02_register_cloneable.js");
 const url = core.loadExtScript("ext:ende_web/00_url.js");
 const loadUrlPattern = () =>
   core.loadExtScript("ext:ende_web/01_urlpattern.js");
@@ -82,17 +71,7 @@ const {
 } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
 const abortSignal = core.loadExtScript("ext:ende_web/03_abort_signal.js");
 const loadLocks = core.createLazyLoader("ext:ende_web/locks.js");
-// node:process is loaded lazily so its closure isn't pulled into the snapshot
-// build; the `process` global is installed via `propWritableLazyLoaded` below.
-const lazyProcessMod = core.createLazyLoader("node:process");
-// node:buffer and node:timers are loaded lazily so their closures (the node
-// internal foundation: internal/errors, internal/buffer, primordials,
-// internal_binding/*, internal/util/*, async_hooks, ~22 modules / ~700 SFIs)
-// are NOT pulled into the eager startup snapshot. The Buffer and node-timer
-// globals below are installed via propWritableLazyLoaded, so a plain `ende run`
-// that never touches them skips the deserialization entirely.
-const lazyBufferMod = core.createLazyLoader("node:buffer");
-const lazyTimersMod = core.createLazyLoader("node:timers");
+const timers = core.loadExtScript("ext:ende_web/02_timers.js");
 const { loadWebGPU } = core.loadExtScript("ext:ende_webgpu/00_init.js");
 import { unstableIds } from "ext:runtime/90_ende_ns.js";
 
@@ -290,14 +269,8 @@ const windowOrWorkerGlobalScope = {
     (image) => image.createImageBitmap,
     loadImage,
   ),
-  clearInterval: core.propWritableLazyLoaded(
-    (m) => m.clearInterval,
-    lazyTimersMod,
-  ),
-  clearTimeout: core.propWritableLazyLoaded(
-    (m) => m.clearTimeout,
-    lazyTimersMod,
-  ),
+  clearInterval: core.propWritable(timers.clearInterval),
+  clearTimeout: core.propWritable(timers.clearTimeout),
   caches: {
     enumerable: true,
     configurable: true,
@@ -332,20 +305,9 @@ const windowOrWorkerGlobalScope = {
     lazyEventSource,
   ),
   performance: core.propWritable(performance.performance),
-  process: core.propWritableLazyLoaded((m) => m.default, lazyProcessMod),
-  setImmediate: core.propWritableLazyLoaded(
-    (m) => m.setImmediate,
-    lazyTimersMod,
-  ),
-  clearImmediate: core.propWritableLazyLoaded(
-    (m) => m.clearImmediate,
-    lazyTimersMod,
-  ),
-  Buffer: core.propWritableLazyLoaded((m) => m.Buffer, lazyBufferMod),
-  global: core.propWritable(globalThis),
   reportError: core.propWritable(event.reportError),
-  setInterval: core.propWritableLazyLoaded((m) => m.setInterval, lazyTimersMod),
-  setTimeout: core.propWritableLazyLoaded((m) => m.setTimeout, lazyTimersMod),
+  setInterval: core.propWritable(timers.setInterval),
+  setTimeout: core.propWritable(timers.setTimeout),
   structuredClone: core.propWritable(messagePort.structuredClone),
   // Branding as a WebIDL object
   [webidl.brand]: core.propNonEnumerable(webidl.brand),

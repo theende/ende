@@ -1,8 +1,0 @@
-error: Uncaught (in promise) Error: Could not locate the bindings file. Tried:
-[WILDCARD]xmljs.node
-throw new Error(
-      ^
-    at file:///[WILDCARD]/main.js:9:7
-
-    info: Trying to execute an npm package using Node-API addons,
-          these packages require local `node_modules` directory to be present.

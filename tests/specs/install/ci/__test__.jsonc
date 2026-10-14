@@ -10,7 +10,7 @@
       "steps": [{
         "args": [
           "eval",
-          "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ imports: { 'add': 'jsr:@endetest/add@1' } }))"
+          "Deno.writeTextFileSync('ende.json', JSON.stringify({ imports: { 'add': 'jsr:@endetest/add@1' } }))"
         ],
         "output": ""
       }, {
@@ -19,7 +19,7 @@
       }, {
         "args": [
           "eval",
-          "import fs from 'node:fs'; fs.writeFileSync('ende.json', JSON.stringify({ imports: { 'add': 'jsr:@endetest/add@1', 'subtract': 'jsr:@endetest/subtract@1' } }))"
+          "Deno.writeTextFileSync('ende.json', JSON.stringify({ imports: { 'add': 'jsr:@endetest/add@1', 'subtract': 'jsr:@endetest/subtract@1' } }))"
         ],
         "output": ""
       }, {

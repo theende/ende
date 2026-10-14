@@ -1,0 +1,53 @@
+{
+  "tests": {
+    "run_node_fs": {
+      "args": "run node_fs.ts",
+      "output": "node_fs.out",
+      "exitCode": 1
+    },
+    "check_node_fs": {
+      "args": "check node_fs.ts",
+      "output": "node_fs.out",
+      "exitCode": 1
+    },
+    "run_npm_chalk": {
+      "args": "run npm_chalk.ts",
+      "output": "npm_chalk.out",
+      "exitCode": 1
+    },
+    "check_npm_chalk": {
+      "args": "check npm_chalk.ts",
+      "output": "npm_chalk.out",
+      "exitCode": 1
+    },
+    "run_bare_builtin": {
+      "args": "run bare_builtin.ts",
+      "output": "bare_builtin.out",
+      "exitCode": 1
+    },
+    "run_dynamic_node": {
+      "args": "run dynamic_node.ts",
+      "output": "dynamic_node.out",
+      "exitCode": 1
+    },
+    "run_import_cjs": {
+      "args": "run import_cjs.ts",
+      "output": "import_cjs.out",
+      "exitCode": 1
+    },
+    "check_import_cjs": {
+      "args": "check import_cjs.ts",
+      "output": "import_cjs.out",
+      "exitCode": 1
+    },
+    "run_import_map_npm": {
+      "args": "run --import-map=import_map.json import_map_npm.ts",
+      "output": "import_map_npm.out",
+      "exitCode": 1
+    },
+    "worker_node_fs": {
+      "args": "run --allow-read worker_main.ts",
+      "output": "worker.out"
+    }
+  }
+}

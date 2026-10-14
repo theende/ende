@@ -12,7 +12,6 @@ use ende_core::serde::Deserialize;
 use ende_core::serde::Serialize;
 use ende_core::serde_json::json;
 use ende_core::url::Position;
-use ende_runtime::ende_node::SUPPORTED_BUILTIN_NODE_MODULES;
 use import_map::ImportMap;
 use indexmap::IndexSet;
 use jsonc_parser::CollectOptions;
@@ -225,102 +224,91 @@ pub async fn get_import_completions(
       Some(lsp::CompletionResponse::List(completion_list))
     }
     _ => {
-      match get_node_completions(text, &range) {
+      match get_import_map_completions(
+        &module.specifier,
+        text,
+        &range,
+        maybe_import_map,
+      ) {
         Some(completion_list) => {
+          // completions for import map specifiers
           Some(lsp::CompletionResponse::List(completion_list))
         }
         _ => {
-          match get_import_map_completions(
+          match get_local_completions(
             &module.specifier,
+            resolution_mode,
             text,
             &range,
-            maybe_import_map,
+            resolver,
           ) {
             Some(completion_list) => {
-              // completions for import map specifiers
+              // completions for local relative modules
               Some(lsp::CompletionResponse::List(completion_list))
             }
             _ => {
-              match get_local_completions(
-                &module.specifier,
-                resolution_mode,
-                text,
-                &range,
-                resolver,
-              ) {
-                Some(completion_list) => {
-                  // completions for local relative modules
-                  Some(lsp::CompletionResponse::List(completion_list))
+              if !text.is_empty() {
+                // completion of modules from a module registry or cache
+                check_auto_config_registry(
+                  text,
+                  config.workspace_settings_for_specifier(&module.specifier),
+                  client,
+                  module_registries,
+                )
+                .await;
+                let maybe_list = module_registries
+                  .get_completions(text, &range, resolved.as_ref(), |s| {
+                    document_modules
+                      .specifier_exists(s, module.scope.as_deref())
+                  })
+                  .await;
+                let maybe_list = maybe_list.or_else(|| {
+                  module_registries.get_origin_completions(text, &range)
+                });
+                let list = maybe_list.unwrap_or_else(|| CompletionList {
+                  items: get_remote_completions(
+                    module,
+                    text,
+                    &range,
+                    document_modules,
+                  ),
+                  is_incomplete: false,
+                });
+                Some(lsp::CompletionResponse::List(list))
+              } else {
+                // the import specifier is empty, so provide all possible specifiers we are
+                // aware of
+                let mut items: Vec<lsp::CompletionItem> = LOCAL_PATHS
+                  .iter()
+                  .map(|s| lsp::CompletionItem {
+                    label: s.to_string(),
+                    kind: Some(lsp::CompletionItemKind::FOLDER),
+                    detail: Some("(local)".to_string()),
+                    sort_text: Some("1".to_string()),
+                    insert_text: Some(s.to_string()),
+                    commit_characters: Some(
+                      IMPORT_COMMIT_CHARS.iter().map(|&c| c.into()).collect(),
+                    ),
+                    ..Default::default()
+                  })
+                  .collect();
+                let mut is_incomplete = false;
+                if let Some(import_map) = maybe_import_map {
+                  items.extend(get_base_import_map_completions(
+                    import_map,
+                    &module.specifier,
+                  ));
                 }
-                _ => {
-                  if !text.is_empty() {
-                    // completion of modules from a module registry or cache
-                    check_auto_config_registry(
-                      text,
-                      config
-                        .workspace_settings_for_specifier(&module.specifier),
-                      client,
-                      module_registries,
-                    )
-                    .await;
-                    let maybe_list = module_registries
-                      .get_completions(text, &range, resolved.as_ref(), |s| {
-                        document_modules
-                          .specifier_exists(s, module.scope.as_deref())
-                      })
-                      .await;
-                    let maybe_list = maybe_list.or_else(|| {
-                      module_registries.get_origin_completions(text, &range)
-                    });
-                    let list = maybe_list.unwrap_or_else(|| CompletionList {
-                      items: get_remote_completions(
-                        module,
-                        text,
-                        &range,
-                        document_modules,
-                      ),
-                      is_incomplete: false,
-                    });
-                    Some(lsp::CompletionResponse::List(list))
-                  } else {
-                    // the import specifier is empty, so provide all possible specifiers we are
-                    // aware of
-                    let mut items: Vec<lsp::CompletionItem> = LOCAL_PATHS
-                      .iter()
-                      .map(|s| lsp::CompletionItem {
-                        label: s.to_string(),
-                        kind: Some(lsp::CompletionItemKind::FOLDER),
-                        detail: Some("(local)".to_string()),
-                        sort_text: Some("1".to_string()),
-                        insert_text: Some(s.to_string()),
-                        commit_characters: Some(
-                          IMPORT_COMMIT_CHARS
-                            .iter()
-                            .map(|&c| c.into())
-                            .collect(),
-                        ),
-                        ..Default::default()
-                      })
-                      .collect();
-                    let mut is_incomplete = false;
-                    if let Some(import_map) = maybe_import_map {
-                      items.extend(get_base_import_map_completions(
-                        import_map,
-                        &module.specifier,
-                      ));
-                    }
-                    if let Some(origin_items) =
-                      module_registries.get_origin_completions(text, &range)
-                    {
-                      is_incomplete = origin_items.is_incomplete;
-                      items.extend(origin_items.items);
-                    }
-                    Some(lsp::CompletionResponse::List(CompletionList {
-                      is_incomplete,
-                      items,
-                    }))
-                  }
+                if let Some(origin_items) =
+                  module_registries.get_origin_completions(text, &range)
+                {
+                  is_incomplete = origin_items.is_incomplete;
+                  items.extend(origin_items.items);
                 }
+                Some(lsp::CompletionResponse::List(CompletionList {
+                  is_incomplete,
+                  items,
+                }))
               }
             }
           }
@@ -690,43 +678,6 @@ async fn get_jsr_completions(
   })
 }
 
-/// Get completions for `node:` specifiers.
-fn get_node_completions(
-  specifier: &str,
-  range: &lsp::Range,
-) -> Option<CompletionList> {
-  if !specifier.starts_with("node:") {
-    return None;
-  }
-  let items = SUPPORTED_BUILTIN_NODE_MODULES
-    .iter()
-    .filter_map(|name| {
-      if name.starts_with('_') {
-        return None;
-      }
-      let specifier = format!("node:{}", name);
-      let text_edit = Some(lsp::CompletionTextEdit::Edit(lsp::TextEdit {
-        range: *range,
-        new_text: specifier.clone(),
-      }));
-      Some(lsp::CompletionItem {
-        label: specifier,
-        kind: Some(lsp::CompletionItemKind::FILE),
-        detail: Some("(node)".to_string()),
-        text_edit,
-        commit_characters: Some(
-          IMPORT_COMMIT_CHARS.iter().map(|&c| c.into()).collect(),
-        ),
-        ..Default::default()
-      })
-    })
-    .collect();
-  Some(CompletionList {
-    is_incomplete: false,
-    items,
-  })
-}
-
 /// Get remote completions that include modules in the Ende cache which match
 /// the current specifier string.
 fn get_remote_completions(
@@ -860,7 +811,7 @@ fn jsonc_string_to_narrow_lsp_range(
   })
 }
 
-/// Provide jsr:/node: import-specifier completions for the value of an
+/// Provide jsr: import-specifier completions for the value of an
 /// `imports` (or `scopes.<scope>.<key>`) entry inside an Ende configuration
 /// file. Returns `None` if the position isn't inside such a value, so the
 /// caller can fall through to other completion providers.
@@ -912,13 +863,10 @@ pub async fn get_ende_json_import_completions(
   {
     return Some(lsp::CompletionResponse::List(list));
   }
-  if let Some(list) = get_node_completions(specifier_text, &range) {
-    return Some(lsp::CompletionResponse::List(list));
-  }
   // For an empty specifier, propose the available registry prefixes so users
   // discover them.
   if specifier_text.is_empty() {
-    let items = ["jsr:", "node:"]
+    let items = ["jsr:"]
       .into_iter()
       .map(|s| lsp::CompletionItem {
         label: s.to_string(),

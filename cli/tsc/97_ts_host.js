@@ -308,10 +308,6 @@ const CACHE_URL_PREFIX = "cache:///";
  * Ende, as they provide misleading or incorrect information. */
 const TSC_CONSTANTS = ops.op_tsc_constants();
 const IGNORED_DIAGNOSTICS = TSC_CONSTANTS.ignoredDiagnosticCodes;
-const TYPES_NODE_IGNORABLE_NAMES = new Set(
-  TSC_CONSTANTS.typesNodeIgnorableNames,
-);
-const NODE_ONLY_GLOBALS = new Set(TSC_CONSTANTS.nodeOnlyGlobals);
 
 // todo(dsherret): can we remove this and just use ts.OperationCanceledException?
 /** Error thrown on cancellation. */
@@ -756,20 +752,19 @@ for (const [key, value] of Object.entries(hostImpl)) {
   }
 }
 
-// override the npm install @types package diagnostics to be ende specific
+// override the npm install @types package diagnostics: npm packages are not
+// supported in Ende, so don't offer any suggestions
 ts.setLocalizedDiagnosticMessages((() => {
-  const nodeMessage = "Cannot find name '{0}'."; // don't offer any suggestions
-  const jqueryMessage =
-    "Cannot find name '{0}'. Did you mean to import jQuery? Try adding `import $ from \"npm:jquery\";`.";
+  const message = "Cannot find name '{0}'.";
   return {
     "Cannot_find_name_0_Do_you_need_to_install_type_definitions_for_node_Try_npm_i_save_dev_types_Slashno_2580":
-      nodeMessage,
+      message,
     "Cannot_find_name_0_Do_you_need_to_install_type_definitions_for_node_Try_npm_i_save_dev_types_Slashno_2591":
-      nodeMessage,
+      message,
     "Cannot_find_name_0_Do_you_need_to_install_type_definitions_for_jQuery_Try_npm_i_save_dev_types_Slash_2581":
-      jqueryMessage,
+      message,
     "Cannot_find_name_0_Do_you_need_to_install_type_definitions_for_jQuery_Try_npm_i_save_dev_types_Slash_2592":
-      jqueryMessage,
+      message,
     "Module_0_was_resolved_to_1_but_allowArbitraryExtensions_is_not_set_6263":
       "Module '{0}' was resolved to '{1}', but importing these modules is not supported.",
   };
@@ -882,18 +877,6 @@ function isJSDocDynamicImportDiagnostic(diagnostic) {
     text.slice(openBrace + 1, closeBrace),
   );
 }
-
-// list of globals that should be kept in Node's globalThis
-ts.deno.setNodeOnlyGlobalNames(
-  NODE_ONLY_GLOBALS,
-);
-// List of globals in @types/node that collide with Ende's types.
-// When the `@types/node` package attempts to assign to these types
-// if the type is already in the global symbol table, then assignment
-// will be a no-op, but if the global type does not exist then the package can
-// create the global.
-const setTypesNodeIgnorableNames = TYPES_NODE_IGNORABLE_NAMES;
-ts.deno.setTypesNodeIgnorableNames(setTypesNodeIgnorableNames);
 
 /**
  * @param {ts.StringLiteralLike} node

@@ -3,6 +3,6 @@
     "./packages/*"
   ],
   "imports": {
-    "chalk": "npm:chalk"
+    "add": "jsr:@endetest/add@1"
   }
 }

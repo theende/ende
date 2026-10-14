@@ -1,5 +1,0 @@
-authorized: true
-peer has subject: true
-peer has issuer: true
-peer has fingerprint: true
-status: 200

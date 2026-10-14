@@ -365,7 +365,11 @@ async fn clean_except(
     );
   }
   let snap = snap.subset(&npm_reqs);
-  let node_modules_path = npm_resolver.root_node_modules_path();
+  // npm packages are not supported in Ende, so there is usually no
+  // node_modules directory to clean.
+  let node_modules_path = npm_resolver
+    .root_node_modules_path()
+    .filter(|path| path.is_dir());
   let mut node_modules_keep = HashSet::new();
   for package in snap.all_system_packages(&options.npm_system_info()) {
     if node_modules_path.is_some() {

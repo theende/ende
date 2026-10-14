@@ -1,3 +1,3 @@
 console.error("Here");
-await import("npm:@denotest/say-hello");
+await import("jsr:@endetest/add");
 console.error("Done");

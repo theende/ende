@@ -8,7 +8,7 @@
 // This demonstrates spans, logs, and metrics being printed to stderr
 // in human-readable format — no collector needed.
 
-import { metrics, trace } from "npm:@opentelemetry/api@1.9.0";
+import { metrics, trace } from "./otel_api.ts";
 
 const tracer = trace.getTracer("my-service");
 const meter = metrics.getMeter("my-service");

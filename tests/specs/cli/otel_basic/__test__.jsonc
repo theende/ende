@@ -62,14 +62,6 @@
       "args": "run -A main.ts http_traceparent_header_case.ts",
       "output": "http_traceparent_header_case.out"
     },
-    "node_http_metric": {
-      "envs": {
-        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
-        "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "cumulative"
-      },
-      "args": "run -A main.ts node_http_metric.ts",
-      "output": "node_http_metric.out"
-    },
     "links": {
       "args": "run -A main.ts links.ts",
       "output": "links.out"
@@ -77,22 +69,6 @@
     "start_active_span": {
       "args": "run -A main.ts start_active_span.ts",
       "output": "start_active_span.out"
-    },
-    "node_http_request": {
-      "args": "run -A main.ts node_http_request.ts",
-      "output": "node_http_request.out"
-    },
-    "node_http_request_proxy": {
-      "args": "run -A main.ts node_http_request_proxy.ts",
-      "output": "node_http_request_proxy.out"
-    },
-    "node_http_server_absolute_form": {
-      "args": "run -A main.ts node_http_server_absolute_form.ts",
-      "output": "node_http_server_absolute_form.out"
-    },
-    "http2": {
-      "args": "run -A main.ts http2.ts",
-      "output": "http2.out"
     },
     "events": {
       "args": "run -A main.ts events.ts",
@@ -186,18 +162,6 @@
         "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc"
       },
       "output": "events.out"
-    },
-    "grpc_trailers": {
-      "args": "run -A -q grpc_trailer_main.ts events.ts",
-      "output": "events.out"
-    },
-    "grpc_trailers_error": {
-      "args": "run -A -q grpc_trailer_main.ts events.ts",
-      "envs": {
-        "GRPC_TRAILER_STATUS": "14",
-        "GRPC_TRAILER_MESSAGE": "UNAVAILABLE"
-      },
-      "output": "grpc_trailers_error.out"
     },
     "span_event_limit": {
       "args": "run -A main.ts span_event_limit.ts",

@@ -2,7 +2,8 @@
   "tests": {
     "cjs_entrypoint": {
       "args": "run -R index.cjs",
-      "output": "index.out"
+      "output": "index.out",
+      "exitCode": 1
     },
     "module_error": {
       "args": "run module_error.js",

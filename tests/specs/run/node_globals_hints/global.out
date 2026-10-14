@@ -1,0 +1,7 @@
+error: Uncaught (in promise) ReferenceError: global is not defined
+global.foo = 1;
+^
+    at [WILDCARD]global.js:1:1
+
+    info: global is not available in Ende.
+    hint: Replace `global` with `globalThis`.

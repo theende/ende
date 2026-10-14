@@ -7,7 +7,6 @@ use util::TestContext;
 use util::TestContextBuilder;
 use util::assert_contains;
 use util::assert_starts_with;
-use util::env_vars_for_npm_tests;
 use util::eprintln;
 use util::test;
 
@@ -313,47 +312,6 @@ fn no_tests_included(test_name: &str, extension: &str) {
 }
 
 #[test]
-fn no_npm_cache_coverage() {
-  let context = TestContext::with_http_server();
-  let tempdir = context.temp_dir();
-  let tempdir = tempdir.path().join("cov");
-
-  let output = context
-    .new_command()
-    .args_vec(vec![
-      "test".to_string(),
-      "--quiet".to_string(),
-      "--allow-read".to_string(),
-      format!("--coverage={}", tempdir),
-      format!("coverage/no_npm_coverage/no_npm_coverage_test.ts"),
-    ])
-    .envs(env_vars_for_npm_tests())
-    .run();
-
-  output.assert_exit_code(0);
-  output.skip_output_check();
-
-  let output = context
-    .new_command()
-    .args_vec(vec![
-      "coverage".to_string(),
-      "--detailed".to_string(),
-      format!("{}/", tempdir),
-    ])
-    .split_output()
-    .run();
-
-  // Verify there's no "Check" being printed
-  assert!(output.stderr().is_empty());
-
-  output.assert_stdout_matches_file(
-    util::testdata_path().join("coverage/no_npm_coverage/expected.out"),
-  );
-
-  output.assert_exit_code(0);
-}
-
-#[test]
 fn no_transpiled_lines() {
   let context = TestContext::default();
   let tempdir = context.temp_dir();
@@ -418,38 +376,6 @@ fn no_internal_code() {
       "--quiet".to_string(),
       format!("--coverage={}", tempdir),
       "coverage/no_internal_code_test.ts".to_string(),
-    ])
-    .run();
-
-  output.assert_exit_code(0);
-  output.skip_output_check();
-
-  // Check that coverage files contain no internal urls
-  let paths = tempdir.read_dir();
-  for path in paths {
-    let unwrapped = PathRef::new(path.unwrap().path());
-    let data = unwrapped.read_to_string();
-
-    let value: serde_json::Value = serde_json::from_str(&data).unwrap();
-    let url = value["url"].as_str().unwrap();
-    assert_starts_with!(url, "file:");
-  }
-}
-
-#[test]
-fn no_internal_node_code() {
-  let context = TestContext::default();
-  let tempdir = context.temp_dir();
-  let tempdir = tempdir.path().join("cov");
-
-  let output = context
-    .new_command()
-    .args_vec(vec![
-      "test".to_string(),
-      "--quiet".to_string(),
-      "--no-check".to_string(),
-      format!("--coverage={}", tempdir),
-      "coverage/no_internal_node_code_test.ts".to_string(),
     ])
     .run();
 

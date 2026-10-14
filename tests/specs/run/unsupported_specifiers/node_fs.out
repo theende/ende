@@ -1,0 +1,2 @@
+error: "node:fs" — Node built-in modules are not supported in Ende.
+    at file:///[WILDLINE]/node_fs.ts:2:30

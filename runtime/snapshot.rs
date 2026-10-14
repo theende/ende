@@ -8,9 +8,6 @@ use ende_core::Extension;
 use ende_core::ExtensionFileSource;
 use ende_core::ExtensionFileSourceCode;
 use ende_core::snapshot::*;
-use ende_core::v8;
-use ende_resolver::npm::DenoInNpmPackageChecker;
-use ende_resolver::npm::NpmResolver;
 
 use crate::ops;
 use crate::ops::bootstrap::SnapshotOptions;
@@ -75,19 +72,11 @@ pub fn create_runtime_snapshot(
     ende_cron::ende_cron::init(Box::new(
       ende_cron::local::LocalCronHandler::new(),
     )),
-    ende_napi::ende_napi::lazy_init(),
     ende_http::ende_http::lazy_init(),
     ende_io::ende_io::lazy_init(),
     ende_fs::ende_fs::lazy_init(),
     ende_os::ende_os::lazy_init(),
     ende_process::ende_process::lazy_init(),
-    ende_node_crypto::ende_node_crypto::lazy_init(),
-    ende_node_sqlite::ende_node_sqlite::lazy_init(),
-    ende_node::ende_node::lazy_init::<
-      DenoInNpmPackageChecker,
-      NpmResolver<sys_traits::impls::RealSys>,
-      sys_traits::impls::RealSys,
-    >(),
     ops::runtime::ende_runtime::lazy_init(),
     ops::worker_host::ende_worker_host::lazy_init(),
     ops::fs_events::ende_fs_events::lazy_init(),
@@ -117,22 +106,7 @@ pub fn create_runtime_snapshot(
           crate::transpile::maybe_transpile_source(specifier, source)
         }
       })),
-      with_runtime_cb: Some(Box::new(|rt| {
-        let isolate = rt.v8_isolate();
-        v8::scope!(scope, isolate);
-
-        let tmpl = ende_node::init_global_template(
-          scope,
-          ende_node::ContextInitMode::ForSnapshot,
-        );
-        let ctx = ende_node::create_v8_context(
-          scope,
-          tmpl,
-          ende_node::ContextInitMode::ForSnapshot,
-          std::ptr::null_mut(),
-        );
-        assert_eq!(scope.add_context(ctx), ende_node::VM_CONTEXT_INDEX);
-      })),
+      with_runtime_cb: None,
       skip_op_registration: false,
     },
     None,

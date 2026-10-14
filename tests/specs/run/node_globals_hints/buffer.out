@@ -1,0 +1,8 @@
+error: Uncaught (in promise) ReferenceError: Buffer is not defined
+Buffer.from("hi");
+^
+    at [WILDCARD]buffer.js:1:1
+
+    info: Buffer global is not available in Ende.
+    hint: Use Uint8Array with TextEncoder/TextDecoder, or Uint8Array.fromBase64(),
+          .toBase64(), Uint8Array.fromHex() and .toHex() for encoding.

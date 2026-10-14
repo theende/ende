@@ -1,4 +1,4 @@
-let intervalHandle: NodeJS.Timeout;
+let intervalHandle: number;
 let firstIntervalPromise: Promise<void>;
 
 addEventListener("load", () => {

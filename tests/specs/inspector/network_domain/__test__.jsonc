@@ -1,8 +1,0 @@
-{
-  "tests": {
-    "network_domain": {
-      "args": "run --inspect=0 -A main.js",
-      "output": "main.out"
-    }
-  }
-}

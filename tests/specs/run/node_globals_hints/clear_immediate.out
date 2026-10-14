@@ -1,0 +1,7 @@
+error: Uncaught (in promise) ReferenceError: clearImmediate is not defined
+clearImmediate(0);
+^
+    at [WILDCARD]clear_immediate.js:1:1
+
+    info: clearImmediate global is not available in Ende.
+    hint: Use setTimeout(fn, 0) or queueMicrotask() instead, and clearTimeout() to cancel.

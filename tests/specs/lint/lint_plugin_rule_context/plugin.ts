@@ -1,4 +1,6 @@
-import path from "node:path";
+function relative(file: string): string {
+  return file.slice(Deno.cwd().length + 1);
+}
 
 export default {
   name: "test-plugin",
@@ -12,11 +14,11 @@ export default {
             console.log();
 
             console.log(`ctx.filename:`);
-            console.log(path.relative(Deno.cwd(), context.filename));
+            console.log(relative(context.filename));
             console.log();
 
             console.log(`ctx.getFilename():`);
-            console.log(path.relative(Deno.cwd(), context.getFilename()));
+            console.log(relative(context.getFilename()));
             console.log();
 
             console.log(`ctx.getSourceCode():`);

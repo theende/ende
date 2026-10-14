@@ -441,8 +441,8 @@ fn one_byte_internalized<'s>(
 
 /// Body of the `Crypto.registerSymbols(webidlBrand, kKeyObject)` static
 /// method. Called once during module load to hand the WebIDL brand symbol
-/// (private to the webidl ESM) and the node:crypto `kKeyObject` symbol
-/// (private to ext/node) over to the crypto cppgc methods, which need them
+/// (private to the webidl ESM) and the `kKeyObject` symbol (private to
+/// `00_crypto.js`) over to the crypto cppgc methods, which need them
 /// to brand every freshly-constructed `CryptoKey`. Lives here as a Rust
 /// function so it can be reused from a `#[static_method]` on either
 /// `Crypto` or `SubtleCrypto` without introducing a new standalone op.

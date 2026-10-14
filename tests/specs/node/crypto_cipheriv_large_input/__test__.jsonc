@@ -1,9 +1,0 @@
-{
-  // This test allocates ~2GB of memory
-  "tests": {
-    "cipheriv_update_throws_on_large_input": {
-      "args": "run main.mjs",
-      "output": "main.out"
-    }
-  }
-}

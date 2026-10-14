@@ -697,13 +697,7 @@ pub fn enhanced_resolution_error_message(
 ) -> String {
   let mut message = format_deno_graph_error(error);
 
-  let maybe_hint = if let Some(specifier) =
-    get_resolution_error_bare_node_specifier(error)
-  {
-    Some(format!(
-      "If you want to use a built-in Node module, add a \"node:\" prefix (ex. \"node:{specifier}\")."
-    ))
-  } else {
+  let maybe_hint =
     get_import_prefix_missing_error(error).and_then(|specifier| {
       // If the specifier looks like a workspace member or linked package whose
       // declared name is scoped (e.g. importing "foo" when "@scope/foo" is
@@ -722,8 +716,7 @@ pub fn enhanced_resolution_error_message(
       } else {
         None
       }
-    })
-  };
+    });
 
   if let Some(hint) = maybe_hint {
     message.push_str(&format!(
@@ -848,36 +841,6 @@ fn enhanced_unsupported_import_attribute(err: &ModuleError) -> Option<String> {
       Some(text)
     }
     _ => None,
-  }
-}
-
-pub fn get_resolution_error_bare_node_specifier(
-  error: &ResolutionError,
-) -> Option<&str> {
-  get_resolution_error_bare_specifier(error).filter(|specifier| {
-    DenoIsBuiltInNodeModuleChecker.is_builtin_node_module(specifier)
-  })
-}
-
-fn get_resolution_error_bare_specifier(
-  error: &ResolutionError,
-) -> Option<&str> {
-  if let ResolutionError::InvalidSpecifier {
-    error: SpecifierError::ImportPrefixMissing { specifier, .. },
-    ..
-  } = error
-  {
-    Some(specifier.as_str())
-  } else if let ResolutionError::ResolverError { error, .. } = error
-    && let ResolveError::Other(error) = (*error).as_ref()
-    && let Some(error) =
-      error.get_ref().downcast_ref::<import_map::ImportMapError>()
-    && let import_map::ImportMapErrorKind::UnmappedBareSpecifier(specifier, _) =
-      error.as_kind()
-  {
-    Some(specifier.as_str())
-  } else {
-    None
   }
 }
 
@@ -1026,57 +989,7 @@ pub fn format_deno_graph_error(err: &dyn std::error::Error) -> String {
 
 #[cfg(test)]
 mod test {
-  use deno_graph::PositionRange;
-  use deno_graph::Range;
-  use deno_graph::ResolutionError;
-  use deno_graph::SpecifierError;
-  use deno_graph::source::ResolveError;
-
   use super::*;
-
-  #[test]
-  fn import_map_node_resolution_error() {
-    let cases = vec![("fs", Some("fs")), ("other", None)];
-    for (input, output) in cases {
-      let import_map =
-        import_map::ImportMap::new(Url::parse("file:///deno.json").unwrap());
-      let specifier = Url::parse("file:///file.ts").unwrap();
-      let err = import_map.resolve(input, &specifier).err().unwrap();
-      let err = ResolutionError::ResolverError {
-        #[allow(
-          clippy::disallowed_types,
-          reason = "ResolutionError requires Arc"
-        )]
-        error: std::sync::Arc::new(ResolveError::from_err(err)),
-        specifier: input.to_string(),
-        range: Range {
-          specifier,
-          resolution_mode: None,
-          range: PositionRange::zeroed(),
-        },
-      };
-      assert_eq!(get_resolution_error_bare_node_specifier(&err), output);
-    }
-  }
-
-  #[test]
-  fn bare_specifier_node_resolution_error() {
-    let cases = vec![("process", Some("process")), ("other", None)];
-    for (input, output) in cases {
-      let specifier = Url::parse("file:///file.ts").unwrap();
-      let err = ResolutionError::InvalidSpecifier {
-        range: Range {
-          specifier,
-          resolution_mode: None,
-          range: PositionRange::zeroed(),
-        },
-        error: SpecifierError::ImportPrefixMissing {
-          specifier: input.to_string(),
-        },
-      };
-      assert_eq!(get_resolution_error_bare_node_specifier(&err), output,);
-    }
-  }
 
   #[test]
   fn matching_bare_pkg_name() {

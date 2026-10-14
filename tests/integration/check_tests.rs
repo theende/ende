@@ -1,8 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use deno_semver::jsr::JsrDepPackageReq;
-use ende_lockfile::NewLockfileOptions;
-use ende_lockfile::NpmPackageInfoProvider;
 use test_util as util;
 use util::TestContext;
 use util::TestContextBuilder;
@@ -183,87 +180,5 @@ fn json_module_check_then_error() {
   check_command
     .run()
     .assert_matches_text("Check [WILDCARD]main.ts\nTS2551[WILDCARD]")
-    .assert_exit_code(1);
-}
-
-struct TestNpmPackageInfoProvider;
-
-#[async_trait::async_trait(?Send)]
-impl NpmPackageInfoProvider for TestNpmPackageInfoProvider {
-  async fn get_npm_package_info(
-    &self,
-    values: &[deno_semver::package::PackageNv],
-  ) -> Result<
-    Vec<ende_lockfile::Lockfile5NpmInfo>,
-    Box<dyn std::error::Error + Send + Sync>,
-  > {
-    Ok(values.iter().map(|_| Default::default()).collect())
-  }
-}
-
-#[test]
-async fn npm_module_check_then_error() {
-  let test_context = TestContextBuilder::new()
-    .use_temp_cwd()
-    .add_npm_env_vars()
-    .use_http_server()
-    .build();
-  let temp_dir = test_context.temp_dir();
-  temp_dir.write("ende.json", "{}"); // so the lockfile gets loaded
-
-  // get the lockfiles values first (this is necessary because the test
-  // server generates different tarballs based on the operating system)
-  test_context
-    .new_command()
-    .args_vec([
-      "cache",
-      "npm:@denotest/breaking-change-between-versions@1.0.0",
-      "npm:@denotest/breaking-change-between-versions@2.0.0",
-    ])
-    .run()
-    .skip_output_check();
-  let lockfile_path = temp_dir.path().join("ende.lock");
-  let mut lockfile = ende_lockfile::Lockfile::new(
-    NewLockfileOptions {
-      file_path: lockfile_path.to_path_buf(),
-      content: &lockfile_path.read_to_string(),
-      overwrite: false,
-    },
-    &TestNpmPackageInfoProvider,
-  )
-  .await
-  .unwrap();
-
-  // make the specifier resolve to version 1
-  lockfile.content.packages.specifiers.insert(
-    JsrDepPackageReq::from_str(
-      "npm:@denotest/breaking-change-between-versions",
-    )
-    .unwrap(),
-    "1.0.0".into(),
-  );
-  lockfile_path.write(lockfile.as_json_string());
-  temp_dir.write(
-    "main.ts",
-    "import { oldName } from 'npm:@denotest/breaking-change-between-versions'; console.log(oldName());\n",
-  );
-
-  let check_command = test_context.new_command().args_vec(["check", "main.ts"]);
-  check_command.run().assert_exit_code(0).skip_output_check();
-
-  // now update the lockfile to use version 2 instead, which should cause a
-  // type checking error because the oldName no longer exists
-  lockfile.content.packages.specifiers.insert(
-    JsrDepPackageReq::from_str(
-      "npm:@denotest/breaking-change-between-versions",
-    )
-    .unwrap(),
-    "2.0.0".into(),
-  );
-  lockfile_path.write(lockfile.as_json_string());
-
-  check_command
-    .run()
-    .assert_matches_text("Check [WILDCARD]main.ts\nTS2305[WILDCARD]has no exported member 'oldName'[WILDCARD]")
     .assert_exit_code(1);
 }

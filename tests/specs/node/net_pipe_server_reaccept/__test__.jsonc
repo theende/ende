@@ -1,8 +1,0 @@
-{
-  "tests": {
-    "pipe_server_reaccept": {
-      "args": "run -A main.ts",
-      "output": "main.out"
-    }
-  }
-}

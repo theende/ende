@@ -1,35 +1,6 @@
 {
   "tempDir": true,
   "tests": {
-    "error_with_new_npm_dep": {
-      "steps": [
-        {
-          "args": "cache add.ts",
-          "output": "[WILDCARD]"
-        },
-        {
-          // sub.ts imports from an npm package
-          // that's not in the lockfile
-          "args": "run --frozen sub.ts",
-          "output": "frozen_new_dep_run.out",
-          "exitCode": 1
-        },
-        {
-          "args": "cache --frozen sub.ts",
-          "output": "frozen_new_dep_cache.out",
-          "exitCode": 1
-        },
-        {
-          // update the lockfile
-          "args": "cache sub.ts",
-          "output": "update_lockfile.out"
-        },
-        {
-          "args": "run --frozen sub.ts",
-          "output": "3 - 2 = 1\n"
-        }
-      ]
-    },
     "error_with_new_jsr_dep": {
       "steps": [
         {
@@ -100,28 +71,14 @@
           "output": "[WILDCARD]"
         },
         {
-          // sub.ts imports from an npm package
-          // that's not in the lockfile
-          "args": "run sub.ts",
-          "output": "frozen_new_dep_run.out",
+          // jsr.ts imports a jsr package version that's not in the lockfile
+          "args": "run jsr.ts",
+          "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
           "exitCode": 1
         },
         {
-          "args": "cache sub.ts",
-          "output": "frozen_new_dep_cache.out",
-          "exitCode": 1
-        }
-      ]
-    },
-    "non_analyzable_dynamic_npm": {
-      "steps": [
-        {
-          "args": "cache add.ts",
-          "output": "[WILDCARD]"
-        },
-        {
-          "args": "run --frozen sub-dynamic.ts",
-          "output": "frozen_new_dep_dynamic_npm.out",
+          "args": "cache jsr.ts",
+          "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
           "exitCode": 1
         }
       ]
@@ -160,8 +117,10 @@
           "exitCode": 1
         },
         {
+          // the previous step already type checked add.ts before failing on
+          // the lockfile, so this run may be a type check cache hit
           "args": "check --frozen=false add.ts",
-          "output": "[WILDCARD]Check [WILDCARD]add.ts\n"
+          "output": "[WILDCARD]"
         }
       ]
     }

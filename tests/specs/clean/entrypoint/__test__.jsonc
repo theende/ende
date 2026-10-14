@@ -46,7 +46,7 @@
           "output": "[WILDCARD]"
         },
         {
-          "args": "run -A ./print-dir.ts ./denodir --max-level=5 ./node_modules ./vendor",
+          "args": "run -A ./print-dir.ts ./denodir --max-level=5 ./vendor",
           "output": "vendor_init.out"
         },
         {
@@ -55,7 +55,7 @@
           "output": "vendor_clean_output.out"
         },
         {
-          "args": "run -A ./print-dir.ts ./denodir --max-level=5 ./node_modules ./vendor",
+          "args": "run -A ./print-dir.ts ./denodir --max-level=5 ./vendor",
           "output": "vendor_cleaned.out"
         }
       ]

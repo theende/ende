@@ -1,4 +1,4 @@
-import { propagation } from "npm:@opentelemetry/api@1.9.0";
+import { propagation } from "./otel_api.ts";
 
 Deno.serve({
   onListen() {

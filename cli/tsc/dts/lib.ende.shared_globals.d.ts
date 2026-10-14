@@ -15,7 +15,6 @@
 /// <reference lib="ende.crypto" />
 /// <reference lib="ende.ns" />
 /// <reference lib="ende.broadcast_channel" />
-/// <reference lib="node" />
 
 /** The `WebAssembly` JavaScript object acts as the namespace for all
  * [WebAssembly](https://developer.mozilla.org/en-US/docs/WebAssembly)-related
@@ -396,6 +395,73 @@ declare namespace WebAssembly {
    */
   export function validate(bytes: BufferSource): boolean;
 }
+
+/** Sets a timer which executes a function once after the delay (in milliseconds) elapses. Returns
+ * an id which may be used to cancel the timeout.
+ *
+ * ```ts
+ * setTimeout(() => { console.log('hello'); }, 500);
+ * ```
+ *
+ * @category Platform
+ */
+declare function setTimeout<TArgs extends any[]>(
+  cb: (...args: TArgs) => void,
+  delay?: number,
+  ...args: TArgs
+): number;
+/** @category Platform */
+declare function setTimeout(
+  cb: string | ((...args: any[]) => void),
+  delay?: number,
+  ...args: any[]
+): number;
+
+/** Repeatedly calls a function , with a fixed time delay between each call.
+ *
+ * ```ts
+ * // Outputs 'hello' to the console every 500ms
+ * setInterval(() => { console.log('hello'); }, 500);
+ * ```
+ *
+ * @category Platform
+ */
+declare function setInterval<TArgs extends any[]>(
+  cb: (...args: TArgs) => void,
+  delay?: number,
+  ...args: TArgs
+): number;
+/** @category Platform */
+declare function setInterval(
+  cb: string | ((...args: any[]) => void),
+  delay?: number,
+  ...args: any[]
+): number;
+
+/** Cancels a timed, repeating action which was previously started by a call
+ * to `setInterval()`
+ *
+ * ```ts
+ * const id = setInterval(() => {console.log('hello');}, 500);
+ * // ...
+ * clearInterval(id);
+ * ```
+ *
+ * @category Platform
+ */
+declare function clearInterval(id?: number): void;
+
+/** Cancels a scheduled action initiated by `setTimeout()`
+ *
+ * ```ts
+ * const id = setTimeout(() => {console.log('hello');}, 500);
+ * // ...
+ * clearTimeout(id);
+ * ```
+ *
+ * @category Platform
+ */
+declare function clearTimeout(id?: number): void;
 
 /** @category Platform */
 interface VoidFunction {

@@ -1,4 +1,4 @@
-import { metrics } from "npm:@opentelemetry/api@1";
+import { metrics } from "./otel_api.ts";
 
 const meter = metrics.getMeter("delta_test");
 

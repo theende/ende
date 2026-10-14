@@ -51,7 +51,6 @@ use ende_lib::worker::create_isolate_create_params;
 use ende_resolver::ende_json::CompilerOptionsKey;
 use ende_runtime::ende_inspector_server::InspectPublishUid;
 use ende_runtime::ende_inspector_server::InspectorServer;
-use ende_runtime::ende_node::SUPPORTED_BUILTIN_NODE_MODULES;
 use ende_runtime::tokio_util::create_basic_runtime;
 use indexmap::IndexSet;
 use lazy_regex::lazy_regex;
@@ -4295,15 +4294,8 @@ impl CompletionEntry {
     else {
       return;
     };
-    if let Some(file_name) = &raw.file_name {
-      if let Ok(normalized) = specifier_map.normalize(file_name) {
-        self.auto_import_data =
-          Some(CompletionNormalizedAutoImportData { raw, normalized });
-      }
-    } else if SUPPORTED_BUILTIN_NODE_MODULES
-      .contains(&raw.module_specifier.as_str())
-      && let Ok(normalized) =
-        resolve_url(&format!("node:{}", &raw.module_specifier))
+    if let Some(file_name) = &raw.file_name
+      && let Ok(normalized) = specifier_map.normalize(file_name)
     {
       self.auto_import_data =
         Some(CompletionNormalizedAutoImportData { raw, normalized });
@@ -5593,11 +5585,6 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
     by_notebook_uri: Default::default(),
   };
 
-  let scopes_with_node_specifier = state
-    .state_snapshot
-    .document_modules
-    .scopes_with_node_specifier();
-
   // Insert global scripts.
   for (compiler_options_key, compiler_options_data) in
     state.state_snapshot.compiler_options_resolver.entries()
@@ -5639,9 +5626,6 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
       };
       script_names
         .insert(state.specifier_map.denormalize(&specifier, media_type));
-    }
-    if scopes_with_node_specifier.contains(&scope) {
-      script_names.insert("asset:///reference_types_node.d.ts".to_string());
     }
     for (referrer, relative_specifiers) in compiler_options_data
       .ts_config_files

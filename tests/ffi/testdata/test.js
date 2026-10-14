@@ -641,7 +641,7 @@ testOptimized(
   // V8 disables fast api for >8 args on Apple silicon (crbug.com/v8/13171).
   // Deno's trampoline now produces a correctly-aligned wrapper on Apple
   // silicon, so when V8 relaxes the guard this skip can be removed.
-  process.platform === 'darwin' && process.arch === 'arm64' ? null : "log_many_parameters",
+  Deno.build.os === 'darwin' && Deno.build.arch === 'aarch64' ? null : "log_many_parameters",
 );
 
 // Some ABIs rely on the convention to zero/sign-extend arguments by the caller to optimize the callee function.
@@ -666,7 +666,7 @@ testOptimized(
   // V8 disables fast api for >8 args on Apple silicon (crbug.com/v8/13171).
   // Deno's trampoline now produces a correctly-aligned wrapper on Apple
   // silicon, so when V8 relaxes the guard this skip can be removed.
-  process.platform === 'darwin' && process.arch === 'arm64' ? null : "add_many_u16",
+  Deno.build.os === 'darwin' && Deno.build.arch === 'aarch64' ? null : "add_many_u16",
 );
 
 

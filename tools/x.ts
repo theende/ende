@@ -186,58 +186,6 @@ Under the hood:
   cargo test -p unit_tests --test unit -- <filter>`,
       },
     ),
-    "test-node": cargoTestCommand(root, [
-      "-p",
-      "unit_node_tests",
-      "--test",
-      "unit_node",
-    ], {
-      description: "Run Node.js API unit tests",
-      stepName: "Node.js unit tests",
-      help: `Runs unit tests for Ende's Node.js compatibility layer. These tests
-verify that Ende's implementations of Node.js built-in modules (fs,
-path, http, crypto, etc.) behave correctly.
-
-The test files live under tests/unit_node/ and are compiled into the
-'unit_node_tests' crate.
-
-Requires a filter argument to select which tests to run. The filter is
-a substring match against test names.
-
-Usage:
-  ./x test-node <filter>    Run tests matching the filter
-  ./x test-node --list      List all available tests
-
-Examples:
-  ./x test-node crypto      Run tests with "crypto" in their name
-  ./x test-node http        Run tests with "http" in their name
-
-Under the hood:
-  cargo test -p unit_node_tests --test unit_node -- <filter>`,
-    }),
-    "test-compat": cargoTestCommand(root, ["--test", "node_compat"], {
-      description: "Run Node.js compatibility tests",
-      stepName: "Node.js compatibility tests",
-      help: `Runs the Node.js compatibility test suite. These tests use actual
-Node.js test cases (ported or adapted) to verify that Ende's node:*
-module implementations match Node.js behavior.
-
-The test runner lives in tests/node_compat/runner/.
-
-Requires a filter argument to select which tests to run. The filter is
-a substring match against test names.
-
-Usage:
-  ./x test-compat <filter>  Run tests matching the filter
-  ./x test-compat --list    List all available tests
-
-Examples:
-  ./x test-compat fs        Run tests with "fs" in their name
-  ./x test-compat path      Run tests with "path" in their name
-
-Under the hood:
-  cargo test --test node_compat -- <filter>`,
-    }),
     "test-spec": cargoTestCommand(root, [
       "-p",
       "specs_tests",
@@ -310,42 +258,6 @@ Under the hood:
             .cwd(root);
         }
         $.logStep("ende_core tests complete.");
-      },
-    },
-    "test-napi": {
-      description: "Run NAPI (native addon) tests",
-      help: `Builds the test_napi native module and runs the NAPI test suite.
-These tests verify Ende's Node-API compatibility by loading a native
-addon (cdylib) and calling its exported functions from JavaScript.
-
-The native module source is in tests/napi/src/ and the JS tests are
-in tests/napi/*_test.js.
-
-An optional filter argument selects which test files to run.
-
-Usage:
-  ./x test-napi             Run all NAPI tests
-  ./x test-napi <filter>    Run test files matching the filter
-
-Examples:
-  ./x test-napi uv          Run tests with "uv" in their filename
-  ./x test-napi async       Run tests with "async" in their filename
-
-Under the hood:
-  cargo build -p test_napi
-  ende test --allow-read --allow-env --allow-ffi --allow-run \\
-    --v8-flags=--expose-gc tests/napi/`,
-      async fn(args: string[]) {
-        $.logStep("Building test_napi native module...");
-        await $`cargo build -p test_napi`.cwd(root);
-        $.logStep("Running NAPI tests...");
-        const filter = args.length > 0 ? args.map((a) => `--filter=${a}`) : [];
-        await $`${
-          root.join("target/debug/ende").toString()
-        } test --allow-read --allow-env --allow-ffi --allow-run --v8-flags=--expose-gc --config ${
-          root.join("tests/config/ende.json").toString()
-        } --no-lock ${filter} .`.cwd(root.join("tests/napi"));
-        $.logStep("NAPI tests complete.");
       },
     },
     "fmt": fmtCmd,

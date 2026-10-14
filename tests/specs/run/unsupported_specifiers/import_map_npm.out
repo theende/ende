@@ -1,0 +1,2 @@
+error: "npm:chalk@5" — npm packages are not supported in Ende.
+    at file:///[WILDLINE]/import_map_npm.ts:2:19

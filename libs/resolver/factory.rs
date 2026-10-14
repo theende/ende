@@ -1131,7 +1131,6 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
         cjs_tracker.clone(),
         self.emitter()?.clone(),
         self.in_npm_package_checker()?.clone(),
-        self.node_code_translator()?.clone(),
         self.npm_module_loader()?.clone(),
         self.parsed_source_cache.clone(),
         self.workspace_factory.sys.clone(),

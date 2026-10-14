@@ -47,10 +47,6 @@ mod jupyter;
 mod jupyter_client;
 #[path = "lsp_tests.rs"]
 mod lsp;
-#[path = "napi_tests.rs"]
-mod napi;
-#[path = "npm_tests.rs"]
-mod npm;
 #[path = "pm_tests.rs"]
 mod pm;
 #[path = "publish_tests.rs"]
@@ -66,8 +62,6 @@ mod run;
 mod serve;
 #[path = "shared_library_tests.rs"]
 mod shared_library_tests;
-#[path = "sqlite_extension_tests.rs"]
-mod sqlite_extension;
 #[path = "task_tests.rs"]
 mod task;
 #[path = "test_tests.rs"]

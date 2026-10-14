@@ -28,7 +28,6 @@ use crate::args::CliOptions;
 use crate::args::CompileFlags;
 use crate::args::EndeSubcommand;
 use crate::args::Flags;
-use crate::args::TypeCheckMode;
 use crate::factory::CliFactory;
 use crate::graph_util::ModuleGraphCreator;
 use crate::standalone::binary::WriteBinOptions;
@@ -97,19 +96,6 @@ async fn compile_inner(
       // Run the framework's build step (if any) before bundling its build
       // output via `include_paths`.
       super::framework::run_build_command(&detection, &dir)?;
-      // These frameworks emit a pre-built/bundled server entrypoint that is
-      // not meant to be type checked by Ende (it references Node types that
-      // aren't resolvable from the build output); the framework handles its
-      // own compilation.
-      if matches!(detection.name, "Next.js" | "SvelteKit")
-        && !matches!(flags.type_check_mode, TypeCheckMode::None)
-      {
-        log::info!(
-          "Disabling Ende type checking for {} compile; the framework handles app compilation itself",
-          detection.name
-        );
-        flags.type_check_mode = TypeCheckMode::None;
-      }
       // Write a temporary entrypoint file with a random suffix so we
       // never overwrite an existing project file.
       let entrypoint_path = dir.join(format!(
@@ -125,7 +111,7 @@ async fn compile_inner(
       }
       // Add framework build output to includes, resolved relative to the
       // detected app directory so `ende compile ./myapp` picks up
-      // `./myapp/.next` rather than `./.next`.
+      // `./myapp/_fresh` rather than `./_fresh`.
       for inc in detection.include_paths {
         let resolved = dir.join(&inc).display().to_string();
         if !compile_flags.include.contains(&resolved) {
@@ -136,7 +122,7 @@ async fn compile_inner(
     } else {
       bail!(
         "Could not detect a supported framework in '{}'.\n\
-         Supported frameworks: Next.js, Astro, Fresh, Remix, React Router, SvelteKit, Nuxt, SolidStart, TanStack Start, Vite\n\
+         Supported frameworks: Fresh\n\
          Provide an explicit entrypoint instead of a directory.",
         dir.display()
       );

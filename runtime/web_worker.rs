@@ -42,10 +42,10 @@ use ende_core::serde::Serialize;
 use ende_core::serde_json::json;
 use ende_core::v8;
 use ende_cron::CronHandlerImpl;
+use ende_ffi::EndeRtNativeAddonLoaderRc;
 use ende_fs::FileSystem;
 use ende_io::Stdio;
 use ende_kv::dynamic::MultiBackendDbHandler;
-use ende_napi::EndeRtNativeAddonLoaderRc;
 use ende_node::ExtNodeSys;
 use ende_node::NodeExtInitServices;
 use ende_permissions::PermissionsContainer;
@@ -118,9 +118,6 @@ pub enum WorkerThreadType {
   Classic,
   // Regular Web Worker
   Module,
-  // `node:worker_threads` worker, technically
-  // not a web worker, will be cleaned up in the future.
-  Node,
 }
 
 /// Events that are sent to host from child
@@ -589,7 +586,6 @@ impl WebWorker {
         ende_kv::KvConfig::builder().build(),
       ),
       ende_cron::ende_cron::init(Box::new(CronHandlerImpl::create_from_env())),
-      ende_napi::ende_napi::init(services.ende_rt_native_addon_loader.clone()),
       ende_http::ende_http::init(ende_http::Options {
         no_legacy_abort: options.bootstrap.no_legacy_abort,
         ..Default::default()
@@ -598,13 +594,6 @@ impl WebWorker {
       ende_fs::ende_fs::init(services.fs.clone()),
       ende_os::ende_os::init(Some(ende_os::ExitCode::default())),
       ende_process::ende_process::init(services.npm_process_state_provider),
-      ende_node_crypto::ende_node_crypto::init(),
-      ende_node_sqlite::ende_node_sqlite::init(),
-      ende_node::ende_node::init::<
-        TInNpmPackageChecker,
-        TNpmPackageFolderResolver,
-        TExtNodeSys,
-      >(services.node_services, services.fs),
       // Runtime ops that are always initialized for WebWorkers
       ops::runtime::ende_runtime::init(options.main_module.clone()),
       ops::worker_host::ende_worker_host::init(
@@ -724,12 +713,6 @@ impl WebWorker {
       );
       let op_state = js_runtime.op_state();
       let mut op_state = op_state.borrow_mut();
-      if options.worker_type == WorkerThreadType::Node {
-        ende_web::locks::set_lock_client_id(
-          &mut op_state,
-          ende_web::locks::worker_lock_client_id(options.worker_id.as_u32()),
-        );
-      }
       op_state.put(internal_handle.clone());
       op_state.put(crate::ops::web_worker::WaitForWorkerDebuggerOnMessage(
         options.wait_for_page_wait_for_debugger,
@@ -1143,7 +1126,7 @@ pub async fn run_web_worker(
   let mut maybe_cpu_profiler = worker.maybe_setup_cpu_profiler();
 
   let name = worker.name.to_string();
-  let mut internal_handle = worker.internal_handle.clone();
+  let internal_handle = worker.internal_handle.clone();
 
   // If the bootstrap failed, report it as a terminal error.
   if let Some(error) = worker.bootstrap_error.take() {
@@ -1167,10 +1150,7 @@ pub async fn run_web_worker(
   }
 
   // Execute provided source code immediately via V8 script evaluation
-  // (sloppy mode). This path is used by node:worker_threads `{ eval: true }`
-  // when the code doesn't contain ESM syntax (import/export), matching
-  // Node.js behavior where such eval workers run as CJS (sloppy mode).
-  // See: https://github.com/denoland/deno/issues/26739
+  // (sloppy mode). This path is used by classic workers.
   let result = if let Some(source_code) = maybe_source_code.take() {
     let r = worker.execute_script(located_script_name!(), source_code.into());
     worker.start_polling_for_messages();
@@ -1217,129 +1197,14 @@ pub async fn run_web_worker(
   };
 
   if let Err(e) = result {
-    // For Node workers with OOM, skip script execution (V8 is terminated)
-    // and use a dedicated error type with exit code 1.
-    if internal_handle.worker_type == WorkerThreadType::Node
-      && worker.oom_triggered.load(Ordering::SeqCst)
-    {
-      let oom_error: CoreError = CoreErrorKind::JsBox(
-        deno_error::JsErrorBox::new(
-          "ERR_WORKER_OUT_OF_MEMORY",
-          "Worker terminated due to reaching memory limit: JS heap out of memory",
-        ),
-      )
-      .into_box();
-      internal_handle
-        .post_event(WorkerControlEvent::TerminalError(oom_error, 1))
-        .expect("Failed to post message to host");
-      return Ok(());
-    }
-
     print_worker_error(&e, &name, format_js_error_fn.as_deref());
 
-    // For Node workers, dispatch process 'exit' event before sending
-    // TerminalError so that exit handlers can run and modify the exit code.
-    // If _fatalException was monkey-patched to not be a function, exit
-    // with code 6 (kInvalidFatalExceptionMonkeyPatching) matching Node.js.
-    let exit_code = if internal_handle.worker_type == WorkerThreadType::Node {
-      let _ = worker.execute_script(
-        located_script_name!(),
-        r#"
-        if (typeof globalThis.process !== 'undefined') {
-          if (typeof globalThis.process._fatalException !== 'function') {
-            globalThis.process.exitCode = 6;
-          } else {
-            globalThis.process.exitCode = 1;
-            if (!globalThis.process._exiting) {
-              globalThis.process._exiting = true;
-              globalThis.process.emit("exit", globalThis.process.exitCode);
-            }
-          }
-        }
-        "#
-        .to_string()
-        .into(),
-      );
-      worker
-        .js_runtime
-        .op_state()
-        .borrow()
-        .try_borrow::<ende_os::ExitCode>()
-        .map(|e| e.get())
-        .unwrap_or(1)
-    } else {
-      1
-    };
-
-    // For Node workers, convert "Module not found" to Node-compatible
-    // "Cannot find module" format so it matches Node.js error behavior.
-    let e = if internal_handle.worker_type == WorkerThreadType::Node {
-      let msg = e.to_string();
-      if msg.starts_with("Module not found") {
-        #[allow(
-          clippy::disallowed_methods,
-          reason = "don't need the error or Wasm support here"
-        )]
-        let path = specifier.to_file_path().ok();
-        let display = path
-          .as_deref()
-          .map(|p| p.display().to_string())
-          .unwrap_or_else(|| specifier.to_string());
-        CoreErrorKind::JsBox(deno_error::JsErrorBox::new(
-          "Error",
-          format!("Cannot find module '{display}'"),
-        ))
-        .into_box()
-      } else {
-        e
-      }
-    } else {
-      e
-    };
-
-    // Exit code 6 means _fatalException was not a function. In Node.js
-    // this causes a clean exit without emitting 'error' on the parent Worker.
-    if exit_code == 6 {
-      let _ = internal_handle.post_event(WorkerControlEvent::Close(exit_code));
-      internal_handle.terminate();
-      return Ok(());
-    }
-
     internal_handle
-      .post_event(WorkerControlEvent::TerminalError(e, exit_code))
+      .post_event(WorkerControlEvent::TerminalError(e, 1))
       .expect("Failed to post message to host");
 
     // Failure to execute script is a terminal error, bye, bye.
     return Ok(());
-  }
-
-  // For Node workers that exit naturally (event loop idle), dispatch the
-  // process 'exit' event and send the final exit code to the parent.
-  // This matches Node.js behavior where SpinEventLoopInternal calls
-  // EmitProcessExitInternal before the worker thread ends.
-  if worker.worker_type == WorkerThreadType::Node
-    && !internal_handle.is_terminated()
-  {
-    let _ = worker.execute_script(
-      located_script_name!(),
-      r#"
-      if (typeof globalThis.process !== 'undefined' && !globalThis.process._exiting) {
-        globalThis.process._exiting = true;
-        globalThis.process.emit("exit", globalThis.process.exitCode ?? 0);
-      }
-      "#
-      .to_string()
-      .into(),
-    );
-    let exit_code = worker
-      .js_runtime
-      .op_state()
-      .borrow()
-      .try_borrow::<ende_os::ExitCode>()
-      .map(|e| e.get())
-      .unwrap_or(0);
-    let _ = internal_handle.post_event(WorkerControlEvent::Close(exit_code));
-    internal_handle.terminate();
   }
 
   debug!("Worker thread shuts down {}", &name);

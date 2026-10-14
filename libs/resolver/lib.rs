@@ -59,6 +59,42 @@ pub mod npmrc;
 mod rt;
 pub mod workspace;
 
+/// A specifier for something Ende doesn't support: Node built-in modules,
+/// npm packages and CommonJS modules.
+#[derive(Debug, Clone, Error, JsError)]
+#[class(type)]
+pub enum UnsupportedSpecifierError {
+  #[error("\"{0}\" — Node built-in modules are not supported in Ende.")]
+  NodeBuiltin(String),
+  #[error("\"{0}\" — npm packages are not supported in Ende.")]
+  Npm(String),
+  #[error("\"{0}\" — CommonJS modules are not supported in Ende.")]
+  CommonJs(String),
+}
+
+/// Errors for a resolved specifier Ende can't load: a `node:` built-in, an
+/// `npm:` package or a CommonJS (`.cjs`/`.cts`) module.
+pub fn check_specifier_supported(
+  specifier: &Url,
+) -> Result<(), UnsupportedSpecifierError> {
+  match specifier.scheme() {
+    "node" => Err(UnsupportedSpecifierError::NodeBuiltin(
+      specifier.to_string(),
+    )),
+    "npm" => Err(UnsupportedSpecifierError::Npm(specifier.to_string())),
+    _ => {
+      if matches!(
+        deno_media_type::MediaType::from_specifier(specifier),
+        deno_media_type::MediaType::Cjs | deno_media_type::MediaType::Cts
+      ) {
+        Err(UnsupportedSpecifierError::CommonJs(specifier.to_string()))
+      } else {
+        Ok(())
+      }
+    }
+  }
+}
+
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type WorkspaceResolverRc<TSys> =
   ende_maybe_sync::MaybeArc<WorkspaceResolver<TSys>>;
@@ -106,7 +142,8 @@ impl EndeResolveError {
       EndeResolveErrorKind::MappedResolution(_)
       | EndeResolveErrorKind::ResolvePkgFolderFromDenoReq(_)
       | EndeResolveErrorKind::InvalidVendorFolderImport
-      | EndeResolveErrorKind::NodeModulesOutOfDate(_) => None,
+      | EndeResolveErrorKind::NodeModulesOutOfDate(_)
+      | EndeResolveErrorKind::UnsupportedSpecifier(_) => None,
     }
   }
 }
@@ -136,6 +173,9 @@ pub enum EndeResolveErrorKind {
   #[class(inherit)]
   #[error(transparent)]
   ResolvePkgFolderFromDenoReq(#[from] ResolvePkgFolderFromDenoReqError),
+  #[class(inherit)]
+  #[error(transparent)]
+  UnsupportedSpecifier(#[from] UnsupportedSpecifierError),
 }
 
 impl EndeResolveErrorKind {
@@ -145,7 +185,8 @@ impl EndeResolveErrorKind {
       | EndeResolveErrorKind::MappedResolution { .. }
       | EndeResolveErrorKind::NodeModulesOutOfDate { .. }
       | EndeResolveErrorKind::PathToUrl { .. }
-      | EndeResolveErrorKind::ResolvePkgFolderFromDenoReq { .. } => None,
+      | EndeResolveErrorKind::ResolvePkgFolderFromDenoReq { .. }
+      | EndeResolveErrorKind::UnsupportedSpecifier { .. } => None,
       EndeResolveErrorKind::ResolveNpmReqRef(err) => {
         err.err.as_kind().maybe_code()
       }
@@ -348,6 +389,24 @@ impl<
       && specifier.as_str().starts_with(vendor_specifier.as_str())
     {
       return Err(EndeResolveErrorKind::InvalidVendorFolderImport.into_box());
+    }
+
+    // Node built-ins, npm packages and CommonJS modules are not supported.
+    match &result {
+      Ok(specifier) => check_specifier_supported(specifier).map_err(|e| {
+        EndeResolveErrorKind::UnsupportedSpecifier(e).into_box()
+      })?,
+      Err(_) => {
+        if DenoIsBuiltInNodeModuleChecker.is_builtin_node_module(raw_specifier)
+        {
+          return Err(
+            EndeResolveErrorKind::UnsupportedSpecifier(
+              UnsupportedSpecifierError::NodeBuiltin(raw_specifier.to_string()),
+            )
+            .into_box(),
+          );
+        }
+      }
     }
 
     let Some(NodeAndNpmResolvers {

@@ -22,10 +22,9 @@ const cacheVersion = 125;
 
 // Lean CI. While `fullMatrix` is false, CI only runs on pushes to and PRs
 // against `primary`, and only runs: pre-build, lint (linux + macOS), the debug
-// build/test/libs jobs for linux-x86_64 and macos-aarch64 (minus the
-// node_compat suite), and the ci-status gate. Turned off: Windows, release
-// builds and publishing (tag builds), WPT, benchmarks, node_compat, ende_core
-// nextest/miri. Steps that need denoland-only secrets or infrastructure stay
+// build/test/libs jobs for linux-x86_64 and macos-aarch64, and the ci-status
+// gate. Turned off: Windows, release builds and publishing (tag builds), WPT,
+// benchmarks, ende_core nextest/miri. Steps that need denoland-only secrets or infrastructure stay
 // gated on `isDenoland` either way.
 // Restore the full matrix once Ende is fully operational by setting this to
 // true and regenerating.
@@ -1448,14 +1447,9 @@ const buildJobs = buildItems.map((rawBuildItem) => {
     const shardedCrates = new Map([
       ["specs", 2],
       ["integration", 2],
-      ["node_compat", 3],
     ]);
-    // Lean CI skips the node_compat suite.
-    const ciTestCrates = fullMatrix
-      ? testCrates
-      : testCrates.filter((tc) => tc.name !== "node_compat");
     const testMatrix = defineMatrix({
-      include: ciTestCrates.flatMap((tc) => {
+      include: testCrates.flatMap((tc) => {
         const total = shardedCrates.get(tc.name) ?? 1;
         return Array.from({ length: total }, (_, i) => ({
           test_crate: tc.name,
@@ -1505,8 +1499,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
         },
         steps: step.if(isNotTag.and(buildItem.skip.not()).and(shouldRunShard))(
           cloneRepoStep,
-          cloneSubmodule("./tests/node_compat/runner/suite")
-            .if(testCrateNameExpr.equals("node_compat")),
           cloneStdSubmoduleStep,
           restoreCacheStep,
           installNodeStep,
@@ -1521,8 +1513,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           testServerArtifact.download().if(
             testCrateNameExpr.equals("integration")
               .or(testCrateNameExpr.equals("specs"))
-              .or(testCrateNameExpr.equals("unit"))
-              .or(testCrateNameExpr.equals("unit_node")),
+              .or(testCrateNameExpr.equals("unit")),
           ),
           {
             name: "Set up playwright cache",

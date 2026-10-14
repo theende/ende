@@ -41,7 +41,6 @@ export async function checkCopyright() {
     ":!:tests/registry/**",
     ":!:tests/specs/**",
     ":!:tests/testdata/**",
-    ":!:tests/unit_node/testdata/**",
     ":!:tests/wpt/suite/**",
     ":!:libs/config/testdata/**",
     ":!:libs/eszip/testdata/**",

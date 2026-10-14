@@ -1,6 +1,3 @@
-import * as fs from "node:fs";
-import * as fsPromises from "node:fs/promises";
-
 try {
   Deno.readTextFileSync("./ende.json");
   console.log("loaded");
@@ -9,25 +6,15 @@ try {
 }
 
 try {
-  console.log(fs.existsSync("./ende.json"));
-} catch {
-  console.log("failed");
-}
-try {
-  console.log(
-    await new Promise((resolve) => {
-      fs.exists("./ende.json", resolve);
-    }),
-  );
-} catch {
-  console.log("failed");
+  Deno.statSync("./ende.json");
+  console.log("loaded");
+} catch (err) {
+  console.log(err instanceof Deno.errors.NotFound);
 }
 
 try {
-  await fsPromises.stat("./ende.json");
+  await Deno.stat("./ende.json");
+  console.log("loaded");
 } catch (err) {
-  console.log(
-    err instanceof Error && "code" in err &&
-      err.code === "ENOENT",
-  );
+  console.log(err instanceof Deno.errors.NotFound);
 }

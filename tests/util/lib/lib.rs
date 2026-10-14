@@ -179,10 +179,6 @@ pub fn ffi_tests_path() -> PathRef {
   root_path().join("tests").join("ffi")
 }
 
-pub fn napi_tests_path() -> PathRef {
-  root_path().join("tests").join("napi")
-}
-
 pub fn ende_config_path() -> PathRef {
   root_path().join("tests").join("config").join("ende.json")
 }

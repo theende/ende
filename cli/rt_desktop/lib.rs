@@ -1500,13 +1500,10 @@ fn run_headless_worker() {
 
     let sys = if data.metadata.self_extracting.is_some() {
       // VFS should already be extracted by the parent process.
-      // In dev mode (external dev server via ENDE_DESKTOP_DEV_URL or
-      // in-runtime dev server via ENDE_DESKTOP_FRAMEWORK_DEV), keep the
+      // In dev mode (external dev server via ENDE_DESKTOP_DEV_URL), keep the
       // source directory as CWD (inherited from parent). In production
       // mode, set CWD to extraction directory.
-      if env::var("ENDE_DESKTOP_DEV_URL").is_err()
-        && env::var("ENDE_DESKTOP_FRAMEWORK_DEV").is_err()
-      {
+      if env::var("ENDE_DESKTOP_DEV_URL").is_err() {
         let _ = std::env::set_current_dir(&data.root_path);
       }
       endert::file_system::EndeRtSys::new_self_extracting(data.vfs.clone())
@@ -1774,16 +1771,11 @@ async fn run_desktop(
   // Framework dev servers handle their own HMR via websocket.
   // For non-framework apps, V8-level HMR reloads the webview.
   //
-  // Two framework-dev shapes exist (see `run_desktop_hmr` in
-  // cli/tools/desktop.rs):
-  // - ENDE_DESKTOP_DEV_URL: the CLI spawned an external dev-server process
-  //   and parsed its URL; navigate there directly.
-  // - ENDE_DESKTOP_FRAMEWORK_DEV: the embedded entrypoint boots the dev
-  //   server inside this runtime on the desktop serve port (so server code
-  //   keeps `Ende.desktop`, #35899); use the regular serve-port poll.
+  // For framework dev, the CLI spawned an external dev-server process and
+  // parsed its URL (ENDE_DESKTOP_DEV_URL, see `run_desktop_hmr` in
+  // cli/tools/desktop.rs); navigate there directly.
   let external_dev_url = env::var("ENDE_DESKTOP_DEV_URL").ok();
-  let is_framework_dev = external_dev_url.is_some()
-    || env::var("ENDE_DESKTOP_FRAMEWORK_DEV").is_ok();
+  let is_framework_dev = external_dev_url.is_some();
 
   // In dev mode, restore CWD to the source directory so the framework
   // dev server watches the original source files, not the extracted VFS.

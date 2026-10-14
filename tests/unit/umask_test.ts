@@ -1,5 +1,4 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-import process from "node:process";
 import { assertEquals, assertThrows } from "./test_util.ts";
 
 Deno.test(
@@ -27,35 +26,6 @@ Deno.test(
     }, Deno.errors.NotCapable);
     assertThrows(() => {
       Deno.umask(0);
-    }, Deno.errors.NotCapable);
-  },
-);
-
-Deno.test(
-  {
-    ignore: Deno.build.os === "windows",
-    permissions: { sys: ["umask"] },
-  },
-  function processUmaskSuccess() {
-    const initialMask = process.umask();
-    const previousMask = process.umask(0o027);
-    const changedMask = process.umask(initialMask);
-    assertEquals(previousMask, initialMask);
-    assertEquals(changedMask, 0o027);
-  },
-);
-
-Deno.test(
-  {
-    ignore: Deno.build.os === "windows",
-    permissions: { sys: false },
-  },
-  function processUmaskRequiresSysPermission() {
-    assertThrows(() => {
-      process.umask();
-    }, Deno.errors.NotCapable);
-    assertThrows(() => {
-      process.umask(0);
     }, Deno.errors.NotCapable);
   },
 );

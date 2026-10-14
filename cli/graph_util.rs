@@ -115,6 +115,11 @@ pub fn graph_valid(
     graph_exit_integrity_errors(graph);
   }
 
+  for root in roots {
+    ende_resolver::check_specifier_supported(root)
+      .map_err(JsErrorBox::from_err)?;
+  }
+
   let mut errors = graph_walk_errors(
     graph,
     sys,

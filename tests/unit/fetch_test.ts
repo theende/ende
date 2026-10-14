@@ -2413,23 +2413,23 @@ Deno.test(
 Deno.test(
   { permissions: { net: true } },
   async function fetchConnectionClosedBeforeMessageComplete() {
-    const { default: http } = await import("node:http");
-    const server = http.createServer((_req, res) => {
-      res.writeHead(200);
-      res.write("hi");
-      res.socket!.destroy();
-    });
-    await new Promise<void>((resolve) =>
-      server.listen(0, "127.0.0.1", resolve)
-    );
-    const { port } = server.address() as { port: number };
+    const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
+    const { port } = listener.addr;
+    // Start the response head, then close the connection mid-message.
+    const server = (async () => {
+      const conn = await listener.accept();
+      await conn.read(new Uint8Array(1024));
+      await conn.write(new TextEncoder().encode("HTTP/1.1 200 OK\r\n"));
+      conn.close();
+    })();
 
     const err = await assertRejects(async () => {
       const res = await fetch(`http://127.0.0.1:${port}/`);
       await res.text();
     });
 
-    server.close();
+    listener.close();
+    await server;
 
     assert(err instanceof TypeError, `err was ${err}`);
     assertEquals(err.message, "fetch failed", `err.message was ${err.message}`);

@@ -1,8 +1,0 @@
-{
-  "tests": {
-    "stream_wrap_write_completion": {
-      "args": "run --allow-net main.ts",
-      "output": "main.out"
-    }
-  }
-}

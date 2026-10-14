@@ -20,6 +20,7 @@ fn assert_ok(status: i32) {
 
 async fn run_test(f: impl AsyncFnOnce(&mut JsRuntime, *mut uv_loop_t)) {
   let mut runtime = JsRuntime::new(Default::default());
+  runtime.init_uv_loop();
   let uv_loop = runtime
     .uv_loop_ptr()
     .expect("JsRuntime should have a uv loop");

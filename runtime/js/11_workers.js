@@ -25,6 +25,7 @@ const {
   SymbolFor,
   SymbolIterator,
   SymbolToStringTag,
+  TypeError,
 } = primordials;
 
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
@@ -135,11 +136,15 @@ class Worker extends EventTarget {
         `Warning: ${
           ArrayPrototypeJoin(unsupported, ", ")
         } option(s) are not supported ` +
-          "for web Workers and will be ignored. Use the " +
-          "node:worker_threads module instead.",
+          "for web Workers and will be ignored.",
       );
     }
 
+    if (type === "node") {
+      throw new TypeError(
+        'Worker type "node" is not supported in Ende: use type "module" instead.',
+      );
+    }
     const workerType = webidl.converters["WorkerType"](type);
 
     if (
@@ -302,7 +307,7 @@ class Worker extends EventTarget {
       if (!this.#dispatchWorkerMessage(data)) return;
       // Drain messages already queued on the host side instead of taking the
       // async op + Promise path for each, mirroring the worker global
-      // (99_main.js) and node:worker_threads receive loops. The whole burst is
+      // (99_main.js) receive loop. The whole burst is
       // processed within this event-loop turn; the batch limit prevents
       // starving the event loop under a sustained flood.
       for (let i = 0; i < 1000 && this.#status !== "TERMINATED"; i++) {

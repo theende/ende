@@ -9,7 +9,7 @@ class Frac {
   }
   display() {
     const result = this.num / this.den;
-    process.stdout.write(`${result}`);
+    Deno.stdout.writeSync(new TextEncoder().encode(`${result}`));
   }
 }
 const f = new Frac(1, 2);

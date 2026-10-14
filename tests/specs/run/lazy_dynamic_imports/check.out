@@ -1,5 +1,5 @@
-Download http://localhost:4260/@denotest%2fsay-hello
-Download http://localhost:4260/@denotest/say-hello/1.0.0.tgz
+Download http://127.0.0.1:4250/@endetest/add/meta.json
+[WILDCARD]
 Check [WILDCARD]main.ts
 Here
 Done

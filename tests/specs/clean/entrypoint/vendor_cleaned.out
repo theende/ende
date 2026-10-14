@@ -9,28 +9,7 @@
 ---- 5552028e702144b8ef1fc0b0c45082c0feb18f16783148d34065125a2a0781c1.js
 - node_analysis_cache_v2[WILDCARD]
 - npm
--- localhost_4260
---- @denotest
----- add
------ 1.0.0
------- index.d.ts
------- index.js
------- package.json
------ registry.json
 - v8_code_cache_v2[WILDCARD]
-
-./node_modules
-- .ende
--- .ende.lock
--- .setup-cache.bin
--- @denotest+add@1.0.0
---- .initialized
---- node_modules
----- @denotest
------ add
--- node_modules
-- @denotest
--- add (symlink)
 
 ./vendor
 - http_127.0.0.1_port_4250

@@ -10,7 +10,6 @@
     "null": "https://example.com/PASS-null",
     "undefined": "https://example.com/PASS-undefined",
     "[object Object]": "https://example.com/PASS-object",
-    "npm:preact": "https://example.com/preact",
-    "@denotest/add": "npm:@denotest/add@1.0"
+    "npm:preact": "https://example.com/preact"
   }
 }

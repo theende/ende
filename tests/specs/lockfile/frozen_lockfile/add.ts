@@ -1,2 +1,2 @@
-import { add } from "npm:@denotest/add@1";
-console.log(`1 + 2 = ${add(1, 2)}`);
+import { sum } from "jsr:@endetest/add@0.2.0";
+console.log(`1 + 2 = ${sum(1, 2)}`);

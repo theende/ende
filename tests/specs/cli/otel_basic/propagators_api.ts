@@ -1,5 +1,4 @@
-import console from "node:console";
-import { context, propagation } from "npm:@opentelemetry/api@1.9.0";
+import { context, propagation } from "./otel_api.ts";
 
 const carrier = new Map<string, string>([
   ["baggage", "userId=alice"],

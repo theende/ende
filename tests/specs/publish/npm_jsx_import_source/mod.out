@@ -1,6 +1,2 @@
-[WILDCARD]
-error[unsupported-npm-specifier]: npm packages are not supported in Ende ('npm:preact')
- --> [WILDCARD]foo.tsx
-  = hint: use a JSR package instead
-
-error: Found 1 problem
+[WILDCARD]"npm:preact/jsx-runtime" — npm packages are not supported in Ende.
+    at [WILDCARD]foo.tsx:1:1

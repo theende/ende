@@ -1,4 +1,3 @@
-import { getValue, setValue } from "npm:@denotest/esm-basic";
+import { sum } from "jsr:@endetest/add@0.2.0";
 
-setValue(5);
-console.log(getValue());
+console.log(sum(1, 2));

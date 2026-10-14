@@ -465,6 +465,14 @@ fn error_mentions_proto(e: &JsError) -> bool {
       .is_some_and(|m| m.contains("__proto__"))
 }
 
+/// Whether `msg` is the `ReferenceError` message for an undefined `name`.
+fn is_not_defined(msg: &str, name: &str) -> bool {
+  msg
+    .strip_suffix(" is not defined")
+    .and_then(|rest| rest.strip_suffix(name))
+    .is_some_and(|rest| rest.is_empty() || rest.ends_with(": "))
+}
+
 fn get_message_suggestions(e: &JsError) -> Vec<FixSuggestion<'_>> {
   get_message_suggestions_inner(e, 0)
 }
@@ -482,29 +490,60 @@ fn get_message_suggestions_inner(
       || msg.contains("exports is not defined")
       || msg.contains("require is not defined")
     {
-      if let Some(file_name) =
-        e.frames.first().and_then(|f| f.file_name.as_ref())
-        && (file_name.ends_with(".mjs") || file_name.ends_with(".mts"))
-      {
-        return vec![];
-      }
       return vec![
-        FixSuggestion::info_multiline(&[
-          cstr!(
-            "Ende supports CommonJS modules in <u>.cjs</> files, or when the closest"
-          ),
-          cstr!(
-            "<u>package.json</> has a <i>\"type\": \"commonjs\"</> option."
-          ),
-        ]),
+        FixSuggestion::info("CommonJS modules are not supported in Ende."),
         FixSuggestion::hint_multiline(&[
-          "Rewrite this module to ESM,",
-          cstr!("or change the file extension to <u>.cjs</u>,"),
           cstr!(
-            "or add <u>package.json</> next to the file with <i>\"type\": \"commonjs\"</> option."
+            "Rewrite this module as an ES module: use <u>import</>/<u>export</> instead of"
+          ),
+          cstr!("<u>require()</>, <u>module.exports</> and <u>exports</>."),
+        ]),
+      ];
+    } else if is_not_defined(msg, "process") {
+      return vec![
+        FixSuggestion::info(cstr!(
+          "<u>process</> global is not available in Ende."
+        )),
+        FixSuggestion::hint(cstr!(
+          "Use <u>Ende.env</>, <u>Ende.args</>, <u>Ende.exit()</>, <u>Ende.cwd()</>, <u>Ende.build.os</> or <u>Ende.pid</> instead."
+        )),
+      ];
+    } else if is_not_defined(msg, "Buffer") {
+      return vec![
+        FixSuggestion::info(cstr!(
+          "<u>Buffer</> global is not available in Ende."
+        )),
+        FixSuggestion::hint_multiline(&[
+          cstr!(
+            "Use <u>Uint8Array</> with <u>TextEncoder</>/<u>TextDecoder</>, or <u>Uint8Array.fromBase64()</>,"
+          ),
+          cstr!(
+            "<u>.toBase64()</>, <u>Uint8Array.fromHex()</> and <u>.toHex()</> for encoding."
           ),
         ]),
-        FixSuggestion::docs("https://docs.ende.sh/go/commonjs"),
+      ];
+    } else if is_not_defined(msg, "global") {
+      return vec![
+        FixSuggestion::info(cstr!("<u>global</> is not available in Ende.")),
+        FixSuggestion::hint("Replace `global` with `globalThis`."),
+      ];
+    } else if is_not_defined(msg, "setImmediate") {
+      return vec![
+        FixSuggestion::info(cstr!(
+          "<u>setImmediate</> global is not available in Ende."
+        )),
+        FixSuggestion::hint(cstr!(
+          "Use <u>setTimeout(fn, 0)</> or <u>queueMicrotask()</> instead."
+        )),
+      ];
+    } else if is_not_defined(msg, "clearImmediate") {
+      return vec![
+        FixSuggestion::info(cstr!(
+          "<u>clearImmediate</> global is not available in Ende."
+        )),
+        FixSuggestion::hint(cstr!(
+          "Use <u>setTimeout(fn, 0)</> or <u>queueMicrotask()</> instead, and <u>clearTimeout()</> to cancel."
+        )),
       ];
     } else if msg.contains("__filename is not defined") {
       return vec![
@@ -590,83 +629,6 @@ fn get_message_suggestions_inner(
       return vec![FixSuggestion::hint(
         "Run again with the `--unsafely-ignore-certificate-errors` flag to bypass certificate errors.",
       )];
-    // `isolated-vm` is a native addon built directly on V8's C++ internals,
-    // which Ende does not expose. It fails either with a `Cannot find module
-    // './out/isolated_vm'` error (when the addon was never built, the most
-    // commonly reported case) or, if built, with the legacy native addon ABI
-    // error from `ext/napi`. Either way it cannot run in Ende, so point users
-    // at the supported isolation primitives. See denoland/deno#25130.
-    } else if (msg.contains("isolated_vm") || msg.contains("isolated-vm"))
-      && (msg.contains("Cannot find module")
-        || msg.contains("legacy Node.js native addon API"))
-    {
-      return vec![
-        FixSuggestion::info_multiline(&[
-          "`isolated-vm` is a native addon built directly on V8's C++ internals,",
-          "which Ende does not expose, so it cannot be loaded in Ende.",
-        ]),
-        FixSuggestion::hint_multiline(&[
-          "To run code in a separate isolate, use a `Worker`: it executes in its",
-          "own isolate and thread and can be sandboxed via the `ende.permissions`",
-          "option. For in-process sandboxing, the `node:vm` module is also available.",
-        ]),
-      ];
-    // Try to capture errors like:
-    // ```
-    // Uncaught Error: Cannot find module '../build/Release/canvas.node'
-    // Require stack:
-    // - /.../deno/npm/registry.npmjs.org/canvas/2.11.2/lib/bindings.js
-    // - /.../.cache/deno/npm/registry.npmjs.org/canvas/2.11.2/lib/canvas.js
-    // ```
-    // as well as errors thrown by the `bindings` npm package (used by
-    // libxmljs and many other native addons), like:
-    // ```
-    // Uncaught Error: Could not locate the bindings file. Tried:
-    //  → /.../node_modules/libxmljs/build/xmljs.node
-    //  → /.../node_modules/libxmljs/build/Release/xmljs.node
-    // ```
-    } else if (msg.contains("Cannot find module")
-      && msg.contains("Require stack")
-      && msg.contains(".node'"))
-      || (msg.contains("Could not locate the bindings file")
-        && msg.contains(".node"))
-    {
-      return vec![FixSuggestion::info_multiline(&[
-        "Trying to execute an npm package using Node-API addons,",
-        "these packages require local `node_modules` directory to be present.",
-      ])];
-    // Captures the error thrown by `ext/napi` when a native addon was built
-    // against the legacy Node.js native addon ABI (the `NODE_MODULE` macro /
-    // `nan`) instead of Node-API. Such addons link against V8's C++ internals,
-    // which Ende does not expose, so they cannot be loaded. See
-    // denoland/deno#26034 (better-sqlite3) and denoland/deno#26656.
-    } else if msg.contains("legacy Node.js native addon API") {
-      // `better-sqlite3` is by far the most commonly reported offender, so
-      // point users straight at drop-in Node-API alternatives.
-      if msg.contains("better-sqlite3") || msg.contains("better_sqlite3") {
-        return vec![
-          FixSuggestion::info_multiline(&[
-            "`better-sqlite3` is built on the legacy V8/nan native addon ABI,",
-            "which depends on V8 internals that Ende does not expose.",
-          ]),
-          FixSuggestion::hint_multiline(&[
-            "Use a Node-API based alternative instead, such as the built-in",
-            "`node:sqlite` module, or the `npm:libsql` / `npm:@libsql/client`",
-            "packages (the latter expose a `better-sqlite3`-compatible API).",
-          ]),
-        ];
-      }
-      return vec![
-        FixSuggestion::info_multiline(&[
-          "This native addon uses the legacy V8/nan addon ABI, which depends",
-          "on V8 internals that Ende does not expose. Only Node-API (N-API)",
-          "addons can be loaded by Ende.",
-        ]),
-        FixSuggestion::hint_multiline(&[
-          "Switch to a package that uses Node-API (N-API), or ask the addon's",
-          "authors to migrate it from the legacy `NODE_MODULE`/`nan` ABI.",
-        ]),
-      ];
     } else if msg.contains("document is not defined") {
       return vec![
         FixSuggestion::info(cstr!(
@@ -771,6 +733,20 @@ mod tests {
       strip_ansi_codes(&actual),
       "\nWarning Couldn't format source line: Column 2 is out of bounds (source may have changed at runtime)"
     );
+  }
+
+  #[test]
+  fn test_is_not_defined() {
+    assert!(is_not_defined("process is not defined", "process"));
+    assert!(is_not_defined(
+      "Uncaught ReferenceError: process is not defined",
+      "process"
+    ));
+    assert!(!is_not_defined(
+      "Uncaught ReferenceError: subprocess is not defined",
+      "process"
+    ));
+    assert!(!is_not_defined("process is not a function", "process"));
   }
 
   #[test]

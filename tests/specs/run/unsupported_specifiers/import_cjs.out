@@ -1,0 +1,2 @@
+error: "file:///[WILDLINE]/lib.cjs" — CommonJS modules are not supported in Ende.
+    at file:///[WILDLINE]/import_cjs.ts:2:19

@@ -1002,12 +1002,6 @@ async fn test_specifier_inner(
     .dispatch_unload_event()
     .map_err(|e| CoreErrorKind::Js(e).into_box())?;
 
-  // Run any pending Node-API finalizers before the worker is torn down. This
-  // matches the `ende run`/`ende bench` paths and Node.js, where finalizers
-  // registered via `napi_wrap`/`napi_add_finalizer` are invoked at teardown
-  // even if the wrapped value was never garbage collected during the run.
-  worker.run_napi_ref_finalizers();
-
   // Ensure all output has been flushed
   _ = worker
     .js_runtime

@@ -31,7 +31,6 @@ use ende_lib::args::CaData;
 use ende_resolver::ende_json::CompilerOptionsKey;
 use ende_resolver::graph::enhanced_resolution_error_message;
 use ende_resolver::workspace::sloppy_imports_resolve;
-use ende_runtime::ende_node;
 use ende_runtime::tokio_util::create_basic_runtime;
 use import_map::ImportMap;
 use import_map::ImportMapDiagnostic;
@@ -709,12 +708,6 @@ pub struct DiagnosticDataSpecifier {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct DiagnosticDataStrSpecifier {
-  pub specifier: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct DiagnosticDataRedirect {
   pub redirect: ModuleSpecifier,
 }
@@ -762,10 +755,6 @@ pub enum EndeDiagnostic {
   /// members and packages linked via the "links" field), used to enhance the
   /// error with a better hint.
   ResolutionError(deno_graph::ResolutionError, Vec<String>),
-  /// Unknown `node:` specifier.
-  UnknownNodeSpecifier(ModuleSpecifier),
-  /// Bare specifier is used for `node:` specifier
-  BareNodeSpecifier(String),
 }
 
 impl EndeDiagnostic {
@@ -781,32 +770,18 @@ impl EndeDiagnostic {
       Self::NotInstalledNpm(_, _) => "not-installed-npm",
       Self::NoExportNpm(_) => "no-export-npm",
       Self::NoLocal(_) => "no-local",
-      Self::ResolutionError(err, _) => {
-        if ende_resolver::graph::get_resolution_error_bare_node_specifier(err)
-          .is_some()
-        {
-          "import-node-prefix-missing"
-        } else {
-          match err {
-            ResolutionError::InvalidDowngrade { .. } => "invalid-downgrade",
-            ResolutionError::InvalidJsrHttpsTypesImport { .. } => {
-              "invalid-jsr-https-types-import"
-            }
-            ResolutionError::InvalidLocalImport { .. } => {
-              "invalid-local-import"
-            }
-            ResolutionError::InvalidSpecifier { error, .. } => match error {
-              SpecifierError::ImportPrefixMissing { .. } => {
-                "import-prefix-missing"
-              }
-              SpecifierError::InvalidUrl(_) => "invalid-url",
-            },
-            ResolutionError::ResolverError { .. } => "resolver-error",
-          }
+      Self::ResolutionError(err, _) => match err {
+        ResolutionError::InvalidDowngrade { .. } => "invalid-downgrade",
+        ResolutionError::InvalidJsrHttpsTypesImport { .. } => {
+          "invalid-jsr-https-types-import"
         }
-      }
-      Self::UnknownNodeSpecifier(_) => "resolver-error",
-      Self::BareNodeSpecifier(_) => "import-node-prefix-missing",
+        ResolutionError::InvalidLocalImport { .. } => "invalid-local-import",
+        ResolutionError::InvalidSpecifier { error, .. } => match error {
+          SpecifierError::ImportPrefixMissing { .. } => "import-prefix-missing",
+          SpecifierError::InvalidUrl(_) => "invalid-url",
+        },
+        ResolutionError::ResolverError { .. } => "resolver-error",
+      },
     }
   }
 
@@ -940,29 +915,6 @@ impl EndeDiagnostic {
             ..Default::default()
           }
         }
-        "import-node-prefix-missing" => {
-          let data = diagnostic
-            .data
-            .clone()
-            .ok_or_else(|| anyhow!("Diagnostic is missing data"))?;
-          let data: DiagnosticDataStrSpecifier = serde_json::from_value(data)?;
-          lsp::CodeAction {
-            title: format!("Update specifier to node:{}", data.specifier),
-            kind: Some(lsp::CodeActionKind::QUICKFIX),
-            diagnostics: Some(vec![diagnostic.clone()]),
-            edit: Some(lsp::WorkspaceEdit {
-              changes: Some(HashMap::from([(
-                uri.clone(),
-                vec![lsp::TextEdit {
-                  new_text: format!("\"node:{}\"", data.specifier),
-                  range: diagnostic.range,
-                }],
-              )])),
-              ..Default::default()
-            }),
-            ..Default::default()
-          }
-        }
         _ => {
           return Err(anyhow!(
             "Unsupported diagnostic code (\"{}\") provided.",
@@ -981,13 +933,8 @@ impl EndeDiagnostic {
   pub fn is_fixable(diagnostic: &lsp_types::Diagnostic) -> bool {
     if let Some(lsp::NumberOrString::String(code)) = &diagnostic.code {
       match code.as_str() {
-        "import-map-remap"
-        | "no-cache"
-        | "not-installed-jsr"
-        | "not-installed-npm"
-        | "no-attribute-type"
-        | "redirect"
-        | "import-node-prefix-missing" => true,
+        "import-map-remap" | "no-cache" | "not-installed-jsr"
+        | "not-installed-npm" | "no-attribute-type" | "redirect" => true,
         "no-local" => diagnostic.data.is_some(),
         _ => false,
       }
@@ -1039,14 +986,8 @@ impl EndeDiagnostic {
       },
       Self::ResolutionError(err, bare_importable_pkg_names) => {
         let message = strip_ansi_codes(&enhanced_resolution_error_message(err, bare_importable_pkg_names)).into_owned();
-        (
-        lsp::DiagnosticSeverity::ERROR,
-        message,
-        ende_resolver::graph::get_resolution_error_bare_node_specifier(err)
-          .map(|specifier| json!({ "specifier": specifier }))
-      )},
-      Self::UnknownNodeSpecifier(specifier) => (lsp::DiagnosticSeverity::ERROR, format!("No such built-in module: node:{}", specifier.path()), None),
-      Self::BareNodeSpecifier(specifier) => (lsp::DiagnosticSeverity::WARNING, format!("\"{0}\" is resolved to \"node:{0}\". If you want to use a built-in Node module, add a \"node:\" prefix.", specifier), Some(json!({ "specifier": specifier }))),
+        (lsp::DiagnosticSeverity::ERROR, message, None)
+      },
     };
     lsp::Diagnostic {
       range: *range,
@@ -1164,12 +1105,10 @@ fn maybe_ambient_specifier_resolution_err(
 #[allow(clippy::too_many_arguments, reason = "private code")]
 fn diagnose_resolution(
   snapshot: &language_server::StateSnapshot,
-  dependency_key: &str,
   resolution: &Resolution,
   is_dynamic: bool,
   maybe_assert_type: Option<&str>,
   referrer_module: &DocumentModule,
-  import_map: Option<&ImportMap>,
 ) -> (Vec<EndeDiagnostic>, Vec<EndeDiagnostic>) {
   let mut diagnostics = vec![];
   let mut deferred_diagnostics = vec![];
@@ -1254,42 +1193,16 @@ fn diagnose_resolution(
                   }
                 }
                 _ => {
-                  if let Some(module_name) =
-                    specifier.as_str().strip_prefix("node:")
-                  {
-                    if !ende_node::is_builtin_node_module(module_name) {
-                      diagnostics.push(EndeDiagnostic::UnknownNodeSpecifier(
-                        specifier.clone(),
-                      ));
-                    } else if module_name == dependency_key {
-                      let mut is_mapped = false;
-                      if let Some(import_map) = import_map
-                        && let Resolution::Ok(resolved) = &resolution
-                        && import_map
-                          .resolve(module_name, &resolved.specifier)
-                          .is_ok()
-                      {
-                        is_mapped = true;
-                      }
-                      // show diagnostics for bare node specifiers that aren't mapped by import map
-                      if !is_mapped {
-                        diagnostics.push(EndeDiagnostic::BareNodeSpecifier(
-                          module_name.to_string(),
-                        ));
-                      }
-                    }
-                  } else {
-                    // When the document is not available, it means that it cannot be found
-                    // in the cache or locally on the disk, so we want to issue a diagnostic
-                    // about that.
-                    // these may be invalid, however, if this is an ambient module with
-                    // no real source (as in the case of a virtual module).
-                    let ende_diagnostic = match specifier.scheme() {
-                      "file" => EndeDiagnostic::NoLocal(specifier.clone()),
-                      _ => EndeDiagnostic::NoCache(specifier.clone()),
-                    };
-                    deferred_diagnostics.push(ende_diagnostic);
-                  }
+                  // When the document is not available, it means that it cannot be found
+                  // in the cache or locally on the disk, so we want to issue a diagnostic
+                  // about that.
+                  // these may be invalid, however, if this is an ambient module with
+                  // no real source (as in the case of a virtual module).
+                  let ende_diagnostic = match specifier.scheme() {
+                    "file" => EndeDiagnostic::NoLocal(specifier.clone()),
+                    _ => EndeDiagnostic::NoCache(specifier.clone()),
+                  };
+                  deferred_diagnostics.push(ende_diagnostic);
                 }
               }
             }
@@ -1515,12 +1428,10 @@ fn diagnose_dependency(
   };
   let (resolution_diagnostics, deferred) = diagnose_resolution(
     snapshot,
-    dependency_key,
     resolution,
     dependency.is_dynamic,
     dependency.maybe_attribute_type.as_deref(),
     referrer_module,
-    import_map,
   );
   diagnostics.extend(resolution_diagnostics.iter().flat_map(|diag| {
     import_ranges
@@ -1550,12 +1461,10 @@ fn diagnose_dependency(
     };
     let (resolution_diagnostics, deferred) = diagnose_resolution(
       snapshot,
-      dependency_key,
       &dependency.maybe_type,
       dependency.is_dynamic,
       dependency.maybe_attribute_type.as_deref(),
       referrer_module,
-      import_map,
     );
     diagnostics.extend(
       resolution_diagnostics

@@ -1,5 +1,0 @@
-{
-  "tempDir": true,
-  "args": "doc --json main.ts",
-  "output": "doc.out"
-}
