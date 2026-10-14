@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           fetch-depth: 0
-          token: '${{ secrets.DENOBOT_PAT }}'
+          token: '${{ secrets.ENDE_RELEASE_PAT }}'
           submodules: recursive
       - uses: dsherret/rust-toolchain-file@3551321aa44dd44a0393eb3b6bdfbc5d25ecf621
       - name: Install deno
@@ -33,7 +33,7 @@ jobs:
           deno-version: v2.x
       - name: Create release tag and check forward commit to primary
         env:
-          GITHUB_TOKEN: '${{ secrets.DENOBOT_PAT }}'
+          GITHUB_TOKEN: '${{ secrets.ENDE_RELEASE_PAT }}'
           GH_WORKFLOW_ACTOR: '${{ github.actor }}'
         run: |-
           git config user.email "${{ github.actor }}@users.noreply.github.com"

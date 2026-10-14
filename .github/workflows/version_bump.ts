@@ -31,7 +31,7 @@ const workflow = createWorkflow({
         name: "Clone repository",
         uses: "actions/checkout@v6",
         with: {
-          token: "${{ secrets.DENOBOT_PAT }}",
+          token: "${{ secrets.ENDE_RELEASE_PAT }}",
           submodules: "recursive",
         },
       }),
@@ -48,7 +48,7 @@ const workflow = createWorkflow({
       step({
         name: "Create PR",
         env: {
-          GITHUB_TOKEN: "${{ secrets.DENOBOT_PAT }}",
+          GITHUB_TOKEN: "${{ secrets.ENDE_RELEASE_PAT }}",
           GH_WORKFLOW_ACTOR: "${{ github.actor }}",
         },
         run: [

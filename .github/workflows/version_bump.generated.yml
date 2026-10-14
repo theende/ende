@@ -20,7 +20,7 @@ jobs:
       - name: Clone repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          token: '${{ secrets.DENOBOT_PAT }}'
+          token: '${{ secrets.ENDE_RELEASE_PAT }}'
           submodules: recursive
       - uses: dsherret/rust-toolchain-file@3551321aa44dd44a0393eb3b6bdfbc5d25ecf621
       - name: Install deno
@@ -31,7 +31,7 @@ jobs:
         run: ./tools/release/01_bump_crate_versions.ts
       - name: Create PR
         env:
-          GITHUB_TOKEN: '${{ secrets.DENOBOT_PAT }}'
+          GITHUB_TOKEN: '${{ secrets.ENDE_RELEASE_PAT }}'
           GH_WORKFLOW_ACTOR: '${{ github.actor }}'
         run: |-
           git config user.email "${{ github.actor }}@users.noreply.github.com"

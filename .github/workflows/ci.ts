@@ -1773,7 +1773,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             env: {
               WPT_FYI_USER: "deno",
               WPT_FYI_PW: "${{ secrets.WPT_FYI_PW }}",
-              GITHUB_TOKEN: "${{ secrets.DENOBOT_PAT }}",
+              GITHUB_TOKEN: "${{ secrets.ENDE_RELEASE_PAT }}",
             },
             run: [
               "./target/release/ende run --allow-all --lock=tools/deno.lock.json \\",
@@ -1849,11 +1849,11 @@ const benchJob = job(
           name: "Post benchmarks",
           if: isDenoland.and(isMainBranch),
           env: {
-            DENOBOT_PAT: "${{ secrets.DENOBOT_PAT }}",
+            ENDE_RELEASE_PAT: "${{ secrets.ENDE_RELEASE_PAT }}",
           },
           run: [
             "git clone --depth 1 --branch gh-pages                             \\",
-            "    https://${DENOBOT_PAT}@github.com/denoland/benchmark_data.git \\",
+            "    https://${ENDE_RELEASE_PAT}@github.com/denoland/benchmark_data.git \\",
             "    gh-pages",
             "./target/release/ende run --allow-all ./tools/build_benchmark_jsons.js --release",
             "cd gh-pages",

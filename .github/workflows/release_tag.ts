@@ -34,7 +34,7 @@ const workflow = createWorkflow({
         uses: "actions/checkout@v6",
         with: {
           "fetch-depth": 0,
-          token: "${{ secrets.DENOBOT_PAT }}",
+          token: "${{ secrets.ENDE_RELEASE_PAT }}",
           submodules: "recursive",
         },
       }),
@@ -47,7 +47,7 @@ const workflow = createWorkflow({
       step({
         name: "Create release tag and check forward commit to primary",
         env: {
-          GITHUB_TOKEN: "${{ secrets.DENOBOT_PAT }}",
+          GITHUB_TOKEN: "${{ secrets.ENDE_RELEASE_PAT }}",
           GH_WORKFLOW_ACTOR: "${{ github.actor }}",
         },
         run: [

@@ -39,7 +39,7 @@ const workflow = createWorkflow({
       step({
         name: "Create Gist URL",
         env: {
-          GITHUB_TOKEN: "${{ secrets.DENOBOT_GIST_PAT }}",
+          GITHUB_TOKEN: "${{ secrets.ENDE_RELEASE_PAT }}",
           GH_WORKFLOW_ACTOR: "${{ github.actor }}",
         },
         run: "./tools/release/00_start_release.ts",
