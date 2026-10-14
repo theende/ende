@@ -24,7 +24,6 @@ v8_enable_v8_checks = ["v8/v8_enable_v8_checks"]
 unsafe_runtime_options = []
 unsafe_use_unprotected_platform = []
 snapshot_flags_eager_parse = []
-uv_compat_export = []
 v8 = ["v8/v8", "serde_v8/v8"]
 
 [dependencies]

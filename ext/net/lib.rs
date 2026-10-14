@@ -122,7 +122,6 @@ ende_core::extension!(ende_net,
     ops::op_net_connect_tcp,
     ops::op_net_listen_tcp,
     ops::op_net_listen_udp,
-    ops::op_node_unstable_net_listen_udp,
     ops::op_net_recv_udp,
     ops::op_net_send_udp,
     ops::op_net_join_multi_v4_udp,
@@ -134,7 +133,6 @@ ende_core::extension!(ende_net,
     ops::op_net_set_broadcast_udp,
     ops::op_net_validate_multicast,
     ops::op_dns_resolve,
-    ops::op_net_get_system_dns_servers,
     ops::op_set_nodelay,
     ops::op_set_keepalive,
     ops::op_net_listen_vsock,
@@ -159,7 +157,6 @@ ende_core::extension!(ende_net,
     ops_unix::op_net_connect_unix,
     ops_unix::op_net_listen_unix,
     ops_unix::op_net_listen_unixpacket,
-    ops_unix::op_node_unstable_net_listen_unixpacket,
     ops_unix::op_net_recv_unixpacket,
     ops_unix::op_net_send_unixpacket,
 
@@ -240,7 +237,6 @@ mod ops_unix {
   stub_op!(op_net_connect_unix);
   stub_op!(op_net_listen_unix);
   stub_op!(op_net_listen_unixpacket);
-  stub_op!(op_node_unstable_net_listen_unixpacket);
   stub_op!(op_net_recv_unixpacket);
   stub_op!(op_net_send_unixpacket);
 }

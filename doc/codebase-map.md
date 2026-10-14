@@ -44,9 +44,7 @@ roughly by purpose:
 - **Web platform:** `web`, `fetch`, `url`, `crypto`, `console`, `webidl`,
   `websocket`, `webgpu`, `canvas`, `image`, `broadcast_channel`, `webstorage`.
 - **System access:** `fs`, `net`, `io`, `os`, `process`, `signals`, `tls`.
-- **Ende APIs:** `kv`, `cron`, `cache`, `ffi`, `napi`, `telemetry`.
-- **Node compatibility:** `node` (most `node:*` builtins), `node_crypto`,
-  `node_sqlite`.
+- **Ende APIs:** `kv`, `cron`, `cache`, `ffi`, `telemetry`.
 
 The conventional layout inside an extension is Rust ops in `lib.rs` (and
 submodules) and JavaScript API files named with a numeric prefix that controls
@@ -58,11 +56,10 @@ The `ende_core` foundation and the crates the CLI composes for resolution and
 packaging:
 
 - **Core/V8 bridge:** `core`, `core_testing`, `ops`, `serde_v8`, `ecore`.
-- **Resolution & packaging:** `resolver`, `node_resolver`, `npm`, `npm_cache`,
-  `npm_installer`, `npmrc`, `package_json`, `lockfile`, `config`, `cli_parser`,
+- **Resolution & packaging:** `resolver`, `lockfile`, `config`, `cli_parser`,
   `cache_dir`.
 - **Other building blocks:** `crypto`, `dotenv`, `eszip`, `http_h1`,
-  `inspector_server`, `maybe_sync`, `napi_sys`, `node_shim`.
+  `inspector_server`, `maybe_sync`.
 
 ## Inside `tests/`
 
@@ -70,8 +67,6 @@ packaging:
   output), driven by `__test__.jsonc` files.
 - `tests/unit/` — JavaScript/TypeScript unit tests for runtime APIs
   (`*_test.ts`).
-- `tests/unit_node/` — unit tests for the `node:*` compatibility layer.
-- `tests/node_compat/` — Node.js's own test suite, run against Ende.
 - `tests/wpt/` — Web Platform Tests.
 - `tests/testdata/` — fixtures shared across suites.
 

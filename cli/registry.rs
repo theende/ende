@@ -281,13 +281,7 @@ pub async fn check_version_exists(
 }
 
 pub fn get_jsr_alternative(imported: &Url) -> Option<String> {
-  if matches!(imported.host_str(), Some("esm.sh")) {
-    let mut segments = imported.path_segments()?;
-    match segments.next()? {
-      "gh" => None,
-      module => Some(format!("\"npm:{module}\"")),
-    }
-  } else if imported.as_str().starts_with("https://deno.land/") {
+  if imported.as_str().starts_with("https://deno.land/") {
     let mut segments = imported.path_segments()?;
     let maybe_std = segments.next()?;
     if maybe_std != "std" && !maybe_std.starts_with("std@") {
@@ -321,7 +315,7 @@ mod test {
       assert_eq!(get_jsr_alternative(&imported), output);
     }
 
-    run_test("https://esm.sh/ts-morph", Some("\"npm:ts-morph\""));
+    run_test("https://esm.sh/ts-morph", None);
     run_test(
       "https://deno.land/std/path/mod.ts",
       Some("\"jsr:@std/path@1\""),

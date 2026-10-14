@@ -6,7 +6,6 @@
 pub use test_util::*;
 
 pub mod https;
-pub mod npm;
 pub mod servers;
 
 fn main() {

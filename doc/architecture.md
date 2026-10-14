@@ -35,8 +35,8 @@ Key entry points:
 - `cli/module_loader.rs` — resolves and loads modules, bridging the resolver and
   the graph to the runtime.
 
-The CLI is intentionally heavy: it pulls in TypeScript checking, npm and JSR
-resolution, and the lockfile. Lower layers must not depend back up into it.
+The CLI is intentionally heavy: it pulls in TypeScript checking, JSR resolution,
+and the lockfile. Lower layers must not depend back up into it.
 
 ## The runtime layer (`runtime/`)
 
@@ -64,9 +64,7 @@ lives. Examples:
   `ext/webidl`, `ext/websocket`, `ext/webgpu`, `ext/canvas`.
 - System access: `ext/fs`, `ext/net`, `ext/io`, `ext/os`, `ext/process`,
   `ext/signals`, `ext/tls`.
-- Ende-specific: `ext/kv`, `ext/cron`, `ext/cache`, `ext/ffi`, `ext/napi`.
-- Node compatibility: `ext/node` (the bulk of the `node:*` builtins, both Rust
-  ops and JavaScript polyfills), plus `ext/node_crypto` and `ext/node_sqlite`.
+- Ende-specific: `ext/kv`, `ext/cron`, `ext/cache`, `ext/ffi`.
 
 The typical shape of an extension is:
 
@@ -94,9 +92,8 @@ Notable members:
 - `libs/ops` — the `#[op2]` proc-macro that generates the Rust/V8 glue.
 - `libs/serde_v8` — zero-copy-ish serialization between Rust types and V8
   values.
-- `libs/resolver`, `libs/node_resolver`, `libs/npm`, `libs/npm_installer`,
-  `libs/package_json`, `libs/lockfile`, `libs/config`, `libs/npmrc` — the
-  resolution and package-management building blocks the CLI composes.
+- `libs/resolver`, `libs/lockfile`, `libs/config` — the resolution and
+  package-management building blocks the CLI composes.
 
 These crates are deliberately free of CLI concerns so they can be unit-tested in
 isolation and reused by other tools.
@@ -123,7 +120,7 @@ isolation and reused by other tools.
 | Add a native capability to JS        | `ext/<name>/` (op + JS)           |
 | Change how the runtime is assembled  | `runtime/worker.rs`               |
 | Touch the Rust/V8 bridge or op macro | `libs/core`, `libs/ops`           |
-| Change module/npm/JSR resolution     | `libs/resolver`, `libs/npm`, CLI  |
+| Change module/JSR resolution         | `libs/resolver`, CLI              |
 
 See [`codebase-map.md`](./codebase-map.md) for a finer-grained directory map and
 [`testing.md`](./testing.md) for how to test each layer.

@@ -9,9 +9,9 @@ This is the main repository that provides the `ende` CLI.
 If you want to fix a bug or add a new feature to `ende`, this is the repository
 to contribute to.
 
-Some systems, including a large part of the Node.js compatibility layer, are
-implemented in JavaScript and TypeScript modules. These are a good place to
-start if you are looking to make your first contribution.
+Some systems, including large parts of the web APIs, are implemented in
+JavaScript and TypeScript modules. These are a good place to start if you are
+looking to make your first contribution.
 
 ## The `./x` tool
 
@@ -27,10 +27,7 @@ commands.
 ./x lint-js     # Lint JavaScript/TypeScript only
 ./x verify      # Pre-commit verification (fmt + lint-js)
 ./x test        # Run runtime unit tests
-./x node-test   # Run Node.js API unit tests
-./x node-compat # Run Node.js compatibility tests
 ./x spec        # Run spec (integration) tests
-./x napi        # Run NAPI (native addon) tests
 ```
 
 ## Hot Module Replacement (HMR) mode
@@ -47,8 +44,8 @@ cargo build --features hmr
 # cargo run -- run hello.ts
 cargo run --features hmr -- run hello.ts
 
-# cargo test integration::node_unit_tests::os_test
-cargo test --features hmr integration::node_unit_tests::os_test
+# cargo test unit::fetch_test
+cargo test --features hmr unit::fetch_test
 ```
 
 Also remember to reference this feature flag in your editor settings. For VSCode
@@ -271,9 +268,6 @@ Use the `./x` tool to run tests:
 
 # Run spec (integration) tests:
 ./x spec <filter>
-
-# Run Node.js compatibility tests:
-./x node-compat <filter>
 
 # List available tests:
 ./x test --list

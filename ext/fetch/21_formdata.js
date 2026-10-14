@@ -315,7 +315,7 @@ function formDataToBlob(formData) {
   const chunks = [];
   const prefix = `--${boundary}\r\nContent-Disposition: form-data; name="`;
 
-  // deno-lint-ignore deno-internal/prefer-primordials
+  // deno-lint-ignore ende-internal/prefer-primordials
   for (const { 0: name, 1: value } of formData) {
     if (typeof value === "string") {
       ArrayPrototypePush(

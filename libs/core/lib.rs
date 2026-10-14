@@ -39,12 +39,6 @@ mod runtime;
 mod snapshot_format;
 mod source_map;
 mod tasks;
-#[allow(
-  non_camel_case_types,
-  non_upper_case_globals,
-  reason = "generated bindings match external API naming"
-)]
-pub mod uv_compat;
 mod web_timeout;
 pub mod webidl;
 

@@ -37,14 +37,12 @@ export async function checkCopyright() {
     ":!:cli/tsc/compiler.d.ts",
     ":!:cli/tsc/dts/**",
     ":!:tests/bench/testdata/**",
-    ":!:tests/node_compat/test/**",
     ":!:tests/registry/**",
     ":!:tests/specs/**",
     ":!:tests/testdata/**",
     ":!:tests/wpt/suite/**",
     ":!:libs/config/testdata/**",
     ":!:libs/eszip/testdata/**",
-    ":!:ext/node/polyfills/deps/**",
 
     // rust
     "*.rs",
@@ -52,7 +50,6 @@ export async function checkCopyright() {
 
     // c
     "*.c",
-    ":!:ext/node/ops/llhttp/c/**",
 
     // toml
     "*Cargo.toml",

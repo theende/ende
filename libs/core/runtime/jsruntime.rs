@@ -128,7 +128,6 @@ use crate::runtime::jsrealm::IMM_IDX_REF_COUNT;
 use crate::source_map::SourceMapData;
 use crate::source_map::SourceMapper;
 use crate::stats::RuntimeActivityType;
-use crate::uv_compat;
 
 pub type WaitForInspectorDisconnectCallback = Box<dyn Fn()>;
 
@@ -251,17 +250,10 @@ impl InnerIsolateState {
     // the runtime.
     _ = unsafe { Rc::from_raw(state_ptr as *const JsRuntimeState) };
 
-    // Destroy the realm while the uv_loop (stored in op_state's
-    // gotham_state) is still alive. destroy() reads uv_loop_ptr to
-    // release the Global<Context> stored in loop.data. If we clear
-    // op_state first, the Box<UvLoop> is freed and destroy() would
-    // dereference a dangling pointer (use-after-free).
     unsafe {
       ManuallyDrop::take(&mut self.main_realm).0.destroy();
     }
 
-    // Now safe to clear op_state (drops Box<UvLoop> etc.) since
-    // destroy() has already released the Global from loop.data.
     self.state.op_state.borrow_mut().clear();
     if let Some(inspector) = inspector {
       assert_eq!(
@@ -1915,76 +1907,10 @@ impl JsRuntime {
     self.inner.state.op_state.clone()
   }
 
-  /// Returns the raw `uv_loop_t` pointer registered with this runtime,
-  /// or `None` if no loop is registered.
-  pub fn uv_loop_ptr(&self) -> Option<*mut uv_compat::uv_loop_t> {
-    self.inner.main_realm.0.context_state.uv_loop_ptr.get()
-  }
-
-  /// Creates a uv loop for the libuv compat layer and registers it with this
-  /// runtime. Runtimes don't get one by default. The loop is stored in both
-  /// OpState (for ops that need the raw pointer) and ContextState (for event
-  /// loop phases).
-  pub fn init_uv_loop(&mut self) {
-    // SAFETY: zeroed memory is valid for uv_loop_t before uv_loop_init.
-    let mut uv_loop =
-      Box::new(unsafe { std::mem::zeroed::<uv_compat::UvLoop>() });
-    // SAFETY: uv_loop points to valid zeroed memory.
-    unsafe { uv_compat::uv_loop_init(&mut *uv_loop) };
-    let loop_ptr: *mut uv_compat::UvLoop = &mut *uv_loop;
-    // SAFETY: loop_ptr is valid and initialized, and it is kept alive in
-    // OpState for as long as the runtime.
-    unsafe { self.register_uv_loop(loop_ptr) };
-    let op_state = self.op_state();
-    let mut op_state = op_state.borrow_mut();
-    op_state.put(uv_loop);
-    op_state.put(uv_compat::AsyncId::default());
-  }
-
   /// Returns the runtime's source mapper, which can be used to apply
   /// source maps to file locations.
   pub fn source_mapper(&self) -> Rc<RefCell<crate::source_map::SourceMapper>> {
     self.inner.state.source_mapper.clone()
-  }
-
-  /// Register a `uv_loop_t` with the runtime so that its event loop phases
-  /// (timers, I/O, idle, prepare, check, close) are driven by
-  /// `poll_event_loop`.
-  ///
-  /// A `v8::Global<v8::Context>` is created via `Global::into_raw()` and
-  /// stored in `loop_.data` so that libuv-style callbacks can retrieve
-  /// the context. The raw Global is dropped during realm cleanup.
-  ///
-  /// # Safety
-  /// `loop_ptr` must be a valid, initialized `uv_loop_t` pointer that
-  /// outlives the runtime.
-  pub unsafe fn register_uv_loop(
-    &mut self,
-    loop_ptr: *mut uv_compat::uv_loop_t,
-  ) {
-    let realm = &self.inner.main_realm;
-    let context_state = &realm.0.context_state;
-    let inner_ptr = unsafe { uv_compat::uv_loop_get_inner_ptr(loop_ptr) };
-    let uv_inner = inner_ptr as *const uv_compat::UvLoopInner;
-    context_state.uv_loop_inner.set(Some(uv_inner));
-    context_state.uv_loop_ptr.set(Some(loop_ptr));
-
-    let global_ctx = realm.0.context().clone();
-    let raw = global_ctx.into_raw();
-    // SAFETY: `loop_ptr` is a valid, initialized `uv_loop_t` guaranteed
-    // by the caller. `raw` is a persistent-handle slot pointer from
-    // `Global::into_raw()` — V8 keeps it updated across GC cycles.
-    // The raw Global is reconstructed and dropped in `JsRealmInner::destroy`.
-    unsafe {
-      (*loop_ptr).data = raw.as_ptr() as *mut std::ffi::c_void;
-    }
-
-    // Create the check handle for setImmediate.
-    // JS controls start/stop/ref/unref via op_immediate_check.
-    // SAFETY: loop_ptr is valid per caller contract.
-    let check_handle =
-      unsafe { uv_compat::ImmediateCheckHandle::new(loop_ptr) };
-    *context_state.immediate_check_handle.borrow_mut() = Some(check_handle);
   }
 
   /// Returns the runtime's op names, ordered by OpId.
@@ -2401,13 +2327,13 @@ impl JsRuntime {
 
   /// Phase-based event loop tick, loosely following libuv's architecture:
   ///
-  /// 1. Timers          -- fire expired libuv C timers + JS user timers
-  /// 2. Pending work     -- module progress, task spawner, async ops,
-  ///    nextTick/macrotask drain, rejections
-  /// 3. Idle / Prepare   -- libuv idle + prepare callbacks
-  /// 4. I/O              -- drive TCP read/write/accept via UvLoopInner
-  /// 5. Check            -- libuv check callbacks + immediates
-  /// 6. Close            -- close callbacks (Rust + libuv)
+  /// 2. Pending work     -- module progress, task spawner, JS timers,
+  ///    async ops, nextTick/macrotask drain, rejections
+  /// 5. Check            -- immediates
+  /// 6. Close            -- close callbacks
+  ///
+  /// Phases 1, 3 and 4 (libuv timers, idle/prepare, I/O) belonged to the
+  /// removed libuv compat layer; the numbering is kept to match libuv.
   ///
   /// Microtask checkpoints run between phases.
   fn poll_event_loop_inner(
@@ -2452,20 +2378,8 @@ impl JsRuntime {
 
     let exception_state = &context_state.exception_state;
 
-    // Tight I/O loop: when run_io does work, re-run I/O phases immediately
-    // without returning to tokio. This avoids kqueue/kevent round-trip
-    // latency between batches.
     let mut dispatched_ops = false;
     let mut did_work = false;
-    let mut uv_did_io = false;
-    // ===== Phase 1: Timers =====
-    // 1a. Fire expired libuv C timers
-    if let Some(uv_inner_ptr) = context_state.uv_loop_inner.get() {
-      // Update cached loop time at the start of each tick, matching libuv.
-      unsafe { (*uv_inner_ptr).update_time() };
-      unsafe { (*uv_inner_ptr).run_timers() };
-    }
-
     // ===== Phase 2: Pending work =====
     // Module progress polling (before ops, matching original ordering)
     modules.poll_progress(cx, scope)?;
@@ -2507,57 +2421,11 @@ impl JsRuntime {
     Self::dispatch_rejections(scope, context_state, exception_state)?;
     scope.perform_microtask_checkpoint();
 
-    // ===== Phase 3: Idle / Prepare =====
-    // In libuv: idle runs after pending callbacks, prepare runs right
-    // before I/O polling. Both must precede I/O.
-    let has_uv = context_state.uv_loop_inner.get().is_some();
-    if let Some(uv_inner_ptr) = context_state.uv_loop_inner.get() {
-      unsafe {
-        (*uv_inner_ptr).run_idle();
-        (*uv_inner_ptr).run_prepare();
-      };
-      // Idle/prepare callbacks may call into JS; flush microtasks.
-      scope.perform_microtask_checkpoint();
-    }
-
-    // ===== Phase 4: I/O =====
-    // Single run_io call per tick, matching libuv's uv_run (one
-    // uv__io_poll per iteration, callbacks fire, then we return).
-    // Spinning run_io in place until it returns `false` batches more
-    // work per tick but under sustained inbound traffic never exits —
-    // tokio keeps delivering readiness as we poll — and traps the
-    // event loop processing hundreds of handles back-to-back, which
-    // crushes tail latency (p99 30–200 ms vs ~1 ms with a single
-    // call).
-    if let Some(uv_inner_ptr) = context_state.uv_loop_inner.get() {
-      unsafe {
-        (*uv_inner_ptr).set_waker(cx.waker());
-      }
-      let did_io = unsafe { (*uv_inner_ptr).run_io() };
-      if did_io {
-        uv_did_io = true;
-        // Flush microtasks from I/O callbacks, then drain ticks.
-        // processTicksAndRejections runs op_run_microtasks internally,
-        // so the trailing checkpoint is only needed when no ticks ran.
-        scope.perform_microtask_checkpoint();
-        Self::drain_next_tick_and_macrotasks(scope, context_state)?;
-        if !context_state.has_tick_scheduled() {
-          scope.perform_microtask_checkpoint();
-        }
-      }
-    }
-
     // ===== Phase 5: Check =====
-    // In libuv: check runs right after I/O polling.
-    // Immediates fire here, matching Node.js's setImmediate semantics
-    // (libuv check phase, after I/O).
-    if let Some(uv_inner_ptr) = context_state.uv_loop_inner.get() {
-      unsafe { (*uv_inner_ptr).run_check() };
-    }
-    // Drain immediates in the check phase, matching Node.js semantics:
+    // Drain immediates in the check phase, matching libuv semantics:
     // - Refed immediates always fire (they keep the event loop alive).
     // - Unrefed immediates only fire if other work drove this iteration
-    //   (did_work, dispatched_ops, or uv I/O). This matches libuv's
+    //   (did_work or dispatched_ops). This matches libuv's
     //   behavior where unrefed handles participate in iterations driven
     //   by other work, but don't start new iterations on their own.
     {
@@ -2565,9 +2433,7 @@ impl JsRuntime {
         context_state.immediate_info[IMM_IDX_HAS_OUTSTANDING] != 0
           || context_state.immediate_info[IMM_IDX_COUNT] > 0;
       let has_refed = context_state.immediate_info[IMM_IDX_REF_COUNT] > 0;
-      if has_immediates
-        && (has_refed || did_work || dispatched_ops || uv_did_io)
-      {
+      if has_immediates && (has_refed || did_work || dispatched_ops) {
         Self::do_js_run_immediate_callbacks(scope, context_state)?;
         // Drain ticks queued by immediate callbacks so they don't
         // require an extra full event loop iteration.
@@ -2578,10 +2444,8 @@ impl JsRuntime {
     }
     scope.perform_microtask_checkpoint();
 
-    // Drain nextTick queue before close phase, matching Node.js/libuv
-    // where process.nextTick fires between each event loop phase.
-    // This ensures nextTicks from I/O callbacks (Phase 4) fire before
-    // close callbacks (Phase 6).
+    // Drain nextTick queue before close phase, so nextTicks fire between
+    // event loop phases and before close callbacks (Phase 6).
     if context_state.has_tick_scheduled() {
       Self::drain_next_tick_and_macrotasks(scope, context_state)?;
     }
@@ -2591,9 +2455,6 @@ impl JsRuntime {
     {
       let mut phases = context_state.event_loop_phases.borrow_mut();
       phases.run_close_callbacks();
-    }
-    if let Some(uv_inner_ptr) = context_state.uv_loop_inner.get() {
-      unsafe { (*uv_inner_ptr).run_close() };
     }
     // Run V8 close callbacks (JS handle.close() callbacks).
     // These are deferred to Phase 6 to match libuv's uv_close behavior
@@ -2608,13 +2469,12 @@ impl JsRuntime {
         (cb.callback)(scope);
       }
     }
-    // libuv close callbacks may call into JS; flush microtasks if present.
-    if has_uv
-      || !context_state
-        .event_loop_phases
-        .borrow()
-        .v8_close_callbacks
-        .is_empty()
+    // Close callbacks may call into JS; flush microtasks if present.
+    if !context_state
+      .event_loop_phases
+      .borrow()
+      .v8_close_callbacks
+      .is_empty()
     {
       scope.perform_microtask_checkpoint();
     }
@@ -2645,37 +2505,6 @@ impl JsRuntime {
       return Poll::Ready(Ok(()));
     }
 
-    // Arm a wakeup for the next pending libuv (N-API) timer deadline. The uv
-    // timer phase (Phase 1) fires expired timers at the top of each tick, but
-    // nothing else re-polls the event loop *at* a timer's deadline. A native
-    // `uv_timer_t` that is the only pending work would therefore never fire
-    // until some unrelated event happened to wake the loop. Mirror libuv's
-    // `uv__next_timeout`: schedule a sleep for the earliest deadline and let it
-    // re-poll us. Only re-arm when the earliest deadline changes to avoid
-    // recreating the timer on every tick. See #36454.
-    if let Some(uv_inner_ptr) = context_state.uv_loop_inner.get() {
-      match unsafe { (*uv_inner_ptr).next_timeout() } {
-        Some((deadline, delay)) => {
-          if context_state.uv_timer_wake_deadline.get() != Some(deadline) {
-            context_state.uv_timer_wake.schedule(delay);
-            context_state.uv_timer_wake_deadline.set(Some(deadline));
-          }
-          // Keep this task's waker registered with the sleep. If the deadline
-          // has already elapsed, re-poll immediately so Phase 1 fires it on the
-          // next tick rather than waiting for another wakeup.
-          if context_state.uv_timer_wake.poll_ready(cx).is_ready() {
-            self.inner.state.waker.wake();
-          }
-        }
-        None => {
-          if context_state.uv_timer_wake_deadline.get().is_some() {
-            context_state.uv_timer_wake.clear();
-            context_state.uv_timer_wake_deadline.set(None);
-          }
-        }
-      }
-    }
-
     // Re-wake logic for next iteration
     #[allow(
       clippy::suspicious_else_formatting,
@@ -2688,7 +2517,6 @@ impl JsRuntime {
         || pending_state.has_outstanding_immediates
         || context_state.immediate_info[IMM_IDX_REF_COUNT] > 0
         || pending_state.has_pending_promise_events
-        || uv_did_io
       {
         self.inner.state.waker.wake();
       } else
@@ -2709,7 +2537,6 @@ impl JsRuntime {
         || pending_state.has_pending_external_ops
         || pending_state.has_tick_scheduled
         || pending_state.has_pending_timers
-        || pending_state.has_uv_alive_handles
       {
         // pass, will be polled again
       } else {
@@ -2766,7 +2593,6 @@ impl JsRuntime {
         || pending_state.has_pending_external_ops
         || pending_state.has_tick_scheduled
         || pending_state.has_pending_timers
-        || pending_state.has_uv_alive_handles
       {
         // pass, will be polled again
       } else if realm.modules_idle() {
@@ -3036,7 +2862,6 @@ pub(crate) struct EventLoopPendingState {
   has_pending_external_ops: bool,
   has_outstanding_immediates: bool,
   has_pending_timers: bool,
-  has_uv_alive_handles: bool,
 }
 
 impl EventLoopPendingState {
@@ -3072,12 +2897,6 @@ impl EventLoopPendingState {
     let has_outstanding_immediates =
       state.immediate_info[IMM_IDX_HAS_OUTSTANDING] != 0;
     let has_pending_timers = !state.active_timers.borrow().is_empty();
-    let has_uv_alive_handles =
-      if let Some(uv_inner_ptr) = state.uv_loop_inner.get() {
-        unsafe { (*uv_inner_ptr).has_alive_handles() }
-      } else {
-        false
-      };
     EventLoopPendingState {
       has_pending_ops: has_pending_refed_ops || (num_pending_ops > 0),
       has_pending_refed_ops,
@@ -3090,7 +2909,6 @@ impl EventLoopPendingState {
       has_pending_external_ops: state.external_ops_tracker.has_pending_ops(),
       has_outstanding_immediates,
       has_pending_timers,
-      has_uv_alive_handles,
     }
   }
 
@@ -3110,7 +2928,6 @@ impl EventLoopPendingState {
       || self.has_tick_scheduled
       || self.has_pending_promise_events
       || self.has_pending_external_ops
-      || self.has_uv_alive_handles
   }
 }
 

@@ -444,7 +444,7 @@ macro_rules! or {
 ///  * synthetic_esm: a comma-separated list of `"module_specifier" = "backing_script_specifier"` pairs.
 ///    Imports of `module_specifier` resolve to a synthetic ESM module whose exports are derived from
 ///    the exports object returned by the IIFE in `backing_script_specifier` (which must be declared
-///    in `lazy_loaded_js`). Eg: `synthetic_esm = [ "node:zlib" = "ext:ende_node/zlib.js" ]`
+///    in `lazy_loaded_js`). Eg: `synthetic_esm = [ "ext:my_ext/mod.js" = "ext:my_ext/mod_impl.js" ]`
 ///  * js: a comma-separated list of JS filenames (see [`include_js_files`]), eg: `js = [ dir "dir", "my_file.js" ]`
 ///  * config: a structure-like definition for configuration parameters which will be required when initializing this extension, eg: `config = { my_param: Option<usize> }`
 ///  * middleware: an [`OpDecl`] middleware function with the signature `fn (OpDecl) -> OpDecl`
@@ -1142,7 +1142,7 @@ mod tests {
       const ID: u32;
     }
 
-    /// Resembles the generic ops in `ende_node`/`ende_http`: the parameter is
+    /// Resembles the generic ops in `ende_http`: the parameter is
     /// named in the op's turbofish and reached through the op body.
     #[op2(fast)]
     fn op_generic_probe<P: TestParam + 'static>() -> u32 {
@@ -1157,7 +1157,7 @@ mod tests {
       ops = [op_generic_probe<P>, op_void_sync],
     );
 
-    /// Mirrors `ende_node`'s shape: several parameters, only some of which any
+    /// A shape with several parameters, only some of which any
     /// given op names, plus a parameter used by the options/state function.
     #[op2(fast)]
     fn op_generic_multi<A: TestParam + 'static, B: TestParam + 'static>() -> u32

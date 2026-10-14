@@ -213,7 +213,6 @@ impl ProgressBarRenderer for TextOnlyProgressBarRenderer {
       // private registries URLs and other things here.
       let message = display_entry
         .message
-        .replace("https://registry.npmjs.org/", "npm:")
         .replace("https://jsr.io/", "jsr:")
         .replace("%2f", "/")
         .replace("%2F", "/");

@@ -6911,8 +6911,6 @@ fn bare_with_flag_no_file() {
   );
 }
 
-// PORT-SKIP: subcommands_recognized_by_node_shim depends on the node_shim crate; kept in cli/args/flags.rs
-
 // PORT-SKIP: equal_help_output walks the whole CommandDef tree; kept in cli/args/flags.rs
 
 #[test]

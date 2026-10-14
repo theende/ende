@@ -12,8 +12,8 @@ live, the kind of background that saves a lot of exploration time up front.
   the `ende_core` / `libs/*` foundation. Read this first.
 - [`codebase-map.md`](./codebase-map.md) — a directory-by-directory map plus the
   handful of files worth understanding before anything else.
-- [`testing.md`](./testing.md) — the test taxonomy (spec, unit, unit_node, node
-  compat, WPT) and which command runs each one.
+- [`testing.md`](./testing.md) — the test taxonomy (spec, unit, WPT) and which
+  command runs each one.
 - [`ci.md`](./ci.md) — how the CI workflow is generated and how it decides which
   jobs to run, including the docs-only fast path that brought this directory
   into existence.

@@ -133,7 +133,6 @@ async function writeFixtures(
   const hello = join(root, "hello.ts");
   const server = join(root, "server.ts");
   const test = join(root, "example_test.ts");
-  const node = join(root, "node.ts");
   const format = join(root, "format_me.ts");
   await Promise.all([
     Deno.writeTextFile(empty, "void 0;\n"),
@@ -165,11 +164,6 @@ async function writeFixtures(
         "});\n",
     ),
     Deno.writeTextFile(
-      node,
-      'import { createHash } from "node:crypto";\n' +
-        'console.log(createHash("sha256").update("x").digest("hex"));\n',
-    ),
-    Deno.writeTextFile(
       format,
       "export const value = { nested: [1, 2, 3] };\n",
     ),
@@ -198,11 +192,6 @@ async function writeFixtures(
       cwd: root,
     },
     { name: "ende test", args: ["test", "--quiet", test], cwd: root },
-    {
-      name: "ende node:crypto",
-      args: ["run", "--quiet", node],
-      cwd: root,
-    },
     { name: "ende fmt", args: ["fmt", "--check", format], cwd: root },
   ];
   return profile === "run-first"

@@ -119,10 +119,6 @@ pub struct JsrPackageConfig {
 ///
 /// Unlike [`VersionReq::matches`], a tag requirement never matches here (rather
 /// than panicking), since a local package has no dist-tags to compare against.
-///
-/// `ende_npm`'s `link_version_req_satisfies` keeps an identical copy of this
-/// fallback for the npm graph resolver (it can't depend on this crate). Keep
-/// the two in sync.
 pub fn version_req_matches_including_pre(
   version_req: &VersionReq,
   version: &Version,

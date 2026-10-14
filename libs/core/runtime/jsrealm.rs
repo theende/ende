@@ -35,7 +35,6 @@ use crate::ops::OpCtxs;
 use crate::reactor::DefaultReactor;
 use crate::stats::RuntimeActivityTraces;
 use crate::tasks::V8TaskSpawnerFactory;
-use crate::uv_compat::UvLoopInner;
 use crate::web_timeout::UserTimer;
 
 pub const CONTEXT_STATE_SLOT_INDEX: i32 = 1;
@@ -145,37 +144,6 @@ pub struct ContextState {
     RefCell<Option<crate::webidl::WebIdlSequenceKeys>>,
   /// Phase-specific state for the libuv-style event loop.
   pub event_loop_phases: RefCell<EventLoopPhases>,
-  /// Pointer to the `UvLoopInner` for the libuv compat layer.
-  /// Set via [`JsRuntime::register_uv_loop`] when a `uv_loop_t` is
-  /// associated with this context.
-  ///
-  /// # Safety
-  /// The pointee is heap-allocated by `uv_loop_init` (boxed) and lives until
-  /// `uv_loop_close` destroys it. The caller of `register_uv_loop` must
-  /// guarantee the `uv_loop_t` outlives this `ContextState`. Both
-  /// `UvLoopInner` and `ContextState` are `!Send` -- all access is on the
-  /// event loop thread.
-  pub(crate) uv_loop_inner: Cell<Option<*const UvLoopInner>>,
-  /// Raw pointer to the `uv_loop_t` handle. At registration time,
-  /// `loop_.data` is set to a `Global::into_raw()` pointer so that
-  /// libuv-style C callbacks can retrieve the context.
-  ///
-  /// # Safety
-  /// Same lifetime requirements as `uv_loop_inner` above.
-  pub(crate) uv_loop_ptr: Cell<Option<*mut crate::uv_compat::uv_loop_t>>,
-  /// Two-handle setImmediate mechanism (matching Node.js): a check handle
-  /// (always running, always unref'd) and an idle handle that controls
-  /// event loop liveness for refed immediates. `None` when no uv loop is
-  /// registered (e.g. during snapshotting).
-  pub(crate) immediate_check_handle:
-    RefCell<Option<crate::uv_compat::ImmediateCheckHandle>>,
-  /// Wakeup for the next pending libuv (N-API) timer deadline. Unlike JS
-  /// timers, native `uv_timer_t` handles have no other mechanism to re-poll
-  /// the event loop at their deadline, so we arm this sleep from
-  /// `uv_compat`'s `next_timeout` each tick. `uv_timer_wake_deadline` caches
-  /// the currently-armed absolute deadline so we only re-arm when it changes.
-  pub(crate) uv_timer_wake: UserTimer<DefaultReactor>,
-  pub(crate) uv_timer_wake_deadline: Cell<Option<u64>>,
 }
 
 impl ContextState {
@@ -229,11 +197,6 @@ impl ContextState {
       ext_import_meta_proto: Default::default(),
       webidl_sequence_keys: Default::default(),
       event_loop_phases: Default::default(),
-      uv_loop_inner: Cell::new(None),
-      uv_loop_ptr: Cell::new(None),
-      immediate_check_handle: RefCell::new(None),
-      uv_timer_wake: Default::default(),
-      uv_timer_wake_deadline: Cell::new(None),
     }
   }
 }
@@ -318,30 +281,6 @@ impl JsRealmInner {
     let raw_ptr = self.state().isolate.unwrap();
     // SAFETY: We know the isolate outlives the realm
     let mut isolate = unsafe { v8::Isolate::from_raw_isolate_ptr(raw_ptr) };
-
-    // Close the immediate check/idle handles before the uv loop is dropped.
-    // SAFETY: The uv loop is still alive (op_state hasn't been cleared yet).
-    if let Some(handle) = state.immediate_check_handle.borrow_mut().take() {
-      unsafe { handle.close() };
-    }
-
-    if let Some(loop_ptr) = state.uv_loop_ptr.get() {
-      // SAFETY: `loop_ptr` is valid for the lifetime of the runtime
-      // (guaranteed by `register_uv_loop`). `data` was set to a
-      // `Global::into_raw()` pointer during registration. We
-      // reconstruct the Global via `from_raw` so it is properly
-      // dropped. `NonNull::new_unchecked` is safe because we checked
-      // `!is_null()`. `isolate` is valid because we just obtained it
-      // from the raw isolate pointer above.
-      unsafe {
-        let data = (*loop_ptr).data;
-        if !data.is_null() {
-          let raw = std::ptr::NonNull::new_unchecked(data as *mut v8::Context);
-          let _global = v8::Global::from_raw(&mut isolate, raw);
-          (*loop_ptr).data = std::ptr::null_mut();
-        }
-      }
-    }
 
     v8::scope!(let scope, &mut isolate);
     // These globals will prevent snapshots from completing, take them

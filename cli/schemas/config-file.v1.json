@@ -304,7 +304,7 @@
           "description": "Specify a set of bundled library declaration files that describe the target runtime environment.",
           "type": "array",
           "uniqueItems": true,
-          "default": ["ende.window", "ende.unstable", "node"],
+          "default": ["ende.window", "ende.unstable"],
           "items": {
             "type": "string",
             "examples": [
@@ -333,8 +333,7 @@
               "es2022",
               "es2023",
               "es2024",
-              "esnext",
-              "node"
+              "esnext"
             ]
           },
           "markdownDescription": "Specify a set of bundled library declaration files that describe the target runtime environment.\n\nSee more: https://www.typescriptlang.org/tsconfig#lib"
@@ -655,7 +654,7 @@
         },
         "plugins": {
           "type": "array",
-          "description": "UNSTABLE: List of plugins to load. These can be paths, npm or jsr specifiers",
+          "description": "UNSTABLE: List of plugins to load. These can be paths or jsr specifiers",
           "items": {
             "type": "string"
           }
@@ -912,17 +911,17 @@
           "age": { "$ref": "#/$defs/minimumDependencyAgeDate" },
           "exclude": {
             "type": "array",
-            "description": "List of jsr or npm packages to exclude from requiring a minimum dependency age. Entries may end with a '*' wildcard to exclude by prefix (e.g. 'npm:@scope/*').",
+            "description": "List of jsr packages to exclude from requiring a minimum dependency age. Entries may end with a '*' wildcard to exclude by prefix (e.g. 'jsr:@scope/*').",
             "items": {
               "type": "string",
-              "pattern": "^(?:npm:|jsr:).+"
+              "pattern": "^jsr:.+"
             }
           }
         }
       }]
     },
     "vendor": {
-      "description": "Enables or disables the use of a local vendor folder as a local cache for remote modules and node_modules folder for npm packages. Alternatively, use the `--vendor` flag or override the config via `--vendor=false`. Requires Deno 1.36.1 or later.",
+      "description": "Enables or disables the use of a local vendor folder as a local cache for remote modules. Alternatively, use the `--vendor` flag or override the config via `--vendor=false`. Requires Deno 1.36.1 or later.",
       "type": "boolean"
     },
     "tasks": {

@@ -286,12 +286,12 @@ impl UnsupportedDirImportError {
 #[error("Fetch '{0}' failed, too many redirects.")]
 pub struct TooManyRedirectsError(pub Url);
 
-// this message list additional `npm` and `jsr` schemes, but they should actually be handled
+// this message lists the additional `jsr` scheme, but it should actually be handled
 // before `file_fetcher.rs` APIs are even hit.
 #[derive(Debug, Error, JsError)]
 #[class(type)]
 #[error(
-  "Unsupported scheme \"{scheme}\" for module \"{url}\". Supported schemes:\n - \"blob\"\n - \"data\"\n - \"file\"\n - \"http\"\n - \"https\"\n - \"jsr\"\n - \"npm\""
+  "Unsupported scheme \"{scheme}\" for module \"{url}\". Supported schemes:\n - \"blob\"\n - \"data\"\n - \"file\"\n - \"http\"\n - \"https\"\n - \"jsr\""
 )]
 pub struct UnsupportedSchemeError {
   pub scheme: String,
@@ -300,10 +300,7 @@ pub struct UnsupportedSchemeError {
 
 /// Gets if the provided scheme was valid.
 pub fn is_valid_scheme(scheme: &str) -> bool {
-  matches!(
-    scheme,
-    "blob" | "data" | "file" | "http" | "https" | "jsr" | "npm"
-  )
+  matches!(scheme, "blob" | "data" | "file" | "http" | "https" | "jsr")
 }
 
 #[derive(Debug, Boxed, JsError)]
@@ -367,7 +364,7 @@ pub enum FetchNoFollowErrorKind {
     #[source]
     source: std::io::Error,
   },
-  // this message list additional `npm` and `jsr` schemes, but they should actually be handled
+  // this message lists the additional `jsr` scheme, but it should actually be handled
   // before `file_fetcher.rs` APIs are even hit.
   #[class(inherit)]
   #[error(transparent)]

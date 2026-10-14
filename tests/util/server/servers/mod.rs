@@ -42,10 +42,7 @@ use tokio::net::TcpStream;
 mod grpc;
 mod hyper_utils;
 mod jsr_registry;
-mod nodejs_org_mirror;
-mod npm_registry;
 mod otlp_grpc;
-mod socket_dev;
 mod ws;
 
 use hyper_utils::ServerKind;
@@ -142,25 +139,7 @@ pub async fn run_all_servers() {
   let provenance_mock_server_fut =
     jsr_registry::provenance_mock_server(PROVENANCE_MOCK_SERVER_PORT);
 
-  let npm_registry_server_futs =
-    npm_registry::public_npm_registry(PUBLIC_NPM_REGISTRY_PORT);
-  let private_npm_registry_1_server_futs =
-    npm_registry::private_npm_registry1(PRIVATE_NPM_REGISTRY_1_PORT);
-  let private_npm_registry_2_server_futs =
-    npm_registry::private_npm_registry2(PRIVATE_NPM_REGISTRY_2_PORT);
-  let private_npm_registry_3_server_futs =
-    npm_registry::private_npm_registry3(PRIVATE_NPM_REGISTRY_3_PORT);
-  let private_npm_registry_mtls_futs =
-    npm_registry::private_npm_registry_mtls(PRIVATE_NPM_REGISTRY_MTLS_PORT);
-  let npm_jsr_registry_server_futs =
-    npm_registry::public_npm_jsr_registry(PUBLIC_NPM_JSR_REGISTRY_PORT);
-  let socket_dev_api_futs = socket_dev::api(SOCKET_DEV_API_PORT);
-
-  // for serving node header files to node-gyp in tests
-  let node_js_mirror_server_fut =
-    nodejs_org_mirror::nodejs_org_mirror(NODEJS_ORG_MIRROR_SERVER_PORT);
-
-  let mut futures = vec![
+  let futures = vec![
     redirect_server_fut.boxed_local(),
     ws_server_fut.boxed_local(),
     ws_ping_server_fut.boxed_local(),
@@ -188,15 +167,7 @@ pub async fn run_all_servers() {
     otlp_grpc_server_fut.boxed_local(),
     registry_server_fut.boxed_local(),
     provenance_mock_server_fut.boxed_local(),
-    node_js_mirror_server_fut.boxed_local(),
   ];
-  futures.extend(npm_registry_server_futs);
-  futures.extend(private_npm_registry_1_server_futs);
-  futures.extend(private_npm_registry_2_server_futs);
-  futures.extend(private_npm_registry_3_server_futs);
-  futures.extend(npm_jsr_registry_server_futs);
-  futures.extend(private_npm_registry_mtls_futs);
-  futures.extend(socket_dev_api_futs);
 
   assert_eq!(futures.len(), TEST_SERVERS_COUNT);
 
@@ -421,9 +392,6 @@ async fn main_server(
   remote_addr: SocketAddr,
 ) -> Result<Response<UnsyncBoxBody<Bytes, Infallible>>, anyhow::Error> {
   match (req.method(), req.uri().path()) {
-    (&Method::POST, "/-/npm/v1/security/advisories/bulk") => {
-      npm_registry::npm_security_advisories_bulk(req).await
-    }
     (_, "/echo_server") => {
       let (parts, body) = req.into_parts();
       let mut response = Response::new(UnsyncBoxBody::new(Full::new(

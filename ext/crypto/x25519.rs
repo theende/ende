@@ -65,7 +65,7 @@ pub(crate) fn x25519_derive_bits(
 }
 
 // id-X25519 OBJECT IDENTIFIER ::= { 1 3 101 110 }
-#[allow(dead_code, reason = "used by node_interop and subtle_import_key")]
+#[allow(dead_code, reason = "used by subtle_import_key")]
 pub const X25519_OID: const_oid::ObjectIdentifier =
   const_oid::ObjectIdentifier::new_unwrap("1.3.101.110");
 

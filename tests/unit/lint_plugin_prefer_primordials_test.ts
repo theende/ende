@@ -33,7 +33,7 @@ import plugin, {
   MSG,
 } from "../../tools/lint_plugins/prefer_primordials.ts";
 
-const RULE_ID = "deno-internal/prefer-primordials";
+const RULE_ID = "ende-internal/prefer-primordials";
 
 function lint(source: string, fileName = "source.ts"): Deno.lint.Diagnostic[] {
   return Deno.lint.runPlugin(plugin, fileName, source);

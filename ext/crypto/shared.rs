@@ -155,7 +155,7 @@ pub struct InsertKeyData {
 }
 
 /// Wire representation used by the key store get op, returned to JavaScript for
-/// export, structured clone and node:crypto interop.
+/// export and structured clone.
 #[derive(ToV8)]
 pub struct StoredKeyData {
   kind: &'static str,

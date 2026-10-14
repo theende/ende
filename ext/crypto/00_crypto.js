@@ -104,7 +104,7 @@ applyWebIdlInterfaceShape(CryptoKey);
 // CryptoKey by `make_crypto_key` (`ext/crypto/make_key.rs`) returns a
 // snapshot with shape `{ type: "CryptoKey", keyType, extractable, usages,
 // algorithm, keyData }`; the static method `CryptoKey.fromCloneData(data)`
-// (`ext/crypto/node_interop.rs::from_clone_data`) parses the snapshot back
+// (`ext/crypto/key_clone.rs::from_clone_data`) parses the snapshot back
 // into a freshly-minted cppgc instance.
 core.registerCloneableResource(
   "CryptoKey",
@@ -313,25 +313,12 @@ function getCryptoSingleton() {
   return cryptoSingleton;
 }
 
-// Bridge functions for Node.js KeyObject interop -- thin trampolines onto
-// the cppgc static methods declared on the `CryptoKey` class in
-// `ext/crypto/crypto_key.rs` (which delegate to `node_interop.rs`).
-function cryptoKeyExportNodeKeyMaterial(cryptoKey) {
-  return CryptoKey.exportNodeMaterial(cryptoKey);
-}
-
-function importCryptoKeySync(format, keyData, algorithm, extractable, usages) {
-  return CryptoKey.importSync(format, keyData, algorithm, extractable, usages);
-}
-
 return {
   Crypto,
   get crypto() {
     return getCryptoSingleton();
   },
   CryptoKey,
-  cryptoKeyExportNodeKeyMaterial,
-  importCryptoKeySync,
   SubtleCrypto,
 };
 })();

@@ -1359,7 +1359,7 @@ pub static CHECK_SUBCOMMAND: CommandDef = CommandDef {
       .long("all")
       .set_true()
       .conflicts_with(&["no-remote"])
-.help("Type-check all code, including remote modules and npm packages"),
+.help("Type-check all code, including remote modules"),
     ArgDef::new("remote")
       .long("remote")
       .set_true()

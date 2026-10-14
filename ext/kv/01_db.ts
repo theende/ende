@@ -799,7 +799,7 @@ function serializeValue(value: unknown): RawValue {
   } else if (ObjectPrototypeIsPrototypeOf(KvU64.prototype, value)) {
     return {
       kind: "u64",
-      // deno-lint-ignore deno-internal/prefer-primordials
+      // deno-lint-ignore ende-internal/prefer-primordials
       value: value.valueOf(),
     };
   } else {

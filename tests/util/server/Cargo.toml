@@ -30,7 +30,6 @@ deno_unsync = "0"
 denokv_proto.workspace = true
 faster-hex.workspace = true
 fastwebsockets.workspace = true
-flate2 = { workspace = true, features = ["default"] }
 futures.workspace = true
 h2.workspace = true
 http.workspace = true
@@ -39,18 +38,13 @@ hyper.workspace = true
 hyper-util.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
-percent-encoding.workspace = true
 pretty_assertions.workspace = true
 prost.workspace = true
-reqwest.workspace = true
 rustls.workspace = true
 rustls-pemfile.workspace = true
 rustls-tokio-stream.workspace = true
-semver.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
-tar.workspace = true
-tempfile.workspace = true
 tokio.workspace = true
 zip.workspace = true
 

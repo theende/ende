@@ -244,12 +244,11 @@ fn op_emit_inner(state: &mut OpState, args: EmitArgs) -> bool {
   true
 }
 
+/// No file is a Node source file for the CLI type checker; the op only exists
+/// because the TS host shared with the LSP calls it.
 #[op2(fast)]
-fn op_is_node_file(#[string] path: &str) -> bool {
-  ModuleSpecifier::parse(path)
-    .ok()
-    .map(|specifier| specifier.as_str().starts_with("asset:///node/"))
-    .unwrap_or(false)
+fn op_is_node_file(#[string] _path: &str) -> bool {
+  false
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -348,11 +347,8 @@ pub fn exec_request(
     create_params: create_isolate_create_params(&crate::sys::CliSys::default()),
     startup_snapshot: ende_snapshots::CLI_SNAPSHOT,
     extension_code_cache,
-    // The TSC isolate shares CLI_SNAPSHOT, which under node-defer leaves
-    // node:process (and the rest of node's `lazy_loaded_esm` set) outside
-    // the snapshot blob. The compiler reads `process` (isNodeLikeSystem),
-    // which routes through the lazy `process` accessor and would otherwise
-    // fail with "Specifier \"node:process\" cannot be lazy-loaded".
+    // The TSC isolate shares CLI_SNAPSHOT; residual lazy sources left
+    // outside the snapshot blob must still be loadable here.
     residual_lazy_esm_sources: ende_snapshots::RESIDUAL_LAZY_ESM,
     residual_lazy_js_sources: ende_snapshots::RESIDUAL_LAZY_JS,
     ..Default::default()

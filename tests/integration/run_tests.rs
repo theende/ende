@@ -1416,20 +1416,6 @@ mod permissions {
 }
 
 #[test(flaky)]
-#[cfg(windows)]
-fn process_stdin_read_unblock() {
-  TestContext::default()
-    .new_command()
-    .args_vec(["run", "run/process_stdin_unblock.mjs"])
-    .with_pty(|mut console| {
-      console.write_raw("b");
-      console.human_delay();
-      console.write_line_raw("s");
-      console.expect_all(&["1", "1"]);
-    });
-}
-
-#[test(flaky)]
 fn issue9750() {
   TestContext::default()
     .new_command()
@@ -2733,17 +2719,6 @@ fn code_cache_test() {
       .assert_stderr_matches_text("[WILDCARD]Updating V8 code cache for ES module: file:///[WILDCARD]/main.js[WILDCARD]");
     assert_not_contains!(output.stderr(), "V8 code cache hit");
   }
-}
-
-#[test]
-fn node_process_stdin_pause() {
-  util::ende_cmd()
-    .current_dir(util::testdata_path())
-    .arg("run/node_process_stdin_pause.js")
-    .spawn()
-    .unwrap()
-    .wait()
-    .unwrap();
 }
 
 #[test]

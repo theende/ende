@@ -5,4 +5,3 @@ error: Uncaught (in promise) TypeError: Unsupported scheme "xxx" for module "xxx
  - "http"
  - "https"
  - "jsr"
- - "npm"

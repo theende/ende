@@ -222,8 +222,8 @@ pub(crate) struct ModuleMapData {
   /// not snapshotted.
   pub(crate) loaded_script_results:
     Rc<RefCell<HashMap<ModuleName, v8::Global<v8::Value>>>>,
-  /// `synthetic_esm` registry: module specifier (e.g. `node:worker_threads`)
-  /// to backing-script specifier (e.g. `ext:ende_node/worker_threads.ts`).
+  /// `synthetic_esm` registry: module specifier (e.g. `ext:my_ext/mod.js`)
+  /// to backing-script specifier (e.g. `ext:my_ext/mod_impl.js`).
   /// Populated at extension init from each extension's
   /// `synthetic_esm_files` list. Runtime-only — not snapshotted.
   pub(crate) synthetic_esm_modules:

@@ -48,8 +48,7 @@ The trace workloads cover:
 - a small TypeScript module;
 - an active timer;
 - `Ende.serve` plus one request;
-- `ende test`;
-- `node:crypto`; and
+- `ende test`; and
 - `ende fmt --check`.
 
 Each generator creates temporary fixtures and a private `ENDE_DIR`. The shared

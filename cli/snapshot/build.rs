@@ -114,10 +114,7 @@ fn create_cli_snapshot(
 
 /// The exact set of `lazy_loaded_*` specifiers that are legitimately pulled
 /// into the eager snapshot, i.e. statically reachable from an eager `esm`
-/// module. Captured at the time PR #34450 landed. The heavy node-polyfill
-/// closure (process / stream / net / tty / require / the ~118 polyfill modules)
-/// is deliberately *absent* — it is `lazy_loaded_esm`, deserialized only on
-/// first `node:*` use, so non-node `ende run` / `eval` never pay for it.
+/// module. Captured at the time PR #34450 landed.
 ///
 /// Anything reaching the eager graph that is NOT in this list regresses
 /// empty/ESM startup (each leaked module adds snapshot deserialization the
@@ -125,10 +122,7 @@ fn create_cli_snapshot(
 ///
 /// To update: run a build, take the `consumed_lazy_specifiers` reported by
 /// `create_runtime_snapshot`, and reconcile here — but first confirm the new
-/// entry is *meant* to be eager. A node-closure module showing up almost
-/// always means an eager `esm` entry (or a static import from one) is dragging
-/// the polyfill closure into startup; fix that in `ext/node/lib.rs` rather than
-/// widening this list. See PR #34450.
+/// entry is *meant* to be eager. See PR #34450.
 #[cfg(not(feature = "disable"))]
 const EXPECTED_CONSUMED: &[&str] = &[
   "ext:ende_crypto/00_crypto.js",
@@ -138,37 +132,6 @@ const EXPECTED_CONSUMED: &[&str] = &[
   "ext:ende_io/12_io.js",
   "ext:ende_net/01_net.js",
   "ext:ende_net/02_tls.js",
-  "ext:ende_node/02_register_cloneable.js",
-  "ext:ende_node/_util/os.ts",
-  "ext:ende_node/internal/async_hooks.ts",
-  "ext:ende_node/internal/buffer.mjs",
-  "ext:ende_node/internal/crypto/_keys.ts",
-  "ext:ende_node/internal/crypto/constants.ts",
-  "ext:ende_node/internal/error_codes.ts",
-  "ext:ende_node/internal/errors.ts",
-  "ext:ende_node/internal/hide_stack_frames.ts",
-  "ext:ende_node/internal/normalize_encoding.ts",
-  "ext:ende_node/internal/options.ts",
-  "ext:ende_node/internal/primordials.mjs",
-  "ext:ende_node/internal/timers.mjs",
-  "ext:ende_node/internal/util.mjs",
-  "ext:ende_node/internal/util/colorize.mjs",
-  "ext:ende_node/internal/util/inspect.mjs",
-  "ext:ende_node/internal/util/types.ts",
-  "ext:ende_node/internal/validators.mjs",
-  "ext:ende_node/internal_binding/_libuv_winerror.ts",
-  "ext:ende_node/internal_binding/_node.ts",
-  "ext:ende_node/internal_binding/_utils.ts",
-  "ext:ende_node/internal_binding/async_wrap.ts",
-  "ext:ende_node/internal_binding/buffer.ts",
-  "ext:ende_node/internal_binding/constants.ts",
-  "ext:ende_node/internal_binding/node_options.ts",
-  "ext:ende_node/internal_binding/string_decoder.ts",
-  "ext:ende_node/internal_binding/symbols.ts",
-  "ext:ende_node/internal_binding/types.ts",
-  "ext:ende_node/internal_binding/util.ts",
-  "ext:ende_node/internal_binding/uv.ts",
-  "ext:ende_node/timers.ts",
   "ext:ende_os/30_os.js",
   "ext:ende_os/40_signals.js",
   "ext:ende_web/00_infra.js",
@@ -194,8 +157,6 @@ const EXPECTED_CONSUMED: &[&str] = &[
   "ext:runtime/11_workers.js",
   "ext:runtime/40_fs_events.js",
   "ext:runtime/40_tty.js",
-  "node:buffer",
-  "node:timers",
 ];
 
 /// Startup guardrail (see PR #34450). Asserts the set of `lazy_loaded_*`
@@ -214,11 +175,8 @@ fn assert_consumed_set_unchanged(consumed: &std::collections::HashSet<&str>) {
     leaked.is_empty(),
     "lazy module(s) newly pulled into the eager snapshot: {leaked:?}.\nEach \
      adds snapshot deserialization to the common `ende run` / `eval` startup \
-     path. If a `node:*` / `ext:ende_node/*` module leaked, an eager `esm` \
-     entry or a static import from an eager module is dragging the node \
-     polyfill closure into startup — fix it in ext/node/lib.rs. If the entry \
-     is genuinely meant to be eager, add it to EXPECTED_CONSUMED. See \
-     PR #34450."
+     path. If the entry is genuinely meant to be eager, add it to \
+     EXPECTED_CONSUMED. See PR #34450."
   );
 }
 
@@ -252,7 +210,7 @@ fn transpile_residual_source(
   });
 
   // Sanitize the specifier into a filesystem-safe name. Specifiers look like
-  // `ext:ende_node/https.ts`, which we want to round-trip into a unique file.
+  // `ext:ende_web/00_infra.js`, which we want to round-trip into a unique file.
   let sanitized: String = specifier
     .chars()
     .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })

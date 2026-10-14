@@ -664,7 +664,7 @@ function report(
 }
 
 const plugin: Deno.lint.Plugin = {
-  name: "deno-internal",
+  name: "ende-internal",
   rules: {
     "prefer-primordials": {
       create(context) {

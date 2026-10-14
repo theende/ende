@@ -209,7 +209,7 @@ interface AsyncContextSnapshot {
 // A `unique symbol` type requires a direct `Symbol.for()` call, which is what
 // makes `SpanSnapshot` below narrowable. This runs during bootstrap, before any
 // user code, so reaching for the global here is safe.
-// deno-lint-ignore deno-internal/prefer-primordials
+// deno-lint-ignore ende-internal/prefer-primordials
 const DID_NOT_ENTER: unique symbol = Symbol.for(
   "Deno.telemetry.didNotEnterSpan",
 );
@@ -824,7 +824,7 @@ class Meter {
     if (!METRICS_ENABLED) return new Counter(null, false);
     const instrument = this.#meter.createCounter(
       name,
-      // deno-lint-ignore deno-internal/prefer-primordials
+      // deno-lint-ignore ende-internal/prefer-primordials
       options?.description,
       options?.unit,
     ) as Instrument;
@@ -838,7 +838,7 @@ class Meter {
     if (!METRICS_ENABLED) return new Counter(null, true);
     const instrument = this.#meter.createUpDownCounter(
       name,
-      // deno-lint-ignore deno-internal/prefer-primordials
+      // deno-lint-ignore ende-internal/prefer-primordials
       options?.description,
       options?.unit,
     ) as Instrument;
@@ -852,7 +852,7 @@ class Meter {
     if (!METRICS_ENABLED) return new Gauge(null);
     const instrument = this.#meter.createGauge(
       name,
-      // deno-lint-ignore deno-internal/prefer-primordials
+      // deno-lint-ignore ende-internal/prefer-primordials
       options?.description,
       options?.unit,
     ) as Instrument;
@@ -866,7 +866,7 @@ class Meter {
     if (!METRICS_ENABLED) return new Histogram(null);
     const instrument = this.#meter.createHistogram(
       name,
-      // deno-lint-ignore deno-internal/prefer-primordials
+      // deno-lint-ignore ende-internal/prefer-primordials
       options?.description,
       options?.unit,
       options?.advice?.explicitBucketBoundaries,
@@ -881,7 +881,7 @@ class Meter {
     if (!METRICS_ENABLED) new Observable(new ObservableResult(null, true));
     const instrument = this.#meter.createObservableCounter(
       name,
-      // deno-lint-ignore deno-internal/prefer-primordials
+      // deno-lint-ignore ende-internal/prefer-primordials
       options?.description,
       options?.unit,
     ) as Instrument;
@@ -898,7 +898,7 @@ class Meter {
     if (!METRICS_ENABLED) new Observable(new ObservableResult(null, false));
     const instrument = this.#meter.createObservableUpDownCounter(
       name,
-      // deno-lint-ignore deno-internal/prefer-primordials
+      // deno-lint-ignore ende-internal/prefer-primordials
       options?.description,
       options?.unit,
     ) as Instrument;
@@ -912,7 +912,7 @@ class Meter {
     if (!METRICS_ENABLED) new Observable(new ObservableResult(null, false));
     const instrument = this.#meter.createObservableGauge(
       name,
-      // deno-lint-ignore deno-internal/prefer-primordials
+      // deno-lint-ignore ende-internal/prefer-primordials
       options?.description,
       options?.unit,
     ) as Instrument;
@@ -1174,22 +1174,22 @@ async function observe(): Promise<void> {
 
   const promises: Promise<void>[] = [];
   // Primordials are not needed, because this is a SafeMap.
-  // deno-lint-ignore deno-internal/prefer-primordials
+  // deno-lint-ignore ende-internal/prefer-primordials
   for (const { 0: observable, 1: callbacks } of INDIVIDUAL_CALLBACKS) {
     const result = getObservableResult(observable);
     // Primordials are not needed, because this is a SafeSet.
-    // deno-lint-ignore deno-internal/prefer-primordials
+    // deno-lint-ignore ende-internal/prefer-primordials
     for (const callback of callbacks) {
       // PromiseTry is not in primordials?
-      // deno-lint-ignore deno-internal/prefer-primordials
+      // deno-lint-ignore ende-internal/prefer-primordials
       ArrayPrototypePush(promises, Promise.try(callback, result));
     }
   }
   // Primordials are not needed, because this is a SafeMap.
-  // deno-lint-ignore deno-internal/prefer-primordials
+  // deno-lint-ignore ende-internal/prefer-primordials
   for (const { 0: callback, 1: result } of BATCH_CALLBACKS) {
     // PromiseTry is not in primordials?
-    // deno-lint-ignore deno-internal/prefer-primordials
+    // deno-lint-ignore ende-internal/prefer-primordials
     ArrayPrototypePush(promises, Promise.try(callback, result));
   }
   await SafePromiseAll(promises);
@@ -1653,7 +1653,7 @@ function getKeyPairs(baggage: Baggage): string[] {
     // NOTE: we intentionally don't URI-encode the metadata - that responsibility falls on the metadata implementation
     if (baggageEntry[1].metadata !== undefined) {
       entry += BAGGAGE_PROPERTIES_SEPARATOR +
-        // deno-lint-ignore deno-internal/prefer-primordials
+        // deno-lint-ignore ende-internal/prefer-primordials
         baggageEntry[1].metadata.toString();
     }
 

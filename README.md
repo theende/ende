@@ -59,7 +59,8 @@ to the Deno authors for the work it builds on. Existing Deno projects keep
 working: the `Deno` global is a permanent alias of `Ende`, and `deno.json`,
 `deno.lock` and `DENO_*` environment variables are still read (with a
 deprecation warning) when their `ende.json`, `ende.lock` and `ENDE_*`
-counterparts are absent.
+counterparts are absent. Unlike Deno, Ende does not support npm packages, Node
+built-ins (`node:*`) or CommonJS.
 
 ## Additional resources
 

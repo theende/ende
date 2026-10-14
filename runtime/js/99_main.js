@@ -150,7 +150,7 @@ function bootstrapOtel(otelConfig) {
   bootstrap(otelConfig);
 }
 
-// deno-lint-ignore deno-internal/prefer-primordials
+// deno-lint-ignore ende-internal/prefer-primordials
 if (Symbol.metadata) {
   throw "V8 supports Symbol.metadata now, no need to shim it";
 }

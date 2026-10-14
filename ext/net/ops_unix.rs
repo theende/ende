@@ -280,14 +280,6 @@ pub fn op_net_listen_unixpacket(
   net_listen_unixpacket(state, path.as_deref())
 }
 
-#[op2(stack_trace)]
-pub fn op_node_unstable_net_listen_unixpacket(
-  state: &mut OpState,
-  #[string] path: Option<String>, // todo: Option<&str> not supported in ops yet
-) -> Result<(ResourceId, Option<String>), NetError> {
-  net_listen_unixpacket(state, path.as_deref())
-}
-
 pub fn pathstring(pathname: &Path) -> Result<String, NetError> {
   into_string(pathname.into())
 }

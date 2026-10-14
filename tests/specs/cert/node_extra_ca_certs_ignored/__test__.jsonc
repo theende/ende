@@ -1,0 +1,19 @@
+{
+  // NODE_EXTRA_CA_CERTS is a Node.js variable and is not honored by Ende; use
+  // --cert, ENDE_CERT or ENDE_TLS_CA_STORE instead.
+  "tests": {
+    "ignored": {
+      "envs": { "NODE_EXTRA_CA_CERTS": "../../../testdata/tls/RootCA.pem" },
+      "args": "eval fetch('https://localhost:5545/cert/cafile_ts_fetch.ts.out')",
+      "flaky": true,
+      "exitCode": 1,
+      "output": "[WILDCARD]invalid peer certificate: UnknownIssuer[WILDCARD]"
+    },
+    "missing_file_no_warning": {
+      "envs": { "NODE_EXTRA_CA_CERTS": "./non_existent_cert.pem" },
+      "args": "eval --quiet --cert ../../../testdata/tls/RootCA.pem fetch('https://localhost:5545/cert/cafile_ts_fetch.ts.out').then(r=>r.text()).then(t=>console.log(t.trimEnd().split(String.fromCharCode(10)).pop()))",
+      "flaky": true,
+      "output": "Hello\n"
+    }
+  }
+}

@@ -52,7 +52,6 @@ Following ops are provided, which can be accessed through `Ende.ops`:
 - op_net_set_multi_ttl_udp
 - op_net_set_broadcast_udp
 - op_net_validate_multicast
-- op_net_get_system_dns_servers
 - op_net_listen_vsock
 - op_net_accept_vsock
 - op_net_connect_vsock
@@ -122,8 +121,6 @@ Following ops are provided, which can be accessed through `Ende.ops`:
 
 ### Other
 
-- op_node_unstable_net_listen_udp
 - op_dns_resolve
 - op_set_nodelay
 - op_set_keepalive
-- op_node_unstable_net_listen_unixpacket

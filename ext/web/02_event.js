@@ -1365,7 +1365,7 @@ class MessageEvent extends Event {
       // by WPT's no-regexp-special-casing test) still produce the
       // expected `ports` array. SafeArrayIterator can't be used here
       // because it walks the value as if it were an Array.
-      // deno-lint-ignore deno-internal/prefer-primordials
+      // deno-lint-ignore ende-internal/prefer-primordials
       for (const p of ports) {
         if (
           p === null || typeof p !== "object" ||

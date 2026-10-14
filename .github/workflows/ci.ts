@@ -373,13 +373,6 @@ const installDenoStep = step({
   uses: "denoland/setup-deno@v2",
   with: { "deno-version": "v2.x" },
 });
-const installNodeStep = step({
-  name: "Install Node",
-  uses: "actions/setup-node@v6",
-  with: {
-    "node-version": 22,
-  },
-});
 
 function createRestoreAndSaveCacheSteps(m: {
   name: string;
@@ -1223,21 +1216,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               ],
             },
             {
-              // Eager bootstrap modules must lazy-load node:/heavy closures via
-              // core.createLazyLoader, never a static `import`. A static import
-              // pulls the module's whole transitive closure into the startup
-              // snapshot (e.g. `import "node:buffer"` dragged ~22 node internal
-              // modules / ~700 SFIs in). Keep them out.
-              name: "Check eager bootstrap does not static-import node:",
-              if: isLinux,
-              run: [
-                "if grep -rEn '^import .* from \"node:' runtime/js/; then",
-                '  echo "eager bootstrap statically imports a node: module — use core.createLazyLoader so it stays out of the startup snapshot"',
-                "  exit 1",
-                "fi",
-              ],
-            },
-            {
               name: "Generate symcache",
               run: [
                 "target/release/ende -A tools/release/create_symcache.ts ./ende.symcache",
@@ -1422,14 +1400,11 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               "command -v cargo && cargo --version || echo 'No cargo found or bad executable'",
               "echo '*** Deno'",
               "command -v deno && deno --version || echo 'No deno found or bad executable'",
-              "echo '*** Node'",
-              "command -v node && node --version || echo 'No node found or bad executable'",
               "echo '*** Installed packages'",
               "command -v dpkg && dpkg -l || echo 'No dpkg found or bad executable'",
             ],
           }).comesAfter(
             installDenoStep,
-            installNodeStep,
             installPythonStep,
             installRustStep,
           ),
@@ -1501,7 +1476,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           cloneRepoStep,
           cloneStdSubmoduleStep,
           restoreCacheStep,
-          installNodeStep,
           installRustStep,
           installLldStep,
           sysRootStep,
@@ -1623,7 +1597,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
       steps: step.if(isNotTag.and(buildItem.skip.not()))(
         cloneRepoStep,
         restoreCacheStep,
-        installNodeStep,
         installRustStep,
         installLldStep,
         sysRootStep,
@@ -1666,11 +1639,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           name: "Cargo check (ende_resolver)",
           run:
             "cargo check --target wasm32-unknown-unknown -p ende_resolver && cargo check --target wasm32-unknown-unknown -p ende_resolver --features graph && cargo check --target wasm32-unknown-unknown -p ende_resolver --features graph --features deno_ast",
-        },
-        {
-          name: "Cargo check (ende_npm_installer)",
-          run:
-            "cargo check --target wasm32-unknown-unknown -p ende_npm_installer",
         },
         {
           name: "Cargo check (ende_config)",
@@ -1820,7 +1788,6 @@ const benchJob = job(
       )(
         cloneRepoStep,
         benchCacheSteps.restoreCacheStep,
-        installNodeStep,
         installRustStep,
         cloneSubmodule("./tests/bench/testdata/lsp_benchdata"),
         cloneStdSubmoduleStep,

@@ -86,8 +86,7 @@ Or if you want to run several tests at the same time:
 - `tempDir` (boolean) - Copy all the non-test files to a temporary directory and
   execute the command in that temporary directory.
   - By default, tests are executed with a current working directory of the test,
-    but this may not be desirable for tests such as ones that create a
-    node_modules directory.
+    but this may not be desirable for tests that create files.
 
 ### Step properties
 
