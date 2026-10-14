@@ -370,7 +370,6 @@ async function ensureWorkflowYmlsUpToDate() {
     ".github/workflows/create_prerelease_tag.ts",
     ".github/workflows/pr.ts",
     ".github/workflows/cargo_publish.ts",
-    ".github/workflows/npm_publish.ts",
     ".github/workflows/post_publish.ts",
     ".github/workflows/promote_to_release.ts",
     ".github/workflows/start_release.ts",
