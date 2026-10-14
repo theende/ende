@@ -6,6 +6,7 @@ version = "0.56.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
+publish = false
 repository.workspace = true
 description = "Provides definitions of Ende unstable features."
 

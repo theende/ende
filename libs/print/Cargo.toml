@@ -5,6 +5,7 @@ version = "0.7.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
+publish = false
 repository.workspace = true
 description = "Print macros that don't panic on broken pipes, for Ende crates"
 

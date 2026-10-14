@@ -56,21 +56,17 @@ Release checklist: <LINK TO THIS FORKED GIST GOES HERE>
 
 ### Phase 2: Publish
 
-- [ ] Go to the "cargo_publish" workflow in the CLI repo's actions:
-      https://github.com/denoland/deno/actions/workflows/cargo_publish.generated.yml
+- [ ] Go to the "release_tag" workflow in the repo's actions:
+      https://github.com/theende/ende/actions/workflows/release_tag.generated.yml
   1. Run it on the same branch that you used before and wait for it to complete.
+     It creates and pushes the `v$VERSION` tag.
 
   <details>
      <summary>Failure Steps</summary>
 
-  1. The workflow was designed to be restartable. Try restarting it.
-  2. If that doesn't work, then do the following:
-     1. Checkout the `primary` branch.
-     2. If `cargo publish` hasn't completed then run
-        `./tools/release/03_publish_crates.ts`
-        - Note that you will need access to crates.io so it might fail.
-     3. If `cargo publish` succeeded and a release tag wasn't created, then
-        manually create and push the `v$VERSION` tag on the `primary` branch.
+  1. The workflow is restartable. Try restarting it.
+  2. If that doesn't work, check out the `primary` branch and manually create
+     and push the `v$VERSION` tag.
   </details>
 
 - [ ] This CI run create a tag which triggers a second CI run that publishes the

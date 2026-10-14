@@ -6,6 +6,7 @@ version = "0.61.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
+publish = false
 repository.workspace = true
 description = "An implementation of a lockfile used in Ende"
 

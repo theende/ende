@@ -9,6 +9,7 @@ name = "build-your-own-js-snapshot"
 version = "0.1.0"
 build = "build.rs"
 edition = "2024"
+publish = false
 
 [dependencies]
 ende_core.workspace = true

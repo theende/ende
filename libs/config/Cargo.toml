@@ -5,6 +5,7 @@ version = "0.109.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
+publish = false
 repository.workspace = true
 description = "Config file implementation for the Ende CLI"
 
