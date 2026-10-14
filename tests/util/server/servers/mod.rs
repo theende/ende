@@ -885,15 +885,6 @@ console.log("imported", import.meta.url);
           .unwrap(),
       )
     }
-    (&Method::GET, "/upgrade/sleep/canary-latest.txt") => {
-      tokio::time::sleep(Duration::from_secs(95)).await;
-      Ok(
-        Response::builder()
-          .status(StatusCode::OK)
-          .body(string_body("bda3850f84f24b71e02512c1ba2d6bf2e3daa2fd"))
-          .unwrap(),
-      )
-    }
     (&Method::GET, "/release-latest.txt") => {
       Ok(
         Response::builder()
@@ -903,22 +894,6 @@ console.log("imported", import.meta.url);
           .unwrap(),
       )
     }
-    (
-      &Method::GET,
-      "/canary-latest.txt"
-      | "/canary-x86_64-apple-darwin-latest.txt"
-      | "/canary-aarch64-apple-darwin-latest.txt"
-      | "/canary-x86_64-unknown-linux-gnu-latest.txt"
-      | "/canary-aarch64-unknown-linux-gnu-latest.txt"
-      | "/canary-x86_64-unknown-linux-musl-latest.txt"
-      | "/canary-aarch64-unknown-linux-musl-latest.txt"
-      | "/canary-x86_64-pc-windows-msvc-latest.txt",
-    ) => Ok(
-      Response::builder()
-        .status(StatusCode::OK)
-        .body(string_body("bda3850f84f24b71e02512c1ba2d6bf2e3daa2fd"))
-        .unwrap(),
-    ),
     // for testing ende upgrade
     (&Method::GET, path)
       if path.starts_with("/ende-upgrade/download/")

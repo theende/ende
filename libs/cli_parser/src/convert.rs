@@ -296,6 +296,10 @@ const REMOVED_FLAGS: &[&str] = &[
   "--no-npm",
   "--bundle",
   "--minify",
+  "--canary",
+  "--rc",
+  "--release-candidate",
+  "--lts",
 ];
 
 /// The tip for an unknown `flag` (without any `=value`) passed to `command`,
@@ -1662,75 +1666,100 @@ fn upgrade_parse(
 
   let dry_run = result.get_bool("dry-run");
   let force = result.get_bool("force");
-  let canary = result.get_bool("canary");
-  let release_candidate = result.get_bool("release-candidate");
   let version = result.get_one("version").map(|s| s.to_string());
   let output = result.get_one("output").map(|s| s.to_string());
   let checksum = result.get_one("checksum").map(|s| s.to_string());
 
-  let positional = result
-    .get_one("version-or-hash-or-channel")
-    .map(|s| s.to_string());
+  let positional = result.get_one("version-positional").map(|s| s.to_string());
 
   // Handle "pr <number>" and "compass" special positional patterns
   let pr_number_positional = result
     .get_one("pr-number-positional")
     .map(|s| s.to_string());
 
-  let (version_or_hash_or_channel, pr, branch) =
-    if positional.as_deref() == Some("pr") {
-      // "ende upgrade pr <number>" - second positional is the PR number
-      let pr_str = pr_number_positional
-        .as_deref()
-        .or_else(|| result.get_one("pr"));
-      match pr_str {
-        None => {
-          return Err(CliError::new(
-            CliErrorKind::MissingRequired,
-            "missing PR number for 'ende upgrade pr'",
-          ));
-        }
-        Some(s) => {
-          let s = s.strip_prefix('#').unwrap_or(s);
-          match s.parse::<u64>() {
-            Ok(n) => (None, Some(n), None),
-            Err(_) => {
-              return Err(CliError::new(
-                CliErrorKind::InvalidValue,
-                format!("invalid PR number: '{s}'"),
-              ));
-            }
+  let (positional_version, pr, branch) = if positional.as_deref() == Some("pr")
+  {
+    // "ende upgrade pr <number>" - second positional is the PR number
+    let pr_str = pr_number_positional
+      .as_deref()
+      .or_else(|| result.get_one("pr"));
+    match pr_str {
+      None => {
+        return Err(CliError::new(
+          CliErrorKind::MissingRequired,
+          "missing PR number for 'ende upgrade pr'",
+        ));
+      }
+      Some(s) => {
+        let s = s.strip_prefix('#').unwrap_or(s);
+        match s.parse::<u64>() {
+          Ok(n) => (None, Some(n), None),
+          Err(_) => {
+            return Err(CliError::new(
+              CliErrorKind::InvalidValue,
+              format!("invalid PR number: '{s}'"),
+            ));
           }
         }
       }
-    } else if positional.as_deref() == Some("compass") {
-      (None, None, Some("compass".to_string()))
+    }
+  } else if positional.as_deref() == Some("compass") {
+    (None, None, Some("compass".to_string()))
+  } else {
+    let pr_flag = result.get_one("pr").and_then(|s| s.parse::<u64>().ok());
+    let branch_flag = result.get_one("branch").map(|s| s.to_string());
+    if pr_flag.is_some() {
+      (None, pr_flag, None)
+    } else if branch_flag.is_some() {
+      (None, None, branch_flag)
     } else {
-      let pr_flag = result.get_one("pr").and_then(|s| s.parse::<u64>().ok());
-      let branch_flag = result.get_one("branch").map(|s| s.to_string());
-      if pr_flag.is_some() {
-        (None, pr_flag, None)
-      } else if branch_flag.is_some() {
-        (None, None, branch_flag)
-      } else {
-        (positional, None, None)
-      }
-    };
+      (positional, None, None)
+    }
+  };
+
+  // The positional version takes precedence over `--version`.
+  let version = positional_version.or(version);
+  if let Some(version) = &version {
+    check_not_release_channel(version)?;
+  }
 
   flags.subcommand = EndeSubcommand::Upgrade(UpgradeFlags {
     dry_run,
     force,
-    release_candidate,
-    canary,
     version,
     output,
-    version_or_hash_or_channel,
     checksum,
     pr,
     branch,
     no_delta: result.get_bool("no-delta"),
   });
   Ok(())
+}
+
+/// Ende has a single release channel, so the channel names and commit hashes
+/// that `ende upgrade` used to accept are rejected with a clear error.
+fn check_not_release_channel(version: &str) -> Result<(), CliError> {
+  const CHANNELS: &[&str] = &["stable", "canary", "rc", "lts", "alpha", "beta"];
+  let is_channel = CHANNELS.contains(&version.to_lowercase().as_str());
+  let is_commit_hash =
+    version.len() == 40 && version.chars().all(|c| c.is_ascii_hexdigit());
+  if !is_channel && !is_commit_hash {
+    return Ok(());
+  }
+  let unsupported = if is_channel {
+    format!("`{version}`")
+  } else {
+    format!("installing a commit hash (`{version}`)")
+  };
+  Err(
+    CliError::new(
+      CliErrorKind::InvalidValue,
+      format!(
+        "Ende has a single release channel; {unsupported} is not supported"
+      ),
+    )
+    .with_suggestion("run `ende upgrade` to install the latest release"),
+  )
 }
 
 fn cache_parse(result: &ParseResult, flags: &mut Flags) {

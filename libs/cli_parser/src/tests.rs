@@ -160,6 +160,7 @@ const COMPILE_ARGS: &[ArgDef] = &[
     .require_equals(),
   ArgDef::new("import-map")
     .long("import-map")
+    .long_aliases(&["importmap"])
     .action(ArgAction::Set)
     .num_args(NumArgs::Exact(1))
     .value_name("FILE"),
@@ -501,11 +502,6 @@ const TEST_ARGS: &[ArgDef] = &[
 const UPGRADE_ARGS: &[ArgDef] = &[
   ArgDef::new("dry-run").long("dry-run").set_true(),
   ArgDef::new("force").short('f').long("force").set_true(),
-  ArgDef::new("canary").long("canary").set_true(),
-  ArgDef::new("release-candidate")
-    .long("release-candidate")
-    .long_aliases(&["rc"])
-    .set_true(),
   ArgDef::new("version")
     .long("version")
     .action(ArgAction::Set)
@@ -515,7 +511,7 @@ const UPGRADE_ARGS: &[ArgDef] = &[
     .long("output")
     .action(ArgAction::Set)
     .num_args(NumArgs::Exact(1)),
-  ArgDef::new("version-or-hash-or-channel")
+  ArgDef::new("version-positional")
     .positional()
     .action(ArgAction::Set)
     .num_args(NumArgs::Optional),
@@ -932,9 +928,9 @@ fn upgrade_subcommand() {
 
 #[test]
 fn upgrade_with_positional() {
-  let r = parse(&TEST_ROOT, &svec!["ende", "upgrade", "canary"]).unwrap();
+  let r = parse(&TEST_ROOT, &svec!["ende", "upgrade", "1.46.0"]).unwrap();
   assert_eq!(r.subcommand.as_deref(), Some("upgrade"));
-  assert_eq!(r.get_one("version-or-hash-or-channel"), Some("canary"));
+  assert_eq!(r.get_one("version-positional"), Some("1.46.0"));
 }
 
 #[test]
@@ -1220,7 +1216,7 @@ fn upgrade_double_dash_stays_trailing() {
   // `--` still starts (unused) trailing args, as before.
   let r =
     parse(&TEST_ROOT, &svec!["ende", "upgrade", "--", "v1", "v2"]).unwrap();
-  assert_eq!(r.get_one("version-or-hash-or-channel"), None);
+  assert_eq!(r.get_one("version-positional"), None);
   assert_eq!(r.trailing, vec!["v1", "v2"]);
 }
 
@@ -1315,9 +1311,13 @@ fn combined_short_flags() {
 }
 
 #[test]
-fn upgrade_alias() {
-  let r = parse(&TEST_ROOT, &svec!["ende", "upgrade", "--rc"]).unwrap();
-  assert!(r.get_bool("release-candidate"));
+fn long_alias() {
+  let r = parse(
+    &TEST_ROOT,
+    &svec!["ende", "run", "--importmap", "import_map.json", "script.ts"],
+  )
+  .unwrap();
+  assert_eq!(r.get_one("import-map"), Some("import_map.json"));
 }
 
 #[test]

@@ -1,0 +1,42 @@
+// Copyright 2026 the Ende authors. MIT license.
+// Ende has a single release channel: the canary, rc and lts channel flags and
+// channel names are not accepted by `ende upgrade`.
+{
+  "tests": {
+    "canary_flag": {
+      "args": "upgrade --canary",
+      "output": "canary_flag.out",
+      "exitCode": 1
+    },
+    "rc_flag": {
+      "args": "upgrade --rc",
+      "output": "rc_flag.out",
+      "exitCode": 1
+    },
+    "release_candidate_flag": {
+      "args": "upgrade --release-candidate",
+      "output": "release_candidate_flag.out",
+      "exitCode": 1
+    },
+    "lts_flag": {
+      "args": "upgrade --lts",
+      "output": "lts_flag.out",
+      "exitCode": 1
+    },
+    "canary_channel": {
+      "args": "upgrade canary",
+      "output": "canary_channel.out",
+      "exitCode": 1
+    },
+    "rc_channel": {
+      "args": "upgrade rc",
+      "output": "rc_channel.out",
+      "exitCode": 1
+    },
+    "commit_hash": {
+      "args": "upgrade 9bc2dd29ad6ba334fd57a20114e367d3c04763d4",
+      "output": "commit_hash.out",
+      "exitCode": 1
+    }
+  }
+}

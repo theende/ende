@@ -48,11 +48,9 @@ const knownCiFailures: { name: string; reason: string }[] = [
   ),
   ...[
     "stable",
-    "canary",
     "out",
     "space_in_tmp",
     "specific_stable",
-    "specific_canary",
   ].map((name) => ({
     name: `specs::upgrade::${name}`,
     reason: "needs real releases at dl.ende.sh",
@@ -1122,19 +1120,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               'Get-FileHash "target\\release\\ende-$Target.from-$PrevVersion.bsdiff" -Algorithm SHA256 | Format-List > "target\\release\\ende-$Target.from-$PrevVersion.bsdiff.sha256sum"',
             ],
           },
-          step({
-            name: "Upload canary to dl.deno.land",
-            if: isDenoland.and(isMainBranch),
-            env: S3Envs,
-            run: [
-              'aws s3 sync ./target/release/ s3://dl-deno-land/canary/$(git rev-parse HEAD)/ --exclude "*" --include "*.zip"',
-              'aws s3 sync ./target/release/ s3://dl-deno-land/canary/$(git rev-parse HEAD)/ --exclude "*" --include "*.sha256sum"',
-              'aws s3 sync ./target/release/ s3://dl-deno-land/canary/$(git rev-parse HEAD)/ --exclude "*" --include "*.symcache"',
-              "echo ${{ github.sha }} > canary-latest.txt",
-              'aws s3 cp canary-latest.txt s3://dl-deno-land/canary-$(rustc -vV | sed -n "s|host: ||p")-latest.txt',
-              "rm canary-latest.txt",
-            ],
-          }),
         );
         const packagesToBuild = ["ende", "endert", "test_server"]
           .map((name) => `-p ${name}`).join(" ");
@@ -1153,12 +1138,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             installRustStep,
             sysRootStep,
           )(
-            {
-              // do this on PRs as well as main so that PRs can use the cargo build cache from main
-              name: "Configure canary build",
-              if: isNotTag,
-              run: 'echo "ENDE_CANARY=true" >> $GITHUB_ENV',
-            },
             ...(usesFramePointerPanicTrace
               ? [{
                 name: "Configure frame-pointer panic traces",
@@ -1416,9 +1395,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               ].join("\n"),
               body_path: "target/release/release-notes.md",
               draft: true,
-              // Flag pre-release tags (e.g. -alpha./-beta./-rc.) as pre-releases
-              // so they are not marked "Latest" when the draft is published.
-              prerelease: "${{ contains(github.ref_name, '-') }}",
             },
           },
         );
@@ -1969,27 +1945,6 @@ const lintJob = job("lint", {
   })(),
 });
 
-// === publish-canary job ===
-
-const publishCanaryJob = job("publish-canary", {
-  name: "publish canary",
-  runsOn: ubuntuX86Runner,
-  needs: [...buildJobs.map((b) => b.buildJob)],
-  if: isDenoland.and(isMainBranch),
-  steps: (() => {
-    return step(
-      {
-        name: "Upload canary version file to dl.deno.land",
-        env: S3Envs,
-        run: [
-          "echo ${{ github.sha }} > canary-latest.txt",
-          "aws s3 cp canary-latest.txt s3://dl-deno-land/canary-latest.txt",
-        ],
-      },
-    );
-  })(),
-});
-
 // === ende_core test job ===
 // Ported from denoland/deno_core .github/workflows/ci-test/action.yml
 // Tests the merged ende_core crates (libs/*) using cargo nextest.
@@ -2225,7 +2180,6 @@ const workflow = createWorkflow({
     lintJob,
     ...fullMatrixOnlyJobs,
     ciStatusJob,
-    ...(fullMatrix ? [publishCanaryJob] : []),
   ],
 });
 

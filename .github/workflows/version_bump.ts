@@ -11,7 +11,7 @@ const workflow = createWorkflow({
           description: "Kind of version bump",
           default: "patch",
           type: "choice",
-          options: ["patch", "minor", "major", "rc", "alpha", "beta"],
+          options: ["patch", "minor", "major"],
           required: true,
         },
       },

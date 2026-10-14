@@ -224,7 +224,6 @@ impl<const LEGACY: bool> lsp::notification::Notification
 #[serde(rename_all = "camelCase")]
 pub struct UpgradeAvailable {
   pub latest_version: String,
-  pub is_canary: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

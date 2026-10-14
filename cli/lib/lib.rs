@@ -2,7 +2,6 @@
 
 pub mod args;
 pub mod loader;
-pub mod shared;
 pub mod standalone;
 pub mod sys;
 pub mod util;

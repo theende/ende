@@ -25,7 +25,6 @@ use ende_core::serde_json;
 use ende_core::url::Url;
 use ende_lib::args::CaData;
 use ende_lib::args::UnstableConfig;
-use ende_lib::shared::ReleaseChannel;
 use ende_lib::standalone::binary::MAGIC_BYTES;
 use ende_lib::standalone::binary::Metadata;
 use ende_lib::standalone::binary::RemoteModuleEntry;
@@ -379,14 +378,8 @@ impl<'a> EndeCompileBinaryWriter<'a> {
     let binary_name =
       runtime_archive_name("endert", &compile_flags.engine, &target);
 
-    let binary_path_suffix = match ENDE_VERSION_INFO.release_channel {
-      ReleaseChannel::Canary => {
-        format!("canary/{}/{}", ENDE_VERSION_INFO.git_hash, binary_name)
-      }
-      _ => {
-        format!("release/v{}/{}", ENDE_VERSION_INFO.ende, binary_name)
-      }
-    };
+    let binary_path_suffix =
+      format!("release/v{}/{}", ENDE_VERSION_INFO.ende, binary_name);
 
     let download_directory = self.ende_dir.dl_folder_path();
     let binary_path = download_directory.join(&binary_path_suffix);
@@ -454,14 +447,8 @@ impl<'a> EndeCompileBinaryWriter<'a> {
     let binary_name =
       runtime_archive_name("libendert", &compile_flags.engine, &target);
 
-    let binary_path_suffix = match ENDE_VERSION_INFO.release_channel {
-      ReleaseChannel::Canary => {
-        format!("canary/{}/{}", ENDE_VERSION_INFO.git_hash, binary_name)
-      }
-      _ => {
-        format!("release/v{}/{}", ENDE_VERSION_INFO.ende, binary_name)
-      }
-    };
+    let binary_path_suffix =
+      format!("release/v{}/{}", ENDE_VERSION_INFO.ende, binary_name);
 
     let download_directory = self.ende_dir.dl_folder_path();
     let binary_path = download_directory.join(&binary_path_suffix);

@@ -1,0 +1,3 @@
+error: Ende has a single release channel; `rc` is not supported
+
+  tip: run `ende upgrade` to install the latest release

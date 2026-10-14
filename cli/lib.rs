@@ -585,14 +585,6 @@ fn setup_panic_hook() {
     eprintln!("Args: {:?}", env::args().collect::<Vec<_>>());
     eprintln!();
 
-    let info = &ende_lib::version::ENDE_VERSION_INFO;
-    let version =
-      if info.release_channel == ende_lib::shared::ReleaseChannel::Canary {
-        format!("{}+{}", ende_lib::version::ENDE_VERSION, info.git_hash)
-      } else {
-        info.ende.to_string()
-      };
-
     // Panic traces are not supported for custom/development builds.
     #[cfg(feature = "panic-trace")]
     let trace = {
@@ -619,7 +611,7 @@ fn setup_panic_hook() {
       "{}",
       util::panic_report::panic_issue_url(&util::panic_report::PanicReport {
         message: panic_str,
-        version: &version,
+        version: ende_lib::version::ENDE_VERSION_INFO.ende,
         target: env!("TARGET"),
         platform: &platform,
         location: panic_info.location().map(|l| l.to_string()),

@@ -58,8 +58,8 @@ build job's critical path.
 - **`ci-status`** — an aggregator that the branch protection rule keys on. It
   passes as long as none of its dependencies failed or were cancelled; skipped
   dependencies are fine.
-- Full matrix only: **`bench`**, **`wpt`**, **`ende-core-test`**,
-  **`ende-core-miri`** and **`publish-canary`**.
+- Full matrix only: **`bench`**, **`wpt`**, **`ende-core-test`** and
+  **`ende-core-miri`**.
 
 ## How `pre-build` gates the rest
 

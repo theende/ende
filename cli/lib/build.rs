@@ -13,10 +13,6 @@ fn main() {
   let commit_hash = git_commit_hash();
   println!("cargo:rustc-env=GIT_COMMIT_HASH={}", commit_hash);
   println!("cargo:rerun-if-env-changed=GIT_COMMIT_HASH");
-  println!(
-    "cargo:rustc-env=GIT_COMMIT_HASH_SHORT={}",
-    &commit_hash[..7]
-  );
 }
 
 fn git_commit_hash() -> String {

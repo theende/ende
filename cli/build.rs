@@ -503,11 +503,6 @@ fn main() {
     compress_sources(&out_dir);
   }
 
-  if let Ok(c) = env::var("ENDE_CANARY") {
-    println!("cargo:rustc-env=ENDE_CANARY={c}");
-  }
-  println!("cargo:rerun-if-env-changed=ENDE_CANARY");
-
   println!("cargo:rustc-env=TARGET={}", env::var("TARGET").unwrap());
   println!("cargo:rustc-env=PROFILE={}", env::var("PROFILE").unwrap());
 

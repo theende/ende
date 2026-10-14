@@ -3226,7 +3226,6 @@ dependencies = [
  "faster-hex",
  "indexmap",
  "libc",
- "libsui",
  "log",
  "parking_lot",
  "serde",

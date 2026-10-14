@@ -1,12 +1,12 @@
 Current Ende version: [WILDCARD]
-Looking up stable version
+Looking up latest version
 
-Found latest stable version [WILDCARD]
+Found latest version [WILDCARD]
 [# The step is retried on failure, so how the new binary is obtained varies:]
 [# a full download, a delta patch, or -- once an earlier attempt populated]
 [# the deno dir -- the cached archive.]
 [WILDCARD]
 Ende is upgrading to version [WILDCARD]
 
-Upgraded successfully to Ende [WILDCARD] (stable)
+Upgraded successfully to Ende [WILDCARD]
 [WILDCARD]

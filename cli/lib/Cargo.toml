@@ -31,7 +31,6 @@ ende_runtime.workspace = true
 env_logger.workspace = true
 faster-hex.workspace = true
 indexmap.workspace = true
-libsui.workspace = true
 log = { workspace = true, features = ["serde"] }
 parking_lot.workspace = true
 serde = { workspace = true, features = ["derive"] }

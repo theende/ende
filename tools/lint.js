@@ -367,11 +367,9 @@ async function clippy() {
 async function ensureWorkflowYmlsUpToDate() {
   const generators = [
     ".github/workflows/ci.ts",
-    ".github/workflows/create_prerelease_tag.ts",
     ".github/workflows/pr.ts",
     ".github/workflows/cargo_publish.ts",
     ".github/workflows/post_publish.ts",
-    ".github/workflows/promote_to_release.ts",
     ".github/workflows/start_release.ts",
     ".github/workflows/version_bump.ts",
   ];

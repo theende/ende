@@ -1214,45 +1214,43 @@ pub static UPGRADE_SUBCOMMAND: CommandDef = CommandDef {
   about: "Upgrade ende executable to given version",
   aliases: &[],
   args: &[
-    ArgDef::new("dry-run").long("dry-run").set_true()
-.help("Perform all checks without replacing old exe"),
-    ArgDef::new("force").short('f').long("force").set_true()
-.help("Replace current exe even if not out-of-date"),
-    ArgDef::new("canary").long("canary").set_true()
-.help("Upgrade to canary builds"),
-    ArgDef::new("release-candidate")
-      .long("release-candidate")
-      .long_aliases(&["rc"])
+    ArgDef::new("dry-run")
+      .long("dry-run")
       .set_true()
-      .conflicts_with(&["canary", "version"])
-.help("Upgrade to a release candidate"),
+      .help("Perform all checks without replacing old exe"),
+    ArgDef::new("force")
+      .short('f')
+      .long("force")
+      .set_true()
+      .help("Replace current exe even if not out-of-date"),
     ArgDef::new("version")
       .long("version")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("The version to upgrade to"),
+      .help("The version to upgrade to"),
     ArgDef::new("output")
       .short('o')
       .long("output")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("The path to output the updated version to"),
+      .help("The path to output the updated version to"),
     ArgDef::new("cert")
       .long("cert")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Load certificate authority from PEM encoded file"),
+      .help("Load certificate authority from PEM encoded file"),
     ArgDef::new("unsafely-ignore-certificate-errors")
       .long("unsafely-ignore-certificate-errors")
       .action(ArgAction::Append)
       .num_args(NumArgs::ZeroOrMore)
       .value_delimiter(',')
-.help("DANGER: Disables verification of TLS certificates"),
-    ArgDef::new("version-or-hash-or-channel")
+      .help("DANGER: Disables verification of TLS certificates"),
+    ArgDef::new("version-positional")
       .positional()
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Version (v1.46.0), channel (alpha, beta, rc, canary), commit hash (9bc2dd29ad6ba334fd57a20114e367d3c04763d4), or pr 12345 to install from a PR"),
+      .value_name("VERSION")
+      .help("Version (v1.46.0), or pr 12345 to install from a PR"),
     ArgDef::new("pr-number-positional")
       .positional()
       .action(ArgAction::Set)
@@ -1265,13 +1263,17 @@ pub static UPGRADE_SUBCOMMAND: CommandDef = CommandDef {
       .long("checksum")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Verify the downloaded archive against the provided SHA256 checksum"),
+      .help(
+        "Verify the downloaded archive against the provided SHA256 checksum",
+      ),
     ArgDef::new("branch")
       .long("branch")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1)),
-    ArgDef::new("no-delta").long("no-delta").set_true()
-.help("Disable delta updates and always download the full archive"),
+    ArgDef::new("no-delta")
+      .long("no-delta")
+      .set_true()
+      .help("Disable delta updates and always download the full archive"),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS],
   subcommands: &[],

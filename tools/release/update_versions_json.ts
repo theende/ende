@@ -33,9 +33,10 @@ if (response.ok) {
 }
 
 // Insert in descending (newest-first) order rather than blindly prepending.
-// Releases are not always published newest-first: an LTS patch (e.g. v2.9.5)
-// can ship after a newer stable (e.g. v3.0.0), and a prepend would then list it
-// above the newer versions. Insert by semver so the ordering stays correct.
+// Releases are not always published newest-first: a patch to an older minor
+// (e.g. v2.9.5) can ship after a newer release (e.g. v3.0.0), and a prepend
+// would then list it above the newer versions. Insert by semver so the
+// ordering stays correct.
 if (!versions.cli.includes(version)) {
   const parsed = parse(version);
   const idx = versions.cli.findIndex((v) => greaterThan(parsed, parse(v)));

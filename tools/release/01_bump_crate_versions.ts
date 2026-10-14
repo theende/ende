@@ -16,35 +16,6 @@ const endeRtCrate = workspace.getEndeRtCrate();
 const endeLibCrate = workspace.getEndeLibCrate();
 const originalCliVersion = cliCrate.version;
 
-const prereleaseKind = (["--rc", "--alpha", "--beta"] as const).find((a) =>
-  Deno.args.includes(a)
-);
-if (prereleaseKind) {
-  const tag = prereleaseKind.slice(2); // "rc", "alpha", or "beta"
-  let cliVersion = semver.parse(cliCrate.version)!;
-
-  if (!cliVersion.prerelease?.length) {
-    // Transitioning from stable (e.g. 2.7.0 -> 2.8.0-alpha.0)
-    cliVersion = semver.increment(cliVersion, "minor");
-  } else if (cliVersion.prerelease[0] != tag) {
-    // Transitioning between prerelease kinds (e.g. 3.0.0-alpha.12 -> 3.0.0-beta.0)
-    cliVersion = { ...cliVersion, prerelease: undefined };
-  }
-  cliVersion = increment(cliVersion, "prerelease", { prerelease: tag });
-
-  const version = cliVersion.toString();
-
-  await cliCrate.setVersion(version);
-  await endeRtCrate.setVersion(version);
-  endeLibCrate.folderPath.join("version.txt").writeTextSync(version);
-  // Force lockfile update
-  await workspace.getCliCrate().cargoUpdate("--workspace");
-
-  await assertEndeBinaryVersion(version);
-
-  Deno.exit(0);
-}
-
 await bumpCiCacheVersion();
 
 // increment the cli version

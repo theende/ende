@@ -415,7 +415,7 @@ jobs:
             echo "::error::tests exited with $status and wrote no $report"
             exit "$status"
           fi
-          known='{"unit::lint_plugin_test":"upstream @std/testing reads Deno.version.deno, which Ende removed; fixed once std is published under @ende","integration::coverage::no_snaps":"upstream @std/testing reads Deno.version.deno, which Ende removed; fixed once std is published under @ende","specs::upgrade::stable":"needs real releases at dl.ende.sh","specs::upgrade::canary":"needs real releases at dl.ende.sh","specs::upgrade::out":"needs real releases at dl.ende.sh","specs::upgrade::space_in_tmp":"needs real releases at dl.ende.sh","specs::upgrade::specific_stable":"needs real releases at dl.ende.sh","specs::upgrade::specific_canary":"needs real releases at dl.ende.sh"}'
+          known='{"unit::lint_plugin_test":"upstream @std/testing reads Deno.version.deno, which Ende removed; fixed once std is published under @ende","integration::coverage::no_snaps":"upstream @std/testing reads Deno.version.deno, which Ende removed; fixed once std is published under @ende","specs::upgrade::stable":"needs real releases at dl.ende.sh","specs::upgrade::out":"needs real releases at dl.ende.sh","specs::upgrade::space_in_tmp":"needs real releases at dl.ende.sh","specs::upgrade::specific_stable":"needs real releases at dl.ende.sh"}'
           failed=$(jq -r '.tests[] | select(.failed) | .name' "$report")
           unexpected=$(jq -r --argjson known "$known" '.tests[] | select(.failed) | .name | select($known[.] == null)' "$report")
           if [ -z "$failed" ] || [ -n "$unexpected" ]; then
@@ -1064,7 +1064,7 @@ jobs:
             echo "::error::tests exited with $status and wrote no $report"
             exit "$status"
           fi
-          known='{"unit::lint_plugin_test":"upstream @std/testing reads Deno.version.deno, which Ende removed; fixed once std is published under @ende","integration::coverage::no_snaps":"upstream @std/testing reads Deno.version.deno, which Ende removed; fixed once std is published under @ende","specs::upgrade::stable":"needs real releases at dl.ende.sh","specs::upgrade::canary":"needs real releases at dl.ende.sh","specs::upgrade::out":"needs real releases at dl.ende.sh","specs::upgrade::space_in_tmp":"needs real releases at dl.ende.sh","specs::upgrade::specific_stable":"needs real releases at dl.ende.sh","specs::upgrade::specific_canary":"needs real releases at dl.ende.sh"}'
+          known='{"unit::lint_plugin_test":"upstream @std/testing reads Deno.version.deno, which Ende removed; fixed once std is published under @ende","integration::coverage::no_snaps":"upstream @std/testing reads Deno.version.deno, which Ende removed; fixed once std is published under @ende","specs::upgrade::stable":"needs real releases at dl.ende.sh","specs::upgrade::out":"needs real releases at dl.ende.sh","specs::upgrade::space_in_tmp":"needs real releases at dl.ende.sh","specs::upgrade::specific_stable":"needs real releases at dl.ende.sh"}'
           failed=$(jq -r '.tests[] | select(.failed) | .name' "$report")
           unexpected=$(jq -r --argjson known "$known" '.tests[] | select(.failed) | .name | select($known[.] == null)' "$report")
           if [ -z "$failed" ] || [ -n "$unexpected" ]; then

@@ -40,15 +40,6 @@ pub static UPGRADE_USAGE: &str = cstr!(
 
 <g>Specific version</>
   <bold>ende upgrade</> <p(245)>1.45.0</>
-  <bold>ende upgrade</> <p(245)>1.46.0-rc.1</>
-  <bold>ende upgrade</> <p(245)>9bc2dd29ad6ba334fd57a20114e367d3c04763d4</>
-
-<g>Channel</>
-  <bold>ende upgrade</> <p(245)>stable</>
-  <bold>ende upgrade</> <p(245)>alpha</>
-  <bold>ende upgrade</> <p(245)>beta</>
-  <bold>ende upgrade</> <p(245)>rc</>
-  <bold>ende upgrade</> <p(245)>canary</>
 
 <g>From a pull request</> <p(245)>(requires gh CLI)</>
   <bold>ende upgrade</> <p(245)>pr 12345</>"
@@ -692,9 +683,8 @@ pub fn render_version(long: bool) -> String {
   if long {
     debug_assert_eq!(ENDE_VERSION_INFO.typescript, ende_snapshots::TS_VERSION);
     format!(
-      "ende {} ({}, {}, {})\nv8 {}\ntypescript {}\n",
+      "ende {} ({}, {})\nv8 {}\ntypescript {}\n",
       ENDE_VERSION_INFO.ende,
-      ENDE_VERSION_INFO.release_channel.name(),
       env!("PROFILE"),
       env!("TARGET"),
       ende_core::v8::VERSION_STRING,
@@ -834,6 +824,25 @@ mod tests {
 
   fn flags_from_vec(args: Vec<OsString>) -> Result<Flags, CliError> {
     flags_from_vec_with_initial_cwd(args, None)
+  }
+
+  /// Ende has a single release channel, so the version output doesn't name
+  /// one.
+  #[test]
+  fn render_version_has_no_release_channel() {
+    assert_eq!(
+      render_version(false),
+      format!("ende {}\n", ENDE_VERSION_INFO.ende)
+    );
+    assert_eq!(
+      render_version(true).lines().next().unwrap(),
+      format!(
+        "ende {} ({}, {})",
+        ENDE_VERSION_INFO.ende,
+        env!("PROFILE"),
+        env!("TARGET")
+      )
+    );
   }
 
   /// Invoking the binary through an `x` shim (argv[0] ending in a built-in

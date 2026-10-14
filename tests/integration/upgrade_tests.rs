@@ -65,11 +65,7 @@ fn upgrade_prompt() {
     // - We need to use a pty here because the upgrade prompt
     //   doesn't occur except when there's a pty.
     // - Version comes from the test server.
-    pty.expect_any(&[
-      " 99999.99.99 Run `ende upgrade` to install it.",
-      // it builds canary releases on main, so check for this in that case
-      "Run `ende upgrade canary` to install it.",
-    ]);
+    pty.expect(" 99999.99.99 Run `ende upgrade` to install it.");
   });
 }
 

@@ -84,12 +84,9 @@ fn upgrade() {
       subcommand: EndeSubcommand::Upgrade(UpgradeFlags {
         force: true,
         dry_run: true,
-        canary: false,
         no_delta: false,
-        release_candidate: false,
         version: None,
         output: None,
-        version_or_hash_or_channel: None,
         checksum: None,
         pr: None,
         branch: None,
@@ -108,12 +105,9 @@ fn upgrade_with_output_flag() {
       subcommand: EndeSubcommand::Upgrade(UpgradeFlags {
         force: false,
         dry_run: false,
-        canary: false,
         no_delta: false,
-        release_candidate: false,
         version: None,
         output: Some(String::from("example.txt")),
-        version_or_hash_or_channel: None,
         checksum: None,
         pr: None,
         branch: None,
@@ -4519,12 +4513,9 @@ fn upgrade_with_ca_file() {
       subcommand: EndeSubcommand::Upgrade(UpgradeFlags {
         force: false,
         dry_run: false,
-        canary: false,
         no_delta: false,
-        release_candidate: false,
         version: None,
         output: None,
-        version_or_hash_or_channel: None,
         checksum: None,
         pr: None,
         branch: None,
@@ -4536,33 +4527,83 @@ fn upgrade_with_ca_file() {
 }
 
 #[test]
-fn upgrade_release_candidate() {
-  let r = flags_from_vec(svec!["ende", "upgrade", "--rc"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Upgrade(UpgradeFlags {
-        force: false,
-        dry_run: false,
-        canary: false,
-        no_delta: false,
-        release_candidate: true,
-        version: None,
-        output: None,
-        version_or_hash_or_channel: None,
-        checksum: None,
-        pr: None,
-        branch: None,
-      }),
-      ..Flags::default()
+fn upgrade_version() {
+  for args in [
+    svec!["ende", "upgrade", "1.46.0"],
+    svec!["ende", "upgrade", "--version", "1.46.0"],
+    // the positional version takes precedence over `--version`
+    svec!["ende", "upgrade", "--version", "1.0.0", "1.46.0"],
+  ] {
+    assert_eq!(
+      flags_from_vec(args.clone()).unwrap(),
+      Flags {
+        subcommand: EndeSubcommand::Upgrade(UpgradeFlags {
+          force: false,
+          dry_run: false,
+          no_delta: false,
+          version: Some("1.46.0".to_string()),
+          output: None,
+          checksum: None,
+          pr: None,
+          branch: None,
+        }),
+        ..Flags::default()
+      },
+      "{args:?}"
+    );
+  }
+}
+
+#[test]
+fn upgrade_channel_flags_removed() {
+  for flag in ["--canary", "--rc", "--release-candidate", "--lts"] {
+    let err = flags_from_vec(svec!["ende", "upgrade", flag]).unwrap_err();
+    assert_eq!(err.kind, CliErrorKind::UnknownFlag, "{flag}");
+    assert_eq!(err.message, format!("unexpected argument '{flag}' found"));
+    assert_eq!(
+      err.suggestion,
+      Some(format!("`{flag}` is not supported in Ende")),
+      "{flag}"
+    );
+  }
+}
+
+#[test]
+fn upgrade_channel_names_rejected() {
+  for channel in ["canary", "rc", "lts", "alpha", "beta", "stable", "Canary"] {
+    for args in [
+      svec!["ende", "upgrade", channel],
+      svec!["ende", "upgrade", "--version", channel],
+    ] {
+      let err = flags_from_vec(args.clone()).unwrap_err();
+      assert_eq!(err.kind, CliErrorKind::InvalidValue, "{args:?}");
+      assert_eq!(
+        err.message,
+        format!(
+          "Ende has a single release channel; `{channel}` is not supported"
+        ),
+        "{args:?}"
+      );
+      assert_eq!(
+        err.suggestion.as_deref(),
+        Some("run `ende upgrade` to install the latest release"),
+        "{args:?}"
+      );
     }
+  }
+}
+
+#[test]
+fn upgrade_commit_hash_rejected() {
+  let hash = "9bc2dd29ad6ba334fd57a20114e367d3c04763d4";
+  let err = flags_from_vec(svec!["ende", "upgrade", hash]).unwrap_err();
+  assert_eq!(err.kind, CliErrorKind::InvalidValue);
+  assert_eq!(
+    err.message,
+    format!(
+      "Ende has a single release channel; installing a commit hash (`{hash}`) is not supported"
+    )
   );
-
-  let r = flags_from_vec(svec!["ende", "upgrade", "--rc", "--canary"]);
-  assert!(r.is_err());
-
-  let r = flags_from_vec(svec!["ende", "upgrade", "--rc", "--version"]);
-  assert!(r.is_err());
 }
 
 #[test]
@@ -4574,12 +4615,9 @@ fn upgrade_pr() {
       subcommand: EndeSubcommand::Upgrade(UpgradeFlags {
         force: false,
         dry_run: false,
-        canary: false,
         no_delta: false,
-        release_candidate: false,
         version: None,
         output: None,
-        version_or_hash_or_channel: None,
         checksum: None,
         pr: Some(12345),
         branch: None,
@@ -4598,12 +4636,9 @@ fn upgrade_pr_with_hash_prefix() {
       subcommand: EndeSubcommand::Upgrade(UpgradeFlags {
         force: false,
         dry_run: false,
-        canary: false,
         no_delta: false,
-        release_candidate: false,
         version: None,
         output: None,
-        version_or_hash_or_channel: None,
         checksum: None,
         pr: Some(6789),
         branch: None,
@@ -4622,12 +4657,9 @@ fn upgrade_pr_with_flags() {
       subcommand: EndeSubcommand::Upgrade(UpgradeFlags {
         force: false,
         dry_run: true,
-        canary: false,
         no_delta: false,
-        release_candidate: false,
         version: None,
         output: None,
-        version_or_hash_or_channel: None,
         checksum: None,
         pr: Some(33250),
         branch: None,
@@ -8648,12 +8680,9 @@ fn upgrade_no_delta() {
       subcommand: EndeSubcommand::Upgrade(UpgradeFlags {
         force: false,
         dry_run: false,
-        canary: false,
         no_delta: true,
-        release_candidate: false,
         version: None,
         output: None,
-        version_or_hash_or_channel: None,
         checksum: None,
         pr: None,
         branch: None,

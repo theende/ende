@@ -3803,7 +3803,6 @@ impl tower_lsp::LanguageServer for LanguageServer {
                 upgrade_available: version_info.map(|info| {
                   lsp_custom::UpgradeAvailable {
                     latest_version: info.latest_version,
-                    is_canary: info.is_canary,
                   }
                 }),
               },

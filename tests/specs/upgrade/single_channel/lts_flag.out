@@ -1,0 +1,3 @@
+error: unexpected argument '--lts' found
+
+  tip: `--lts` is not supported in Ende

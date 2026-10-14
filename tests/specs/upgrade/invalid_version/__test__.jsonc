@@ -1,10 +1,5 @@
 {
   "tests": {
-    "canary": {
-      "args": "upgrade --canary asdfasdf",
-      "output": "canary.out",
-      "exitCode": 1
-    },
     "version": {
       "args": "upgrade --version asdfasdf",
       "output": "version.out",
