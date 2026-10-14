@@ -9,7 +9,6 @@ use deno_graph::NpmResolvePkgReqsResult;
 use deno_semver::package::PackageReq;
 use ende_npm::resolution::NpmResolutionError;
 use ende_npm_cache::NpmCacheHttpClient;
-use ende_resolver::graph::FoundPackageJsonDepFlag;
 
 use crate::NpmInstaller;
 use crate::NpmInstallerSys;
@@ -43,7 +42,6 @@ pub struct NpmDenoGraphResolver<
   TSys: NpmInstallerSys,
 > {
   npm_installer: Option<Arc<NpmInstaller<TNpmCacheHttpClient, TSys>>>,
-  found_package_json_dep_flag: Arc<FoundPackageJsonDepFlag>,
   npm_caching: NpmCachingStrategy,
 }
 
@@ -52,12 +50,10 @@ impl<TNpmCacheHttpClient: NpmCacheHttpClient, TSys: NpmInstallerSys>
 {
   pub fn new(
     npm_installer: Option<Arc<NpmInstaller<TNpmCacheHttpClient, TSys>>>,
-    found_package_json_dep_flag: Arc<FoundPackageJsonDepFlag>,
     npm_caching: NpmCachingStrategy,
   ) -> Self {
     Self {
       npm_installer,
-      found_package_json_dep_flag,
       npm_caching,
     }
   }
@@ -92,15 +88,6 @@ impl<TNpmCacheHttpClient: NpmCacheHttpClient, TSys: NpmInstallerSys>
   ) -> NpmResolvePkgReqsResult {
     match &self.npm_installer {
       Some(npm_installer) => {
-        let top_level_result = if self.found_package_json_dep_flag.is_raised() {
-          npm_installer
-            .ensure_top_level_package_json_install()
-            .await
-            .map(|_| ())
-        } else {
-          Ok(())
-        };
-
         let result = npm_installer
           .add_package_reqs_raw(
             package_reqs,
@@ -126,12 +113,9 @@ impl<TNpmCacheHttpClient: NpmCacheHttpClient, TSys: NpmInstallerSys>
               })
             })
             .collect(),
-          dep_graph_result: match top_level_result {
-            Ok(()) => result
-              .dependencies_result
-              .map_err(|e| Arc::new(e) as Arc<dyn deno_error::JsErrorClass>),
-            Err(err) => Err(Arc::new(err)),
-          },
+          dep_graph_result: result
+            .dependencies_result
+            .map_err(|e| Arc::new(e) as Arc<dyn deno_error::JsErrorClass>),
         }
       }
       None => {

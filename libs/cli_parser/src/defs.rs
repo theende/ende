@@ -203,15 +203,13 @@ pub static COMPILE_ARGS: &[ArgDef] = &[
 .help("Load import map file from local file or remote URL\n  Docs: https://docs.ende.sh/runtime/manual/basics/import_maps"),
   ArgDef::new("no-remote").long("no-remote").set_true()
 .help("Do not resolve remote modules"),
-  ArgDef::new("no-npm").long("no-npm").set_true()
-.help("Do not resolve npm modules"),
   ArgDef::new("vendor")
     .long("vendor")
     .action(ArgAction::Set)
     .num_args(NumArgs::Optional)
     .require_equals()
     .value_parser(ValueParser::Bool)
-.help("Toggles local vendor folder usage for remote modules and a node_modules folder for npm packages"),
+.help("Toggles local vendor folder usage for remote modules"),
   ArgDef::new("config")
     .short('c')
     .long("config")
@@ -230,7 +228,7 @@ pub static COMPILE_ARGS: &[ArgDef] = &[
     .num_args(NumArgs::ZeroOrMore)
     .require_equals()
     .value_delimiter(',')
-.help("Reload source code cache (recompile TypeScript). With no value, reloads everything. Pass a comma-separated list of specifiers to reload only those modules; npm: reloads all npm modules; npm:chalk reloads a single npm module; jsr:@std/http/file-server,jsr:@std/assert/assert-equals reloads specific modules."),
+.help("Reload source code cache (recompile TypeScript). With no value, reloads everything. Pass a comma-separated list of specifiers to reload only those modules; jsr:@std/http/file-server,jsr:@std/assert/assert-equals reloads specific modules."),
   ArgDef::new("lock")
     .long("lock")
     .action(ArgAction::Set)
@@ -1729,7 +1727,7 @@ pub static COMPILE_SUBCOMMAND: CommandDef = CommandDef {
       .long("exclude")
       .action(ArgAction::Append)
       .num_args(NumArgs::Exact(1))
-.help("Excludes a file/directory in the compiled executable.\n  Use this flag to exclude a specific file or directory within the included files.\n  For example, to exclude a certain folder in the bundled node_modules directory."),
+.help("Excludes a file/directory in the compiled executable.\n  Use this flag to exclude a specific file or directory within the included files.\n  For example, to exclude a certain folder in an included directory."),
     ArgDef::new("env-file")
       .long("env-file")
       .long_aliases(&["env"])
@@ -1923,34 +1921,11 @@ pub static INSTALL_SUBCOMMAND: CommandDef = CommandDef {
       .set_true()
       .requires(&["global"])
 .help("Forcefully overwrite existing installation"),
-    ArgDef::new("dev")
-      .short('D')
-      .long("dev")
-      .set_true()
-      .conflicts_with(&["entrypoint", "global"])
-.help("Add the package as a dev dependency (under `devDependencies`). Note: this only applies when adding to a `package.json` file."),
-    ArgDef::new("save-optional")
-      .short('O')
-      .long("save-optional")
-      .set_true()
-      .conflicts_with(&["entrypoint", "global", "dev"])
-.help("Add the package as an optional dependency (under `optionalDependencies`). Note: this only applies when adding to a `package.json` file."),
     ArgDef::new("no-save")
       .long("no-save")
       .set_true()
-      .conflicts_with(&["entrypoint", "global", "dev", "save-optional"])
+      .conflicts_with(&["entrypoint", "global"])
 .help("Install the package(s) without adding them to the configuration file."),
-    ArgDef::new("prod")
-      .long("prod")
-      .long_aliases(&["production"])
-      .set_true()
-      .conflicts_with(&["global", "dev"])
-.help("Only install production dependencies (excludes devDependencies)"),
-    ArgDef::new("skip-types")
-      .long("skip-types")
-      .set_true()
-      .requires(&["prod"])
-.help("Exclude @types/* packages from installation.\nBe careful, as it uses a name-based heuristic and may skip packages that ship runtime code."),
     ArgDef::new("entrypoint")
       .short('e')
       .long("entrypoint")
@@ -1967,17 +1942,6 @@ pub static INSTALL_SUBCOMMAND: CommandDef = CommandDef {
       .set_true()
       .conflicts_with(&["global"])
 .help("Install only updating the lockfile"),
-    ArgDef::new("npm").long("npm").set_true().conflicts_with(&[
-      "jsr",
-      "entrypoint",
-      "global",
-    ])
-.help("assume unprefixed package names are npm packages (default)"),
-    ArgDef::new("jsr")
-      .long("jsr")
-      .set_true()
-      .conflicts_with(&["entrypoint", "global"])
-.help("assume unprefixed package names are jsr packages"),
     ArgDef::new("save-exact")
       .long("save-exact")
       .long_aliases(&["exact"])
@@ -1989,26 +1953,6 @@ pub static INSTALL_SUBCOMMAND: CommandDef = CommandDef {
       .set_true()
       .conflicts_with(&["entrypoint", "global"])
 .help("Use the package name without its scope as the alias (ex. `jsr:@david/jsonc-morph` is added as `jsonc-morph`). Packages given an explicit alias are unaffected."),
-    ArgDef::new("os")
-      .long("os")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-      .conflicts_with(&["global"])
-      .value_parser(ValueParser::Choices(&[
-        "aix", "android", "darwin", "freebsd", "linux", "openbsd", "sunos",
-        "win32",
-      ]))
-.help("Target OS for npm package installation (e.g., linux, darwin, win32)"),
-    ArgDef::new("arch")
-      .long("arch")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-      .conflicts_with(&["global"])
-      .value_parser(ValueParser::Choices(&[
-        "arm", "arm64", "ia32", "mips", "mipsel", "ppc", "ppc64", "s390",
-        "s390x", "x64",
-      ]))
-.help("Target architecture for npm package installation (e.g., x64, arm64)"),
     ArgDef::new("env-file")
       .long("env-file")
       .long_aliases(&["env"])
@@ -2130,20 +2074,15 @@ pub static INIT_SUBCOMMAND: CommandDef = CommandDef {
       .set_true()
       .conflicts_with(&["lib"])
       .help("Generate an example project for `ende serve`"),
-    ArgDef::new("npm")
-      .long("npm")
-      .set_true()
-      .conflicts_with(&["lib", "serve", "empty", "jsr"])
-      .help("Generate a npm create-* project"),
     ArgDef::new("jsr")
       .long("jsr")
       .set_true()
-      .conflicts_with(&["lib", "serve", "empty", "npm"])
+      .conflicts_with(&["lib", "serve", "empty"])
       .help("Generate a project from a JSR package"),
     ArgDef::new("empty")
       .long("empty")
       .set_true()
-      .conflicts_with(&["lib", "serve", "npm", "jsr"])
+      .conflicts_with(&["lib", "serve", "jsr"])
       .help("Generate a minimal project with just main.ts and ende.json"),
     ArgDef::new("yes")
       .short('y')
@@ -2301,18 +2240,9 @@ pub static ADD_SUBCOMMAND: CommandDef = CommandDef {
       .num_args(NumArgs::OneOrMore)
       .required()
 .help("List of packages to add"),
-    ArgDef::new("dev").short('D').long("dev").set_true()
-.help("Add the package as a dev dependency (under `devDependencies`). Note: this only applies when adding to a `package.json` file."),
-    ArgDef::new("save-optional")
-      .short('O')
-      .long("save-optional")
-      .set_true()
-      .conflicts_with(&["dev"])
-.help("Add the package as an optional dependency (under `optionalDependencies`). Note: this only applies when adding to a `package.json` file."),
     ArgDef::new("no-save")
       .long("no-save")
       .set_true()
-      .conflicts_with(&["dev", "save-optional"])
 .help("Install the package(s) without adding them to the configuration file."),
     ArgDef::new("save-exact")
       .long("save-exact")
@@ -2321,13 +2251,6 @@ pub static ADD_SUBCOMMAND: CommandDef = CommandDef {
 .help("Save exact version without the caret (^)"),
     ArgDef::new("unscoped").long("unscoped").set_true()
 .help("Use the package name without its scope as the alias (ex. `jsr:@david/jsonc-morph` is added as `jsonc-morph`). Packages given an explicit alias are unaffected."),
-    ArgDef::new("npm")
-      .long("npm")
-      .set_true()
-      .conflicts_with(&["jsr"])
-.help("assume unprefixed package names are npm packages (default)"),
-    ArgDef::new("jsr").long("jsr").set_true()
-.help("assume unprefixed package names are jsr packages"),
     ArgDef::new("lockfile-only")
       .long("lockfile-only")
       .set_true()
@@ -2528,16 +2451,21 @@ pub static CLEAN_SUBCOMMAND: CommandDef = CommandDef {
       .positional()
       .action(ArgAction::Append)
       .num_args(NumArgs::ZeroOrMore),
-    ArgDef::new("except").long("except").short('e').set_true()
-.help("Retain cache data needed by the given files"),
-    ArgDef::new("dry-run").long("dry-run").set_true()
-.help("Show what would be removed without performing any actions"),
+    ArgDef::new("except")
+      .long("except")
+      .short('e')
+      .set_true()
+      .help("Retain cache data needed by the given files"),
+    ArgDef::new("dry-run")
+      .long("dry-run")
+      .set_true()
+      .help("Show what would be removed without performing any actions"),
     ArgDef::new("vendor")
       .long("vendor")
       .action(ArgAction::Set)
       .num_args(NumArgs::Optional)
       .require_equals()
-.help("Toggles local vendor folder usage for remote modules and a node_modules folder for npm packages"),
+      .help("Toggles local vendor folder usage for remote modules"),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS],
   subcommands: &[],
@@ -2549,7 +2477,7 @@ pub static CLEAN_SUBCOMMAND: CommandDef = CommandDef {
 
 pub static LIST_SUBCOMMAND: CommandDef = CommandDef {
   name: "list",
-  about: "List the dependencies declared in ende.json / package.json",
+  about: "List the dependencies declared in ende.json",
   aliases: &[],
   args: &[
     ArgDef::new("filters")
@@ -2563,13 +2491,6 @@ pub static LIST_SUBCOMMAND: CommandDef = CommandDef {
       .num_args(NumArgs::Exact(1))
       .value_parser(ValueParser::U16)
 .help("Maximum depth of the dependency tree to display (0 = direct dependencies only)"),
-    ArgDef::new("prod")
-      .long("prod")
-      .set_true()
-      .conflicts_with(&["dev"])
-.help("Only list production dependencies"),
-    ArgDef::new("dev").long("dev").set_true()
-.help("Only list development dependencies"),
     ArgDef::new("recursive")
       .long("recursive")
       .short('r')
@@ -2632,7 +2553,7 @@ pub static VENDOR_SUBCOMMAND: CommandDef = CommandDef {
 
 pub static X_SUBCOMMAND: CommandDef = CommandDef {
   name: "x",
-  about: "Execute a binary from npm or jsr, like npx",
+  about: "Run a package from JSR or a URL, like npx",
   aliases: &[],
   args: &[
     ArgDef::new("script_arg")
@@ -2874,16 +2795,6 @@ pub static CI_SUBCOMMAND: CommandDef = CommandDef {
   about: "Install dependencies from a lockfile in a frozen state",
   aliases: &[],
   args: &[
-    ArgDef::new("prod")
-      .long("prod")
-      .long_aliases(&["production"])
-      .set_true()
-.help("Only install production dependencies (excludes devDependencies)"),
-    ArgDef::new("skip-types")
-      .long("skip-types")
-      .set_true()
-      .requires(&["prod"])
-.help("Exclude @types/* packages from installation.\nBe careful, as it uses a name-based heuristic and may skip packages that ship runtime code."),
     ArgDef::new("env-file")
       .long("env-file")
       .long_aliases(&["env"])
@@ -2916,7 +2827,7 @@ pub static BUMP_VERSION_SUBCOMMAND: CommandDef = CommandDef {
       .set_true()
 .help("Bump every package in the workspace (auto-detected at the workspace root)"),
     ArgDef::new("no-workspace").long("no-workspace").set_true()
-.help("Disable workspace mode and only bump the ende.json/package.json in the current directory"),
+.help("Disable workspace mode and only bump the ende.json in the current directory"),
     ArgDef::new("dry-run").long("dry-run").set_true()
 .help("Print the planned changes without writing any files"),
     ArgDef::new("start")
@@ -2945,7 +2856,7 @@ pub static BUMP_VERSION_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
       .conflicts_with(&["workspace"])
-.help("Explicit path to the manifest file to bump.\n  May point to an `ende.json`/`ende.jsonc` or a `package.json`. When\n  set, single-file mode is forced (workspace auto-detection is bypassed).\n  Useful when both `ende.json` and `package.json` exist in the same\n  directory."),
+.help("Explicit path to the configuration file to bump.\n  When set, single-file mode is forced (workspace auto-detection is\n  bypassed)."),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS],
   subcommands: &[],

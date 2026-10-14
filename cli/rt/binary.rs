@@ -1,7 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::ErrorKind;
 use std::path::Path;
@@ -12,8 +11,6 @@ use std::sync::OnceLock;
 use deno_error::JsError;
 use deno_error::JsErrorBox;
 use deno_media_type::MediaType;
-use deno_semver::StackString;
-use deno_semver::package::PackageReq;
 use ende_core::FastString;
 use ende_core::ModuleCodeBytes;
 use ende_core::ModuleSourceCode;
@@ -32,10 +29,6 @@ use ende_lib::standalone::binary::SpecifierId;
 use ende_lib::standalone::virtual_fs::VfsEntry;
 use ende_lib::standalone::virtual_fs::VirtualDirectory;
 use ende_lib::standalone::virtual_fs::VirtualDirectoryEntries;
-use ende_npm::NpmPackageId;
-use ende_npm::resolution::SerializedNpmResolutionSnapshot;
-use ende_npm::resolution::SerializedNpmResolutionSnapshotPackage;
-use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
 use indexmap::IndexMap;
 use sys_traits::FsCanonicalize;
 use sys_traits::FsRead;
@@ -47,7 +40,6 @@ use crate::file_system::VfsRoot;
 pub struct StandaloneData {
   pub metadata: Metadata,
   pub modules: Arc<StandaloneModules>,
-  pub npm_snapshot: Option<ValidSerializedNpmResolutionSnapshot>,
   pub root_path: PathBuf,
   pub vfs: Arc<FileBackedVfs>,
 }
@@ -95,7 +87,6 @@ pub fn extract_standalone_with_finder(
   let root_url = deno_path_util::url_from_directory_path(&root_path)?;
 
   let DeserializedDataSection {
-    npm_snapshot,
     modules_store: remote_modules,
     vfs_root_entries,
     vfs_files_data,
@@ -150,7 +141,6 @@ pub fn extract_standalone_with_finder(
       modules: remote_modules,
       vfs: vfs.clone(),
     }),
-    npm_snapshot,
     root_path,
     vfs,
   })
@@ -462,7 +452,6 @@ fn read_from_file_fallback() -> Result<&'static [u8], AnyError> {
 }
 
 pub struct DeserializedDataSection {
-  pub npm_snapshot: Option<ValidSerializedNpmResolutionSnapshot>,
   pub modules_store: RemoteModulesStore,
   pub vfs_root_entries: VirtualDirectoryEntries,
   pub vfs_files_data: &'static [u8],
@@ -502,27 +491,19 @@ fn deserialize_binary_data_section(
   input: &'static [u8],
 ) -> Result<DeserializedDataSection, AnyError> {
   // 1. Was the metadata above.
-  // 2. Npm snapshot
-  let (input, data) =
-    read_bytes_with_u64_len(input).context("reading npm snapshot")?;
-  let npm_snapshot = if data.is_empty() {
-    None
-  } else {
-    Some(deserialize_npm_snapshot(data).context("deserializing npm snapshot")?)
-  };
-  // 3. Specifiers
+  // 2. Specifiers
   let (input, specifiers_store) =
     SpecifierStore::deserialize(root_dir_url, input)
       .context("deserializing specifiers")?;
-  // 4. Redirects
+  // 3. Redirects
   let (input, redirects_store) =
     SpecifierDataStore::<SpecifierId>::deserialize(input)
       .context("deserializing redirects")?;
-  // 5. Remote modules
+  // 4. Remote modules
   let (input, remote_modules_store) =
     SpecifierDataStore::<RemoteModuleEntry<'static>>::deserialize(input)
       .context("deserializing remote modules")?;
-  // 6. VFS
+  // 5. VFS
   let (input, data) = read_bytes_with_u64_len(input).context("vfs")?;
   let vfs_root_entries: VirtualDirectoryEntries =
     serde_json::from_slice(data).context("deserializing vfs data")?;
@@ -542,7 +523,6 @@ fn deserialize_binary_data_section(
   );
 
   Ok(DeserializedDataSection {
-    npm_snapshot,
     modules_store,
     vfs_root_entries,
     vfs_files_data,
@@ -626,7 +606,6 @@ impl StandaloneModules {
         .map_err(JsErrorBox::from_err)?;
       let mut transpiled = None;
       let mut source_map = None;
-      let mut cjs_export_analysis = None;
       let mut is_valid_utf8 = false;
       let bytes = match self.vfs.file_entry(&path) {
         Ok(entry) => {
@@ -640,9 +619,6 @@ impl StandaloneModules {
             .and_then(|t| self.vfs.read_file_offset_with_len(t).ok());
           source_map = entry
             .source_map_offset
-            .and_then(|t| self.vfs.read_file_offset_with_len(t).ok());
-          cjs_export_analysis = entry
-            .cjs_export_analysis_offset
             .and_then(|t| self.vfs.read_file_offset_with_len(t).ok());
           bytes
         }
@@ -686,7 +662,6 @@ impl StandaloneModules {
         data: bytes,
         transpiled,
         source_map,
-        cjs_export_analysis,
       }))
     } else {
       self.modules.read(specifier).map_err(JsErrorBox::from_err)
@@ -878,7 +853,6 @@ pub struct EndeCompileModuleData<'a> {
   pub data: Cow<'static, [u8]>,
   pub transpiled: Option<Cow<'static, [u8]>>,
   pub source_map: Option<Cow<'static, [u8]>>,
-  pub cjs_export_analysis: Option<Cow<'static, [u8]>>,
 }
 
 impl<'a> EndeCompileModuleData<'a> {
@@ -1067,157 +1041,11 @@ impl RemoteModulesStore {
             data: handle_cow_ref(&entry.data),
             transpiled: entry.maybe_transpiled.as_ref().map(handle_cow_ref),
             source_map: entry.maybe_source_map.as_ref().map(handle_cow_ref),
-            cjs_export_analysis: entry
-              .maybe_cjs_export_analysis
-              .as_ref()
-              .map(handle_cow_ref),
           }));
         }
       }
     }
   }
-}
-
-fn deserialize_npm_snapshot(
-  input: &[u8],
-) -> Result<ValidSerializedNpmResolutionSnapshot, AnyError> {
-  fn parse_id(input: &[u8]) -> Result<(&[u8], NpmPackageId), AnyError> {
-    let (input, id) = read_string_lossy(input)?;
-    let id = NpmPackageId::from_serialized(&id)?;
-    Ok((input, id))
-  }
-
-  #[allow(clippy::needless_lifetimes, reason = "clippy bug")]
-  #[allow(clippy::type_complexity, reason = "private code")]
-  fn parse_root_package<'a>(
-    id_to_npm_id: &'a impl Fn(usize) -> Result<NpmPackageId, AnyError>,
-  ) -> impl Fn(&[u8]) -> Result<(&[u8], (PackageReq, NpmPackageId)), AnyError> + 'a
-  {
-    |input| {
-      let (input, req) = read_string_lossy(input)?;
-      let req = PackageReq::from_str(&req)?;
-      let (input, id) = read_u32_as_usize(input)?;
-      Ok((input, (req, id_to_npm_id(id)?)))
-    }
-  }
-
-  #[allow(clippy::needless_lifetimes, reason = "clippy bug")]
-  #[allow(clippy::type_complexity, reason = "private code")]
-  fn parse_package_dep<'a>(
-    id_to_npm_id: &'a impl Fn(usize) -> Result<NpmPackageId, AnyError>,
-  ) -> impl Fn(&[u8]) -> Result<(&[u8], (StackString, NpmPackageId)), AnyError> + 'a
-  {
-    |input| {
-      let (input, req) = read_string_lossy(input)?;
-      let (input, id) = read_u32_as_usize(input)?;
-      let req = StackString::from_cow(req);
-      Ok((input, (req, id_to_npm_id(id)?)))
-    }
-  }
-
-  fn parse_package<'a>(
-    input: &'a [u8],
-    id: NpmPackageId,
-    id_to_npm_id: &impl Fn(usize) -> Result<NpmPackageId, AnyError>,
-  ) -> Result<(&'a [u8], SerializedNpmResolutionSnapshotPackage), AnyError> {
-    let (input, deps_len) = read_u32_as_usize(input)?;
-    let (input, dependencies) =
-      parse_hashmap_n_times(input, deps_len, parse_package_dep(id_to_npm_id))?;
-    Ok((
-      input,
-      SerializedNpmResolutionSnapshotPackage {
-        id,
-        system: Default::default(),
-        dist: Default::default(),
-        dependencies,
-        optional_dependencies: Default::default(),
-        optional_peer_dependencies: Default::default(),
-        has_bin: false,
-        has_scripts: false,
-        is_deprecated: false,
-        extra: Default::default(),
-      },
-    ))
-  }
-
-  let (input, packages_len) = read_u32_as_usize(input)?;
-
-  // get a hashmap of all the npm package ids to their serialized ids
-  let (input, data_ids_to_npm_ids) =
-    parse_vec_n_times(input, packages_len, parse_id)
-      .context("deserializing id")?;
-  let data_id_to_npm_id = |id: usize| {
-    data_ids_to_npm_ids
-      .get(id)
-      .cloned()
-      .ok_or_else(|| ende_core::anyhow::anyhow!("Invalid npm package id"))
-  };
-
-  let (input, root_packages_len) = read_u32_as_usize(input)?;
-  let (input, root_packages) = parse_hashmap_n_times(
-    input,
-    root_packages_len,
-    parse_root_package(&data_id_to_npm_id),
-  )
-  .context("deserializing root package")?;
-  let (input, packages) =
-    parse_vec_n_times_with_index(input, packages_len, |input, index| {
-      parse_package(input, data_id_to_npm_id(index)?, &data_id_to_npm_id)
-    })
-    .context("deserializing package")?;
-
-  if !input.is_empty() {
-    bail!("Unexpected data left over");
-  }
-
-  Ok(
-    SerializedNpmResolutionSnapshot {
-      packages,
-      root_packages,
-    }
-    // this is ok because we have already verified that all the
-    // identifiers found in the snapshot are valid via the
-    // npm package id -> npm package id mapping
-    .into_valid_unsafe(),
-  )
-}
-
-fn parse_hashmap_n_times<TKey: std::cmp::Eq + std::hash::Hash, TValue>(
-  mut input: &[u8],
-  times: usize,
-  parse: impl Fn(&[u8]) -> Result<(&[u8], (TKey, TValue)), AnyError>,
-) -> Result<(&[u8], HashMap<TKey, TValue>), AnyError> {
-  let mut results = HashMap::with_capacity(times);
-  for _ in 0..times {
-    let result = parse(input);
-    let (new_input, (key, value)) = result?;
-    results.insert(key, value);
-    input = new_input;
-  }
-  Ok((input, results))
-}
-
-fn parse_vec_n_times<TResult>(
-  input: &[u8],
-  times: usize,
-  parse: impl Fn(&[u8]) -> Result<(&[u8], TResult), AnyError>,
-) -> Result<(&[u8], Vec<TResult>), AnyError> {
-  parse_vec_n_times_with_index(input, times, |input, _index| parse(input))
-}
-
-fn parse_vec_n_times_with_index<TResult>(
-  mut input: &[u8],
-  times: usize,
-  parse: impl Fn(&[u8], usize) -> Result<(&[u8], TResult), AnyError>,
-) -> Result<(&[u8], Vec<TResult>), AnyError> {
-  let mut results = Vec::with_capacity(times);
-  for i in 0..times {
-    let result = parse(input, i);
-    let (new_input, result) = result?;
-    results.push(result);
-    input = new_input;
-  }
-  Ok((input, results))
 }
 
 fn read_bytes_with_u64_len(input: &[u8]) -> std::io::Result<(&[u8], &[u8])> {

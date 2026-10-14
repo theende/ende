@@ -29,7 +29,6 @@ use ende_npm::resolution::NpmResolutionSnapshot;
 use ende_npm_installer::graph::NpmCachingStrategy;
 use ende_npmrc::ResolvedNpmRc;
 use ende_print::drop_println;
-use ende_resolver::EndeResolveErrorKind;
 use ende_resolver::display::DisplayTreeNode;
 
 use crate::args::Flags;
@@ -55,7 +54,6 @@ pub async fn info(
     let maybe_lockfile = factory.maybe_lockfile().await?;
     let resolver = factory.workspace_resolver().await?.clone();
     let npmrc = factory.npmrc()?;
-    let node_resolver = factory.node_resolver().await?;
 
     let cwd_url =
       url::Url::from_directory_path(cli_options.initial_cwd()).unwrap();
@@ -74,86 +72,6 @@ pub async fn info(
           specifier,
           ..
         } => Some(specifier),
-        ende_resolver::workspace::MappedResolution::WorkspaceNpmPackage {
-          target_pkg_json,
-          sub_path,
-          ..
-        } => Some(
-          node_resolver
-            .resolve_package_subpath_from_deno_module(
-              target_pkg_json.clone().dir_path(),
-              sub_path.as_deref(),
-              Some(&cwd_url),
-              node_resolver::ResolutionMode::Import,
-              node_resolver::NodeResolutionKind::Execution,
-            )?
-            .into_url()?,
-        ),
-        ende_resolver::workspace::MappedResolution::PackageJson {
-          alias,
-          sub_path,
-          dep_result,
-          ..
-        } => match dep_result.as_ref().map_err(|e| e.clone())? {
-          ende_package_json::PackageJsonDepValue::File(_) => {
-            return Err(
-              EndeResolveErrorKind::UnsupportedPackageJsonFileSpecifier
-                .into_box()
-                .into(),
-            );
-          }
-          ende_package_json::PackageJsonDepValue::Workspace {
-            name,
-            version_req,
-          } => {
-            let pkg_folder = resolver
-              .resolve_workspace_pkg_json_folder_for_pkg_json_dep(
-                name.as_deref().unwrap_or(alias),
-                version_req,
-              )?;
-            Some(
-              node_resolver
-                .resolve_package_subpath_from_deno_module(
-                  pkg_folder,
-                  sub_path.as_deref(),
-                  Some(&cwd_url),
-                  node_resolver::ResolutionMode::Import,
-                  node_resolver::NodeResolutionKind::Execution,
-                )?
-                .into_url()?,
-            )
-          }
-          ende_package_json::PackageJsonDepValue::Req(req) => {
-            Some(ModuleSpecifier::parse(&format!(
-              "npm:{}{}",
-              req,
-              sub_path.map(|s| format!("/{}", s)).unwrap_or_default()
-            ))?)
-          }
-          ende_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
-            match resolver.resolve_catalog_dep(alias, catalog_name) {
-              Some(req) => Some(ModuleSpecifier::parse(&format!(
-                "npm:{}{}",
-                req,
-                sub_path.map(|s| format!("/{}", s)).unwrap_or_default()
-              ))?),
-              None => None,
-            }
-          }
-        },
-        ende_resolver::workspace::MappedResolution::PackageJsonImport {
-          pkg_json,
-        } => Some(
-          node_resolver
-            .resolve_package_import(
-              &specifier,
-              Some(&node_resolver::UrlOrPathRef::from_url(&cwd_url)),
-              Some(pkg_json),
-              node_resolver::ResolutionMode::Import,
-              node_resolver::NodeResolutionKind::Execution,
-            )?
-            .into_url()?,
-        ),
       },
       Err(_) => None,
     };

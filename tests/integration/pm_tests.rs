@@ -170,109 +170,6 @@ fn add_multiple() {
   }));
 }
 
-#[test]
-fn add_npm() {
-  let context = pm_context_builder().build();
-  let temp_dir = context.temp_dir().path();
-
-  let output = context.new_command().args("add npm:chalk@4.1").run();
-  output.assert_exit_code(0);
-  let output = output.combined_output();
-  assert_contains!(output, "Add npm:chalk");
-  temp_dir.join("ende.json").assert_matches_json(json!({
-    "imports": {
-      "chalk": "npm:chalk@^4.1.2"
-    }
-  }));
-}
-
-#[test]
-fn add_npm_latest_default_minimum_dependency_age_downgrades() {
-  let context = pm_context_builder().build();
-  let temp_dir = context.temp_dir().path();
-
-  let output = context
-    .new_command()
-    .env_remove("NPM_CONFIG_MIN_RELEASE_AGE")
-    .args("add npm:@denotest/min-release-age-latest@latest")
-    .run();
-  output.assert_exit_code(0);
-  let output = output.combined_output();
-  assert_contains!(output, "Add npm:@denotest/min-release-age-latest@1.0.0");
-  temp_dir.join("ende.json").assert_matches_json(json!({
-    "imports": {
-      "@denotest/min-release-age-latest": "npm:@denotest/min-release-age-latest@^1.0.0"
-    }
-  }));
-}
-
-#[test]
-fn add_npm_latest_minimum_dependency_age_downgrades() {
-  let context = pm_context_builder().build();
-  let temp_dir = context.temp_dir().path();
-  temp_dir.join("ende.json").write_json(&json!({
-    "minimumDependencyAge": "2025-01-01T00:00:00.000Z",
-  }));
-
-  let output = context
-    .new_command()
-    .args("add npm:@denotest/min-release-age-latest@latest")
-    .run();
-  output.assert_exit_code(0);
-  let output = output.combined_output();
-  assert_contains!(output, "Add npm:@denotest/min-release-age-latest@1.0.0");
-  temp_dir.join("ende.json").assert_matches_json(json!({
-    "minimumDependencyAge": "2025-01-01T00:00:00.000Z",
-    "imports": {
-      "@denotest/min-release-age-latest": "npm:@denotest/min-release-age-latest@^1.0.0"
-    }
-  }));
-}
-
-#[test]
-fn add_npm_latest_minimum_dependency_age_disabled() {
-  let context = pm_context_builder().build();
-  let temp_dir = context.temp_dir().path();
-  temp_dir.join("ende.json").write_json(&json!({
-    "minimumDependencyAge": false,
-  }));
-
-  let output = context
-    .new_command()
-    .args("add npm:@denotest/min-release-age-latest@latest")
-    .run();
-  output.assert_exit_code(0);
-  let output = output.combined_output();
-  assert_contains!(output, "Add npm:@denotest/min-release-age-latest@2.0.0");
-  temp_dir.join("ende.json").assert_matches_json(json!({
-    "minimumDependencyAge": false,
-    "imports": {
-      "@denotest/min-release-age-latest": "npm:@denotest/min-release-age-latest@^2.0.0"
-    }
-  }));
-}
-
-#[test]
-fn add_npm_minimum_dependency_age_no_matching_shows_hint() {
-  let context = pm_context_builder().build();
-
-  // 2.0.0 of this package has a publish date far in the future, so it is
-  // always newer than the minimum dependency age. Requesting it specifically
-  // leaves no installable version, and the error should point the user at the
-  // "minimumDependencyAge" setting.
-  let output = context
-    .new_command()
-    .env_remove("NPM_CONFIG_MIN_RELEASE_AGE")
-    .args("add npm:@denotest/min-release-age-latest@2.0.0")
-    .run();
-  output.assert_exit_code(1);
-  let output = output.combined_output();
-  assert_contains!(output, "minimum dependency date");
-  assert_contains!(output, "minimumDependencyAge");
-  assert_contains!(output, "--minimum-dependency-age");
-  assert_contains!(output, "--min-dep-age");
-}
-
 fn pm_context_builder() -> TestContextBuilder {
   TestContextBuilder::new()
     .use_http_server()
@@ -286,14 +183,14 @@ fn update_interactive_shows_version_req() {
     return;
   }
   let context = pm_context_builder().build();
-  // The requirement (`^1.0.0`) resolves to the latest compatible version
-  // (`1.0.1`). The interactive picker must show the version requirement being
-  // updated (`1.0.0 -> 1.0.1`), not the resolved version on both sides
-  // (`1.0.1 -> 1.0.1`). Regression test for
+  // The requirement (`^0.2.0`) resolves to the latest compatible version
+  // (`0.2.1`). The interactive picker must show the version requirement being
+  // updated (`0.2.0 -> 0.2.1`), not the resolved version on both sides
+  // (`0.2.1 -> 0.2.1`). Regression test for
   // https://github.com/denoland/deno/issues/34668
   context.temp_dir().write(
     "ende.json",
-    r#"{"imports": {"@denotest/update-latest-semver": "npm:@denotest/update-latest-semver@^1.0.0"}}"#,
+    r#"{"imports": {"@endetest/add": "jsr:@endetest/add@^0.2.0"}}"#,
   );
   context
     .new_command()
@@ -305,6 +202,6 @@ fn update_interactive_shows_version_req() {
     .args("update --interactive")
     .with_pty(|mut pty| {
       pty.expect("Select which packages to update");
-      pty.expect("1.0.0 -> 1.0.1");
+      pty.expect("0.2.0 -> 0.2.1");
     });
 }

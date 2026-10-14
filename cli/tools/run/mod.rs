@@ -190,7 +190,7 @@ pub async fn run_script(
   let http_client = factory.http_client_provider();
   let workspace_resolver = factory.workspace_resolver().await?;
   crate::boot_phase("after workspace_resolver");
-  let node_resolver = factory.node_resolver().await?;
+  factory.node_resolver().await?;
   crate::boot_phase("after node_resolver");
   // Run a background task that checks for available upgrades or output
   // if an earlier run of this background task found a new version of Ende.
@@ -200,10 +200,8 @@ pub async fn run_script(
     ende_dir.upgrade_check_file_path(),
   );
 
-  let main_module_resolver = crate::args::WorkspaceMainModuleResolver::new(
-    workspace_resolver.clone(),
-    node_resolver.clone(),
-  );
+  let main_module_resolver =
+    crate::args::WorkspaceMainModuleResolver::new(workspace_resolver.clone());
   let main_module = cli_options
     .resolve_main_module_with_resolver(Some(&main_module_resolver))?;
   let preload_modules =

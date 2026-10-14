@@ -1,22 +1,18 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 
 use deno_graph::JsrPackageReqNotFoundError;
 use deno_graph::packages::JsrPackageVersionInfo;
-use deno_semver::Version;
 use deno_semver::jsr::JsrPackageReqReference;
-use deno_semver::npm::NpmPackageReqReference;
 use ende_core::error::AnyError;
 use ende_core::futures::StreamExt;
 use ende_core::futures::stream::FuturesUnordered;
 use ende_core::url::Url;
 use ende_npm_installer::PackageCaching;
 use ende_npm_installer::graph::NpmCachingStrategy;
-use ende_resolver::npm::version_req_matches_including_pre;
 
 use crate::factory::CliFactory;
 use crate::graph_container::ModuleGraphContainer;
@@ -41,9 +37,6 @@ pub async fn cache_top_level_deps(
     .text_only_progress_bar()
     .deferred_keep_initialize_alive();
   let npm_installer = factory.npm_installer().await?;
-  npm_installer
-    .ensure_top_level_package_json_install()
-    .await?;
   if let Some(lockfile) = factory.maybe_lockfile().await? {
     lockfile.error_if_changed()?;
   }
@@ -77,15 +70,6 @@ pub async fn cache_top_level_deps(
 
     let mut seen_reqs = HashSet::new();
 
-    let workspace_npm_packages = resolver
-      .package_jsons()
-      .filter_map(|pkg_json| {
-        pkg_json
-          .name
-          .as_deref()
-          .and_then(|name| Some((name, pkg_json.version.as_deref()?)))
-      })
-      .collect::<HashMap<_, _>>();
     let workspace_jsr_packages = resolver.jsr_packages();
 
     let import_map_entries = resolver
@@ -185,30 +169,8 @@ pub async fn cache_top_level_deps(
             Ok(None)
           });
         }
-        "npm" => {
-          let Ok(req_ref) =
-            NpmPackageReqReference::from_str(specifier.as_str())
-          else {
-            continue;
-          };
-          let version = workspace_npm_packages.get(&*req_ref.req().name);
-          if let Some(version) = version {
-            let Ok(version) = Version::parse_from_npm(version) else {
-              continue;
-            };
-            let version_req = &req_ref.req().version_req;
-            // match prereleases too: a workspace member is provided explicitly
-            // by the user, so e.g. `0.40.0-pre` should still resolve to it
-            // instead of being fetched from the registry.
-            if version_req_matches_including_pre(version_req, &version) {
-              // if version req matches the workspace package's version, use that
-              // (so it doesn't need to be installed)
-              continue;
-            }
-          }
-
-          roots.push(specifier.clone())
-        }
+        // npm packages are not supported in Ende
+        "npm" => {}
         _ => {
           if entry.key.ends_with('/') && specifier.as_str().ends_with('/') {
             continue;

@@ -224,7 +224,7 @@ impl<TSys: ModuleContentProviderSys> ModuleContentProvider<TSys> {
       })
     };
     let jsx_options =
-      self.resolve_jsx_options(specifier, text_info, diagnostic_reporter)?;
+      self.resolve_jsx_options(specifier, diagnostic_reporter)?;
     let leading_comments = parsed_source.get_leading_comments();
     let leading_comments_has_re = |regex: &regex::Regex| {
       leading_comments
@@ -270,7 +270,6 @@ impl<TSys: ModuleContentProviderSys> ModuleContentProvider<TSys> {
   fn resolve_jsx_options<'a>(
     &'a self,
     specifier: &Url,
-    text_info: &SourceTextInfo,
     diagnostic_reporter: &mut dyn FnMut(SpecifierUnfurlerDiagnostic),
   ) -> Result<JsxFolderOptions<'a>, AnyError> {
     let compiler_options =
@@ -284,19 +283,23 @@ impl<TSys: ModuleContentProviderSys> ModuleContentProvider<TSys> {
       ) => "automatic",
       None | Some(deno_ast::JsxRuntime::Classic(_)) => "classic",
     };
+    // the jsxImportSource and jsxImportSourceTypes usually resolve to the
+    // same npm package, so only report an npm package once per module
+    let mut reported_npm = false;
+    let mut report_once = |diagnostic: SpecifierUnfurlerDiagnostic| {
+      if !std::mem::replace(&mut reported_npm, true) {
+        diagnostic_reporter(diagnostic);
+      }
+    };
     let mut unfurl_import_source =
       |import_source: &str, referrer: &Url, resolution_kind: ResolutionKind| {
-        let maybe_import_source = self
-          .specifier_unfurler
-          .unfurl_specifier_reporting_diagnostic(
-            referrer,
+        let maybe_import_source =
+          self.specifier_unfurler.unfurl_jsx_import_source(
+            specifier,
             import_source,
+            referrer,
             resolution_kind,
-            text_info,
-            PositionOrSourceRangeRef::PositionRange(
-              &deno_graph::PositionRange::zeroed(),
-            ),
-            diagnostic_reporter,
+            &mut report_once,
           );
         maybe_import_source.unwrap_or_else(|| import_source.to_string())
       };
@@ -356,13 +359,13 @@ mod test {
   #[test]
   fn test_jsx_pragma_safety() {
     assert_eq!(
-      jsx_pragma("jsxImportSource", "npm:react").unwrap(),
-      "/** @jsxImportSource npm:react */"
+      jsx_pragma("jsxImportSource", "jsr:@denotest/react@1").unwrap(),
+      "/** @jsxImportSource jsr:@denotest/react@1 */"
     );
     for value in [
       "",
-      "npm:package/sub*/path",
-      "npm:package/with space",
+      "jsr:@scope/package/sub*/path",
+      "jsr:@scope/package/with space",
       "line\nbreak",
     ] {
       assert!(jsx_pragma("jsxImportSource", value).is_err());
@@ -385,8 +388,8 @@ mod test {
         "jsxImportSourceTypes": "@types/react",
       },
       "imports": {
-        "react": "npm:react"
-        "@types/react": "npm:@types/react"
+        "react": "jsr:@denotest/react@1"
+        "@types/react": "jsr:@denotest/react-types@1"
       }
     }"#,
         None,
@@ -396,8 +399,8 @@ mod test {
         r#"{
         "compilerOptions": { "jsx": "react-jsx" },
         "imports": {
-          "react": "npm:react"
-          "@types/react": "npm:@types/react"
+          "react": "jsr:@denotest/react@1"
+          "@types/react": "jsr:@denotest/react-types@1"
         }
       }"#,
         None,
@@ -411,8 +414,8 @@ mod test {
           "jsxImportSourceTypes": "@types/react",
         },
         "imports": {
-          "react": "npm:react"
-          "@types/react": "npm:@types/react"
+          "react": "jsr:@denotest/react@1"
+          "@types/react": "jsr:@denotest/react-types@1"
         }
       }"#,
         None,
@@ -422,8 +425,8 @@ mod test {
         r#"{
         "compilerOptions": { "jsx": "react" },
         "imports": {
-          "react": "npm:react"
-          "@types/react": "npm:@types/react"
+          "react": "jsr:@denotest/react@1"
+          "@types/react": "jsr:@denotest/react-types@1"
         }
       }"#,
         None,
@@ -432,28 +435,28 @@ mod test {
         "/package-a/main.tsx",
         "export const component = <div></div>;",
         Some(
-          "/** @jsxRuntime automatic *//** @jsxImportSource npm:react *//** @jsxImportSourceTypes npm:@types/react */export const component = <div></div>;",
+          "/** @jsxRuntime automatic *//** @jsxImportSource jsr:@denotest/react@1 *//** @jsxImportSourceTypes jsr:@denotest/react-types@1 */export const component = <div></div>;",
         ),
       ),
       (
         "/package-b/main.tsx",
         "export const componentB = <div></div>;",
         Some(
-          "/** @jsxRuntime automatic *//** @jsxImportSource npm:react *//** @jsxImportSourceTypes npm:react */export const componentB = <div></div>;",
+          "/** @jsxRuntime automatic *//** @jsxImportSource jsr:@denotest/react@1 *//** @jsxImportSourceTypes jsr:@denotest/react@1 */export const componentB = <div></div>;",
         ),
       ),
       (
         "/package-a/other.tsx",
-        "/** @jsxImportSource npm:preact */
+        "/** @jsxImportSource jsr:@denotest/preact@1 */
         /** @jsxFragmentFactory h1 */
-        /** @jsxImportSourceTypes npm:@types/example */
+        /** @jsxImportSourceTypes jsr:@denotest/example-types@1 */
         /** @jsxFactory h2 */
         /** @jsxRuntime automatic */
         export const component = <div></div>;",
         Some(
-          "/** @jsxImportSource npm:preact */
+          "/** @jsxImportSource jsr:@denotest/preact@1 */
         /** @jsxFragmentFactory h1 */
-        /** @jsxImportSourceTypes npm:@types/example */
+        /** @jsxImportSourceTypes jsr:@denotest/example-types@1 */
         /** @jsxFactory h2 */
         /** @jsxRuntime automatic */
         export const component = <div></div>;",
@@ -463,7 +466,7 @@ mod test {
         "/package-c/main.tsx",
         "export const component = <div></div>;",
         Some(
-          "/** @jsxRuntime automatic *//** @jsxImportSource npm:react *//** @jsxImportSourceTypes npm:@types/react */export const component = <div></div>;",
+          "/** @jsxRuntime automatic *//** @jsxImportSource jsr:@denotest/react@1 *//** @jsxImportSourceTypes jsr:@denotest/react-types@1 */export const component = <div></div>;",
         ),
       ),
       (
@@ -486,7 +489,7 @@ mod test {
         r#"{
           "compilerOptions": {
             "jsx": "react-jsx",
-            "jsxImportSource": "npm:package/sub*/path"
+            "jsxImportSource": "jsr:@scope/package/sub*/path"
           }
         }"#,
       )
@@ -528,16 +531,15 @@ mod test {
           "exports": "./main.wasm",
           "imports": {
             "@std/foo": "jsr:@std/foo@1",
-            "chalk": "npm:chalk@5"
+            "@std/bar": "jsr:@std/bar@2"
           }
         }"#,
       )
       .unwrap();
 
-    // A Wasm module importing a bare specifier (mapped via the import map), an
-    // npm specifier (mapped via the import map) and a relative specifier (left
-    // as-is).
-    let wasm = build_wasm_with_imports(&["@std/foo", "chalk", "./other.js"]);
+    // A Wasm module importing bare specifiers (mapped via the import map) and
+    // a relative specifier (left as-is).
+    let wasm = build_wasm_with_imports(&["@std/foo", "@std/bar", "./other.js"]);
     in_memory_sys
       .fs_write(get_path("/main.wasm"), &wasm)
       .unwrap();
@@ -557,7 +559,7 @@ mod test {
       wasm_import_modules(&bytes),
       vec![
         "jsr:@std/foo@1".to_string(),
-        "npm:chalk@5".to_string(),
+        "jsr:@std/bar@2".to_string(),
         "./other.js".to_string(),
       ]
     );
@@ -671,23 +673,12 @@ mod test {
     let resolver_factory = ResolverFactory::new(
       workspace_factory,
       ResolverFactoryOptions {
-        package_json_dep_resolution: Some(
-          ende_resolver::workspace::PackageJsonDepResolution::Enabled,
-        ),
         unstable_sloppy_imports: true,
         ..Default::default()
       },
     );
 
     let specifier_unfurler = SpecifierUnfurler::new(
-      resolver_factory.node_resolver().unwrap().clone(),
-      resolver_factory.npm_req_resolver().unwrap().clone(),
-      resolver_factory.pkg_json_resolver().clone(),
-      resolver_factory
-        .workspace_factory()
-        .workspace_directory()
-        .unwrap()
-        .clone(),
       resolver_factory.workspace_resolver().await.unwrap().clone(),
     );
     ModuleContentProvider::new(

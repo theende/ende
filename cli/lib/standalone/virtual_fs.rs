@@ -274,8 +274,6 @@ pub struct VirtualFile {
   pub is_valid_utf8: bool,
   #[serde(rename = "m", skip_serializing_if = "Option::is_none")]
   pub transpiled_offset: Option<OffsetWithLength>,
-  #[serde(rename = "c", skip_serializing_if = "Option::is_none")]
-  pub cjs_export_analysis_offset: Option<OffsetWithLength>,
   #[serde(rename = "s", skip_serializing_if = "Option::is_none")]
   pub source_map_offset: Option<OffsetWithLength>,
   #[serde(rename = "t", skip_serializing_if = "Option::is_none")]
@@ -508,7 +506,6 @@ pub struct AddFileDataOptions {
   pub mtime: Option<SystemTime>,
   pub maybe_transpiled: Option<Vec<u8>>,
   pub maybe_source_map: Option<Vec<u8>>,
-  pub maybe_cjs_export_analysis: Option<Vec<u8>>,
 }
 
 #[derive(Debug)]
@@ -1039,7 +1036,6 @@ impl VfsBuilder {
         data,
         mtime,
         maybe_transpiled: None,
-        maybe_cjs_export_analysis: None,
         maybe_source_map: None,
       },
     )
@@ -1060,9 +1056,6 @@ impl VfsBuilder {
       .map(|data| self.files.add_data(data));
     let source_map_offset = options
       .maybe_source_map
-      .map(|data| self.files.add_data(data));
-    let cjs_export_analysis_offset = options
-      .maybe_cjs_export_analysis
       .map(|data| self.files.add_data(data));
     let dir = self.add_dir_raw(&path.parent());
     let name = path.as_ref().file_name().unwrap().to_string_lossy();
@@ -1096,7 +1089,6 @@ impl VfsBuilder {
           is_valid_utf8,
           offset: offset_and_len,
           transpiled_offset,
-          cjs_export_analysis_offset,
           source_map_offset,
           mtime,
           executable,
@@ -1111,10 +1103,6 @@ impl VfsBuilder {
           }
           if source_map_offset.is_some() {
             virtual_file.source_map_offset = source_map_offset;
-          }
-          if cjs_export_analysis_offset.is_some() {
-            virtual_file.cjs_export_analysis_offset =
-              cjs_export_analysis_offset;
           }
           virtual_file.mtime = mtime;
         }
@@ -1199,42 +1187,6 @@ impl VfsBuilder {
       Ok(SymlinkTarget::Dir(target.0.into_owned()))
     } else {
       Ok(SymlinkTarget::File(target.0.into_owned()))
-    }
-  }
-
-  /// Adds the CJS export analysis to the provided file.
-  ///
-  /// Warning: This will panic if the file wasn't properly
-  /// setup before calling this.
-  pub fn add_cjs_export_analysis(&mut self, path: &Path, data: Vec<u8>) {
-    self.add_data_for_file_or_panic(path, data, |file, offset_with_length| {
-      file.cjs_export_analysis_offset = Some(offset_with_length);
-    })
-  }
-
-  fn add_data_for_file_or_panic(
-    &mut self,
-    path: &Path,
-    data: Vec<u8>,
-    update_file: impl FnOnce(&mut VirtualFile, OffsetWithLength),
-  ) {
-    debug_assert_eq!(self.ensure_canonical_parent_path(path).as_ref(), path);
-    let offset_with_length = self.files.add_data(data);
-    let case_sensitivity = self.case_sensitivity;
-    let parent = path.parent().unwrap();
-    let dir = self.get_dir_mut(parent).unwrap();
-    let name = path.file_name().unwrap().to_string_lossy();
-    let file = dir
-      .entries
-      .get_mut_by_name(&name, case_sensitivity)
-      .unwrap();
-    match file {
-      VfsEntry::File(virtual_file) => {
-        update_file(virtual_file, offset_with_length);
-      }
-      VfsEntry::Dir(_) | VfsEntry::Symlink(_) => {
-        unreachable!()
-      }
     }
   }
 

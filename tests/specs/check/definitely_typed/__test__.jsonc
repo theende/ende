@@ -1,19 +1,6 @@
 {
   "tempDir": true,
   "tests": {
-    "node_modules_dir_none": {
-      "steps": [
-        {
-          "args": "i",
-          "output": "[WILDCARD]"
-        },
-        {
-          "args": "check main.ts",
-          "output": "type_mismatch.out",
-          "exitCode": 1
-        }
-      ]
-    },
     "respects_ts_types": {
       "steps": [
         {

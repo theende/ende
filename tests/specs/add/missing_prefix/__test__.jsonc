@@ -1,30 +1,11 @@
 {
   "tempDir": true,
   "tests": {
-    // Unprefixed packages default to npm, so `deno add ajv` should work
-    "npm_default": {
+    // Unprefixed packages default to jsr
+    "jsr_default": {
       "steps": [
         {
-          "args": "add ajv",
-          "output": "Add npm:ajv@8.11.0\n[WILDCARD]\n"
-        }
-      ]
-    },
-    // Packages that only exist on jsr should suggest using jsr: prefix
-    "jsr_needs_prefix": {
-      "steps": [
-        {
-          "args": "add @endetest/echo",
-          "output": "error: npm:@endetest/echo was not found, but a matching jsr package exists. Did you mean `ende add jsr:@endetest/echo`?\n",
-          "exitCode": 1
-        }
-      ]
-    },
-    // Using --jsr flag should still work for jsr packages
-    "jsr_flag_override": {
-      "steps": [
-        {
-          "args": "add --jsr @endetest/add",
+          "args": "add @endetest/add",
           "output": "Add jsr:@endetest/add@1.0.0\n[WILDCARD]\n"
         }
       ]

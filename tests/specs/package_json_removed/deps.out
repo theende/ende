@@ -1,0 +1,2 @@
+error: Import "chalk" not a dependency
+    at file:///[WILDLINE]/deps/main.ts:3:19

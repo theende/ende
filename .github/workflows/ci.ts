@@ -1686,7 +1686,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           run: [
             "cargo check --no-default-features -p ende_config",
             "cargo check --no-default-features --features workspace -p ende_config",
-            "cargo check --no-default-features --features package_json -p ende_config",
             "cargo check --no-default-features --features workspace --features sync -p ende_config",
             "cargo check --target wasm32-unknown-unknown --all-features -p ende_config",
             "cargo check -p ende --features=lsp-tracing",

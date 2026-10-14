@@ -25,16 +25,6 @@
     },
     "package_b_tasks": {
       "steps": [{
-        "args": "task --quiet pkg-json-root",
-        "cwd": "package-b",
-        // uses the workspace as cwd
-        "output": "pkg-json [WILDLINE]workspace\n"
-      }, {
-        "args": "task --quiet pkg-json-root-2",
-        "cwd": "package-b",
-        // uses package-b as cwd
-        "output": "override [WILDLINE]package-b\n"
-      }, {
         "args": "task --quiet echo-package-b",
         "cwd": "package-b",
         "output": "hi [WILDLINE]package-b\n"

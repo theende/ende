@@ -36,8 +36,6 @@ use ende_resolver::cjs::IsCjsResolutionMode;
 use ende_resolver::ende_json::CompilerOptionsModuleResolution;
 use ende_resolver::ende_json::CompilerOptionsResolver;
 use ende_resolver::ende_json::JsxImportSourceConfig;
-use ende_resolver::factory::npm_overrides_from_workspace;
-use ende_resolver::graph::FoundPackageJsonDepFlag;
 use ende_resolver::npm::CreateInNpmPkgCheckerOptions;
 use ende_resolver::npm::DenoInNpmPackageChecker;
 use ende_resolver::npm::NpmReqResolverOptions;
@@ -47,7 +45,6 @@ use ende_resolver::npm::managed::NpmResolutionCell;
 use ende_resolver::npmrc::create_default_npmrc;
 use ende_resolver::workspace::CreateResolverOptions;
 use ende_resolver::workspace::FsCacheOptions;
-use ende_resolver::workspace::PackageJsonDepResolution;
 use ende_resolver::workspace::SloppyImportsOptions;
 use ende_resolver::workspace::WorkspaceNpmLinkPackagesRc;
 use ende_resolver::workspace::WorkspaceResolver;
@@ -207,7 +204,6 @@ impl LspScopedResolver {
       let npm_pkg_req_resolver = npm_pkg_req_resolver.as_ref()?;
       Some(Arc::new(ConfiguredDepResolutions::new(
         workspace_resolver.clone(),
-        config_data.and_then(|d| d.maybe_pkg_json().map(|p| p.as_ref())),
         npm_pkg_req_resolver,
         &pkg_json_resolver,
       )))
@@ -432,16 +428,6 @@ impl LspScopedResolver {
             roots.insert(value.clone());
           }
           _ => {}
-        }
-      }
-    }
-    if let Some(package_json) =
-      self.config_data.as_ref().and_then(|d| d.maybe_pkg_json())
-      && let Some(dependencies) = package_json.dependencies.as_ref()
-    {
-      for name in dependencies.keys() {
-        if let Ok(specifier) = ModuleSpecifier::parse(&format!("npm:{name}")) {
-          roots.insert(specifier);
         }
       }
     }
@@ -771,7 +757,6 @@ pub struct ScopeDepInfo {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 enum ConfiguredDepKind {
   ImportMap { key: String, value: Url },
-  PackageJson,
 }
 
 #[derive(Debug, Default)]
@@ -783,7 +768,6 @@ struct ConfiguredDepResolutions {
 impl ConfiguredDepResolutions {
   fn new(
     workspace_resolver: Arc<WorkspaceResolver<CliSys>>,
-    package_json: Option<&PackageJson>,
     npm_pkg_req_resolver: &CliNpmReqResolver,
     pkg_json_resolver: &CliPackageJsonResolver,
   ) -> Self {
@@ -904,53 +888,6 @@ impl ConfiguredDepResolutions {
         }
       }
     }
-    if let Some(package_json) = package_json {
-      let referrer = package_json.specifier();
-      let Some(dependencies) = package_json.dependencies.as_ref() else {
-        return Self::default();
-      };
-      for name in dependencies.keys() {
-        let Some(req_ref) =
-          NpmPackageReqReference::from_str(&format!("npm:{name}")).ok()
-        else {
-          continue;
-        };
-        let mut dep_package_json = None;
-        for kind in [NodeResolutionKind::Types, NodeResolutionKind::Execution] {
-          let Ok(req) = npm_pkg_req_resolver.resolve_req_reference(
-            &req_ref,
-            &referrer,
-            // todo(dsherret): this is wrong because it doesn't consider CJS referrers
-            ResolutionMode::Import,
-            kind,
-          ) else {
-            continue;
-          };
-          let Some(file_url) = req.into_url().ok() else {
-            continue;
-          };
-          if dep_package_json.is_none() {
-            dep_package_json = (|| {
-              let path = url_to_file_path(&file_url).ok()?;
-              pkg_json_resolver.get_closest_package_json(&path).ok()?
-            })();
-          }
-          result
-            .deps_by_resolution
-            .insert(file_url, (name.clone(), ConfiguredDepKind::PackageJson));
-        }
-        if let Some(dep_package_json) = &dep_package_json {
-          insert_export_resolutions(
-            name,
-            name,
-            dep_package_json,
-            &referrer,
-            &ConfiguredDepKind::PackageJson,
-            &mut result,
-          );
-        }
-      }
-    }
     result.workspace_resolver = Some(workspace_resolver);
     result
   }
@@ -972,7 +909,6 @@ impl ConfiguredDepResolutions {
           .resolve(key, referrer)
           .is_ok_and(|s| &s == value)
           .then(|| dep_key.clone()),
-        ConfiguredDepKind::PackageJson => Some(dep_key.clone()),
       })
   }
 }
@@ -981,7 +917,6 @@ impl ConfiguredDepResolutions {
 struct ResolverFactoryServices {
   cli_resolver: Deferred<Arc<CliResolver>>,
   workspace_resolver: Deferred<Arc<WorkspaceResolver<CliSys>>>,
-  found_pkg_json_dep_flag: Arc<FoundPackageJsonDepFlag>,
   in_npm_pkg_checker: Deferred<DenoInNpmPackageChecker>,
   is_cjs_resolver: Deferred<Arc<CliIsCjsResolver>>,
   node_resolver: Deferred<Option<Arc<CliNodeResolver>>>,
@@ -1028,22 +963,8 @@ impl<'a> ResolverFactory<'a> {
     http_client_provider: &Arc<HttpClientProvider>,
     cache: &LspCache,
   ) {
-    let enable_byonm = self.config_data.map(|d| d.byonm).unwrap_or(false);
     let sys = CliSys::default();
-    let options = if enable_byonm {
-      CliNpmResolverCreateOptions::Byonm(CliByonmNpmResolverCreateOptions {
-        sys: self.node_resolution_sys.clone(),
-        pkg_json_resolver: self.pkg_json_resolver.clone(),
-        root_node_modules_dir: self.config_data.and_then(|config_data| {
-          config_data.node_modules_dir.clone().or_else(|| {
-            url_to_file_path(&config_data.scope)
-              .ok()
-              .map(|p| p.join("node_modules/"))
-          })
-        }),
-        search_stop_dir: None,
-      })
-    } else {
+    let options = {
       let npmrc = self
         .config_data
         .and_then(|d| d.npmrc.clone())
@@ -1075,14 +996,9 @@ impl<'a> ResolverFactory<'a> {
         npmrc.clone(),
         NpmPackumentFormat::Abbreviated,
       ));
-      let link_packages: WorkspaceNpmLinkPackagesRc = self
-        .config_data
-        .as_ref()
-        .filter(|c| c.node_modules_dir.is_some()) // requires a node_modules dir
-        .map(|d| {
-          WorkspaceNpmLinkPackagesRc::from_workspace(&d.member_dir.workspace)
-        })
-        .unwrap_or_default();
+      // linked npm packages (folders with a package.json) are not
+      // supported in Ende
+      let link_packages = WorkspaceNpmLinkPackagesRc::default();
       let npm_resolution_initializer = Arc::new(NpmResolutionInitializer::new(
         self.services.npm_resolution.clone(),
         npmrc.clone(),
@@ -1109,15 +1025,10 @@ impl<'a> ResolverFactory<'a> {
         npmrc.clone(),
         None,
       ));
-      // parse npm overrides from workspace config
-      let overrides = self
-        .config_data
-        .map(|d| npm_overrides_from_workspace(&d.member_dir.workspace))
-        .unwrap_or_default();
       let npm_version_resolver = Arc::new(NpmVersionResolver {
         link_packages: link_packages.0.clone(),
         newest_dependency_date_options: Default::default(),
-        overrides: Arc::new(overrides),
+        overrides: Default::default(),
         trust_policy: Default::default(),
       });
       let npm_resolution_installer = Arc::new(NpmResolutionInstaller::new(
@@ -1203,7 +1114,7 @@ impl<'a> ResolverFactory<'a> {
             _ => None,
           },
           workspace_resolver: self.workspace_resolver().clone(),
-          is_byonm: self.config_data.map(|d| d.byonm).unwrap_or(false),
+          is_byonm: false,
           maybe_vendor_dir: self
             .config_data
             .and_then(|d| d.vendor_dir.as_ref()),
@@ -1211,7 +1122,6 @@ impl<'a> ResolverFactory<'a> {
       Arc::new(CliResolver::new(
         ende_resolver,
         CliSys::default(),
-        self.services.found_pkg_json_dep_flag.clone(),
         Some(Arc::new(on_resolve_diagnostic)),
       ))
     })
@@ -1225,17 +1135,10 @@ impl<'a> ResolverFactory<'a> {
           let unstable_sloppy_imports =
             ende_env::var("ENDE_UNSTABLE_SLOPPY_IMPORTS").is_ok()
               || d.unstable.contains("sloppy-imports");
-          let pkg_json_dep_resolution = if d.byonm {
-            PackageJsonDepResolution::Disabled
-          } else {
-            // todo(dsherret): this should be false for nodeModulesDir: true
-            PackageJsonDepResolution::Enabled
-          };
           WorkspaceResolver::from_workspace(
             &d.member_dir.workspace,
             CliSys::default(),
             CreateResolverOptions {
-              pkg_json_dep_resolution,
               specified_import_map: d.specified_import_map.clone(),
               sloppy_imports_options: if unstable_sloppy_imports {
                 SloppyImportsOptions::Enabled
@@ -1254,30 +1157,21 @@ impl<'a> ResolverFactory<'a> {
           .unwrap_or_else(|| {
             // create a dummy resolver
             WorkspaceResolver::new_raw(
-              d.scope.clone(),
               None,
               d.member_dir.workspace.resolver_jsr_pkgs().collect(),
-              d.member_dir.workspace.package_jsons().cloned().collect(),
-              pkg_json_dep_resolution,
               Default::default(),
               Default::default(),
               CliSys::default(),
-              d.member_dir.workspace.catalogs().clone(),
             )
           })
         })
         .unwrap_or_else(|| {
           WorkspaceResolver::new_raw(
-            // this is fine because this is only used before initialization
-            Arc::new(ModuleSpecifier::parse("file:///").unwrap()),
             None,
             Vec::new(),
-            Vec::new(),
-            PackageJsonDepResolution::Disabled,
             Default::default(),
             Default::default(),
             self.sys.clone(),
-            Default::default(),
           )
         });
       let diagnostics = workspace_resolver.diagnostics();

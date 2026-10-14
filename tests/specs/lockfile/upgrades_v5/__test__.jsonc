@@ -4,7 +4,7 @@
     "upgrades": {
       "steps": [
         {
-          "args": "install npm:chalk",
+          "args": "install jsr:@endetest/subtract@1",
           "output": "[WILDCARD]"
         },
         {
@@ -34,7 +34,7 @@
           "output": ""
         },
         {
-          "args": "install npm:chalk",
+          "args": "install jsr:@endetest/subtract@1",
           "output": "[WILDCARD]"
         },
         {

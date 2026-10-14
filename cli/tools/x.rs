@@ -6,7 +6,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use deno_semver::jsr::JsrPackageReqReference;
-use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageReq;
 use ende_cache_dir::file_fetcher::CacheSetting;
 use ende_config::ende_json::MinimumDependencyAgeConfig;
@@ -15,7 +14,6 @@ use ende_core::anyhow;
 use ende_core::anyhow::Context;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
-use ende_npm_installer::PackagesAllowedScripts;
 use ende_runtime::ende_permissions::PathQueryDescriptor;
 use node_resolver::BinValue;
 
@@ -27,8 +25,6 @@ use crate::args::FlagsExt;
 use crate::args::XFlags;
 use crate::args::XFlagsKind;
 use crate::factory::CliFactory;
-use crate::node::CliNodeResolver;
-use crate::npm::CliManagedNpmResolver;
 use crate::npm::CliNpmResolver;
 use crate::tools::pm::CacheTopLevelDepsOptions;
 use crate::util::console::ConfirmOptions;
@@ -146,7 +142,7 @@ fn permission_set_flag_arg(flags: &Flags) -> Option<String> {
 /// and the `-P`/`--permission-set` selection.
 ///
 /// These MUST be computed from the user's original `flags`/`cli_options`, never
-/// from the internal runner flags used for npm auto-install: those overwrite
+/// from the internal flags used for auto-install: those overwrite
 /// `config_flag` with a generated temp `ende.json` path (see
 /// `autoinstall_package::make_new_flags`), which would forward the internal
 /// config instead of the user's explicit `--config` — or forward a config at all
@@ -184,49 +180,6 @@ fn minimum_dependency_age_config_json(
     "age": age,
     "exclude": config.exclude,
   }))
-}
-
-async fn resolve_local_bins(
-  node_resolver: &CliNodeResolver,
-  npm_resolver: &CliNpmResolver,
-  factory: &CliFactory,
-) -> Result<BTreeMap<String, BinValue>, AnyError> {
-  match &npm_resolver {
-    ende_resolver::npm::NpmResolver::Byonm(npm_resolver) => {
-      let node_modules_dir = npm_resolver.root_node_modules_path().unwrap();
-      let bin_dir = node_modules_dir.join(".bin");
-      Ok(node_resolver.resolve_npm_commands_from_bin_dir(&bin_dir))
-    }
-    ende_resolver::npm::NpmResolver::Managed(npm_resolver) => {
-      let mut all_bins = BTreeMap::new();
-      for id in npm_resolver.resolution().top_level_packages() {
-        let package_folder =
-          npm_resolver.resolve_pkg_folder_from_pkg_id(&id)?;
-        let bins = match node_resolver
-          .resolve_npm_binary_commands_for_package(&package_folder)
-        {
-          Ok(bins) => bins,
-          Err(_) => {
-            crate::tools::pm::cache_top_level_deps(
-              factory,
-              None,
-              CacheTopLevelDepsOptions {
-                lockfile_only: false,
-                additional_roots: vec![],
-              },
-            )
-            .await?;
-            node_resolver
-              .resolve_npm_binary_commands_for_package(&package_folder)?
-          }
-        };
-        for (command, bin_value) in bins {
-          all_bins.insert(command.clone(), bin_value.clone());
-        }
-      }
-      Ok(all_bins)
-    }
-  }
 }
 
 fn run_js_file(
@@ -390,44 +343,6 @@ pub(crate) fn find_bin_value(
     .cloned()
 }
 
-async fn maybe_run_local_npm_bin(
-  factory: &CliFactory,
-  flags: &Flags,
-  node_resolver: &CliNodeResolver,
-  npm_resolver: &CliNpmResolver,
-  command: &str,
-  unstable_args: &[String],
-  forwarded_args: &[String],
-) -> Result<Option<i32>, AnyError> {
-  let mut bins =
-    resolve_local_bins(node_resolver, npm_resolver, factory).await?;
-  let bin_value = if let Some(bin_value) = bins.remove(command) {
-    bin_value
-  } else if let Some(bin_value) = {
-    let command = if command.starts_with("@") && command.contains("/") {
-      command.split("/").last().unwrap()
-    } else {
-      command
-    };
-    bins.remove(command)
-  } {
-    bin_value
-  } else {
-    return Ok(None);
-  };
-
-  let npm_process_state = get_npm_process_state(npm_resolver);
-  run_bin_value(
-    factory,
-    flags,
-    bin_value,
-    npm_process_state,
-    unstable_args,
-    forwarded_args,
-  )
-  .map(Some)
-}
-
 enum XTempDir {
   Existing(PathBuf),
   New(PathBuf),
@@ -470,8 +385,6 @@ fn create_package_temp_dir(
     }
   }
   std::fs::create_dir_all(&temp_dir)?;
-  let package_json_path = temp_dir.join("package.json");
-  std::fs::write(&package_json_path, "{}")?;
   let ende_json_path =
     temp_dir.join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME);
   let mut ende_json_value = serde_json::json!({});
@@ -555,58 +468,31 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
     }
     XFlagsKind::Command(command) => command,
     XFlagsKind::Print => {
-      let factory = CliFactory::from_flags(flags.clone());
-      let npm_resolver = factory.npm_resolver().await?;
-      let node_resolver = factory.node_resolver().await?;
-      let bins =
-        resolve_local_bins(node_resolver, npm_resolver, &factory).await?;
-      if bins.is_empty() {
-        log::info!("No local commands found");
-        return Ok(0);
-      }
-      log::info!("Available (local) commands:");
-      for command in bins.keys() {
-        log::info!("  {}", command);
-      }
+      log::info!(
+        "Provide a JSR package or a URL to run. For example: ende x jsr:@std/http/file-server"
+      );
       return Ok(0);
     }
   };
   let factory = CliFactory::from_flags(flags.clone());
   let cli_options = factory.cli_options()?;
   let unstable_args = cli_options.unstable_args();
-  let npm_resolver = factory.npm_resolver().await?;
-  let node_resolver = factory.node_resolver().await?;
   // Extra `ende run` args forwarded to every re-run subprocess, computed ONCE
-  // from the user's ORIGINAL flags/cwd (never the internal npm-install runner
-  // flags, whose `config_flag` points at a generated temp ende.json). See
-  // `forwarded_run_args` (issue #35991). Every `ende x` re-run site executes a
-  // target whose child does NOT auto-discover the user's cwd `ende.json` — the
-  // installed bin FILE anchors discovery on the install dir, and a jsr:/url main
-  // module has config discovery disabled entirely — so an original `Discover` is
-  // resolved to the discovered config path and forwarded explicitly, keeping the
-  // re-run consistent with the isolated install (see
+  // from the user's ORIGINAL flags/cwd (never the internal install flags,
+  // whose `config_flag` points at a generated temp ende.json). See
+  // `forwarded_run_args` (issue #35991). A jsr:/url main module has config
+  // discovery disabled entirely, so an original `Discover` is resolved to the
+  // discovered config path and forwarded explicitly, keeping the re-run
+  // consistent with the isolated install (see
   // `config_flag_arg_carrying_discovered`).
   let forwarded = forwarded_run_args(
     &flags,
     config_flag_arg_carrying_discovered(&flags, cli_options),
   );
-  let result = maybe_run_local_npm_bin(
-    &factory,
-    &flags,
-    node_resolver,
-    npm_resolver,
-    &command_flags.command,
-    &unstable_args,
-    &forwarded,
-  )
-  .await?;
-  if let Some(exit_code) = result {
-    return Ok(exit_code);
-  }
 
-  // When --package is specified, the command is the binary name and
-  // the package flag specifies which package to install. Combine them
-  // into a single specifier like "npm:package/binary" so the existing
+  // When --package is specified, the command is the export name and the
+  // package flag specifies which package to install. Combine them into a
+  // single specifier like "jsr:@scope/package/export" so the existing
   // resolution flow handles it correctly.
   let effective_command = if let Some(ref package) = command_flags.package {
     format!("{}/{}", package, command_flags.command)
@@ -628,8 +514,7 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
   let thing_to_run = match ende_core::url::Url::parse(&effective_command) {
     Ok(url) => {
       if url.scheme() == "npm" {
-        let req_ref = NpmPackageReqReference::from_specifier(&url)?;
-        ReqRefOrUrl::Npm(req_ref)
+        return Err(crate::tools::npm_not_supported_error(&effective_command));
       } else if url.scheme() == "jsr" {
         let req_ref = JsrPackageReqReference::from_specifier(&url)?;
         ReqRefOrUrl::Jsr(req_ref)
@@ -638,9 +523,9 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
       }
     }
     Err(ende_core::url::ParseError::RelativeUrlWithoutBase) => {
-      let new_command = format!("npm:{}", effective_command);
-      let req_ref = NpmPackageReqReference::from_str(&new_command)?;
-      ReqRefOrUrl::Npm(req_ref)
+      let new_command = format!("jsr:{}", effective_command);
+      let req_ref = JsrPackageReqReference::from_str(&new_command)?;
+      ReqRefOrUrl::Jsr(req_ref)
     }
     Err(e) => {
       return Err(e.into());
@@ -659,118 +544,9 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
     .minimum_dependency_age_config()?
     .clone();
   match thing_to_run {
-    ReqRefOrUrl::Npm(npm_package_req_reference) => {
-      // First try to resolve from the local project
-      if let Ok(package_folder) = npm_resolver
-        .resolve_pkg_folder_from_deno_module_req(
-          npm_package_req_reference.req(),
-          &deno_path_util::url_from_directory_path(cli_options.initial_cwd())
-            .unwrap(),
-        )
-      {
-        let bin_name =
-          if let Some(sub_path) = npm_package_req_reference.sub_path() {
-            sub_path
-          } else {
-            npm_package_req_reference.req().name.as_str()
-          };
-
-        let bins = node_resolver
-          .resolve_npm_binary_commands_for_package(&package_folder)?;
-        if let Some(bin_value) = find_bin_value(&bins, bin_name) {
-          let npm_process_state = get_npm_process_state(npm_resolver);
-          return run_bin_value(
-            &factory,
-            &flags,
-            bin_value,
-            npm_process_state,
-            &unstable_args,
-            &forwarded,
-          );
-        }
-      }
-
-      // Fall back to autoinstall
-      let (managed_flags, managed_factory) = autoinstall_package(
-        ReqRef::Npm(&npm_package_req_reference),
-        &flags,
-        reload,
-        command_flags.yes,
-        &factory.ende_dir()?.root,
-        &min_dep_age_config,
-        resolve_import_deny_rules(cli_options)?,
-      )
-      .await?;
-      let mut runner_flags = (*managed_flags).clone();
-      runner_flags.node_modules_dir =
-        Some(ende_config::ende_json::NodeModulesDirMode::Manual);
-      let runner_flags = Arc::new(runner_flags);
-      let runner_factory = CliFactory::from_flags(runner_flags.clone());
-      let runner_node_resolver = runner_factory.node_resolver().await?;
-      let runner_npm_resolver = runner_factory.npm_resolver().await?;
-
-      let bin_name =
-        if let Some(sub_path) = npm_package_req_reference.sub_path() {
-          sub_path
-        } else {
-          npm_package_req_reference.req().name.as_str()
-        };
-
-      let res = maybe_run_local_npm_bin(
-        &runner_factory,
-        &runner_flags,
-        runner_node_resolver,
-        runner_npm_resolver,
-        bin_name,
-        &unstable_args,
-        &forwarded,
-      )
-      .await?;
-      if let Some(exit_code) = res {
-        Ok(exit_code)
-      } else {
-        let managed_npm_resolver =
-          managed_factory.npm_resolver().await?.as_managed().unwrap();
-        let bin_commands = bin_commands_for_package(
-          runner_node_resolver,
-          managed_npm_resolver,
-          npm_package_req_reference.req(),
-        )?;
-        let fallback_name = if bin_commands.len() == 1 {
-          Some(bin_commands.keys().next().unwrap())
-        } else {
-          None
-        };
-
-        if let Some(fallback_name) = fallback_name
-          && let Some(exit_code) = maybe_run_local_npm_bin(
-            &runner_factory,
-            &runner_flags,
-            runner_node_resolver,
-            runner_npm_resolver,
-            fallback_name.as_ref(),
-            &unstable_args,
-            &forwarded,
-          )
-          .await?
-        {
-          return Ok(exit_code);
-        }
-
-        Err(anyhow::anyhow!(
-          "Unable to choose binary for {}\n  Available bins:\n{}",
-          effective_command,
-          bin_commands
-            .keys()
-            .map(|k| format!("    {}", k))
-            .collect::<Vec<_>>()
-            .join("\n")
-        ))
-      }
-    }
     ReqRefOrUrl::Jsr(jsr_package_req_reference) => {
-      let (_new_flags, new_factory) = autoinstall_package(
-        ReqRef::Jsr(&jsr_package_req_reference),
+      let new_factory = autoinstall_package(
+        &jsr_package_req_reference,
         &flags,
         reload,
         command_flags.yes,
@@ -799,20 +575,6 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
   }
 }
 
-fn bin_commands_for_package(
-  node_resolver: &CliNodeResolver,
-  managed_npm_resolver: &CliManagedNpmResolver,
-  package_req: &PackageReq,
-) -> Result<BTreeMap<String, BinValue>, AnyError> {
-  let pkg_id =
-    managed_npm_resolver.resolve_pkg_id_from_deno_module_req(package_req)?;
-  let package_folder =
-    managed_npm_resolver.resolve_pkg_folder_from_pkg_id(&pkg_id)?;
-  node_resolver
-    .resolve_npm_binary_commands_for_package(&package_folder)
-    .map_err(Into::into)
-}
-
 /// The user's `--deny-import` rules, resolved against the config the user
 /// actually selected.
 ///
@@ -831,14 +593,14 @@ fn resolve_import_deny_rules(
 
 #[allow(clippy::too_many_arguments, reason = "internal re-run plumbing")]
 async fn autoinstall_package(
-  req_ref: ReqRef<'_>,
+  req_ref: &JsrPackageReqReference,
   old_flags: &Flags,
   reload: bool,
   yes: bool,
   ende_dir: &Path,
   min_dep_age_config: &MinimumDependencyAgeConfig,
   import_deny_rules: Option<Vec<String>>,
-) -> Result<(Arc<Flags>, CliFactory), AnyError> {
+) -> Result<CliFactory, AnyError> {
   fn make_new_flags(
     old_flags: &Flags,
     temp_dir: &Path,
@@ -849,26 +611,18 @@ async fn autoinstall_package(
     // is dropped in favour of the rules it resolved to.
     new_flags.permissions.deny_import = import_deny_rules;
     new_flags.permission_set = None;
-    new_flags.node_modules_dir =
-      Some(ende_config::ende_json::NodeModulesDirMode::Auto);
-    let temp_node_modules = temp_dir.join("node_modules");
-    new_flags.internal.root_node_modules_dir_override = Some(temp_node_modules);
     new_flags.config_flag = crate::args::ConfigFlag::Path(
       temp_dir
         .join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME)
         .to_string_lossy()
         .into_owned(),
     );
-    if matches!(old_flags.allow_scripts, PackagesAllowedScripts::None) {
-      new_flags.allow_scripts = PackagesAllowedScripts::All;
-    }
-
     log::debug!("new_flags: {:?}", new_flags);
 
     Arc::new(new_flags)
   }
   let temp_dir = create_package_temp_dir(
-    Some(req_ref.prefix()),
+    Some("jsr-"),
     req_ref.req(),
     reload,
     ende_dir,
@@ -879,7 +633,7 @@ async fn autoinstall_package(
   let new_factory = CliFactory::from_flags(new_flags.clone());
 
   match temp_dir {
-    XTempDir::Existing(_) => Ok((new_flags, new_factory)),
+    XTempDir::Existing(_) => Ok(new_factory),
 
     XTempDir::New(temp_dir) => {
       let confirmed = yes
@@ -901,40 +655,25 @@ async fn autoinstall_package(
       if !confirmed {
         return Err(anyhow::anyhow!("Installation rejected"));
       }
-      match req_ref {
-        ReqRef::Npm(req_ref) => {
-          let pkg_json = temp_dir.join("package.json");
-          std::fs::write(
-            &pkg_json,
-            format!(
-              "{{\"dependencies\": {{\"{}\": \"{}\"}} }}",
-              req_ref.req().name,
-              req_ref.req().version_req
-            ),
-          )?;
-        }
-        ReqRef::Jsr(req_ref) => {
-          let ende_json =
-            temp_dir.join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME);
-          let mut imports = serde_json::Map::new();
-          imports.insert(
-            req_ref.req().name.to_string(),
-            serde_json::Value::String(format!("jsr:{}", req_ref.req())),
-          );
-          let mut ende_json_value = serde_json::json!({
-            "imports": imports,
-          });
-          if let Some(min_dep_age) =
-            minimum_dependency_age_config_json(min_dep_age_config)
-          {
-            ende_json_value
-              .as_object_mut()
-              .unwrap()
-              .insert("minimumDependencyAge".to_string(), min_dep_age);
-          }
-          std::fs::write(&ende_json, serde_json::to_string(&ende_json_value)?)?;
-        }
+      let ende_json =
+        temp_dir.join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME);
+      let mut imports = serde_json::Map::new();
+      imports.insert(
+        req_ref.req().name.to_string(),
+        serde_json::Value::String(format!("jsr:{}", req_ref.req())),
+      );
+      let mut ende_json_value = serde_json::json!({
+        "imports": imports,
+      });
+      if let Some(min_dep_age) =
+        minimum_dependency_age_config_json(min_dep_age_config)
+      {
+        ende_json_value
+          .as_object_mut()
+          .unwrap()
+          .insert("minimumDependencyAge".to_string(), min_dep_age);
       }
+      std::fs::write(&ende_json, serde_json::to_string(&ende_json_value)?)?;
 
       crate::tools::pm::cache_top_level_deps(
         &new_factory,
@@ -949,42 +688,12 @@ async fn autoinstall_package(
       if let Some(lockfile) = new_factory.maybe_lockfile().await? {
         lockfile.write_if_changed()?;
       }
-      Ok((new_flags, new_factory))
-    }
-  }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum ReqRef<'a> {
-  Npm(&'a NpmPackageReqReference),
-  Jsr(&'a JsrPackageReqReference),
-}
-impl<'a> std::fmt::Display for ReqRef<'a> {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      ReqRef::Npm(req) => write!(f, "{}", req),
-      ReqRef::Jsr(req) => write!(f, "{}", req),
-    }
-  }
-}
-impl<'a> ReqRef<'a> {
-  fn req(&self) -> &PackageReq {
-    match self {
-      ReqRef::Npm(req) => req.req(),
-      ReqRef::Jsr(req) => req.req(),
-    }
-  }
-
-  fn prefix(&self) -> &str {
-    match self {
-      ReqRef::Npm(_) => "npm-",
-      ReqRef::Jsr(_) => "jsr-",
+      Ok(new_factory)
     }
   }
 }
 
 enum ReqRefOrUrl {
-  Npm(NpmPackageReqReference),
   Jsr(JsrPackageReqReference),
   Url(ende_core::url::Url),
 }

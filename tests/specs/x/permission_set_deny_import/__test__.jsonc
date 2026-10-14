@@ -13,7 +13,7 @@
   // Without that, this exits 1 with `Could not find permission set 'locked'`.
   "tests": {
     "runs_with_permission_set_defining_deny_import": {
-      "args": "x -y -P=locked npm:@denotest/try-write",
+      "args": "x -y -P=locked jsr:@endetest/try-write",
       "output": "[WILDCARD]write succeeded\n"
     }
   }

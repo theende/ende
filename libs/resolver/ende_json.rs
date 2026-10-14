@@ -1521,7 +1521,7 @@ impl CompilerOptionsResolver {
         overrides.clone(),
       ));
     for dir in workspace.resolve_member_dirs() {
-      if dir.has_ende_or_pkg_json() {
+      if dir.has_ende_json() {
         ts_config_collector.add_root(dir.dir_path().join("tsconfig.json"));
       }
       if dir.dir_url() != root_dir.dir_url() {
@@ -1647,7 +1647,7 @@ impl CompilerOptionsResolver {
         Default::default(),
       ));
     for (scope, dir) in dirs_by_scope {
-      if dir.has_ende_or_pkg_json() {
+      if dir.has_ende_json() {
         ts_config_collector.add_root(dir.dir_path().join("tsconfig.json"));
       }
       workspace_configs.insert(

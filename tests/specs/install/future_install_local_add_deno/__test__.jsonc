@@ -2,7 +2,7 @@
   "tempDir": true,
   "steps": [
     {
-      "args": "install npm:@denotest/esm-basic",
+      "args": "install jsr:@endetest/add",
       "output": "install.out"
     },
     {

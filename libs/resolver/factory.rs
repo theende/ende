@@ -5,7 +5,6 @@ use std::collections::BTreeSet;
 use std::path::Path;
 use std::path::PathBuf;
 
-use anyhow::bail;
 use boxed_error::Boxed;
 use deno_path_util::fs::canonicalize_path_maybe_not_exists;
 use deno_semver::package::PackageName;
@@ -30,7 +29,6 @@ use ende_maybe_sync::MaybeSend;
 use ende_maybe_sync::MaybeSync;
 use ende_maybe_sync::new_rc;
 pub use ende_npm::NpmSystemInfo;
-use ende_npm::resolution::NpmOverrides;
 use ende_npm::resolution::NpmVersionResolver;
 use futures::future::FutureExt;
 use node_resolver::DenoIsBuiltInNodeModuleChecker;
@@ -89,7 +87,6 @@ use crate::npm::managed::NpmResolutionCellRc;
 use crate::npmrc::ResolvedNpmRcRc;
 use crate::npmrc::create_default_npmrc;
 use crate::workspace::FsCacheOptions;
-use crate::workspace::PackageJsonDepResolution;
 use crate::workspace::SloppyImportsOptions;
 use crate::workspace::WorkspaceNpmLinkPackagesRc;
 use crate::workspace::WorkspaceResolver;
@@ -340,22 +337,7 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
 
     let workspace = &self.workspace_directory()?.workspace;
 
-    if let Some(pkg_json) = workspace.root_pkg_json() {
-      if let Ok(ende_dir) = self.ende_dir() {
-        let ende_dir = &ende_dir.root;
-        // `ende_dir` can be symlink in macOS or on the CI
-        if let Ok(ende_dir) =
-          canonicalize_path_maybe_not_exists(&self.sys, ende_dir)
-          && pkg_json.path.starts_with(ende_dir)
-        {
-          // if the package.json is in ende_dir, then do not use node_modules
-          // next to it as local node_modules dir
-          return Ok(NodeModulesDirMode::None);
-        }
-      }
-
-      Ok(NodeModulesDirMode::Manual)
-    } else if workspace.vendor_dir_path().is_some() {
+    if workspace.vendor_dir_path().is_some() {
       Ok(NodeModulesDirMode::Auto)
     } else {
       // use the global cache
@@ -410,12 +392,6 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
         .ende_json
         .as_ref()
         .map(|c| Cow::Owned(c.dir_path()))
-        .or_else(|| {
-          root_folder
-            .pkg_json
-            .as_ref()
-            .map(|c| Cow::Borrowed(c.dir_path()))
-        })
         .unwrap_or(Cow::Borrowed(cwd))
         .join("node_modules")
     }
@@ -565,22 +541,11 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
         },
         false => VendorEnablement::Disable,
       });
-      let resolve_workspace_discover_options = || {
-        let discover_pkg_json = !self.options.no_npm
-          && !self.has_flag_env_var("ENDE_NO_PACKAGE_JSON");
-        if !discover_pkg_json {
-          log::debug!("package.json auto-discovery is disabled");
-        }
-        WorkspaceDiscoverOptions {
-          ende_json_cache: None,
-          pkg_json_cache: Some(&node_resolver::PackageJsonThreadLocalCache),
-          workspace_cache: None,
-          additional_config_file_names: self
-            .options
-            .additional_config_file_names,
-          discover_pkg_json,
-          maybe_vendor_override,
-        }
+      let resolve_workspace_discover_options = || WorkspaceDiscoverOptions {
+        ende_json_cache: None,
+        workspace_cache: None,
+        additional_config_file_names: self.options.additional_config_file_names,
+        maybe_vendor_override,
       };
       let resolve_empty_options = || WorkspaceDirectoryEmptyOptions {
         root_dir: new_rc(
@@ -639,27 +604,11 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
   pub fn workspace_npm_link_packages(
     &self,
   ) -> Result<&WorkspaceNpmLinkPackagesRc, anyhow::Error> {
-    self
-      .workspace_npm_link_packages
-      .get_or_try_init(|| {
-        let workspace_dir = self.workspace_directory()?;
-        let npm_packages = WorkspaceNpmLinkPackagesRc::from_workspace(
-          workspace_dir.workspace.as_ref(),
-        );
-        if !npm_packages.0.is_empty() && !matches!(self.node_modules_dir_mode()?, NodeModulesDirMode::Auto | NodeModulesDirMode::Manual) {
-          bail!("Linking npm packages requires using a node_modules directory. Ensure you have a package.json in your workspace root.")
-        } else {
-          Ok(npm_packages)
-        }
-      })
-  }
-
-  fn has_flag_env_var(&self, name: &str) -> bool {
-    let value = ende_env::env_var_os(&self.sys, name);
-    match value {
-      Some(value) => value == "1",
-      None => false,
-    }
+    self.workspace_npm_link_packages.get_or_try_init(|| {
+      // linked npm packages (folders with a package.json) are not
+      // supported in Ende
+      Ok(WorkspaceNpmLinkPackagesRc::default())
+    })
   }
 }
 
@@ -675,7 +624,6 @@ pub struct ResolverFactoryOptions {
   pub node_resolution_cache: Option<node_resolver::NodeResolutionCacheRc>,
   pub npm_system_info: NpmSystemInfo,
   pub package_json_cache: Option<node_resolver::PackageJsonCacheRc>,
-  pub package_json_dep_resolution: Option<PackageJsonDepResolution>,
   pub specified_import_map: Option<Box<dyn SpecifiedImportMapProvider>>,
   pub unstable_sloppy_imports: bool,
   #[cfg(feature = "graph")]
@@ -697,8 +645,6 @@ pub struct ResolverFactory<TSys: WorkspaceFactorySys> {
     async_once_cell::OnceCell<crate::graph::DefaultEndeResolverRc<TSys>>,
   #[cfg(feature = "deno_ast")]
   emitter: Deferred<crate::emit::EmitterRc<DenoInNpmPackageChecker, TSys>>,
-  #[cfg(feature = "graph")]
-  found_package_json_dep_flag: crate::graph::FoundPackageJsonDepFlagRc,
   in_npm_package_checker: Deferred<DenoInNpmPackageChecker>,
   #[cfg(feature = "graph")]
   jsr_version_resolver: Deferred<JsrVersionResolverRc>,
@@ -752,8 +698,6 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
       ende_resolver: Default::default(),
       #[cfg(feature = "deno_ast")]
       emitter: Default::default(),
-      #[cfg(feature = "graph")]
-      found_package_json_dep_flag: Default::default(),
       in_npm_package_checker: Default::default(),
       #[cfg(feature = "graph")]
       jsr_version_resolver: Default::default(),
@@ -885,13 +829,6 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
   }
 
   #[cfg(feature = "graph")]
-  pub fn found_package_json_dep_flag(
-    &self,
-  ) -> &crate::graph::FoundPackageJsonDepFlagRc {
-    &self.found_package_json_dep_flag
-  }
-
-  #[cfg(feature = "graph")]
   pub async fn ende_resolver(
     &self,
   ) -> Result<&crate::graph::DefaultEndeResolverRc<TSys>, anyhow::Error> {
@@ -901,7 +838,6 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
         Ok(new_rc(crate::graph::EndeResolver::new(
           self.raw_ende_resolver().await?.clone(),
           self.workspace_factory.sys.clone(),
-          self.found_package_json_dep_flag.clone(),
           self.options.on_mapped_resolution_diagnostic.clone(),
         )))
       })
@@ -1108,10 +1044,6 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
       let minimum_dependency_age_config =
         self.minimum_dependency_age_config()?;
 
-      // parse npm overrides from root package.json
-      let workspace = &self.workspace_factory.workspace_directory()?.workspace;
-      let overrides = npm_overrides_from_workspace(workspace);
-
       // the `trust-policy` / `trust-policy-ignore-after` npmrc settings drive
       // the `no-downgrade` publishing-trust policy
       let npmrc = self.workspace_factory.npmrc();
@@ -1169,11 +1101,7 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
           .workspace_npm_link_packages()?
           .0
           .clone(),
-        #[allow(
-          clippy::disallowed_types,
-          reason = "Arc needed for shared overrides"
-        )]
-        overrides: std::sync::Arc::new(overrides),
+        overrides: Default::default(),
         trust_policy,
       }))
     })
@@ -1230,23 +1158,6 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
             None => None,
           };
           let options = crate::workspace::CreateResolverOptions {
-            pkg_json_dep_resolution: match self
-              .options
-              .package_json_dep_resolution
-            {
-              Some(value) => value,
-              None => {
-                match self.workspace_factory.node_modules_dir_mode()? {
-                  NodeModulesDirMode::Manual => {
-                    PackageJsonDepResolution::Disabled
-                  }
-                  NodeModulesDirMode::Auto | NodeModulesDirMode::None => {
-                    // todo(dsherret): should this be disabled for auto?
-                    PackageJsonDepResolution::Enabled
-                  }
-                }
-              }
-            },
             specified_import_map,
             sloppy_imports_options: if self.options.unstable_sloppy_imports
               || workspace.has_unstable("sloppy-imports")
@@ -1342,35 +1253,6 @@ fn apply_minimum_dependency_age_fallbacks(
       now - chrono::Duration::minutes(DEFAULT_MINIMUM_DEPENDENCY_AGE_MINUTES),
     )
   });
-}
-
-/// Parses npm overrides from a workspace's root package.json.
-///
-/// Returns `NpmOverrides::default()` if no overrides are present or if parsing fails.
-/// Logs a warning on parse failure.
-pub fn npm_overrides_from_workspace(
-  workspace: &ende_config::workspace::Workspace,
-) -> NpmOverrides {
-  let Some(overrides_json) = workspace.npm_overrides() else {
-    return NpmOverrides::default();
-  };
-  let root_deps = workspace.root_deps_for_npm_overrides();
-  let catalogs = workspace.catalogs();
-  match NpmOverrides::from_value(
-    serde_json::Value::Object(overrides_json.clone()),
-    &root_deps,
-    catalogs,
-  ) {
-    Ok(overrides) => overrides,
-    Err(e) => {
-      log::warn!(
-        "{} failed to parse npm overrides: {}",
-        deno_terminal::colors::yellow("Warning"),
-        e
-      );
-      NpmOverrides::default()
-    }
-  }
 }
 
 #[cfg(test)]

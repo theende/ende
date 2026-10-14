@@ -239,21 +239,6 @@ async fn init_subcommand_serve() {
 }
 
 #[test(flaky)]
-fn init_npm() {
-  let context = TestContextBuilder::for_npm().use_temp_cwd().build();
-  let cwd = context.temp_dir().path();
-  context
-    .new_command()
-    .args("init --npm @denotest")
-    .with_pty(|mut pty| {
-      pty.expect("Do you want to continue?");
-      pty.write_raw("y\n");
-      pty.expect("Initialized!");
-      assert_eq!(cwd.join("3").read_to_string(), "test");
-    });
-}
-
-#[test(flaky)]
 fn create_jsr() {
   let context = TestContextBuilder::for_jsr().use_temp_cwd().build();
   let cwd = context.temp_dir().path();

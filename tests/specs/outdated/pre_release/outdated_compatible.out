@@ -4,8 +4,7 @@
 │ jsr:@endetest/has-only-pre-release │ 2.0.0-beta.1 │ 2.0.0-beta.2 │ 2.0.0-beta.2 │
 ├────────────────────────────────────┼──────────────┼──────────────┼──────────────┤
 │ jsr:@endetest/has-pre-release      │ 2.0.0-beta.1 │ 2.0.0-beta.2 │ 2.0.0-beta.2 │
-├────────────────────────────────────┼──────────────┼──────────────┼──────────────┤
-│ npm:@denotest/has-pre-release      │ 2.0.0-beta.1 │ 2.0.0-beta.2 │ 1.0.0        │
 └────────────────────────────────────┴──────────────┴──────────────┴──────────────┘
 
-[WILDCARD]
+Run ende update to update to the latest compatible versions,
+or ende outdated --help for more information.

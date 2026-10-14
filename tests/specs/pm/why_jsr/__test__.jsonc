@@ -12,10 +12,6 @@
       "args": "why @std/crypto",
       "output": "transitive_jsr.out"
     },
-    "npm_via_jsr": {
-      "args": "why path-to-regexp",
-      "output": "npm_via_jsr.out"
-    },
     "diamond_jsr": {
       "args": "why @std/encoding",
       "output": "diamond_jsr.out"

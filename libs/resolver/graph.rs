@@ -17,7 +17,6 @@ use deno_graph::source::ResolveError;
 use deno_media_type::MediaType;
 use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageReq;
-use deno_unsync::sync::AtomicFlag;
 use import_map::ImportMapErrorKind;
 use node_resolver::DenoIsBuiltInNodeModuleChecker;
 use node_resolver::InNpmPackageChecker;
@@ -37,27 +36,6 @@ use crate::npm;
 use crate::npm::managed::ManagedResolvePkgFolderFromDenoReqError;
 use crate::workspace::MappedResolutionDiagnostic;
 use crate::workspace::sloppy_imports_resolve;
-
-#[allow(clippy::disallowed_types, reason = "definition")]
-pub type FoundPackageJsonDepFlagRc =
-  ende_maybe_sync::MaybeArc<FoundPackageJsonDepFlag>;
-
-/// A flag that indicates if a package.json dependency was
-/// found during resolution.
-#[derive(Debug, Default)]
-pub struct FoundPackageJsonDepFlag(AtomicFlag);
-
-impl FoundPackageJsonDepFlag {
-  #[inline(always)]
-  pub fn raise(&self) -> bool {
-    self.0.raise()
-  }
-
-  #[inline(always)]
-  pub fn is_raised(&self) -> bool {
-    self.0.is_raised()
-  }
-}
 
 #[derive(Debug, deno_error::JsError, Boxed)]
 pub struct ResolveWithGraphError(pub Box<ResolveWithGraphErrorKind>);
@@ -216,7 +194,6 @@ pub struct EndeResolver<
     TSys,
   >,
   sys: TSys,
-  found_package_json_dep_flag: FoundPackageJsonDepFlagRc,
   warned_pkgs: ende_maybe_sync::MaybeDashSet<PackageReq>,
   on_warning: Option<OnMappedResolutionDiagnosticFn>,
 }
@@ -260,13 +237,11 @@ impl<
       TSys,
     >,
     sys: TSys,
-    found_package_json_dep_flag: FoundPackageJsonDepFlagRc,
     on_warning: Option<OnMappedResolutionDiagnosticFn>,
   ) -> Self {
     Self {
       resolver,
       sys,
-      found_package_json_dep_flag,
       warned_pkgs: Default::default(),
       on_warning,
     }
@@ -415,11 +390,6 @@ impl<
       resolution_mode,
       resolution_kind,
     )?;
-
-    if resolution.found_package_json_dep {
-      // mark that we need to do an "npm install" later
-      self.found_package_json_dep_flag.raise();
-    }
 
     if let Some(diagnostic) = resolution.maybe_diagnostic {
       let diagnostic = &*diagnostic;
@@ -734,31 +704,23 @@ pub fn enhanced_resolution_error_message(
       "If you want to use a built-in Node module, add a \"node:\" prefix (ex. \"node:{specifier}\")."
     ))
   } else {
-    get_import_prefix_missing_error(error).map(|specifier| {
+    get_import_prefix_missing_error(error).and_then(|specifier| {
       // If the specifier looks like a workspace member or linked package whose
       // declared name is scoped (e.g. importing "foo" when "@scope/foo" is
       // linked), point at the real name instead of suggesting `ende add`.
       if let Some(name) =
         maybe_matching_bare_pkg_name(specifier, bare_importable_pkg_names)
       {
-        format!(
+        Some(format!(
           "\"{name}\" is available in this workspace (via a workspace member or the \"links\" field). Import it by its full name.",
-        )
-      } else if specifier.starts_with("@std/") {
-        format!(
+        ))
+      } else if specifier.starts_with('@') {
+        Some(format!(
           "If you want to use the JSR package, try running `ende add jsr:{}`",
           specifier
-        )
-      } else if specifier.starts_with('@') {
-        format!(
-          "If you want to use a JSR or npm package, try running `ende add jsr:{0}` or `ende add npm:{0}`",
-          specifier
-        )
+        ))
       } else {
-        format!(
-          "If you want to use the npm package, try running `ende add npm:{0}`",
-          specifier
-        )
+        None
       }
     })
   };

@@ -15,12 +15,12 @@
   // forward both the explicit `--config` and the `-P=write` selection to the
   // re-run `deno run <bin>` subprocess so the child resolves the set and is
   // allowed to write — matching
-  // `deno run --config=configs/write.json -P=write npm:@denotest/try-write`.
+  // `deno run --config=configs/write.json -P=write jsr:@endetest/try-write`.
   // (Selecting `-P=write` is what forces the child to load the forwarded config
   // to find the set, so a passing run proves the config really reached it.)
   //
   // Pre-fix (commit 080d1a2363b) this exits 1 with `NotCapable`; the fix makes
   // it exit 0.
-  "args": "x -y --config=configs/write.json -P=write npm:@denotest/try-write",
+  "args": "x -y --config=configs/write.json -P=write jsr:@endetest/try-write",
   "output": "[WILDCARD]write succeeded\n"
 }

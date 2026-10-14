@@ -7,18 +7,16 @@ use std::ffi::OsString;
 use std::num::NonZeroUsize;
 use std::path::Path;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::Arc;
 
 use console_static_text::ansi::strip_ansi_codes;
 use deno_path_util::normalize_path;
 use deno_task_shell::KillSignal;
-use deno_task_shell::ShellCommand;
 use ende_config::workspace::FolderConfigs;
 use ende_config::workspace::TaskDefinition;
-use ende_config::workspace::TaskOrScript;
 use ende_config::workspace::WorkspaceDirectory;
 use ende_config::workspace::WorkspaceMemberTasksConfig;
+use ende_config::workspace::WorkspaceTask;
 use ende_config::workspace::WorkspaceTasksConfig;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::anyhow;
@@ -30,24 +28,17 @@ use ende_core::futures::future::LocalBoxFuture;
 use ende_core::futures::stream::futures_unordered;
 use ende_core::serde_json::Value;
 use ende_core::url::Url;
-use ende_npm_installer::PackageCaching;
-use indexmap::IndexMap;
 use indexmap::IndexSet;
 use regex::Regex;
 
-use crate::args::CliLockfile;
 use crate::args::CliOptions;
 use crate::args::Flags;
 use crate::args::TaskFlags;
 use crate::colors;
 use crate::factory::CliFactory;
-use crate::node::CliNodeResolver;
-use crate::npm::CliNpmInstaller;
-use crate::npm::CliNpmResolver;
 use crate::task_runner;
 use crate::task_runner::run_future_forwarding_signals;
 use crate::util::fs::canonicalize_path;
-use crate::util::progress_bar::ProgressBar;
 
 #[derive(Debug)]
 struct PackageTaskInfo {
@@ -62,25 +53,17 @@ pub async fn execute_script(
   let factory = CliFactory::from_flags(flags.clone());
   let cli_options = factory.cli_options()?;
   let start_dir = &cli_options.start_dir;
-  if !start_dir.has_ende_or_pkg_json() && !task_flags.eval {
-    bail!(
-      "ende task couldn't find ende.json(c) or package.json. See https://docs.ende.sh/go/config"
-    )
+  if !start_dir.has_ende_json() && !task_flags.eval {
+    let mut message = "ende task couldn't find ende.json(c). See https://docs.ende.sh/go/config".to_string();
+    if let Some(hint) = package_json_scripts_hint(
+      cli_options.initial_cwd(),
+      task_flags.task.as_deref(),
+    ) {
+      message.push_str("\n\n");
+      message.push_str(&hint);
+    }
+    bail!("{}", message)
   }
-  let force_use_pkg_json =
-    std::env::var_os(crate::task_runner::USE_PKG_JSON_HIDDEN_ENV_VAR_NAME)
-      .map(|v| {
-        // always remove so sub processes don't inherit this env var
-
-        // SAFETY: single-threaded at this point in startup
-        unsafe {
-          std::env::remove_var(
-            crate::task_runner::USE_PKG_JSON_HIDDEN_ENV_VAR_NAME,
-          )
-        };
-        v == "1"
-      })
-      .unwrap_or(false);
 
   // TODO(bartlomieju): this whole huge if statement should be a separate function, preferably with unit tests
   let (packages_task_configs, name) = if let Some(filter) = &task_flags.filter {
@@ -92,7 +75,6 @@ pub async fn execute_script(
         cli_options,
         &package_regex,
         filter,
-        force_use_pkg_json,
         task_flags.recursive,
         task_flags.members,
       )?;
@@ -119,7 +101,6 @@ pub async fn execute_script(
         && !matches_package(
           folder,
           folder_url,
-          force_use_pkg_json,
           &package_regex,
           folder_url == root_dir_url,
         )
@@ -128,10 +109,7 @@ pub async fn execute_script(
       }
 
       let member_dir = workspace.resolve_member_dir(folder_url);
-      let mut tasks_config = member_dir.to_tasks_config()?;
-      if force_use_pkg_json {
-        tasks_config = tasks_config.with_only_pkg_json();
-      }
+      let tasks_config = member_dir.to_tasks_config()?;
 
       let matched_tasks = match_tasks(&tasks_config, &task_regex);
 
@@ -154,7 +132,7 @@ pub async fn execute_script(
       log::warn!(
         "{}",
         colors::red(format!(
-          "No matching task or script '{}' found in selected packages.",
+          "No matching task '{}' found in selected packages.",
           task_name
         ))
       );
@@ -163,11 +141,7 @@ pub async fn execute_script(
 
     (packages_task_info, task_name)
   } else {
-    let mut tasks_config = start_dir.to_tasks_config()?;
-
-    if force_use_pkg_json {
-      tasks_config = tasks_config.with_only_pkg_json()
-    }
+    let tasks_config = start_dir.to_tasks_config()?;
 
     let Some(task_name) = &task_flags.task else {
       print_available_tasks(
@@ -191,11 +165,6 @@ pub async fn execute_script(
     )
   };
 
-  let maybe_lockfile = factory.maybe_lockfile().await?.cloned();
-  let npm_installer = factory.npm_installer_if_managed().await?;
-  let npm_resolver = factory.npm_resolver().await?;
-  let node_resolver = factory.node_resolver().await?;
-  let progress_bar = factory.text_only_progress_bar();
   let task_cache =
     crate::tools::task_cache::TaskCache::new(&factory.ende_dir()?.root);
   let mut env_vars = task_runner::real_env_vars();
@@ -219,13 +188,8 @@ pub async fn execute_script(
 
   let task_runner = TaskRunner {
     task_flags: &task_flags,
-    npm_installer: npm_installer.map(|n| n.as_ref()),
-    npm_resolver,
-    node_resolver: node_resolver.as_ref(),
-    progress_bar,
     env_vars,
     cli_options,
-    maybe_lockfile,
     concurrency: no_of_concurrent_tasks.into(),
     task_cache: &task_cache,
     task_fingerprints: std::cell::RefCell::new(HashMap::new()),
@@ -328,7 +292,7 @@ fn compute_concurrent_task_color_indices(
 }
 
 /// Returns the workspace member's display name for a task's prefix label —
-/// its `name` from deno.json/package.json if set, otherwise the folder's
+/// its `name` from ende.json if set, otherwise the folder's
 /// directory name as a fallback so unnamed sibling packages stay
 /// distinguishable. Tasks from the workspace root get no fallback (their
 /// root folder name is typically not a meaningful package name).
@@ -336,13 +300,13 @@ fn task_label_name<'a>(
   task: &ResolvedTask<'a>,
   workspace_root_url: &Url,
 ) -> Option<&'a str> {
-  if let Some(name) = task.task_or_script.package_name() {
+  if let Some(name) = task.task.package_name() {
     return Some(name);
   }
-  if task.task_or_script.folder_url() == workspace_root_url {
+  if task.task.folder_url() == workspace_root_url {
     return None;
   }
-  workspace_folder_dir_name(task.task_or_script.folder_url())
+  workspace_folder_dir_name(task.task.folder_url())
 }
 
 /// Length of the inner part of the prefix label (without the surrounding
@@ -381,30 +345,15 @@ struct RunSingleOptions<'a> {
   label_name: Option<&'a str>,
   script: &'a str,
   cwd: PathBuf,
-  custom_commands: HashMap<String, Rc<dyn ShellCommand>>,
-  node_modules_bin_dirs: Vec<PathBuf>,
   kill_signal: KillSignal,
   argv: &'a [String],
   parallel_info: Option<ParallelInfo>,
-  /// Extra environment variables to overlay on the runner's base env vars for
-  /// this script (the npm `npm_package_*`/`npm_lifecycle_*`/process vars when
-  /// running package.json scripts). Borrowed because the caller builds this map
-  /// once per package and overwrites the per-script `npm_lifecycle_*` entries
-  /// in place, rather than rebuilding the whole map for each pre/run/post
-  /// script. The entries are still cloned onto the base env when the script
-  /// actually runs.
-  extra_env_vars: &'a HashMap<OsString, OsString>,
 }
 
 struct TaskRunner<'a> {
   task_flags: &'a TaskFlags,
-  npm_installer: Option<&'a CliNpmInstaller>,
-  npm_resolver: &'a CliNpmResolver,
-  node_resolver: &'a CliNodeResolver,
-  progress_bar: &'a ProgressBar,
   env_vars: HashMap<OsString, OsString>,
   cli_options: &'a CliOptions,
-  maybe_lockfile: Option<Arc<CliLockfile>>,
   concurrency: usize,
   task_cache: &'a crate::tools::task_cache::TaskCache,
   /// Per-task cache fingerprints, keyed by `ResolvedTask::id`, recorded as
@@ -434,6 +383,7 @@ impl<'a> TaskRunner<'a> {
               return Err(anyhow!("Task not found: {}", name));
             }
             log::error!("Task not found: {}", name);
+            self.log_package_json_scripts_hint(&name);
             if log::log_enabled!(log::Level::Error) {
               self.print_available_tasks(&pkg.tasks_config)?;
             }
@@ -457,6 +407,7 @@ impl<'a> TaskRunner<'a> {
         return Ok(0);
       }
       log::error!("Task not found: {}", task_name);
+      self.log_package_json_scripts_hint(task_name);
       if log::log_enabled!(log::Level::Error)
         && let Some(pkg) = packages.first()
       {
@@ -466,6 +417,14 @@ impl<'a> TaskRunner<'a> {
     }
 
     self.run_tasks_in_parallel(sorted, kill_signal, argv).await
+  }
+
+  fn log_package_json_scripts_hint(&self, task_name: &str) {
+    if let Some(hint) =
+      package_json_scripts_hint(self.cli_options.initial_cwd(), Some(task_name))
+    {
+      log::error!("{}", hint);
+    }
   }
 
   pub fn print_available_tasks(
@@ -502,7 +461,7 @@ impl<'a> TaskRunner<'a> {
         if !concurrent_task_color_indices.contains_key(&t.id) {
           continue;
         }
-        if seen.insert(t.task_or_script.folder_url()) && seen.len() > 1 {
+        if seen.insert(t.task.folder_url()) && seen.len() > 1 {
           multi = true;
           break;
         }
@@ -584,42 +543,21 @@ impl<'a> TaskRunner<'a> {
             runner.dependency_fingerprints(&task.dependencies);
           return Some(
             async move {
-              match task.task_or_script {
-                TaskOrScript::Task { task: def, .. } => {
-                  runner
-                    .run_ende_task(
-                      task.task_or_script.folder_url(),
-                      task.task_or_script.package_name(),
-                      label_name,
-                      task.name,
-                      def,
-                      kill_signal,
-                      args,
-                      parallel_info,
-                      task.id,
-                      dep_fingerprints,
-                    )
-                    .await
-                }
-                TaskOrScript::Script { details, .. } => {
-                  // npm scripts never participate in the input cache; mark
-                  // non-cacheable so dependents don't cache against them.
-                  runner.record_fingerprint(task.id, None);
-                  runner
-                    .run_npm_script(
-                      task.task_or_script.folder_url(),
-                      task.task_or_script.package_name(),
-                      label_name,
-                      task.name,
-                      &details.tasks,
-                      kill_signal,
-                      args,
-                      parallel_info,
-                    )
-                    .await
-                }
-              }
-              .map(|exit_code| (exit_code, task))
+              runner
+                .run_ende_task(
+                  task.task.folder_url(),
+                  task.task.package_name(),
+                  label_name,
+                  task.name,
+                  task.task.task,
+                  kill_signal,
+                  args,
+                  parallel_info,
+                  task.id,
+                  dep_fingerprints,
+                )
+                .await
+                .map(|exit_code| (exit_code, task))
             }
             .boxed_local(),
           );
@@ -728,8 +666,6 @@ impl<'a> TaskRunner<'a> {
       return Ok(0);
     };
 
-    self.maybe_npm_install().await?;
-
     let cwd = match &self.task_flags.cwd {
       Some(path) => canonicalize_path(Path::new(path))
         .context("failed canonicalizing --cwd")?,
@@ -737,14 +673,6 @@ impl<'a> TaskRunner<'a> {
         normalize_path(Cow::Owned(dir_url.to_file_path().unwrap())).into_owned()
       }
     };
-
-    let node_modules_bin_dirs =
-      task_runner::resolve_task_node_modules_bin_dirs(self.npm_resolver, &cwd);
-    let custom_commands = task_runner::resolve_custom_commands(
-      self.node_resolver,
-      self.npm_resolver,
-      &node_modules_bin_dirs,
-    )?;
 
     // Input-based cache: if the task declares `files`, hash inputs +
     // command + listed env values and skip on match. Only snapshot the env
@@ -811,13 +739,9 @@ impl<'a> TaskRunner<'a> {
         label_name,
         script: command,
         cwd: cwd.clone(),
-        custom_commands,
-        node_modules_bin_dirs,
         kill_signal,
         argv,
         parallel_info,
-        // npm lifecycle env vars are only set for package.json scripts.
-        extra_env_vars: &HashMap::new(),
       })
       .await?;
 
@@ -830,96 +754,6 @@ impl<'a> TaskRunner<'a> {
     Ok(exit_code)
   }
 
-  #[allow(
-    clippy::too_many_arguments,
-    reason = "parallel_info was added to an already-large signature; refactoring into a struct is deferred"
-  )]
-  pub async fn run_npm_script(
-    &self,
-    dir_url: &Url,
-    package_name: Option<&str>,
-    label_name: Option<&str>,
-    task_name: &str,
-    scripts: &IndexMap<String, String>,
-    kill_signal: KillSignal,
-    argv: &[String],
-    parallel_info: Option<ParallelInfo>,
-  ) -> Result<i32, ende_core::anyhow::Error> {
-    // ensure the npm packages are installed if using a managed resolver
-    self.maybe_npm_install().await?;
-
-    let cwd = match &self.task_flags.cwd {
-      Some(path) => Cow::Owned(canonicalize_path(Path::new(path))?),
-      None => normalize_path(Cow::Owned(dir_url.to_file_path().unwrap())),
-    };
-
-    // At this point we already checked if the task name exists in package.json.
-    // We can therefore check for "pre" and "post" scripts too, since we're only
-    // dealing with package.json here and not ende.json
-    let task_names = vec![
-      format!("pre{}", task_name),
-      task_name.to_string(),
-      format!("post{}", task_name),
-    ];
-    let node_modules_bin_dirs =
-      task_runner::resolve_task_node_modules_bin_dirs(self.npm_resolver, &cwd);
-    let custom_commands = task_runner::resolve_custom_commands(
-      self.node_resolver,
-      self.npm_resolver,
-      &node_modules_bin_dirs,
-    )?;
-
-    // npm sets a number of `npm_*` env vars when running a package.json script.
-    // Build them once (the `npm_package_*` vars from the script's package.json
-    // plus the process-level `npm_execpath`/`npm_node_execpath`/`npm_command`)
-    // so that `ende task` matches npm's behavior (see #35251, #35306). The
-    // per-script `npm_lifecycle_*` vars are overwritten in place each iteration,
-    // so this single map is reused across the package's pre/run/post scripts.
-    let pkg_json = self
-      .cli_options
-      .workspace()
-      .config_folders()
-      .get(dir_url)
-      .and_then(|folder| folder.pkg_json.as_deref());
-    let mut npm_env_vars = npm_script_env_vars(pkg_json);
-
-    for task_name in &task_names {
-      if let Some(script) = scripts.get(task_name) {
-        // `npm_lifecycle_event` is the name of the script currently running
-        // (the pre/post-prefixed name), and `npm_lifecycle_script` is its
-        // command.
-        npm_env_vars.insert(
-          OsString::from("npm_lifecycle_event"),
-          OsString::from(task_name),
-        );
-        npm_env_vars.insert(
-          OsString::from("npm_lifecycle_script"),
-          OsString::from(script),
-        );
-        let exit_code = self
-          .run_single(RunSingleOptions {
-            task_name,
-            package_name,
-            label_name,
-            script,
-            cwd: cwd.to_path_buf(),
-            custom_commands: custom_commands.clone(),
-            node_modules_bin_dirs: node_modules_bin_dirs.clone(),
-            kill_signal: kill_signal.clone(),
-            argv,
-            parallel_info,
-            extra_env_vars: &npm_env_vars,
-          })
-          .await?;
-        if exit_code > 0 {
-          return Ok(exit_code);
-        }
-      }
-    }
-
-    Ok(0)
-  }
-
   async fn run_single(
     &self,
     opts: RunSingleOptions<'_>,
@@ -930,12 +764,9 @@ impl<'a> TaskRunner<'a> {
       label_name,
       script,
       cwd,
-      custom_commands,
-      node_modules_bin_dirs,
       kill_signal,
       argv,
       parallel_info,
-      extra_env_vars,
     } = opts;
 
     self.output_task(
@@ -965,24 +796,15 @@ impl<'a> TaskRunner<'a> {
       (None, vec![])
     };
 
-    let env_vars = if extra_env_vars.is_empty() {
-      self.env_vars.clone()
-    } else {
-      let mut env_vars = self.env_vars.clone();
-      env_vars
-        .extend(extra_env_vars.iter().map(|(k, v)| (k.clone(), v.clone())));
-      env_vars
-    };
-
     let exit_code = task_runner::run_task(task_runner::RunTaskOptions {
       task_name,
       script,
       cwd,
-      env_vars,
-      custom_commands,
+      env_vars: self.env_vars.clone(),
+      custom_commands: Default::default(),
       init_cwd: self.cli_options.initial_cwd(),
       argv,
-      node_modules_bin_dirs: &node_modules_bin_dirs,
+      node_modules_bin_dirs: &[],
       stdio,
       kill_signal,
     })
@@ -994,20 +816,6 @@ impl<'a> TaskRunner<'a> {
     }
 
     Ok(exit_code)
-  }
-
-  async fn maybe_npm_install(&self) -> Result<(), AnyError> {
-    if let Some(npm_installer) = self.npm_installer {
-      self.progress_bar.deferred_keep_initialize_alive();
-      npm_installer
-        .ensure_top_level_package_json_install()
-        .await?;
-      npm_installer.cache_packages(PackageCaching::All).await?;
-      if let Some(lockfile) = &self.maybe_lockfile {
-        lockfile.write_if_changed()?;
-      }
-    }
-    Ok(())
   }
 
   fn output_task(
@@ -1040,7 +848,7 @@ enum TaskError {
 struct ResolvedTask<'a> {
   id: usize,
   name: &'a str,
-  task_or_script: TaskOrScript<'a>,
+  task: WorkspaceTask<'a>,
   dependencies: Vec<usize>,
 }
 
@@ -1049,27 +857,32 @@ fn sort_tasks_topo<'a>(
   sorted: &mut Vec<ResolvedTask<'a>>,
 ) -> Result<(), TaskError> {
   trait TasksConfig {
-    fn task(&self, name: &str) -> Option<(TaskOrScript<'_>, &dyn TasksConfig)>;
+    fn task(&self, name: &str)
+    -> Option<(WorkspaceTask<'_>, &dyn TasksConfig)>;
   }
 
   impl TasksConfig for WorkspaceTasksConfig {
-    fn task(&self, name: &str) -> Option<(TaskOrScript<'_>, &dyn TasksConfig)> {
-      if let Some(task_or_script) = self.member.task(name) {
-        return Some((task_or_script, self as &dyn TasksConfig));
+    fn task(
+      &self,
+      name: &str,
+    ) -> Option<(WorkspaceTask<'_>, &dyn TasksConfig)> {
+      if let Some(task) = self.member.task(name) {
+        return Some((task, self as &dyn TasksConfig));
       }
-      if let Some(task_or_script) = self.root.task(name) {
+      if let Some(task) = self.root.task(name) {
         // switch to only using the root tasks for the dependencies
-        return Some((task_or_script, &self.root as &dyn TasksConfig));
+        return Some((task, &self.root as &dyn TasksConfig));
       }
       None
     }
   }
 
   impl TasksConfig for WorkspaceMemberTasksConfig {
-    fn task(&self, name: &str) -> Option<(TaskOrScript<'_>, &dyn TasksConfig)> {
-      self
-        .task(name)
-        .map(|task_or_script| (task_or_script, self as &dyn TasksConfig))
+    fn task(
+      &self,
+      name: &str,
+    ) -> Option<(WorkspaceTask<'_>, &dyn TasksConfig)> {
+      self.task(name).map(|task| (task, self as &dyn TasksConfig))
     }
   }
 
@@ -1079,14 +892,15 @@ fn sort_tasks_topo<'a>(
     mut path: Vec<(&'a Url, &'a str)>,
     tasks_config: &'a dyn TasksConfig,
   ) -> Result<usize, TaskError> {
-    let Some((task_or_script, tasks_config)) = tasks_config.task(name) else {
+    let Some((task, tasks_config)) = tasks_config.task(name) else {
       return Err(TaskError::NotFound(name.to_string()));
     };
 
-    let folder_url = task_or_script.folder_url();
-    if let Some(existing_task) = sorted.iter().find(|task| {
-      task.name == name && task.task_or_script.folder_url() == folder_url
-    }) {
+    let folder_url = task.folder_url();
+    if let Some(existing_task) = sorted
+      .iter()
+      .find(|t| t.name == name && t.task.folder_url() == folder_url)
+    {
       // already exists
       return Ok(existing_task.id);
     }
@@ -1098,21 +912,19 @@ fn sort_tasks_topo<'a>(
       });
     }
 
-    let mut dependencies: Vec<usize> = Vec::new();
-    if let TaskOrScript::Task { task, .. } = task_or_script {
-      dependencies.reserve(task.dependencies.len());
-      for dep in &task.dependencies {
-        let mut path = path.clone();
-        path.push((folder_url, name));
-        dependencies.push(sort_visit(dep, sorted, path, tasks_config)?);
-      }
+    let mut dependencies: Vec<usize> =
+      Vec::with_capacity(task.task.dependencies.len());
+    for dep in &task.task.dependencies {
+      let mut path = path.clone();
+      path.push((folder_url, name));
+      dependencies.push(sort_visit(dep, sorted, path, tasks_config)?);
     }
 
     let id = sorted.len();
     sorted.push(ResolvedTask {
       id,
       name,
-      task_or_script,
+      task,
       dependencies,
     });
 
@@ -1129,20 +941,11 @@ fn sort_tasks_topo<'a>(
 fn matches_package(
   config: &FolderConfigs,
   folder_url: &Url,
-  force_use_pkg_json: bool,
   regex: &Regex,
   is_workspace_root: bool,
 ) -> bool {
-  if !force_use_pkg_json
-    && let Some(ende_json) = &config.ende_json
+  if let Some(ende_json) = &config.ende_json
     && let Some(name) = &ende_json.json.name
-    && regex.is_match(name)
-  {
-    return true;
-  }
-
-  if let Some(package_json) = &config.pkg_json
-    && let Some(name) = &package_json.name
     && regex.is_match(name)
   {
     return true;
@@ -1162,95 +965,30 @@ fn matches_package(
   false
 }
 
-/// Build the base `npm_*` env vars that npm sets when running a package.json
-/// script, in a single map. These are shared by every script in a run; the
-/// per-script `npm_lifecycle_*` vars are added by the caller.
-///
-/// Package vars (from `pkg_json`): `npm_package_name`, `npm_package_version`,
-/// `npm_package_json`, and flattened `npm_package_config_*`.
-///
-/// Process vars (independent of the package):
-/// - `npm_execpath`: the package manager executable. npm points this at
-///   `npm-cli.js`; like pnpm/yarn point it at their own binary, we point it at
-///   the running `ende` executable.
-/// - `npm_node_execpath`: the JS runtime executing the script. npm sets this to
-///   the `node` binary; under `ende task` the runtime is `ende` itself.
-/// - `npm_command`: the npm command being run. `ende task <name>` runs a script
-///   the same way `npm run <name>` does, which npm reports as `run-script`.
-fn npm_script_env_vars(
-  pkg_json: Option<&ende_package_json::PackageJson>,
-) -> HashMap<OsString, OsString> {
-  let mut env_vars = HashMap::new();
-  if let Some(pkg_json) = pkg_json {
-    if let Some(name) = &pkg_json.name {
-      env_vars.insert(OsString::from("npm_package_name"), OsString::from(name));
-    }
-    if let Some(version) = &pkg_json.version {
-      env_vars.insert(
-        OsString::from("npm_package_version"),
-        OsString::from(version),
-      );
-    }
-    env_vars.insert(
-      OsString::from("npm_package_json"),
-      pkg_json.path.clone().into_os_string(),
-    );
-    if let Some(config) = &pkg_json.config {
-      for (key, value) in config {
-        flatten_config_env_var(
-          &mut env_vars,
-          &format!("npm_package_config_{key}"),
-          value,
-        );
-      }
-    }
+/// Returns a hint when the package.json in `cwd` has `scripts`, because
+/// Ende doesn't run package.json scripts.
+fn package_json_scripts_hint(
+  cwd: &Path,
+  task_name: Option<&str>,
+) -> Option<String> {
+  let pkg_json_path = cwd.join("package.json");
+  let text = std::fs::read_to_string(&pkg_json_path).ok()?;
+  let value: Value = ende_core::serde_json::from_str(&text).ok()?;
+  let scripts = value.get("scripts")?.as_object()?;
+  if scripts.is_empty() {
+    return None;
   }
-  if let Ok(exe) = std::env::current_exe() {
-    // Normalize so `npm_execpath`/`npm_node_execpath` match `Ende.execPath()`
-    // exactly (it normalizes `current_exe()` too).
-    let exe = normalize_path(Cow::Owned(exe))
-      .into_owned()
-      .into_os_string();
-    env_vars.insert(OsString::from("npm_execpath"), exe.clone());
-    env_vars.insert(OsString::from("npm_node_execpath"), exe);
-  }
-  env_vars.insert(OsString::from("npm_command"), OsString::from("run-script"));
-  env_vars
-}
-
-/// Recursively flatten a package.json `config` value into env vars, matching
-/// npm: nested object/array keys are joined with `_` (arrays use numeric
-/// indices) and scalar leaves are stringified. Null leaves are set to an empty
-/// string (matching npm).
-fn flatten_config_env_var(
-  env_vars: &mut HashMap<OsString, OsString>,
-  prefix: &str,
-  value: &Value,
-) {
-  match value {
-    Value::Object(map) => {
-      for (key, value) in map {
-        flatten_config_env_var(env_vars, &format!("{prefix}_{key}"), value);
-      }
+  let subject = match task_name {
+    Some(name) if scripts.contains_key(name) => {
+      format!("Found script '{}' in {}", name, pkg_json_path.display())
     }
-    Value::Array(arr) => {
-      for (index, value) in arr.iter().enumerate() {
-        flatten_config_env_var(env_vars, &format!("{prefix}_{index}"), value);
-      }
-    }
-    Value::String(s) => {
-      env_vars.insert(OsString::from(prefix), OsString::from(s));
-    }
-    Value::Number(n) => {
-      env_vars.insert(OsString::from(prefix), OsString::from(n.to_string()));
-    }
-    Value::Bool(b) => {
-      env_vars.insert(OsString::from(prefix), OsString::from(b.to_string()));
-    }
-    Value::Null => {
-      env_vars.insert(OsString::from(prefix), OsString::new());
-    }
-  }
+    _ => format!("Found scripts in {}", pkg_json_path.display()),
+  };
+  Some(format!(
+    "{} {}, but package.json scripts are not supported in Ende. Define the task in the \"tasks\" field of an ende.json instead.",
+    colors::cyan("hint:"),
+    subject,
+  ))
 }
 
 fn workspace_folder_dir_name(folder_url: &Url) -> Option<&str> {
@@ -1263,7 +1001,6 @@ fn print_available_tasks_workspace(
   cli_options: &Arc<CliOptions>,
   package_regex: &Regex,
   filter: &str,
-  force_use_pkg_json: bool,
   recursive: bool,
   members: bool,
 ) -> Result<(), AnyError> {
@@ -1281,7 +1018,6 @@ fn print_available_tasks_workspace(
       && !matches_package(
         folder,
         folder_url,
-        force_use_pkg_json,
         package_regex,
         folder_url == root_dir_url,
       )
@@ -1291,18 +1027,11 @@ fn print_available_tasks_workspace(
     matched = true;
 
     let member_dir = workspace.resolve_member_dir(folder_url);
-    let mut tasks_config = member_dir.to_tasks_config()?;
-
-    let mut pkg_name = folder
+    let tasks_config = member_dir.to_tasks_config()?;
+    let pkg_name = folder
       .ende_json
       .as_ref()
-      .and_then(|ende| ende.json.name.clone())
-      .or(folder.pkg_json.as_ref().and_then(|pkg| pkg.name.clone()));
-
-    if force_use_pkg_json {
-      tasks_config = tasks_config.with_only_pkg_json();
-      pkg_name = folder.pkg_json.as_ref().and_then(|pkg| pkg.name.clone());
-    }
+      .and_then(|ende| ende.json.name.clone());
 
     print_available_tasks(
       &mut std::io::stdout(),
@@ -1316,7 +1045,7 @@ fn print_available_tasks_workspace(
     log::warn!(
       "{}",
       colors::red(format!(
-        "No package name matched the filter '{}' in available 'ende.json' or 'package.json' files.",
+        "No package name matched the filter '{}' in available 'ende.json' files.",
         filter
       ))
     );
@@ -1327,7 +1056,6 @@ fn print_available_tasks_workspace(
 
 pub struct AvailableTaskDescription {
   pub is_root: bool,
-  pub is_ende: bool,
   pub name: String,
   pub task: TaskDefinition,
 }
@@ -1388,34 +1116,8 @@ fn get_available_tasks(
         }
         task_descriptions.push(AvailableTaskDescription {
           is_root,
-          is_ende: true,
           name: name.to_string(),
           task: definition.clone(),
-        });
-      }
-    }
-
-    if let Some(config) = config.package_json.as_ref() {
-      let is_root = !is_cwd_root_dir
-        && config.folder_url
-          == *workspace_dir.workspace.root_dir_url().as_ref();
-      for (name, script) in &config.tasks {
-        if !seen_task_names.insert(name) {
-          continue; // already seen
-        }
-
-        task_descriptions.push(AvailableTaskDescription {
-          is_root,
-          is_ende: false,
-          name: name.to_string(),
-          task: ende_config::ende_json::TaskDefinition {
-            command: Some(script.to_string()),
-            dependencies: vec![],
-            description: None,
-            files: Vec::new(),
-            output: Vec::new(),
-            env: Vec::new(),
-          },
         });
       }
     }
@@ -1454,15 +1156,9 @@ fn print_available_tasks(
       "- {}{}",
       colors::cyan(desc.name),
       if desc.is_root {
-        if desc.is_ende {
-          format!(" {}", colors::italic_gray("(workspace)"))
-        } else {
-          format!(" {}", colors::italic_gray("(workspace package.json)"))
-        }
-      } else if desc.is_ende {
-        "".to_string()
+        format!(" {}", colors::italic_gray("(workspace)"))
       } else {
-        format!(" {}", colors::italic_gray("(package.json)"))
+        "".to_string()
       }
     )?;
     if let Some(description) = &desc.task.description {
@@ -1526,8 +1222,8 @@ fn visit_task_and_dependencies(
 
   visited.insert(name.to_string());
 
-  if let Some(TaskOrScript::Task { task, .. }) = &tasks_config.task(name) {
-    for dep in &task.dependencies {
+  if let Some(task) = &tasks_config.task(name) {
+    for dep in &task.task.dependencies {
       visit_task_and_dependencies(tasks_config, visited, dep);
     }
   }

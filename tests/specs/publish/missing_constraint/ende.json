@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "exports": "./mod.ts",
   "imports": {
-    "basic": "npm:@denotest/esm-basic",
     "add": "jsr:@endetest/add"
   }
 }

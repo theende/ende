@@ -11,14 +11,14 @@
   // permission set granting `["."]`; the bin writes `test.txt` in cwd, which is
   // only allowed if `.` resolves to cwd. Canonicalizing the config path would
   // resolve `.` to `real/` and the write would fail with `NotCapable` — matching
-  // `deno run --config=config.json -P=write npm:@denotest/try-write` (exit 0).
+  // `deno run --config=config.json -P=write jsr:@endetest/try-write` (exit 0).
   "steps": [
     {
       "args": "run -A setup.js",
       "output": "[WILDCARD]"
     },
     {
-      "args": "x -y --config=config.json -P=write npm:@denotest/try-write",
+      "args": "x -y --config=config.json -P=write jsr:@endetest/try-write",
       "output": "[WILDCARD]write succeeded\n"
     }
   ]

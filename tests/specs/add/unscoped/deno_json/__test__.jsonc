@@ -5,7 +5,7 @@
     "basic": {
       "steps": [
         {
-          "args": "add --unscoped jsr:@endetest/add npm:@denotest/esm-basic",
+          "args": "add --unscoped jsr:@endetest/add jsr:@endetest/subtract",
           "output": "[WILDCARD]"
         },
         {
@@ -52,7 +52,7 @@
     "collision": {
       "steps": [
         {
-          "args": "add --unscoped jsr:@endetest/add npm:@denotest/add",
+          "args": "add --unscoped jsr:@endetest/add jsr:@std/add",
           "output": "collision.out",
           "exitCode": 1
         }

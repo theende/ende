@@ -11,7 +11,6 @@ use ende_cache_dir::file_fetcher::CacheSetting;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 
-use super::deps::DepKind;
 use super::deps::DepManager;
 use super::deps::DepManagerArgs;
 use super::outdated::filter::FilterSet;
@@ -21,25 +20,9 @@ use crate::factory::CliFactory;
 use crate::file_fetcher::CreateCliFileFetcherOptions;
 use crate::file_fetcher::create_cli_file_fetcher;
 use crate::jsr::JsrFetchResolver;
-use crate::npm::NpmFetchResolver;
 
-/// Internal id for a package across npm and jsr lockfile entries. The string is
-/// the lockfile key, e.g. `express@4.22.1` (npm, may carry a peer suffix) or
-/// `@std/async@1.2.0` (jsr).
-type PkgId = (PackageKind, String);
-
-/// Strip the peer-dependency suffix from an npm lockfile key, e.g.
-/// `react-dom@18.2.0_react@18.2.0` becomes `react-dom@18.2.0`.
-fn strip_peer_suffix(key: &str) -> &str {
-  let Some(at_pos) = key[1..].find('@').map(|p| p + 1) else {
-    return key;
-  };
-  if let Some(underscore_pos) = key[at_pos + 1..].find('_') {
-    &key[..at_pos + 1 + underscore_pos]
-  } else {
-    key
-  }
-}
+/// Internal id for a jsr package: its lockfile key, e.g. `@std/async@1.2.0`.
+type PkgId = String;
 
 /// Split a `name@version` lockfile key into `(name, version)`.
 fn split_name_version(s: &str) -> (&str, &str) {
@@ -50,93 +33,34 @@ fn split_name_version(s: &str) -> (&str, &str) {
 }
 
 /// The resolved dependency graph of the workspace, derived from the lockfile.
+/// npm packages are not supported in Ende, so they're not included.
 struct DepGraph {
   /// Forward edges: package -> its (resolved) dependencies.
   forward: HashMap<PkgId, Vec<PkgId>>,
-  /// `name@version` (peer suffix stripped) -> full npm lockfile key, used to
-  /// map a resolved root requirement onto its lockfile node.
-  npm_by_base: HashMap<String, String>,
 }
 
 impl DepGraph {
   fn from_lockfile_content(content: &ende_lockfile::PackagesContent) -> Self {
     let mut forward: HashMap<PkgId, Vec<PkgId>> = HashMap::new();
-    let mut npm_by_base: HashMap<String, String> = HashMap::new();
-
-    for (key, info) in content.npm.iter() {
-      // When several lockfile entries share a base `name@version` but differ
-      // only by peer suffix, we keep the first one. A declared root maps to a
-      // single node, so the tree shows that node's peer resolution; this only
-      // matters for the rare case of the same package present with distinct
-      // peer sets.
-      npm_by_base
-        .entry(strip_peer_suffix(key).to_string())
-        .or_insert_with(|| key.to_string());
-      let deps = info
-        .dependencies
-        .values()
-        .chain(info.optional_dependencies.values())
-        .chain(info.optional_peers.values())
-        .map(|dep_key| (PackageKind::Npm, dep_key.to_string()))
-        .collect();
-      forward.insert((PackageKind::Npm, key.to_string()), deps);
-    }
-
     for (nv, info) in content.jsr.iter() {
       let deps = info
         .dependencies
         .iter()
+        .filter(|dep_req| dep_req.kind == PackageKind::Jsr)
         .filter_map(|dep_req| {
           let resolved = content.specifiers.get(dep_req)?;
-          let id = match dep_req.kind {
-            PackageKind::Jsr => (
-              PackageKind::Jsr,
-              format!("{}@{}", dep_req.req.name, resolved),
-            ),
-            PackageKind::Npm => {
-              // `specifiers` records an npm resolution as a bare version,
-              // possibly with a peer suffix. Usually `name@<resolved>` is the
-              // `content.npm` key verbatim (preferred: it pins the exact peer
-              // variant), but the suffix is sometimes formatted differently
-              // (`version__peer@1.0.0` vs the key's `name@version_peer@1`), so
-              // fall back to mapping the base `name@version` onto its node.
-              let exact = format!("{}@{}", dep_req.req.name, resolved);
-              let key =
-                if forward.contains_key(&(PackageKind::Npm, exact.clone())) {
-                  exact
-                } else {
-                  let base_version =
-                    resolved.split('_').next().unwrap_or(resolved);
-                  let base = format!("{}@{}", dep_req.req.name, base_version);
-                  npm_by_base.get(&base).cloned().unwrap_or(exact)
-                };
-              (PackageKind::Npm, key)
-            }
-          };
-          Some(id)
+          Some(format!("{}@{}", dep_req.req.name, resolved))
         })
         .collect();
-      forward.insert((PackageKind::Jsr, nv.to_string()), deps);
+      forward.insert(nv.to_string(), deps);
     }
-
-    Self {
-      forward,
-      npm_by_base,
-    }
+    Self { forward }
   }
 
-  /// Resolve a declared root (kind + `name@version`) to its lockfile node.
-  fn root_id(&self, kind: DepKind, name_version: &str) -> Option<PkgId> {
-    match kind {
-      DepKind::Npm => self
-        .npm_by_base
-        .get(name_version)
-        .map(|key| (PackageKind::Npm, key.clone())),
-      DepKind::Jsr => {
-        let id = (PackageKind::Jsr, name_version.to_string());
-        self.forward.contains_key(&id).then_some(id)
-      }
-    }
+  /// Resolve a declared root (`name@version`) to its lockfile node.
+  fn root_id(&self, name_version: &str) -> Option<PkgId> {
+    let id = name_version.to_string();
+    self.forward.contains_key(&id).then_some(id)
   }
 
   fn children(&self, id: &PkgId) -> &[PkgId] {
@@ -144,19 +68,9 @@ impl DepGraph {
   }
 }
 
-/// Scheme prefix for a lockfile package kind (`npm` / `jsr`). For declared
-/// [`DepKind`] roots use `DepKind::scheme()` instead.
-fn scheme(kind: PackageKind) -> &'static str {
-  match kind {
-    PackageKind::Npm => "npm",
-    PackageKind::Jsr => "jsr",
-  }
-}
-
 /// A declared root dependency, after filtering.
 struct Root {
   alias: Option<String>,
-  kind: DepKind,
   name: String,
   required: String,
   resolved: Option<String>,
@@ -164,7 +78,7 @@ struct Root {
 
 impl Root {
   fn label(&self) -> String {
-    let mut label = format!("{}:{}", self.kind.scheme(), self.name);
+    let mut label = format!("jsr:{}", self.name);
     if let Some(alias) = &self.alias {
       label = format!("{} ({})", label, alias);
     }
@@ -184,8 +98,8 @@ fn print_flat_table(roots: &[Root]) {
   const HEADINGS: &[&str] = &["Package", "Required", "Resolved"];
 
   let name_of = |r: &Root| match &r.alias {
-    Some(a) => format!("{}:{} ({})", r.kind.scheme(), r.name, a),
-    None => format!("{}:{}", r.kind.scheme(), r.name),
+    Some(a) => format!("jsr:{} ({})", r.name, a),
+    None => format!("jsr:{}", r.name),
   };
   let resolved_of = |r: &Root| r.resolved.clone().unwrap_or("-".into());
 
@@ -248,7 +162,7 @@ fn print_tree(roots: &[Root], graph: &DepGraph, max_depth: u16) {
       } else {
         ("├─ ", "│  ")
       };
-      let (name, version) = split_name_version(strip_peer_suffix(&child.1));
+      let (name, version) = split_name_version(child);
       let cyclic = on_path.contains(child);
       let suffix = if cyclic {
         colors::gray(" (cycle)").to_string()
@@ -256,10 +170,9 @@ fn print_tree(roots: &[Root], graph: &DepGraph, max_depth: u16) {
         String::new()
       };
       println!(
-        "{}{}{}:{} {}{}",
+        "{}{}jsr:{} {}{}",
         prefix,
         branch,
-        scheme(child.0),
         name,
         colors::gray(version),
         suffix,
@@ -283,7 +196,7 @@ fn print_tree(roots: &[Root], graph: &DepGraph, max_depth: u16) {
     println!("{}", root.label());
     if let Some(resolved) = &root.resolved {
       let name_version = format!("{}@{}", root.name, resolved);
-      if let Some(id) = graph.root_id(root.kind, &name_version) {
+      if let Some(id) = graph.root_id(&name_version) {
         let mut on_path = vec![id.clone()];
         walk(&id, graph, "", 0, max_depth, &mut on_path);
       }
@@ -316,19 +229,14 @@ pub async fn list(
     },
   );
   let file_fetcher = Arc::new(file_fetcher);
-  let npm_fetch_resolver = Arc::new(NpmFetchResolver::new(
-    file_fetcher.clone(),
-    factory.npmrc()?.clone(),
-    factory.npm_version_resolver()?.clone(),
-  ));
   let jsr_fetch_resolver = Arc::new(JsrFetchResolver::new(
     file_fetcher.clone(),
     factory.jsr_version_resolver()?.clone(),
   ));
 
-  if !cli_options.start_dir.has_ende_or_pkg_json() {
+  if !cli_options.start_dir.has_ende_json() {
     bail!(
-      "No ende.json or package.json in \"{}\".",
+      "No ende.json in \"{}\".",
       cli_options.initial_cwd().display(),
     );
   }
@@ -336,10 +244,6 @@ pub async fn list(
   let args = DepManagerArgs {
     module_load_preparer: factory.module_load_preparer().await?.clone(),
     jsr_fetch_resolver,
-    npm_fetch_resolver,
-    npm_resolver: factory.npm_resolver().await?.clone(),
-    npm_installer: factory.npm_installer().await?.clone(),
-    npm_version_resolver: factory.npm_version_resolver()?.clone(),
     progress_bar: factory.text_only_progress_bar().clone(),
     permissions_container: factory.root_permissions_container()?.clone(),
     main_module_graph_container: factory
@@ -354,7 +258,7 @@ pub async fn list(
   let filter_set = FilterSet::from_filter_strings(
     list_flags.filters.iter().map(|s| s.as_str()),
   )?;
-  let filter_fn = |alias: Option<&str>, req: &PackageReq, _: DepKind| {
+  let filter_fn = |alias: Option<&str>, req: &PackageReq| {
     if filter_set.is_empty() {
       return true;
     }
@@ -375,12 +279,6 @@ pub async fn list(
   // Build the filtered set of declared root dependencies.
   let mut roots: Vec<Root> = Vec::new();
   for (id, dep) in deps.deps_with_ids() {
-    if list_flags.prod && dep.is_dev() {
-      continue;
-    }
-    if list_flags.dev && !dep.is_dev() {
-      continue;
-    }
     let alias = (dep.alias_or_name() != dep.req.name)
       .then(|| dep.alias_or_name().to_string());
     let resolved = if resolved_ok {
@@ -390,19 +288,12 @@ pub async fn list(
     };
     roots.push(Root {
       alias,
-      kind: dep.kind,
       name: dep.req.name.to_string(),
       required: dep.req.version_req.to_string(),
       resolved,
     });
   }
-  roots.sort_by(|a, b| {
-    (a.kind.scheme(), &a.name, &a.required).cmp(&(
-      b.kind.scheme(),
-      &b.name,
-      &b.required,
-    ))
-  });
+  roots.sort_by(|a, b| (&a.name, &a.required).cmp(&(&b.name, &b.required)));
 
   if roots.is_empty() {
     log::info!("No matching dependencies.");

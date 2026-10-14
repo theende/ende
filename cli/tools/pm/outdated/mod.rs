@@ -18,7 +18,6 @@ use ende_core::error::AnyError;
 use super::CacheTopLevelDepsOptions;
 use super::deps::Dep;
 use super::deps::DepId;
-use super::deps::DepKind;
 use super::deps::DepManager;
 use super::deps::DepManagerArgs;
 use super::deps::PackageLatestVersion;
@@ -28,19 +27,17 @@ use crate::factory::CliFactory;
 use crate::file_fetcher::CreateCliFileFetcherOptions;
 use crate::file_fetcher::create_cli_file_fetcher;
 use crate::jsr::JsrFetchResolver;
-use crate::npm::NpmFetchResolver;
 use crate::npm::PackageInfoLoadError;
 
 /// Packages whose metadata could not be fetched (e.g. unreachable or
 /// unauthorized private registries) are dropped from the update check. They are
-/// collected here, keyed and deduplicated by `(kind, name)`, so we can warn the
-/// user instead of skipping them silently.
+/// collected here, keyed and deduplicated by name, so we can warn the user
+/// instead of skipping them silently.
 type SkippedPackages =
-  std::collections::BTreeMap<(DepKind, StackString), Arc<PackageInfoLoadError>>;
+  std::collections::BTreeMap<StackString, Arc<PackageInfoLoadError>>;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct OutdatedPackage {
-  kind: DepKind,
   latest: String,
   semver_compatible: String,
   current: String,
@@ -57,7 +54,7 @@ fn print_outdated_table(packages: &[OutdatedPackage]) {
   let mut longest_latest = 0;
 
   for package in packages {
-    let name_len = package.kind.scheme().len() + 1 + package.name.len();
+    let name_len = "jsr:".len() + package.name.len();
     longest_package = longest_package.max(name_len);
     longest_current = longest_current.max(package.current.len());
     longest_update = longest_update.max(package.semver_compatible.len());
@@ -91,7 +88,7 @@ fn print_outdated_table(packages: &[OutdatedPackage]) {
 
     print!(
       "│ {:<package_column_width$} ",
-      format!("{}:{}", package.kind.scheme(), package.name),
+      format!("jsr:{}", package.name),
       package_column_width = package_column_width - 2
     );
     print!(
@@ -143,7 +140,7 @@ fn print_outdated(
   {
     let dep = deps.get_dep(dep_id);
 
-    collect_skipped(&mut skipped, dep.kind, &dep.req.name, &latest_versions);
+    collect_skipped(&mut skipped, &dep.req.name, &latest_versions);
 
     let Some(resolved) = resolved else { continue };
 
@@ -161,10 +158,9 @@ fn print_outdated(
     };
 
     if latest > &resolved
-      && seen.insert((dep.kind, dep.req.name.clone(), resolved.version.clone()))
+      && seen.insert((dep.req.name.clone(), resolved.version.clone()))
     {
       outdated.push(OutdatedPackage {
-        kind: dep.kind,
         name: dep.req.name.clone(),
         current: resolved.version.to_string(),
         latest: latest_versions
@@ -193,18 +189,15 @@ fn print_outdated(
   Ok(())
 }
 
-/// Records a package whose metadata fetch failed, deduplicating by
-/// `(kind, name)` and keeping the first reason seen.
+/// Records a package whose metadata fetch failed, deduplicating by name and
+/// keeping the first reason seen.
 fn collect_skipped(
   skipped: &mut SkippedPackages,
-  kind: DepKind,
   name: &StackString,
   latest_versions: &PackageLatestVersion,
 ) {
   if let Some(error) = &latest_versions.fetch_error {
-    skipped
-      .entry((kind, name.clone()))
-      .or_insert_with(|| error.clone());
+    skipped.entry(name.clone()).or_insert_with(|| error.clone());
   }
 }
 
@@ -223,12 +216,11 @@ fn print_skipped_warning(skipped: &SkippedPackages) {
   );
 
   if log::log_enabled!(log::Level::Debug) {
-    for ((kind, name), error) in skipped {
+    for (name, error) in skipped {
       log::warn!(
         "{}",
         color_print::cformat!(
-          "  <bold>{}:{}</> (registry: {})",
-          kind.scheme(),
+          "  <bold>jsr:{}</> (registry: {})",
           name,
           error.registry_url,
         )
@@ -237,9 +229,7 @@ fn print_skipped_warning(skipped: &SkippedPackages) {
     }
     log::warn!(
       "{}",
-      color_print::cformat!(
-        "<p(245)>Verify your registry credentials (.npmrc) and network connectivity.</>"
-      )
+      color_print::cformat!("<p(245)>Verify your network connectivity.</>")
     );
   } else {
     log::warn!(
@@ -275,35 +265,25 @@ pub async fn outdated(
     },
   );
   let file_fetcher = Arc::new(file_fetcher);
-  let npm_fetch_resolver = Arc::new(NpmFetchResolver::new(
-    file_fetcher.clone(),
-    factory.npmrc()?.clone(),
-    factory.npm_version_resolver()?.clone(),
-  ));
   let jsr_fetch_resolver = Arc::new(JsrFetchResolver::new(
     file_fetcher.clone(),
     factory.jsr_version_resolver()?.clone(),
   ));
 
-  if !cli_options.start_dir.has_ende_or_pkg_json() {
+  if !cli_options.start_dir.has_ende_json() {
     bail!(
-      "No ende.json or package.json in \"{}\".",
+      "No ende.json in \"{}\".",
       cli_options.initial_cwd().display(),
     );
   }
 
-  let args = dep_manager_args(
-    &factory,
-    npm_fetch_resolver.clone(),
-    jsr_fetch_resolver.clone(),
-  )
-  .await?;
+  let args = dep_manager_args(&factory, jsr_fetch_resolver.clone()).await?;
 
   let filter_set = filter::FilterSet::from_filter_strings(
     update_flags.filters.iter().map(|s| s.as_str()),
   )?;
 
-  let filter_fn = |alias: Option<&str>, req: &PackageReq, _: DepKind| {
+  let filter_fn = |alias: Option<&str>, req: &PackageReq| {
     if filter_set.is_empty() {
       return true;
     }
@@ -432,10 +412,6 @@ struct ToUpdate {
   current_version: Option<PackageNv>,
   current_version_req: VersionReq,
   new_version_req: VersionReq,
-  // Whether the npm registry metadata for this package must be refetched
-  // before the post-modification install re-resolves it. See the comment at
-  // the blocklist construction below for why.
-  force_reload_npm: bool,
 }
 
 async fn update(
@@ -457,7 +433,7 @@ async fn update(
     .collect::<Vec<_>>()
   {
     let dep = deps.get_dep(dep_id);
-    collect_skipped(&mut skipped, dep.kind, &dep.req.name, &latest_versions);
+    collect_skipped(&mut skipped, &dep.req.name, &latest_versions);
     let new_version_req = choose_new_version_req(
       dep,
       resolved.as_ref(),
@@ -473,28 +449,12 @@ async fn update(
       }
     };
 
-    // The post-modification install re-resolves each package through the npm
-    // installer, which reads the npm registry cache with the default
-    // `CacheSetting::Use`. That cache is *separate* from the one behind
-    // `latest_versions` (the `NpmFetchResolver` fetched those fresh with
-    // `RespectHeaders`), so it can be stale in ways the displayed "latest"
-    // versions don't reveal. A stale installer cache re-resolves to whatever
-    // version it happens to know about, which can move the lockfile up (hiding
-    // a newer in-range version, #35348) or, worse, *down* -- silently
-    // downgrading a lockfile entry that was pinned ahead of the stale cache
-    // (#35822). Comparing `latest_versions` against the resolved version can't
-    // detect this: both can read a fresh newest version while the installer
-    // cache lags behind. So refetch the installer's metadata for every npm
-    // package we might re-resolve.
-    let force_reload_npm = dep.kind == DepKind::Npm;
-
     to_update.push(ToUpdate {
       dep_id,
-      package_name: format!("{}:{}", dep.kind.scheme(), dep.req.name),
+      package_name: format!("jsr:{}", dep.req.name),
       current_version: resolved.clone(),
       current_version_req: dep.req.version_req.clone(),
       new_version_req: new_version_req.clone(),
-      force_reload_npm,
     });
   }
 
@@ -508,7 +468,6 @@ async fn update(
             id: to_update.dep_id,
             current_version_req: to_update.current_version_req.clone(),
             name: dep.alias_or_name().into(),
-            kind: dep.kind,
             new_version: to_update.new_version_req.clone(),
           }
         })
@@ -525,7 +484,7 @@ async fn update(
   if !to_update.is_empty() {
     let lockfile_only = cache_options.lockfile_only;
     if lockfile_only {
-      // `--lockfile-only`: don't touch ende.json/package.json. Instead,
+      // `--lockfile-only`: don't touch ende.json. Instead,
       // remove the existing lockfile entries for the deps so the
       // following install re-resolves them to the latest version within
       // their existing ranges.
@@ -540,39 +499,16 @@ async fn update(
       deps.commit_changes()?;
     }
 
-    // Force fresh npm registry metadata for exactly the packages being
-    // updated. The installer's re-resolution reads the npm registry cache with
-    // the default `CacheSetting::Use`, so a stale cached packument can hide a
-    // newer in-range version and leave the lockfile pinned to the old one --
-    // even though `ende outdated` (which fetches packuments fresh) reports the
-    // update. Adding each such npm package to the cache blocklist makes
-    // `cache_setting()` return `ReloadSome`, refetching metadata for only those
-    // packages. See #35348.
-    let install_flags = {
-      let mut install_flags = (*flags).clone();
-      install_flags.cache_blocklist.extend(
-        to_update
-          .iter()
-          .filter(|pkg| pkg.force_reload_npm)
-          .map(|pkg| pkg.package_name.clone()),
-      );
-      Arc::new(install_flags)
-    };
-
-    let factory = super::npm_install_after_modification(
-      install_flags,
+    let factory = super::install_after_modification(
+      flags,
       Some(deps.jsr_fetch_resolver.clone()),
       cache_options,
     )
     .await?;
 
     let mut updated_to_versions = HashSet::new();
-    let args = dep_manager_args(
-      &factory,
-      deps.npm_fetch_resolver.clone(),
-      deps.jsr_fetch_resolver.clone(),
-    )
-    .await?;
+    let args =
+      dep_manager_args(&factory, deps.jsr_fetch_resolver.clone()).await?;
 
     let mut deps = deps.reloaded_after_modification(args);
     deps.resolve_current_versions().await?;
@@ -652,7 +588,7 @@ async fn update(
     if lockfile_only && update_to_latest {
       let note = deno_terminal::colors::intense_blue("note");
       log::info!(
-        "{note}: --lockfile-only updates only within existing version requirements.\n      Drop --lockfile-only to update ende.json/package.json requirements.",
+        "{note}: --lockfile-only updates only within existing version requirements.\n      Drop --lockfile-only to update ende.json requirements.",
       );
     }
   } else {
@@ -678,16 +614,11 @@ async fn update(
 
 async fn dep_manager_args(
   factory: &CliFactory,
-  npm_fetch_resolver: Arc<NpmFetchResolver>,
   jsr_fetch_resolver: Arc<JsrFetchResolver>,
 ) -> Result<DepManagerArgs, AnyError> {
   Ok(DepManagerArgs {
     module_load_preparer: factory.module_load_preparer().await?.clone(),
     jsr_fetch_resolver,
-    npm_fetch_resolver,
-    npm_resolver: factory.npm_resolver().await?.clone(),
-    npm_installer: factory.npm_installer().await?.clone(),
-    npm_version_resolver: factory.npm_version_resolver()?.clone(),
     progress_bar: factory.text_only_progress_bar().clone(),
     permissions_container: factory.root_permissions_container()?.clone(),
     main_module_graph_container: factory

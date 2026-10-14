@@ -14,9 +14,8 @@ path = "lib.rs"
 [features]
 default = ["workspace"]
 ende_json = ["deno_semver", "jsonc-parser", "glob", "ignore", "import_map"]
-package_json = ["ende_package_json"]
-sync = ["ende_maybe_sync/sync", "ende_package_json/sync"]
-workspace = ["ende_json", "package_json"]
+sync = ["ende_maybe_sync/sync"]
+workspace = ["ende_json"]
 
 [dependencies]
 boxed_error.workspace = true
@@ -26,7 +25,6 @@ deno_error = { workspace = true, features = ["url"] }
 deno_path_util.workspace = true
 deno_semver = { workspace = true, optional = true }
 ende_maybe_sync.workspace = true
-ende_package_json = { workspace = true, optional = true }
 glob = { workspace = true, optional = true }
 ignore = { workspace = true, optional = true }
 import_map = { workspace = true, features = ["ext"], optional = true }

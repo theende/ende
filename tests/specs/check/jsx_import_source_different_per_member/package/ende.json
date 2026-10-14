@@ -1,6 +1,6 @@
 {
   "imports": {
-    "preact": "npm:preact"
+    "preact/jsx-runtime": "./jsx/jsx-runtime.ts"
   },
   "compilerOptions": {
     "jsx": "precompile",

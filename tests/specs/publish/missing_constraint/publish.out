@@ -1,7 +1,6 @@
 [UNORDERED_START]
 Download http://127.0.0.1:4250/@endetest/add/meta.json
 Download http://127.0.0.1:4250/@endetest/deps/meta.json
-Download http://localhost:4260/@denotest%2fesm-basic
 Download http://127.0.0.1:4250/@endetest/add/1.0.0_meta.json
 Download http://127.0.0.1:4250/@endetest/deps/1.0.0_meta.json
 Download http://127.0.0.1:4250/@endetest/module-graph/meta.json
@@ -13,7 +12,6 @@ Download http://127.0.0.1:4250/@endetest/no-module-graph/0.1.1/TestClass.ts
 Download http://127.0.0.1:4250/@endetest/add/1.0.0/mod.ts
 Download http://127.0.0.1:4250/@endetest/deps/1.0.0/mod.ts
 Download http://127.0.0.1:4250/@endetest/module-graph/1.4.0/other.ts
-Download http://localhost:4260/@denotest/esm-basic/1.0.0.tgz
 [UNORDERED_END]
 Check [WILDCARD]mod.ts
 Checking for slow types in the public API...
@@ -29,22 +27,10 @@ error[missing-constraint]: specifier 'jsr:@endetest/add' is missing a version co
   info: major version if one is published in the future and potentially break
   docs: https://jsr.io/go/missing-constraint
 
-error[missing-constraint]: specifier 'npm:@denotest/esm-basic' is missing a version constraint
- --> [WILDLINE]mod.ts:[WILDLINE]
-  | 
-2 | import * as basic from "basic";
-  |                        ^^^^^^^ the specifier
-  | 
-  = hint: specify a version constraint for the specifier in the import map
-
-  info: the specifier resolved to version 1.0.0 today, but will resolve to a different
-  info: major version if one is published in the future and potentially break
-  docs: https://jsr.io/go/missing-constraint
-
 error[missing-constraint]: specifier 'jsr:@endetest/deps' is missing a version constraint
  --> [WILDLINE]mod.ts:[WILDLINE]
   | 
-3 | import * as deps from "jsr:@endetest/deps";
+2 | import * as deps from "jsr:@endetest/deps";
   |                       ^^^^^^^^^^^^^^^^^^^^ the specifier
   | 
   = hint: specify a version constraint for the specifier
@@ -53,4 +39,4 @@ error[missing-constraint]: specifier 'jsr:@endetest/deps' is missing a version c
   info: major version if one is published in the future and potentially break
   docs: https://jsr.io/go/missing-constraint
 
-error: Found 3 problems
+error: Found 2 problems

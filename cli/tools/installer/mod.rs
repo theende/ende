@@ -6,11 +6,7 @@ use dashmap::DashSet;
 use ende_core::error::AnyError;
 use ende_core::parking_lot::Mutex;
 use ende_core::url::Url;
-use ende_lib::version::ENDE_VERSION;
-use ende_lib::version::NODE_VERSION;
 use ende_npm_installer::lifecycle_scripts::LifecycleScriptsWarning;
-use ende_package_json::EngineMismatchKind;
-use ende_resolver::workspace::WorkspaceResolver;
 
 pub use self::bin_name_resolver::BinNameResolver;
 use crate::args::Flags;
@@ -29,9 +25,8 @@ mod global;
 mod local;
 
 pub use global::uninstall;
-use local::CategorizedInstalledDeps;
-use local::categorize_installed_npm_deps;
 pub use local::ci_command;
+use local::installed_npm_deps;
 
 #[derive(Default)]
 pub struct InstallStats {
@@ -229,10 +224,8 @@ pub async fn install_from_entrypoints(
     .await?;
 
   print_install_report(
-    &factory.sys(),
     started.elapsed(),
     &factory.install_reporter()?.unwrap().clone(),
-    factory.workspace_resolver().await?,
     factory.npm_resolver().await?,
   );
   Ok(())
@@ -246,7 +239,7 @@ pub async fn install_command(
     InstallFlags::Global(global_flags) => {
       Box::pin(global::install_global(flags, global_flags)).await
     }
-    InstallFlags::Local(local_flags, _) => {
+    InstallFlags::Local(local_flags) => {
       if let InstallFlagsLocal::Add(add_flags) = &local_flags {
         local::check_if_installs_a_single_package_globally(Some(add_flags))?;
       }
@@ -256,10 +249,8 @@ pub async fn install_command(
 }
 
 pub fn print_install_report(
-  sys: &dyn sys_traits::boxed::FsOpenBoxed,
   elapsed: std::time::Duration,
   install_reporter: &InstallReporter,
-  workspace: &WorkspaceResolver<CliSys>,
   npm_resolver: &CliNpmResolver,
 ) {
   fn human_elapsed(elapsed: u128) -> String {
@@ -334,10 +325,8 @@ pub fn print_install_report(
     }
   }
 
-  let CategorizedInstalledDeps {
-    normal_deps: installed_normal_deps,
-    dev_deps: installed_dev_deps,
-  } = categorize_installed_npm_deps(npm_resolver, workspace, install_reporter);
+  let installed_normal_deps =
+    installed_npm_deps(npm_resolver, install_reporter);
 
   if !installed_normal_deps.is_empty() || !rep.stats.downloaded_jsr.is_empty() {
     log::info!("");
@@ -370,63 +359,13 @@ pub fn print_install_report(
     }
     log::info!("");
   }
-  if !installed_dev_deps.is_empty() {
-    log::info!("{}", deno_terminal::colors::cyan("Dev dependencies:"));
-    for pkg in &installed_dev_deps {
-      log::info!(
-        "{} {}{} {}",
-        deno_terminal::colors::green("+"),
-        deno_terminal::colors::gray("npm:"),
-        pkg.nv.name,
-        deno_terminal::colors::gray(pkg.nv.version.to_string())
-      );
-    }
-  }
-
   let warnings = install_reporter.take_scripts_warnings();
   for warning in warnings {
-    log::warn!("{}", warning.into_message(sys));
+    log::warn!("{}", warning.into_message(&CliSys::default()));
   }
 
   let deprecation_messages = install_reporter.take_deprecation_message();
   for message in deprecation_messages {
     log::warn!("{}", message);
-  }
-
-  warn_on_engines_mismatch(workspace);
-}
-
-/// Emit a warning for each package.json in the workspace whose `engines.node`
-/// or `engines.ende` field is not satisfied by the current runtime.
-///
-/// Modeled on `npm`/`yarn`'s default behavior: this is a warning, never an
-/// error. Engines other than `node` and `ende` are ignored — Ende has no way
-/// to verify them.
-fn warn_on_engines_mismatch(workspace: &WorkspaceResolver<CliSys>) {
-  for pkg_json in workspace.package_jsons() {
-    let mismatches = pkg_json.check_engines(ENDE_VERSION, NODE_VERSION);
-    if mismatches.is_empty() {
-      continue;
-    }
-    let display_path = pkg_json.path.display();
-    for m in mismatches {
-      let warning_label = deno_terminal::colors::yellow("Warning");
-      let required = deno_terminal::colors::cyan(&m.required);
-      let actual = deno_terminal::colors::cyan(&m.actual);
-      match m.kind {
-        EngineMismatchKind::Unsatisfied => {
-          log::warn!(
-            "{warning_label} {display_path}: engines.{engine} \"{required}\" is not satisfied by current {engine} version {actual}",
-            engine = m.engine,
-          );
-        }
-        EngineMismatchKind::InvalidRequirement => {
-          log::warn!(
-            "{warning_label} {display_path}: engines.{engine} value \"{required}\" is not a valid version range",
-            engine = m.engine,
-          );
-        }
-      }
-    }
   }
 }

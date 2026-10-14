@@ -214,7 +214,6 @@ fn maybe_show_format_confirmation(
   if fmt_flags.check
     || !fmt_flags.files.include.is_empty()
     || cli_options.workspace().ende_jsons().next().is_some()
-    || cli_options.workspace().package_jsons().next().is_some()
   {
     return Ok(());
   }

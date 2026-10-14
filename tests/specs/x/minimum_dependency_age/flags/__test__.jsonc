@@ -15,14 +15,6 @@
       // 1.0.0 (2025-01-01) is selected, matching `deno run`.
       "args": "x -y --minimum-dependency-age=2025-03-01T00:00:00.000Z jsr:@endetest/x-min-dep-age",
       "output": "[WILDCARD]\n1.0.0\n"
-    },
-    "npm_disabled": {
-      "args": "x -y --minimum-dependency-age=0 npm:@denotest/x-min-dep-age",
-      "output": "[WILDCARD]\n2.0.0\n"
-    },
-    "npm_cutoff": {
-      "args": "x -y --minimum-dependency-age=2025-03-01T00:00:00.000Z npm:@denotest/x-min-dep-age",
-      "output": "[WILDCARD]\n1.0.0\n"
     }
   }
 }

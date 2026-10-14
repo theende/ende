@@ -1,7 +1,0 @@
-{
-  "tempDir": true,
-  "steps": [{
-    "args": "install",
-    "output": "install.out"
-  }]
-}

@@ -1,4 +1,2 @@
-import "npm:@denotest/esm-basic";
-import "npm:@denotest/add";
-import "npm:@denotest/subtract";
-import "npm:preact";
+import "jsr:@endetest/add@1";
+import "jsr:@endetest/subtract@1";

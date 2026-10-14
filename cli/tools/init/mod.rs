@@ -8,14 +8,11 @@ use std::path::Path;
 use color_print::cformat;
 use color_print::cstr;
 use deno_semver::jsr::JsrPackageReqReference;
-use ende_config::ende_json::NodeModulesDirMode;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::futures::FutureExt;
 use ende_core::serde_json::json;
-use ende_lib::args::UnstableConfig;
-use ende_npm_installer::PackagesAllowedScripts;
 use ende_runtime::WorkerExecutionMode;
 use log::info;
 
@@ -27,7 +24,6 @@ use crate::args::PermissionFlags;
 use crate::args::RunFlags;
 use crate::colors;
 use crate::util::env::resolve_cwd;
-use crate::util::temp::create_temp_node_modules_dir;
 
 pub async fn init_project(
   flags: Flags,
@@ -39,9 +35,7 @@ pub async fn init_project(
         .boxed_local()
         .await;
     } else if package.starts_with("npm:") {
-      return init_npm(package, init_flags.package_args, init_flags.yes)
-        .boxed_local()
-        .await;
+      return Err(crate::tools::npm_not_supported_error(package));
     } else {
       bail!("Unknown package kind: {}", package);
     }
@@ -320,98 +314,6 @@ Ende.test("returns json on /api", async () => {
   Ok(0)
 }
 
-async fn init_npm(
-  name: &str,
-  args: Vec<String>,
-  yes: bool,
-) -> Result<i32, AnyError> {
-  let script_name = npm_name_to_create_package(name);
-
-  if let Some(exit_code) = confirm_package_trust(&script_name, &args, yes)? {
-    return Ok(exit_code);
-  }
-
-  let temp_node_modules_dir = create_temp_node_modules_dir()
-    .context("Failed creating temp directory for node_modules folder.")?;
-
-  let new_flags = Flags {
-    permissions: PermissionFlags {
-      allow_all: true,
-      ..Default::default()
-    },
-    allow_scripts: PackagesAllowedScripts::All,
-    argv: args,
-    node_modules_dir: Some(NodeModulesDirMode::Auto),
-    subcommand: EndeSubcommand::Run(RunFlags {
-      script: script_name,
-      ..Default::default()
-    }),
-    reload: true,
-    internal: InternalFlags {
-      lockfile_skip_write: true,
-      root_node_modules_dir_override: Some(
-        temp_node_modules_dir.node_modules_dir_path().to_path_buf(),
-      ),
-      ..Default::default()
-    },
-    unstable_config: UnstableConfig {
-      sloppy_imports: true,
-      detect_cjs: true,
-      ..Default::default()
-    },
-    ..Default::default()
-  };
-  let result = crate::tools::run::run_script(
-    WorkerExecutionMode::Run,
-    new_flags.into(),
-    None,
-    None,
-    Default::default(),
-  )
-  .await;
-  drop(temp_node_modules_dir); // explicit drop for clarity
-  result
-}
-
-fn npm_name_to_create_package(name: &str) -> String {
-  let name = name.strip_prefix("npm:").unwrap_or(name);
-  let mut s = "npm:".to_string();
-
-  let mut scoped = false;
-  let mut create = false;
-
-  for (i, ch) in name.char_indices() {
-    if i == 0 {
-      if ch == '@' {
-        scoped = true;
-      } else {
-        create = true;
-        s.push_str("create-");
-      }
-    } else if scoped {
-      if ch == '/' {
-        scoped = false;
-        create = true;
-        s.push_str("/create-");
-        continue;
-      } else if ch == '@' && !create {
-        scoped = false;
-        create = true;
-        s.push_str("/create@");
-        continue;
-      }
-    }
-
-    s.push(ch);
-  }
-
-  if !create {
-    s.push_str("/create");
-  }
-
-  s
-}
-
 /// Prompts the user to confirm they trust the package, unless `--yes` was
 /// passed. Returns `Ok(None)` when confirmed, or `Ok(Some(exit_code))` when
 /// the user declined (caller should return early with that code).
@@ -552,43 +454,6 @@ fn create_file(
 #[cfg(test)]
 mod test {
   use super::*;
-
-  #[test]
-  fn npm_name_to_create_package_test() {
-    // See https://docs.npmjs.com/cli/v8/commands/npm-init#description
-    assert_eq!(
-      npm_name_to_create_package("foo"),
-      "npm:create-foo".to_string()
-    );
-    assert_eq!(
-      npm_name_to_create_package("foo@1.0.0"),
-      "npm:create-foo@1.0.0".to_string()
-    );
-    assert_eq!(
-      npm_name_to_create_package("@foo"),
-      "npm:@foo/create".to_string()
-    );
-    assert_eq!(
-      npm_name_to_create_package("@foo@1.0.0"),
-      "npm:@foo/create@1.0.0".to_string()
-    );
-    assert_eq!(
-      npm_name_to_create_package("@foo/bar"),
-      "npm:@foo/create-bar".to_string()
-    );
-    assert_eq!(
-      npm_name_to_create_package("@foo/bar@1.0.0"),
-      "npm:@foo/create-bar@1.0.0".to_string()
-    );
-    assert_eq!(
-      npm_name_to_create_package("npm:vite"),
-      "npm:create-vite".to_string()
-    );
-    assert_eq!(
-      npm_name_to_create_package("npm:@foo/bar@1.0.0"),
-      "npm:@foo/create-bar@1.0.0".to_string()
-    );
-  }
 
   #[test]
   fn jsr_name_to_create_script_test() {

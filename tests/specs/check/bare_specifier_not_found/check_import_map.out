@@ -1,5 +1,5 @@
 [WILDCARD]TS2307 [ERROR]: Import "@scope/BAZ" not a dependency and not in import map from "file:///[WILDLINE]/main.ts"
-  hint: If you want to use a JSR or npm package, try running `ende add jsr:@scope/BAZ` or `ende add npm:@scope/BAZ`
+  hint: If you want to use the JSR package, try running `ende add jsr:@scope/BAZ`
     at file:///[WILDLINE]
 
 error: Type checking failed.

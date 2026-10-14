@@ -2,8 +2,6 @@
 │ Package           │ Current │ Update │ Latest │
 ├───────────────────┼─────────┼────────┼────────┤
 │ jsr:@endetest/add │ 0.2.0   │ 0.2.1  │ 1.0.0  │
-├───────────────────┼─────────┼────────┼────────┤
-│ npm:@denotest/add │ 0.5.0   │ 0.5.0  │ 1.0.0  │
 └───────────────────┴─────────┴────────┴────────┘
 
 Run ende update --latest to update to the latest available versions,

@@ -353,8 +353,6 @@ async fn compile_desktop(
         // yet and the compile fails (#35535). Mirrors `ende compile .`.
         super::framework::run_build_command(detection, cwd)?;
       }
-      // Enable CJS detection for Node-based frameworks.
-      flags.unstable_config.detect_cjs = true;
       if detection.name == "Next.js"
         && !matches!(flags.type_check_mode, TypeCheckMode::None)
       {

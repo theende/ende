@@ -18,18 +18,11 @@ use deno_semver::Version;
 use deno_semver::VersionReq;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::package::PackageKind;
-use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
 use discovery::ConfigFileDiscovery;
 use discovery::ConfigFolder;
-use discovery::EndeOrPkgJson;
 use discovery::discover_workspace_config_files;
 use ende_maybe_sync::new_rc;
-use ende_package_json::PackageJson;
-use ende_package_json::PackageJsonDepValue;
-use ende_package_json::PackageJsonDepWorkspaceReq;
-use ende_package_json::PackageJsonLoadError;
-use ende_package_json::PackageJsonRc;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use sys_traits::FsMetadata;
@@ -109,58 +102,6 @@ pub struct JsrPackageConfig {
   pub should_publish: bool,
 }
 
-#[derive(Debug, Clone)]
-pub struct NpmPackageConfig {
-  pub nv: PackageNv,
-  pub workspace_dir: WorkspaceDirectoryRc,
-  pub pkg_json: PackageJsonRc,
-}
-
-impl NpmPackageConfig {
-  pub fn matches_req(&self, req: &PackageReq) -> bool {
-    self.matches_name_and_version_req(&req.name, &req.version_req)
-  }
-
-  pub fn matches_name_and_version_req(
-    &self,
-    name: &str,
-    version_req: &VersionReq,
-  ) -> bool {
-    if name != self.nv.name {
-      return false;
-    }
-    match version_req.inner() {
-      RangeSetOrTag::RangeSet(set) => set.satisfies(&self.nv.version),
-      RangeSetOrTag::Tag(tag) => tag == "workspace",
-    }
-  }
-
-  /// Like [`Self::matches_req`], but also matches prerelease versions that fall
-  /// within the requirement's range bounds (see
-  /// [`version_req_matches_including_pre`]). Used when resolving a local
-  /// workspace member, which is provided explicitly by the user.
-  pub fn matches_req_including_pre(&self, req: &PackageReq) -> bool {
-    self.matches_name_and_version_req_including_pre(&req.name, &req.version_req)
-  }
-
-  /// Like [`Self::matches_name_and_version_req`], but prerelease-inclusive.
-  pub fn matches_name_and_version_req_including_pre(
-    &self,
-    name: &str,
-    version_req: &VersionReq,
-  ) -> bool {
-    if name != self.nv.name {
-      return false;
-    }
-    version_req_matches_including_pre(version_req, &self.nv.version)
-      || matches!(version_req.inner(), RangeSetOrTag::Tag(tag) if tag == "workspace")
-  }
-
-  pub fn matches_name(&self, name: &str) -> bool {
-    name == self.nv.name
-  }
-}
-
 /// Like [`VersionReq::matches`], but also matches prerelease versions that fall
 /// within the requirement's range bounds.
 ///
@@ -208,10 +149,6 @@ pub enum WorkspaceDiagnosticKind {
     "\"{0}\" field can only be specified in the workspace root ende.json file."
   )]
   RootOnlyOption(&'static str),
-  #[error(
-    "\"{0}\" field can only be specified in the workspace root package.json file."
-  )]
-  PkgJsonRootOnlyOption(&'static str),
   #[error(
     "\"{0}\" field can only be specified in a workspace member ende.json file and not the workspace root file."
   )]
@@ -301,9 +238,6 @@ pub enum ConfigReadError {
   #[class(inherit)]
   #[error(transparent)]
   EndeJsonRead(#[from] ConfigFileReadError),
-  #[class(inherit)]
-  #[error(transparent)]
-  PackageJsonRead(#[from] PackageJsonLoadError),
 }
 
 #[derive(Debug, JsError, Boxed)]
@@ -320,8 +254,6 @@ pub enum ResolveWorkspaceMemberErrorKind {
   ConfigRead(#[from] ConfigReadError),
   #[error("Could not find config file for workspace member in '{}'.", .dir_url)]
   NotFound { dir_url: Url },
-  #[error("Could not find package.json for workspace member in '{}'.", .dir_url)]
-  NotFoundPackageJson { dir_url: Url },
   #[error("Could not find config file for workspace member in '{}'. Ensure you specify the directory and not the configuration file in the workspace member.", .dir_url)]
   NotFoundMaybeSpecifiedFile { dir_url: Url },
   #[error(
@@ -394,9 +326,6 @@ pub enum WorkspaceDiscoverErrorKind {
   ConfigRead(#[from] ConfigReadError),
   #[class(inherit)]
   #[error(transparent)]
-  PackageJsonRead(#[from] PackageJsonLoadError),
-  #[class(inherit)]
-  #[error(transparent)]
   LinkConfigParse(#[from] LinkConfigParseError),
   #[class(inherit)]
   #[error(transparent)]
@@ -460,12 +389,10 @@ pub struct WorkspaceDiscoverOptions<'a> {
   /// A cache for ende.json files. This is mostly only useful in the LSP where
   /// workspace discovery may occur multiple times.
   pub ende_json_cache: Option<&'a dyn crate::ende_json::EndeJsonCache>,
-  pub pkg_json_cache: Option<&'a dyn ende_package_json::PackageJsonCache>,
   /// A cache for workspaces. This is mostly only useful in the LSP where
   /// workspace discovery may occur multiple times.
   pub workspace_cache: Option<&'a dyn WorkspaceCache>,
   pub additional_config_file_names: &'a [&'a str],
-  pub discover_pkg_json: bool,
   pub maybe_vendor_override: Option<VendorEnablement<'a>>,
 }
 
@@ -479,29 +406,12 @@ pub struct WorkspaceDirectoryEmptyOptions<'a> {
 #[derive(Debug, Default, Clone)]
 pub struct FolderConfigs {
   pub ende_json: Option<ConfigFileRc>,
-  pub pkg_json: Option<PackageJsonRc>,
 }
 
 impl FolderConfigs {
   fn from_config_folder(config_folder: ConfigFolder) -> Self {
-    match config_folder {
-      ConfigFolder::Single(ende_or_pkg_json) => match ende_or_pkg_json {
-        EndeOrPkgJson::Ende(ende_json) => FolderConfigs {
-          ende_json: Some(ende_json),
-          pkg_json: None,
-        },
-        EndeOrPkgJson::PkgJson(pkg_json) => FolderConfigs {
-          ende_json: None,
-          pkg_json: Some(pkg_json),
-        },
-      },
-      ConfigFolder::Both {
-        ende_json,
-        pkg_json,
-      } => FolderConfigs {
-        ende_json: Some(ende_json),
-        pkg_json: Some(pkg_json),
-      },
+    FolderConfigs {
+      ende_json: Some(config_folder.into_ende_json()),
     }
   }
 }
@@ -522,7 +432,6 @@ pub struct Workspace {
   config_folders: IndexMap<UrlRc, FolderConfigs>,
   links: BTreeMap<UrlRc, FolderConfigs>,
   pub(crate) vendor_dir: Option<PathBuf>,
-  catalogs: IndexMap<String, IndexMap<String, String>>,
   cached: WorkspaceCachedValues,
 }
 
@@ -534,21 +443,6 @@ impl Workspace {
     vendor_dir: Option<PathBuf>,
   ) -> Self {
     let root_dir_url = new_rc(root.folder_url());
-
-    // Load catalogs from package.json (ende.json catalogs are not supported).
-    let catalogs = {
-      let mut result: IndexMap<String, IndexMap<String, String>> =
-        IndexMap::new();
-      if let Some(pj) = root.pkg_json() {
-        if let Some(c) = &pj.catalog {
-          result.insert("default".to_string(), c.clone());
-        }
-        if let Some(cs) = &pj.catalogs {
-          result.extend(cs.clone());
-        }
-      }
-      result
-    };
 
     let mut config_folders = IndexMap::with_capacity(members.len() + 1);
     config_folders.insert(
@@ -568,7 +462,6 @@ impl Workspace {
         .map(|(url, folder)| (url, FolderConfigs::from_config_folder(folder)))
         .collect(),
       vendor_dir,
-      catalogs,
       cached: Default::default(),
     }
   }
@@ -589,82 +482,8 @@ impl Workspace {
     self.config_folders.get(&self.root_dir_url).unwrap()
   }
 
-  pub fn catalogs(&self) -> &IndexMap<String, IndexMap<String, String>> {
-    &self.catalogs
-  }
-
   pub fn root_ende_json(&self) -> Option<&ConfigFileRc> {
     self.root_folder_configs().ende_json.as_ref()
-  }
-
-  pub fn root_pkg_json(&self) -> Option<&PackageJsonRc> {
-    self.root_folder_configs().pkg_json.as_ref()
-  }
-
-  /// Returns the npm overrides from the root package.json, if any.
-  pub fn npm_overrides(
-    &self,
-  ) -> Option<&serde_json::Map<String, serde_json::Value>> {
-    self.root_pkg_json()?.overrides.as_ref()
-  }
-
-  /// Returns root dependencies for npm overrides `$pkg` reference resolution.
-  ///
-  /// Collects dependencies from dependencies, devDependencies, optionalDependencies,
-  /// and peerDependencies of the root package.json.
-  pub fn root_deps_for_npm_overrides(
-    &self,
-  ) -> std::collections::HashMap<
-    deno_semver::package::PackageName,
-    deno_semver::StackString,
-  > {
-    let Some(pkg_json) = self.root_pkg_json() else {
-      return std::collections::HashMap::new();
-    };
-    let capacity = pkg_json.dependencies.as_ref().map_or(0, |d| d.len())
-      + pkg_json.dev_dependencies.as_ref().map_or(0, |d| d.len())
-      + pkg_json
-        .optional_dependencies
-        .as_ref()
-        .map_or(0, |d| d.len())
-      + pkg_json.peer_dependencies.as_ref().map_or(0, |d| d.len());
-    let mut deps = std::collections::HashMap::with_capacity(capacity);
-    // collect from dependencies
-    if let Some(d) = &pkg_json.dependencies {
-      for (k, v) in d {
-        let name = deno_semver::package::PackageName::from(k.as_str());
-        deps.insert(name, deno_semver::StackString::from(v.as_str()));
-      }
-    }
-    // collect from devDependencies
-    if let Some(d) = &pkg_json.dev_dependencies {
-      for (k, v) in d {
-        let name = deno_semver::package::PackageName::from(k.as_str());
-        deps
-          .entry(name)
-          .or_insert_with(|| deno_semver::StackString::from(v.as_str()));
-      }
-    }
-    // collect from optionalDependencies
-    if let Some(d) = &pkg_json.optional_dependencies {
-      for (k, v) in d {
-        let name = deno_semver::package::PackageName::from(k.as_str());
-        deps
-          .entry(name)
-          .or_insert_with(|| deno_semver::StackString::from(v.as_str()));
-      }
-    }
-    // collect from peerDependencies
-    if let Some(d) = &pkg_json.peer_dependencies {
-      for (k, v) in d {
-        let name = deno_semver::package::PackageName::from(k.as_str());
-        deps
-          .entry(name)
-          .or_insert_with(|| deno_semver::StackString::from(v.as_str()));
-      }
-    }
-    debug_assert!(deps.len() <= capacity);
-    deps
   }
 
   pub fn config_folders(&self) -> &IndexMap<UrlRc, FolderConfigs> {
@@ -680,78 +499,43 @@ impl Workspace {
       version: Option<Version>,
     }
 
-    enum Dep {
-      Req(JsrDepPackageReq),
-      Path(Url),
-    }
-
-    impl Dep {
-      pub fn matches_pkg(
-        &self,
-        package_kind: PackageKind,
-        pkg: &PackageNameMaybeVersion,
-        folder_url: &Url,
-      ) -> bool {
-        match self {
-          Dep::Req(req) => {
-            req.kind == package_kind
-              && req.req.name == pkg.name
-              && pkg
-                .version
-                .as_ref()
-                .map(|v| {
-                  // just match if it's a tag
-                  req.req.version_req.tag().is_some()
-                    || req.req.version_req.matches(v)
-                })
-                .unwrap_or(true)
-          }
-          Dep::Path(url) => {
-            folder_url.as_str().trim_end_matches('/')
-              == url.as_str().trim_end_matches('/')
-          }
-        }
-      }
+    fn dep_matches_jsr_pkg(
+      req: &JsrDepPackageReq,
+      pkg: &PackageNameMaybeVersion,
+    ) -> bool {
+      req.kind == PackageKind::Jsr
+        && req.req.name == pkg.name
+        && pkg
+          .version
+          .as_ref()
+          .map(|v| {
+            // just match if it's a tag
+            req.req.version_req.tag().is_some()
+              || req.req.version_req.matches(v)
+          })
+          .unwrap_or(true)
     }
 
     struct Folder<'a> {
       index: usize,
       dir_url: &'a UrlRc,
       folder: &'a FolderConfigs,
-      npm_nv: Option<PackageNameMaybeVersion<'a>>,
       jsr_nv: Option<PackageNameMaybeVersion<'a>>,
-      deps: Vec<Dep>,
+      deps: Vec<JsrDepPackageReq>,
     }
 
     impl<'a> Folder<'a> {
       pub fn depends_on(&self, other: &Folder<'a>) -> bool {
-        if let Some(other_nv) = &other.npm_nv
-          && self.has_matching_dep(PackageKind::Npm, other_nv, other.dir_url)
-        {
-          return true;
-        }
-        if let Some(other_nv) = &other.jsr_nv
-          && self.has_matching_dep(PackageKind::Jsr, other_nv, other.dir_url)
-        {
-          return true;
-        }
-        false
-      }
-
-      fn has_matching_dep(
-        &self,
-        pkg_kind: PackageKind,
-        pkg: &PackageNameMaybeVersion,
-        folder_url: &Url,
-      ) -> bool {
+        let Some(other_nv) = &other.jsr_nv else {
+          return false;
+        };
         self
           .deps
           .iter()
-          .any(|dep| dep.matches_pkg(pkg_kind, pkg, folder_url))
+          .any(|dep| dep_matches_jsr_pkg(dep, other_nv))
       }
     }
 
-    let catalogs = &self.catalogs;
     let mut folders = Vec::with_capacity(self.config_folders.len());
     for (index, (dir_url, folder)) in self.config_folders.iter().enumerate() {
       folders.push(Folder {
@@ -772,80 +556,12 @@ impl Workspace {
                 .and_then(|v| Version::parse_standard(v).ok()),
             })
         }),
-        npm_nv: folder.pkg_json.as_ref().and_then(|pkg_json| {
-          pkg_json.name.as_ref().map(|name| PackageNameMaybeVersion {
-            name,
-            version: pkg_json
-              .version
-              .as_ref()
-              .and_then(|v| Version::parse_from_npm(v).ok()),
-          })
-        }),
         deps: folder
           .ende_json
           .as_ref()
-          .map(|d| d.dependencies(catalogs).into_iter().map(Dep::Req))
+          .map(|d| d.dependencies().into_iter())
           .into_iter()
           .flatten()
-          .chain(
-            folder
-              .pkg_json
-              .as_ref()
-              .map(|d| {
-                let deps = d.resolve_local_package_json_deps();
-                deps
-                  .dependencies
-                  .iter()
-                  .chain(deps.dev_dependencies.iter())
-                  .filter_map(|(k, v)| match v.as_ref().ok()? {
-                    PackageJsonDepValue::File(path) => {
-                      dir_url.join(path).ok().map(Dep::Path)
-                    }
-                    PackageJsonDepValue::Req(package_req) => {
-                      Some(Dep::Req(JsrDepPackageReq {
-                        kind: PackageKind::Npm,
-                        req: package_req.clone(),
-                      }))
-                    }
-                    PackageJsonDepValue::Workspace {
-                      name,
-                      version_req: workspace_req,
-                    } => Some(Dep::Req(JsrDepPackageReq {
-                      kind: PackageKind::Npm,
-                      req: PackageReq {
-                        name: name.clone().unwrap_or_else(|| k.clone()),
-                        version_req: match workspace_req {
-                          PackageJsonDepWorkspaceReq::VersionReq(
-                            version_req,
-                          ) => version_req.clone(),
-                          PackageJsonDepWorkspaceReq::Tilde
-                          | PackageJsonDepWorkspaceReq::Caret => {
-                            VersionReq::parse_from_npm("*").unwrap()
-                          }
-                        },
-                      },
-                    })),
-                    PackageJsonDepValue::Catalog(catalog_name) => catalogs
-                      .get(catalog_name.as_str())
-                      .and_then(|catalog| catalog.get(k.as_str()))
-                      .and_then(|version_req_str| {
-                        VersionReq::parse_from_npm(version_req_str).ok().map(
-                          |version_req| {
-                            Dep::Req(JsrDepPackageReq {
-                              kind: PackageKind::Npm,
-                              req: PackageReq {
-                                name: k.clone(),
-                                version_req,
-                              },
-                            })
-                          },
-                        )
-                      }),
-                  })
-              })
-              .into_iter()
-              .flatten(),
-          )
           .collect(),
       })
     }
@@ -909,13 +625,6 @@ impl Workspace {
       .filter_map(|f| f.ende_json.as_ref())
   }
 
-  pub fn package_jsons(&self) -> impl Iterator<Item = &PackageJsonRc> {
-    self
-      .config_folders
-      .values()
-      .filter_map(|f| f.pkg_json.as_ref())
-  }
-
   #[allow(clippy::needless_lifetimes, reason = "clippy false positive")]
   pub fn jsr_packages<'a>(
     self: &'a WorkspaceRc,
@@ -934,30 +643,6 @@ impl Workspace {
     })
   }
 
-  pub fn npm_packages(self: &WorkspaceRc) -> Vec<NpmPackageConfig> {
-    self
-      .package_jsons()
-      .filter_map(|c| self.package_json_to_npm_package_config(c))
-      .collect()
-  }
-
-  fn package_json_to_npm_package_config(
-    self: &WorkspaceRc,
-    pkg_json: &PackageJsonRc,
-  ) -> Option<NpmPackageConfig> {
-    Some(NpmPackageConfig {
-      workspace_dir: self.resolve_member_dir(&pkg_json.specifier()),
-      nv: PackageNv {
-        name: deno_semver::StackString::from(pkg_json.name.as_ref()?.as_str()),
-        version: {
-          let version = pkg_json.version.as_ref()?;
-          deno_semver::Version::parse_from_npm(version).ok()?
-        },
-      },
-      pkg_json: pkg_json.clone(),
-    })
-  }
-
   pub fn link_folders(&self) -> &BTreeMap<UrlRc, FolderConfigs> {
     &self.links
   }
@@ -966,23 +651,10 @@ impl Workspace {
     self.links.values().filter_map(|f| f.ende_json.as_ref())
   }
 
-  pub fn link_pkg_jsons(&self) -> impl Iterator<Item = &PackageJsonRc> {
-    self.links.values().filter_map(|f| f.pkg_json.as_ref())
-  }
-
   pub fn resolver_ende_jsons(&self) -> impl Iterator<Item = &ConfigFileRc> {
     self
       .ende_jsons()
       .chain(self.links.values().filter_map(|f| f.ende_json.as_ref()))
-  }
-
-  pub fn resolver_pkg_jsons(
-    &self,
-  ) -> impl Iterator<Item = (&UrlRc, &PackageJsonRc)> {
-    self
-      .config_folders
-      .iter()
-      .filter_map(|(k, v)| Some((k, v.pkg_json.as_ref()?)))
   }
 
   pub fn resolver_jsr_pkgs(
@@ -1051,31 +723,9 @@ impl Workspace {
               let root = self.config_folders.get(&self.root_dir_url).unwrap();
               root.ende_json.as_ref().map(|c| (&self.root_dir_url, c))
             });
-          let maybe_pkg_json = folder
-            .pkg_json
-            .as_ref()
-            .map(|pkg_json| (member_url, pkg_json))
-            .or_else(|| {
-              let parent = parent_specifier_str(member_url.as_str())?;
-              self.resolve_pkg_json_from_str(parent)
-            })
-            .or_else(|| {
-              let root = self.config_folders.get(&self.root_dir_url).unwrap();
-              root.pkg_json.as_ref().map(|c| (&self.root_dir_url, c))
-            });
           let maybe_root_folder = self.config_folders.get(&self.root_dir_url);
           WorkspaceDirectory {
             dir_url: member_url.clone(),
-            pkg_json: WorkspaceDirConfig {
-              root: maybe_root_folder.and_then(|dir| dir.pkg_json.clone()),
-              member: maybe_pkg_json.and_then(|(member_url, pkg_json)| {
-                if *member_url == self.root_dir_url {
-                  None
-                } else {
-                  Some(pkg_json.clone())
-                }
-              }),
-            },
             ende_json: WorkspaceDirConfig {
               root: maybe_root_folder.and_then(|dir| dir.ende_json.clone()),
               member: maybe_ende_json.and_then(|(member_url, ende_json)| {
@@ -1117,23 +767,6 @@ impl Workspace {
       let (folder_url, folder) = self.resolve_folder_str(specifier)?;
       if let Some(config) = folder.ende_json.as_ref() {
         return Some((folder_url, config));
-      }
-      specifier = parent_specifier_str(folder_url.as_str())?;
-    }
-  }
-
-  fn resolve_pkg_json_from_str(
-    &self,
-    specifier: &str,
-  ) -> Option<(&UrlRc, &PackageJsonRc)> {
-    let mut specifier = specifier;
-    if !specifier.ends_with('/') {
-      specifier = parent_specifier_str(specifier)?;
-    }
-    loop {
-      let (folder_url, folder) = self.resolve_folder_str(specifier)?;
-      if let Some(pkg_json) = folder.pkg_json.as_ref() {
-        return Some((folder_url, pkg_json));
       }
       specifier = parent_specifier_str(folder_url.as_str())?;
     }
@@ -1344,26 +977,6 @@ impl Workspace {
 
         check_all_configs(config, &mut diagnostics);
       }
-      if !is_root && let Some(pkg_json) = &folder.pkg_json {
-        if pkg_json.overrides.is_some() {
-          diagnostics.push(WorkspaceDiagnostic {
-            config_url: pkg_json.specifier(),
-            kind: WorkspaceDiagnosticKind::PkgJsonRootOnlyOption("overrides"),
-          });
-        }
-        if pkg_json.catalog.is_some() {
-          diagnostics.push(WorkspaceDiagnostic {
-            config_url: pkg_json.specifier(),
-            kind: WorkspaceDiagnosticKind::PkgJsonRootOnlyOption("catalog"),
-          });
-        }
-        if pkg_json.catalogs.is_some() {
-          diagnostics.push(WorkspaceDiagnostic {
-            config_url: pkg_json.specifier(),
-            kind: WorkspaceDiagnosticKind::PkgJsonRootOnlyOption("catalogs"),
-          });
-        }
-      }
     }
 
     for folder in self.links.values() {
@@ -1425,13 +1038,6 @@ impl Workspace {
   ) -> Result<Option<PathBuf>, ToLockConfigError> {
     if let Some(ende_json) = self.root_ende_json() {
       Ok(ende_json.resolve_lockfile_path(sys)?)
-    } else if let Some(pkg_json) = self.root_pkg_json() {
-      Ok(
-        pkg_json
-          .path
-          .parent()
-          .map(|p| crate::ende_json::resolve_default_lockfile_path(sys, p)),
-      )
     } else {
       Ok(None)
     }
@@ -1729,7 +1335,6 @@ pub struct WorkspaceDirectory {
   pub workspace: WorkspaceRc,
   /// The directory that this context is for. This is generally the cwd.
   dir_url: UrlRc,
-  pkg_json: WorkspaceDirConfig<PackageJson>,
   ende_json: WorkspaceDirConfig<ConfigFile>,
   cached: CachedDirectoryValues,
 }
@@ -1747,7 +1352,6 @@ impl WorkspaceDirectory {
         VendorEnablement::Enable { cwd } => Some(cwd.join("vendor")),
         VendorEnablement::Disable => None,
       },
-      catalogs: IndexMap::new(),
       cached: Default::default(),
     });
     workspace.resolve_member_dir(&opts.root_dir)
@@ -1829,7 +1433,6 @@ impl WorkspaceDirectory {
           root_dir_url: start_dir.clone(),
           links: BTreeMap::new(),
           vendor_dir,
-          catalogs: IndexMap::new(),
           cached: Default::default(),
         });
         workspace.resolve_member_dir(&start_dir)
@@ -1857,10 +1460,6 @@ impl WorkspaceDirectory {
     let dir_url = workspace.root_dir_url.clone();
     WorkspaceDirectory {
       dir_url,
-      pkg_json: WorkspaceDirConfig {
-        root: None,
-        member: root_folder.pkg_json.clone(),
-      },
       ende_json: WorkspaceDirConfig {
         root: None,
         member: root_folder.ende_json.clone(),
@@ -1878,16 +1477,6 @@ impl WorkspaceDirectory {
       if package_config.should_publish {
         return vec![package_config];
       } else {
-        return Vec::new();
-      }
-    }
-    if let Some(pkg_json) = &self.pkg_json.member {
-      let dir_path = url_to_file_path(&self.dir_url).unwrap();
-      // don't publish anything if in a package.json only directory within
-      // a workspace
-      if pkg_json.dir_path().starts_with(&dir_path)
-        && dir_path != pkg_json.dir_path()
-      {
         return Vec::new();
       }
     }
@@ -1911,8 +1500,8 @@ impl WorkspaceDirectory {
     url_to_file_path(&self.dir_url).unwrap()
   }
 
-  pub fn has_ende_or_pkg_json(&self) -> bool {
-    self.ende_json.is_some() || self.pkg_json.is_some()
+  pub fn has_ende_json(&self) -> bool {
+    self.ende_json.is_some()
   }
 
   /// Resolves the folder's deno.json.
@@ -1922,13 +1511,6 @@ impl WorkspaceDirectory {
     self.ende_json.member.as_ref()
   }
 
-  /// Resolves the folder's package.json.
-  ///
-  /// This will exclude the root package.json in a member.
-  pub fn member_pkg_json(&self) -> Option<&PackageJsonRc> {
-    self.pkg_json.member.as_ref()
-  }
-
   /// Resolves the member or root ende.json
   pub fn member_or_root_ende_json(&self) -> Option<&ConfigFileRc> {
     self
@@ -1936,15 +1518,6 @@ impl WorkspaceDirectory {
       .member
       .as_ref()
       .or(self.ende_json.root.as_ref())
-  }
-
-  /// Resolves the member or root package.json
-  pub fn member_or_root_pkg_json(&self) -> Option<&PackageJsonRc> {
-    self
-      .pkg_json
-      .member
-      .as_ref()
-      .or(self.pkg_json.root.as_ref())
   }
 
   pub fn maybe_package_config(
@@ -2397,7 +1970,6 @@ impl WorkspaceDirectory {
   ) -> Result<WorkspaceTasksConfig, ToTasksConfigError> {
     fn to_member_tasks_config(
       maybe_ende_json: Option<&ConfigFileRc>,
-      maybe_pkg_json: Option<&PackageJsonRc>,
     ) -> Result<WorkspaceMemberTasksConfig, ToTasksConfigError> {
       Ok(WorkspaceMemberTasksConfig {
         ende_json: match maybe_ende_json {
@@ -2416,28 +1988,12 @@ impl WorkspaceDirectory {
             })?,
           None => None,
         },
-        package_json: match maybe_pkg_json {
-          Some(pkg_json) => pkg_json.scripts.clone().map(|scripts| {
-            WorkspaceMemberTasksConfigFile {
-              folder_url: url_parent(&pkg_json.specifier()),
-              tasks: scripts,
-              package_name: pkg_json.name.clone(),
-            }
-          }),
-          None => None,
-        },
       })
     }
 
     Ok(WorkspaceTasksConfig {
-      root: to_member_tasks_config(
-        self.ende_json.root.as_ref(),
-        self.pkg_json.root.as_ref(),
-      )?,
-      member: to_member_tasks_config(
-        self.ende_json.member.as_ref(),
-        self.pkg_json.member.as_ref(),
-      )?,
+      root: to_member_tasks_config(self.ende_json.root.as_ref())?,
+      member: to_member_tasks_config(self.ende_json.member.as_ref())?,
     })
   }
 
@@ -2660,32 +2216,20 @@ impl WorkspaceDirectory {
   }
 }
 
-pub enum TaskOrScript<'a> {
-  /// A task from an ende.json.
-  Task {
-    details: &'a WorkspaceMemberTasksConfigFile<TaskDefinition>,
-    task: &'a TaskDefinition,
-  },
-  /// A script from a package.json.
-  Script {
-    details: &'a WorkspaceMemberTasksConfigFile<String>,
-    task: &'a str,
-  },
+/// A task from an ende.json.
+#[derive(Clone, Copy)]
+pub struct WorkspaceTask<'a> {
+  pub details: &'a WorkspaceMemberTasksConfigFile<TaskDefinition>,
+  pub task: &'a TaskDefinition,
 }
 
-impl<'a> TaskOrScript<'a> {
+impl<'a> WorkspaceTask<'a> {
   pub fn package_name(&self) -> Option<&'a str> {
-    match self {
-      TaskOrScript::Task { details, .. } => details.package_name.as_deref(),
-      TaskOrScript::Script { details, .. } => details.package_name.as_deref(),
-    }
+    self.details.package_name.as_deref()
   }
 
   pub fn folder_url(&self) -> &'a Url {
-    match self {
-      TaskOrScript::Task { details, .. } => &details.folder_url,
-      TaskOrScript::Script { details, .. } => &details.folder_url,
-    }
+    &self.details.folder_url
   }
 }
 
@@ -2699,28 +2243,15 @@ pub struct WorkspaceMemberTasksConfigFile<TValue> {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct WorkspaceMemberTasksConfig {
   pub ende_json: Option<WorkspaceMemberTasksConfigFile<TaskDefinition>>,
-  pub package_json: Option<WorkspaceMemberTasksConfigFile<String>>,
 }
 
 impl WorkspaceMemberTasksConfig {
-  pub fn with_only_pkg_json(self) -> Self {
-    WorkspaceMemberTasksConfig {
-      ende_json: None,
-      package_json: self.package_json,
-    }
-  }
-
   pub fn is_empty(&self) -> bool {
     self
       .ende_json
       .as_ref()
       .map(|d| d.tasks.is_empty())
       .unwrap_or(true)
-      && self
-        .package_json
-        .as_ref()
-        .map(|d| d.tasks.is_empty())
-        .unwrap_or(true)
   }
 
   pub fn task_names(&self) -> impl Iterator<Item = &str> {
@@ -2729,50 +2260,20 @@ impl WorkspaceMemberTasksConfig {
       .as_ref()
       .into_iter()
       .flat_map(|d| d.tasks.keys())
-      .chain(
-        self
-          .package_json
-          .as_ref()
-          .into_iter()
-          .flat_map(|d| d.tasks.keys())
-          .filter(|pkg_json_key| {
-            self
-              .ende_json
-              .as_ref()
-              .map(|d| !d.tasks.contains_key(pkg_json_key.as_str()))
-              .unwrap_or(true)
-          }),
-      )
       .map(|s| s.as_str())
   }
 
   pub fn tasks_count(&self) -> usize {
     self.ende_json.as_ref().map(|d| d.tasks.len()).unwrap_or(0)
-      + self
-        .package_json
-        .as_ref()
-        .map(|d| d.tasks.len())
-        .unwrap_or(0)
   }
 
-  pub fn task(&self, name: &str) -> Option<TaskOrScript<'_>> {
-    self
-      .ende_json
-      .as_ref()
-      .and_then(|config| {
-        config.tasks.get(name).map(|task| TaskOrScript::Task {
-          details: config,
-          task,
-        })
+  pub fn task(&self, name: &str) -> Option<WorkspaceTask<'_>> {
+    self.ende_json.as_ref().and_then(|config| {
+      config.tasks.get(name).map(|task| WorkspaceTask {
+        details: config,
+        task,
       })
-      .or_else(|| {
-        self.package_json.as_ref().and_then(|config| {
-          config.tasks.get(name).map(|script| TaskOrScript::Script {
-            details: config,
-            task: script,
-          })
-        })
-      })
+    })
   }
 }
 
@@ -2783,13 +2284,6 @@ pub struct WorkspaceTasksConfig {
 }
 
 impl WorkspaceTasksConfig {
-  pub fn with_only_pkg_json(self) -> Self {
-    WorkspaceTasksConfig {
-      root: self.root.with_only_pkg_json(),
-      member: self.member.with_only_pkg_json(),
-    }
-  }
-
   pub fn task_names(&self) -> impl Iterator<Item = &str> {
     self.member.task_names().chain(
       self
@@ -2799,7 +2293,7 @@ impl WorkspaceTasksConfig {
     )
   }
 
-  pub fn task(&self, name: &str) -> Option<TaskOrScript<'_>> {
+  pub fn task(&self, name: &str) -> Option<WorkspaceTask<'_>> {
     self.member.task(name).or_else(|| self.root.task(name))
   }
 
@@ -3034,7 +2528,6 @@ pub mod test {
   use deno_path_util::normalize_path;
   use deno_path_util::url_from_directory_path;
   use deno_path_util::url_from_file_path;
-  use ende_package_json::PackageJsonCacheResult;
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use sys_traits::impls::InMemorySys;
@@ -3282,7 +2775,7 @@ pub mod test {
     sys.fs_insert_json(
       root_dir().join("ende.json"),
       json!({
-        "workspace": ["./member", "./pkg_json"],
+        "workspace": ["./member"],
         "tasks": {
           "hi": "echo hi",
           "overwrite": "echo overwrite"
@@ -3298,20 +2791,11 @@ pub mod test {
         }
       }),
     );
-    sys.fs_insert_json(
-      root_dir().join("pkg_json/package.json"),
-      json!({
-        "scripts": {
-          "script": "echo 1"
-        }
-      }),
-    );
     let workspace_dir = WorkspaceDirectory::discover(
       &sys,
       // start at root for this test
       WorkspaceDiscoverStart::Paths(&[root_dir()]),
       &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
         ..Default::default()
       },
     )
@@ -3327,7 +2811,6 @@ pub mod test {
     });
     let root = WorkspaceMemberTasksConfig {
       ende_json: root_ende_json.clone(),
-      package_json: None,
     };
     // root
     {
@@ -3365,46 +2848,12 @@ pub mod test {
                 ("bye".to_string(), "echo bye".into()),
               ]),
             }),
-            package_json: None,
           },
         }
       );
       assert_eq!(
         tasks_config.task_names().collect::<Vec<_>>(),
         ["overwrite", "bye", "hi"]
-      );
-    }
-    // pkg json
-    {
-      let member_dir = workspace_dir.workspace.resolve_member_dir(
-        &url_from_directory_path(&root_dir().join("pkg_json/package.json"))
-          .unwrap(),
-      );
-      let tasks_config = member_dir.to_tasks_config().unwrap();
-      assert_eq!(
-        tasks_config,
-        WorkspaceTasksConfig {
-          root: WorkspaceMemberTasksConfig {
-            ende_json: root_ende_json.clone(),
-            package_json: None,
-          },
-          member: WorkspaceMemberTasksConfig {
-            ende_json: None,
-            package_json: Some(WorkspaceMemberTasksConfigFile {
-              folder_url: url_from_directory_path(&root_dir().join("pkg_json"))
-                .unwrap(),
-              package_name: None,
-              tasks: IndexMap::from([(
-                "script".to_string(),
-                "echo 1".to_string()
-              )]),
-            }),
-          }
-        }
-      );
-      assert_eq!(
-        tasks_config.task_names().collect::<Vec<_>>(),
-        ["script", "hi", "overwrite"]
       );
     }
   }
@@ -3591,30 +3040,6 @@ pub mod test {
   }
 
   #[test]
-  fn test_link_npm_package() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("pkg/ende.json"),
-      json!({
-        "links": ["../dir"]
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("dir/package.json"), json!({}));
-    let workspace_dir = workspace_at_start_dir(&sys, &root_dir().join("pkg"));
-    assert_eq!(workspace_dir.workspace.diagnostics(), vec![]);
-    let link_folders = workspace_dir
-      .workspace
-      .link_folders()
-      .values()
-      .collect::<Vec<_>>();
-    assert_eq!(link_folders.len(), 1);
-    assert_eq!(
-      link_folders[0].pkg_json.as_ref().unwrap().specifier(),
-      url_from_file_path(&root_dir().join("dir/package.json")).unwrap()
-    )
-  }
-
-  #[test]
   fn test_link_absolute_path() {
     let root_path = root_dir().join("../dir");
     let workspace_dir = workspace_for_root_and_member_with_fs(
@@ -3657,6 +3082,7 @@ pub mod test {
       root_dir().join("packages/package-a/ende.json"),
       json!({}),
     );
+    // package.json is ignored, so this directory is not linked
     sys.fs_insert_json(
       root_dir().join("packages/package-b/package.json"),
       json!({}),
@@ -3672,13 +3098,13 @@ pub mod test {
       .link_folders()
       .iter()
       .collect::<Vec<_>>();
-    assert_eq!(link_folders.len(), 3);
+    assert_eq!(link_folders.len(), 2);
     assert!(link_folders.iter().any(|(url, _)| {
       ***url
         == url_from_directory_path(&root_dir().join("packages/package-a"))
           .unwrap()
     }));
-    assert!(link_folders.iter().any(|(url, _)| {
+    assert!(!link_folders.iter().any(|(url, _)| {
       ***url
         == url_from_directory_path(&root_dir().join("packages/package-b"))
           .unwrap()
@@ -4495,44 +3921,6 @@ pub mod test {
   }
 
   #[test]
-  fn test_member_pkg_json_overrides_diagnostic() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("ende.json"),
-      json!({
-        "workspace": ["./member"]
-      }),
-    );
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "overrides": {
-          "example-pkg": "1.0.0"
-        }
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("member/ende.json"), json!({}));
-    sys.fs_insert_json(
-      root_dir().join("member/package.json"),
-      json!({
-        "overrides": {
-          "example-pkg": "2.0.0"
-        }
-      }),
-    );
-    let workspace_dir =
-      workspace_at_start_dir(&sys, &root_dir().join("member"));
-    assert_eq!(
-      workspace_dir.workspace.diagnostics(),
-      vec![WorkspaceDiagnostic {
-        kind: WorkspaceDiagnosticKind::PkgJsonRootOnlyOption("overrides"),
-        config_url: url_from_file_path(&root_dir().join("member/package.json"))
-          .unwrap(),
-      }]
-    );
-  }
-
-  #[test]
   fn test_unsupported_npm_options() {
     let keys = [
       "nodeModulesDir",
@@ -4561,7 +3949,6 @@ pub mod test {
       .chain(keys.iter().map(|key| diagnostic("member/ende.json", key)))
       .collect::<Vec<_>>();
     assert_eq!(workspace_dir.workspace.diagnostics(), expected);
-    assert!(workspace_dir.workspace.catalogs().is_empty());
   }
 
   #[test]
@@ -4799,7 +4186,7 @@ pub mod test {
     sys.fs_insert_json(
       root_dir().join("ende.json"),
       json!({
-        "workspace": ["./a", "./b", "./c", "./d", "./e"]
+        "workspace": ["./a", "./b", "./c", "./e"]
       }),
     );
     sys.fs_insert_json(
@@ -4822,13 +4209,6 @@ pub mod test {
       root_dir().join("c/ende.json"),
       // not a package
       json!({}),
-    );
-    sys.fs_insert_json(
-      root_dir().join("d/package.json"),
-      json!({
-        "name": "pkg",
-        "version": "1.0.0",
-      }),
     );
     sys.fs_insert_json(
       root_dir().join("e/ende.json"),
@@ -4861,32 +4241,6 @@ pub mod test {
       assert_eq!(workspace_dir.workspace.diagnostics(), vec![]);
       let jsr_pkgs = workspace_dir.jsr_packages_for_publish();
       assert!(jsr_pkgs.is_empty());
-    }
-    // package.json
-    {
-      let workspace_dir = workspace_at_start_dir(&sys, &root_dir().join("d"));
-      assert_eq!(workspace_dir.workspace.diagnostics(), vec![]);
-      let jsr_pkgs = workspace_dir.jsr_packages_for_publish();
-      assert!(jsr_pkgs.is_empty());
-
-      // while we're here, test this
-      assert_eq!(
-        workspace_dir
-          .workspace
-          .package_jsons()
-          .map(|p| p.dir_path().to_path_buf())
-          .collect::<Vec<_>>(),
-        vec![root_dir().join("d")]
-      );
-      assert_eq!(
-        workspace_dir
-          .workspace
-          .npm_packages()
-          .into_iter()
-          .map(|p| p.pkg_json.dir_path().to_path_buf())
-          .collect::<Vec<_>>(),
-        vec![root_dir().join("d")]
-      );
     }
   }
 
@@ -4959,92 +4313,11 @@ pub mod test {
   }
 
   #[test]
-  fn test_packages_for_publish_npm_workspace() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./a", "./b", "./c", "./d"]
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("a/package.json"), json!({}));
-    sys.fs_insert_json(
-      root_dir().join("a/ende.json"),
-      json!({
-        "name": "@scope/a",
-        "version": "1.0.0",
-        "exports": "./main.ts",
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("b/package.json"), json!({}));
-    sys.fs_insert_json(
-      root_dir().join("b/ende.json"),
-      json!({
-        "name": "@scope/b",
-        "version": "1.0.0",
-        "exports": "./main.ts",
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("c/package.json"), json!({}));
-    sys.fs_insert_json(
-      root_dir().join("c/ende.json"),
-      // not a package
-      json!({}),
-    );
-    sys.fs_insert_json(
-      root_dir().join("d/package.json"),
-      json!({
-        "name": "pkg",
-        "version": "1.0.0",
-      }),
-    );
-    // root
-    {
-      let workspace_dir = workspace_at_start_dir(&sys, &root_dir());
-      assert_eq!(workspace_dir.workspace.diagnostics(), vec![]);
-      let jsr_pkgs = workspace_dir.jsr_packages_for_publish();
-      let names = jsr_pkgs.iter().map(|p| p.name.as_str()).collect::<Vec<_>>();
-      assert_eq!(names, vec!["@scope/a", "@scope/b"]);
-    }
-    // member
-    {
-      let workspace_dir = workspace_at_start_dir(&sys, &root_dir().join("a"));
-      assert_eq!(workspace_dir.workspace.diagnostics(), vec![]);
-      let jsr_pkgs = workspace_dir.jsr_packages_for_publish();
-      let names = jsr_pkgs.iter().map(|p| p.name.as_str()).collect::<Vec<_>>();
-      assert_eq!(names, vec!["@scope/a"]);
-    }
-    // member, not a package
-    {
-      let workspace_dir = workspace_at_start_dir(&sys, &root_dir().join("c"));
-      assert_eq!(workspace_dir.workspace.diagnostics(), vec![]);
-      let jsr_pkgs = workspace_dir.jsr_packages_for_publish();
-      assert!(jsr_pkgs.is_empty());
-    }
-    // package.json
-    {
-      let workspace_dir = workspace_at_start_dir(&sys, &root_dir().join("d"));
-      assert_eq!(workspace_dir.workspace.diagnostics(), vec![]);
-      let jsr_pkgs = workspace_dir.jsr_packages_for_publish();
-      assert!(jsr_pkgs.is_empty());
-      assert_eq!(
-        workspace_dir
-          .workspace
-          .npm_packages()
-          .into_iter()
-          .map(|p| p.pkg_json.dir_path().to_path_buf())
-          .collect::<Vec<_>>(),
-        vec![root_dir().join("d")]
-      );
-    }
-  }
-
-  #[test]
   fn test_no_auto_discovery_node_modules_dir() {
     let sys = InMemorySys::default();
     sys.fs_insert_json(root_dir().join("ende.json"), json!({}));
     sys.fs_insert_json(
-      root_dir().join("node_modules/package/package.json"),
+      root_dir().join("node_modules/package/ende.json"),
       json!({
         "name": "@scope/pkg",
         "version": "1.0.0"
@@ -5055,8 +4328,14 @@ pub mod test {
       &root_dir().join("node_modules/package/sub_dir"),
     );
     assert_eq!(workspace_dir.workspace.diagnostics(), vec![]);
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 0);
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 1);
+    assert_eq!(
+      workspace_dir
+        .workspace
+        .ende_jsons()
+        .map(|c| c.specifier.clone())
+        .collect::<Vec<_>>(),
+      vec![url_from_file_path(&root_dir().join("ende.json")).unwrap()]
+    );
   }
 
   #[test]
@@ -5087,7 +4366,7 @@ pub mod test {
   }
 
   #[test]
-  fn test_ende_workspace_globs_with_package_json() {
+  fn test_ende_workspace_globs_ignore_package_json() {
     let sys = InMemorySys::default();
     sys.fs_insert_json(
       root_dir().join("ende.json"),
@@ -5119,7 +4398,8 @@ pub mod test {
       workspace_at_start_dir(&sys, &root_dir().join("packages"));
     assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
     assert_eq!(workspace_dir.workspace.ende_jsons().count(), 4);
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 2);
+    // directories with only a package.json are not members
+    assert_eq!(workspace_dir.workspace.config_folders().len(), 4);
   }
 
   #[test]
@@ -5256,7 +4536,6 @@ pub mod test {
         &sys,
         WorkspaceDiscoverStart::ConfigFile(&config_file_path),
         &WorkspaceDiscoverOptions {
-          discover_pkg_json: true,
           ..Default::default()
         },
       )
@@ -5287,7 +4566,6 @@ pub mod test {
         &sys,
         WorkspaceDiscoverStart::ConfigFile(&config_file_path),
         &WorkspaceDiscoverOptions {
-          discover_pkg_json: true,
           ..Default::default()
         },
       )
@@ -5319,7 +4597,6 @@ pub mod test {
       &sys,
       WorkspaceDiscoverStart::ConfigFile(&root_config_path),
       &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
         ..Default::default()
       },
     )
@@ -5335,7 +4612,7 @@ pub mod test {
   }
 
   #[test]
-  fn test_npm_package_not_referenced_in_ende_workspace() {
+  fn test_package_json_is_ignored() {
     let sys = InMemorySys::default();
     sys.fs_insert_json(
       root_dir().join("ende.json"),
@@ -5344,463 +4621,49 @@ pub mod test {
       }),
     );
     sys.fs_insert_json(root_dir().join("member/ende.json"), json!({}));
-    sys.fs_insert_json(root_dir().join("package/package.json"), json!({}));
-    // The start folder is not referenced by the parent ende workspace, so the
-    // parent workspace is discarded and the start folder is resolved on its
-    // own (a warning is logged for the ende workspace case).
-    let workspace_dir =
-      workspace_at_start_dir(&sys, &root_dir().join("package"));
-    assert_eq!(
-      workspace_dir.workspace.root_dir_path(),
-      root_dir().join("package"),
-    );
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 0);
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 1);
-  }
-
-  #[test]
-  fn test_npm_package_under_ende_workspace_with_empty_members() {
-    // Exact repro from #30672: parent ende.json has an empty `workspace` array
-    // and the start folder contains only a package.json. The parent workspace
-    // should be discarded and the start folder resolved standalone.
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("ende.json"),
-      json!({
-        "workspace": []
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("package/package.json"), json!({}));
-    let workspace_dir =
-      workspace_at_start_dir(&sys, &root_dir().join("package"));
-    assert_eq!(
-      workspace_dir.workspace.root_dir_path(),
-      root_dir().join("package"),
-    );
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 0);
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 1);
-  }
-
-  #[test]
-  fn test_multiple_workspaces_npm_package_referenced_in_package_json_workspace()
-  {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("ende.json"),
-      json!({
-        "workspace": ["./member"]
-      }),
-    );
     sys.fs_insert_json(
       root_dir().join("package.json"),
       json!({
-        "workspaces": ["./package"]
+        "workspaces": ["./package"],
+        "scripts": { "build": "echo build" }
       }),
     );
-    sys.fs_insert_json(root_dir().join("member/ende.json"), json!({}));
-    sys.fs_insert_json(root_dir().join("package/package.json"), json!({}));
+    sys.fs_insert_json(
+      root_dir().join("package/package.json"),
+      json!({
+        "name": "package",
+        "dependencies": { "chalk": "^5.0.0" }
+      }),
+    );
+    // A directory with only a package.json is not a config folder, so
+    // discovery continues up to the Ende workspace and the package.json
+    // "workspaces" don't add any members.
     let workspace_dir =
       workspace_at_start_dir(&sys, &root_dir().join("package"));
     assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 2);
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 2);
-  }
-
-  #[test]
-  fn test_npm_workspace_package_json_and_ende_json_ok() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./member"]
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("member/ende.json"), json!({}));
-    sys.fs_insert_json(root_dir().join("member/package.json"), json!({}));
-    let workspace_dir =
-      workspace_at_start_dir(&sys, &root_dir().join("package"));
-    assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 1);
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 2);
-  }
-
-  #[test]
-  fn test_npm_workspace_member_ende_json_error() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./member"]
-      }),
-    );
-    // no package.json in this folder, so should error
-    sys.fs_insert_json(root_dir().join("member/ende.json"), json!({}));
-    let err = workspace_at_start_dir_err(&sys, &root_dir().join("package"));
-    assert_eq!(
-      err.to_string(),
-      normalize_err_text(
-        "Could not find package.json for workspace member in '[ROOT_DIR_URL]/member/'."
-      )
-    );
-  }
-
-  #[test]
-  fn test_npm_workspace_member_missing_dir_skipped() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./member"]
-      }),
-    );
-    // The listed npm workspace member directory does not exist; warn and
-    // skip instead of erroring, matching npm's behavior and supporting
-    // partial Docker image scenarios.
-    let workspace_dir = workspace_at_start_dir(&sys, &root_dir());
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 1);
-    assert_eq!(workspace_dir.workspace.config_folders().len(), 1);
-  }
-
-  #[test]
-  fn test_npm_workspace_member_only_ende_json_errors() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./member"]
-      }),
-    );
-    // Member exists with a ende.json but no package.json — that's a
-    // genuine npm-workspace misconfiguration and should still error.
-    sys.fs_insert_json(root_dir().join("member/ende.json"), json!({}));
-    let err = workspace_at_start_dir_err(&sys, &root_dir());
-    assert_eq!(
-      err.to_string(),
-      normalize_err_text(
-        "Could not find package.json for workspace member in '[ROOT_DIR_URL]/member/'."
-      )
-    );
-  }
-
-  #[test]
-  fn test_npm_workspace_member_dir_without_config_errors() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./member"]
-      }),
-    );
-    // Member directory exists but has no package.json (or ende.json) at
-    // all. Treat this like a typo'd path and surface the package.json
-    // error rather than silently skipping it.
-    sys.fs_insert(root_dir().join("member/other.ts"), "");
-    let err = workspace_at_start_dir_err(&sys, &root_dir());
-    assert_eq!(
-      err.to_string(),
-      normalize_err_text(
-        "Could not find package.json for workspace member in '[ROOT_DIR_URL]/member/'."
-      )
-    );
-  }
-
-  #[test]
-  fn test_npm_workspace_globs() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./packages/*"]
-      }),
-    );
-    sys.fs_insert_json(
-      root_dir().join("packages/package-a/package.json"),
-      json!({}),
-    );
-    sys.fs_insert_json(
-      root_dir().join("packages/package-b/package.json"),
-      json!({}),
-    );
-    let workspace_dir =
-      workspace_at_start_dir(&sys, &root_dir().join("packages"));
-    assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 3);
-  }
-
-  #[test]
-  fn test_npm_workspace_ignores_vendor_folder() {
-    for (is_vendor, expected_count) in [(true, 3), (false, 4)] {
-      let sys = InMemorySys::default();
-      sys.fs_insert_json(
-        root_dir().join("ende.json"),
-        json!({
-          "vendor": is_vendor,
-        }),
-      );
-      sys.fs_insert_json(
-        root_dir().join("package.json"),
-        json!({
-          "workspaces": ["./**/*"]
-        }),
-      );
-      sys.fs_insert_json(
-        root_dir().join("packages/package-a/package.json"),
-        json!({}),
-      );
-      sys.fs_insert_json(
-        root_dir().join("packages/package-b/package.json"),
-        json!({}),
-      );
-      sys.fs_insert_json(
-        root_dir().join("vendor/package-c/package.json"),
-        json!({}),
-      );
-      let workspace_dir = workspace_at_start_dir(&sys, &root_dir());
-      assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
-      assert_eq!(
-        workspace_dir.workspace.package_jsons().count(),
-        expected_count
-      );
-    }
-  }
-
-  #[test]
-  fn test_npm_workspace_negations() {
-    for negation in ["!ignored/package-c", "!ignored/**"] {
-      let sys = InMemorySys::default();
-      sys.fs_insert_json(
-        root_dir().join("package.json"),
-        json!({
-          "workspaces": [
-            "**/*",
-            negation,
-          ]
-        }),
-      );
-      sys.fs_insert_json(
-        root_dir().join("packages/package-a/package.json"),
-        json!({}),
-      );
-      sys.fs_insert_json(
-        root_dir().join("packages/package-b/package.json"),
-        json!({}),
-      );
-      sys.fs_insert_json(
-        root_dir().join("ignored/package-c/package.json"),
-        json!({}),
-      );
-      let workspace_dir = workspace_at_start_dir(&sys, &root_dir());
-      assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
-      assert_eq!(workspace_dir.workspace.package_jsons().count(), 3);
-    }
-  }
-
-  #[test]
-  fn test_npm_workspace_self_reference_and_duplicate_references_ok() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": [
-          ".",
-          "./member",
-          "./member",
-          "**/*"
-        ]
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("member/package.json"), json!({}));
-    let workspace_dir = workspace_at_start_dir(&sys, &root_dir());
-    assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 2);
-  }
-
-  #[test]
-  fn test_npm_workspace_start_ende_json_not_in_workspace() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./package"]
-      }),
-    );
-    sys.fs_insert_json(
-      root_dir().join("member/ende.json"),
-      json!({
-        "unstable": ["byonm"],
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("package/package.json"), json!({}));
-    // only resolves the member because it's not part of the workspace
-    let workspace_dir =
-      workspace_at_start_dir(&sys, &root_dir().join("member"));
-    assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 1);
-    assert_eq!(
-      deno_path_util::url_to_file_path(workspace_dir.workspace.root_dir_url(),)
-        .unwrap(),
-      root_dir().join("member")
-    );
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 0);
-    assert!(workspace_dir.workspace.has_unstable("byonm"));
+    assert_eq!(workspace_dir.workspace.root_dir_path(), root_dir());
     assert_eq!(
       workspace_dir
         .workspace
-        .resolve_lockfile_path(&InMemorySys::default())
-        .unwrap(),
-      Some(root_dir().join("member/ende.lock"))
-    );
-  }
-
-  #[test]
-  fn test_npm_workspace_start_ende_json_part_of_workspace() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./member"]
-      }),
-    );
-    sys.fs_insert_json(
-      root_dir().join("member/ende.json"),
-      json!({
-        "lock": false,
-        "unstable": ["byonm"],
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("member/package.json"), json!({}));
-    let workspace_dir =
-      workspace_at_start_dir(&sys, &root_dir().join("member"));
-    assert_eq!(
-      workspace_dir
-        .workspace
-        .diagnostics()
-        .into_iter()
-        .map(|d| d.kind)
+        .config_folders()
+        .keys()
+        .map(|k| deno_path_util::url_to_file_path(k).unwrap())
         .collect::<Vec<_>>(),
-      vec![
-        WorkspaceDiagnosticKind::RootOnlyOption("lock"),
-        WorkspaceDiagnosticKind::RootOnlyOption("unstable")
-      ]
+      vec![root_dir(), root_dir().join("member")]
     );
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 1);
-    assert_eq!(
-      deno_path_util::url_to_file_path(workspace_dir.workspace.root_dir_url(),)
-        .unwrap(),
-      root_dir()
-    );
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 2);
-    assert!(!workspace_dir.workspace.has_unstable("byonm"));
-    assert_eq!(
-      workspace_dir
-        .workspace
-        .resolve_lockfile_path(&InMemorySys::default())
-        .unwrap(),
-      Some(root_dir().join("ende.lock"))
-    );
-  }
+    assert!(workspace_dir.to_tasks_config().unwrap().is_empty());
 
-  #[test]
-  fn test_npm_workspace_start_ende_json_part_of_workspace_sub_folder() {
+    // a directory with only a package.json has no config
     let sys = InMemorySys::default();
     sys.fs_insert_json(
       root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./member"]
-      }),
-    );
-    sys.fs_insert_json(
-      root_dir().join("member/ende.json"),
-      json!({
-        "unstable": ["byonm"],
-      }),
+      json!({ "workspaces": ["./member"] }),
     );
     sys.fs_insert_json(root_dir().join("member/package.json"), json!({}));
-    sys.fs_insert("member/sub/sub_folder/sub/file.ts", "");
-    let workspace_dir = workspace_at_start_dir(
-      &sys,
-      // note how we're starting in a sub folder of the member
-      &root_dir().join("member/sub/sub_folder/sub/"),
-    );
-    assert_eq!(
-      workspace_dir
-        .workspace
-        .diagnostics()
-        .into_iter()
-        .map(|d| d.kind)
-        .collect::<Vec<_>>(),
-      vec![WorkspaceDiagnosticKind::RootOnlyOption("unstable")]
-    );
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 1);
-    assert_eq!(
-      deno_path_util::url_to_file_path(workspace_dir.workspace.root_dir_url(),)
-        .unwrap(),
-      root_dir()
-    );
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 2);
-    assert!(!workspace_dir.workspace.has_unstable("byonm"));
-  }
-
-  #[test]
-  fn test_npm_workspace_start_ende_json_part_of_workspace_sub_folder_other_ende_json()
-   {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./member", "./member/sub"]
-      }),
-    );
-    sys.fs_insert_json(
-      root_dir().join("member/ende.json"),
-      json!({ "unstable": ["sloppy-imports"] }),
-    );
-    sys.fs_insert_json(root_dir().join("member/package.json"), json!({}));
-    sys.fs_insert_json(
-      root_dir().join("member/sub/ende.json"),
-      json!({ "unstable": ["byonm"] }),
-    );
-    sys.fs_insert_json(root_dir().join("member/sub/package.json"), json!({}));
-    sys.fs_insert("member/sub/sub_folder/sub/file.ts", "");
-    let workspace_dir = workspace_at_start_dir(
-      &sys,
-      // note how we're starting in a sub folder of the member
-      &root_dir().join("member/sub/sub_folder/sub/"),
-    );
-    assert_eq!(workspace_dir.workspace.diagnostics().len(), 2); // for each unstable
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 2);
-    assert_eq!(
-      deno_path_util::url_to_file_path(&workspace_dir.workspace.root_dir_url)
-        .unwrap(),
-      root_dir()
-    );
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 3);
-    assert!(!workspace_dir.workspace.has_unstable("sloppy-imports"));
-    assert!(!workspace_dir.workspace.has_unstable("byonm"));
-  }
-
-  #[test]
-  fn test_npm_workspace_start_package_json_not_in_workspace() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./package"]
-      }),
-    );
-    sys.fs_insert_json(root_dir().join("member/package.json"), json!({}));
-    sys.fs_insert_json(root_dir().join("package/package.json"), json!({}));
-    // only resolves the member because it's not part of the workspace
     let workspace_dir =
       workspace_at_start_dir(&sys, &root_dir().join("member"));
-    assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
+    assert!(!workspace_dir.has_ende_json());
     assert_eq!(workspace_dir.workspace.ende_jsons().count(), 0);
-    assert_eq!(
-      deno_path_util::url_to_file_path(workspace_dir.workspace.root_dir_url())
-        .unwrap(),
-      root_dir().join("member")
-    );
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 1);
   }
 
   #[test]
@@ -5832,58 +4695,6 @@ pub mod test {
     let jsr_pkgs = workspace_dir.jsr_packages_for_publish();
     let names = jsr_pkgs.iter().map(|p| p.name.as_str()).collect::<Vec<_>>();
     assert_eq!(names, vec!["@scope/pkg"]);
-  }
-
-  #[test]
-  fn test_npm_workspace_ignore_pkg_json_between_member_and_root() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./member/nested"]
-      }),
-    );
-    // will ignore this one
-    sys.fs_insert_json(root_dir().join("member/package.json"), json!({}));
-    sys
-      .fs_insert_json(root_dir().join("member/nested/package.json"), json!({}));
-    // only resolves the member because it's not part of the workspace
-    let workspace_dir =
-      workspace_at_start_dir(&sys, &root_dir().join("member/nested"));
-    assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 0);
-    assert_eq!(
-      workspace_dir
-        .workspace
-        .package_jsons()
-        .map(|p| p.path.clone())
-        .collect::<Vec<_>>(),
-      vec![
-        root_dir().join("package.json"),
-        root_dir().join("member/nested/package.json"),
-      ]
-    );
-  }
-
-  #[test]
-  fn test_npm_workspace_ignore_ende_json_between_member_and_root() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({
-        "workspaces": ["./member/nested"]
-      }),
-    );
-    // will ignore this one
-    sys.fs_insert_json(root_dir().join("member/ende.json"), json!({}));
-    sys
-      .fs_insert_json(root_dir().join("member/nested/package.json"), json!({}));
-    // only resolves the member because it's not part of the workspace
-    let workspace_dir =
-      workspace_at_start_dir(&sys, &root_dir().join("member/nested"));
-    assert_eq!(workspace_dir.workspace.diagnostics(), Vec::new());
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 0);
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 2);
   }
 
   #[test]
@@ -5959,7 +4770,6 @@ pub mod test {
       &sys,
       WorkspaceDiscoverStart::ConfigFile(&other_ende_json),
       &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
         ..Default::default()
       },
     )
@@ -6010,7 +4820,6 @@ pub mod test {
       &sys,
       WorkspaceDiscoverStart::ConfigFile(&root_config_path),
       &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
         ..Default::default()
       },
     )
@@ -6715,26 +5524,6 @@ pub mod test {
   }
 
   #[derive(Default)]
-  struct PkgJsonMemCache(RefCell<HashMap<PathBuf, PackageJsonRc>>);
-
-  impl ende_package_json::PackageJsonCache for PkgJsonMemCache {
-    fn get(&self, path: &Path) -> PackageJsonCacheResult {
-      match self.0.borrow().get(path).cloned() {
-        Some(value) => PackageJsonCacheResult::Hit(Some(value)),
-        None => PackageJsonCacheResult::NotCached,
-      }
-    }
-
-    fn set(&self, path: PathBuf, value: Option<PackageJsonRc>) {
-      let Some(value) = value else {
-        // Don't cache misses (no negative cache).
-        return;
-      };
-      self.0.borrow_mut().insert(path, value);
-    }
-  }
-
-  #[derive(Default)]
   struct WorkspaceMemCache(RefCell<HashMap<PathBuf, WorkspaceRc>>);
 
   impl WorkspaceCache for WorkspaceMemCache {
@@ -6756,7 +5545,6 @@ pub mod test {
       &sys,
       WorkspaceDiscoverStart::Paths(&[root_dir()]),
       &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
         ende_json_cache: Some(&cache),
         ..Default::default()
       },
@@ -6778,7 +5566,6 @@ pub mod test {
       &sys,
       WorkspaceDiscoverStart::Paths(&[root_dir()]),
       &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
         ende_json_cache: Some(&cache),
         ..Default::default()
       },
@@ -6789,60 +5576,10 @@ pub mod test {
   }
 
   #[test]
-  fn workspace_discovery_pkg_json_cache() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({ "name": "member" }),
-    );
-    let cache = PkgJsonMemCache::default();
-    let workspace_dir = WorkspaceDirectory::discover(
-      &sys,
-      WorkspaceDiscoverStart::Paths(&[root_dir()]),
-      &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
-        pkg_json_cache: Some(&cache),
-        ..Default::default()
-      },
-    )
-    .unwrap();
-    assert_eq!(cache.0.borrow().len(), 1); // writes to the cache
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 1);
-    let new_pkg_json = PackageJson::load_from_string(
-      root_dir().join("package.json"),
-      r#"{ "name": "cached-name" }"#,
-    )
-    .unwrap();
-    cache
-      .0
-      .borrow_mut()
-      .insert(root_dir().join("package.json"), new_rc(new_pkg_json));
-    let workspace_dir = WorkspaceDirectory::discover(
-      &sys,
-      WorkspaceDiscoverStart::Paths(&[root_dir()]),
-      &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
-        pkg_json_cache: Some(&cache),
-        ..Default::default()
-      },
-    )
-    .unwrap();
-    // reads from the cache
-    assert_eq!(
-      workspace_dir
-        .workspace
-        .package_jsons()
-        .map(|p| p.name.as_deref().unwrap())
-        .collect::<Vec<_>>(),
-      vec!["cached-name"]
-    );
-  }
-
-  #[test]
   fn workspace_discovery_workspace_cache() {
     let sys = InMemorySys::default();
     sys.fs_insert_json(
-      root_dir().join("member/package-a/package.json"),
+      root_dir().join("member/package-a/ende.json"),
       json!({
         "name": "member-a"
       }),
@@ -6860,46 +5597,37 @@ pub mod test {
       }),
     );
     let ende_json_cache = EndeJsonMemCache::default();
-    let pkg_json_cache = PkgJsonMemCache::default();
     let workspace_cache = WorkspaceMemCache::default();
     let workspace_dir = WorkspaceDirectory::discover(
       &sys,
       WorkspaceDiscoverStart::Paths(&[root_dir()]),
       &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
         ende_json_cache: Some(&ende_json_cache),
-        pkg_json_cache: Some(&pkg_json_cache),
         workspace_cache: Some(&workspace_cache),
         ..Default::default()
       },
     )
     .unwrap();
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 1);
+    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 3);
     // writes to the caches
-    assert_eq!(pkg_json_cache.0.borrow().len(), 1);
-    assert_eq!(ende_json_cache.0.borrow().len(), 2);
+    assert_eq!(ende_json_cache.0.borrow().len(), 3);
     assert_eq!(workspace_cache.0.borrow().len(), 1);
-    // now delete from the ende json and pkg json caches
+    // now delete from the ende json cache
     ende_json_cache.0.borrow_mut().clear();
-    pkg_json_cache.0.borrow_mut().clear();
     // should load and not write to the caches
     let workspace_dir = WorkspaceDirectory::discover(
       &sys,
       WorkspaceDiscoverStart::Paths(&[root_dir()]),
       &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
         ende_json_cache: Some(&ende_json_cache),
-        pkg_json_cache: Some(&pkg_json_cache),
         workspace_cache: Some(&workspace_cache),
         ..Default::default()
       },
     )
     .unwrap();
-    assert_eq!(workspace_dir.workspace.package_jsons().count(), 1);
-    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 2);
-    // it wouldn't have written to these because it just
+    assert_eq!(workspace_dir.workspace.ende_jsons().count(), 3);
+    // it wouldn't have written to this because it just
     // loads from the workspace cache
-    assert_eq!(pkg_json_cache.0.borrow().len(), 0);
     assert_eq!(ende_json_cache.0.borrow().len(), 0);
   }
 
@@ -6919,7 +5647,6 @@ pub mod test {
       json!({ "workspace": ["member/package-a", "member/package-b"] }),
     );
     let ende_json_cache = EndeJsonMemCache::default();
-    let pkg_json_cache = PkgJsonMemCache::default();
     let workspace_cache = WorkspaceMemCache::default();
     for start_dir in [
       root_dir(),
@@ -6930,54 +5657,13 @@ pub mod test {
         &sys,
         WorkspaceDiscoverStart::Paths(&[start_dir]),
         &WorkspaceDiscoverOptions {
-          discover_pkg_json: true,
           ende_json_cache: Some(&ende_json_cache),
-          pkg_json_cache: Some(&pkg_json_cache),
           workspace_cache: Some(&workspace_cache),
           ..Default::default()
         },
       )
       .unwrap();
       assert_eq!(workspace_dir.workspace.ende_jsons().count(), 3);
-    }
-  }
-
-  #[test]
-  fn npm_workspace_discovery_workspace_cache() {
-    let sys = InMemorySys::default();
-    sys.fs_insert_json(
-      root_dir().join("member/package-a/package.json"),
-      json!({ "name": "member-a" }),
-    );
-    sys.fs_insert_json(
-      root_dir().join("member/package-b/package.json"),
-      json!({ "name": "member-b" }),
-    );
-    sys.fs_insert_json(
-      root_dir().join("package.json"),
-      json!({ "workspaces": ["member/*"] }),
-    );
-    let ende_json_cache = EndeJsonMemCache::default();
-    let pkg_json_cache = PkgJsonMemCache::default();
-    let workspace_cache = WorkspaceMemCache::default();
-    for start_dir in [
-      root_dir(),
-      root_dir().join("member/package-a"),
-      root_dir().join("member/package-b"),
-    ] {
-      let workspace_dir = WorkspaceDirectory::discover(
-        &sys,
-        WorkspaceDiscoverStart::Paths(&[start_dir]),
-        &WorkspaceDiscoverOptions {
-          discover_pkg_json: true,
-          ende_json_cache: Some(&ende_json_cache),
-          pkg_json_cache: Some(&pkg_json_cache),
-          workspace_cache: Some(&workspace_cache),
-          ..Default::default()
-        },
-      )
-      .unwrap();
-      assert_eq!(workspace_dir.workspace.package_jsons().count(), 3);
     }
   }
 
@@ -7006,25 +5692,25 @@ pub mod test {
         }),
       );
       sys.fs_insert_json(
-        root_dir().join("a/package.json"),
+        root_dir().join("a/ende.json"),
         json!({
-          "dependencies": {
-            "c": "*"
+          "imports": {
+            "@scope/c": "jsr:@scope/c@*"
           }
         }),
       );
       sys.fs_insert_json(
-        root_dir().join("b/package.json"),
+        root_dir().join("b/ende.json"),
         json!({
-          "name": "b",
+          "name": "@scope/b",
         }),
       );
       sys.fs_insert_json(
-        root_dir().join("c/package.json"),
+        root_dir().join("c/ende.json"),
         json!({
-          "name": "c",
-          "dependencies": {
-            "b": "workspace:~"
+          "name": "@scope/c",
+          "imports": {
+            "@scope/b": "jsr:@scope/b@^1"
           }
         }),
       );
@@ -7039,7 +5725,7 @@ pub mod test {
       );
     }
 
-    // circular
+    // dependency on an unnamed folder
     {
       let sys = InMemorySys::default();
       sys.fs_insert_json(
@@ -7049,72 +5735,29 @@ pub mod test {
         }),
       );
       sys.fs_insert_json(
-        root_dir().join("a/package.json"),
+        root_dir().join("a/ende.json"),
         json!({
-          "dependencies": {
-            "b": "*"
+          "imports": {
+            "@scope/b": "jsr:@scope/b@*"
           }
         }),
       );
       sys.fs_insert_json(
-        root_dir().join("b/package.json"),
+        root_dir().join("b/ende.json"),
         json!({
-          "name": "b",
-          "dependencies": {
-            "c": "*"
+          "name": "@scope/b",
+          "imports": {
+            "@scope/c": "jsr:@scope/c@*"
           }
         }),
       );
       sys.fs_insert_json(
-        root_dir().join("c/package.json"),
+        root_dir().join("c/ende.json"),
         json!({
-          "name": "c",
-          "dependencies": {
-            "a": "*"
+          "name": "@scope/c",
+          "imports": {
+            "@scope/a": "jsr:@scope/a@*"
           }
-        }),
-      );
-      assert_order(
-        sys,
-        vec![
-          root_dir(),
-          root_dir().join("c"),
-          root_dir().join("b"),
-          root_dir().join("a"),
-        ],
-      );
-    }
-
-    // file specifier
-    {
-      let sys = InMemorySys::default();
-      sys.fs_insert_json(
-        root_dir().join("ende.json"),
-        json!({
-          "workspace": ["./a", "./b", "./c"]
-        }),
-      );
-      sys.fs_insert_json(
-        root_dir().join("a/package.json"),
-        json!({
-          "dependencies": {
-            "b": "file:../b"
-          }
-        }),
-      );
-      sys.fs_insert_json(
-        root_dir().join("b/package.json"),
-        json!({
-          "name": "b",
-          "dependencies": {
-            "c": "file:../c/"
-          }
-        }),
-      );
-      sys.fs_insert_json(
-        root_dir().join("c/package.json"),
-        json!({
-          "name": "c"
         }),
       );
       assert_order(
@@ -7190,7 +5833,6 @@ pub mod test {
       sys,
       WorkspaceDiscoverStart::Paths(start_dirs),
       &WorkspaceDiscoverOptions {
-        discover_pkg_json: true,
         ..Default::default()
       },
     )

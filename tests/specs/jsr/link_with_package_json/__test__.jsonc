@@ -11,14 +11,6 @@
       "args": "run main.ts",
       "cwd": "deno_json_link",
       "output": "deno_json_link/main.out"
-    },
-    // A linked folder that only has a package.json is a genuine npm link and
-    // must still require a node_modules directory.
-    "package_json_only": {
-      "args": "run main.ts",
-      "cwd": "package_json_only",
-      "exitCode": 1,
-      "output": "package_json_only/main.out"
     }
   }
 }

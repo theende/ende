@@ -12,7 +12,7 @@
     {
       "args": [
         "eval",
-        "const content = Deno.readTextFileSync('./ende.json'); const imports = JSON.parse(content).imports; const version = imports['@denotest/has-patch-versions']; console.log(version);"
+        "const content = Deno.readTextFileSync('./ende.json'); const imports = JSON.parse(content).imports; const version = imports['@endetest/add']; console.log(version);"
       ],
       "output": "ende.json.version.out"
     }

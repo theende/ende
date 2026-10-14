@@ -6,7 +6,7 @@
     "jsr:@endetest/subtract@0.2": "0.2.0",
     "npm:@denotest/bin@0.6.0": "0.6.0",
     "npm:@denotest/breaking-change-between-versions@1.0.0": "1.0.0",
-    "npm:@denotest/has-patch-versions@~0.1.1": "0.1.1"
+    "npm:@denotest/has-patch-versions@0.1": "0.1.0"
   },
   "jsr": {
     "@endetest/add@0.2.1": {
@@ -28,9 +28,9 @@
       "integrity": "sha512-bzMGYx+DxxPlI74n/VsDAN7Db1BY7Sz2XqxXruMo9dEznsBZu7Ez3i8YQ8n0leTxAiiMk1RCG4zQHPG1aj3xRw==",
       "tarball": "http://localhost:4260/@denotest/breaking-change-between-versions/1.0.0.tgz"
     },
-    "@denotest/has-patch-versions@0.1.1": {
-      "integrity": "sha512-slUqYhu6DrPiSdNzmW5aMdW2/osIYnDP0yY3CwgLzAiyK0/cwb0epSpTSyZEmTKXA3rezxxC7ASSsnD34uH1/w==",
-      "tarball": "http://localhost:4260/@denotest/has-patch-versions/0.1.1.tgz"
+    "@denotest/has-patch-versions@0.1.0": {
+      "integrity": "sha512-H/MBo0jKDdMsX4AAGEGQbZj70nfNe3oUNZXbohYHhqf9EfpLnXp/7FC29ZdfV4+p6VjEcOGdCtXc6rilE6iYpg==",
+      "tarball": "http://localhost:4260/@denotest/has-patch-versions/0.1.0.tgz"
     }
   },
   "workspace": {
@@ -40,7 +40,7 @@
       "jsr:@endetest/subtract@0.2",
       "npm:@denotest/bin@0.6.0",
       "npm:@denotest/breaking-change-between-versions@1.0.0",
-      "npm:@denotest/has-patch-versions@~0.1.1"
+      "npm:@denotest/has-patch-versions@0.1"
     ]
   }
 }

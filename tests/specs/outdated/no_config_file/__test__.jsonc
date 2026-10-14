@@ -2,5 +2,5 @@
   "tempDir": true,
   "args": "outdated",
   "exitCode": 1,
-  "output": "error: No ende.json or package.json in \"[WILDLINE]\".\n"
+  "output": "error: No ende.json in \"[WILDLINE]\".\n"
 }

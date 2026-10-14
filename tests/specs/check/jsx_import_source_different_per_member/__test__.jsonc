@@ -1,13 +1,5 @@
 {
   "tempDir": true,
-  "steps": [
-    {
-      "args": "install",
-      "output": "[WILDCARD]"
-    },
-    {
-      "args": "check",
-      "output": "main.out"
-    }
-  ]
+  "args": "check",
+  "output": "main.out"
 }

@@ -4,9 +4,9 @@
     "@endetest/add/": "jsr:/@endetest/add@^1.0.0/",
     "@endetest/subtract": "jsr:@endetest/subtract@^1.0.0",
     "@denotest/with-subpath": "jsr:@endetest/multiple-exports@1.0.0/data-json",
-    "@denotest/breaking-change-between-versions": "npm:@denotest/breaking-change-between-versions@2.0.0",
-    "@denotest/bin": "npm:@denotest/bin@1.0.0",
-    "@denotest/has-patch-versions": "npm:@denotest/has-patch-versions@^0.2.0"
+    "@denotest/breaking-change-between-versions": "npm:@denotest/breaking-change-between-versions@1.0.0",
+    "@denotest/bin": "npm:@denotest/bin@0.6.0",
+    "@denotest/has-patch-versions": "npm:@denotest/has-patch-versions@^0.1.0"
   },
   "scopes": {
     "/foo/": {

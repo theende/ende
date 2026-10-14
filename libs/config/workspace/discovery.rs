@@ -13,9 +13,6 @@ use deno_path_util::url_from_file_path;
 use deno_path_util::url_parent;
 use deno_path_util::url_to_file_path;
 use ende_maybe_sync::new_rc;
-use ende_package_json::PackageJson;
-use ende_package_json::PackageJsonLoadError;
-use ende_package_json::PackageJsonRc;
 use indexmap::IndexSet;
 use sys_traits::FsMetadata;
 use sys_traits::FsRead;
@@ -42,104 +39,36 @@ use crate::glob::PathGlobMatch;
 use crate::glob::PathOrPattern;
 use crate::glob::PathOrPatternSet;
 use crate::glob::is_glob_pattern;
-use crate::util::is_skippable_io_error;
 use crate::workspace::ConfigReadError;
 use crate::workspace::Workspace;
 
 /// File names that identify a workspace member or link directory.
-const MEMBER_CONFIG_FILE_NAMES: [&str; 5] = [
+const MEMBER_CONFIG_FILE_NAMES: [&str; 4] = [
   CONFIG_FILE_NAMES[0],
   CONFIG_FILE_NAMES[1],
   CONFIG_FILE_NAMES[2],
   CONFIG_FILE_NAMES[3],
-  "package.json",
 ];
 
+/// A folder containing an Ende config file. Ende ignores `package.json`.
 #[derive(Debug)]
-pub enum EndeOrPkgJson {
-  Ende(ConfigFileRc),
-  PkgJson(PackageJsonRc),
-}
-
-impl EndeOrPkgJson {
-  pub fn specifier(&self) -> Cow<'_, Url> {
-    match self {
-      Self::Ende(config) => Cow::Borrowed(&config.specifier),
-      Self::PkgJson(pkg_json) => Cow::Owned(pkg_json.specifier()),
-    }
-  }
-}
-
-#[derive(Debug)]
-pub enum ConfigFolder {
-  Single(EndeOrPkgJson),
-  Both {
-    ende_json: ConfigFileRc,
-    pkg_json: PackageJsonRc,
-  },
-}
+pub struct ConfigFolder(ConfigFileRc);
 
 impl ConfigFolder {
   pub fn folder_url(&self) -> Url {
-    match self {
-      Self::Single(EndeOrPkgJson::Ende(config)) => {
-        url_parent(&config.specifier)
-      }
-      Self::Single(EndeOrPkgJson::PkgJson(pkg_json)) => {
-        url_from_directory_path(pkg_json.path.parent().unwrap()).unwrap()
-      }
-      Self::Both { ende_json, .. } => url_parent(&ende_json.specifier),
-    }
+    url_parent(&self.0.specifier)
   }
 
   pub fn has_workspace_members(&self) -> bool {
-    match self {
-      Self::Single(EndeOrPkgJson::Ende(config)) => {
-        config.json.workspace.is_some()
-      }
-      Self::Single(EndeOrPkgJson::PkgJson(pkg_json)) => {
-        pkg_json.workspaces.is_some()
-      }
-      Self::Both {
-        ende_json,
-        pkg_json,
-      } => ende_json.json.workspace.is_some() || pkg_json.workspaces.is_some(),
-    }
+    self.0.json.workspace.is_some()
   }
 
-  pub fn ende_json(&self) -> Option<&ConfigFileRc> {
-    match self {
-      Self::Single(EndeOrPkgJson::Ende(ende_json)) => Some(ende_json),
-      Self::Both { ende_json, .. } => Some(ende_json),
-      _ => None,
-    }
+  pub fn ende_json(&self) -> &ConfigFileRc {
+    &self.0
   }
 
-  pub fn pkg_json(&self) -> Option<&PackageJsonRc> {
-    match self {
-      Self::Single(EndeOrPkgJson::PkgJson(pkg_json)) => Some(pkg_json),
-      Self::Both { pkg_json, .. } => Some(pkg_json),
-      _ => None,
-    }
-  }
-
-  pub fn from_maybe_both(
-    maybe_ende_json: Option<ConfigFileRc>,
-    maybe_pkg_json: Option<PackageJsonRc>,
-  ) -> Option<Self> {
-    match (maybe_ende_json, maybe_pkg_json) {
-      (Some(ende_json), Some(pkg_json)) => Some(Self::Both {
-        ende_json,
-        pkg_json,
-      }),
-      (Some(ende_json), None) => {
-        Some(Self::Single(EndeOrPkgJson::Ende(ende_json)))
-      }
-      (None, Some(pkg_json)) => {
-        Some(Self::Single(EndeOrPkgJson::PkgJson(pkg_json)))
-      }
-      (None, None) => None,
-    }
+  pub fn into_ende_json(self) -> ConfigFileRc {
+    self.0
   }
 }
 
@@ -155,23 +84,17 @@ impl ConfigFileDiscovery {
       Self::None { .. } => None,
       Self::Workspace { workspace, .. } => {
         let root_folder_configs = workspace.root_folder_configs();
-        if let Some(ende_json) = &root_folder_configs.ende_json {
-          return Some(Cow::Borrowed(&ende_json.specifier));
-        }
-        if let Some(pkg_json) = &root_folder_configs.pkg_json {
-          return Some(Cow::Owned(pkg_json.specifier()));
-        }
-        None
+        root_folder_configs
+          .ende_json
+          .as_ref()
+          .map(|ende_json| Cow::Borrowed(&ende_json.specifier))
       }
     }
   }
 }
 
-fn config_folder_config_specifier(res: &ConfigFolder) -> Cow<'_, Url> {
-  match res {
-    ConfigFolder::Single(config) => config.specifier(),
-    ConfigFolder::Both { ende_json, .. } => Cow::Borrowed(&ende_json.specifier),
-  }
+fn config_folder_config_specifier(res: &ConfigFolder) -> &Url {
+  &res.ende_json().specifier
 }
 
 pub fn discover_workspace_config_files<
@@ -267,8 +190,8 @@ fn discover_workspace_config_files_for_single_dir<
     // caches because that would mean the configs might change between calls
     // causing strange behavior, so panic if someone does this
     assert!(
-      opts.ende_json_cache.is_some() && opts.pkg_json_cache.is_some(),
-      "Using a workspace cache requires setting the ende.json and package.json caches"
+      opts.ende_json_cache.is_some(),
+      "Using a workspace cache requires setting the ende.json cache"
     );
   }
 
@@ -277,34 +200,6 @@ fn discover_workspace_config_files_for_single_dir<
   let mut found_config_folders: HashMap<_, ConfigFolder> = HashMap::new();
   let config_file_names =
     ConfigFile::resolve_config_file_names(opts.additional_config_file_names);
-  let load_pkg_json_in_folder = |folder_path: &Path| {
-    if opts.discover_pkg_json {
-      let pkg_json_path = folder_path.join("package.json");
-      match PackageJson::load_from_path(
-        sys,
-        opts.pkg_json_cache,
-        &pkg_json_path,
-      ) {
-        Ok(pkg_json) => {
-          if pkg_json.is_some() {
-            log::debug!(
-              "package.json file found at '{}'",
-              pkg_json_path.display()
-            );
-          }
-          Ok(pkg_json)
-        }
-        Err(PackageJsonLoadError::Io { source, .. })
-          if is_skippable_io_error(&source) =>
-        {
-          Ok(None)
-        }
-        Err(err) => Err(err),
-      }
-    } else {
-      Ok(None)
-    }
-  };
   let load_config_folder = |folder_path: &Path| -> Result<_, ConfigReadError> {
     let maybe_config_file = ConfigFile::maybe_find_in_folder(
       sys,
@@ -312,11 +207,7 @@ fn discover_workspace_config_files_for_single_dir<
       folder_path,
       &config_file_names,
     )?;
-    let maybe_pkg_json = load_pkg_json_in_folder(folder_path)?;
-    Ok(ConfigFolder::from_maybe_both(
-      maybe_config_file,
-      maybe_pkg_json,
-    ))
+    Ok(maybe_config_file.map(ConfigFolder))
   };
   match start {
     DirOrConfigFile::Dir(dir) => {
@@ -334,9 +225,7 @@ fn discover_workspace_config_files_for_single_dir<
         load_config_folder(file.parent().unwrap());
       let matching_config_folder = match natural_config_folder_result {
         Ok(Some(natual_config_folder)) => {
-          if natual_config_folder
-            .ende_json()
-            .is_some_and(|d| d.specifier == config_file.specifier)
+          if natual_config_folder.ende_json().specifier == config_file.specifier
           {
             Some(natual_config_folder)
           } else {
@@ -353,8 +242,7 @@ fn discover_workspace_config_files_for_single_dir<
           // when loading the directory we would have loaded something else, so
           // don't try to load a workspace and don't store this information in
           // the workspace cache
-          let config_folder =
-            ConfigFolder::Single(EndeOrPkgJson::Ende(config_file));
+          let config_folder = ConfigFolder(config_file);
 
           if config_folder.has_workspace_members() {
             return handle_workspace_folder_with_members(
@@ -368,7 +256,7 @@ fn discover_workspace_config_files_for_single_dir<
           }
 
           let maybe_vendor_dir = resolve_vendor_dir(
-            config_folder.ende_json().map(|d| d.as_ref()),
+            Some(config_folder.ende_json().as_ref()),
             opts.maybe_vendor_override.as_ref(),
           );
           let links = resolve_link_config_folders_with_auto(
@@ -393,7 +281,7 @@ fn discover_workspace_config_files_for_single_dir<
       {
         if cfg!(debug_assertions) {
           let expected_vendor_dir = resolve_vendor_dir(
-            config_folder.ende_json().map(|d| d.as_ref()),
+            Some(config_folder.ende_json().as_ref()),
             opts.maybe_vendor_override.as_ref(),
           );
           debug_assert_eq!(
@@ -487,7 +375,7 @@ fn discover_workspace_config_files_for_single_dir<
       {
         if cfg!(debug_assertions) {
           let expected_vendor_dir = resolve_vendor_dir(
-            root_config_folder.ende_json().map(|d| d.as_ref()),
+            Some(root_config_folder.ende_json().as_ref()),
             opts.maybe_vendor_override.as_ref(),
           );
           debug_assert_eq!(
@@ -510,7 +398,7 @@ fn discover_workspace_config_files_for_single_dir<
       .remove(&first_config_folder_url)
       .unwrap();
     let maybe_vendor_dir = resolve_vendor_dir(
-      config_folder.ende_json().map(|d| d.as_ref()),
+      Some(config_folder.ende_json().as_ref()),
       opts.maybe_vendor_override.as_ref(),
     );
     let link = resolve_link_config_folders_with_auto(
@@ -552,7 +440,7 @@ fn handle_workspace_folder_with_members<
   ) -> Result<Option<ConfigFolder>, ConfigReadError>,
 ) -> Result<ConfigFileDiscovery, WorkspaceDiscoverError> {
   let maybe_vendor_dir = resolve_vendor_dir(
-    root_config_folder.ende_json().map(|d| d.as_ref()),
+    Some(root_config_folder.ende_json().as_ref()),
     opts.maybe_vendor_override.as_ref(),
   );
   let raw_root_workspace = resolve_workspace_for_config_folder(
@@ -603,9 +491,8 @@ fn handle_workspace_with_members<TSys: FsRead + FsMetadata + FsReadDir>(
     .unwrap_or(false);
   // If the start config folder is not a member of the discovered workspace,
   // discard the parent workspace and resolve just the start config standalone.
-  // For npm workspaces this is silent backwards-compatible behavior; for ende
-  // workspaces with an explicit "workspace" property we warn so the user knows
-  // the parent config was ignored.
+  // For workspaces with an explicit "workspace" property we warn so the user
+  // knows the parent config was ignored.
   if let Some(first_config_folder) = &first_config_folder_url
     && !root_workspace
       .config_folders
@@ -621,7 +508,7 @@ fn handle_workspace_with_members<TSys: FsRead + FsMetadata + FsReadDir>(
       );
     }
     let maybe_vendor_dir = resolve_vendor_dir(
-      config_folder.ende_json().map(|d| d.as_ref()),
+      Some(config_folder.ende_json().as_ref()),
       opts.maybe_vendor_override.as_ref(),
     );
     let links = resolve_link_config_folders_with_auto(
@@ -648,8 +535,7 @@ fn handle_workspace_with_members<TSys: FsRead + FsMetadata + FsReadDir>(
         return Err(
           WorkspaceDiscoverErrorKind::ConfigNotWorkspaceMember {
             workspace_url: (**root_workspace.root_dir_url()).clone(),
-            config_url: config_folder_config_specifier(config_folder)
-              .into_owned(),
+            config_url: config_folder_config_specifier(config_folder).clone(),
           }
           .into(),
         );
@@ -819,19 +705,15 @@ fn resolve_workspace_for_config_folder<
       Ok(paths)
     };
 
-  if let Some(ende_json) = root_config_folder.ende_json()
-    && let Some(workspace_config) = ende_json.to_workspace_config()?
-  {
+  let ende_json = root_config_folder.ende_json();
+  if let Some(workspace_config) = ende_json.to_workspace_config()? {
     let (pattern_members, path_members): (Vec<_>, Vec<_>) = workspace_config
       .members
       .iter()
       .partition(|member| is_glob_pattern(member) || member.starts_with('!'));
 
     // Ende workspaces can discover wildcard members that use any of the
-    // config file names (`ende.json(c)`, deprecated `deno.json(c)`) or
-    // `package.json`. But it only works for Ende workspaces, npm workspaces
-    // don't discover those config files, otherwise we'd be incompatible with
-    // npm workspaces if we discovered more files.
+    // config file names (`ende.json(c)`, deprecated `deno.json(c)`).
     let ende_json_paths = collect_member_config_folders(
       "Ende",
       pattern_members,
@@ -899,84 +781,6 @@ fn resolve_workspace_for_config_folder<
       }
     }
   }
-  if let Some(pkg_json) = root_config_folder.pkg_json()
-    && let Some(members) = &pkg_json.workspaces
-  {
-    let (pattern_members, path_members): (Vec<_>, Vec<_>) = members
-      .iter()
-      .partition(|member| is_glob_pattern(member) || member.starts_with('!'));
-
-    // npm workspaces can discover wildcard members `package.json` files, but not `deno.json(c)` files, otherwise
-    // we'd be incompatible with npm workspaces if we discovered more files than just `package.json`.
-    let pkg_json_paths = collect_member_config_folders(
-      "npm",
-      pattern_members,
-      pkg_json.dir_path(),
-      &["package.json"],
-    )?;
-
-    let mut member_dir_urls =
-      IndexSet::with_capacity(path_members.len() + pkg_json_paths.len());
-    for path_member in path_members {
-      let member_dir_url = resolve_member_url(path_member)?;
-      member_dir_urls.insert((path_member.clone(), member_dir_url));
-    }
-    for pkg_json_path in pkg_json_paths {
-      let member_dir = pkg_json_path.parent().unwrap();
-      let member_dir_url = url_from_directory_path(member_dir)?;
-      member_dir_urls
-        .insert((member_dir.to_string_lossy().into_owned(), member_dir_url));
-    }
-
-    for (raw_member, member_dir_url) in member_dir_urls {
-      if member_dir_url == root_config_file_directory_url {
-        continue; // ignore self references
-      }
-      validate_member_url_is_descendant(&member_dir_url)?;
-      let member_config_folder =
-        match find_member_config_folder(&member_dir_url) {
-          Ok(config_folder) => config_folder,
-          Err(err) => match err.into_kind() {
-            ResolveWorkspaceMemberErrorKind::NotFound { dir_url }
-              if !member_dir_exists(sys, &dir_url) =>
-            {
-              log::warn!(
-                "Workspace member \"{}\" not found at {}. Skipping.",
-                raw_member,
-                dir_url,
-              );
-              continue;
-            }
-            ResolveWorkspaceMemberErrorKind::NotFound { dir_url } => {
-              // dir exists but neither ende.json nor package.json — for
-              // an npm workspace member, surface this as the more specific
-              // "package.json not found" error.
-              return Err(
-                ResolveWorkspaceMemberErrorKind::NotFoundPackageJson {
-                  dir_url,
-                }
-                .into_box()
-                .into(),
-              );
-            }
-            other => return Err(other.into_box().into()),
-          },
-        };
-      if member_config_folder.pkg_json().is_none() {
-        return Err(
-          ResolveWorkspaceMemberErrorKind::NotFoundPackageJson {
-            dir_url: member_dir_url,
-          }
-          .into_box()
-          .into(),
-        );
-      }
-      // don't surface errors about duplicate members for
-      // package.json workspace members
-      final_members.insert(new_rc(member_dir_url), member_config_folder);
-    }
-  }
-
   Ok(RawResolvedWorkspace {
     root: root_config_folder,
     members: final_members,
@@ -998,9 +802,7 @@ fn resolve_link_config_folders<TSys: FsRead + FsMetadata + FsReadDir>(
     &Path,
   ) -> Result<Option<ConfigFolder>, ConfigReadError>,
 ) -> Result<BTreeMap<UrlRc, ConfigFolder>, WorkspaceDiscoverError> {
-  let Some(workspace_ende_json) = root_config_folder.ende_json() else {
-    return Ok(Default::default());
-  };
+  let workspace_ende_json = root_config_folder.ende_json();
   let Some(link_members) = workspace_ende_json.to_link_config()? else {
     return Ok(Default::default());
   };
@@ -1233,7 +1035,7 @@ fn resolve_link_member_config_folders<TSys: FsRead + FsMetadata + FsReadDir>(
   };
   if config_folder.has_workspace_members() {
     let maybe_vendor_dir =
-      resolve_vendor_dir(config_folder.ende_json().map(|d| d.as_ref()), None);
+      resolve_vendor_dir(Some(config_folder.ende_json().as_ref()), None);
     let mut raw_workspace = resolve_workspace_for_config_folder(
       sys,
       config_folder,
@@ -1253,10 +1055,8 @@ fn resolve_link_member_config_folders<TSys: FsRead + FsMetadata + FsReadDir>(
         continue;
       };
       if config_folder.has_workspace_members() {
-        let maybe_vendor_dir = resolve_vendor_dir(
-          config_folder.ende_json().map(|d| d.as_ref()),
-          None,
-        );
+        let maybe_vendor_dir =
+          resolve_vendor_dir(Some(config_folder.ende_json().as_ref()), None);
         let Ok(mut raw_workspace) = resolve_workspace_for_config_folder(
           sys,
           config_folder,
@@ -1384,9 +1184,7 @@ fn enqueue_import_path_values<TSys: FsRead>(
   folder: &ConfigFolder,
   worklist: &mut Vec<(Url, Vec<String>)>,
 ) {
-  let Some(ende_json) = folder.ende_json() else {
-    return;
-  };
+  let ende_json = folder.ende_json();
   // Resolve the import map, following an external `importMap` file if present.
   // Path entries resolve against the import map's own location: the ende.json
   // for inline maps, or the external file's directory otherwise.
@@ -1475,9 +1273,7 @@ fn find_governing_config_dir(
     target_path.parent()?.to_path_buf()
   };
   for ancestor in start_dir.ancestors() {
-    if let Ok(Some(folder)) = load_config_folder(ancestor)
-      && folder.ende_json().is_some()
-    {
+    if let Ok(Some(folder)) = load_config_folder(ancestor) {
       return Some(folder.folder_url());
     }
   }

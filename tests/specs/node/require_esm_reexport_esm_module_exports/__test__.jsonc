@@ -3,17 +3,6 @@
     "run": {
       "args": "run -A main.mjs",
       "output": "run.out"
-    },
-    "compile": {
-      "tempDir": true,
-      "steps": [{
-        "args": "compile -A --output out main.mjs",
-        "output": "[WILDCARD]"
-      }, {
-        "commandName": "./out",
-        "args": [],
-        "output": "run.out"
-      }]
     }
   }
 }

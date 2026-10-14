@@ -1,13 +1,13 @@
 {
   "tempDir": true,
   "steps": [{
-    "args": "install my-alias@npm:@denotest/add",
+    "args": "install my-alias@jsr:@endetest/add",
     "output": "[WILDCARD]"
   }, {
     "args": [
       "eval",
-      "console.log(Deno.readTextFileSync('package.json').trim())"
+      "console.log(Deno.readTextFileSync('ende.json').trim())"
     ],
-    "output": "package.json.out"
+    "output": "ende.json.out"
   }]
 }

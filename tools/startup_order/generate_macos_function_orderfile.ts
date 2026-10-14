@@ -340,7 +340,6 @@ async function generate(options: Options) {
             ENDE_FUNCTION_TRACE_OUT: tracePath,
             ENDE_DIR: endeDir,
             ENDE_NO_UPDATE_CHECK: "1",
-            ENDE_NO_PACKAGE_JSON: "1",
             NO_COLOR: "1",
           },
         });

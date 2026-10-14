@@ -8,7 +8,6 @@ use deno_path_util::url_to_file_path;
 use deno_semver::StackString;
 use deno_semver::Version;
 use deno_semver::jsr::JsrPackageReqReference;
-use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageName;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
@@ -36,7 +35,6 @@ use crate::factory::CliFactory;
 use crate::file_fetcher::CreateCliFileFetcherOptions;
 use crate::file_fetcher::create_cli_file_fetcher;
 use crate::jsr::JsrFetchResolver;
-use crate::npm::NpmFetchResolver;
 
 mod cache_deps;
 pub(crate) mod deps;
@@ -51,34 +49,7 @@ pub use list::list;
 pub use outdated::outdated;
 pub use why::why;
 
-#[derive(Debug, Copy, Clone, Hash)]
-pub(crate) enum ConfigKind {
-  EndeJson,
-  PackageJson,
-}
-
-/// Which `package.json` section a dependency should be written to. Only
-/// meaningful for `package.json`; `ende.json` always uses `imports`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum DependencyKind {
-  Normal,
-  Dev,
-  Optional,
-}
-
-impl DependencyKind {
-  /// The `package.json` property this dependency kind is stored under.
-  fn package_json_section(self) -> &'static str {
-    match self {
-      DependencyKind::Normal => "dependencies",
-      DependencyKind::Dev => "devDependencies",
-      DependencyKind::Optional => "optionalDependencies",
-    }
-  }
-}
-
 struct ConfigUpdater {
-  kind: ConfigKind,
   cst: CstRootNode,
   root_object: CstObject,
   path: PathBuf,
@@ -86,10 +57,7 @@ struct ConfigUpdater {
 }
 
 impl ConfigUpdater {
-  fn new(
-    kind: ConfigKind,
-    config_file_path: PathBuf,
-  ) -> Result<Self, AnyError> {
+  fn new(config_file_path: PathBuf) -> Result<Self, AnyError> {
     let config_file_contents = std::fs::read_to_string(&config_file_path)
       .with_context(|| {
         format!("Reading config file '{}'", config_file_path.display())
@@ -100,7 +68,6 @@ impl ConfigUpdater {
       })?;
     let root_object = cst.object_value_or_set();
     Ok(Self {
-      kind,
       cst,
       root_object,
       path: config_file_path,
@@ -144,42 +111,7 @@ impl ConfigUpdater {
     None
   }
 
-  /// Looks up a property by key path without marking the file as modified.
-  fn get_existing_property(&self, key_path: &KeyPath) -> Option<CstObjectProp> {
-    let mut current_node = self.root_object.clone();
-    for (i, part) in key_path.parts.iter().enumerate() {
-      let s = part.as_str();
-      if i < key_path.parts.len().saturating_sub(1) {
-        current_node = current_node.object_value(s)?;
-      } else {
-        return current_node.get(s);
-      }
-    }
-    None
-  }
-
-  /// Updates a catalog entry's bare version requirement. `key_paths` lists
-  /// candidate locations (e.g. top-level `catalog` vs `workspaces.catalog` in
-  /// package.json); the first one that exists is updated. Returns whether an
-  /// entry was found and updated.
-  fn update_catalog_entry(
-    &mut self,
-    key_paths: &[KeyPath],
-    new_value: &str,
-  ) -> bool {
-    for key_path in key_paths {
-      if let Some(property) = self.get_existing_property(key_path) {
-        property.set_value(jsonc_parser::cst::CstInputValue::String(
-          new_value.to_string(),
-        ));
-        self.modified = true;
-        return true;
-      }
-    }
-    false
-  }
-
-  fn add(&mut self, selected: SelectedPackage, kind: DependencyKind) {
+  fn add(&mut self, selected: SelectedPackage) {
     fn insert_index(object: &CstObject, searching_name: &str) -> usize {
       object
         .properties()
@@ -197,138 +129,32 @@ impl ConfigUpdater {
         .count()
     }
 
-    match self.kind {
-      ConfigKind::EndeJson => {
-        let imports = self.root_object.object_value_or_set("imports");
-        let value =
-          format!("{}@{}", selected.package_name, selected.version_req);
-        match imports.get(&selected.import_name) {
-          Some(prop) => {
-            prop.set_value(json!(value));
-          }
-          _ => {
-            let index = insert_index(&imports, &selected.import_name);
-            imports.insert(index, &selected.import_name, json!(value));
-          }
-        }
+    let imports = self.root_object.object_value_or_set("imports");
+    let value = format!("{}@{}", selected.package_name, selected.version_req);
+    match imports.get(&selected.import_name) {
+      Some(prop) => {
+        prop.set_value(json!(value));
       }
-      ConfigKind::PackageJson => {
-        let target_section = kind.package_json_section();
-        // Reuse an existing section, otherwise create one right after the most
-        // relevant sibling dependency section so the ordering stays tidy
-        // (`dependencies` -> `devDependencies` -> `optionalDependencies`).
-        let dependencies = self
-          .root_object
-          .object_value(target_section)
-          .unwrap_or_else(|| {
-            let index = self.new_dependency_section_index(kind);
-            self
-              .root_object
-              .insert(index, target_section, json!({}))
-              .object_value_or_set()
-          });
-
-        let (alias, value) = package_json_dependency_entry(selected);
-
-        // Remove the package from any of the other dependency sections so it
-        // doesn't end up declared twice.
-        for other_section in [
-          DependencyKind::Normal,
-          DependencyKind::Dev,
-          DependencyKind::Optional,
-        ] {
-          if other_section == kind {
-            continue;
-          }
-          if let Some(other) = self
-            .root_object
-            .object_value(other_section.package_json_section())
-            && let Some(prop) = other.get(&alias)
-          {
-            remove_prop_and_maybe_parent_prop(prop);
-          }
-        }
-
-        match dependencies.get(&alias) {
-          Some(prop) => {
-            prop.set_value(json!(value));
-          }
-          _ => {
-            let index = insert_index(&dependencies, &alias);
-            dependencies.insert(index, &alias, json!(value));
-          }
-        }
+      _ => {
+        let index = insert_index(&imports, &selected.import_name);
+        imports.insert(index, &selected.import_name, json!(value));
       }
     }
 
     self.modified = true;
   }
 
-  /// Picks the index at which to insert a newly created dependency section so
-  /// that `dependencies`, `devDependencies` and `optionalDependencies` keep a
-  /// stable, predictable order.
-  fn new_dependency_section_index(&self, kind: DependencyKind) -> usize {
-    // Sections that should appear before the one being created, closest first.
-    let preceding: &[&str] = match kind {
-      DependencyKind::Normal => &[],
-      DependencyKind::Dev => &["dependencies"],
-      DependencyKind::Optional => &["devDependencies", "dependencies"],
-    };
-    for section in preceding {
-      if let Some(prop) = self.root_object.get(section) {
-        return prop.property_index() + 1;
-      }
-    }
-    // Otherwise insert before the first following section, if any.
-    let following: &[&str] = match kind {
-      DependencyKind::Normal => &["devDependencies", "optionalDependencies"],
-      DependencyKind::Dev => &["optionalDependencies"],
-      DependencyKind::Optional => &[],
-    };
-    for section in following {
-      if let Some(prop) = self.root_object.get(section) {
-        return prop.property_index();
-      }
-    }
-    self.root_object.properties().len()
-  }
-
   fn remove(&mut self, package: &str) -> bool {
-    let removed = match self.kind {
-      ConfigKind::EndeJson => {
-        match self
-          .root_object
-          .object_value("imports")
-          .and_then(|i| i.get(package))
-        {
-          Some(prop) => {
-            remove_prop_and_maybe_parent_prop(prop);
-            true
-          }
-          _ => false,
-        }
+    let removed = match self
+      .root_object
+      .object_value("imports")
+      .and_then(|i| i.get(package))
+    {
+      Some(prop) => {
+        remove_prop_and_maybe_parent_prop(prop);
+        true
       }
-      ConfigKind::PackageJson => {
-        let deps = [
-          self
-            .root_object
-            .object_value("dependencies")
-            .and_then(|deps| deps.get(package)),
-          self
-            .root_object
-            .object_value("devDependencies")
-            .and_then(|deps| deps.get(package)),
-          self
-            .root_object
-            .object_value("optionalDependencies")
-            .and_then(|deps| deps.get(package)),
-        ];
-        let removed = deps.iter().any(|d| d.is_some());
-        for dep in deps.into_iter().flatten() {
-          remove_prop_and_maybe_parent_prop(dep);
-        }
-        removed
-      }
+      _ => false,
     };
     if removed {
       self.modified = true;
@@ -373,29 +199,6 @@ fn create_ende_json(
   Ok(factory)
 }
 
-fn package_json_dependency_entry(
-  selected: SelectedPackage,
-) -> (String, String) {
-  if let Some(npm_package) = selected.package_name.strip_prefix("npm:") {
-    if selected.import_name == npm_package {
-      (npm_package.into(), selected.version_req)
-    } else {
-      (
-        selected.import_name.into_string(),
-        format!("npm:{}@{}", npm_package, selected.version_req),
-      )
-    }
-  } else if let Some(jsr_package) = selected.package_name.strip_prefix("jsr:") {
-    let jsr_package = jsr_package.strip_prefix('@').unwrap_or(jsr_package);
-    let scope_replaced = jsr_package.replace('/', "__");
-    let version_req =
-      format!("npm:@jsr/{scope_replaced}@{}", selected.version_req);
-    (selected.import_name.into_string(), version_req)
-  } else {
-    (selected.package_name, selected.version_req)
-  }
-}
-
 #[derive(Clone, Copy)]
 /// The name of the subcommand invoking the `add` operation.
 pub enum AddCommandName {
@@ -412,67 +215,31 @@ impl std::fmt::Display for AddCommandName {
   }
 }
 
-fn load_configs(
+/// Loads the ende.json in the current directory, creating one when it's
+/// missing.
+fn load_config(
   flags: &Arc<Flags>,
-  has_jsr_specifiers: impl FnOnce() -> bool,
-) -> Result<(CliFactory, Option<ConfigUpdater>, Option<ConfigUpdater>), AnyError>
-{
+) -> Result<(CliFactory, ConfigUpdater), AnyError> {
   let cli_factory = CliFactory::from_flags(flags.clone());
   let options = cli_factory.cli_options()?;
-  let start_dir = &options.start_dir;
-
-  let npm_config = match start_dir.member_pkg_json() {
-    Some(pkg_json) => Some(ConfigUpdater::new(
-      ConfigKind::PackageJson,
-      pkg_json.path.clone(),
-    )?),
-    None => None,
+  if let Some(ende_json) = options.start_dir.member_ende_json() {
+    let config = ConfigUpdater::new(url_to_file_path(&ende_json.specifier)?)?;
+    return Ok((cli_factory, config));
+  }
+  let factory = create_ende_json(flags, options)?;
+  let options = factory.cli_options()?.clone();
+  let Some(ende_json) = options.start_dir.member_or_root_ende_json() else {
+    bail!(
+      "Failed to discover the newly created {} at \"{}\". This can happen when the current directory is inside a node_modules directory.",
+      ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME,
+      options
+        .initial_cwd()
+        .join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME)
+        .display(),
+    );
   };
-  let ende_json_config = match start_dir.member_ende_json() {
-    Some(ende_json) => Some(ConfigUpdater::new(
-      ConfigKind::EndeJson,
-      url_to_file_path(&ende_json.specifier)?,
-    )?),
-    None => None,
-  };
-
-  let (cli_factory, ende_json_config) = match ende_json_config {
-    Some(config) => (cli_factory, Some(config)),
-    None if npm_config.is_some() && !has_jsr_specifiers() => {
-      (cli_factory, None)
-    }
-    _ => {
-      let factory = create_ende_json(flags, options)?;
-      let options = factory.cli_options()?.clone();
-      let Some(ende_json) = options.start_dir.member_or_root_ende_json() else {
-        bail!(
-          "Failed to discover the newly created {} at \"{}\". This can happen when the current directory is inside a node_modules directory.",
-          ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME,
-          options
-            .initial_cwd()
-            .join(ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME)
-            .display(),
-        );
-      };
-      (
-        factory,
-        Some(ConfigUpdater::new(
-          ConfigKind::EndeJson,
-          url_to_file_path(&ende_json.specifier)?,
-        )?),
-      )
-    }
-  };
-  assert!(ende_json_config.is_some() || npm_config.is_some());
-  Ok((cli_factory, npm_config, ende_json_config))
-}
-
-fn path_distance(a: &Path, b: &Path) -> usize {
-  let diff = pathdiff::diff_paths(a, b);
-  let Some(diff) = diff else {
-    return usize::MAX;
-  };
-  diff.components().count()
+  let config = ConfigUpdater::new(url_to_file_path(&ende_json.specifier)?)?;
+  Ok((factory, config))
 }
 
 pub async fn add(
@@ -481,14 +248,17 @@ pub async fn add(
   cmd_name: AddCommandName,
 ) -> Result<(), AnyError> {
   let save_exact = add_flags.save_exact;
-  let (cli_factory, mut npm_config, mut ende_json_config) =
-    load_configs(&flags, || {
-      add_flags.packages.iter().any(|s| s.starts_with("jsr:"))
-    })?;
-
-  if let Some(ende_json) = &ende_json_config
-    && ende_json.obj().get("importMap").is_some()
+  // error before creating an ende.json
+  if let Some(npm_package) = add_flags
+    .packages
+    .iter()
+    .find(|p| p.starts_with("npm:") || p.contains("@npm:"))
   {
+    return Err(super::npm_not_supported_error(npm_package));
+  }
+  let (cli_factory, mut ende_json_config) = load_config(&flags)?;
+
+  if ende_json_config.obj().get("importMap").is_some() {
     bail!(
       concat!(
         "`ende {}` is not supported when configuration file contains an \"importMap\" field. ",
@@ -496,25 +266,9 @@ pub async fn add(
         "    at {}",
       ),
       cmd_name,
-      ende_json.display_path(),
+      ende_json_config.display_path(),
     );
   }
-
-  let start_dir = cli_factory.cli_options()?.start_dir.dir_path();
-
-  // only prefer to add npm deps to `package.json` if there isn't a closer ende.json.
-  // example: if ende.json is in the CWD and package.json is in the parent, we should add
-  // npm deps to ende.json, since it's closer
-  let prefer_npm_config = match (npm_config.as_ref(), ende_json_config.as_ref())
-  {
-    (Some(npm), Some(ende_json)) => {
-      let npm_distance = path_distance(&npm.path, &start_dir);
-      let ende_distance = path_distance(&ende_json.path, &start_dir);
-      npm_distance <= ende_distance
-    }
-    (Some(_), None) => true,
-    (None, _) => false,
-  };
 
   let http_client = cli_factory.http_client_provider();
   let deps_http_cache = cli_factory.global_http_cache()?;
@@ -532,17 +286,9 @@ pub async fn add(
     },
   );
 
-  let npmrc = cli_factory.npmrc()?;
-
-  let deps_file_fetcher = Arc::new(deps_file_fetcher);
   let jsr_resolver = Arc::new(JsrFetchResolver::new(
-    deps_file_fetcher.clone(),
+    Arc::new(deps_file_fetcher),
     cli_factory.jsr_version_resolver()?.clone(),
-  ));
-  let npm_resolver = Arc::new(NpmFetchResolver::new(
-    deps_file_fetcher,
-    npmrc.clone(),
-    cli_factory.npm_version_resolver()?.clone(),
   ));
 
   let mut selected_packages = Vec::with_capacity(add_flags.packages.len());
@@ -554,11 +300,8 @@ pub async fn add(
     if let Some(hint) = link_hint_for_spec(&initial_cwd, entry_text) {
       bail!("{hint}");
     }
-    let req = AddRmPackageReq::parse(
-      entry_text,
-      add_flags.default_registry.map(|r| r.into()),
-    )
-    .with_context(|| format!("Failed to parse package: {}", entry_text))?;
+    let req = AddRmPackageReq::parse(entry_text, true)
+      .with_context(|| format!("Failed to parse package: {}", entry_text))?;
 
     match req {
       Ok(mut add_req) => {
@@ -584,38 +327,12 @@ pub async fn add(
         }
         package_reqs.push(add_req)
       }
-      // Currently unreachable: default_registry is always Some (defaults to Npm),
-      // so parse() always resolves a prefix. Kept as a safety fallback in case
-      // the API is called with None from elsewhere.
+      // unreachable because unprefixed packages default to jsr
       Err(package_req) => {
-        if jsr_resolver
-          .req_to_nv(&package_req)
-          .await
-          .ok()
-          .flatten()
-          .is_some()
-        {
-          bail!(
-            "{entry_text} is missing a prefix. Did you mean `{}`?",
-            crate::colors::yellow(format!("ende {cmd_name} jsr:{package_req}"))
-          )
-        } else if npm_resolver
-          .req_to_nv(&package_req)
-          .await
-          .ok()
-          .flatten()
-          .is_some()
-        {
-          bail!(
-            "{entry_text} is missing a prefix. Did you mean `{}`?",
-            crate::colors::yellow(format!("ende {cmd_name} npm:{package_req}"))
-          )
-        } else {
-          bail!(
-            "{} was not found in either jsr or npm.",
-            crate::colors::red(entry_text)
-          );
-        }
+        bail!(
+          "{entry_text} is missing a prefix. Did you mean `{}`?",
+          crate::colors::yellow(format!("ende {cmd_name} jsr:{package_req}"))
+        )
       }
     }
   }
@@ -627,7 +344,6 @@ pub async fn add(
       move |package_req| {
         find_package_and_select_version_for_req(
           jsr_resolver.clone(),
-          npm_resolver.clone(),
           package_req,
           save_exact,
         )
@@ -646,22 +362,7 @@ pub async fn add(
       PackageAndVersion::NotFound {
         package: package_name,
         help,
-        package_req,
       } => match help {
-        Some(NotFoundHelp::NpmPackage) => {
-          bail!(
-            "{} was not found, but a matching npm package exists. Did you mean `{}`?",
-            crate::colors::red(package_name),
-            crate::colors::yellow(format!("ende {cmd_name} npm:{package_req}"))
-          );
-        }
-        Some(NotFoundHelp::JsrPackage) => {
-          bail!(
-            "{} was not found, but a matching jsr package exists. Did you mean `{}`?",
-            crate::colors::red(package_name),
-            crate::colors::yellow(format!("ende {cmd_name} jsr:{package_req}"))
-          )
-        }
         Some(NotFoundHelp::PreReleaseVersion(version)) => {
           bail!(
             "{} has only pre-release versions available. Try specifying a version: `{}`",
@@ -679,24 +380,10 @@ pub async fn add(
     }
   }
 
-  let kind = if add_flags.dev {
-    DependencyKind::Dev
-  } else if add_flags.optional {
-    DependencyKind::Optional
-  } else {
-    DependencyKind::Normal
-  };
-
-  // Some packages must be resolved and installed directly as additional graph
-  // roots, rather than relying on them being picked up from the configuration
-  // file during the install step:
-  //
-  // * `--no-save`: the package is installed into `node_modules` (and the
-  //   lockfile) but not declared as a dependency at all.
-  // * `--save-optional`: Ende's installer does not materialize
-  //   `optionalDependencies` from `package.json`, so install the package
-  //   directly to keep parity with `--save-dev` (which does install on add).
-  let install_directly = add_flags.no_save || kind == DependencyKind::Optional;
+  // With `--no-save` the package is resolved and installed directly as an
+  // additional graph root (and written to the lockfile) rather than being
+  // picked up from the configuration file during the install step.
+  let install_directly = add_flags.no_save;
   let mut additional_roots = Vec::new();
   for selected_package in selected_packages {
     log::info!(
@@ -723,32 +410,14 @@ pub async fn add(
       continue;
     }
 
-    if selected_package.package_name.starts_with("npm:") && prefer_npm_config {
-      if let Some(npm) = &mut npm_config {
-        npm.add(selected_package, kind);
-      } else {
-        ende_json_config
-          .as_mut()
-          .unwrap()
-          .add(selected_package, kind);
-      }
-    } else if let Some(ende_json) = &mut ende_json_config {
-      ende_json.add(selected_package, kind);
-    } else {
-      npm_config.as_mut().unwrap().add(selected_package, kind);
-    }
+    ende_json_config.add(selected_package);
   }
 
   if !add_flags.no_save {
-    if let Some(npm) = npm_config {
-      npm.commit()?;
-    }
-    if let Some(ende_json) = ende_json_config {
-      ende_json.commit()?;
-    }
+    ende_json_config.commit()?;
   }
 
-  npm_install_after_modification(
+  install_after_modification(
     flags,
     Some(jsr_resolver),
     CacheTopLevelDepsOptions {
@@ -769,15 +438,12 @@ struct SelectedPackage {
 }
 
 enum NotFoundHelp {
-  NpmPackage,
-  JsrPackage,
   PreReleaseVersion(Version),
 }
 
 enum PackageAndVersion {
   NotFound {
     package: String,
-    package_req: PackageReq,
     help: Option<NotFoundHelp>,
   },
   Selected(SelectedPackage),
@@ -799,144 +465,79 @@ fn best_version<'a>(
   maybe_best_version
 }
 
-trait PackageInfoProvider {
-  const SPECIFIER_PREFIX: &str;
-  /// The help to return if a package is found by this provider
-  const HELP: NotFoundHelp;
-  async fn req_to_nv(
-    &self,
-    req: &PackageReq,
-  ) -> Result<Option<PackageNv>, AnyError>;
-  async fn latest_version(&self, name: &PackageName) -> Option<Version>;
-}
-
-impl PackageInfoProvider for Arc<JsrFetchResolver> {
-  const HELP: NotFoundHelp = NotFoundHelp::JsrPackage;
-  const SPECIFIER_PREFIX: &str = "jsr";
-  async fn req_to_nv(
-    &self,
-    req: &PackageReq,
-  ) -> Result<Option<PackageNv>, AnyError> {
-    Ok((**self).req_to_nv(req).await?)
-  }
-
-  async fn latest_version(&self, name: &PackageName) -> Option<Version> {
-    let info = self.package_info(name).await?;
-    best_version(
-      info
-        .versions
-        .iter()
-        .filter(|(_, version_info)| !version_info.yanked)
-        .map(|(version, _)| version),
-    )
-    .cloned()
-  }
-}
-
-impl PackageInfoProvider for Arc<NpmFetchResolver> {
-  const HELP: NotFoundHelp = NotFoundHelp::NpmPackage;
-  const SPECIFIER_PREFIX: &str = "npm";
-  async fn req_to_nv(
-    &self,
-    req: &PackageReq,
-  ) -> Result<Option<PackageNv>, AnyError> {
-    (**self).req_to_nv(req).await
-  }
-
-  async fn latest_version(&self, name: &PackageName) -> Option<Version> {
-    let info = self.package_info(name).await?;
-    best_version(self.applicable_version_infos(&info).map(|vi| &vi.version))
-      .cloned()
-  }
+async fn jsr_latest_version(
+  jsr_resolver: &JsrFetchResolver,
+  name: &PackageName,
+) -> Option<Version> {
+  let info = jsr_resolver.package_info(name).await?;
+  best_version(
+    info
+      .versions
+      .iter()
+      .filter(|(_, version_info)| !version_info.yanked)
+      .map(|(version, _)| version),
+  )
+  .cloned()
 }
 
 async fn find_package_and_select_version_for_req(
   jsr_resolver: Arc<JsrFetchResolver>,
-  npm_resolver: Arc<NpmFetchResolver>,
   add_package_req: AddRmPackageReq,
   save_exact: bool,
 ) -> Result<PackageAndVersion, AnyError> {
-  async fn select<T: PackageInfoProvider, S: PackageInfoProvider>(
-    main_resolver: T,
-    fallback_resolver: S,
-    add_package_req: AddRmPackageReq,
-    save_exact: bool,
-  ) -> Result<PackageAndVersion, AnyError> {
-    let req = match &add_package_req.value {
-      AddRmPackageReqValue::Jsr(req) => req,
-      AddRmPackageReqValue::Npm(req) => req,
-    };
-    let prefixed_name = format!("{}:{}", T::SPECIFIER_PREFIX, req.name);
-    let help_if_found_in_fallback = S::HELP;
-    // JSR has no dist-tags, so a tag can't go through req_to_nv
-    // (VersionReq::matches panics on a tag). "@latest" is conventionally
-    // understood as "the newest version", so resolve it to the latest
-    // published version; reject any other tag rather than silently treating
-    // it as latest. npm resolves dist-tags natively via its registry, so this
-    // only applies to JSR.
-    let maybe_nv = if matches!(
-      &add_package_req.value,
-      AddRmPackageReqValue::Jsr(_)
-    ) && let Some(tag) = req.version_req.tag()
-    {
-      if tag != "latest" {
-        bail!(
-          "{} does not support the tag '{tag}'. JSR has no dist-tags; use '@latest' or a version requirement instead.",
-          prefixed_name,
-        );
-      }
-      main_resolver
-        .latest_version(&req.name)
-        .await
-        .map(|version| PackageNv {
-          name: req.name.clone(),
-          version,
-        })
-    } else {
-      match main_resolver.req_to_nv(req).await {
-        Ok(maybe_nv) => maybe_nv,
-        Err(err) => {
-          if req.version_req.version_text() == "*"
-            && let Some(pre_release_version) =
-              main_resolver.latest_version(&req.name).await
-          {
-            return Ok(PackageAndVersion::NotFound {
-              package: prefixed_name,
-              package_req: req.clone(),
-              help: Some(NotFoundHelp::PreReleaseVersion(
-                pre_release_version.clone(),
-              )),
-            });
-          }
-          return Err(err);
+  let req = &add_package_req.req;
+  let prefixed_name = format!("jsr:{}", req.name);
+  // JSR has no dist-tags, so a tag can't go through req_to_nv
+  // (VersionReq::matches panics on a tag). "@latest" is conventionally
+  // understood as "the newest version", so resolve it to the latest
+  // published version; reject any other tag rather than silently treating
+  // it as latest.
+  let maybe_nv = if let Some(tag) = req.version_req.tag() {
+    if tag != "latest" {
+      bail!(
+        "{} does not support the tag '{tag}'. JSR has no dist-tags; use '@latest' or a version requirement instead.",
+        prefixed_name,
+      );
+    }
+    jsr_latest_version(&jsr_resolver, &req.name)
+      .await
+      .map(|version| PackageNv {
+        name: req.name.clone(),
+        version,
+      })
+  } else {
+    match jsr_resolver.req_to_nv(req).await {
+      Ok(maybe_nv) => maybe_nv,
+      Err(err) => {
+        if req.version_req.version_text() == "*"
+          && let Some(pre_release_version) =
+            jsr_latest_version(&jsr_resolver, &req.name).await
+        {
+          return Ok(PackageAndVersion::NotFound {
+            package: prefixed_name,
+            help: Some(NotFoundHelp::PreReleaseVersion(
+              pre_release_version.clone(),
+            )),
+          });
         }
+        return Err(err.into());
       }
-    };
-    let Some(nv) = maybe_nv else {
-      // Not in the primary registry; point at the other one if it's there.
-      let help = fallback_resolver
-        .req_to_nv(req)
-        .await
-        .ok()
-        .flatten()
-        .map(|_| help_if_found_in_fallback);
-      return Ok(PackageAndVersion::NotFound {
-        package: prefixed_name,
-        help,
-        package_req: req.clone(),
-      });
-    };
-    let range_symbol = if save_exact
-      || req.version_req.version_text() == nv.version.to_string()
-    {
+    }
+  };
+  let Some(nv) = maybe_nv else {
+    return Ok(PackageAndVersion::NotFound {
+      package: prefixed_name,
+      help: None,
+    });
+  };
+  let range_symbol =
+    if save_exact || req.version_req.version_text() == nv.version.to_string() {
       ""
     } else if !nv.version.pre.is_empty() {
       // Pin pre-release versions exactly, regardless of any range operator the
       // user requested. A caret or tilde range over a pre-release matches every
       // pre-release sharing the same major.minor.patch and resolves to the
-      // lexicographically greatest one. For hash based pre-release identifiers
-      // (e.g. an npm dist-tag like `@insiders` that resolves to
-      // `0.0.0-insiders.<hash>`) that is not the newest build and not what the
+      // lexicographically greatest one, which is not necessarily the build the
       // user asked to install. See #35577.
       ""
     } else if req.version_req.version_text().starts_with('~') {
@@ -944,57 +545,24 @@ async fn find_package_and_select_version_for_req(
     } else {
       "^"
     };
-    Ok(PackageAndVersion::Selected(SelectedPackage {
-      import_name: add_package_req.alias,
-      package_name: prefixed_name,
-      version_req: format!("{}{}", range_symbol, &nv.version),
-      selected_version: nv.version.to_custom_string::<StackString>(),
-    }))
-  }
-
-  match &add_package_req.value {
-    AddRmPackageReqValue::Jsr(_) => {
-      select(jsr_resolver, npm_resolver, add_package_req, save_exact).await
-    }
-    AddRmPackageReqValue::Npm(_) => {
-      select(npm_resolver, jsr_resolver, add_package_req, save_exact).await
-    }
-  }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum AddRmPackageReqValue {
-  Jsr(PackageReq),
-  Npm(PackageReq),
+  Ok(PackageAndVersion::Selected(SelectedPackage {
+    import_name: add_package_req.alias,
+    package_name: prefixed_name,
+    version_req: format!("{}{}", range_symbol, &nv.version),
+    selected_version: nv.version.to_custom_string::<StackString>(),
+  }))
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct AddRmPackageReq {
   alias: StackString,
-  value: AddRmPackageReqValue,
+  req: PackageReq,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Prefix {
-  Jsr,
-  Npm,
-}
-
-impl From<crate::args::DefaultRegistry> for Prefix {
-  fn from(registry: crate::args::DefaultRegistry) -> Self {
-    match registry {
-      crate::args::DefaultRegistry::Npm => Prefix::Npm,
-      crate::args::DefaultRegistry::Jsr => Prefix::Jsr,
-    }
-  }
-}
 impl AddRmPackageReq {
   /// The package name with its registry prefix (ex. `jsr:@std/path`).
   pub fn package_name(&self) -> String {
-    match &self.value {
-      AddRmPackageReqValue::Jsr(req) => format!("jsr:{}", req.name),
-      AddRmPackageReqValue::Npm(req) => format!("npm:{}", req.name),
-    }
+    format!("jsr:{}", self.req.name)
   }
 
   /// Drops the scope from the alias (ex. `@david/jsonc-morph` becomes
@@ -1004,11 +572,7 @@ impl AddRmPackageReq {
   /// alias of their own, which is the case whenever the alias isn't the
   /// package name.
   pub fn use_unscoped_alias(&mut self) {
-    let name = match &self.value {
-      AddRmPackageReqValue::Jsr(req) | AddRmPackageReqValue::Npm(req) => {
-        &req.name
-      }
-    };
+    let name = &self.req.name;
     if self.alias == *name
       && let Some((_scope, unscoped_name)) =
         name.strip_prefix('@').and_then(|name| name.split_once('/'))
@@ -1017,106 +581,61 @@ impl AddRmPackageReq {
     }
   }
 
+  /// Parses a package from the command line. Unprefixed packages are JSR
+  /// packages when `default_jsr` is set and are otherwise returned as an
+  /// unprefixed package requirement (ex. an alias to remove).
   pub fn parse(
     entry_text: &str,
-    default_prefix: Option<Prefix>,
+    default_jsr: bool,
   ) -> Result<Result<Self, PackageReq>, AnyError> {
-    fn parse_prefix(text: &str) -> (Option<Prefix>, &str) {
-      if let Some(text) = text.strip_prefix("jsr:") {
-        (Some(Prefix::Jsr), text)
-      } else if let Some(text) = text.strip_prefix("npm:") {
-        (Some(Prefix::Npm), text)
-      } else {
-        (None, text)
-      }
-    }
-
     // parse the following:
-    // - alias@npm:<package_name>
-    // - other_alias@npm:<package_name>
+    // - jsr:<package_name>
+    // - alias@jsr:<package_name>
     // - @alias/other@jsr:<package_name>
-    fn parse_alias(entry_text: &str) -> Option<(&str, &str)> {
-      for prefix in ["npm:", "jsr:"] {
-        let Some(location) = entry_text.find(prefix) else {
-          continue;
-        };
+    let (maybe_alias, package_text) = match entry_text.find("jsr:") {
+      Some(location) => {
         let prefix = &entry_text[..location];
-        if let Some(alias) = prefix.strip_suffix('@') {
-          return Some((alias, &entry_text[location..]));
-        }
+        let maybe_alias = if prefix.is_empty() {
+          None
+        } else if let Some(alias) = prefix.strip_suffix('@') {
+          Some(StackString::from(alias))
+        } else {
+          return Ok(Err(PackageReq::from_str(entry_text)?));
+        };
+        (maybe_alias, &entry_text[location + "jsr:".len()..])
       }
-      None
-    }
-
-    let (maybe_prefix, entry_text) = parse_prefix(entry_text);
-    let (prefix, maybe_alias, entry_text) = match maybe_prefix {
-      Some(prefix) => (prefix, None, entry_text),
-      None => match parse_alias(entry_text) {
-        Some((alias, text)) => {
-          let (maybe_prefix, entry_text) = parse_prefix(text);
-          let maybe_prefix = maybe_prefix.or(default_prefix);
-          if maybe_prefix.is_none() {
-            return Ok(Err(PackageReq::from_str(entry_text)?));
-          }
-
-          (
-            maybe_prefix.unwrap(),
-            Some(StackString::from(alias)),
-            entry_text,
-          )
+      None => {
+        if entry_text.starts_with("npm:") || entry_text.contains("@npm:") {
+          return Err(super::npm_not_supported_error(entry_text));
         }
-        None => match default_prefix {
-          Some(prefix) => (prefix, None, entry_text),
-          None => return Ok(Err(PackageReq::from_str(entry_text)?)),
-        },
-      },
+        if !default_jsr {
+          return Ok(Err(PackageReq::from_str(entry_text)?));
+        }
+        (None, entry_text)
+      }
     };
 
-    // The reference parsers use the strict specifier version grammar, which
+    // The reference parser uses the strict specifier version grammar, which
     // only accepts `^`, `~`, exact versions and tags. On the command line we
-    // also accept the full npm range grammar (`>=4`, `>=4 <5`, `^4 || 5`,
+    // also accept the full range grammar (`>=4`, `>=4 <5`, `^4 || 5`,
     // `1 - 2`, etc) by falling back to loose parsing. `ende add` resolves the
     // requirement to a concrete version before writing it, so what ends up in
-    // the config (and in `npm:`/`jsr:` specifiers in code) still uses the
-    // strict grammar.
-    match prefix {
-      Prefix::Jsr => {
-        let package_req = match JsrPackageReqReference::from_str(&format!(
-          "jsr:{}",
-          entry_text
-        )) {
-          Ok(req_ref) => req_ref.into_inner().req,
-          // If loose parsing also fails the input is genuinely malformed, so
-          // surface the original strict error, which carries the more helpful
-          // diagnostic (e.g. the "did you mean" subpath suggestion).
-          Err(err) => {
-            PackageReq::from_str_loose(entry_text).map_err(|_| err)?
-          }
-        };
-        Ok(Ok(AddRmPackageReq {
-          alias: maybe_alias.unwrap_or_else(|| package_req.name.clone()),
-          value: AddRmPackageReqValue::Jsr(package_req),
-        }))
-      }
-      Prefix::Npm => {
-        let package_req = match NpmPackageReqReference::from_str(&format!(
-          "npm:{}",
-          entry_text
-        )) {
-          Ok(req_ref) => req_ref.into_inner().req,
-          // If loose parsing also fails the input is genuinely malformed, so
-          // surface the original strict error, which carries the more helpful
-          // diagnostic (e.g. the "did you mean" subpath suggestion).
-          Err(err) => {
-            PackageReq::from_str_loose(entry_text).map_err(|_| err)?
-          }
-        };
-        Ok(Ok(AddRmPackageReq {
-          alias: maybe_alias.unwrap_or_else(|| package_req.name.clone()),
-          value: AddRmPackageReqValue::Npm(package_req),
-        }))
-      }
-    }
+    // the config (and in `jsr:` specifiers in code) still uses the strict
+    // grammar.
+    let req = match JsrPackageReqReference::from_str(&format!(
+      "jsr:{}",
+      package_text
+    )) {
+      Ok(req_ref) => req_ref.into_inner().req,
+      // If loose parsing also fails the input is genuinely malformed, so
+      // surface the original strict error, which carries the more helpful
+      // diagnostic (e.g. the "did you mean" subpath suggestion).
+      Err(err) => PackageReq::from_str_loose(package_text).map_err(|_| err)?,
+    };
+    Ok(Ok(AddRmPackageReq {
+      alias: maybe_alias.unwrap_or_else(|| req.name.clone()),
+      req,
+    }))
   }
 }
 
@@ -1124,34 +643,27 @@ pub async fn remove(
   flags: Arc<Flags>,
   remove_flags: RemoveFlags,
 ) -> Result<(), AnyError> {
-  let (_, npm_config, ende_json_config) = load_configs(&flags, || false)?;
-
-  let mut configs = [npm_config, ende_json_config];
+  let cli_factory = CliFactory::from_flags(flags.clone());
+  let Some(ende_json) = cli_factory.cli_options()?.start_dir.member_ende_json()
+  else {
+    log::info!("No packages were removed");
+    return Ok(());
+  };
+  let mut config = ConfigUpdater::new(url_to_file_path(&ende_json.specifier)?)?;
 
   let mut removed_packages = vec![];
 
   for package in &remove_flags.packages {
-    let req = AddRmPackageReq::parse(package, None)
+    let req = AddRmPackageReq::parse(package, false)
       .with_context(|| format!("Failed to parse package: {}", package))?;
-    let mut parsed_pkg_name = None;
-    for config in configs.iter_mut().flatten() {
-      match &req {
-        Ok(rm_pkg) => {
-          if config.remove(&rm_pkg.alias) && parsed_pkg_name.is_none() {
-            parsed_pkg_name = Some(rm_pkg.alias.clone());
-          }
-        }
-        Err(pkg) => {
-          // An alias or a package name without registry/version
-          // constraints. Try to remove the package anyway.
-          if config.remove(&pkg.name) && parsed_pkg_name.is_none() {
-            parsed_pkg_name = Some(pkg.name.clone());
-          }
-        }
-      }
-    }
-    if let Some(pkg) = parsed_pkg_name {
-      removed_packages.push(pkg);
+    let name = match &req {
+      Ok(rm_pkg) => &rm_pkg.alias,
+      // An alias or a package name without registry/version
+      // constraints. Try to remove the package anyway.
+      Err(pkg) => &pkg.name,
+    };
+    if config.remove(name) {
+      removed_packages.push(name.clone());
     }
   }
 
@@ -1161,11 +673,9 @@ pub async fn remove(
     for package in &removed_packages {
       log::info!("Removed {}", crate::colors::green(package));
     }
-    for config in configs.into_iter().flatten() {
-      config.commit()?;
-    }
+    config.commit()?;
 
-    npm_install_after_modification(
+    install_after_modification(
       flags,
       None,
       CacheTopLevelDepsOptions {
@@ -1179,33 +689,23 @@ pub async fn remove(
   Ok(())
 }
 
-async fn npm_install_after_modification(
+async fn install_after_modification(
   flags: Arc<Flags>,
   // explicitly provided to prevent redownloading
   jsr_resolver: Option<Arc<crate::jsr::JsrFetchResolver>>,
   cache_options: CacheTopLevelDepsOptions,
 ) -> Result<CliFactory, AnyError> {
-  // clear the previously cached package.json from memory before reloading it
-  node_resolver::PackageJsonThreadLocalCache::clear();
-
   // make a new CliFactory to pick up the updated config file
   let cli_factory = CliFactory::from_flags(flags);
-  // surface any errors in the package.json
   let start = std::time::Instant::now();
-  let npm_installer = cli_factory.npm_installer().await?;
-  npm_installer.ensure_no_pkg_json_dep_errors()?;
-  // npm install
   cache_deps::cache_top_level_deps(&cli_factory, jsr_resolver, cache_options)
     .await?;
 
   if let Some(install_reporter) = cli_factory.install_reporter()? {
-    let workspace = cli_factory.workspace_resolver().await?;
     let npm_resolver = cli_factory.npm_resolver().await?;
     super::installer::print_install_report(
-      &cli_factory.sys(),
       start.elapsed(),
       install_reporter,
-      workspace,
       npm_resolver,
     );
   }
@@ -1306,12 +806,7 @@ fn load_ende_config_for_link(
     // For `link`, force creation of ende.json if missing; the `"links"` field
     // lives there. We achieve this by claiming jsr specifiers are present,
     // which makes `load_configs` materialise an ende.json when one isn't found.
-    let (cli_factory, _npm_config, ende_json_config) =
-      load_configs(flags, || true)?;
-    let ende_json_config = ende_json_config.ok_or_else(|| {
-      ende_core::anyhow::anyhow!("Could not load or create ende.json")
-    })?;
-    return Ok((cli_factory, ende_json_config));
+    return load_config(flags);
   }
 
   // For `unlink`, never create an ende.json: if there isn't one, there's
@@ -1320,10 +815,9 @@ fn load_ende_config_for_link(
   let cli_factory = CliFactory::from_flags(flags.clone());
   let options = cli_factory.cli_options()?;
   let ende_json_config = match options.start_dir.member_ende_json() {
-    Some(ende_json) => ConfigUpdater::new(
-      ConfigKind::EndeJson,
-      url_to_file_path(&ende_json.specifier)?,
-    )?,
+    Some(ende_json) => {
+      ConfigUpdater::new(url_to_file_path(&ende_json.specifier)?)?
+    }
     None => bail!("No ende.json found; there are no linked packages to unlink"),
   };
   Ok((cli_factory, ende_json_config))
@@ -1407,7 +901,7 @@ pub async fn link(
   if changed {
     ende_json_config.modified = true;
     ende_json_config.commit()?;
-    npm_install_after_modification(
+    install_after_modification(
       flags,
       None,
       CacheTopLevelDepsOptions {
@@ -1513,7 +1007,7 @@ pub async fn unlink(
   ende_json_config.modified = true;
   ende_json_config.commit()?;
 
-  npm_install_after_modification(
+  install_after_modification(
     flags,
     None,
     CacheTopLevelDepsOptions {
@@ -1533,102 +1027,53 @@ mod test {
   fn jsr_pkg_req(alias: &str, req: &str) -> AddRmPackageReq {
     AddRmPackageReq {
       alias: alias.into(),
-      value: AddRmPackageReqValue::Jsr(
-        PackageReq::from_str_loose(req).unwrap(),
-      ),
-    }
-  }
-
-  fn npm_pkg_req(alias: &str, req: &str) -> AddRmPackageReq {
-    AddRmPackageReq {
-      alias: alias.into(),
-      value: AddRmPackageReqValue::Npm(
-        PackageReq::from_str_loose(req).unwrap(),
-      ),
+      req: PackageReq::from_str_loose(req).unwrap(),
     }
   }
 
   #[test]
   fn test_parse_add_package_req() {
     let cases = [
-      (("jsr:foo", None), jsr_pkg_req("foo", "foo")),
-      (("alias@jsr:foo", None), jsr_pkg_req("alias", "foo")),
+      (("jsr:foo", false), jsr_pkg_req("foo", "foo")),
+      (("alias@jsr:foo", false), jsr_pkg_req("alias", "foo")),
       (
-        ("@alias/pkg@npm:foo", None),
-        npm_pkg_req("@alias/pkg", "foo@*"),
-      ),
-      (
-        ("@alias/pkg@jsr:foo", None),
+        ("@alias/pkg@jsr:foo", false),
         jsr_pkg_req("@alias/pkg", "foo"),
       ),
       (
-        ("alias@jsr:foo@^1.5.0", None),
+        ("alias@jsr:foo@^1.5.0", false),
         jsr_pkg_req("alias", "foo@^1.5.0"),
       ),
-      (("foo", Some(Prefix::Npm)), npm_pkg_req("foo", "foo@*")),
-      (("foo", Some(Prefix::Jsr)), jsr_pkg_req("foo", "foo")),
-      (("npm:foo", Some(Prefix::Npm)), npm_pkg_req("foo", "foo@*")),
-      (("jsr:foo", Some(Prefix::Jsr)), jsr_pkg_req("foo", "foo")),
-      (("npm:foo", Some(Prefix::Jsr)), npm_pkg_req("foo", "foo@*")),
-      (("jsr:foo", Some(Prefix::Npm)), jsr_pkg_req("foo", "foo")),
-      // Alias with explicit prefix still works when default is set
+      (("foo", true), jsr_pkg_req("foo", "foo")),
+      (("jsr:foo", true), jsr_pkg_req("foo", "foo")),
+      (("my-alias@jsr:foo", true), jsr_pkg_req("my-alias", "foo")),
+      // unprefixed packages are jsr packages
       (
-        ("my-alias@npm:foo", Some(Prefix::Npm)),
-        npm_pkg_req("my-alias", "foo@*"),
+        ("@scope/pkg", true),
+        jsr_pkg_req("@scope/pkg", "@scope/pkg"),
       ),
+      // range syntax is accepted on the command line (issue #26587)
       (
-        ("my-alias@jsr:foo", Some(Prefix::Npm)),
-        jsr_pkg_req("my-alias", "foo"),
-      ),
-      // Unprefixed without alias defaults to npm
-      (
-        ("chalk", Some(Prefix::Npm)),
-        npm_pkg_req("chalk", "chalk@*"),
-      ),
-      (
-        ("@scope/pkg", Some(Prefix::Npm)),
-        npm_pkg_req("@scope/pkg", "@scope/pkg@*"),
-      ),
-      // npm range syntax is accepted on the command line (issue #26587)
-      (
-        ("npm:chalk@>=4", Some(Prefix::Npm)),
-        npm_pkg_req("chalk", "chalk@>=4"),
-      ),
-      (
-        ("npm:chalk@>=4 <5", Some(Prefix::Npm)),
-        npm_pkg_req("chalk", "chalk@>=4 <5"),
-      ),
-      (
-        ("npm:chalk@^4 || 5", Some(Prefix::Npm)),
-        npm_pkg_req("chalk", "chalk@^4 || 5"),
-      ),
-      (
-        ("npm:chalk@1 - 2", Some(Prefix::Npm)),
-        npm_pkg_req("chalk", "chalk@1 - 2"),
-      ),
-      (
-        ("alias@npm:chalk@>=4 <5", Some(Prefix::Npm)),
-        npm_pkg_req("alias", "chalk@>=4 <5"),
-      ),
-      (
-        ("jsr:@std/path@>=1.0.0", Some(Prefix::Jsr)),
+        ("jsr:@std/path@>=1.0.0", true),
         jsr_pkg_req("@std/path", "@std/path@>=1.0.0"),
+      ),
+      (
+        ("alias@jsr:@std/path@>=1 <2", false),
+        jsr_pkg_req("alias", "@std/path@>=1 <2"),
       ),
     ];
 
-    for ((input, maybe_prefix), expected) in cases {
-      let s = format!("on input: {input}, maybe_prefix: {maybe_prefix:?}");
+    for ((input, default_jsr), expected) in cases {
+      let s = format!("on input: {input}, default_jsr: {default_jsr}");
       assert_eq!(
-        AddRmPackageReq::parse(input, maybe_prefix)
-          .unwrap()
-          .unwrap(),
+        AddRmPackageReq::parse(input, default_jsr).unwrap().unwrap(),
         expected,
         "{s}",
       );
     }
 
     assert_eq!(
-      AddRmPackageReq::parse("@scope/pkg@tag", None)
+      AddRmPackageReq::parse("@scope/pkg@tag", false)
         .unwrap()
         .unwrap_err()
         .to_string(),
@@ -1637,42 +1082,44 @@ mod test {
   }
 
   #[test]
+  fn test_parse_npm_package_req_errors() {
+    for input in ["npm:chalk", "npm:chalk@^4", "alias@npm:chalk"] {
+      for default_jsr in [false, true] {
+        assert_eq!(
+          AddRmPackageReq::parse(input, default_jsr)
+            .unwrap_err()
+            .to_string(),
+          format!("npm packages are not supported in Ende (found '{input}')."),
+        );
+      }
+    }
+  }
+
+  #[test]
   fn test_use_unscoped_alias() {
     let cases = [
       (
-        ("jsr:@david/jsonc-morph", None),
+        ("jsr:@david/jsonc-morph", false),
         jsr_pkg_req("jsonc-morph", "@david/jsonc-morph"),
       ),
       (
-        ("jsr:@std/path@^1.0.0", None),
+        ("jsr:@std/path@^1.0.0", false),
         jsr_pkg_req("path", "@std/path@^1.0.0"),
       ),
-      (
-        ("npm:@types/node", None),
-        npm_pkg_req("node", "@types/node@*"),
-      ),
-      (
-        ("@scope/pkg", Some(Prefix::Npm)),
-        npm_pkg_req("pkg", "@scope/pkg@*"),
-      ),
+      (("@scope/pkg", true), jsr_pkg_req("pkg", "@scope/pkg")),
       // an explicit alias always wins
       (
-        ("my-alias@jsr:@david/jsonc-morph", None),
+        ("my-alias@jsr:@david/jsonc-morph", false),
         jsr_pkg_req("my-alias", "@david/jsonc-morph"),
       ),
       // unscoped names are unaffected
-      (("npm:chalk", None), npm_pkg_req("chalk", "chalk@*")),
-      (
-        ("chalk", Some(Prefix::Npm)),
-        npm_pkg_req("chalk", "chalk@*"),
-      ),
+      (("jsr:foo", false), jsr_pkg_req("foo", "foo")),
     ];
 
-    for ((input, maybe_prefix), expected) in cases {
-      let s = format!("on input: {input}, maybe_prefix: {maybe_prefix:?}");
-      let mut req = AddRmPackageReq::parse(input, maybe_prefix)
-        .unwrap()
-        .unwrap();
+    for ((input, default_jsr), expected) in cases {
+      let s = format!("on input: {input}, default_jsr: {default_jsr}");
+      let mut req =
+        AddRmPackageReq::parse(input, default_jsr).unwrap().unwrap();
       req.use_unscoped_alias();
       assert_eq!(req, expected, "{s}");
     }

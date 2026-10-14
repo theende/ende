@@ -2,11 +2,10 @@
   "name": "@pkg/add",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxImportSource": "npm:react"
+    "jsxImportSource": "react"
   },
   "imports": {
-    "react": "npm:react",
-    "@types/react": "npm:@types/react"
+    "react/jsx-runtime": "./jsx/jsx-runtime.ts"
   },
   "exports": "./mod.tsx"
 }

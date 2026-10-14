@@ -175,8 +175,7 @@ fn load_single_config(
   cli_options: &CliOptions,
   version_flags: &VersionFlags,
 ) -> Result<ConfigUpdater, AnyError> {
-  // Explicit --config takes precedence over auto-detection. May point at a
-  // ende.json/.jsonc or a package.json.
+  // Explicit --config takes precedence over auto-detection.
   if let Some(path) = &version_flags.config {
     let abs = if Path::new(path).is_absolute() {
       PathBuf::from(path)
@@ -189,34 +188,12 @@ fn load_single_config(
     return ConfigUpdater::new(abs);
   }
 
-  let start_dir = &cli_options.start_dir;
-  let ende_json = start_dir.member_ende_json();
-  let pkg_json = start_dir.member_pkg_json();
-
-  // Prefer the manifest that actually carries a `version` field. When both
-  // deno.json and package.json are present (common when a JSR/npm dual-published
-  // package uses ende.json purely for toolchain config), this lets users bump
-  // package.json's version even though ende.json is also present.
-  if let Some(ende_json) = ende_json {
-    let path = deno_path_util::url_to_file_path(&ende_json.specifier)
-      .context("Failed to convert ende.json URL to path")?;
-    if ende_json.json.version.is_some() {
-      return ConfigUpdater::new(path);
-    }
-    if let Some(pkg_json) = pkg_json
-      && pkg_json.version.is_some()
-    {
-      return ConfigUpdater::new(pkg_json.path.clone());
-    }
-    // Neither has a version; default to ende.json so we can write/initialize.
-    return ConfigUpdater::new(path);
-  }
-
-  if let Some(pkg_json) = pkg_json {
-    return ConfigUpdater::new(pkg_json.path.clone());
-  }
-
-  bail!("No ende.json or package.json found in the current directory")
+  let Some(ende_json) = cli_options.start_dir.member_ende_json() else {
+    bail!("No ende.json found in the current directory")
+  };
+  let path = deno_path_util::url_to_file_path(&ende_json.specifier)
+    .context("Failed to convert ende.json URL to path")?;
+  ConfigUpdater::new(path)
 }
 
 #[allow(clippy::print_stdout, reason = "user-facing output")]

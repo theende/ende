@@ -1,5 +1,0 @@
-{
-  "dependencies": {
-    "@denotest/has-patch-versions": "*"
-  }
-}

@@ -218,9 +218,7 @@ fn get_default_tags(
     {
       tags.push("jsr".to_string());
     }
-    if member_dir.member_or_root_ende_json().is_some()
-      || member_dir.member_or_root_pkg_json().is_some()
-    {
+    if member_dir.member_or_root_ende_json().is_some() {
       tags.push("workspace".to_string());
     }
   }

@@ -2,12 +2,8 @@
 
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::collections::VecDeque;
 use std::env;
 use std::ffi::OsString;
-use std::fs;
 use std::fs::File;
 use std::path::Component;
 use std::path::Path;
@@ -30,10 +26,8 @@ use ende_core::url::Url;
 use ende_lib::args::CaData;
 use ende_lib::args::UnstableConfig;
 use ende_lib::shared::ReleaseChannel;
-use ende_lib::standalone::binary::CjsExportAnalysisEntry;
 use ende_lib::standalone::binary::MAGIC_BYTES;
 use ende_lib::standalone::binary::Metadata;
-use ende_lib::standalone::binary::NodeModules;
 use ende_lib::standalone::binary::RemoteModuleEntry;
 use ende_lib::standalone::binary::SerializedResolverWorkspaceJsrPackage;
 use ende_lib::standalone::binary::SerializedWorkspaceResolver;
@@ -41,29 +35,17 @@ use ende_lib::standalone::binary::SerializedWorkspaceResolverImportMap;
 use ende_lib::standalone::binary::SpecifierDataStore;
 use ende_lib::standalone::binary::SpecifierId;
 use ende_lib::standalone::virtual_fs::BuiltVfs;
-use ende_lib::standalone::virtual_fs::ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME;
-use ende_lib::standalone::virtual_fs::OffsetWithLength;
 use ende_lib::standalone::virtual_fs::VfsBuilder;
-use ende_lib::standalone::virtual_fs::VfsEntry;
-use ende_lib::standalone::virtual_fs::VirtualDirectory;
-use ende_lib::standalone::virtual_fs::VirtualDirectoryEntries;
 use ende_lib::standalone::virtual_fs::WindowsSystemRootablePath;
 use ende_lib::util::hash::FastInsecureHasher;
 use ende_lib::util::text_encoding::is_valid_utf8;
 use ende_lib::util::v8::construct_v8_flags;
 use ende_lib::version::ENDE_VERSION_INFO;
-use ende_npm::NpmSystemInfo;
-use ende_npm::resolution::SerializedNpmResolutionSnapshot;
-use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
 use ende_resolver::file_fetcher::FetchLocalOptions;
 use ende_resolver::file_fetcher::FetchOptions;
 use ende_resolver::file_fetcher::FetchPermissionsOptionRef;
-use ende_resolver::loader::GraphCjsAnalysisSourceProvider;
 use ende_resolver::workspace::WorkspaceResolver;
 use indexmap::IndexMap;
-use node_resolver::analyze::CjsAnalysisSourceProvider;
-use node_resolver::analyze::ResolvedCjsAnalysis;
-use sys_traits::FsRead;
 
 use super::virtual_fs::output_vfs;
 use crate::args::CliOptions;
@@ -75,9 +57,6 @@ use crate::cache::EndeDir;
 use crate::file_fetcher::CliFileFetcher;
 use crate::http_util::HttpClientProvider;
 use crate::module_loader::CliEmitter;
-use crate::node::CliCjsModuleExportAnalyzer;
-use crate::npm::CliNpmResolver;
-use crate::resolver::CliCjsTracker;
 use crate::sys::CliSys;
 use crate::util::archive;
 use crate::util::env::handle_dotenv_error;
@@ -130,56 +109,6 @@ impl StandaloneRelativeFileBaseUrl<'_> {
       None => Cow::Borrowed(target.as_str()),
     }
   }
-}
-
-struct VfsCjsAnalysisSourceProvider<'a> {
-  vfs: &'a VfsBuilder,
-  sources: &'a HashMap<Url, OffsetWithLength>,
-  fallback: Option<&'a dyn CjsAnalysisSourceProvider>,
-}
-
-impl CjsAnalysisSourceProvider for VfsCjsAnalysisSourceProvider<'_> {
-  fn load_source<'a>(&'a self, specifier: &Url) -> Option<Cow<'a, str>> {
-    if let Some(offset) = self.sources.get(specifier).copied()
-      && let Some(bytes) = self.vfs.file_bytes(offset)
-      && let Ok(source) = std::str::from_utf8(bytes)
-    {
-      return Some(Cow::Borrowed(source));
-    }
-    self
-      .fallback
-      .and_then(|provider| provider.load_source(specifier))
-  }
-}
-
-// `ende compile` is a trusted local build step, so sources absent from the
-// graph and VFS may be read directly to preserve compile-time CJS analysis.
-struct FileSystemCjsAnalysisSourceProvider<'a> {
-  sys: &'a CliSys,
-}
-
-impl CjsAnalysisSourceProvider for FileSystemCjsAnalysisSourceProvider<'_> {
-  fn load_source<'a>(&'a self, specifier: &Url) -> Option<Cow<'a, str>> {
-    let path = deno_path_util::url_to_file_path(specifier).ok()?;
-    self
-      .sys
-      .fs_read_to_string_lossy(path)
-      .ok()
-      .map(|source| Cow::Owned(source.into_owned()))
-  }
-}
-
-fn collect_vfs_cjs_analysis_sources(
-  vfs: &VfsBuilder,
-) -> HashMap<Url, OffsetWithLength> {
-  let mut sources = HashMap::new();
-  for (path, file) in vfs.iter_files() {
-    let Ok(specifier) = deno_path_util::url_from_file_path(&path) else {
-      continue;
-    };
-    sources.insert(specifier, file.offset);
-  }
-  sources
 }
 
 struct SpecifierStore<'a> {
@@ -349,45 +278,32 @@ pub struct WriteBinOptions<'a> {
 }
 
 pub struct EndeCompileBinaryWriter<'a> {
-  cjs_module_export_analyzer: &'a CliCjsModuleExportAnalyzer,
-  cjs_tracker: &'a CliCjsTracker,
   cli_options: &'a CliOptions,
   ende_dir: &'a EndeDir,
   emitter: &'a CliEmitter,
   file_fetcher: &'a CliFileFetcher,
   http_client_provider: &'a HttpClientProvider,
-  npm_resolver: &'a CliNpmResolver,
   workspace_resolver: &'a WorkspaceResolver<CliSys>,
-  npm_system_info: NpmSystemInfo,
   is_desktop: bool,
 }
 
 impl<'a> EndeCompileBinaryWriter<'a> {
-  #[allow(clippy::too_many_arguments, reason = "construction")]
   pub fn new(
-    cjs_module_export_analyzer: &'a CliCjsModuleExportAnalyzer,
-    cjs_tracker: &'a CliCjsTracker,
     cli_options: &'a CliOptions,
     ende_dir: &'a EndeDir,
     emitter: &'a CliEmitter,
     file_fetcher: &'a CliFileFetcher,
     http_client_provider: &'a HttpClientProvider,
-    npm_resolver: &'a CliNpmResolver,
     workspace_resolver: &'a WorkspaceResolver<CliSys>,
-    npm_system_info: NpmSystemInfo,
     is_desktop: bool,
   ) -> Self {
     Self {
-      cjs_module_export_analyzer,
-      cjs_tracker,
       cli_options,
       ende_dir,
       emitter,
       file_fetcher,
       http_client_provider,
-      npm_resolver,
       workspace_resolver,
-      npm_system_info,
       is_desktop,
     }
   }
@@ -640,40 +556,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
     for path in exclude_paths {
       vfs.add_exclude_path(path);
     }
-    // Embed the workspace package.json files so the standalone binary's node
-    // resolver can read their "exports" (and other) fields at runtime. Without
-    // this, resolving a workspace member by its package name falls back to
-    // legacy `index.js` resolution instead of honoring the package's exports.
-    for pkg_json in self.cli_options.workspace().package_jsons() {
-      vfs.add_path(&pkg_json.path)?;
-    }
     let progress_bar = ProgressBar::new(ProgressBarStyle::ProgressBars);
-    let npm_snapshot = match &self.npm_resolver {
-      CliNpmResolver::Managed(managed) => {
-        if graph.modules().any(|m| m.npm().is_some()) {
-          // Embed the full snapshot so non-statically-analyzable dynamic
-          // imports keep working.
-          let snapshot = managed
-            .resolution()
-            .snapshot()
-            .as_valid_serialized_for_system(&self.npm_system_info);
-          if !snapshot.as_serialized().packages.is_empty() {
-            self
-              .fill_npm_vfs(&mut vfs, Some(&snapshot), &progress_bar)
-              .context("Building npm vfs.")?;
-            Some(snapshot)
-          } else {
-            None
-          }
-        } else {
-          None
-        }
-      }
-      CliNpmResolver::Byonm(_) => {
-        self.fill_npm_vfs(&mut vfs, None, &progress_bar)?;
-        None
-      }
-    };
     for include_file in include_paths {
       let path = deno_path_util::url_to_file_path(include_file)?;
       vfs
@@ -689,18 +572,13 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       progress_bar.update_with_prompt(ProgressMessagePrompt::Compile, "");
     progress.set_total_size(specifiers_count as u64);
     let mut modules_done: u64 = 0;
-    let vfs_sources = collect_vfs_cjs_analysis_sources(&vfs);
-    let sys = CliSys::default();
-    let file_system_source_provider =
-      FileSystemCjsAnalysisSourceProvider { sys: &sys };
-    // todo(dsherret): transpile and analyze CJS in parallel
+    // todo(dsherret): transpile in parallel
     for module in graph.modules() {
       if module.specifier().scheme() == "data" {
         continue; // don't store data urls as an entry as they're in the code
       }
       let mut maybe_source_map = None;
       let mut maybe_transpiled = None;
-      let mut maybe_cjs_analysis = None;
       let (maybe_original_source, media_type) = match module {
         deno_graph::Module::Js(m) => {
           let specifier = &m.specifier;
@@ -708,51 +586,12 @@ impl<'a> EndeCompileBinaryWriter<'a> {
             Some(bytes) => bytes,
             None => self.load_asset_bypass_permissions(specifier).await?.source,
           };
-          if self.cjs_tracker.is_maybe_cjs(specifier, m.media_type)? {
-            if self.cjs_tracker.is_cjs_with_known_is_script(
-              specifier,
-              m.media_type,
-              m.is_script,
-            )? {
-              let vfs_source_provider = VfsCjsAnalysisSourceProvider {
-                vfs: &vfs,
-                sources: &vfs_sources,
-                fallback: Some(&file_system_source_provider),
-              };
-              let graph_source_provider = GraphCjsAnalysisSourceProvider::new(
-                graph,
-                Some(&vfs_source_provider),
-              );
-              let cjs_analysis = self
-                .cjs_module_export_analyzer
-                .analyze_all_exports(
-                  module.specifier(),
-                  Some(Cow::Borrowed(m.source.text.as_ref())),
-                  Some(&graph_source_provider),
-                )
-                .await?;
-              maybe_cjs_analysis = Some(match cjs_analysis {
-                ResolvedCjsAnalysis::Esm(_) => CjsExportAnalysisEntry::Esm,
-                ResolvedCjsAnalysis::Cjs(exports) => {
-                  CjsExportAnalysisEntry::Cjs(
-                    exports.into_iter().collect::<Vec<_>>(),
-                  )
-                }
-              });
-            } else {
-              maybe_cjs_analysis = Some(CjsExportAnalysisEntry::Esm);
-            }
-          }
           if m.media_type.is_emittable() {
-            let module_kind = match maybe_cjs_analysis.as_ref() {
-              Some(CjsExportAnalysisEntry::Cjs(_)) => ModuleKind::Cjs,
-              _ => ModuleKind::Esm,
-            };
             let (source, source_map) =
               self.emitter.emit_source_for_ende_compile(
                 &m.specifier,
                 m.media_type,
-                module_kind,
+                ModuleKind::Esm,
                 &m.source.text,
               )?;
             if source != m.source.text.as_ref() {
@@ -783,10 +622,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       };
       if let Some(original_source) = maybe_original_source {
         asset_module_urls.swap_remove(module.specifier());
-        let maybe_cjs_export_analysis = maybe_cjs_analysis
-          .as_ref()
-          .map(bincode::serialize)
-          .transpose()?;
         if module.specifier().scheme() == "file" {
           let file_path = deno_path_util::url_to_file_path(module.specifier())?;
           vfs
@@ -796,7 +631,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
                 data: original_source.to_vec(),
                 maybe_transpiled,
                 maybe_source_map,
-                maybe_cjs_export_analysis,
                 mtime: file_path
                   .metadata()
                   .ok()
@@ -816,8 +650,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
               data: Cow::Owned(original_source.to_vec()),
               maybe_transpiled: maybe_transpiled.map(Cow::Owned),
               maybe_source_map: maybe_source_map.map(Cow::Owned),
-              maybe_cjs_export_analysis: maybe_cjs_export_analysis
-                .map(Cow::Owned),
             },
           );
         }
@@ -852,7 +684,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
                 ),
                 is_valid_utf8: is_valid_utf8(&file.source),
                 data: Cow::Owned(file.source.to_vec()),
-                maybe_cjs_export_analysis: None,
                 maybe_source_map: None,
                 maybe_transpiled: None,
               },
@@ -880,92 +711,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       // falls outside what the root of where the VFS will be based
       vfs.add_possible_min_root_dir(import_map_parent_dir);
     }
-    if let Some(node_modules_dir) = self.npm_resolver.root_node_modules_path() {
-      // ensure the vfs doesn't go below the node_modules directory's parent
-      if let Some(parent) = node_modules_dir.parent() {
-        vfs.add_possible_min_root_dir(parent);
-      }
-    }
-
-    // do CJS export analysis on all the files in the VFS
-    // todo(dsherret): analyze cjs in parallel
-    let vfs_source_provider = VfsCjsAnalysisSourceProvider {
-      vfs: &vfs,
-      sources: &vfs_sources,
-      fallback: Some(&file_system_source_provider),
-    };
-    let graph_source_provider =
-      GraphCjsAnalysisSourceProvider::new(graph, Some(&vfs_source_provider));
-    let mut to_add = Vec::new();
-    for (file_path, file) in vfs.iter_files() {
-      if file.cjs_export_analysis_offset.is_some() {
-        continue; // already analyzed
-      }
-      let specifier = deno_path_util::url_from_file_path(&file_path)?;
-      let media_type = MediaType::from_specifier(&specifier);
-      // Only script-flavored files can carry CJS exports. Extensions answer
-      // this for everything except extensionless files (`MediaType::Unknown`),
-      // which may be real modules (an npm `"main"` with no extension — see
-      // test-module-main-extension-lookup); those are disambiguated by content
-      // below rather than skipped outright.
-      if !matches!(
-        media_type,
-        MediaType::JavaScript
-          | MediaType::Mjs
-          | MediaType::Cjs
-          | MediaType::Jsx
-          | MediaType::TypeScript
-          | MediaType::Mts
-          | MediaType::Cts
-          | MediaType::Tsx
-          | MediaType::Dts
-          | MediaType::Dmts
-          | MediaType::Dcts
-          | MediaType::Unknown
-      ) {
-        continue;
-      }
-      if self.cjs_tracker.is_maybe_cjs(&specifier, media_type)? {
-        // Strict UTF-8 (not `from_utf8_lossy`): binary assets (images,
-        // fonts, …) that resolve to `Unknown` are skipped rather than
-        // mangled into garbage that panics swc. Extensionless *text*
-        // modules still flow through.
-        let Some(bytes) = vfs.file_bytes(file.offset) else {
-          continue;
-        };
-        let Ok(source) = std::str::from_utf8(bytes) else {
-          continue;
-        };
-        let cjs_analysis_result = self
-          .cjs_module_export_analyzer
-          .analyze_all_exports(
-            &specifier,
-            Some(source.into()),
-            Some(&graph_source_provider),
-          )
-          .await;
-        let analysis = match cjs_analysis_result {
-          Ok(ResolvedCjsAnalysis::Esm(_)) => CjsExportAnalysisEntry::Esm,
-          Ok(ResolvedCjsAnalysis::Cjs(exports)) => {
-            CjsExportAnalysisEntry::Cjs(exports.into_iter().collect::<Vec<_>>())
-          }
-          Err(err) => {
-            log::debug!(
-              "Had cjs export analysis error for '{}': {}",
-              specifier,
-              err
-            );
-            CjsExportAnalysisEntry::Error(err.to_string())
-          }
-        };
-        to_add.push((file_path, bincode::serialize(&analysis)?));
-      }
-    }
-    for (file_path, analysis) in to_add {
-      vfs.add_cjs_export_analysis(&file_path, analysis);
-    }
-
-    let vfs = self.build_vfs_consolidating_global_npm_cache(vfs);
+    let vfs = vfs.build();
 
     let root_dir_url = match &vfs.root_path {
       WindowsSystemRootablePath::Path(dir) => {
@@ -990,34 +736,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       Some(hasher.finish())
     } else {
       None
-    };
-
-    let node_modules = match &self.npm_resolver {
-      CliNpmResolver::Managed(_) => {
-        npm_snapshot.as_ref().map(|_| NodeModules::Managed {
-          node_modules_dir: self.npm_resolver.root_node_modules_path().map(
-            |path| {
-              root_dir_url
-                .specifier_key(
-                  &ModuleSpecifier::from_directory_path(path).unwrap(),
-                )
-                .into_owned()
-            },
-          ),
-        })
-      }
-      CliNpmResolver::Byonm(resolver) => Some(NodeModules::Byonm {
-        root_node_modules_dir: resolver.root_node_modules_path().map(
-          |node_modules_dir| {
-            root_dir_url
-              .specifier_key(
-                &ModuleSpecifier::from_directory_path(node_modules_dir)
-                  .unwrap(),
-              )
-              .into_owned()
-          },
-        ),
-      }),
     };
 
     let env_vars_from_env_file = {
@@ -1070,13 +788,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       .map(|s| root_dir_url.specifier_key(&s).into_owned())
       .collect::<Vec<_>>();
 
-    let require_modules = self
-      .cli_options
-      .require_modules()?
-      .into_iter()
-      .map(|s| root_dir_url.specifier_key(&s).into_owned())
-      .collect::<Vec<_>>();
-
     let metadata = Metadata {
       argv: compile_flags.args.clone(),
       seed: self.cli_options.seed(),
@@ -1098,7 +809,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       env_vars_from_env_file,
       entrypoint_key: root_dir_url.specifier_key(entrypoint).into_owned(),
       preload_modules,
-      require_modules,
       workspace_resolver: SerializedWorkspaceResolver {
         import_map: self.workspace_resolver.maybe_import_map().map(|i| {
           SerializedWorkspaceResolverImportMap {
@@ -1122,25 +832,10 @@ impl<'a> EndeCompileBinaryWriter<'a> {
             exports: pkg.exports.clone(),
           })
           .collect(),
-        package_jsons: self
-          .workspace_resolver
-          .package_jsons()
-          .map(|pkg_json| {
-            (
-              root_dir_url
-                .specifier_key(&pkg_json.specifier())
-                .into_owned(),
-              serde_json::to_value(pkg_json).unwrap(),
-            )
-          })
-          .collect(),
-        pkg_json_resolution: self.workspace_resolver.pkg_json_dep_resolution(),
-        catalogs: self.workspace_resolver.catalogs().clone(),
       },
-      node_modules,
       unstable_config: UnstableConfig {
         legacy_flag_enabled: false,
-        detect_cjs: self.cli_options.unstable_detect_cjs(),
+        detect_cjs: false,
         features: self
           .cli_options
           .unstable_features()
@@ -1197,7 +892,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
 
     let (data_section_bytes, section_sizes) = serialize_binary_data_section(
       &metadata,
-      npm_snapshot.map(|s| s.into_serialized()),
       &specifier_store.for_serialization(&root_dir_url),
       &redirects_store,
       &remote_modules_store,
@@ -1250,226 +944,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       )
       .await
   }
-
-  fn fill_npm_vfs(
-    &self,
-    builder: &mut VfsBuilder,
-    snapshot: Option<&ValidSerializedNpmResolutionSnapshot>,
-    progress_bar: &ProgressBar,
-  ) -> Result<(), AnyError> {
-    fn maybe_warn_different_system(system_info: &NpmSystemInfo) {
-      if system_info != &NpmSystemInfo::default() {
-        log::warn!(
-          "{} The node_modules directory may be incompatible with the target system.",
-          crate::colors::yellow("Warning")
-        );
-      }
-    }
-
-    match &self.npm_resolver {
-      CliNpmResolver::Managed(npm_resolver) => {
-        if let Some(node_modules_path) = npm_resolver.root_node_modules_path() {
-          maybe_warn_different_system(&self.npm_system_info);
-          let _progress =
-            progress_bar.update_with_prompt(ProgressMessagePrompt::Compile, "");
-          builder.add_dir_recursive(node_modules_path)?;
-          Ok(())
-        } else {
-          let snapshot = snapshot.unwrap();
-          // we'll flatten to remove any custom registries later
-          let mut packages =
-            snapshot.as_serialized().packages.iter().collect::<Vec<_>>();
-          packages.sort_by(|a, b| a.id.cmp(&b.id)); // determinism
-          let current_system = NpmSystemInfo::default();
-          let progress =
-            progress_bar.update_with_prompt(ProgressMessagePrompt::Compile, "");
-          progress.set_total_size(packages.len() as u64);
-          let mut packages_done: u64 = 0;
-          for package in packages {
-            let folder =
-              npm_resolver.resolve_pkg_folder_from_pkg_id(&package.id)?;
-            if !package.system.matches_system(&current_system)
-              && !folder.exists()
-            {
-              log::warn!(
-                "{} Ignoring 'npm:{}' because it was not present on the current system.",
-                crate::colors::yellow("Warning"),
-                package.id
-              );
-            } else {
-              builder.add_dir_recursive(&folder)?;
-            }
-            packages_done += 1;
-            progress.set_position(packages_done);
-          }
-          drop(progress);
-          Ok(())
-        }
-      }
-      CliNpmResolver::Byonm(_) => {
-        maybe_warn_different_system(&self.npm_system_info);
-        let _progress =
-          progress_bar.update_with_prompt(ProgressMessagePrompt::Compile, "");
-        // traverse and add all the node_modules directories in the workspace
-        let mut pending_dirs = VecDeque::new();
-        pending_dirs.push_back(
-          self
-            .cli_options
-            .workspace()
-            .root_dir_url()
-            .to_file_path()
-            .unwrap(),
-        );
-        while let Some(pending_dir) = pending_dirs.pop_front() {
-          let Ok(entries) = fs::read_dir(&pending_dir) else {
-            // Don't bother surfacing this error as it might be an error
-            // like "access denied". In this case, just skip over it.
-            continue;
-          };
-          let mut entries = entries.filter_map(|e| e.ok()).collect::<Vec<_>>();
-          entries.sort_by_cached_key(|entry| entry.file_name()); // determinism
-          for entry in entries {
-            let path = entry.path();
-            if !path.is_dir() {
-              continue;
-            }
-            if path.ends_with("node_modules") {
-              builder.add_dir_recursive(&path)?;
-            } else {
-              pending_dirs.push_back(path);
-            }
-          }
-        }
-        Ok(())
-      }
-    }
-  }
-
-  fn build_vfs_consolidating_global_npm_cache(
-    &self,
-    mut vfs: VfsBuilder,
-  ) -> BuiltVfs {
-    match &self.npm_resolver {
-      CliNpmResolver::Managed(npm_resolver) => {
-        if npm_resolver.root_node_modules_path().is_some() {
-          return vfs.build();
-        }
-
-        let global_cache_root_path = npm_resolver.global_cache_root_path();
-
-        // Flatten all the registries folders into a single ".ende_compile_node_modules/localhost" folder
-        // that will be used by endert when loading the npm cache. This avoids us exposing
-        // the user's private registry information and means we don't have to bother
-        // serializing all the different registry config into the binary.
-        //
-        // A registry url may include a sub-path (e.g.
-        // `http://mirrors.example.com/npm/`), in which case the on-disk cache
-        // layout is `<global_cache>/<host>/<sub>/<pkg>/...` rather than
-        // `<global_cache>/<host>/<pkg>/...`. Walk to each known registry's
-        // package root before flattening so packages always end up directly
-        // under `localhost/`.
-        let known_registries_dirnames: Vec<String> =
-          npm_resolver.known_registries_dirnames().to_vec();
-        let mut localhost_entries: IndexMap<String, VfsEntry> = IndexMap::new();
-        let mut registry_top_segments: HashSet<String> = HashSet::new();
-        for registry_dirname in &known_registries_dirnames {
-          if let Some(first) = registry_dirname.split('/').next()
-            && !first.is_empty()
-          {
-            registry_top_segments.insert(first.to_string());
-          }
-          let registry_path = global_cache_root_path.join(registry_dirname);
-          let Some(registry_dir) = vfs.get_dir_mut(&registry_path) else {
-            continue;
-          };
-          for entry in registry_dir.entries.take_inner() {
-            log::debug!("Flattening {} into node_modules", entry.name());
-            if let Some(existing) =
-              localhost_entries.insert(entry.name().to_string(), entry)
-            {
-              panic!(
-                "Unhandled scenario where a duplicate entry was found: {:?}",
-                existing
-              );
-            }
-          }
-        }
-
-        let Some(root_dir) = vfs.get_dir_mut(global_cache_root_path) else {
-          return vfs.build();
-        };
-
-        root_dir.name = ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME.to_string();
-        let mut new_entries = Vec::with_capacity(root_dir.entries.len());
-        for entry in root_dir.entries.take_inner() {
-          match &entry {
-            VfsEntry::Dir(dir) if registry_top_segments.contains(&dir.name) => {
-              // The packages under this registry host dir have already been
-              // flattened into `localhost_entries`. Drop the (now empty)
-              // intermediate directory tree so it isn't embedded twice.
-            }
-            _ => {
-              new_entries.push(entry);
-            }
-          }
-        }
-        new_entries.push(VfsEntry::Dir(VirtualDirectory {
-          name: "localhost".to_string(),
-          entries: VirtualDirectoryEntries::new(
-            localhost_entries.into_iter().map(|(_, v)| v).collect(),
-          ),
-        }));
-        root_dir.entries = VirtualDirectoryEntries::new(new_entries);
-
-        // it's better to not expose the user's cache directory, so take it out
-        // of there
-        let case_sensitivity = vfs.case_sensitivity();
-        let parent = global_cache_root_path.parent().unwrap();
-        let parent_dir = vfs.get_dir_mut(parent).unwrap();
-        let index = parent_dir
-          .entries
-          .binary_search(
-            ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME,
-            case_sensitivity,
-          )
-          .unwrap();
-        let npm_global_cache_dir_entry = parent_dir.entries.remove(index);
-
-        // go up from the ancestors removing empty directories...
-        // this is not as optimized as it could be
-        let mut last_name =
-          Cow::Borrowed(ENDE_COMPILE_GLOBAL_NODE_MODULES_DIR_NAME);
-        for ancestor in
-          parent.ancestors().map(Some).chain(std::iter::once(None))
-        {
-          let dir = if let Some(ancestor) = ancestor {
-            vfs.get_dir_mut(ancestor).unwrap()
-          } else if cfg!(windows) {
-            vfs.get_system_root_dir_mut()
-          } else {
-            break;
-          };
-          if let Ok(index) =
-            dir.entries.binary_search(&last_name, case_sensitivity)
-          {
-            dir.entries.remove(index);
-          }
-          last_name = Cow::Owned(dir.name.clone());
-          if !dir.entries.is_empty() {
-            break;
-          }
-        }
-
-        // now build the vfs and add the global cache dir entry there
-        let mut built_vfs = vfs.build();
-        built_vfs
-          .entries
-          .insert(npm_global_cache_dir_entry, case_sensitivity);
-        built_vfs
-      }
-      CliNpmResolver::Byonm(_) => vfs.build(),
-    }
-  }
 }
 
 #[allow(clippy::too_many_arguments, reason = "private code")]
@@ -1512,7 +986,6 @@ struct BinaryDataSectionSizes {
 /// Binary format:
 /// * d3n0l4nd
 /// * <metadata_len><metadata>
-/// * <npm_snapshot_len><npm_snapshot>
 /// * <specifiers>
 /// * <redirects>
 /// * <remote_modules>
@@ -1522,15 +995,12 @@ struct BinaryDataSectionSizes {
 #[allow(clippy::too_many_arguments, reason = "private code")]
 fn serialize_binary_data_section(
   metadata: &Metadata,
-  npm_snapshot: Option<SerializedNpmResolutionSnapshot>,
   specifiers: &SpecifierStoreForSerialization,
   redirects: &SpecifierDataStore<SpecifierId>,
   remote_modules: &SpecifierDataStore<RemoteModuleEntry<'_>>,
   vfs: &BuiltVfs,
 ) -> Result<(Vec<u8>, BinaryDataSectionSizes), AnyError> {
   let metadata = serde_json::to_string(metadata)?;
-  let npm_snapshot =
-    npm_snapshot.map(serialize_npm_snapshot).unwrap_or_default();
   let serialized_vfs = serde_json::to_string(&vfs.entries)?;
 
   let remote_modules_len = Cell::new(0);
@@ -1544,20 +1014,15 @@ fn serialize_binary_data_section(
       builder.append_le(metadata.len() as u64);
       builder.append(&metadata);
     }
-    // 2. Npm snapshot
-    {
-      builder.append_le(npm_snapshot.len() as u64);
-      builder.append(&npm_snapshot);
-    }
     metadata_len.set(builder.len());
-    // 3. Specifiers
+    // 2. Specifiers
     builder.append(specifiers);
-    // 4. Redirects
+    // 3. Redirects
     redirects.serialize(builder);
-    // 5. Remote modules
+    // 4. Remote modules
     remote_modules.serialize(builder);
     remote_modules_len.set(builder.len() - metadata_len.get());
-    // 6. VFS
+    // 5. VFS
     {
       builder.append_le(serialized_vfs.len() as u64);
       builder.append(&serialized_vfs);
@@ -1582,54 +1047,6 @@ fn serialize_binary_data_section(
       vfs: vfs_len.get(),
     },
   ))
-}
-
-fn serialize_npm_snapshot(
-  mut snapshot: SerializedNpmResolutionSnapshot,
-) -> Vec<u8> {
-  fn append_string(bytes: &mut Vec<u8>, string: &str) {
-    let len = string.len() as u32;
-    bytes.extend_from_slice(&len.to_le_bytes());
-    bytes.extend_from_slice(string.as_bytes());
-  }
-
-  snapshot.packages.sort_by(|a, b| a.id.cmp(&b.id)); // determinism
-  let ids_to_stored_ids = snapshot
-    .packages
-    .iter()
-    .enumerate()
-    .map(|(i, pkg)| (&pkg.id, i as u32))
-    .collect::<HashMap<_, _>>();
-
-  let mut root_packages: Vec<_> = snapshot.root_packages.iter().collect();
-  root_packages.sort();
-  let mut bytes = Vec::new();
-
-  bytes.extend_from_slice(&(snapshot.packages.len() as u32).to_le_bytes());
-  for pkg in &snapshot.packages {
-    append_string(&mut bytes, &pkg.id.as_serialized());
-  }
-
-  bytes.extend_from_slice(&(root_packages.len() as u32).to_le_bytes());
-  for (req, id) in root_packages {
-    append_string(&mut bytes, &req.to_string());
-    let id = ids_to_stored_ids.get(&id).unwrap();
-    bytes.extend_from_slice(&id.to_le_bytes());
-  }
-
-  for pkg in &snapshot.packages {
-    let deps_len = pkg.dependencies.len() as u32;
-    bytes.extend_from_slice(&deps_len.to_le_bytes());
-    let mut deps: Vec<_> = pkg.dependencies.iter().collect();
-    deps.sort();
-    for (req, id) in deps {
-      append_string(&mut bytes, req);
-      let id = ids_to_stored_ids.get(&id).unwrap();
-      bytes.extend_from_slice(&id.to_le_bytes());
-    }
-  }
-
-  bytes
 }
 
 fn get_endert_path(ende_exe: PathBuf) -> Option<OsString> {

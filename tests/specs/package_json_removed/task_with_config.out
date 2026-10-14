@@ -1,0 +1,5 @@
+Task not found: build
+hint: Found script 'build' in [WILDLINE]package.json, but package.json scripts are not supported in Ende. Define the task in the "tasks" field of an ende.json instead.
+Available tasks:
+- dev
+    echo dev

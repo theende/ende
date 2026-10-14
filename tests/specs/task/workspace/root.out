@@ -1,7 +1,3 @@
 Available tasks:
 - echo-root
     echo $PWD
-- pkg-json-root (package.json)
-    echo pkg-json $PWD
-- pkg-json-root-2 (package.json)
-    echo hi

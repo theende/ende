@@ -1,3 +1,3 @@
-import chalk from "chalk";
+import { add } from "add";
 
-console.log(chalk.green("hello"));
+console.log(add(1, 2));

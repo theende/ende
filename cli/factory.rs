@@ -25,7 +25,6 @@ use ende_lib::npm::create_npm_process_state_provider;
 use ende_lib::worker::LibMainWorkerFactory;
 use ende_lib::worker::LibMainWorkerOptions;
 use ende_lib::worker::LibWorkerFactoryRoots;
-use ende_npm::resolution::NpmVersionResolver;
 use ende_npm_cache::NpmCacheSetting;
 use ende_npm_installer::NpmInstallerFactoryOptions;
 use ende_npm_installer::lifecycle_scripts::LifecycleScriptsExecutor;
@@ -99,7 +98,6 @@ use crate::npm::CliNpmResolver;
 use crate::npm::DenoTaskLifeCycleScriptsExecutor;
 use crate::npm::NpmPackumentFormat;
 use crate::resolver::CliCjsTracker;
-use crate::resolver::CliNpmReqResolver;
 use crate::resolver::CliResolver;
 use crate::resolver::on_resolve_diagnostic;
 use crate::standalone::binary::EndeCompileBinaryWriter;
@@ -436,13 +434,7 @@ impl CliFactory {
   }
 
   pub fn bin_name_resolver(&self) -> Result<BinNameResolver<'_>, AnyError> {
-    let http_client = self.http_client_provider();
-    let npm_api = self.npm_installer_factory()?.registry_info_provider()?;
-    Ok(BinNameResolver::new(
-      http_client,
-      npm_api.as_ref(),
-      self.npm_version_resolver()?,
-    ))
+    Ok(BinNameResolver::new(self.http_client_provider()))
   }
 
   pub fn root_cert_store_provider(&self) -> &Arc<dyn RootCertStoreProvider> {
@@ -670,7 +662,7 @@ impl CliFactory {
             | EndeSubcommand::Ci { .. }
             | EndeSubcommand::Uninstall { .. } => true,
             EndeSubcommand::Install(flags) => match flags {
-              InstallFlags::Local(flags, _) => match flags {
+              InstallFlags::Local(flags) => match flags {
                 InstallFlagsLocal::Add { .. }
                 | InstallFlagsLocal::TopLevel { .. } => true,
                 // someone might be terribly storing dependencies in a
@@ -734,40 +726,14 @@ impl CliFactory {
           ),
           caching_strategy: cli_options.default_npm_caching_strategy(),
           lifecycle_scripts_config: cli_options.lifecycle_scripts_config(),
-          production: match cli_options.sub_command() {
-            EndeSubcommand::Install(InstallFlags::Local(flags, _)) => {
-              match flags {
-                InstallFlagsLocal::TopLevel(f) => f.production,
-                InstallFlagsLocal::Entrypoints(f) => f.production,
-                InstallFlagsLocal::Add(_) => false,
-              }
-            }
-            EndeSubcommand::Ci(f) => f.production,
-            _ => false,
-          },
-          skip_types: match cli_options.sub_command() {
-            EndeSubcommand::Install(InstallFlags::Local(flags, _)) => {
-              match flags {
-                InstallFlagsLocal::TopLevel(f) => f.skip_types,
-                InstallFlagsLocal::Entrypoints(f) => f.skip_types,
-                InstallFlagsLocal::Add(_) => false,
-              }
-            }
-            EndeSubcommand::Ci(f) => f.skip_types,
-            _ => false,
-          },
+          production: false,
+          skip_types: false,
           resolve_npm_resolution_snapshot: Box::new(|| {
             ende_lib::args::resolve_npm_resolution_snapshot(&CliSys::default())
           }),
         },
       ))
     })
-  }
-
-  pub fn npm_version_resolver(
-    &self,
-  ) -> Result<&Arc<NpmVersionResolver>, AnyError> {
-    self.resolver_factory()?.npm_version_resolver()
   }
 
   pub fn install_reporter(
@@ -778,7 +744,7 @@ impl CliFactory {
       .services
       .install_reporter
       .get_or_try_init(|| match self.cli_options()?.sub_command() {
-        EndeSubcommand::Install(InstallFlags::Local(_, _))
+        EndeSubcommand::Install(InstallFlags::Local(_))
         | EndeSubcommand::Add(_)
         | EndeSubcommand::Cache(_)
         | EndeSubcommand::Ci(_) => Ok(Some(Arc::new(
@@ -902,13 +868,6 @@ impl CliFactory {
   pub async fn node_resolver(&self) -> Result<&Arc<CliNodeResolver>, AnyError> {
     self.initialize_npm_resolution_if_managed().await?;
     self.resolver_factory()?.node_resolver()
-  }
-
-  pub async fn npm_req_resolver(
-    &self,
-  ) -> Result<&Arc<CliNpmReqResolver>, AnyError> {
-    self.initialize_npm_resolution_if_managed().await?;
-    self.resolver_factory()?.npm_req_resolver()
   }
 
   async fn initialize_npm_resolution_if_managed(&self) -> Result<(), AnyError> {
@@ -1119,18 +1078,13 @@ impl CliFactory {
     &self,
     is_desktop: bool,
   ) -> Result<EndeCompileBinaryWriter<'_>, AnyError> {
-    let cli_options = self.cli_options()?;
     Ok(EndeCompileBinaryWriter::new(
-      self.resolver_factory()?.cjs_module_export_analyzer()?,
-      self.cjs_tracker()?,
       self.cli_options()?,
       self.ende_dir()?,
       self.emitter()?,
       self.file_fetcher()?,
       self.http_client_provider(),
-      self.npm_resolver().await?,
       self.workspace_resolver().await?.as_ref(),
-      cli_options.npm_system_info(),
       is_desktop,
     ))
   }
@@ -1447,7 +1401,7 @@ impl CliFactory {
           node_code_translator_mode:
             node_resolver::analyze::NodeCodeTranslatorMode::ModuleLoader,
           node_resolution_cache: Some(Arc::new(NodeResolutionThreadLocalCache)),
-          npm_system_info: npm_system_info(&self.flags.subcommand),
+          npm_system_info: npm_system_info(),
           specified_import_map: Some(Box::new(CliSpecifiedImportMapProvider {
             cli_options: options.clone(),
             eszip_module_loader_provider: self
@@ -1465,14 +1419,6 @@ impl CliFactory {
           package_json_cache: Some(Arc::new(
             node_resolver::PackageJsonThreadLocalCache,
           )),
-          package_json_dep_resolution: match &self.flags.subcommand {
-            EndeSubcommand::Publish(_) => {
-              // the node_modules directory is not published to jsr, so resolve
-              // dependencies via the package.json rather than using node resolution
-              Some(ende_resolver::workspace::PackageJsonDepResolution::Enabled)
-            }
-            _ => None,
-          },
           allow_json_imports:
             ende_resolver::loader::AllowJsonImports::WithAttribute,
           require_modules: options.require_modules()?,
@@ -1534,7 +1480,7 @@ fn new_workspace_factory_options(
     frozen_lockfile: flags.frozen_lockfile,
     lock_arg: flags.lock.as_ref().map(|l| initial_cwd.join(l)),
     lockfile_skip_write: flags.internal.lockfile_skip_write,
-    no_npm: flags.no_npm,
+    no_npm: false,
     node_modules_dir: flags.node_modules_dir,
     npm_process_state: npm_process_state(&CliSys::default()).as_ref().map(
       |s| {

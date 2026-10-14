@@ -1,7 +1,0 @@
-{
-  "name": "@denotest/workspace-prerelease",
-  "workspaces": [
-    "member",
-    "app"
-  ]
-}

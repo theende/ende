@@ -30,3 +30,11 @@ pub mod transpile;
 pub mod unfurl_utils;
 pub mod upgrade;
 pub mod x;
+
+/// The error for an `npm:` package passed to a command.
+pub fn npm_not_supported_error(specifier: &str) -> ende_core::error::AnyError {
+  ende_core::anyhow::anyhow!(
+    "npm packages are not supported in Ende (found '{}').",
+    specifier
+  )
+}

@@ -75,11 +75,6 @@ pub static ENV_VARS: &[EnvVar] = &[
     example: None,
   },
   EnvVar {
-    name: "ENDE_NO_PACKAGE_JSON",
-    description: "Disables auto-resolution of package.json.",
-    example: None,
-  },
-  EnvVar {
     name: "ENDE_NO_PROMPT",
     description: "Set to disable permission prompts on access\n(alternative to passing --no-prompt on invocation).",
     example: None,
@@ -169,11 +164,6 @@ pub static ENV_VARS: &[EnvVar] = &[
   EnvVar {
     name: "NODE_USE_ENV_PROXY",
     description: "If set to 1, node:http and node:https honor HTTP_PROXY,\nHTTPS_PROXY, and NO_PROXY from the environment.",
-    example: None,
-  },
-  EnvVar {
-    name: "NPM_CONFIG_REGISTRY",
-    description: "URL to use for the npm registry.",
     example: None,
   },
   EnvVar {

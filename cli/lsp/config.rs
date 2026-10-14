@@ -37,7 +37,6 @@ use ende_core::serde::de::DeserializeOwned;
 use ende_core::serde_json;
 use ende_core::serde_json::Value;
 use ende_core::url::Url;
-use ende_lib::args::has_flag_env_var;
 use ende_lib::util::hash::FastInsecureHasher;
 use ende_npm_cache::NpmCacheSetting;
 use ende_npm_installer::LifecycleScriptsConfig;
@@ -46,15 +45,12 @@ use ende_npm_installer::NpmInstallerFactoryOptions;
 use ende_npm_installer::graph::NpmCachingStrategy;
 use ende_npm_installer::lifecycle_scripts::NullLifecycleScriptsExecutor;
 use ende_npmrc::ResolvedNpmRc;
-use ende_package_json::PackageJsonCache;
-use ende_package_json::PackageJsonCacheResult;
 use ende_resolver::factory::ConfigDiscoveryOption;
 use ende_resolver::factory::ResolverFactory;
 use ende_resolver::factory::ResolverFactoryOptions;
 use ende_resolver::factory::WorkspaceFactory;
 use ende_resolver::factory::WorkspaceFactoryOptions;
 use ende_resolver::workspace::SpecifiedImportMap;
-use ende_runtime::ende_node::PackageJson;
 use indexmap::IndexSet;
 use lsp_types::ClientCapabilities;
 use lsp_types::Uri;
@@ -1269,7 +1265,6 @@ impl Config {
 pub enum ConfigWatchedFileType {
   EndeJson,
   Lockfile,
-  PackageJson,
   ImportMap,
 }
 
@@ -1283,7 +1278,6 @@ struct WorkspaceConfigData {
   npmrc: Option<Arc<ResolvedNpmRc>>,
   node_modules_dir: Option<PathBuf>,
   vendor_dir: Option<PathBuf>,
-  byonm: bool,
 }
 
 impl WorkspaceConfigData {
@@ -1292,11 +1286,6 @@ impl WorkspaceConfigData {
     http_client_provider: Option<&Arc<HttpClientProvider>>,
     add_watched_file: &mut impl FnMut(ModuleSpecifier, ConfigWatchedFileType),
   ) -> Self {
-    let byonm = workspace.root_pkg_json().is_some();
-    if byonm {
-      lsp_log!("  Enabled 'bring your own node_modules'.");
-    }
-
     let mut workspace_factory = WorkspaceFactory::new(
       CliSys::default(),
       workspace.root_dir_path(),
@@ -1336,7 +1325,6 @@ impl WorkspaceConfigData {
         node_analysis_cache: None,
         node_resolution_cache: None,
         package_json_cache: None,
-        package_json_dep_resolution: None,
         specified_import_map: None,
         unstable_sloppy_imports: false,
         require_modules: vec![],
@@ -1402,7 +1390,6 @@ impl WorkspaceConfigData {
       npmrc,
       node_modules_dir,
       vendor_dir,
-      byonm,
     }
   }
 }
@@ -1416,7 +1403,6 @@ pub struct ConfigData {
   pub fmt_config: Arc<FmtConfig>,
   pub test_config: Arc<TestConfig>,
   pub exclude_files: Arc<PathOrPatternSet>,
-  pub byonm: bool,
   pub node_modules_dir: Option<PathBuf>,
   pub vendor_dir: Option<PathBuf>,
   pub lockfile: Option<Arc<CliLockfile>>,
@@ -1437,7 +1423,6 @@ impl ConfigData {
     http_client_provider: &Arc<HttpClientProvider>,
     // sync requirement is because the lsp requires sync
     ende_json_cache: &(dyn EndeJsonCache + Sync),
-    pkg_json_cache: &(dyn PackageJsonCache + Sync),
     workspace_cache: &(dyn WorkspaceCache + Sync),
     ws_data_cache: &mut HashMap<UrlRc, WorkspaceConfigData>,
   ) -> Self {
@@ -1460,12 +1445,7 @@ impl ConfigData {
           &WorkspaceDiscoverOptions {
             additional_config_file_names: &[],
             ende_json_cache: Some(ende_json_cache),
-            pkg_json_cache: Some(pkg_json_cache),
             workspace_cache: Some(workspace_cache),
-            discover_pkg_json: !has_flag_env_var(
-              &CliSys::default(),
-              "ENDE_NO_PACKAGE_JSON",
-            ),
             maybe_vendor_override: None,
           },
         )
@@ -1502,15 +1482,12 @@ impl ConfigData {
         )
         .await;
         // check if any of these need to be added to the workspace
-        let files = ende_config::ende_json::CONFIG_FILE_NAMES
-          .iter()
-          .map(|name| {
-            (scope.join(name).unwrap(), ConfigWatchedFileType::EndeJson)
-          })
-          .chain([(
-            scope.join("package.json").unwrap(),
-            ConfigWatchedFileType::PackageJson,
-          )]);
+        let files =
+          ende_config::ende_json::CONFIG_FILE_NAMES
+            .iter()
+            .map(|name| {
+              (scope.join(name).unwrap(), ConfigWatchedFileType::EndeJson)
+            });
         for (url, file_type) in files {
           let Some(file_path) = url.to_file_path().ok() else {
             continue;
@@ -1578,15 +1555,6 @@ impl ConfigData {
       );
     }
 
-    if let Some(pkg_json) = member_dir.member_pkg_json() {
-      lsp_log!("  Resolved package.json: \"{}\"", pkg_json.specifier());
-
-      add_watched_file(
-        pkg_json.specifier(),
-        ConfigWatchedFileType::PackageJson,
-      );
-    }
-
     // The lockfile, npm registry config, node_modules dir, etc. are resolved from the
     // workspace root, so they're shared by every member. Load them once per
     // workspace root and reuse the result across members.
@@ -1608,7 +1576,6 @@ impl ConfigData {
         )
       }
     };
-    let byonm = ws_data.byonm;
     let node_modules_dir = ws_data.node_modules_dir.clone();
     let vendor_dir = ws_data.vendor_dir.clone();
     let lockfile = ws_data.lockfile.clone();
@@ -1737,7 +1704,6 @@ impl ConfigData {
       fmt_config,
       test_config,
       exclude_files,
-      byonm,
       node_modules_dir,
       vendor_dir,
       lockfile,
@@ -1753,10 +1719,6 @@ impl ConfigData {
     &self,
   ) -> Option<&Arc<ende_config::ende_json::ConfigFile>> {
     self.member_dir.member_or_root_ende_json()
-  }
-
-  pub fn maybe_pkg_json(&self) -> Option<&Arc<ende_package_json::PackageJson>> {
-    self.member_dir.member_or_root_pkg_json()
   }
 
   pub fn scope_contains_specifier(&self, specifier: &ModuleSpecifier) -> bool {
@@ -1811,14 +1773,6 @@ impl ConfigTree {
       .scopes
       .values()
       .filter_map(|d| d.maybe_ende_json())
-      .collect()
-  }
-
-  pub fn package_jsons(&self) -> Vec<&Arc<PackageJson>> {
-    self
-      .scopes
-      .values()
-      .filter_map(|d| d.maybe_pkg_json())
       .collect()
   }
 
@@ -1877,11 +1831,6 @@ impl ConfigTree {
               uri: url_to_uri(&c.specifier).ok()?,
             })
           }),
-          package_json: data.maybe_pkg_json().and_then(|p| {
-            Some(lsp::TextDocumentIdentifier {
-              uri: url_to_uri(&p.specifier()).ok()?,
-            })
-          }),
           workspace_root_scope_uri,
         })
       })
@@ -1917,7 +1866,6 @@ impl ConfigTree {
     // folders, we want to cache all the lookups and config files across
     // ConfigData::load calls
     let ende_json_cache = EndeJsonMemCache::default();
-    let pkg_json_cache = PackageJsonMemCache::default();
     let workspace_cache = WorkspaceMemCache::default();
     // Shared per-workspace-root data (lockfile, npm registry config, node_modules dir),
     // computed once per root and reused across its members.
@@ -1953,7 +1901,6 @@ impl ConfigTree {
                 file_fetcher,
                 http_client_provider,
                 &ende_json_cache,
-                &pkg_json_cache,
                 &workspace_cache,
                 &mut ws_data_cache,
               )
@@ -1969,10 +1916,7 @@ impl ConfigTree {
         continue;
       };
       let file_name = file_url.path().rsplit_once('/').map(|(_, name)| name);
-      if !file_name.is_some_and(|name| {
-        ende_config::ende_json::is_config_file_name(name)
-          || name == "package.json"
-      }) {
+      if !file_name.is_some_and(ende_config::ende_json::is_config_file_name) {
         continue;
       }
       let Ok(scope) = file_url.join(".").map(Arc::new) else {
@@ -1989,7 +1933,6 @@ impl ConfigTree {
           file_fetcher,
           http_client_provider,
           &ende_json_cache,
-          &pkg_json_cache,
           &workspace_cache,
           &mut ws_data_cache,
         )
@@ -2007,7 +1950,6 @@ impl ConfigTree {
           file_fetcher,
           http_client_provider,
           &ende_json_cache,
-          &pkg_json_cache,
           &workspace_cache,
           &mut ws_data_cache,
         )
@@ -2070,28 +2012,6 @@ impl ende_config::ende_json::EndeJsonCache for EndeJsonMemCache {
   }
 
   fn set(&self, path: PathBuf, data: Arc<ConfigFile>) {
-    self.0.lock().insert(path, data);
-  }
-}
-
-#[derive(Debug, Default)]
-struct PackageJsonMemCache(Mutex<HashMap<PathBuf, Arc<PackageJson>>>);
-
-impl ende_package_json::PackageJsonCache for PackageJsonMemCache {
-  fn get(&self, path: &Path) -> PackageJsonCacheResult {
-    self
-      .0
-      .lock()
-      .get(path)
-      .cloned()
-      .map(|value| PackageJsonCacheResult::Hit(Some(value)))
-      .unwrap_or_else(|| PackageJsonCacheResult::NotCached)
-  }
-
-  fn set(&self, path: PathBuf, data: Option<Arc<PackageJson>>) {
-    let Some(data) = data else {
-      return;
-    };
     self.0.lock().insert(path, data);
   }
 }

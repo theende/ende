@@ -10,8 +10,6 @@ use boxed_error::Boxed;
 use deno_error::JsError;
 use deno_semver::npm::NpmPackageReqReference;
 use ende_cache_dir::npm::NpmCacheDir;
-use ende_package_json::PackageJsonDepValue;
-use ende_package_json::PackageJsonDepValueParseError;
 pub use node_resolver::DenoIsBuiltInNodeModuleChecker;
 use node_resolver::InNpmPackageChecker;
 use node_resolver::IsBuiltInNodeModuleChecker;
@@ -21,7 +19,6 @@ use node_resolver::NodeResolverRc;
 use node_resolver::NpmPackageFolderResolver;
 use node_resolver::ResolutionMode;
 use node_resolver::UrlOrPath;
-use node_resolver::UrlOrPathRef;
 use node_resolver::errors::NodeJsErrorCode;
 use node_resolver::errors::NodeResolveError;
 use node_resolver::errors::NodeResolveErrorKind;
@@ -39,7 +36,6 @@ use self::npm::ResolveNpmReqRefError;
 use crate::workspace::MappedResolution;
 use crate::workspace::MappedResolutionDiagnostic;
 use crate::workspace::MappedResolutionError;
-use crate::workspace::WorkspaceResolvePkgJsonFolderError;
 use crate::workspace::WorkspaceResolver;
 
 pub mod cache;
@@ -74,7 +70,6 @@ pub(crate) type NpmCacheDirRc = ende_maybe_sync::MaybeArc<NpmCacheDir>;
 pub struct EndeResolution {
   pub url: Url,
   pub maybe_diagnostic: Option<Box<MappedResolutionDiagnostic>>,
-  pub found_package_json_dep: bool,
 }
 
 #[derive(Debug, Boxed, JsError)]
@@ -109,14 +104,9 @@ impl EndeResolveError {
       }
       EndeResolveErrorKind::ResolveNpmReqRef(err) => err.err.maybe_specifier(),
       EndeResolveErrorKind::MappedResolution(_)
-      | EndeResolveErrorKind::WorkspaceResolvePkgJsonFolder(_)
       | EndeResolveErrorKind::ResolvePkgFolderFromDenoReq(_)
       | EndeResolveErrorKind::InvalidVendorFolderImport
-      | EndeResolveErrorKind::UnsupportedPackageJsonFileSpecifier
-      | EndeResolveErrorKind::NodeModulesOutOfDate(_)
-      | EndeResolveErrorKind::CatalogPackageNotFound(_)
-      | EndeResolveErrorKind::PackageJsonDepValueParse(_)
-      | EndeResolveErrorKind::PackageJsonDepValueUrlParse(_) => None,
+      | EndeResolveErrorKind::NodeModulesOutOfDate(_) => None,
     }
   }
 }
@@ -128,14 +118,6 @@ pub enum EndeResolveErrorKind {
     "Importing from the vendor directory is not permitted. Use a remote specifier instead or disable vendoring."
   )]
   InvalidVendorFolderImport,
-  #[class(type)]
-  #[error(
-    "Importing npm packages via a file: specifier is only supported with a manually managed node_modules directory"
-  )]
-  UnsupportedPackageJsonFileSpecifier,
-  #[class(type)]
-  #[error("Package '{0}' not found in catalog")]
-  CatalogPackageNotFound(String),
   #[class(inherit)]
   #[error(transparent)]
   MappedResolution(#[from] MappedResolutionError),
@@ -147,12 +129,6 @@ pub enum EndeResolveErrorKind {
   NodeModulesOutOfDate(#[from] NodeModulesOutOfDateError),
   #[class(inherit)]
   #[error(transparent)]
-  PackageJsonDepValueParse(#[from] PackageJsonDepValueParseError),
-  #[class(inherit)]
-  #[error(transparent)]
-  PackageJsonDepValueUrlParse(url::ParseError),
-  #[class(inherit)]
-  #[error(transparent)]
   PathToUrl(#[from] deno_path_util::PathToUrlError),
   #[class(inherit)]
   #[error(transparent)]
@@ -160,24 +136,16 @@ pub enum EndeResolveErrorKind {
   #[class(inherit)]
   #[error(transparent)]
   ResolvePkgFolderFromDenoReq(#[from] ResolvePkgFolderFromDenoReqError),
-  #[class(inherit)]
-  #[error(transparent)]
-  WorkspaceResolvePkgJsonFolder(#[from] WorkspaceResolvePkgJsonFolderError),
 }
 
 impl EndeResolveErrorKind {
   pub fn maybe_node_code(&self) -> Option<NodeJsErrorCode> {
     match self {
       EndeResolveErrorKind::InvalidVendorFolderImport
-      | EndeResolveErrorKind::UnsupportedPackageJsonFileSpecifier
-      | EndeResolveErrorKind::CatalogPackageNotFound { .. }
       | EndeResolveErrorKind::MappedResolution { .. }
       | EndeResolveErrorKind::NodeModulesOutOfDate { .. }
-      | EndeResolveErrorKind::PackageJsonDepValueParse { .. }
-      | EndeResolveErrorKind::PackageJsonDepValueUrlParse { .. }
       | EndeResolveErrorKind::PathToUrl { .. }
-      | EndeResolveErrorKind::ResolvePkgFolderFromDenoReq { .. }
-      | EndeResolveErrorKind::WorkspaceResolvePkgJsonFolder { .. } => None,
+      | EndeResolveErrorKind::ResolvePkgFolderFromDenoReq { .. } => None,
       EndeResolveErrorKind::ResolveNpmReqRef(err) => {
         err.err.as_kind().maybe_code()
       }
@@ -321,7 +289,6 @@ impl<
     resolution_mode: ResolutionMode,
     resolution_kind: NodeResolutionKind,
   ) -> Result<EndeResolution, EndeResolveError> {
-    let mut found_package_json_dep = false;
     let mut maybe_diagnostic = None;
     // Use node resolution if we're in an npm package
     if let Some(node_and_npm_resolver) = self.node_and_npm_resolver.as_ref() {
@@ -342,7 +309,6 @@ impl<
           .and_then(|res| {
             Ok(EndeResolution {
               url: res.into_url()?,
-              found_package_json_dep,
               maybe_diagnostic,
             })
           })
@@ -369,133 +335,6 @@ impl<
         MappedResolution::WorkspaceJsrPackage { specifier, .. } => {
           Ok(specifier)
         }
-        MappedResolution::WorkspaceNpmPackage {
-          target_pkg_json: pkg_json,
-          sub_path,
-          ..
-        } => self
-          .node_and_npm_resolver
-          .as_ref()
-          .unwrap()
-          .node_resolver
-          .resolve_package_subpath_from_deno_module(
-            pkg_json.dir_path(),
-            sub_path.as_deref(),
-            Some(referrer),
-            resolution_mode,
-            resolution_kind,
-          )
-          .map_err(|e| {
-            EndeResolveErrorKind::Node(e.into_node_resolve_error()).into_box()
-          })
-          .and_then(|r| Ok(r.into_url()?)),
-        MappedResolution::PackageJson {
-          dep_result,
-          alias,
-          sub_path,
-          ..
-        } => {
-          // found a specifier in the package.json, so mark that
-          // we need to do an "npm install" later
-          found_package_json_dep = true;
-
-          dep_result
-            .as_ref()
-            .map_err(|e| {
-              EndeResolveErrorKind::PackageJsonDepValueParse(e.clone())
-                .into_box()
-            })
-            .and_then(|dep| match dep {
-              PackageJsonDepValue::File(_) => {
-                // We don't support --node-modules-dir=auto/none because it's too
-                // much work to get this to work with a lockfile properly and for
-                // multiple managed node_modules directories to work. If someone wants
-                // to do this, then they need to use the default (manual)
-                Err(
-                  EndeResolveErrorKind::UnsupportedPackageJsonFileSpecifier
-                    .into_box(),
-                )
-              }
-              // todo(dsherret): it seems bad that we're converting this
-              // to a url because the req might not be a valid url.
-              PackageJsonDepValue::Req(req) => Url::parse(&format!(
-                "npm:{}{}",
-                req,
-                sub_path.map(|s| format!("/{}", s)).unwrap_or_default()
-              ))
-              .map_err(|e| {
-                EndeResolveErrorKind::PackageJsonDepValueUrlParse(e).into_box()
-              }),
-              PackageJsonDepValue::Workspace { name, version_req } => self
-                .workspace_resolver
-                .resolve_workspace_pkg_json_folder_for_pkg_json_dep(
-                  name.as_deref().unwrap_or(alias),
-                  version_req,
-                )
-                .map_err(|e| {
-                  EndeResolveErrorKind::WorkspaceResolvePkgJsonFolder(e)
-                    .into_box()
-                })
-                .and_then(|pkg_folder| {
-                  self
-                    .node_and_npm_resolver
-                    .as_ref()
-                    .unwrap()
-                    .node_resolver
-                    .resolve_package_subpath_from_deno_module(
-                      pkg_folder,
-                      sub_path.as_deref(),
-                      Some(referrer),
-                      resolution_mode,
-                      resolution_kind,
-                    )
-                    .map_err(|e| {
-                      EndeResolveErrorKind::Node(e.into_node_resolve_error())
-                        .into_box()
-                    })
-                })
-                .and_then(|r| Ok(r.into_url()?)),
-              PackageJsonDepValue::Catalog(catalog_name) => self
-                .workspace_resolver
-                .resolve_catalog_dep(alias, catalog_name)
-                .ok_or_else(|| {
-                  EndeResolveErrorKind::CatalogPackageNotFound(
-                    alias.to_string(),
-                  )
-                  .into_box()
-                })
-                .and_then(|req| {
-                  Url::parse(&format!(
-                    "npm:{}{}",
-                    req,
-                    sub_path.map(|s| format!("/{}", s)).unwrap_or_default()
-                  ))
-                  .map_err(|e| {
-                    EndeResolveErrorKind::PackageJsonDepValueUrlParse(e)
-                      .into_box()
-                  })
-                }),
-            })
-        }
-        MappedResolution::PackageJsonImport { pkg_json } => self
-          .node_and_npm_resolver
-          .as_ref()
-          .unwrap()
-          .node_resolver
-          .resolve_package_import(
-            raw_specifier,
-            Some(&UrlOrPathRef::from_url(referrer)),
-            Some(pkg_json),
-            resolution_mode,
-            resolution_kind,
-          )
-          .map_err(|e| {
-            EndeResolveErrorKind::Node(
-              NodeResolveErrorKind::PackageImportsResolve(e).into_box(),
-            )
-            .into_box()
-          })
-          .and_then(|r| Ok(r.into_url()?)),
       },
       Err(err) => Err(err.into()),
     };
@@ -520,7 +359,6 @@ impl<
       return Ok(EndeResolution {
         url: result?,
         maybe_diagnostic,
-        found_package_json_dep,
       });
     };
 
@@ -532,7 +370,6 @@ impl<
             Ok(EndeResolution {
               url: specifier,
               maybe_diagnostic,
-              found_package_json_dep,
             })
           } else {
             Err(
@@ -547,59 +384,26 @@ impl<
           };
         }
 
-        if let Ok(npm_req_ref) =
-          NpmPackageReqReference::from_specifier(&specifier)
+        if self.is_byonm
+          && let Ok(npm_req_ref) =
+            NpmPackageReqReference::from_specifier(&specifier)
         {
-          // check if the npm specifier resolves to a workspace member
-          if let Some(pkg_folder) = self
-            .workspace_resolver
-            .resolve_workspace_pkg_json_folder_for_npm_specifier(
-              npm_req_ref.req(),
+          return npm_req_resolver
+            .resolve_req_reference(
+              &npm_req_ref,
+              referrer,
+              resolution_mode,
+              resolution_kind,
             )
-          {
-            return node_resolver
-              .resolve_package_subpath_from_deno_module(
-                pkg_folder,
-                npm_req_ref.sub_path(),
-                Some(referrer),
-                resolution_mode,
-                resolution_kind,
-              )
-              .map_err(|err| {
-                EndeResolveErrorKind::ResolveNpmReqRef(ResolveNpmReqRefError {
-                  npm_req_ref: npm_req_ref.clone(),
-                  err: err.into(),
-                })
-                .into_box()
+            .map_err(|err| {
+              EndeResolveErrorKind::ResolveNpmReqRef(err).into_box()
+            })
+            .and_then(|url_or_path| {
+              Ok(EndeResolution {
+                url: url_or_path.into_url()?,
+                maybe_diagnostic,
               })
-              .and_then(|url_or_path| {
-                Ok(EndeResolution {
-                  url: url_or_path.into_url()?,
-                  maybe_diagnostic,
-                  found_package_json_dep,
-                })
-              });
-          }
-
-          if self.is_byonm {
-            return npm_req_resolver
-              .resolve_req_reference(
-                &npm_req_ref,
-                referrer,
-                resolution_mode,
-                resolution_kind,
-              )
-              .map_err(|err| {
-                EndeResolveErrorKind::ResolveNpmReqRef(err).into_box()
-              })
-              .and_then(|url_or_path| {
-                Ok(EndeResolution {
-                  url: url_or_path.into_url()?,
-                  maybe_diagnostic,
-                  found_package_json_dep,
-                })
-              });
-          }
+            });
         }
 
         Ok(EndeResolution {
@@ -607,7 +411,6 @@ impl<
             .handle_if_in_node_modules(&specifier)
             .unwrap_or(specifier),
           maybe_diagnostic,
-          found_package_json_dep,
         })
       }
       Err(err) => {
@@ -618,7 +421,6 @@ impl<
           return Ok(EndeResolution {
             url: Url::parse(&format!("node:{}", raw_specifier)).unwrap(),
             maybe_diagnostic,
-            found_package_json_dep,
           });
         }
 
@@ -643,7 +445,6 @@ impl<
             return Ok(EndeResolution {
               url: res.into_url()?,
               maybe_diagnostic,
-              found_package_json_dep,
             });
           }
         }

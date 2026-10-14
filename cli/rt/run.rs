@@ -31,14 +31,12 @@ use ende_core::v8_set_flags;
 use ende_lib::args::CaData;
 use ende_lib::args::RootCertStoreLoadError;
 use ende_lib::args::get_root_cert_store;
-use ende_lib::args::npm_pkg_req_ref_to_binary_command;
 use ende_lib::loader::as_ende_resolver_requested_module_type;
 use ende_lib::loader::loaded_module_source_to_module_source_code;
 use ende_lib::loader::module_type_from_media_and_requested_type;
 use ende_lib::npm::NpmRegistryReadPermissionChecker;
 use ende_lib::npm::NpmRegistryReadPermissionCheckerMode;
 use ende_lib::npm::create_npm_process_state_provider;
-use ende_lib::standalone::binary::NodeModules;
 use ende_lib::util::hash::FastInsecureHasher;
 use ende_lib::util::text_encoding::from_utf8_lossy_cow;
 use ende_lib::util::text_encoding::from_utf8_lossy_owned;
@@ -48,14 +46,10 @@ use ende_lib::worker::LibMainWorkerFactory;
 use ende_lib::worker::LibMainWorkerOptions;
 use ende_lib::worker::ModuleLoaderFactory;
 use ende_lib::worker::StorageKeyResolver;
-use ende_npm::resolution::NpmResolutionSnapshot;
 use ende_npmrc::ResolvedNpmRc;
-use ende_package_json::PackageJsonDepValue;
-use ende_resolver::EndeResolveErrorKind;
 use ende_resolver::cjs::CjsTracker;
 use ende_resolver::cjs::IsCjsResolutionMode;
 use ende_resolver::loader::NpmModuleLoader;
-use ende_resolver::npm::ByonmNpmResolverCreateOptions;
 use ende_resolver::npm::CreateInNpmPkgCheckerOptions;
 use ende_resolver::npm::DenoInNpmPackageChecker;
 use ende_resolver::npm::NpmReqResolver;
@@ -260,123 +254,6 @@ impl EmbeddedModuleLoader {
       Ok(MappedResolution::WorkspaceJsrPackage { specifier, .. }) => {
         Ok(specifier)
       }
-      Ok(MappedResolution::WorkspaceNpmPackage {
-        target_pkg_json: pkg_json,
-        sub_path,
-        ..
-      }) => Ok(
-        self
-          .shared
-          .node_resolver
-          .resolve_package_subpath_from_deno_module(
-            pkg_json.dir_path(),
-            sub_path.as_deref(),
-            Some(&referrer),
-            resolution_mode,
-            NodeResolutionKind::Execution,
-          )
-          .map_err(JsErrorBox::from_err)
-          .and_then(|url_or_path| {
-            url_or_path.into_url().map_err(JsErrorBox::from_err)
-          })?,
-      ),
-      Ok(MappedResolution::PackageJson {
-        dep_result,
-        sub_path,
-        alias,
-        ..
-      }) => match dep_result
-        .as_ref()
-        .map_err(|e| JsErrorBox::from_err(e.clone()))?
-      {
-        PackageJsonDepValue::File(_) => Err(JsErrorBox::from_err(
-          EndeResolveErrorKind::UnsupportedPackageJsonFileSpecifier.into_box(),
-        )),
-        PackageJsonDepValue::Req(req) => Ok(
-          self
-            .shared
-            .npm_req_resolver
-            .resolve_req_with_sub_path(
-              req,
-              sub_path.as_deref(),
-              &referrer,
-              resolution_mode,
-              NodeResolutionKind::Execution,
-            )
-            .map_err(JsErrorBox::from_err)
-            .and_then(|url_or_path| {
-              url_or_path.into_url().map_err(JsErrorBox::from_err)
-            })?,
-        ),
-        PackageJsonDepValue::Workspace { name, version_req } => {
-          let pkg_folder = self
-            .shared
-            .workspace_resolver
-            .resolve_workspace_pkg_json_folder_for_pkg_json_dep(
-              name.as_deref().unwrap_or(alias),
-              version_req,
-            )
-            .map_err(JsErrorBox::from_err)?;
-          Ok(
-            self
-              .shared
-              .node_resolver
-              .resolve_package_subpath_from_deno_module(
-                pkg_folder,
-                sub_path.as_deref(),
-                Some(&referrer),
-                resolution_mode,
-                NodeResolutionKind::Execution,
-              )
-              .map_err(JsErrorBox::from_err)
-              .and_then(|url_or_path| {
-                url_or_path.into_url().map_err(JsErrorBox::from_err)
-              })?,
-          )
-        }
-        PackageJsonDepValue::Catalog(catalog_name) => {
-          match self
-            .shared
-            .workspace_resolver
-            .resolve_catalog_dep(alias, catalog_name)
-          {
-            Some(req) => Ok(
-              self
-                .shared
-                .npm_req_resolver
-                .resolve_req_with_sub_path(
-                  &req,
-                  sub_path.as_deref(),
-                  &referrer,
-                  resolution_mode,
-                  NodeResolutionKind::Execution,
-                )
-                .map_err(JsErrorBox::from_err)
-                .and_then(|url_or_path| {
-                  url_or_path.into_url().map_err(JsErrorBox::from_err)
-                })?,
-            ),
-            None => Err(JsErrorBox::generic(format!(
-              "Package '{}' not found in catalog",
-              alias
-            ))),
-          }
-        }
-      },
-      Ok(MappedResolution::PackageJsonImport { pkg_json }) => self
-        .shared
-        .node_resolver
-        .resolve_package_import(
-          raw_specifier,
-          Some(&node_resolver::UrlOrPathRef::from_url(&referrer)),
-          Some(pkg_json),
-          resolution_mode,
-          NodeResolutionKind::Execution,
-        )
-        .map_err(JsErrorBox::from_err)
-        .and_then(|url_or_path| {
-          url_or_path.into_url().map_err(JsErrorBox::from_err)
-        }),
       Ok(MappedResolution::Normal { specifier, .. }) => {
         if let Ok(reference) =
           NpmPackageReqReference::from_specifier(&specifier)
@@ -1369,7 +1246,6 @@ pub async fn run_with_options(
   let StandaloneData {
     metadata,
     modules,
-    npm_snapshot,
     root_path,
     vfs,
   } = data;
@@ -1380,8 +1256,6 @@ pub async fn run_with_options(
     ca_data: metadata.ca_data.map(CaData::Bytes),
     cell: Default::default(),
   });
-  // use a dummy npm registry url
-  let npm_registry_url = Url::parse("https://localhost/").unwrap();
   let root_dir_url = Arc::new(Url::from_directory_path(&root_path).unwrap());
   let workspace_root_path =
     hmr_watch_dir.clone().unwrap_or_else(|| root_path.clone());
@@ -1425,120 +1299,41 @@ pub async fn run_with_options(
     sys.clone(),
     Some(Arc::new(PackageJsonThreadLocalCache)),
   ));
-  let npm_registry_permission_checker = {
-    let mode = match &metadata.node_modules {
-      Some(NodeModules::Managed {
-        node_modules_dir: Some(path),
-      }) => NpmRegistryReadPermissionCheckerMode::Local(PathBuf::from(path)),
-      Some(NodeModules::Byonm { .. }) => {
-        NpmRegistryReadPermissionCheckerMode::Byonm
-      }
-      Some(NodeModules::Managed {
-        node_modules_dir: None,
-      })
-      | None => NpmRegistryReadPermissionCheckerMode::Global(
-        npm_global_cache_dir.clone(),
-      ),
-    };
-    NpmRegistryReadPermissionChecker::new(sys.clone(), mode)
-  };
+  // `ende compile` doesn't embed npm packages, so the npm resolver is empty
+  let npm_registry_permission_checker = NpmRegistryReadPermissionChecker::new(
+    sys.clone(),
+    NpmRegistryReadPermissionCheckerMode::Global(npm_global_cache_dir.clone()),
+  );
   let node_resolution_sys = NodeResolutionSys::new(sys.clone(), None);
-  let (in_npm_pkg_checker, npm_resolver) = match metadata.node_modules {
-    Some(NodeModules::Managed { node_modules_dir }) => {
-      // create an npmrc that uses the fake npm_registry_url to resolve packages
-      let npmrc = Arc::new(ResolvedNpmRc {
-        default_config: ende_npmrc::RegistryConfigWithUrl {
-          registry_url: npm_registry_url.clone(),
-          config: Default::default(),
-        },
-        scopes: Default::default(),
-        registry_configs: Default::default(),
-        replace_registry_host: Default::default(),
-        min_release_age_days: None,
-        trust_policy: Default::default(),
-        trust_policy_ignore_after_minutes: None,
-        trust_policy_exclude: Vec::new(),
-      });
-      let npm_cache_dir = Arc::new(NpmCacheDir::new(
-        &sys,
-        npm_global_cache_dir,
-        npmrc.get_all_known_registries_urls(),
-      ));
-      let snapshot = npm_snapshot.unwrap();
-      let maybe_node_modules_path = node_modules_dir
-        .map(|node_modules_dir| workspace_root_path.join(node_modules_dir));
-      let in_npm_pkg_checker =
-        DenoInNpmPackageChecker::new(CreateInNpmPkgCheckerOptions::Managed(
-          ManagedInNpmPkgCheckerCreateOptions {
-            root_cache_dir_url: npm_cache_dir.root_dir_url(),
-            maybe_node_modules_path: maybe_node_modules_path.as_deref(),
-          },
-        ));
-      let npm_resolution =
-        Arc::new(NpmResolutionCell::new(NpmResolutionSnapshot::new(snapshot)));
-      let npm_resolver = NpmResolver::<EndeRtSys>::new::<EndeRtSys>(
-        NpmResolverCreateOptions::Managed(ManagedNpmResolverCreateOptions {
-          npm_resolution,
-          npm_cache_dir,
-          sys: node_resolution_sys.clone(),
-          maybe_node_modules_path,
-          npm_system_info: Default::default(),
-          npmrc,
-          linker_mode: ende_config::ende_json::NodeModulesLinkerMode::default(),
-        }),
-      );
-      (in_npm_pkg_checker, npm_resolver)
-    }
-    Some(NodeModules::Byonm {
-      root_node_modules_dir,
-    }) => {
-      let root_node_modules_dir =
-        root_node_modules_dir.map(|p| workspace_root_path.join(p));
-      let in_npm_pkg_checker =
-        DenoInNpmPackageChecker::new(CreateInNpmPkgCheckerOptions::Byonm);
-      let npm_resolver = NpmResolver::<EndeRtSys>::new::<EndeRtSys>(
-        NpmResolverCreateOptions::Byonm(ByonmNpmResolverCreateOptions {
-          sys: node_resolution_sys.clone(),
-          pkg_json_resolver: pkg_json_resolver.clone(),
-          root_node_modules_dir,
-          search_stop_dir: Some(workspace_root_path.clone()),
-        }),
-      );
-      (in_npm_pkg_checker, npm_resolver)
-    }
-    None => {
-      // Packages from different registries are already inlined in the binary,
-      // so no need to create actual `.npmrc` configuration.
-      let npmrc = create_default_npmrc();
-      let npm_cache_dir = Arc::new(NpmCacheDir::new(
-        &sys,
-        npm_global_cache_dir,
-        npmrc.get_all_known_registries_urls(),
-      ));
-      let in_npm_pkg_checker =
-        DenoInNpmPackageChecker::new(CreateInNpmPkgCheckerOptions::Managed(
-          ManagedInNpmPkgCheckerCreateOptions {
-            root_cache_dir_url: npm_cache_dir.root_dir_url(),
-            maybe_node_modules_path: None,
-          },
-        ));
-      let npm_resolution = Arc::new(NpmResolutionCell::default());
-      let npm_resolver = NpmResolver::<EndeRtSys>::new::<EndeRtSys>(
-        NpmResolverCreateOptions::Managed(ManagedNpmResolverCreateOptions {
-          npm_resolution,
-          sys: node_resolution_sys.clone(),
-          npm_cache_dir,
+  let (in_npm_pkg_checker, npm_resolver) = {
+    let npmrc = create_default_npmrc();
+    let npm_cache_dir = Arc::new(NpmCacheDir::new(
+      &sys,
+      npm_global_cache_dir,
+      npmrc.get_all_known_registries_urls(),
+    ));
+    let in_npm_pkg_checker =
+      DenoInNpmPackageChecker::new(CreateInNpmPkgCheckerOptions::Managed(
+        ManagedInNpmPkgCheckerCreateOptions {
+          root_cache_dir_url: npm_cache_dir.root_dir_url(),
           maybe_node_modules_path: None,
-          npm_system_info: Default::default(),
-          npmrc: create_default_npmrc(),
-          linker_mode: ende_config::ende_json::NodeModulesLinkerMode::default(),
-        }),
-      );
-      (in_npm_pkg_checker, npm_resolver)
-    }
+        },
+      ));
+    let npm_resolution = Arc::new(NpmResolutionCell::default());
+    let npm_resolver = NpmResolver::<EndeRtSys>::new::<EndeRtSys>(
+      NpmResolverCreateOptions::Managed(ManagedNpmResolverCreateOptions {
+        npm_resolution,
+        sys: node_resolution_sys.clone(),
+        npm_cache_dir,
+        maybe_node_modules_path: None,
+        npm_system_info: Default::default(),
+        npmrc,
+        linker_mode: ende_config::ende_json::NodeModulesLinkerMode::default(),
+      }),
+    );
+    (in_npm_pkg_checker, npm_resolver)
   };
 
-  let has_node_modules_dir = npm_resolver.root_node_modules_path().is_some();
   let node_resolver = Arc::new(NodeResolver::new(
     in_npm_pkg_checker.clone(),
     DenoIsBuiltInNodeModuleChecker,
@@ -1547,22 +1342,11 @@ pub async fn run_with_options(
     node_resolution_sys,
     node_resolver::NodeResolverOptions::default(),
   ));
-  let require_modules = metadata
-    .require_modules
-    .iter()
-    .map(|key| root_dir_url.join(key).unwrap())
-    .collect::<Vec<_>>();
   let cjs_tracker = Arc::new(CjsTracker::new(
     in_npm_pkg_checker.clone(),
     pkg_json_resolver.clone(),
-    if metadata.unstable_config.detect_cjs {
-      IsCjsResolutionMode::ImplicitTypeCommonJs
-    } else if metadata.workspace_resolver.package_jsons.is_empty() {
-      IsCjsResolutionMode::Disabled
-    } else {
-      IsCjsResolutionMode::ExplicitTypeCommonJs
-    },
-    require_modules.clone(),
+    IsCjsResolutionMode::Disabled,
+    Vec::new(),
   ));
   let npm_req_resolver = Arc::new(NpmReqResolver::new(NpmReqResolverOptions {
     sys: sys.clone(),
@@ -1570,8 +1354,7 @@ pub async fn run_with_options(
     node_resolver: node_resolver.clone(),
     npm_resolver: npm_resolver.clone(),
   }));
-  let cjs_esm_code_analyzer =
-    CjsCodeAnalyzer::new(cjs_tracker.clone(), modules.clone(), sys.clone());
+  let cjs_esm_code_analyzer = CjsCodeAnalyzer::new(cjs_tracker.clone());
   let cjs_module_export_analyzer = Arc::new(CjsModuleExportAnalyzer::new(
     cjs_esm_code_analyzer,
     in_npm_pkg_checker.clone(),
@@ -1599,23 +1382,7 @@ pub async fn run_with_options(
       ),
       None => None,
     };
-    let pkg_jsons = metadata
-      .workspace_resolver
-      .package_jsons
-      .into_iter()
-      .map(|(relative_path, json)| {
-        let path = workspace_root_dir_url
-          .join(&relative_path)
-          .unwrap()
-          .to_file_path()
-          .unwrap();
-        let pkg_json =
-          ende_package_json::PackageJson::load_from_value(path, json)?;
-        Ok(Arc::new(pkg_json))
-      })
-      .collect::<Result<Vec<_>, AnyError>>()?;
     WorkspaceResolver::new_raw(
-      workspace_root_dir_url.clone(),
       import_map,
       metadata
         .workspace_resolver
@@ -1629,8 +1396,6 @@ pub async fn run_with_options(
           exports: pkg.exports.clone(),
         })
         .collect(),
-      pkg_jsons,
-      metadata.workspace_resolver.pkg_json_resolution,
       if metadata.unstable_config.sloppy_imports {
         SloppyImportsOptions::Enabled
       } else {
@@ -1638,7 +1403,6 @@ pub async fn run_with_options(
       },
       Default::default(),
       sys.clone(),
-      metadata.workspace_resolver.catalogs,
     )
   };
   let code_cache = match metadata.code_cache_key {
@@ -1759,7 +1523,7 @@ pub async fn run_with_options(
     argv: metadata.argv,
     log_level: WorkerLogLevel::Info,
     enable_testing_features: false,
-    has_node_modules_dir,
+    has_node_modules_dir: false,
     inspect_brk: options.inspect_brk,
     inspect_wait: options.inspect_wait,
     trace_ops: None,
@@ -1768,10 +1532,7 @@ pub async fn run_with_options(
     auto_serve: options.auto_serve,
     skip_op_registration: true,
     location: metadata.location,
-    argv0: NpmPackageReqReference::from_specifier(&main_module)
-      .ok()
-      .map(|req_ref| npm_pkg_req_ref_to_binary_command(&req_ref).to_string())
-      .or(std::env::args().next()),
+    argv0: std::env::args().next(),
     node_debug: std::env::var("NODE_DEBUG").ok(),
     node_cluster_unique_id: std::env::var("NODE_UNIQUE_ID").ok(),
     node_cluster_sched_policy: std::env::var("NODE_CLUSTER_SCHED_POLICY").ok(),
@@ -1826,18 +1587,6 @@ pub async fn run_with_options(
   };
   ende_core::JsRuntime::init_platform(v8_platform);
 
-  let main_module = match NpmPackageReqReference::from_specifier(&main_module) {
-    Ok(package_ref) => {
-      let pkg_folder = npm_resolver.resolve_pkg_folder_from_deno_module_req(
-        package_ref.req(),
-        &deno_path_util::url_from_file_path(&vfs.root().join("package.json"))?,
-      )?;
-      worker_factory
-        .resolve_npm_binary_entrypoint(&pkg_folder, package_ref.sub_path())?
-    }
-    Err(_) => main_module,
-  };
-
   let preload_modules = metadata
     .preload_modules
     .iter()
@@ -1848,7 +1597,7 @@ pub async fn run_with_options(
     WorkerExecutionMode::Run,
     main_module,
     preload_modules,
-    require_modules,
+    Vec::new(),
     permissions,
     vec![],
     Default::default(),

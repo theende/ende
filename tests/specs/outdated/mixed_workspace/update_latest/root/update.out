@@ -1,3 +1,0 @@
-Download http://127.0.0.1:4250/@endetest/subtract/1.0.0/mod.ts
-Updated 1 dependency:
- - jsr:@endetest/subtract ^0.2.0 -> ^1.0.0

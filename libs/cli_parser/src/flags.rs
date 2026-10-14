@@ -10,7 +10,6 @@ use std::num::NonZeroU32;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
-use deno_semver::package::PackageReq;
 pub use ende_config::ende_json::NewestDependencyDate;
 pub use ende_config::ende_json::NodeModulesDirMode;
 pub use ende_core::url::Url;
@@ -36,19 +35,10 @@ pub struct FileFlags {
   pub include: Vec<String>,
 }
 
-#[derive(Clone, Debug, Copy, Eq, PartialEq)]
-pub enum DefaultRegistry {
-  Npm,
-  Jsr,
-}
-
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AddFlags {
   pub packages: Vec<String>,
-  pub dev: bool,
-  pub optional: bool,
   pub no_save: bool,
-  pub default_registry: Option<DefaultRegistry>,
   pub lockfile_only: bool,
   pub save_exact: bool,
   pub unscoped: bool,
@@ -96,10 +86,8 @@ pub struct VersionFlags {
   pub release_notes: Option<String>,
   /// Don't write any files; just print what would happen.
   pub dry_run: bool,
-  /// Explicit path to the manifest file to bump. May point to an `ende.json`
-  /// (or `.jsonc`) or a `package.json`. When set, single-file mode is forced
-  /// (workspace auto-detection is bypassed). Useful when both `ende.json` and
-  /// `package.json` exist in the same directory.
+  /// Explicit path to the configuration file to bump. When set, single-file
+  /// mode is forced (workspace auto-detection is bypassed).
   pub config: Option<String>,
 }
 
@@ -362,8 +350,6 @@ pub struct InfoFlags {
 pub struct ListFlags {
   pub recursive: bool,
   pub depth: u16,
-  pub prod: bool,
-  pub dev: bool,
   pub filters: Vec<String>,
 }
 
@@ -379,7 +365,7 @@ pub struct InstallFlagsGlobal {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InstallFlags {
-  Local(InstallFlagsLocal, NpmInstallTargetFlags),
+  Local(InstallFlagsLocal),
   Global(InstallFlagsGlobal),
 }
 
@@ -391,31 +377,17 @@ pub enum InstallFlagsLocal {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct CiFlags {
-  pub production: bool,
-  pub skip_types: bool,
-}
-
-/// Overrides for the target OS and architecture when installing npm packages.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct NpmInstallTargetFlags {
-  pub os: Option<String>,
-  pub arch: Option<String>,
-}
+pub struct CiFlags {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InstallTopLevelFlags {
   pub lockfile_only: bool,
-  pub production: bool,
-  pub skip_types: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InstallEntrypointsFlags {
   pub entrypoints: Vec<String>,
   pub lockfile_only: bool,
-  pub production: bool,
-  pub skip_types: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -834,7 +806,7 @@ pub struct Flags {
   pub type_check_mode: TypeCheckMode,
   pub config_flag: ConfigFlag,
   /// Internal only (no CLI flag): set by subcommands that need a specific
-  /// node_modules mode, e.g. `compile` of an `npm:` entrypoint.
+  /// node_modules mode (`deploy`).
   pub node_modules_dir: Option<NodeModulesDirMode>,
   pub vendor: Option<bool>,
   pub enable_testing_features: bool,
@@ -854,7 +826,6 @@ pub struct Flags {
   pub minimum_dependency_age: Option<NewestDependencyDate>,
   pub no_remote: bool,
   pub no_lock: bool,
-  pub no_npm: bool,
   pub reload: bool,
   pub seed: Option<u64>,
   pub trace_ops: Option<Vec<String>>,
@@ -863,10 +834,6 @@ pub struct Flags {
   pub v8_flags: Vec<String>,
   pub code_cache_enabled: bool,
   pub permissions: PermissionFlags,
-  /// Internal only (no CLI flag): lifecycle scripts allowed by `ende x` and
-  /// `ende init --npm`.
-  pub allow_scripts: PackagesAllowedScripts,
-  pub deny_scripts: Vec<PackageReq>,
   pub permission_set: Option<String>,
   pub eszip: bool,
   pub preload: Vec<String>,

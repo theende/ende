@@ -75,7 +75,6 @@ pub struct EndeConfigurationData {
   pub workspace_root_scope_uri: Option<lsp::Uri>,
   #[serde(rename = "endeJson", alias = "denoJson")]
   pub ende_json: Option<lsp::TextDocumentIdentifier>,
-  pub package_json: Option<lsp::TextDocumentIdentifier>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -152,7 +151,6 @@ impl EndeConfigurationChangeType {
 pub enum EndeConfigurationType {
   #[serde(rename = "endeJson", alias = "denoJson")]
   EndeJson,
-  PackageJson,
 }
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Deserialize, Serialize)]

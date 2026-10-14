@@ -9,7 +9,7 @@
         },
         {
           "args": "check --all ./main.ts",
-          "output": "Check [WILDCARD]main.ts\n"
+          "output": "[WILDCARD]Check [WILDCARD]main.ts\n"
         }
       ]
     }

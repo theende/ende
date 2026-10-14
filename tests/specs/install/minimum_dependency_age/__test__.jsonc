@@ -12,7 +12,7 @@
     "args": "run -W setup.ts ${arg}",
     "output": ""
   }, {
-    "args": "install npm:@denotest/add jsr:@endetest/add ${arg}",
+    "args": "install jsr:@endetest/add ${arg}",
     "output": "install.out"
   }, {
     "args": "outdated ${arg}",

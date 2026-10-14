@@ -1,13 +1,11 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use std::collections::HashSet;
 use std::sync::Arc;
 
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::url::Url;
 use ende_npm::NpmPackageId;
-use ende_resolver::workspace::WorkspaceResolver;
 
 use super::InstallReporter;
 use super::print_install_report;
@@ -18,7 +16,6 @@ use crate::args::InstallFlagsLocal;
 use crate::args::InstallTopLevelFlags;
 use crate::factory::CliFactory;
 use crate::npm::CliNpmResolver;
-use crate::sys::CliSys;
 
 pub async fn install_local(
   flags: Arc<Flags>,
@@ -42,112 +39,28 @@ pub async fn install_local(
   }
 }
 
-#[derive(Debug, Default)]
-pub struct CategorizedInstalledDeps {
-  pub normal_deps: Vec<NpmPackageId>,
-  pub dev_deps: Vec<NpmPackageId>,
-}
-
-pub fn categorize_installed_npm_deps(
+/// The top-level npm packages (dependencies of JSR packages) that were
+/// installed, sorted by name.
+pub fn installed_npm_deps(
   npm_resolver: &CliNpmResolver,
-  workspace: &WorkspaceResolver<CliSys>,
   install_reporter: &InstallReporter,
-) -> CategorizedInstalledDeps {
+) -> Vec<NpmPackageId> {
   let Some(managed_resolver) = npm_resolver.as_managed() else {
-    return CategorizedInstalledDeps::default();
+    return Vec::new();
   };
-  // compute the summary info
   let snapshot = managed_resolver.resolution().snapshot();
-
-  let top_level_packages = snapshot.top_level_packages();
-
-  // all this nonsense is to categorize into normal and dev deps
-  let mut normal_deps = HashSet::new();
-  let mut dev_deps = HashSet::new();
-
-  for package_json in workspace.package_jsons() {
-    let deps = package_json.resolve_local_package_json_deps();
-    for (k, v) in deps.dependencies.iter() {
-      let Ok(s) = v else {
-        continue;
-      };
-      match s {
-        ende_package_json::PackageJsonDepValue::File(_) => {
-          // TODO(nathanwhit)
-          // TODO(bartlomieju)
-        }
-        ende_package_json::PackageJsonDepValue::Req(package_req) => {
-          normal_deps.insert(package_req.name.to_string());
-        }
-        ende_package_json::PackageJsonDepValue::Workspace { .. } => {
-          // ignore workspace deps
-        }
-        ende_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
-          if workspace
-            .resolve_catalog_dep(k.as_str(), catalog_name)
-            .is_some()
-          {
-            normal_deps.insert(k.to_string());
-          }
-        }
-      }
-    }
-
-    for (k, v) in deps.dev_dependencies.iter() {
-      let Ok(s) = v else {
-        continue;
-      };
-      match s {
-        ende_package_json::PackageJsonDepValue::File(_) => {
-          // TODO(nathanwhit)
-          // TODO(bartlomieju)
-        }
-        ende_package_json::PackageJsonDepValue::Req(package_req) => {
-          dev_deps.insert(package_req.name.to_string());
-        }
-        ende_package_json::PackageJsonDepValue::Workspace { .. } => {
-          // ignore workspace deps
-        }
-        ende_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
-          if workspace
-            .resolve_catalog_dep(k.as_str(), catalog_name)
-            .is_some()
-          {
-            dev_deps.insert(k.to_string());
-          }
-        }
-      }
-    }
-  }
-
-  let mut installed_normal_deps = Vec::new();
-  let mut installed_dev_deps = Vec::new();
-
   let npm_installed_set = if npm_resolver.root_node_modules_path().is_some() {
     &install_reporter.stats.intialized_npm
   } else {
     &install_reporter.stats.downloaded_npm
   };
-  for pkg in top_level_packages {
-    if !npm_installed_set.contains(&pkg.nv.to_string()) {
-      continue;
-    }
-    if normal_deps.contains(&pkg.nv.name.to_string()) {
-      installed_normal_deps.push(pkg);
-    } else if dev_deps.contains(&pkg.nv.name.to_string()) {
-      installed_dev_deps.push(pkg);
-    } else {
-      installed_normal_deps.push(pkg);
-    }
-  }
-
-  installed_normal_deps.sort_by(|a, b| a.nv.name.cmp(&b.nv.name));
-  installed_dev_deps.sort_by(|a, b| a.nv.name.cmp(&b.nv.name));
-
-  CategorizedInstalledDeps {
-    normal_deps: installed_normal_deps.into_iter().cloned().collect(),
-    dev_deps: installed_dev_deps.into_iter().cloned().collect(),
-  }
+  let mut installed = snapshot
+    .top_level_packages()
+    .filter(|pkg| npm_installed_set.contains(&pkg.nv.to_string()))
+    .cloned()
+    .collect::<Vec<_>>();
+  installed.sort_by(|a, b| a.nv.name.cmp(&b.nv.name));
+  installed
 }
 
 async fn install_top_level(
@@ -156,13 +69,6 @@ async fn install_top_level(
 ) -> Result<(), AnyError> {
   let start_instant = std::time::Instant::now();
   let factory = CliFactory::from_flags(flags);
-  // surface any errors in the package.json
-  factory
-    .npm_installer()
-    .await?
-    .ensure_no_pkg_json_dep_errors()?;
-  let npm_installer = factory.npm_installer().await?;
-  npm_installer.ensure_no_pkg_json_dep_errors()?;
 
   // the actual work
   crate::tools::pm::cache_top_level_deps(
@@ -180,13 +86,10 @@ async fn install_top_level(
   }
 
   let install_reporter = factory.install_reporter()?.unwrap().clone();
-  let workspace = factory.workspace_resolver().await?;
   let npm_resolver = factory.npm_resolver().await?;
   print_install_report(
-    &factory.sys(),
     start_instant.elapsed(),
     &install_reporter,
-    workspace,
     npm_resolver,
   );
 
@@ -195,7 +98,7 @@ async fn install_top_level(
 
 pub async fn ci_command(
   flags: Arc<Flags>,
-  ci_flags: CiFlags,
+  _ci_flags: CiFlags,
 ) -> Result<(), AnyError> {
   let factory = CliFactory::from_flags(flags.clone());
   if factory.maybe_lockfile().await?.is_none() {
@@ -223,8 +126,6 @@ pub async fn ci_command(
     flags,
     InstallTopLevelFlags {
       lockfile_only: false,
-      production: ci_flags.production,
-      skip_types: ci_flags.skip_types,
     },
   )
   .await

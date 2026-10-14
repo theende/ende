@@ -398,7 +398,6 @@ fn resolve_lint_rules_options(
 
 pub struct WorkspaceMainModuleResolver {
   workspace_resolver: Arc<ende_resolver::workspace::WorkspaceResolver<CliSys>>,
-  node_resolver: Arc<crate::node::CliNodeResolver>,
 }
 
 impl WorkspaceMainModuleResolver {
@@ -406,12 +405,8 @@ impl WorkspaceMainModuleResolver {
     workspace_resolver: Arc<
       ende_resolver::workspace::WorkspaceResolver<CliSys>,
     >,
-    node_resolver: Arc<crate::node::CliNodeResolver>,
   ) -> Self {
-    Self {
-      workspace_resolver,
-      node_resolver,
-    }
+    Self { workspace_resolver }
   }
 }
 impl WorkspaceMainModuleResolver {
@@ -433,94 +428,6 @@ impl WorkspaceMainModuleResolver {
         specifier,
         ..
       } => specifier,
-      ende_resolver::workspace::MappedResolution::WorkspaceNpmPackage {
-        target_pkg_json,
-        sub_path,
-        ..
-      } => self
-        .node_resolver
-        .resolve_package_subpath_from_deno_module(
-          target_pkg_json.clone().dir_path(),
-          sub_path.as_deref(),
-          Some(cwd),
-          node_resolver::ResolutionMode::Import,
-          node_resolver::NodeResolutionKind::Execution,
-        )?
-        .into_url()?,
-      ende_resolver::workspace::MappedResolution::PackageJson {
-        sub_path,
-        dep_result,
-        alias,
-        ..
-      } => {
-        let result = dep_result
-          .as_ref()
-          .map_err(|e| ende_core::anyhow::anyhow!("{e}"))?;
-        match result {
-          ende_package_json::PackageJsonDepValue::File(file) => {
-            let cwd_path = deno_path_util::url_to_file_path(cwd)?;
-            deno_path_util::resolve_path(file, &cwd_path)?
-          }
-          ende_package_json::PackageJsonDepValue::Req(package_req) => {
-            ModuleSpecifier::parse(&format!(
-              "npm:{}{}",
-              package_req,
-              sub_path.map(|s| format!("/{}", s)).unwrap_or_default()
-            ))?
-          }
-          ende_package_json::PackageJsonDepValue::Workspace {
-            name,
-            version_req,
-          } => {
-            let pkg_folder = self
-              .workspace_resolver
-              .resolve_workspace_pkg_json_folder_for_pkg_json_dep(
-                name.as_deref().unwrap_or(alias),
-                version_req,
-              )?;
-            self
-              .node_resolver
-              .resolve_package_subpath_from_deno_module(
-                pkg_folder,
-                sub_path.as_deref(),
-                Some(cwd),
-                node_resolver::ResolutionMode::Import,
-                node_resolver::NodeResolutionKind::Execution,
-              )?
-              .into_url()?
-          }
-          ende_package_json::PackageJsonDepValue::Catalog(catalog_name) => {
-            match self
-              .workspace_resolver
-              .resolve_catalog_dep(alias, catalog_name)
-            {
-              Some(req) => ModuleSpecifier::parse(&format!(
-                "npm:{}{}",
-                req,
-                sub_path.map(|s| format!("/{}", s)).unwrap_or_default()
-              ))?,
-              None => {
-                return Err(ende_core::anyhow::anyhow!(
-                  "Package '{}' not found in catalog",
-                  alias
-                ));
-              }
-            }
-          }
-        }
-      }
-      ende_resolver::workspace::MappedResolution::PackageJsonImport {
-        pkg_json,
-      } => self
-        .node_resolver
-        .resolve_package_import(
-          specifier,
-          Some(&node_resolver::UrlOrPathRef::from_url(cwd)),
-          Some(pkg_json),
-          node_resolver::ResolutionMode::Import,
-          node_resolver::NodeResolutionKind::Execution,
-        )?
-        .into_url()?,
     };
 
     // When the workspace resolver rewrites a bare specifier like
@@ -617,11 +524,7 @@ impl CliOptions {
       EndeSubcommand::Cache(_) => GraphKind::All,
       EndeSubcommand::Check(_) => GraphKind::TypesOnly,
       EndeSubcommand::Ci(_) => GraphKind::All,
-      EndeSubcommand::Install(InstallFlags::Local(
-        InstallFlagsLocal::Entrypoints(flags),
-        _,
-      )) if flags.production => GraphKind::CodeOnly,
-      EndeSubcommand::Install(InstallFlags::Local(_, _)) => GraphKind::All,
+      EndeSubcommand::Install(InstallFlags::Local(_)) => GraphKind::All,
       // These edit the dependency requirements and then re-resolve them into
       // the lockfile. A code-only graph never walks `import type` edges, so
       // the packages reached only that way would be left out of the lockfile
@@ -657,7 +560,7 @@ impl CliOptions {
   }
 
   pub fn npm_system_info(&self) -> NpmSystemInfo {
-    npm_system_info(self.sub_command())
+    npm_system_info()
   }
 
   /// Resolve the specifier for a specified import map.
@@ -1356,7 +1259,6 @@ impl CliOptions {
           .map(|url| vec![url]),
         EndeSubcommand::Install(InstallFlags::Local(
           InstallFlagsLocal::Entrypoints(flags),
-          _,
         )) => Some(files_to_urls(&flags.entrypoints)),
         EndeSubcommand::Doc(DocFlags {
           source_files: DocSourceFileFlag::Paths(paths),
@@ -1424,10 +1326,9 @@ impl CliOptions {
   }
 
   pub fn detect_cjs(&self) -> bool {
-    // only enabled when there's a package.json in order to not have a
-    // perf penalty for non-npm Ende projects of searching for the closest
-    // package.json beside each module
-    self.workspace().package_jsons().next().is_some() || self.is_node_main()
+    // only enabled for Node child processes (package.json is not supported
+    // in Ende)
+    self.is_node_main()
   }
 
   pub fn unstable_raw_imports(&self) -> bool {
@@ -1541,9 +1442,6 @@ impl CliOptions {
       {
         full_paths.push(path);
       }
-      if let Some(pkg_json) = &folder.pkg_json {
-        full_paths.push(pkg_json.path.clone());
-      }
     }
 
     full_paths
@@ -1551,8 +1449,8 @@ impl CliOptions {
 
   pub fn lifecycle_scripts_config(&self) -> LifecycleScriptsConfig {
     LifecycleScriptsConfig {
-      allowed: self.flags.allow_scripts.clone(),
-      denied: self.flags.deny_scripts.clone(),
+      allowed: Default::default(),
+      denied: Vec::new(),
       initial_cwd: self.initial_cwd.clone(),
       root_dir: self.workspace().root_dir_path(),
       explicit_install: matches!(
@@ -1574,7 +1472,6 @@ impl CliOptions {
             lockfile_only: true,
             ..
           }),
-        _,
       )) | EndeSubcommand::Add(_)
         | EndeSubcommand::List(_)
         | EndeSubcommand::Outdated(_)

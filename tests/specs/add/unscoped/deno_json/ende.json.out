@@ -1,6 +1,6 @@
 {
   "imports": {
     "add": "jsr:@endetest/add@^1.0.0",
-    "esm-basic": "npm:@denotest/esm-basic@^1.0.0"
+    "subtract": "jsr:@endetest/subtract@^1.0.0"
   }
 }

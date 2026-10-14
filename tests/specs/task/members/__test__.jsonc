@@ -15,11 +15,6 @@
       "args": "task --members",
       "output": "deno_members_no_task.out"
     },
-    "npm_members": {
-      "cwd": "./npm",
-      "args": "task --members dev",
-      "output": "npm_members.out"
-    },
     // The root can define a task with the same name that fans out to the
     // members without recursing into itself.
     "wrapper_task_in_root": {

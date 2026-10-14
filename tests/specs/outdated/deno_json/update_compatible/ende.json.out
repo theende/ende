@@ -6,7 +6,7 @@
     "@denotest/with-subpath": "jsr:@endetest/multiple-exports@0.2.0/data-json",
     "@denotest/breaking-change-between-versions": "npm:@denotest/breaking-change-between-versions@1.0.0",
     "@denotest/bin": "npm:@denotest/bin@0.6.0",
-    "@denotest/has-patch-versions": "npm:@denotest/has-patch-versions@^0.1.1"
+    "@denotest/has-patch-versions": "npm:@denotest/has-patch-versions@^0.1.0"
   },
   "scopes": {
     "/foo/": {

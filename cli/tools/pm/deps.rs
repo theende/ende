@@ -13,10 +13,8 @@ use deno_semver::Version;
 use deno_semver::VersionReq;
 use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::jsr::JsrPackageReqReference;
-use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageNv;
 use deno_semver::package::PackageReq;
-use deno_semver::package::PackageReqReference;
 use ende_config::ende_json::ConfigFile;
 use ende_config::ende_json::ConfigFileRc;
 use ende_config::workspace::Workspace;
@@ -31,9 +29,6 @@ use ende_core::futures::stream::FuturesOrdered;
 use ende_core::futures::stream::FuturesUnordered;
 use ende_core::serde_json;
 use ende_core::url::Url;
-use ende_npm::resolution::NpmVersionResolver;
-use ende_package_json::PackageJsonDepsMap;
-use ende_package_json::PackageJsonRc;
 use ende_runtime::ende_permissions::PermissionsContainer;
 use import_map::ImportMap;
 use import_map::ImportMapWithDiagnostics;
@@ -47,9 +42,6 @@ use crate::graph_container::ModuleGraphContainer;
 use crate::graph_container::ModuleGraphUpdatePermit;
 use crate::jsr::JsrFetchResolver;
 use crate::module_loader::ModuleLoadPreparer;
-use crate::npm::CliNpmInstaller;
-use crate::npm::CliNpmResolver;
-use crate::npm::NpmFetchResolver;
 use crate::npm::PackageInfoLoadError;
 use crate::util::progress_bar::ProgressBar;
 use crate::util::sync::AtomicFlag;
@@ -60,45 +52,21 @@ pub enum ImportMapKind {
   Outline(PathBuf),
 }
 
+/// Where a dependency is declared: an ende.json import map entry.
 #[derive(Clone)]
-pub enum DepLocation {
-  EndeJson(ConfigFileRc, KeyPath, ImportMapKind),
-  PackageJson(PackageJsonRc, KeyPath),
-  /// A `catalog`/`catalogs` entry defined in the workspace root config
-  /// (ende.json or package.json). Unlike the other locations the value is a
-  /// bare version requirement (e.g. `^1.0.0`) rather than a full specifier.
-  /// `key_paths` lists candidate paths to the entry; the first one that
-  /// resolves is updated (package.json may declare catalogs at the top level
-  /// or nested under `workspaces`).
-  Catalog {
-    path: PathBuf,
-    kind: super::ConfigKind,
-    key_paths: Vec<KeyPath>,
-  },
+pub struct DepLocation {
+  ende_json: ConfigFileRc,
+  key_path: KeyPath,
+  import_map_kind: ImportMapKind,
 }
 
 impl DepLocation {
-  pub fn is_ende_json(&self) -> bool {
-    matches!(self, DepLocation::EndeJson(..))
-  }
-
   pub fn file_path(&self) -> Cow<'_, std::path::Path> {
-    match self {
-      DepLocation::EndeJson(arc, _, kind) => match kind {
-        ImportMapKind::Inline => {
-          Cow::Owned(arc.specifier.to_file_path().unwrap())
-        }
-        ImportMapKind::Outline(path) => Cow::Borrowed(path.as_path()),
-      },
-      DepLocation::PackageJson(arc, _) => Cow::Borrowed(arc.path.as_ref()),
-      DepLocation::Catalog { path, .. } => Cow::Borrowed(path.as_path()),
-    }
-  }
-  fn config_kind(&self) -> super::ConfigKind {
-    match self {
-      DepLocation::EndeJson(_, _, _) => super::ConfigKind::EndeJson,
-      DepLocation::PackageJson(_, _) => super::ConfigKind::PackageJson,
-      DepLocation::Catalog { kind, .. } => *kind,
+    match &self.import_map_kind {
+      ImportMapKind::Inline => {
+        Cow::Owned(self.ende_json.specifier.to_file_path().unwrap())
+      }
+      ImportMapKind::Outline(path) => Cow::Borrowed(path.as_path()),
     }
   }
 }
@@ -112,55 +80,13 @@ impl std::fmt::Debug for DebugAdapter<&ConfigFileRc> {
       .finish()
   }
 }
-impl std::fmt::Debug for DebugAdapter<&PackageJsonRc> {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("PackageJson")
-      .field("path", &self.0.path)
-      .finish()
-  }
-}
-
 impl std::fmt::Debug for DepLocation {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      DepLocation::EndeJson(arc, key_path, kind) => {
-        let mut debug = f.debug_tuple("EndeJson");
-        debug
-          .field(&DebugAdapter(arc))
-          .field(key_path)
-          .field(kind)
-          .finish()
-      }
-      DepLocation::PackageJson(arc, key_path) => {
-        let mut debug = f.debug_tuple("PackageJson");
-        debug.field(&DebugAdapter(arc)).field(key_path).finish()
-      }
-      DepLocation::Catalog {
-        path,
-        kind,
-        key_paths,
-      } => f
-        .debug_struct("Catalog")
-        .field("path", path)
-        .field("kind", kind)
-        .field("key_paths", key_paths)
-        .finish(),
-    }
-  }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DepKind {
-  Jsr,
-  Npm,
-}
-
-impl DepKind {
-  pub fn scheme(&self) -> &'static str {
-    match self {
-      DepKind::Npm => "npm",
-      DepKind::Jsr => "jsr",
-    }
+    f.debug_struct("DepLocation")
+      .field("ende_json", &DebugAdapter(&self.ende_json))
+      .field("key_path", &self.key_path)
+      .field("import_map_kind", &self.import_map_kind)
+      .finish()
   }
 }
 
@@ -168,18 +94,7 @@ impl DepKind {
 pub enum KeyPart {
   Imports,
   Scopes,
-  Dependencies,
-  DevDependencies,
   String(StackString),
-}
-
-impl From<PackageJsonDepKind> for KeyPart {
-  fn from(value: PackageJsonDepKind) -> Self {
-    match value {
-      PackageJsonDepKind::Normal => Self::Dependencies,
-      PackageJsonDepKind::Dev => Self::DevDependencies,
-    }
-  }
 }
 
 impl KeyPart {
@@ -187,8 +102,6 @@ impl KeyPart {
     match self {
       KeyPart::Imports => "imports",
       KeyPart::Scopes => "scopes",
-      KeyPart::Dependencies => "dependencies",
-      KeyPart::DevDependencies => "devDependencies",
       KeyPart::String(s) => s.as_str(),
     }
   }
@@ -216,7 +129,6 @@ impl KeyPath {
 #[derive(Clone, Debug)]
 pub struct Dep {
   pub req: PackageReq,
-  pub kind: DepKind,
   pub location: DepLocation,
   #[allow(dead_code, reason = "not used yet")]
   pub id: DepId,
@@ -227,19 +139,6 @@ pub struct Dep {
 impl Dep {
   pub fn alias_or_name(&self) -> &str {
     self.alias.as_deref().unwrap_or_else(|| &self.req.name)
-  }
-
-  /// Whether this dependency is a development dependency. Only `package.json`
-  /// `devDependencies` are considered dev; `ende.json` imports and `catalog`
-  /// entries have no such distinction and are always treated as regular
-  /// dependencies.
-  pub fn is_dev(&self) -> bool {
-    match &self.location {
-      DepLocation::PackageJson(_, key_path) => {
-        matches!(key_path.parts.first(), Some(KeyPart::DevDependencies))
-      }
-      DepLocation::EndeJson(..) | DepLocation::Catalog { .. } => false,
-    }
   }
 }
 
@@ -318,12 +217,6 @@ fn ende_json_import_map(
     .map(|import_map| Some((import_map, kind)))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PackageJsonDepKind {
-  Normal,
-  Dev,
-}
-
 fn add_deps_from_ende_json(
   ende_json: &Arc<ConfigFile>,
   mut filter: impl DepFilter,
@@ -339,13 +232,12 @@ fn add_deps_from_ende_json(
   };
   for (key_path, entry) in import_map_entries(&import_map.import_map) {
     let Some(value) = entry.value else { continue };
-    let kind = match value.scheme() {
-      "npm" => DepKind::Npm,
-      "jsr" => DepKind::Jsr,
-      _ => continue,
-    };
-    let req = match parse_req_reference(value.as_str(), kind) {
-      Ok(req) => req.req,
+    // npm packages are not supported in Ende, so they're ignored
+    if value.scheme() != "jsr" {
+      continue;
+    }
+    let req = match JsrPackageReqReference::from_str(value.as_str()) {
+      Ok(req) => req.into_inner().req,
       Err(err) => {
         log::warn!("failed to parse package req \"{}\": {err}", value.as_str());
         continue;
@@ -353,192 +245,20 @@ fn add_deps_from_ende_json(
     };
     let alias: &str = key_path.last().unwrap().as_str().trim_end_matches('/');
     let alias = (alias != req.name).then(|| alias.to_string());
-    if !filter.should_include(alias.as_deref(), &req, kind) {
+    if !filter.should_include(alias.as_deref(), &req) {
       continue;
     }
     let id = DepId(deps.len());
     deps.push(Dep {
-      location: DepLocation::EndeJson(
-        ende_json.clone(),
+      location: DepLocation {
+        ende_json: ende_json.clone(),
         key_path,
-        import_map_kind.clone(),
-      ),
-      kind,
+        import_map_kind: import_map_kind.clone(),
+      },
       req,
       id,
       alias,
     });
-  }
-}
-
-fn add_deps_from_package_json(
-  package_json: &PackageJsonRc,
-  filter: impl DepFilter,
-  deps: &mut Vec<Dep>,
-) {
-  let package_json_deps = package_json.resolve_local_package_json_deps();
-
-  fn iterate(
-    package_json: &PackageJsonRc,
-    mut filter: impl DepFilter,
-    package_dep_kind: PackageJsonDepKind,
-    package_json_deps: &PackageJsonDepsMap,
-    deps: &mut Vec<Dep>,
-  ) {
-    for (k, v) in package_json_deps {
-      let v = match v {
-        Ok(v) => v,
-        Err(e) => {
-          log::warn!("bad package json dep value: {e}");
-          continue;
-        }
-      };
-      match v {
-        ende_package_json::PackageJsonDepValue::File(_) => {
-          // ignore
-        }
-        ende_package_json::PackageJsonDepValue::Req(req) => {
-          let alias = k.as_str();
-          let alias = (alias != req.name).then(|| alias.to_string());
-          if !filter.should_include(alias.as_deref(), req, DepKind::Npm) {
-            continue;
-          }
-          let id = DepId(deps.len());
-          deps.push(Dep {
-            id,
-            kind: DepKind::Npm,
-            location: DepLocation::PackageJson(
-              package_json.clone(),
-              KeyPath::from_parts([
-                package_dep_kind.into(),
-                KeyPart::String(k.clone()),
-              ]),
-            ),
-            req: req.clone(),
-            alias,
-          })
-        }
-        ende_package_json::PackageJsonDepValue::Workspace { .. }
-        | ende_package_json::PackageJsonDepValue::Catalog(_) => continue,
-      }
-    }
-  }
-
-  iterate(
-    package_json,
-    filter,
-    PackageJsonDepKind::Normal,
-    &package_json_deps.dependencies,
-    deps,
-  );
-  iterate(
-    package_json,
-    filter,
-    PackageJsonDepKind::Dev,
-    &package_json_deps.dev_dependencies,
-    deps,
-  );
-}
-
-/// Collects dependencies declared in the workspace root `catalog`/`catalogs`
-/// (referenced from members via the `catalog:` protocol). These live in a
-/// single place in the root config, so they are gathered once here rather than
-/// per member reference.
-fn add_deps_from_catalogs(
-  workspace: &Workspace,
-  mut filter: impl DepFilter,
-  deps: &mut Vec<Dep>,
-) {
-  // Mirror `Workspace`'s own resolution: catalogs only come from the root
-  // package.json (ende.json catalogs are not supported).
-  let pkg_json = workspace
-    .root_pkg_json()
-    .filter(|pj| pj.catalog.is_some() || pj.catalogs.is_some());
-
-  let (path, kind, catalog, catalogs, nested) = if let Some(pj) = pkg_json {
-    (
-      pj.path.clone(),
-      super::ConfigKind::PackageJson,
-      pj.catalog.as_ref(),
-      pj.catalogs.as_ref(),
-      // package.json may declare catalogs nested under `workspaces`.
-      true,
-    )
-  } else {
-    return;
-  };
-
-  let mut add_entry = |name: &str,
-                       version_req_str: &str,
-                       key_paths: Vec<KeyPath>| {
-    let version_req = match VersionReq::parse_from_npm(version_req_str) {
-      Ok(version_req) => version_req,
-      Err(err) => {
-        log::warn!(
-          "failed to parse catalog version requirement \"{version_req_str}\" for \"{name}\": {err}"
-        );
-        return;
-      }
-    };
-    let req = PackageReq {
-      name: name.into(),
-      version_req,
-    };
-    // Catalog entries are keyed by the package name itself, so there is no
-    // separate alias.
-    if !filter.should_include(None, &req, DepKind::Npm) {
-      return;
-    }
-    let id = DepId(deps.len());
-    deps.push(Dep {
-      id,
-      kind: DepKind::Npm,
-      location: DepLocation::Catalog {
-        path: path.clone(),
-        kind,
-        key_paths,
-      },
-      req,
-      alias: None,
-    });
-  };
-
-  if let Some(catalog) = catalog {
-    for (name, version_req) in catalog {
-      let mut key_paths = vec![KeyPath::from_parts([
-        KeyPart::String("catalog".into()),
-        KeyPart::String(name.as_str().into()),
-      ])];
-      if nested {
-        key_paths.push(KeyPath::from_parts([
-          KeyPart::String("workspaces".into()),
-          KeyPart::String("catalog".into()),
-          KeyPart::String(name.as_str().into()),
-        ]));
-      }
-      add_entry(name, version_req, key_paths);
-    }
-  }
-
-  if let Some(catalogs) = catalogs {
-    for (catalog_name, entries) in catalogs {
-      for (name, version_req) in entries {
-        let mut key_paths = vec![KeyPath::from_parts([
-          KeyPart::String("catalogs".into()),
-          KeyPart::String(catalog_name.as_str().into()),
-          KeyPart::String(name.as_str().into()),
-        ])];
-        if nested {
-          key_paths.push(KeyPath::from_parts([
-            KeyPart::String("workspaces".into()),
-            KeyPart::String("catalogs".into()),
-            KeyPart::String(catalog_name.as_str().into()),
-            KeyPart::String(name.as_str().into()),
-          ]));
-        }
-        add_entry(name, version_req, key_paths);
-      }
-    }
   }
 }
 
@@ -550,10 +270,6 @@ fn deps_from_workspace(
   for ende_json in workspace.ende_jsons() {
     add_deps_from_ende_json(ende_json, dep_filter, &mut deps);
   }
-  for package_json in workspace.package_jsons() {
-    add_deps_from_package_json(package_json, dep_filter, &mut deps);
-  }
-  add_deps_from_catalogs(workspace, dep_filter, &mut deps);
 
   Ok(deps)
 }
@@ -571,21 +287,19 @@ pub trait DepFilter: Copy {
     &mut self,
     alias: Option<&str>,
     package_req: &PackageReq,
-    dep_kind: DepKind,
   ) -> bool;
 }
 
 impl<T> DepFilter for T
 where
-  T: FnMut(Option<&str>, &PackageReq, DepKind) -> bool + Copy,
+  T: FnMut(Option<&str>, &PackageReq) -> bool + Copy,
 {
   fn should_include<'a>(
     &mut self,
     alias: Option<&'a str>,
     package_req: &'a PackageReq,
-    dep_kind: DepKind,
   ) -> bool {
-    (*self)(alias, package_req, dep_kind)
+    (*self)(alias, package_req)
   }
 }
 
@@ -610,10 +324,6 @@ pub struct DepManager {
   module_load_preparer: Arc<ModuleLoadPreparer>,
   // TODO(nathanwhit): probably shouldn't be pub
   pub(crate) jsr_fetch_resolver: Arc<JsrFetchResolver>,
-  pub(crate) npm_fetch_resolver: Arc<NpmFetchResolver>,
-  npm_resolver: CliNpmResolver,
-  npm_version_resolver: Arc<NpmVersionResolver>,
-  npm_installer: Arc<CliNpmInstaller>,
   permissions_container: PermissionsContainer,
   progress_bar: ProgressBar,
   main_module_graph_container: Arc<MainModuleGraphContainer>,
@@ -623,10 +333,6 @@ pub struct DepManager {
 pub struct DepManagerArgs {
   pub module_load_preparer: Arc<ModuleLoadPreparer>,
   pub jsr_fetch_resolver: Arc<JsrFetchResolver>,
-  pub npm_fetch_resolver: Arc<NpmFetchResolver>,
-  pub npm_installer: Arc<CliNpmInstaller>,
-  pub npm_resolver: CliNpmResolver,
-  pub npm_version_resolver: Arc<NpmVersionResolver>,
   pub permissions_container: PermissionsContainer,
   pub progress_bar: ProgressBar,
   pub main_module_graph_container: Arc<MainModuleGraphContainer>,
@@ -644,10 +350,6 @@ impl DepManager {
     let DepManagerArgs {
       module_load_preparer,
       jsr_fetch_resolver,
-      npm_fetch_resolver,
-      npm_installer,
-      npm_resolver,
-      npm_version_resolver,
       progress_bar,
       permissions_container,
       main_module_graph_container,
@@ -660,10 +362,6 @@ impl DepManager {
       jsr_fetch_resolver,
       dependencies_resolved: AtomicFlag::lowered(),
       module_load_preparer,
-      npm_fetch_resolver,
-      npm_installer,
-      npm_resolver,
-      npm_version_resolver,
       progress_bar,
       permissions_container,
       main_module_graph_container,
@@ -686,14 +384,6 @@ impl DepManager {
       if path.parent().unwrap() == workspace_dir.dir_path() {
         add_deps_from_ende_json(ende_json, dep_filter, &mut deps);
       }
-    }
-    if let Some(package_json) = workspace_dir.member_pkg_json() {
-      add_deps_from_package_json(package_json, dep_filter, &mut deps);
-    }
-    // Catalogs are a workspace-root concept, so only include them when running
-    // in the root directory (the recursive path handles them via the workspace).
-    if workspace_dir.dir_path() == workspace_dir.workspace.root_dir_path() {
-      add_deps_from_catalogs(&workspace_dir.workspace, dep_filter, &mut deps);
     }
 
     Ok(Self::with_deps_args(deps, args))
@@ -724,78 +414,60 @@ impl DepManager {
       lockfile.fill_graph(graph);
     }
 
-    let npm_resolver = self.npm_resolver.as_managed().unwrap();
-    if self.deps.iter().all(|dep| match dep.kind {
-      DepKind::Npm => npm_resolver
-        .resolution()
-        .resolve_pkg_id_from_pkg_req(&dep.req)
-        .is_ok(),
-      DepKind::Jsr => graph.packages.mappings().contains_key(&dep.req),
-    }) {
+    if self
+      .deps
+      .iter()
+      .all(|dep| graph.packages.mappings().contains_key(&dep.req))
+    {
       self.dependencies_resolved.raise();
       graph_permit.commit();
       return Ok(());
     }
 
-    self
-      .npm_installer
-      .ensure_top_level_package_json_install()
-      .await?;
     let mut roots = Vec::new();
     let mut info_futures = FuturesUnordered::new();
     for dep in &self.deps {
-      if dep.location.is_ende_json() {
-        match dep.kind {
-          DepKind::Npm => roots.push(
-            ModuleSpecifier::parse(&format!("npm:/{}/", dep.req)).unwrap(),
-          ),
-          DepKind::Jsr => {
-            // Note: a tagged req (e.g. `@latest`) never appears in the graph
-            // mappings because the graph build rejects jsr version tags, so
-            // the VersionReq::matches call below (which panics on tags)
-            // cannot be reached with one.
-            let resolved_nv = graph.packages.mappings().get(&dep.req);
-            let resolved_nv = resolved_nv
-              .and_then(|nv| {
-                let versions =
-                  graph.packages.versions_by_name(&dep.req.name)?;
-                let mut best = nv;
-                for version in versions {
-                  if version.version > best.version
-                    && dep.req.version_req.matches(&version.version)
-                  {
-                    best = version;
-                  }
-                }
-                Some(best)
-              })
-              .cloned();
-            info_futures.push(async {
-              let nv = if let Some(nv) = resolved_nv {
-                nv
-              } else if let Some(nv) =
-                self.jsr_fetch_resolver.req_to_nv(&dep.req).await?
-              {
-                nv
-              } else {
-                return Result::<
-                  Option<(Url, Arc<JsrPackageVersionInfo>)>,
-                  JsrPackageReqNotFoundError,
-                >::Ok(None);
-              };
-              if let Some(info) =
-                self.jsr_fetch_resolver.package_version_info(&nv).await
-              {
-                let specifier =
-                  ModuleSpecifier::parse(&format!("jsr:/{}/", &dep.req))
-                    .unwrap();
-                return Ok(Some((specifier, info)));
-              }
-              Ok(None)
-            });
+      // Note: a tagged req (e.g. `@latest`) never appears in the graph
+      // mappings because the graph build rejects jsr version tags, so
+      // the VersionReq::matches call below (which panics on tags)
+      // cannot be reached with one.
+      let resolved_nv = graph.packages.mappings().get(&dep.req);
+      let resolved_nv = resolved_nv
+        .and_then(|nv| {
+          let versions = graph.packages.versions_by_name(&dep.req.name)?;
+          let mut best = nv;
+          for version in versions {
+            if version.version > best.version
+              && dep.req.version_req.matches(&version.version)
+            {
+              best = version;
+            }
           }
+          Some(best)
+        })
+        .cloned();
+      info_futures.push(async {
+        let nv = if let Some(nv) = resolved_nv {
+          nv
+        } else if let Some(nv) =
+          self.jsr_fetch_resolver.req_to_nv(&dep.req).await?
+        {
+          nv
+        } else {
+          return Result::<
+            Option<(Url, Arc<JsrPackageVersionInfo>)>,
+            JsrPackageReqNotFoundError,
+          >::Ok(None);
+        };
+        if let Some(info) =
+          self.jsr_fetch_resolver.package_version_info(&nv).await
+        {
+          let specifier =
+            ModuleSpecifier::parse(&format!("jsr:/{}/", &dep.req)).unwrap();
+          return Ok(Some((specifier, info)));
         }
-      }
+        Ok(None)
+      });
     }
 
     while let Some(info_future) = info_futures.next().await {
@@ -843,29 +515,12 @@ impl DepManager {
 
     let graph = self.main_module_graph_container.graph();
 
-    let mut resolved = Vec::with_capacity(self.deps.len());
-    let snapshot = self
-      .npm_resolver
-      .as_managed()
-      .unwrap()
-      .resolution()
-      .snapshot();
-    let resolved_npm = snapshot.package_reqs();
     let resolved_jsr = graph.packages.mappings();
-    for dep in &self.deps {
-      match dep.kind {
-        DepKind::Npm => {
-          let resolved_version = resolved_npm.get(&dep.req).cloned();
-          resolved.push(resolved_version);
-        }
-        DepKind::Jsr => {
-          let resolved_version = resolved_jsr.get(&dep.req).cloned();
-          resolved.push(resolved_version)
-        }
-      }
-    }
-
-    self.resolved_versions = resolved;
+    self.resolved_versions = self
+      .deps
+      .iter()
+      .map(|dep| resolved_jsr.get(&dep.req).cloned())
+      .collect();
 
     Ok(())
   }
@@ -878,150 +533,82 @@ impl DepManager {
     }
     let mut latest_versions = Vec::with_capacity(self.deps.len());
 
-    let npm_sema = Semaphore::new(32);
     let jsr_sema = Semaphore::new(32);
     let mut futs = FuturesOrdered::new();
 
     for dep in &self.deps {
-      match dep.kind {
-        DepKind::Npm => futs.push_back(
-          async {
-            let semver_req = &dep.req;
-            let _permit = npm_sema.acquire().await;
-            let mut semver_compatible = self
-              .npm_fetch_resolver
-              .req_to_nv(semver_req)
-              .await
-              .ok()
-              .flatten();
-            let info_result = self
-              .npm_fetch_resolver
-              .package_info_with_reason(&semver_req.name)
-              .await;
-            let fetch_error = info_result.as_ref().err().cloned();
-            let latest = info_result
-              .ok()
-              .and_then(|info| {
-                let version_resolver =
-                  self.npm_version_resolver.get_for_package(&info);
-                let latest_tag = info.dist_tags.get("latest")?;
-                let can_use_latest = version_resolver
-                  .version_req_satisfies_and_matches_newest_dependency_date(
-                    &semver_req.version_req,
-                    latest_tag,
-                  )
-                  .ok()?;
-
-                if can_use_latest {
-                  semver_compatible = Some(PackageNv {
-                    name: semver_req.name.clone(),
-                    version: latest_tag.clone(),
-                  });
-                  return Some(latest_tag.clone());
-                }
-
-                // Use the `latest` dist-tag directly, matching npm/pnpm/bun
-                // behavior. Computing the max across all versions is incorrect
-                // when packages publish pre-release versions with commit hashes
-                // (e.g., 1.0.0-beta.9-commit.d91dfb5) because semver considers
-                // alphanumeric pre-release identifiers higher than numeric ones,
-                // so beta.9-commit.hash > beta.32.
-                // Ref: https://github.com/denoland/deno/issues/29647
-                if version_resolver.matches_newest_dependency_date(latest_tag) {
-                  Some(latest_tag.clone())
-                } else {
-                  None
-                }
-              })
-              .map(|version| PackageNv {
-                name: semver_req.name.clone(),
-                version,
-              });
-            PackageLatestVersion {
-              latest,
-              semver_compatible,
-              fetch_error,
-            }
-          }
-          .boxed_local(),
-        ),
-        DepKind::Jsr => futs.push_back(
-          async {
-            let semver_req = &dep.req;
-            let _permit = jsr_sema.acquire().await;
-            let semver_compatible = self
-              .jsr_fetch_resolver
-              .req_to_nv(semver_req)
-              .await
-              .ok()
-              .flatten();
-            let info_result = self
-              .jsr_fetch_resolver
-              .package_info_with_reason(&semver_req.name)
-              .await;
-            let fetch_error = info_result.as_ref().err().cloned();
-            let latest = info_result
-              .ok()
-              .and_then(|info| {
-                let version_resolver = self
-                  .jsr_fetch_resolver
-                  .version_resolver_for_package(&semver_req.name, &info);
-                let lower_bound = &semver_compatible.as_ref()?.version;
-                // Only consider pre-release versions when the currently
-                // resolved version is itself a pre-release. Otherwise
-                // `ende outdated --latest` reports a pre-release (e.g.
-                // 2.0.3-alpha.0) as the latest version even though JSR
-                // designates the newest stable release as latest. This mirrors
-                // npm packages, which resolve latest from the `latest`
-                // dist-tag. (#36320)
-                //
-                // JSR's `meta.json` also has a `latest` field (exposed as
-                // `info.latest`), but it can't replace the scan below on its
-                // own: it never points at a pre-release, so a project already
-                // tracking a pre-release line would stop being offered newer
-                // pre-releases, and it may fall outside the
-                // `minimumDependencyAge` window, in which case we still want
-                // the newest version that is old enough. That last fallback is
-                // also where the two registries deliberately differ: the npm
-                // path above reports no latest version at all when its `latest`
-                // dist-tag is too new, rather than walking back to an older
-                // version.
-                let allow_pre_release = !lower_bound.pre.is_empty();
-                {
-                  let mut best: Option<&Version> = Some(lower_bound);
-                  for version in info.versions.iter().filter_map(
-                    |(version, version_info)| {
-                      if !version_info.yanked
-                        && (allow_pre_release || version.pre.is_empty())
-                        && version_resolver
-                          .matches_newest_dependency_date(version_info)
-                      {
-                        Some(version)
-                      } else {
-                        None
-                      }
-                    },
-                  ) {
-                    if best.is_none_or(|b| version > b) {
-                      best = Some(version);
+      futs.push_back(
+        async {
+          let semver_req = &dep.req;
+          let _permit = jsr_sema.acquire().await;
+          let semver_compatible = self
+            .jsr_fetch_resolver
+            .req_to_nv(semver_req)
+            .await
+            .ok()
+            .flatten();
+          let info_result = self
+            .jsr_fetch_resolver
+            .package_info_with_reason(&semver_req.name)
+            .await;
+          let fetch_error = info_result.as_ref().err().cloned();
+          let latest = info_result
+            .ok()
+            .and_then(|info| {
+              let version_resolver = self
+                .jsr_fetch_resolver
+                .version_resolver_for_package(&semver_req.name, &info);
+              let lower_bound = &semver_compatible.as_ref()?.version;
+              // Only consider pre-release versions when the currently
+              // resolved version is itself a pre-release. Otherwise
+              // `ende outdated --latest` reports a pre-release (e.g.
+              // 2.0.3-alpha.0) as the latest version even though JSR
+              // designates the newest stable release as latest. This mirrors
+              // npm packages, which resolve latest from the `latest`
+              // dist-tag. (#36320)
+              //
+              // JSR's `meta.json` also has a `latest` field (exposed as
+              // `info.latest`), but it can't replace the scan below on its
+              // own: it never points at a pre-release, so a project already
+              // tracking a pre-release line would stop being offered newer
+              // pre-releases, and it may fall outside the
+              // `minimumDependencyAge` window, in which case we still want
+              // the newest version that is old enough.
+              let allow_pre_release = !lower_bound.pre.is_empty();
+              {
+                let mut best: Option<&Version> = Some(lower_bound);
+                for version in
+                  info.versions.iter().filter_map(|(version, version_info)| {
+                    if !version_info.yanked
+                      && (allow_pre_release || version.pre.is_empty())
+                      && version_resolver
+                        .matches_newest_dependency_date(version_info)
+                    {
+                      Some(version)
+                    } else {
+                      None
                     }
+                  })
+                {
+                  if best.is_none_or(|b| version > b) {
+                    best = Some(version);
                   }
-                  best.cloned()
                 }
-              })
-              .map(|version| PackageNv {
-                name: semver_req.name.clone(),
-                version,
-              });
-            PackageLatestVersion {
-              latest,
-              semver_compatible,
-              fetch_error,
-            }
+                best.cloned()
+              }
+            })
+            .map(|version| PackageNv {
+              name: semver_req.name.clone(),
+              version,
+            });
+          PackageLatestVersion {
+            latest,
+            semver_compatible,
+            fetch_error,
           }
-          .boxed_local(),
-        ),
-      }
+        }
+        .boxed_local(),
+      );
     }
     while let Some(nv) = futs.next().await {
       latest_versions.push(nv);
@@ -1081,100 +668,42 @@ impl DepManager {
           // TODO: move most of this to ConfigUpdater
           let dep = &mut self.deps[dep_id.0];
           dep.req.version_req = version_req.clone();
-          match &dep.location {
-            DepLocation::EndeJson(arc, key_path, _) => {
-              let updater =
-                get_or_create_updater(&mut config_updaters, &dep.location)?;
+          let DepLocation {
+            ende_json,
+            key_path,
+            ..
+          } = &dep.location;
+          let updater =
+            get_or_create_updater(&mut config_updaters, &dep.location)?;
 
-              let Some(property) = updater.get_property_for_mutation(key_path)
-              else {
-                log::warn!(
-                  "failed to find property at path {key_path:?} for file {}",
-                  arc.specifier
-                );
-                continue;
-              };
-              let Some(string_value) = cst_string_literal(&property) else {
-                continue;
-              };
-              let mut req_reference = match dep.kind {
-                DepKind::Npm => NpmPackageReqReference::from_str(&string_value)
-                  .unwrap()
-                  .into_inner(),
-                DepKind::Jsr => JsrPackageReqReference::from_str(&string_value)
-                  .unwrap()
-                  .into_inner(),
-              };
-              req_reference.req.version_req = version_req;
-              let mut new_value =
-                format!("{}:{}", dep.kind.scheme(), req_reference);
-              if string_value.ends_with('/') && !new_value.ends_with('/') {
-                // the display impl for PackageReqReference maps `/` to the root
-                // subpath, but for the import map the trailing `/` is significant
-                new_value.push('/');
-              }
-              if string_value
-                .trim_start_matches(format!("{}:", dep.kind.scheme()).as_str())
-                .starts_with('/')
-              {
-                // this is gross
-                new_value = new_value.replace(':', ":/");
-              }
-              property
-                .set_value(jsonc_parser::cst::CstInputValue::String(new_value));
-            }
-            DepLocation::PackageJson(arc, key_path) => {
-              let updater =
-                get_or_create_updater(&mut config_updaters, &dep.location)?;
-              let Some(property) = updater.get_property_for_mutation(key_path)
-              else {
-                log::warn!(
-                  "failed to find property at path {key_path:?} for file {}",
-                  arc.path.display()
-                );
-                continue;
-              };
-              let Some(string_value) = cst_string_literal(&property) else {
-                continue;
-              };
-              let new_value = if string_value.starts_with("npm:") {
-                // aliased
-                let rest = string_value.trim_start_matches("npm:");
-                let mut parts = rest.split('@');
-                let first = parts.next().unwrap();
-                if first.is_empty() {
-                  let scope_and_name = parts.next().unwrap();
-                  format!("npm:@{scope_and_name}@{version_req}")
-                } else {
-                  format!("npm:{first}@{version_req}")
-                }
-              } else if string_value.contains(":") {
-                bail!(
-                  "Unexpected package json dependency string: \"{string_value}\" in {}",
-                  arc.path.display()
-                );
-              } else {
-                version_req.to_string()
-              };
-              property
-                .set_value(jsonc_parser::cst::CstInputValue::String(new_value));
-            }
-            DepLocation::Catalog {
-              path, key_paths, ..
-            } => {
-              let updater =
-                get_or_create_updater(&mut config_updaters, &dep.location)?;
-              if !updater
-                .update_catalog_entry(key_paths, &version_req.to_string())
-              {
-                log::warn!(
-                  "failed to find catalog entry for \"{}\" in {}",
-                  dep.req.name,
-                  path.display()
-                );
-              }
-            }
+          let Some(property) = updater.get_property_for_mutation(key_path)
+          else {
+            log::warn!(
+              "failed to find property at path {key_path:?} for file {}",
+              ende_json.specifier
+            );
+            continue;
+          };
+          let Some(string_value) = cst_string_literal(&property) else {
+            continue;
+          };
+          let mut req_reference =
+            JsrPackageReqReference::from_str(&string_value)
+              .unwrap()
+              .into_inner();
+          req_reference.req.version_req = version_req;
+          let mut new_value = format!("jsr:{}", req_reference);
+          if string_value.ends_with('/') && !new_value.ends_with('/') {
+            // the display impl for PackageReqReference maps `/` to the root
+            // subpath, but for the import map the trailing `/` is significant
+            new_value.push('/');
           }
+          if string_value.trim_start_matches("jsr:").starts_with('/') {
+            // this is gross
+            new_value = new_value.replace(':', ":/");
+          }
+          property
+            .set_value(jsonc_parser::cst::CstInputValue::String(new_value));
         }
       }
     }
@@ -1190,7 +719,7 @@ impl DepManager {
   /// writes the lockfile to disk. The next install will re-resolve the
   /// missing entries to the latest version that matches each dependency's
   /// existing version requirement, bumping the lockfile within ranges
-  /// without modifying `ende.json`/`package.json`.
+  /// without modifying `ende.json`.
   pub fn invalidate_lockfile_for_update(
     &self,
     dep_ids: impl IntoIterator<Item = DepId>,
@@ -1202,10 +731,7 @@ impl DepManager {
       let mut lockfile = lockfile_lock.lock();
       for dep_id in dep_ids {
         let dep = &self.deps[dep_id.0];
-        let req = match dep.kind {
-          DepKind::Npm => JsrDepPackageReq::npm(dep.req.clone()),
-          DepKind::Jsr => JsrDepPackageReq::jsr(dep.req.clone()),
-        };
+        let req = JsrDepPackageReq::jsr(dep.req.clone());
         if lockfile.content.packages.specifiers.remove(&req).is_some() {
           lockfile.has_content_changed = true;
         }
@@ -1225,10 +751,7 @@ fn get_or_create_updater<'a>(
       Ok(occupied_entry.into_mut())
     }
     std::collections::hash_map::Entry::Vacant(vacant_entry) => {
-      let updater = ConfigUpdater::new(
-        location.config_kind(),
-        location.file_path().into_owned(),
-      )?;
+      let updater = ConfigUpdater::new(location.file_path().into_owned())?;
       Ok(vacant_entry.insert(updater))
     }
   }
@@ -1248,17 +771,4 @@ fn cst_string_literal(
     return None;
   };
   Some(string_value)
-}
-
-fn parse_req_reference(
-  input: &str,
-  kind: DepKind,
-) -> Result<
-  PackageReqReference,
-  deno_semver::package::PackageReqReferenceParseError,
-> {
-  Ok(match kind {
-    DepKind::Npm => NpmPackageReqReference::from_str(input)?.into_inner(),
-    DepKind::Jsr => JsrPackageReqReference::from_str(input)?.into_inner(),
-  })
 }

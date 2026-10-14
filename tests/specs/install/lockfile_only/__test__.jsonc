@@ -2,29 +2,26 @@
   "tempDir": true,
   "steps": [
     {
-      "args": "install --lockfile-only npm:@denotest/esm-basic",
+      "args": "install --lockfile-only jsr:@endetest/add",
       "output": "install.out"
     },
     {
-      // Verify node_modules was not created. Also that the lockfile was created and contains the package
+      // Verify the lockfile was created and contains the package
       "args": [
         "eval",
-        " try { Deno.statSync('node_modules') } catch { console.log(true) } const lock = JSON.parse(Deno.readTextFileSync('ende.lock')); console.log(Object.keys(lock.npm).includes('@denotest/esm-basic@1.0.0'))"
+        "const lock = JSON.parse(Deno.readTextFileSync('ende.lock')); console.log(Object.keys(lock.jsr).includes('@endetest/add@1.0.0'))"
       ],
-      "output": "true\ntrue\n"
+      "output": "true\n"
     },
     {
-      // Now run install without --lockfile-only to create node_modules
+      // Now run install without --lockfile-only to cache the package
       "args": "install",
       "output": "[WILDCARD]"
     },
     {
-      // Verify node_modules was created this time
-      "args": [
-        "eval",
-        "console.log(Deno.statSync('node_modules').isDirectory)"
-      ],
-      "output": "true\n"
+      // Verify the package was cached this time
+      "args": "run --cached-only main.ts",
+      "output": "3\n"
     }
   ]
 }

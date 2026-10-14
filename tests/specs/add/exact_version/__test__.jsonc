@@ -1,21 +1,6 @@
 {
   "tempDir": true,
   "tests": {
-    "npm": {
-      "steps": [
-        {
-          "args": "add npm:@denotest/esm-basic@1.0.0",
-          "output": "npm_add.out"
-        },
-        {
-          "args": [
-            "eval",
-            "console.log(Deno.readTextFileSync('ende.json').trim())"
-          ],
-          "output": "npm_deno.json.out"
-        }
-      ]
-    },
     "jsr": {
       "steps": [
         {

@@ -3,4 +3,4 @@
 // symlink being clobbered with a fresh regular file.
 console.log("ende.lock is symlink:", Deno.lstatSync("ende.lock").isSymlink);
 const target = Deno.readTextFileSync("real/ende.lock");
-console.log("target updated:", target.includes("@denotest/add"));
+console.log("target updated:", target.includes("@endetest/add"));

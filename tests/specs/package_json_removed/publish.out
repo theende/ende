@@ -1,0 +1,10 @@
+[WILDCARD]
+error[unsupported-npm-specifier]: npm packages are not supported in Ende ('npm:@denotest/esm-basic@1')
+ --> [WILDLINE]mod.ts:3:23
+  | 
+3 | import * as esm from "npm:@denotest/esm-basic@1";
+  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ the npm import
+  | 
+  = hint: use a JSR package instead
+
+error: Found 1 problem

@@ -1,5 +1,5 @@
-import { renderToString } from "npm:preact-render-to-string@6";
+import { h } from "./h.ts";
 
 export default function render() {
-  return renderToString(<div>foo.tsx</div>);
+  return <div>foo.tsx</div>;
 }

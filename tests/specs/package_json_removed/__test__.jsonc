@@ -1,0 +1,96 @@
+// Copyright 2026 the Ende authors. MIT license.
+{
+  "tempDir": true,
+  "tests": {
+    // package.json dependencies are not used to resolve bare specifiers
+    "deps_ignored": {
+      "cwd": "deps",
+      "args": "run main.ts",
+      "output": "deps.out",
+      "exitCode": 1
+    },
+    // package.json "workspaces" do not add workspace members
+    "workspaces_ignored": {
+      "cwd": "workspace",
+      "args": "run main.ts",
+      "output": "workspaces.out",
+      "exitCode": 1
+    },
+    "task_hint_no_config": {
+      "cwd": "task_no_config",
+      "args": "task build",
+      "output": "task_no_config.out",
+      "exitCode": 1
+    },
+    "task_hint_with_config": {
+      "cwd": "task_with_config",
+      "args": "task build",
+      "output": "task_with_config.out",
+      "exitCode": 1
+    },
+    "add_npm": {
+      "steps": [{
+        "args": "add npm:@denotest/esm-basic",
+        "output": "error: npm packages are not supported in Ende (found 'npm:@denotest/esm-basic').\n",
+        "exitCode": 1
+      }, {
+        // no ende.json was created
+        "args": ["eval", "console.log(Deno.statSync('ende.json'))"],
+        "output": "[WILDCARD]NotFound[WILDCARD]",
+        "exitCode": 1
+      }]
+    },
+    "install_npm": {
+      "args": "install npm:@denotest/esm-basic",
+      "output": "error: npm packages are not supported in Ende (found 'npm:@denotest/esm-basic').\n",
+      "exitCode": 1
+    },
+    "install_global_npm": {
+      "args": "install -g npm:@denotest/esm-basic",
+      "output": "error: npm packages are not supported in Ende (found 'npm:@denotest/esm-basic').\n",
+      "exitCode": 1
+    },
+    "x_npm": {
+      "args": "x npm:@denotest/bin",
+      "output": "error: npm packages are not supported in Ende (found 'npm:@denotest/bin').\n",
+      "exitCode": 1
+    },
+    "create_npm": {
+      "args": "create npm:@denotest/create",
+      "output": "error: npm packages are not supported in Ende (found 'npm:@denotest/create').\n",
+      "exitCode": 1
+    },
+    "compile_npm": {
+      "cwd": "compile",
+      "args": "compile --output out main.ts",
+      "output": "compile.out",
+      "exitCode": 1
+    },
+    "publish_npm": {
+      "cwd": "publish",
+      "args": "publish --dry-run",
+      "output": "publish.out",
+      "exitCode": 1
+    },
+    "no_npm_flag_removed": {
+      "args": "run --no-npm main.ts",
+      "output": "error: unexpected argument '--no-npm' found\n",
+      "exitCode": 1
+    },
+    "add_npm_flag_removed": {
+      "args": "add --npm @denotest/esm-basic",
+      "output": "error: unexpected argument '--npm' found\n",
+      "exitCode": 1
+    },
+    "install_dev_flag_removed": {
+      "args": "install --dev jsr:@endetest/add",
+      "output": "error: unexpected argument '--dev' found\n",
+      "exitCode": 1
+    },
+    "init_npm_flag_removed": {
+      "args": "init --npm vite",
+      "output": "error: unexpected argument '--npm' found\n",
+      "exitCode": 1
+    }
+  }
+}

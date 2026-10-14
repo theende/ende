@@ -6,7 +6,6 @@ use std::sync::Arc;
 use deno_error::JsErrorBox;
 use deno_media_type::MediaType;
 use ende_core::url::Url;
-use ende_lib::standalone::binary::CjsExportAnalysisEntry;
 use ende_resolver::loader::NpmModuleLoader;
 use ende_resolver::npm::DenoInNpmPackageChecker;
 use ende_resolver::npm::NpmReqResolver;
@@ -16,7 +15,6 @@ use node_resolver::analyze::CjsAnalysisExports;
 use node_resolver::analyze::EsmAnalysisMode;
 use node_resolver::analyze::NodeCodeTranslator;
 
-use crate::binary::StandaloneModules;
 use crate::file_system::EndeRtSys;
 
 pub type EndeRtCjsTracker =
@@ -50,21 +48,11 @@ pub type EndeRtNpmReqResolver = NpmReqResolver<
 
 pub struct CjsCodeAnalyzer {
   cjs_tracker: Arc<EndeRtCjsTracker>,
-  modules: Arc<StandaloneModules>,
-  sys: EndeRtSys,
 }
 
 impl CjsCodeAnalyzer {
-  pub fn new(
-    cjs_tracker: Arc<EndeRtCjsTracker>,
-    modules: Arc<StandaloneModules>,
-    sys: EndeRtSys,
-  ) -> Self {
-    Self {
-      cjs_tracker,
-      modules,
-      sys,
-    }
+  pub fn new(cjs_tracker: Arc<EndeRtCjsTracker>) -> Self {
+    Self { cjs_tracker }
   }
 
   fn inner_cjs_analysis<'a>(
@@ -86,57 +74,9 @@ impl CjsCodeAnalyzer {
       .is_maybe_cjs(specifier, media_type)
       .map_err(JsErrorBox::from_err)?;
     let analysis = if is_maybe_cjs {
-      let data = self
-        .modules
-        .read(specifier)?
-        .and_then(|d| d.cjs_export_analysis);
-      match data {
-        Some(data) => {
-          let data: CjsExportAnalysisEntry = bincode::deserialize(&data)
-            .map_err(|err| JsErrorBox::generic(err.to_string()))?;
-          match data {
-            CjsExportAnalysisEntry::Esm => {
-              cjs_tracker.set_is_known_script(specifier, false);
-              CjsAnalysis::Esm(source, None)
-            }
-            CjsExportAnalysisEntry::Cjs(exports) => {
-              cjs_tracker.set_is_known_script(specifier, true);
-              CjsAnalysis::Cjs(CjsAnalysisExports {
-                exports,
-                reexports: Vec::new(), // already resolved
-                member_reexports: Vec::new(),
-              })
-            }
-            CjsExportAnalysisEntry::Error(err) => {
-              return Err(JsErrorBox::generic(err));
-            }
-          }
-        }
-        None => {
-          if self.sys.is_specifier_in_vfs(specifier) {
-            // VFS-embedded modules always have a pre-computed analysis
-            // written by the compile step. A missing entry here means
-            // the compile step skipped analysis for this file — bug.
-            if log::log_enabled!(log::Level::Debug) {
-              log::debug!(
-                "No CJS export analysis was stored for '{}'. Assuming ESM. This might indicate a bug in Ende.",
-                specifier
-              );
-            }
-            CjsAnalysis::Esm(source, None)
-          } else {
-            // Host-FS fallback: the file was read from the user's real
-            // filesystem (HMR / dev mode), so it has no embedded
-            // analysis. Run the analyzer live with deno_ast — without
-            // this the loader would treat every host-FS CJS module as
-            // ESM and any `import { name }` from it would fail with
-            // "does not provide an export named 'name'", even for
-            // common npm packages whose CJS index re-exports names
-            // via `Object.defineProperty(exports, ...)`.
-            analyze_cjs_live(cjs_tracker, specifier, media_type, source)?
-          }
-        }
-      }
+      // `ende compile` doesn't embed a CJS export analysis, so analyze the
+      // source when it's loaded.
+      analyze_cjs_live(cjs_tracker, specifier, media_type, source)?
     } else {
       CjsAnalysis::Esm(source, None)
     };
@@ -146,9 +86,8 @@ impl CjsCodeAnalyzer {
 }
 
 /// Parse `source` with deno_ast and classify it as CJS (with its named
-/// exports) or ESM. Used at runtime in the standalone executable for
-/// files read from the host filesystem (HMR / dev mode) which have no
-/// pre-computed analysis embedded in the VFS.
+/// exports) or ESM. Used at runtime in the standalone executable because
+/// `ende compile` doesn't embed a pre-computed analysis.
 ///
 /// Mirrors what `EndeCjsCodeAnalyzer` does at compile time, minus the
 /// re-export resolution (the loader walks reexports separately). The

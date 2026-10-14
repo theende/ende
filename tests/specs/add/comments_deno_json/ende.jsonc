@@ -2,6 +2,6 @@
 // deno-fmt-ignore
 {
     "imports": {
-        "@denotest/add2": "npm:@denotest/add" // some comment
+        "@a/subtract": "jsr:@endetest/subtract@^1.0.0" // some comment
     }
 }

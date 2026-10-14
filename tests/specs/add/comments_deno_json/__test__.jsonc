@@ -2,7 +2,7 @@
   "tempDir": true,
   "steps": [
     {
-      "args": "add npm:@denotest/esm-basic jsr:@endetest/add",
+      "args": "add jsr:@endetest/add",
       "output": "[WILDCARD]"
     },
     {

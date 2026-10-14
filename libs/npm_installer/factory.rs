@@ -344,10 +344,6 @@ impl<
         async {
           Ok(Arc::new(NpmDenoGraphResolver::new(
             self.npm_installer_if_managed().await?.cloned(),
-            self
-              .resolver_factory()
-              .found_package_json_dep_flag()
-              .clone(),
             self.options.caching_strategy,
           )))
         }

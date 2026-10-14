@@ -9,7 +9,6 @@ use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::package::PackageKind;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
-use ende_package_json::PackageJsonDepValue;
 
 use crate::args::Flags;
 use crate::args::WhyFlags;
@@ -18,43 +17,15 @@ use crate::factory::CliFactory;
 
 const MAX_PATHS_PER_VERSION: usize = 15;
 
-/// Strip the peer-dependency suffix from an npm lockfile key.
-/// The peer suffix `_` only appears after the version, so we find the `@`
-/// version separator first, then look for `_` only in the version portion.
-/// e.g. "react-dom@18.2.0_react@18.2.0" → "react-dom@18.2.0"
-///       "is_odd@3.0.1"                  → "is_odd@3.0.1"
-fn strip_peer_suffix(key: &str) -> &str {
-  // Find the @ that separates name from version (skip leading @ for scoped pkgs)
-  let Some(at_pos) = key[1..].find('@').map(|p| p + 1) else {
-    return key;
-  };
-  // Look for _ only after the version separator
-  if let Some(underscore_pos) = key[at_pos + 1..].find('_') {
-    &key[..at_pos + 1 + underscore_pos]
-  } else {
-    key
-  }
-}
-
 /// Split `name@version` into `(name, version)`.
 fn split_name_version(s: &str) -> Option<(&str, &str)> {
   let at_pos = s[1..].find('@').map(|p| p + 1)?;
   Some((&s[..at_pos], &s[at_pos + 1..]))
 }
 
-/// Internal id for a package across both npm and jsr lockfile entries.
-///
-/// The string portion is the lockfile's key:
-/// - npm: e.g. "express@4.22.1" or "react-dom@18.2.0_react@18.2.0"
-/// - jsr: e.g. "@std/async@1.2.0"
-type PkgId = (PackageKind, String);
-
-fn display_base(id: &PkgId) -> &str {
-  match id.0 {
-    PackageKind::Npm => strip_peer_suffix(&id.1),
-    PackageKind::Jsr => &id.1,
-  }
-}
+/// Internal id for a jsr package: its lockfile key, e.g. "@std/async@1.2.0".
+/// npm packages are not supported in Ende, so they're not included.
+type PkgId = String;
 
 pub async fn why(
   flags: Arc<Flags>,
@@ -66,42 +37,25 @@ pub async fn why(
   })?;
 
   // Workspace-declared root dependency requirements (from ende.json `imports`,
-  // `scopes`, `jsxImportSource`, etc., and from package.json
-  // `dependencies`/`devDependencies`). These are matched against the lockfile's
-  // `specifiers` map to decide which entries are user-imported roots vs.
-  // transitive resolutions that the lockfile also stores under `specifiers`
-  // (as JSR does for every dep req).
+  // `scopes`, `jsxImportSource`, etc.). These are matched against the
+  // lockfile's `specifiers` map to decide which entries are user-imported
+  // roots vs. transitive resolutions that the lockfile also stores under
+  // `specifiers` (as JSR does for every dep req).
   let workspace = factory.cli_options()?.workspace();
   let mut root_reqs: HashSet<JsrDepPackageReq> = HashSet::new();
   for ende_json in workspace.ende_jsons() {
-    root_reqs.extend(ende_json.dependencies(workspace.catalogs()));
-  }
-  for pkg_json in workspace.package_jsons() {
-    let deps = pkg_json.resolve_local_package_json_deps();
-    for dep in deps
-      .dependencies
-      .values()
-      .chain(deps.dev_dependencies.values())
-    {
-      if let Ok(PackageJsonDepValue::Req(req)) = dep {
-        root_reqs.insert(JsrDepPackageReq::npm(req.clone()));
-      }
-    }
+    root_reqs.extend(ende_json.dependencies());
   }
 
   let lockfile_guard = lockfile.lock();
   let content = &lockfile_guard.content;
 
-  // Parse the query: optional kind prefix ("jsr:"/"npm:") and optional version.
+  // Parse the query: optional "jsr:" prefix and optional version.
   let query = &why_flags.package;
-  let (query_kind, name_and_version) =
-    if let Some(rest) = query.strip_prefix("jsr:") {
-      (Some(PackageKind::Jsr), rest)
-    } else if let Some(rest) = query.strip_prefix("npm:") {
-      (Some(PackageKind::Npm), rest)
-    } else {
-      (None, query.as_str())
-    };
+  if query.starts_with("npm:") {
+    return Err(super::super::npm_not_supported_error(query));
+  }
+  let name_and_version = query.strip_prefix("jsr:").unwrap_or(query);
   let (query_name, query_version) =
     if let Some(at_pos) = name_and_version[1..].find('@') {
       let at_pos = at_pos + 1;
@@ -113,52 +67,31 @@ pub async fn why(
       (name_and_version, None)
     };
 
-  // Collect all packages from both npm and jsr sections, with their deps as
-  // unified PkgId references. We also build a forward dep map so that we can
-  // derive the reverse map below.
+  // Collect all jsr packages with their deps. We also build a forward dep
+  // map so that we can derive the reverse map below.
   let mut all_packages: Vec<PkgId> = Vec::new();
   let mut forward_deps: HashMap<PkgId, Vec<PkgId>> = HashMap::new();
 
-  for key in content.packages.npm.keys() {
-    let id: PkgId = (PackageKind::Npm, key.to_string());
-    all_packages.push(id.clone());
-    let info = &content.packages.npm[key];
-    let deps: Vec<PkgId> = info
-      .dependencies
-      .values()
-      .chain(info.optional_dependencies.values())
-      .chain(info.optional_peers.values())
-      .map(|dep_key| (PackageKind::Npm, dep_key.to_string()))
-      .collect();
-    forward_deps.insert(id, deps);
-  }
-
   for (nv, info) in content.packages.jsr.iter() {
-    let id: PkgId = (PackageKind::Jsr, nv.to_string());
+    let id: PkgId = nv.to_string();
     all_packages.push(id.clone());
     let deps: Vec<PkgId> = info
       .dependencies
       .iter()
+      .filter(|dep_req| dep_req.kind == PackageKind::Jsr)
       .filter_map(|dep_req| {
         let resolved = content.packages.specifiers.get(dep_req)?;
-        let dep_name = dep_req.req.name.as_str();
-        Some((dep_req.kind, format!("{}@{}", dep_name, resolved)))
+        Some(format!("{}@{}", dep_req.req.name, resolved))
       })
       .collect();
     forward_deps.insert(id, deps);
   }
 
-  // Find matching packages (filtered by optional kind, name, and version).
+  // Find matching packages (filtered by name and optional version).
   let matching: Vec<&PkgId> = all_packages
     .iter()
     .filter(|id| {
-      if let Some(kind) = query_kind
-        && kind != id.0
-      {
-        return false;
-      }
-      let base = display_base(id);
-      let Some((name, version)) = split_name_version(base) else {
+      let Some((name, version)) = split_name_version(id) else {
         return false;
       };
       name == query_name
@@ -186,26 +119,24 @@ pub async fn why(
   }
 
   // A lockfile specifier is a root iff it matches a req the user declared in
-  // an ende.json or package.json. JSR transitive deps also appear in
-  // `specifiers` (the lockfile normalizes JSR deps through the specifiers
-  // map), so we can't treat every entry as a root the way the original
-  // npm-only implementation did.
+  // an ende.json. JSR transitive deps also appear in `specifiers` (the
+  // lockfile normalizes JSR deps through the specifiers map), so we can't
+  // treat every entry as a root.
   let mut root_specifier_to_pkg: HashMap<PkgId, Vec<String>> = HashMap::new();
   for (req, resolved) in content.packages.specifiers.iter() {
-    if !root_reqs.contains(req) {
+    if req.kind != PackageKind::Jsr || !root_reqs.contains(req) {
       continue;
     }
     let name = req.req.name.as_str();
     let pkg_key = format!("{}@{}", name, resolved);
     root_specifier_to_pkg
-      .entry((req.kind, pkg_key))
+      .entry(pkg_key)
       .or_default()
       .push(req.to_string());
   }
 
   for id in &matching {
-    let base = display_base(id);
-    log::info!("{}", colors::bold(base));
+    log::info!("{}", colors::bold(id));
 
     if let Some(specifiers) = root_specifier_to_pkg.get(*id) {
       for spec in specifiers {
@@ -332,18 +263,17 @@ fn format_dependency_path(
   }
 
   let root = path[0];
-  let base = display_base(root);
 
   let mut out = String::new();
 
   if let Some(specs) = root_specifiers.get(root) {
     out.push_str(&format!("  {}", colors::green(&specs[0])));
   } else {
-    out.push_str(&format!("  {}", base));
+    out.push_str(&format!("  {}", root));
   }
 
   for id in &path[1..] {
-    out.push_str(&format!(" > {}", display_base(id)));
+    out.push_str(&format!(" > {}", id));
   }
 
   out

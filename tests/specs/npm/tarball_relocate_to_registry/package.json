@@ -1,7 +1,0 @@
-{
-  "name": "tarball_relocate_test",
-  "version": "0.0.1",
-  "dependencies": {
-    "@denotest/tarballs-npmjs": "1.0.0"
-  }
-}

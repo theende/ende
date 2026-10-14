@@ -3,5 +3,3 @@ Available tasks:
     deno eval 'console.log(1)'
 - other
     deno eval 'console.log(2)'
-- bin (package.json)
-    cli-esm testing this out

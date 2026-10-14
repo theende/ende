@@ -1,5 +1,6 @@
 {
   "imports": {
-    "@endetest/add": "jsr:@endetest/add@^0.2.0"
+    "@endetest/add": "jsr:@endetest/add@^0.2.0",
+    "@endetest/deps": "jsr:@endetest/deps@1"
   }
 }

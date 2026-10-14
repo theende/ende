@@ -517,48 +517,6 @@ fn check_local_by_default2() {
 }
 
 #[test]
-fn unprefixed_global_install_defaults_to_npm() {
-  // Unprefixed package names in `deno install -g` default to the npm
-  // registry, matching `ende add` and local `ende install`.
-  let context = TestContextBuilder::new()
-    .add_npm_env_vars()
-    .add_jsr_env_vars()
-    .use_http_server()
-    .use_temp_cwd()
-    .build();
-  let temp_dir = context.temp_dir();
-  let temp_dir_str = temp_dir.path().to_string();
-
-  let env_vars = [
-    ("HOME", temp_dir_str.as_str()),
-    ("USERPROFILE", temp_dir_str.as_str()),
-    ("ENDE_INSTALL_ROOT", ""),
-  ];
-
-  // Bare npm name (no prefix) installs successfully from npm.
-  context
-    .new_command()
-    .args_vec(["install", "-g", "--name", "bin", "@denotest/bin"])
-    .envs(env_vars)
-    .run()
-    .skip_output_check()
-    .assert_exit_code(0);
-
-  // A package that doesn't exist on npm produces the npm "does not exist"
-  // error rather than the legacy "missing a prefix" hint.
-  let output = context
-    .new_command()
-    .args_vec(["install", "-g", "package-that-does-not-exist"])
-    .envs(env_vars)
-    .run();
-  output.assert_exit_code(1);
-  assert_contains!(
-    output.combined_output(),
-    "npm package 'package-that-does-not-exist' does not exist"
-  );
-}
-
-#[test]
 fn installer_multiple() {
   let context = TestContextBuilder::new()
     .use_http_server()
@@ -600,60 +558,7 @@ fn installer_second_module_looks_like_script_argument() {
       "error: non_existent is missing a prefix. ",
       "Ende 3.0 requires `--` before script arguments in `ende install -g`. ",
       "Did you mean `ende install -g http://localhost:4545/echo.ts -- non_existent`? ",
-      "Or maybe provide a `jsr:` or `npm:` prefix?\n"
+      "Or maybe provide a `jsr:` prefix?\n"
     ))
     .assert_exit_code(1);
-}
-
-#[test]
-fn install_npm_global_config_dir() {
-  // installing an npm: package should create a .<name>/ config dir
-  // with an ende.json
-  let context = TestContextBuilder::new()
-    .add_npm_env_vars()
-    .use_http_server()
-    .use_temp_cwd()
-    .build();
-  let temp_dir = context.temp_dir();
-  let root_dir = temp_dir.path().join("root");
-  let bin_dir = root_dir.join("bin");
-
-  context
-    .new_command()
-    .args("install -g --root ./root --name cli-esm npm:@denotest/bin")
-    .run()
-    .skip_output_check()
-    .assert_exit_code(0);
-
-  // config dir should exist
-  let config_dir = bin_dir.join(".cli-esm");
-  assert!(config_dir.exists(), "config dir should exist");
-
-  // ende.json should exist
-  let ende_json = config_dir.join("ende.json");
-  assert!(ende_json.exists(), "ende.json should exist");
-  let ende_json_content = ende_json.read_to_string();
-  // should have workspace field to stop workspace discovery
-  assert_contains!(ende_json_content, "workspace");
-
-  // shim should use --config pointing to the config dir
-  let mut shim_path = bin_dir.join("cli-esm");
-  if cfg!(windows) {
-    shim_path = shim_path.with_extension("cmd");
-  }
-  assert!(shim_path.exists(), "shim should exist");
-  let shim_content = shim_path.read_to_string();
-  assert_contains!(shim_content, "--config");
-  assert_contains!(shim_content, ".cli-esm");
-
-  // now uninstall and verify cleanup
-  context
-    .new_command()
-    .args("uninstall -g --root ./root cli-esm")
-    .run()
-    .skip_output_check()
-    .assert_exit_code(0);
-
-  assert!(!shim_path.exists(), "shim should be removed");
-  assert!(!config_dir.exists(), "config dir should be removed");
 }

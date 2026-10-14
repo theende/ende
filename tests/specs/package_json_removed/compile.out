@@ -1,0 +1,2 @@
+[WILDCARD]
+error: npm packages are not supported in Ende (found 'npm:@denotest/esm-basic@1').

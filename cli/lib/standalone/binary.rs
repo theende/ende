@@ -1,11 +1,9 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 use std::borrow::Cow;
-use std::collections::BTreeMap;
 
 use deno_media_type::MediaType;
 use deno_semver::Version;
-use ende_resolver::workspace::PackageJsonDepResolution;
 use ende_runtime::ende_permissions::PermissionsOptions;
 use ende_runtime::ende_telemetry::OtelConfig;
 use indexmap::IndexMap;
@@ -37,17 +35,6 @@ pub trait EndeRtSerializable<'a> {
 }
 
 #[derive(Deserialize, Serialize)]
-pub enum NodeModules {
-  Managed {
-    /// Relative path for the node_modules directory in the vfs.
-    node_modules_dir: Option<String>,
-  },
-  Byonm {
-    root_node_modules_dir: Option<String>,
-  },
-}
-
-#[derive(Deserialize, Serialize)]
 pub struct SerializedWorkspaceResolverImportMap {
   pub specifier: String,
   pub json: String,
@@ -65,10 +52,6 @@ pub struct SerializedResolverWorkspaceJsrPackage {
 pub struct SerializedWorkspaceResolver {
   pub import_map: Option<SerializedWorkspaceResolverImportMap>,
   pub jsr_pkgs: Vec<SerializedResolverWorkspaceJsrPackage>,
-  pub package_jsons: BTreeMap<String, serde_json::Value>,
-  pub pkg_json_resolution: PackageJsonDepResolution,
-  #[serde(default)]
-  pub catalogs: IndexMap<String, IndexMap<String, String>>,
 }
 
 // Note: Don't use hashmaps/hashsets. Ensure the serialization
@@ -89,8 +72,6 @@ pub struct Metadata {
   pub workspace_resolver: SerializedWorkspaceResolver,
   pub entrypoint_key: String,
   pub preload_modules: Vec<String>,
-  pub require_modules: Vec<String>,
-  pub node_modules: Option<NodeModules>,
   pub unstable_config: UnstableConfig,
   pub otel_config: OtelConfig,
   pub vfs_case_sensitivity: FileSystemCaseSensitivity,
@@ -104,7 +85,7 @@ pub struct Metadata {
   /// file name.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub app_name: Option<String>,
-  /// Application version from ende.json or package.json, used for
+  /// Application version from ende.json, used for
   /// auto-update support in desktop apps.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub app_version: Option<String>,
@@ -150,16 +131,8 @@ impl<'a> EndeRtDeserializable<'a> for SpecifierId {
   }
 }
 
-#[derive(Deserialize, Serialize)]
-pub enum CjsExportAnalysisEntry {
-  Esm,
-  Cjs(Vec<String>),
-  Error(String),
-}
-
 const HAS_TRANSPILED_FLAG: u8 = 1 << 0;
 const HAS_SOURCE_MAP_FLAG: u8 = 1 << 1;
-const HAS_CJS_EXPORT_ANALYSIS_FLAG: u8 = 1 << 2;
 const HAS_VALID_UTF8_FLAG: u8 = 1 << 3;
 
 pub struct RemoteModuleEntry<'a> {
@@ -168,7 +141,6 @@ pub struct RemoteModuleEntry<'a> {
   pub data: Cow<'a, [u8]>,
   pub maybe_transpiled: Option<Cow<'a, [u8]>>,
   pub maybe_source_map: Option<Cow<'a, [u8]>>,
-  pub maybe_cjs_export_analysis: Option<Cow<'a, [u8]>>,
 }
 
 impl<'a> EndeRtSerializable<'a> for RemoteModuleEntry<'a> {
@@ -196,16 +168,12 @@ impl<'a> EndeRtSerializable<'a> for RemoteModuleEntry<'a> {
     if self.maybe_source_map.is_some() {
       has_data_flags |= HAS_SOURCE_MAP_FLAG;
     }
-    if self.maybe_cjs_export_analysis.is_some() {
-      has_data_flags |= HAS_CJS_EXPORT_ANALYSIS_FLAG;
-    }
     builder.append(serialize_media_type(self.media_type));
     builder.append_le(self.data.len() as u32);
     builder.append(self.data.as_ref());
     builder.append(has_data_flags);
     append_maybe_data(builder, self.maybe_transpiled.as_deref());
     append_maybe_data(builder, self.maybe_source_map.as_deref());
-    append_maybe_data(builder, self.maybe_cjs_export_analysis.as_deref());
   }
 }
 
@@ -233,11 +201,6 @@ impl<'a> EndeRtDeserializable<'a> for RemoteModuleEntry<'a> {
     let (input, maybe_source_map) =
       deserialize_data_if_has_flag(input, has_data_flags, HAS_SOURCE_MAP_FLAG)?;
     let is_valid_utf8 = has_data_flags & HAS_VALID_UTF8_FLAG != 0;
-    let (input, maybe_cjs_export_analysis) = deserialize_data_if_has_flag(
-      input,
-      has_data_flags,
-      HAS_CJS_EXPORT_ANALYSIS_FLAG,
-    )?;
     Ok((
       input,
       Self {
@@ -246,7 +209,6 @@ impl<'a> EndeRtDeserializable<'a> for RemoteModuleEntry<'a> {
         is_valid_utf8,
         maybe_transpiled,
         maybe_source_map,
-        maybe_cjs_export_analysis,
       },
     ))
   }

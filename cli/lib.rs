@@ -171,8 +171,6 @@ async fn run_subcommand(
         self::args::InstallEntrypointsFlags {
           entrypoints: cache_flags.files,
           lockfile_only: false,
-          production: false,
-          skip_types: false,
         },
       )
       .await
@@ -756,17 +754,6 @@ fn exit_for_error(error: AnyError, initial_cwd: Option<&std::path::Path>) -> ! {
     }
     None => format!("{error:?}"),
   };
-
-  // If this looks like a workspace/npm resolution failure and a
-  // pnpm-workspace.yaml is nearby, convert it into the equivalent deno.json
-  // fields and tell the user to run the command again, rather than leaving them
-  // with the misleading "run ende install" hint baked into the error.
-  if let Some(hint) = util::pnpm_workspace::maybe_auto_migrate_pnpm_workspace(
-    &error_string,
-    initial_cwd,
-  ) {
-    error_string.push_str(&hint);
-  }
 
   // When a package couldn't be resolved because the only matching version is
   // newer than the configured minimum dependency age, the error doesn't

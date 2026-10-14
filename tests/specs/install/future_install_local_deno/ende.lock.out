@@ -2,8 +2,7 @@
   "version": "5",
   "specifiers": {
     "jsr:@endetest/add@*": "1.0.0",
-    "jsr:@std/testing@*": "1.0.0",
-    "npm:@denotest/esm-basic@1": "1.0.0"
+    "jsr:@std/testing@*": "1.0.0"
   },
   "jsr": {
     "@endetest/add@1.0.0": {
@@ -11,12 +10,6 @@
     },
     "@std/testing@1.0.0": {
       "integrity": "[WILDCARD]"
-    }
-  },
-  "npm": {
-    "@denotest/esm-basic@1.0.0": {
-      "integrity": "[WILDCARD]",
-      "tarball": "http://localhost:4260/@denotest/esm-basic/1.0.0.tgz"
     }
   },
   "remote": {
@@ -28,8 +21,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@endetest/add@*",
-      "jsr:@std/testing@*",
-      "npm:@denotest/esm-basic@1"
+      "jsr:@std/testing@*"
     ]
   }
 }

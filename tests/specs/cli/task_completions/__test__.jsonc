@@ -24,11 +24,11 @@
       "args": ["--", "/thing/deno", "task", ""],
       "output": "workspace.out"
     },
-    "workspace_package_json": {
+    "workspace_member2": {
       "envs": { "COMPLETE": "fish" },
       "cwd": "./workspace/member2",
       "args": ["--", "/thing/deno", "task", ""],
-      "output": "workspace_package_json.out"
+      "output": "workspace_member2.out"
     },
     "workspace_recursive": {
       "envs": { "COMPLETE": "fish" },

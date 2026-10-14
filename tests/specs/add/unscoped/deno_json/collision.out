@@ -1,1 +1,1 @@
-error: jsr:@endetest/add and npm:@denotest/add would both be added as "add". Provide an explicit alias for one of them (ex. `ende add my-alias@npm:@denotest/add`).
+error: jsr:@endetest/add and jsr:@std/add would both be added as "add". Provide an explicit alias for one of them (ex. `ende add my-alias@jsr:@std/add`).

@@ -1,3 +1,3 @@
-import { setValue } from "npm:@denotest/esm-basic";
+import { add } from "jsr:@endetest/add@1";
 
-setValue(5);
+add(1, 2);

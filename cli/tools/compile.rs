@@ -15,7 +15,6 @@ use deno_path_util::resolve_url_or_path;
 use deno_path_util::url_from_file_path;
 use deno_path_util::url_to_file_path;
 use deno_terminal::colors;
-use ende_config::ende_json::NodeModulesDirMode;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::anyhow;
 use ende_core::anyhow::bail;
@@ -27,7 +26,6 @@ use rand::Rng;
 use super::installer::BinNameResolver;
 use crate::args::CliOptions;
 use crate::args::CompileFlags;
-use crate::args::ConfigFlag;
 use crate::args::EndeSubcommand;
 use crate::args::Flags;
 use crate::args::TypeCheckMode;
@@ -37,7 +35,6 @@ use crate::standalone::binary::WriteBinOptions;
 use crate::standalone::binary::is_standalone_binary;
 use crate::util::file_watcher;
 use crate::util::file_watcher::WatcherCommunicator;
-use crate::util::temp::create_temp_node_modules_dir;
 
 pub async fn compile(
   flags: Flags,
@@ -100,8 +97,6 @@ async fn compile_inner(
       // Run the framework's build step (if any) before bundling its build
       // output via `include_paths`.
       super::framework::run_build_command(&detection, &dir)?;
-      // Enable CJS detection for Node-based frameworks.
-      flags.unstable_config.detect_cjs = true;
       // These frameworks emit a pre-built/bundled server entrypoint that is
       // not meant to be type checked by Ende (it references Node types that
       // aren't resolvable from the build output); the framework handles its
@@ -168,24 +163,6 @@ async fn compile_inner(
   let _framework_cleanup =
     _framework_entrypoint_file.map(|p| CleanupGuard(vec![p]));
 
-  // use a temporary directory with a node_modules folder when the user
-  // specifies an npm package for better compatibility
-  let _temp_dir =
-    if compile_flags.source_file.to_lowercase().starts_with("npm:")
-      && flags.node_modules_dir.is_none()
-      && !matches!(flags.config_flag, ConfigFlag::Path(_))
-    {
-      let temp_node_modules_dir = create_temp_node_modules_dir()
-        .context("Failed creating temp directory for node_modules folder.")?;
-      flags.initial_cwd = Some(temp_node_modules_dir.parent().to_path_buf());
-      flags.internal.root_node_modules_dir_override =
-        Some(temp_node_modules_dir.node_modules_dir_path().to_path_buf());
-      flags.node_modules_dir = Some(NodeModulesDirMode::Auto);
-      Some(temp_node_modules_dir)
-    } else {
-      None
-    };
-
   let flags = Arc::new(flags);
   // boxed_local() is to avoid large futures
   if compile_flags.eszip {
@@ -251,8 +228,10 @@ pub async fn compile_binary(
     cli_options.initial_cwd(),
   );
 
+  ensure_not_npm_entrypoint(entrypoint)?;
   let graph =
     build_compile_graph(module_graph_creator, cli_options, &roots).await?;
+  ensure_compilable_graph(&graph)?;
 
   let initial_cwd =
     deno_path_util::url_from_directory_path(cli_options.initial_cwd())?;
@@ -522,8 +501,10 @@ async fn compile_eszip(
     cli_options.initial_cwd(),
   );
 
+  ensure_not_npm_entrypoint(entrypoint)?;
   let graph =
     build_compile_graph(module_graph_creator, cli_options, &roots).await?;
+  ensure_compilable_graph(&graph)?;
 
   let transpile_and_emit_options = compiler_options_resolver
     .for_specifier(cli_options.workspace().root_dir_url())
@@ -654,6 +635,33 @@ struct CompileModuleRoots {
   include: Vec<ModuleSpecifier>,
   /// Raw files/directories embedded into the VFS.
   include_paths: Vec<ModuleSpecifier>,
+}
+
+fn ensure_not_npm_entrypoint(
+  entrypoint: &ModuleSpecifier,
+) -> Result<(), AnyError> {
+  if entrypoint.scheme() == "npm" {
+    return Err(super::npm_not_supported_error(entrypoint.as_str()));
+  }
+  Ok(())
+}
+
+/// Errors when the program depends on something `ende compile` can't embed.
+fn ensure_compilable_graph(graph: &ModuleGraph) -> Result<(), AnyError> {
+  for module in graph.modules() {
+    if module.npm().is_some() {
+      return Err(super::npm_not_supported_error(module.specifier().as_str()));
+    }
+    if let Some(js) = module.js()
+      && matches!(js.media_type, MediaType::Cjs | MediaType::Cts)
+    {
+      bail!(
+        "CommonJS modules are not supported in `ende compile` (found '{}').",
+        module.specifier()
+      );
+    }
+  }
+  Ok(())
 }
 
 /// Builds the module graph stored in the compiled binary.
@@ -948,8 +956,6 @@ fn get_os_specific_filepath(
 
 #[cfg(test)]
 mod test {
-  use ende_npm::registry::TestNpmRegistryApi;
-  use ende_npm::resolution::NpmVersionResolver;
 
   pub use super::*;
   use crate::http_util::HttpClientProvider;
@@ -988,10 +994,7 @@ mod test {
   #[tokio::test]
   async fn resolve_compile_executable_output_path_target_linux() {
     let http_client = HttpClientProvider::new(None, None);
-    let npm_api = TestNpmRegistryApi::default();
-    let npm_version_resolver = NpmVersionResolver::default();
-    let bin_name_resolver =
-      BinNameResolver::new(&http_client, &npm_api, &npm_version_resolver);
+    let bin_name_resolver = BinNameResolver::new(&http_client);
     let path = resolve_compile_executable_output_path(
       &bin_name_resolver,
       &CompileFlags {
@@ -1023,10 +1026,7 @@ mod test {
   #[tokio::test]
   async fn resolve_compile_executable_output_path_target_windows() {
     let http_client = HttpClientProvider::new(None, None);
-    let npm_api = TestNpmRegistryApi::default();
-    let npm_version_resolver = NpmVersionResolver::default();
-    let bin_name_resolver =
-      BinNameResolver::new(&http_client, &npm_api, &npm_version_resolver);
+    let bin_name_resolver = BinNameResolver::new(&http_client);
     let path = resolve_compile_executable_output_path(
       &bin_name_resolver,
       &CompileFlags {

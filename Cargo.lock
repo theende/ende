@@ -3024,7 +3024,6 @@ dependencies = [
  "which 8.0.0",
  "windows-sys 0.59.0",
  "winres",
- "yaml_parser",
  "zip",
  "zstd",
 ]
@@ -3138,7 +3137,6 @@ dependencies = [
  "deno_path_util",
  "deno_semver",
  "ende_maybe_sync",
- "ende_package_json",
  "glob",
  "ignore",
  "import_map",

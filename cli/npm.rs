@@ -10,21 +10,15 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use dashmap::DashMap;
 use deno_error::JsErrorBox;
 use deno_semver::package::PackageNv;
-use deno_semver::package::PackageReq;
 use deno_task_shell::KillSignal;
 use ende_core::error::AnyError;
 use ende_core::futures::StreamExt;
-use ende_core::serde_json;
 use ende_core::url::Url;
 use ende_lib::version::ENDE_VERSION_INFO;
 use ende_npm::NpmResolutionPackage;
-use ende_npm::registry::NpmPackageInfo;
-use ende_npm::registry::NpmPackageVersionInfosIterator;
 use ende_npm::resolution::NpmResolutionSnapshot;
-use ende_npm::resolution::NpmVersionResolver;
 use ende_npm_cache::NpmCacheHttpClientBytesResponse;
 use ende_npm_cache::NpmCacheHttpClientResponse;
 use ende_npm_installer::BinEntries;
@@ -38,15 +32,11 @@ use ende_npm_installer::lifecycle_scripts::ResolvePkgFolderFn;
 use ende_npm_installer::lifecycle_scripts::compute_lifecycle_script_layers;
 use ende_npm_installer::lifecycle_scripts::is_broken_default_install_script;
 use ende_npmrc::RegistryConfig;
-use ende_npmrc::ResolvedNpmRc;
-use ende_resolver::file_fetcher::FetchOptions;
-use ende_resolver::file_fetcher::FetchPermissionsOptionRef;
 use ende_resolver::npm::ByonmNpmResolverCreateOptions;
 use ende_resolver::npm::ManagedNpmResolverRc;
 use ende_runtime::ende_io::FromRawIoHandle;
 use sys_traits::PathsInErrorsExt;
 
-use crate::file_fetcher::CliFileFetcher;
 use crate::http_util::HttpClientProvider;
 use crate::sys::CliSys;
 use crate::task_runner::TaskStdio;
@@ -75,13 +65,6 @@ pub type CliNpmGraphResolver = ende_npm_installer::graph::NpmDenoGraphResolver<
 >;
 
 pub use ende_npm_cache::NpmPackumentFormat;
-
-/// `Accept` header sent when fetching npm package metadata. Mirrors the npm
-/// install path (`CliNpmCacheHttpClient`) so registries that content-negotiate
-/// (or redirect non-npm-client requests elsewhere) behave the same for metadata
-/// lookups done by `deno outdated`, `deno add`, etc.
-const NPM_PACKAGE_INFO_ACCEPT: &str =
-  "application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*";
 
 #[derive(Debug)]
 pub struct CliNpmCacheHttpClient {
@@ -259,178 +242,6 @@ pub struct PackageInfoLoadError {
   pub registry_url: String,
   /// A human readable description of what went wrong.
   pub reason: String,
-}
-
-#[derive(Debug)]
-pub struct NpmFetchResolver {
-  nv_by_req: DashMap<PackageReq, Option<PackageNv>>,
-  info_by_name:
-    DashMap<String, Result<Arc<NpmPackageInfo>, Arc<PackageInfoLoadError>>>,
-  file_fetcher: Arc<CliFileFetcher>,
-  npmrc: Arc<ResolvedNpmRc>,
-  version_resolver: Arc<NpmVersionResolver>,
-  deserialize_export_keys: bool,
-}
-
-impl NpmFetchResolver {
-  pub fn new(
-    file_fetcher: Arc<CliFileFetcher>,
-    npmrc: Arc<ResolvedNpmRc>,
-    version_resolver: Arc<NpmVersionResolver>,
-  ) -> Self {
-    Self {
-      nv_by_req: Default::default(),
-      info_by_name: Default::default(),
-      file_fetcher,
-      npmrc,
-      version_resolver,
-      deserialize_export_keys: false,
-    }
-  }
-
-  /// Fill in the `exports` subpath keys of each package version when parsing
-  /// registry metadata. Only the LSP needs them (for npm import-specifier
-  /// completion); every other consumer leaves them off so nothing is retained.
-  /// See [`ende_npm::registry::NpmPackageInfo::fill_export_keys`].
-  pub fn with_export_keys(mut self) -> Self {
-    self.deserialize_export_keys = true;
-    self
-  }
-
-  pub async fn req_to_nv(
-    &self,
-    req: &PackageReq,
-  ) -> Result<Option<PackageNv>, AnyError> {
-    if let Some(nv) = self.nv_by_req.get(req) {
-      return Ok(nv.value().clone());
-    }
-    let maybe_get_nv = || async {
-      let name = &req.name;
-      let Some(package_info) = self.package_info(name).await else {
-        return Result::<Option<PackageNv>, AnyError>::Ok(None);
-      };
-      let version_resolver =
-        self.version_resolver.get_for_package(&package_info);
-      let version_info = version_resolver.resolve_best_package_version_info(
-        &req.version_req,
-        Vec::new().into_iter(),
-      )?;
-      Ok(Some(PackageNv {
-        name: name.clone(),
-        version: version_info.version.clone(),
-      }))
-    };
-    let nv = maybe_get_nv().await?;
-    self.nv_by_req.insert(req.clone(), nv.clone());
-    Ok(nv)
-  }
-
-  pub async fn package_info(&self, name: &str) -> Option<Arc<NpmPackageInfo>> {
-    self.package_info_with_reason(name).await.ok()
-  }
-
-  /// Like [`Self::package_info`], but preserves the reason the fetch failed
-  /// (e.g. an HTTP 401 from a private registry) so callers can surface it
-  /// instead of silently treating the package as having no available versions.
-  pub async fn package_info_with_reason(
-    &self,
-    name: &str,
-  ) -> Result<Arc<NpmPackageInfo>, Arc<PackageInfoLoadError>> {
-    if let Some(info) = self.info_by_name.get(name) {
-      return info.value().clone();
-    }
-    let registry_url = self.npmrc.get_registry_url(name).to_string();
-    let result =
-      self
-        .fetch_package_info(name)
-        .await
-        .map(Arc::new)
-        .map_err(|reason| {
-          Arc::new(PackageInfoLoadError {
-            registry_url: registry_url.clone(),
-            reason,
-          })
-        });
-    self.info_by_name.insert(name.to_string(), result.clone());
-    result
-  }
-
-  // todo(#27198): use RegistryInfoProvider instead
-  async fn fetch_package_info(
-    &self,
-    name: &str,
-  ) -> Result<NpmPackageInfo, String> {
-    let info_url = ende_npm_cache::get_package_url(&self.npmrc, name);
-    let registry_config = self.npmrc.get_registry_config(name);
-    let maybe_auth_header =
-      ende_npm_cache::maybe_auth_header_value_for_npm_registry(registry_config)
-        .map_err(AnyError::from)
-        .and_then(|value| match value {
-          Some(value) => Ok(Some((
-            http::header::AUTHORIZATION,
-            http::HeaderValue::try_from(value.into_bytes())?,
-          ))),
-          None => Ok(None),
-        })
-        .map_err(|e| format!("{e:#}"))?;
-    // Identify as an npm client. Some registries (e.g. self-hosted GitLab) only
-    // serve package metadata to requests that send the npm `Accept` header and
-    // otherwise redirect to registry.npmjs.org, which drops the auth header on
-    // the cross-origin redirect and 404s for private packages. The npm install
-    // path sends this same header, so matching it keeps `deno outdated`/`deno
-    // add` working wherever `deno install` does.
-    // See https://github.com/denoland/deno/issues/31924
-    //
-    // Mirror the install path's tradeoff: this header requests the abbreviated
-    // packument, which omits the `time` field that `minimumDependencyAge` relies
-    // on for date filtering (`matches_newest_dependency_date`). When a date is
-    // configured we must request the full packument instead, so we don't send
-    // the header (matching `CliNpmCacheHttpClient`'s `Full` packument format).
-    let maybe_accept = if self
-      .version_resolver
-      .newest_dependency_date_options
-      .date
-      .is_none()
-    {
-      Some(NPM_PACKAGE_INFO_ACCEPT)
-    } else {
-      None
-    };
-    let file = self
-      .file_fetcher
-      .fetch_with_options(
-        &info_url,
-        FetchPermissionsOptionRef::AllowAll,
-        FetchOptions {
-          maybe_auth: maybe_auth_header,
-          maybe_accept,
-          ..Default::default()
-        },
-      )
-      .await
-      .map_err(|e| format!("{e:#}"))?;
-    let mut info = serde_json::from_slice::<NpmPackageInfo>(&file.source)
-      .map_err(|e| format!("failed to parse package metadata: {e}"))?;
-    if self.deserialize_export_keys {
-      // `exports` subpath keys are skipped by the shared parse; the LSP is the
-      // only consumer, so fill them in here rather than making every command
-      // retain them (see denoland/deno#35664).
-      info
-        .fill_export_keys(&file.source)
-        .map_err(|e| format!("failed to parse package metadata: {e}"))?;
-    }
-    Ok(info)
-  }
-
-  pub fn applicable_version_infos<'a>(
-    &'a self,
-    package_info: &'a NpmPackageInfo,
-  ) -> NpmPackageVersionInfosIterator<'a> {
-    self
-      .version_resolver
-      .get_for_package(package_info)
-      .applicable_version_infos()
-  }
 }
 
 pub static NPM_CONFIG_USER_AGENT_ENV_VAR: &str = "npm_config_user_agent";
@@ -737,9 +548,6 @@ impl DenoTaskLifeCycleScriptsExecutor {
     let mut custom_commands = crate::task_runner::TaskCustomCommands::new();
     custom_commands
       .insert("npx".to_string(), Rc::new(crate::task_runner::NpxCommand));
-
-    custom_commands
-      .insert("npm".to_string(), Rc::new(crate::task_runner::NpmCommand));
 
     custom_commands
       .insert("node".to_string(), Rc::new(crate::task_runner::NodeCommand));

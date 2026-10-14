@@ -11,7 +11,6 @@ use deno_terminal::colors;
 use ende_core::anyhow;
 
 use crate::tools::pm::deps::DepId;
-use crate::tools::pm::deps::DepKind;
 use crate::tools::pm::interactive_picker;
 
 #[derive(Debug)]
@@ -20,7 +19,6 @@ pub struct PackageInfo {
   pub current_version_req: VersionReq,
   pub new_version: VersionReq,
   pub name: String,
-  pub kind: DepKind,
 }
 
 #[derive(Debug)]
@@ -69,12 +67,8 @@ impl From<PackageInfo> for FormattedPackageInfo {
       dep_ids: vec![package.id],
       current_version_string: current_version_string.to_string(),
       new_version_highlighted,
-      formatted_name: format!(
-        "{}{}",
-        colors::gray(format!("{}:", package.kind.scheme())),
-        package.name
-      ),
-      formatted_name_len: package.kind.scheme().len() + 1 + package.name.len(),
+      formatted_name: format!("{}{}", colors::gray("jsr:"), package.name),
+      formatted_name_len: "jsr:".len() + package.name.len(),
       name: package.name,
     }
   }

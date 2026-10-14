@@ -1,0 +1,3 @@
+error: Import "@scope/pkg" not a dependency
+  hint: If you want to use the JSR package, try running `ende add jsr:@scope/pkg`
+    at file:///[WILDLINE]/workspace/main.ts:3:23

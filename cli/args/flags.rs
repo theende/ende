@@ -103,67 +103,9 @@ fn npm_system_info_from_env() -> NpmSystemInfo {
   }
 }
 
-/// The npm platform/arch a subcommand should resolve packages for. `compile`
-/// and `desktop` follow their `--target`; `install` follows `--os`/`--arch`;
-/// everything else uses the current system.
-pub fn npm_system_info(subcommand: &EndeSubcommand) -> NpmSystemInfo {
-  match subcommand {
-    EndeSubcommand::Compile(CompileFlags {
-      target: Some(target),
-      ..
-    })
-    | EndeSubcommand::Desktop(DesktopFlags {
-      target: Some(target),
-      ..
-    }) => {
-      // the values of NpmSystemInfo align with the possible values for the
-      // `arch` and `platform` fields of Node.js' `process` global:
-      // https://nodejs.org/api/process.html
-      match target.as_str() {
-        "aarch64-apple-darwin" => NpmSystemInfo {
-          os: "darwin".into(),
-          cpu: "arm64".into(),
-        },
-        "aarch64-unknown-linux-gnu" => NpmSystemInfo {
-          os: "linux".into(),
-          cpu: "arm64".into(),
-        },
-        "x86_64-apple-darwin" => NpmSystemInfo {
-          os: "darwin".into(),
-          cpu: "x64".into(),
-        },
-        "x86_64-unknown-linux-gnu" => NpmSystemInfo {
-          os: "linux".into(),
-          cpu: "x64".into(),
-        },
-        "x86_64-pc-windows-msvc" => NpmSystemInfo {
-          os: "win32".into(),
-          cpu: "x64".into(),
-        },
-        value => {
-          log::warn!(
-            concat!(
-              "Not implemented npm system info for target '{}'. Using current ",
-              "system default. This may impact architecture specific dependencies."
-            ),
-            value,
-          );
-          NpmSystemInfo::default()
-        }
-      }
-    }
-    EndeSubcommand::Install(InstallFlags::Local(
-      _,
-      NpmInstallTargetFlags { os, arch },
-    )) => {
-      let default = npm_system_info_from_env();
-      NpmSystemInfo {
-        os: os.as_deref().unwrap_or(&default.os).into(),
-        cpu: arch.as_deref().unwrap_or(&default.cpu).into(),
-      }
-    }
-    _ => npm_system_info_from_env(),
-  }
+/// The npm platform/arch to resolve packages for.
+pub fn npm_system_info() -> NpmSystemInfo {
+  npm_system_info_from_env()
 }
 
 /// The module `GraphKind` that should be created for a `TypeCheckMode`.
@@ -589,13 +531,11 @@ impl FlagsExt for Flags {
         }
       }
       Cache(CacheFlags { files, .. })
-      | Install(InstallFlags::Local(
-        InstallFlagsLocal::Entrypoints(InstallEntrypointsFlags {
-          entrypoints: files,
-          ..
-        }),
-        _,
-      )) => Some(vec![
+      | Install(InstallFlags::Local(InstallFlagsLocal::Entrypoints(
+        InstallEntrypointsFlags {
+          entrypoints: files, ..
+        },
+      ))) => Some(vec![
         files
           .iter()
           .filter_map(|file| {
@@ -980,57 +920,6 @@ mod tests {
         "fast path should decline for {case:?}"
       );
     }
-  }
-
-  #[test]
-  fn install_os_arch_flags() {
-    let r = flags_from_vec(svec![
-      "ende", "install", "--os", "linux", "--arch", "arm64"
-    ]);
-    let flags = r.unwrap();
-    assert_eq!(
-      flags.subcommand,
-      EndeSubcommand::Install(InstallFlags::Local(
-        InstallFlagsLocal::TopLevel(InstallTopLevelFlags {
-          lockfile_only: false,
-          production: false,
-          skip_types: false,
-        }),
-        NpmInstallTargetFlags {
-          os: Some("linux".to_string()),
-          arch: Some("arm64".to_string()),
-        },
-      ))
-    );
-    assert_eq!(
-      npm_system_info(&flags.subcommand),
-      NpmSystemInfo {
-        os: "linux".into(),
-        cpu: "arm64".into(),
-      }
-    );
-  }
-
-  #[test]
-  fn install_os_only_flag() {
-    let r = flags_from_vec(svec!["ende", "install", "--os", "win32"]);
-    let flags = r.unwrap();
-    assert_eq!(
-      flags.subcommand,
-      EndeSubcommand::Install(InstallFlags::Local(
-        InstallFlagsLocal::TopLevel(InstallTopLevelFlags {
-          lockfile_only: false,
-          production: false,
-          skip_types: false,
-        }),
-        NpmInstallTargetFlags {
-          os: Some("win32".to_string()),
-          arch: None,
-        },
-      ))
-    );
-    let sys_info = npm_system_info(&flags.subcommand);
-    assert_eq!(sys_info.os.as_str(), "win32");
   }
 
   #[test]

@@ -197,35 +197,6 @@ fn bump_version_preserves_ende_json_structure() {
 }
 
 #[test]
-fn bump_version_works_with_package_json() {
-  let context = TestContextBuilder::new().use_temp_cwd().build();
-  let cwd = context.temp_dir().path();
-
-  cwd.join("package.json").write(
-    r#"{
-  "name": "my-package",
-  "version": "1.5.2",
-  "scripts": {
-    "test": "deno test"
-  }
-}"#,
-  );
-
-  let output = context
-    .new_command()
-    .args("bump-version minor")
-    .split_output()
-    .run();
-
-  output.assert_exit_code(0).skip_output_check();
-  assert_contains!(output.stdout(), "1.6.0");
-
-  let content = cwd.join("package.json").read_to_string();
-  assert_contains!(content, r#""version": "1.6.0""#);
-  assert_contains!(content, r#""name": "my-package""#);
-}
-
-#[test]
 fn bump_version_fails_without_config_files() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
 
@@ -236,7 +207,7 @@ fn bump_version_fails_without_config_files() {
     .run();
 
   output.assert_exit_code(1).skip_output_check();
-  assert_contains!(output.stderr(), "No ende.json or package.json found");
+  assert_contains!(output.stderr(), "No ende.json found");
 }
 
 #[test]

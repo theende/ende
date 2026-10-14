@@ -1,6 +1,6 @@
 [UNORDERED_START]
-Task build (b) echo b
-Task build (a) echo a
-[b#build] b
-[a#build] a
+Task build (@scope/b) echo b
+Task build (@scope/a) echo a
+[@scope/b#build] b
+[@scope/a#build] a
 [UNORDERED_END]

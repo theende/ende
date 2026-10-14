@@ -8,10 +8,7 @@ use anyhow::Error as AnyError;
 use capacity_builder::StringBuilder;
 use deno_error::JsErrorBox;
 use deno_path_util::fs::atomic_write_file_with_retries;
-use deno_semver::VersionReq;
-use deno_semver::jsr::JsrDepPackageReq;
 use deno_semver::package::PackageNv;
-use deno_semver::package::PackageReq;
 use ende_config::workspace::Workspace;
 use ende_lockfile::Lockfile;
 use ende_lockfile::NpmPackageInfoProvider;
@@ -21,11 +18,8 @@ use ende_maybe_sync::MaybeSync;
 use ende_npm::registry::NpmRegistryApi;
 use ende_npm::resolution::DefaultTarballUrlProvider;
 use ende_npm::resolution::NpmRegistryDefaultTarballUrlProvider;
-use ende_package_json::PackageJsonDepValue;
 use futures::TryStreamExt;
 use futures::stream::FuturesOrdered;
-use indexmap::IndexMap;
-use node_resolver::PackageJson;
 use parking_lot::Mutex;
 use parking_lot::MutexGuard;
 
@@ -289,43 +283,6 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
     maybe_external_import_map: Option<&serde_json::Value>,
     api: &dyn NpmPackageInfoProvider,
   ) -> Result<Option<Self>, AnyError> {
-    fn pkg_json_deps(
-      maybe_pkg_json: Option<&PackageJson>,
-      catalogs: &IndexMap<String, IndexMap<String, String>>,
-    ) -> HashSet<JsrDepPackageReq> {
-      let Some(pkg_json) = maybe_pkg_json else {
-        return Default::default();
-      };
-      let deps = pkg_json.resolve_local_package_json_deps();
-
-      deps
-        .dependencies
-        .iter()
-        .chain(deps.dev_dependencies.iter())
-        .filter_map(|(alias, dep)| dep.as_ref().ok().map(|d| (alias, d)))
-        .filter_map(|(alias, dep)| match dep {
-          PackageJsonDepValue::File(_) => {
-            // ignored because this will have its own separate lockfile
-            None
-          }
-          PackageJsonDepValue::Req(req) => {
-            Some(JsrDepPackageReq::npm(req.clone()))
-          }
-          PackageJsonDepValue::Workspace { .. } => None,
-          PackageJsonDepValue::Catalog(catalog_name) => {
-            let catalog = catalogs.get(catalog_name.as_str())?;
-            let version_req_str = catalog.get(alias.as_str())?;
-            let version_req =
-              VersionReq::parse_from_npm(version_req_str).ok()?;
-            Some(JsrDepPackageReq::npm(PackageReq {
-              name: alias.clone(),
-              version_req,
-            }))
-          }
-        })
-        .collect()
-    }
-
     if flags.no_lock {
       return Ok(None);
     }
@@ -357,10 +314,8 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
     let root_url = workspace.root_dir_url();
     let config = ende_lockfile::WorkspaceConfig {
       root: WorkspaceMemberConfig {
-        package_json_deps: pkg_json_deps(
-          root_folder.pkg_json.as_deref(),
-          workspace.catalogs(),
-        ),
+        // package.json is not supported in Ende
+        package_json_deps: Default::default(),
         dependencies: if let Some(map) = maybe_external_import_map {
           ende_config::import_map::import_map_deps_from_value(map)
             .collect::<HashSet<_>>()
@@ -368,7 +323,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
           root_folder
             .ende_json
             .as_deref()
-            .map(|d| d.dependencies(workspace.catalogs()))
+            .map(|d| d.dependencies())
             .unwrap_or_default()
         },
       },
@@ -390,19 +345,14 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
             },
             {
               let config = WorkspaceMemberConfig {
-                package_json_deps: pkg_json_deps(
-                  folder.pkg_json.as_deref(),
-                  workspace.catalogs(),
-                ),
+                package_json_deps: Default::default(),
                 dependencies: folder
                   .ende_json
                   .as_deref()
-                  .map(|d| d.dependencies(workspace.catalogs()))
+                  .map(|d| d.dependencies())
                   .unwrap_or_default(),
               };
-              if config.package_json_deps.is_empty()
-                && config.dependencies.is_empty()
-              {
+              if config.dependencies.is_empty() {
                 // exclude empty workspace members
                 return None;
               }
@@ -412,58 +362,8 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
         })
         .collect(),
       links: workspace
-        .link_pkg_jsons()
-        .filter_map(|pkg_json| {
-          fn collect_deps(
-            deps: Option<&IndexMap<String, String>>,
-          ) -> HashSet<JsrDepPackageReq> {
-            deps
-              .map(|i| {
-                i.iter()
-                  .filter_map(|(k, v)| PackageJsonDepValue::parse(k, v).ok())
-                  .filter_map(|dep| match dep {
-                    PackageJsonDepValue::Req(req) => {
-                      Some(JsrDepPackageReq::npm(req.clone()))
-                    }
-                    // not supported
-                    PackageJsonDepValue::File(_)
-                    | PackageJsonDepValue::Workspace { .. }
-                    | PackageJsonDepValue::Catalog(_) => None,
-                  })
-                  .collect()
-              })
-              .unwrap_or_default()
-          }
-
-          let name = pkg_json.name.as_ref()?;
-          let key = StringBuilder::<String>::build(|builder| {
-            builder.append("npm:");
-            builder.append(name);
-            if let Some(version) = &pkg_json.version {
-              builder.append('@');
-              builder.append(version);
-            }
-          })
-          .unwrap();
-          // anything that affects npm resolution should go here in order to bust
-          // the npm resolution when it changes
-          let value = ende_lockfile::LockfileLinkContent {
-            dependencies: collect_deps(pkg_json.dependencies.as_ref()),
-            optional_dependencies: collect_deps(
-              pkg_json.optional_dependencies.as_ref(),
-            ),
-            peer_dependencies: collect_deps(
-              pkg_json.peer_dependencies.as_ref(),
-            ),
-            peer_dependencies_meta: pkg_json
-              .peer_dependencies_meta
-              .clone()
-              .and_then(|v| serde_json::from_value(v).ok())
-              .unwrap_or_default(),
-          };
-          Some((key, value))
-        })
-        .chain(workspace.link_ende_jsons().filter_map(|ende_json| {
+        .link_ende_jsons()
+        .filter_map(|ende_json| {
           let name = ende_json.json.name.as_ref()?;
           let key = StringBuilder::<String>::build(|builder| {
             builder.append("jsr:");
@@ -475,18 +375,15 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
           })
           .unwrap();
           let value = ende_lockfile::LockfileLinkContent {
-            // not this workspace's catalogs, so don't resolve against them
-            dependencies: ende_json.dependencies(&Default::default()),
+            dependencies: ende_json.dependencies(),
             optional_dependencies: Default::default(),
             peer_dependencies: Default::default(),
             peer_dependencies_meta: Default::default(),
           };
           Some((key, value))
-        }))
+        })
         .collect(),
-      npm_overrides: workspace
-        .npm_overrides()
-        .map(|m| serde_json::Value::Object(m.clone())),
+      npm_overrides: None,
     };
     lockfile.set_workspace_config(ende_lockfile::SetWorkspaceConfigOptions {
       no_npm: flags.no_npm,

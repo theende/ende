@@ -1,6 +1,4 @@
 [# notice that the remote module is not downloaded here. This is so we do not need to add an --allow-import permission here]
-Download http://localhost:4260/chalk
-Download http://localhost:4260/chalk/chalk-5.0.1.tgz
 Checking for slow types in the public API...
 error[invalid-external-import]: invalid import to a non-JSR 'http' specifier
  --> [WILDCARD]mod.ts:1:8

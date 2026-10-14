@@ -14,7 +14,6 @@ use std::sync::Arc;
 
 use deno_path_util::resolve_url_or_path;
 use deno_semver::jsr::JsrPackageReqReference;
-use deno_semver::npm::NpmPackageReqReference;
 use ende_cache_dir::file_fetcher::CacheSetting;
 use ende_config::ende_json::DEFAULT_CONFIG_FILE_NAME;
 use ende_config::ende_json::DEPRECATED_LOCKFILE_NAME;
@@ -57,6 +56,14 @@ pub async fn install_global(
   flags: Arc<Flags>,
   install_flags_global: InstallFlagsGlobal,
 ) -> Result<(), AnyError> {
+  if let Some(npm_url) = install_flags_global
+    .module_urls
+    .iter()
+    .find(|url| url.starts_with("npm:"))
+  {
+    return Err(crate::tools::npm_not_supported_error(npm_url));
+  }
+
   // ensure the module is cached
   let factory = CliFactory::from_flags(flags.clone());
 
@@ -107,8 +114,8 @@ pub async fn install_global(
       Vec::new()
     };
 
-  // Validate every entry and default unprefixed bare package names to the npm
-  // registry (matching `ende add` and local `ende install`) before installing
+  // Validate every entry and default unprefixed bare package names to JSR
+  // (matching `ende add` and local `ende install`) before installing
   // anything, so an error on entry N doesn't leave entries < N installed.
   let module_urls: Vec<String> = install_flags_global
     .module_urls
@@ -128,7 +135,7 @@ pub async fn install_global(
         bail!(
           concat!(
             "{} is missing a prefix. Ende 3.0 requires `--` before script arguments in `ende install -g`. ",
-            "Did you mean `ende install -g {} -- {}`? Or maybe provide a `jsr:` or `npm:` prefix?",
+            "Did you mean `ende install -g {} -- {}`? Or maybe provide a `jsr:` prefix?",
           ),
           entry_text,
           &install_flags_global.module_urls[0],
@@ -136,16 +143,16 @@ pub async fn install_global(
         );
       }
       if let Ok(Err(package_req)) =
-        crate::tools::pm::AddRmPackageReq::parse(entry_text, None)
+        crate::tools::pm::AddRmPackageReq::parse(entry_text, false)
       {
-        return Ok(format!("npm:{package_req}"));
+        return Ok(format!("jsr:{package_req}"));
       }
       Ok(module_url.clone())
     })
     .collect::<Result<_, _>>()?;
 
   for module_url in &module_urls {
-    let (name_and_url, extra_bin_entries) = BinaryNameAndUrl::resolve(
+    let name_and_url = BinaryNameAndUrl::resolve(
       &factory.bin_name_resolver()?,
       cli_options.initial_cwd(),
       module_url,
@@ -171,12 +178,6 @@ pub async fn install_global(
       npmrc: npmrc.clone(),
       npm_package_info_provider,
     };
-    // Flatten dependencies from the entrypoint's closest package.json into the
-    // copied config's import map. Entries from an explicit `--config` import
-    // map and from workspace members take precedence.
-    let mut extra_imports = workspace_member_imports.clone();
-    extra_imports
-      .extend(package_json_dep_import_entries(&name_and_url.module_url));
     setup_config_dir(
       &name_and_url,
       &flags,
@@ -184,7 +185,7 @@ pub async fn install_global(
       &installation_dir,
       Some(&jsr_lockfile_fetcher),
       install_flags_global.force,
-      &extra_imports,
+      &workspace_member_imports,
     )
     .await?;
 
@@ -195,43 +196,6 @@ pub async fn install_global(
       &flags,
       &install_flags_global,
     )?;
-
-    // create install shims for extra bin entries
-    let mut installed_extra: Vec<&str> = Vec::new();
-    let mut extra_install_err = None;
-    for extra_entry in &extra_bin_entries {
-      match create_install_shim(
-        extra_entry,
-        cli_options.initial_cwd(),
-        &flags,
-        &install_flags_global,
-      ) {
-        Ok(()) => installed_extra.push(&extra_entry.name),
-        Err(err) => {
-          extra_install_err = Some(err);
-          break;
-        }
-      }
-    }
-    if let Some(err) = extra_install_err {
-      // rollback: remove the primary shim and any extra shims that were created
-      let _ = remove_shim_files(&installation_dir, &name_and_url.name);
-      for extra_name in &installed_extra {
-        let _ = remove_shim_files(&installation_dir, extra_name);
-      }
-      return Err(err);
-    }
-
-    // store extra bin entry names in the config dir for uninstall
-    if !extra_bin_entries.is_empty() {
-      let config_dir = installation_dir.join(format!(".{}", name_and_url.name));
-      let extra_names: Vec<&str> =
-        extra_bin_entries.iter().map(|e| e.name.as_str()).collect();
-      fs::write(
-        config_dir.join("extra_bin_entries.json"),
-        serde_json::to_string(&extra_names)?,
-      )?;
-    }
   }
   Ok(())
 }
@@ -301,7 +265,8 @@ pub async fn uninstall(
     // remove the .<name>/ config directory if it exists
     let config_dir = installation_dir.join(format!(".{}", name));
 
-    // check for extra bin entries stored during install and remove their shims
+    // check for extra bin entries stored by installs of npm packages from
+    // older versions and remove their shims
     let extra_bins_file = config_dir.join("extra_bin_entries.json");
     if extra_bins_file.is_file()
       && let Ok(content) = fs::read_to_string(&extra_bins_file)
@@ -498,12 +463,10 @@ async fn setup_config_dir(
   if let Some(original_config_url) = &original_config_url {
     rewrite_relative_import_map_paths(&config_obj, original_config_url);
   }
-  // Flatten workspace members and package.json dependencies into the import
-  // map. The `workspace` field is stripped below to stop discovery and the
-  // entrypoint's package.json isn't visible from the config dir, which would
-  // otherwise break resolution of bare specifiers that point at member
-  // packages or package.json dependencies. Existing import map entries win,
-  // matching the runtime precedence of the import map.
+  // Flatten workspace members into the import map. The `workspace` field is
+  // stripped below to stop discovery, which would otherwise break resolution
+  // of bare specifiers that point at member packages. Existing import map
+  // entries win, matching the runtime precedence of the import map.
   if !extra_imports.is_empty() {
     let imports = config_obj.object_value_or_set("imports");
     for (specifier, target) in extra_imports {
@@ -514,20 +477,6 @@ async fn setup_config_dir(
   }
   config_obj.append("workspace", CstInputValue::Array(Vec::new())); // stop workspace discovery
   fs::write(dir.join(DEFAULT_CONFIG_FILE_NAME), config.to_string())?;
-
-  // write package.json for npm specifiers
-  if let Ok(pkg_ref) =
-    NpmPackageReqReference::from_specifier(&bin_name_and_url.module_url)
-  {
-    let req = pkg_ref.req();
-    fs::write(
-      dir.join("package.json"),
-      format!(
-        "{{\"dependencies\": {{\"{}\": \"{}\"}}}}",
-        req.name, req.version_req
-      ),
-    )?;
-  }
 
   // fetch the package's lockfile from JSR if this is a JSR package
   if !flags.no_lock
@@ -548,9 +497,6 @@ async fn setup_config_dir(
       Some(resolve_url_or_path(import_map_path, cwd)?.to_string());
   }
   new_flags.initial_cwd = Some(dir.clone());
-  new_flags.node_modules_dir = flags.node_modules_dir;
-  new_flags.internal.root_node_modules_dir_override =
-    Some(dir.join("node_modules"));
   new_flags.config_flag = ConfigFlag::Path(
     dir
       .join(DEFAULT_CONFIG_FILE_NAME)
@@ -560,12 +506,9 @@ async fn setup_config_dir(
   let entrypoint_flags = InstallEntrypointsFlags {
     lockfile_only: false,
     entrypoints: vec![bin_name_and_url.module_url.to_string()],
-    production: false,
-    skip_types: false,
   };
   new_flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
     InstallFlagsLocal::Entrypoints(entrypoint_flags.clone()),
-    Default::default(),
   ));
 
   crate::tools::installer::install_from_entrypoints(
@@ -590,10 +533,8 @@ async fn setup_config_dir(
 /// would when invoked from the original workspace. See
 /// https://github.com/denoland/deno/issues/32057.
 ///
-/// Only `ende.json` members (those with a `name` and `exports`) are flattened,
-/// since they are the ones resolved through the import map. `package.json`
-/// members resolve via `node_modules`, which is unaffected by stripping the
-/// `workspace` field, so they don't need an entry here.
+/// Only members with a `name` and `exports` are flattened, since they are the
+/// ones resolved through the import map.
 fn workspace_member_import_entries(
   workspace: &ende_config::workspace::Workspace,
 ) -> Vec<(String, String)> {
@@ -612,85 +553,6 @@ fn workspace_member_import_entries(
     }
   }
   entries
-}
-
-/// Builds import map entries for the dependencies declared in the closest
-/// package.json to a local file entrypoint.
-///
-/// `ende install -g` copies the supplied config (or an empty one) into a
-/// per-binary directory and the installed command runs with that config, so
-/// dependencies declared in the project's package.json are not visible to it.
-/// Flatten them into the copied config's import map (e.g. `"@std/log":
-/// "npm:@jsr/std__log@^0.224.9"`, plus a trailing-slash entry for subpath
-/// imports) so bare specifiers keep resolving the same way they do when
-/// running the entrypoint directly. See
-/// https://github.com/denoland/deno/issues/26412.
-fn package_json_dep_import_entries(module_url: &Url) -> Vec<(String, String)> {
-  use ende_package_json::PackageJsonDepValue;
-
-  let Ok(file_path) = deno_path_util::url_to_file_path(module_url) else {
-    return Vec::new();
-  };
-  let sys = crate::sys::CliSys::default();
-  let mut maybe_dir = file_path.parent();
-  while let Some(dir) = maybe_dir {
-    let pkg_json = match ende_package_json::PackageJson::load_from_path(
-      &sys,
-      None,
-      &dir.join("package.json"),
-    ) {
-      Ok(Some(pkg_json)) => pkg_json,
-      Ok(None) => {
-        maybe_dir = dir.parent();
-        continue;
-      }
-      Err(err) => {
-        log::warn!(
-          "{} Ignoring package.json for the installed command: {:#}",
-          crate::colors::yellow("Warning"),
-          err
-        );
-        return Vec::new();
-      }
-    };
-    let deps = pkg_json.resolve_local_package_json_deps();
-    let mut entries = Vec::new();
-    // Only runtime `dependencies` are flattened. `devDependencies` aren't
-    // needed by the installed global command and would otherwise emit a
-    // spurious warning for any dev-only file:/workspace:/catalog: entry.
-    for (alias, dep) in deps.dependencies.iter() {
-      match dep {
-        Ok(PackageJsonDepValue::Req(req)) => {
-          // The trailing-slash entry uses the `npm:/pkg@req/` form because
-          // `npm:pkg@req/` is an opaque-path URL that subpaths cannot be
-          // URL-joined onto.
-          entries.push((
-            format!("{}/", alias),
-            format!("npm:/{}@{}/", req.name, req.version_req.version_text()),
-          ));
-          entries.push((
-            alias.to_string(),
-            format!("npm:{}@{}", req.name, req.version_req.version_text()),
-          ));
-        }
-        Ok(
-          PackageJsonDepValue::File(_)
-          | PackageJsonDepValue::Workspace { .. }
-          | PackageJsonDepValue::Catalog(_),
-        )
-        | Err(_) => {
-          log::warn!(
-            "{} Ignoring \"{}\" from '{}' because only npm and jsr dependencies are supported by the installed command.",
-            crate::colors::yellow("Warning"),
-            alias,
-            pkg_json.path.display(),
-          );
-        }
-      }
-    }
-    return entries;
-  }
-  Vec::new()
 }
 
 /// Rewrites `./` and `../` paths inside `imports` and `scopes` to absolute
@@ -773,89 +635,14 @@ fn rewrite_relative_import_map_paths(
   }
 }
 
-/// After packages are installed (including postinstall scripts), check if the
-/// npm bin entry resolves to a native binary on disk. Returns the absolute path
-/// to the binary if so. This handles packages that ship platform-specific
-/// native binaries via optional dependencies and a postinstall script that
-/// copies the binary into the bin entry path.
-fn resolve_native_binary_path(
-  bin_name_and_url: &BinaryNameAndUrl,
-  installation_dir: &Path,
-) -> Option<PathBuf> {
-  let npm_ref =
-    NpmPackageReqReference::from_specifier(&bin_name_and_url.module_url)
-      .ok()?;
-  let pkg_name = &npm_ref.req().name;
-  let node_modules_pkg_dir = installation_dir
-    .join(format!(".{}", bin_name_and_url.config_dir_name()))
-    .join("node_modules")
-    .join(pkg_name.as_str());
-
-  let sys = crate::sys::CliSys::default();
-  let bin_path = if let Some(sub_path) = npm_ref.sub_path() {
-    // Extra bin entries encode the script path as the sub_path.
-    node_modules_pkg_dir.join(sub_path)
-  } else {
-    // Primary entry: resolve the bin script via package.json.
-    let pkg_json = ende_package_json::PackageJson::load_from_path(
-      &sys,
-      None,
-      &node_modules_pkg_dir.join("package.json"),
-    )
-    .ok()
-    .flatten()?;
-    let bins = pkg_json.resolve_bins().ok()?;
-    let ende_package_json::PackageJsonBins::Bins(bins) = bins else {
-      return None;
-    };
-    // For a string bin field, `resolve_bins` keys the entry by the
-    // package's default bin name, which may not match `--name` overrides.
-    // Fall back to the sole entry when there's only one bin.
-    bins
-      .get(&bin_name_and_url.name)
-      .or_else(|| {
-        if bins.len() == 1 {
-          bins.values().next()
-        } else {
-          None
-        }
-      })?
-      .clone()
-  };
-
-  // Only treat the bin entry as a native binary if its magic bytes match
-  // ELF/Mach-O/PE. `node_resolver::read_bin_value` returns `Executable` for
-  // any file whose first line isn't a recognized npx-style shebang (e.g.
-  // `#!/usr/bin/env deno` scripts) — which would incorrectly cause us to
-  // generate an `exec`-the-file shim instead of an `ende run` shim. On
-  // Windows there is no shebang interpretation, so that breaks installs of
-  // ordinary npm packages whose bin scripts use a non-Node shebang.
-  use std::io::Read;
-  let mut file = std::fs::File::open(&bin_path).ok()?;
-  let mut buf = [0u8; 4];
-  if file.read(&mut buf).ok()? < 4 {
-    return None;
-  }
-  if node_resolver::is_binary(&buf) {
-    Some(bin_path)
-  } else {
-    None
-  }
-}
-
 fn create_install_shim(
   bin_name_and_url: &BinaryNameAndUrl,
   cwd: &Path,
   flags: &Flags,
   install_flags_global: &InstallFlagsGlobal,
 ) -> Result<(), AnyError> {
-  let mut shim_data =
+  let shim_data =
     resolve_shim_data(bin_name_and_url, cwd, flags, install_flags_global)?;
-
-  // Check if the bin entry is a native binary (e.g. Node SEA or platform-specific
-  // binary installed via postinstall). If so, the shim should exec it directly.
-  shim_data.native_binary_path =
-    resolve_native_binary_path(bin_name_and_url, &shim_data.installation_dir);
 
   // ensure directory exists
   if let Ok(metadata) = fs::metadata(&shim_data.installation_dir) {
@@ -949,10 +736,6 @@ fn resolve_shim_data(
     executable_args.push("--no-remote".to_string());
   }
 
-  if flags.no_npm {
-    executable_args.push("--no-npm".to_string());
-  }
-
   if flags.cached_only {
     executable_args.push("--cached-only".to_string());
   }
@@ -989,8 +772,7 @@ fn resolve_shim_data(
   }
 
   // all config/lock files live under .<name>/ in the bin dir
-  let config_dir =
-    installation_dir.join(format!(".{}", bin_name_and_url.config_dir_name()));
+  let config_dir = installation_dir.join(format!(".{}", bin_name_and_url.name));
 
   let ende_json_path = config_dir.join(DEFAULT_CONFIG_FILE_NAME);
   executable_args.push("--config".to_string());
@@ -1007,30 +789,21 @@ fn resolve_shim_data(
     installation_dir,
     file_path,
     args: executable_args,
-    native_binary_path: None,
   })
 }
 
 struct BinaryNameAndUrl {
   name: String,
   module_url: Url,
-  /// For extra bin entries, this is the primary bin name (used for config dir).
-  /// None means this is the primary entry (config dir uses self.name).
-  config_name: Option<String>,
 }
 
 impl BinaryNameAndUrl {
-  /// Returns the name to use for the config directory.
-  fn config_dir_name(&self) -> &str {
-    self.config_name.as_deref().unwrap_or(&self.name)
-  }
-
   pub async fn resolve(
     bin_name_resolver: &BinNameResolver<'_>,
     cwd: &Path,
     module_url: &str,
     install_flags_global: &InstallFlagsGlobal,
-  ) -> Result<(Self, Vec<Self>), AnyError> {
+  ) -> Result<Self, AnyError> {
     static EXEC_NAME_RE: Lazy<Regex> = Lazy::new(|| {
       RegexBuilder::new(r"^[a-z0-9][\w-]*$")
         .case_insensitive(true)
@@ -1064,58 +837,7 @@ impl BinaryNameAndUrl {
     };
     validate_name(&name)?;
 
-    // Skip extra bin resolution when --name is provided (explicit single-entry
-    // intent) or when the specifier has a sub_path (e.g. npm:cowsay/cowthink).
-    let mut extra_entries = Vec::new();
-    if install_flags_global.name.is_none()
-      && let Ok(npm_ref) = NpmPackageReqReference::from_specifier(&module_url)
-      && npm_ref.sub_path().is_none()
-      && let Some(all_bins) = bin_name_resolver
-        .resolve_all_bin_entries_from_npm(&module_url)
-        .await
-      && all_bins.len() > 1
-    {
-      let req = npm_ref.req();
-      for (bin_name, script_path) in &all_bins {
-        if *bin_name == name {
-          continue; // skip the primary entry
-        }
-        validate_name(bin_name)?;
-        // Strip leading "./" from script paths (common in package.json bin fields)
-        let script_path = script_path
-          .strip_prefix("./")
-          .unwrap_or(script_path.as_str());
-        // Construct the module URL for this bin entry: npm:package@version/script_path
-        let extra_url = if req.version_req.version_text() == "*" {
-          Url::parse(&format!("npm:{}/{}", req.name, script_path))
-        } else {
-          Url::parse(&format!(
-            "npm:{}@{}/{}",
-            req.name,
-            req.version_req.version_text(),
-            script_path
-          ))
-        };
-        if let Ok(extra_url) = extra_url {
-          extra_entries.push(BinaryNameAndUrl {
-            name: bin_name.clone(),
-            module_url: extra_url,
-            config_name: Some(name.clone()),
-          });
-        }
-      }
-    }
-
-    extra_entries.sort_by(|a, b| a.name.cmp(&b.name));
-
-    Ok((
-      BinaryNameAndUrl {
-        name,
-        module_url,
-        config_name: None,
-      },
-      extra_entries,
-    ))
+    Ok(BinaryNameAndUrl { name, module_url })
   }
 }
 
@@ -1123,9 +845,6 @@ struct ShimData {
   installation_dir: PathBuf,
   file_path: PathBuf,
   args: Vec<String>,
-  /// If set, the bin entry is a native binary and the shim should exec it
-  /// directly instead of wrapping with `ende run`.
-  native_binary_path: Option<PathBuf>,
 }
 
 #[cfg(windows)]
@@ -1134,76 +853,47 @@ struct ShimData {
 /// A second compatible with git bash / MINGW64
 /// Generate batch script to satisfy that.
 fn generate_executable_file(shim_data: &ShimData) -> Result<(), AnyError> {
-  if let Some(native_path) = &shim_data.native_binary_path {
-    // Native binary: exec it directly
-    let native_display = native_path.display();
-    let template =
-      format!("% generated by ende install %\n@\"{native_display}\" %*\n",);
-    let mut file = File::create(&shim_data.file_path)?;
-    file.write_all(template.as_bytes())?;
+  let args: Vec<String> =
+    shim_data.args.iter().map(|c| format!("\"{c}\"")).collect();
+  let template = format!(
+    "% generated by ende install %\n@ende {} %*\n",
+    args
+      .iter()
+      .map(|arg| arg.replace('%', "%%"))
+      .collect::<Vec<_>>()
+      .join(" ")
+  );
+  let mut file = File::create(&shim_data.file_path)?;
+  file.write_all(template.as_bytes())?;
 
-    let template = format!(
-      r#"#!/bin/sh
-# generated by ende install
-exec "{native_display}" "$@"
-"#,
-    );
-    let mut file = File::create(shim_data.file_path.with_extension(""))?;
-    file.write_all(template.as_bytes())?;
-  } else {
-    let args: Vec<String> =
-      shim_data.args.iter().map(|c| format!("\"{c}\"")).collect();
-    let template = format!(
-      "% generated by ende install %\n@ende {} %*\n",
-      args
-        .iter()
-        .map(|arg| arg.replace('%', "%%"))
-        .collect::<Vec<_>>()
-        .join(" ")
-    );
-    let mut file = File::create(&shim_data.file_path)?;
-    file.write_all(template.as_bytes())?;
-
-    // write file for bash
-    // create filepath without extensions
-    let template = format!(
-      r#"#!/bin/sh
+  // write file for bash
+  // create filepath without extensions
+  let template = format!(
+    r#"#!/bin/sh
 # generated by ende install
 ende {} "$@"
 "#,
-      args.join(" "),
-    );
-    let mut file = File::create(shim_data.file_path.with_extension(""))?;
-    file.write_all(template.as_bytes())?;
-  }
+    args.join(" "),
+  );
+  let mut file = File::create(shim_data.file_path.with_extension(""))?;
+  file.write_all(template.as_bytes())?;
   Ok(())
 }
 
 #[cfg(not(windows))]
 fn generate_executable_file(shim_data: &ShimData) -> Result<(), AnyError> {
-  let template = if let Some(native_path) = &shim_data.native_binary_path {
-    let path_str = posix_shell_escape(&native_path.to_string_lossy());
-    format!(
-      r#"#!/bin/sh
-# generated by ende install
-exec {} "$@"
-"#,
-      path_str,
-    )
-  } else {
-    let args: Vec<String> = shim_data
-      .args
-      .iter()
-      .map(|arg| posix_shell_escape(arg))
-      .collect();
-    format!(
-      r#"#!/bin/sh
+  let args: Vec<String> = shim_data
+    .args
+    .iter()
+    .map(|arg| posix_shell_escape(arg))
+    .collect();
+  let template = format!(
+    r#"#!/bin/sh
 # generated by ende install
 exec ende {} "$@"
 "#,
-      args.join(" "),
-    )
-  };
+    args.join(" "),
+  );
   let mut file = File::create(&shim_data.file_path)?;
   file.write_all(template.as_bytes())?;
   let _metadata = fs::metadata(&shim_data.file_path)?;
@@ -1478,7 +1168,6 @@ mod tests {
   use std::process::Command;
 
   use ende_lib::args::UnstableConfig;
-  use ende_npm::resolution::NpmVersionResolver;
   use test_util::TempDir;
   use test_util::testdata_path;
 
@@ -1497,11 +1186,8 @@ mod tests {
     let _http_server_guard = test_util::http_server();
     let cwd = resolve_cwd(None).unwrap();
     let http_client = HttpClientProvider::new(None, None);
-    let registry_api = ende_npm::registry::TestNpmRegistryApi::default();
-    let npm_version_resolver = NpmVersionResolver::default();
-    let resolver =
-      BinNameResolver::new(&http_client, &registry_api, &npm_version_resolver);
-    let (binary_name_and_url, _extra_entries) = BinaryNameAndUrl::resolve(
+    let resolver = BinNameResolver::new(&http_client);
+    let binary_name_and_url = BinaryNameAndUrl::resolve(
       &resolver,
       &cwd,
       &install_flags_global.module_urls[0],
@@ -1546,11 +1232,8 @@ mod tests {
     let _http_server_guard = test_util::http_server();
     let cwd = resolve_cwd(None).unwrap();
     let http_client = HttpClientProvider::new(None, None);
-    let registry_api = ende_npm::registry::TestNpmRegistryApi::default();
-    let npm_version_resolver = NpmVersionResolver::default();
-    let resolver =
-      BinNameResolver::new(&http_client, &registry_api, &npm_version_resolver);
-    let (binary_name_and_url, _extra_entries) = BinaryNameAndUrl::resolve(
+    let resolver = BinNameResolver::new(&http_client);
+    let binary_name_and_url = BinaryNameAndUrl::resolve(
       &resolver,
       &cwd,
       &install_flags_global.module_urls[0],
@@ -1916,80 +1599,6 @@ mod tests {
         "--config",
         &config_path.to_string_lossy(),
         "http://localhost:4545/echo.ts",
-      ]
-    );
-  }
-
-  #[tokio::test]
-  async fn install_npm_lockfile_default() {
-    let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
-    let config_path = config_dir_for(&temp_dir_str, "cowsay").join("ende.json");
-    let (_, shim_data) = resolve_shim_data(
-      &Flags {
-        permissions: PermissionFlags {
-          allow_all: true,
-          ..Default::default()
-        },
-        ..Flags::default()
-      },
-      &InstallFlagsGlobal {
-        module_urls: vec!["npm:cowsay".to_string()],
-        args: vec![],
-        name: None,
-        root: Some(temp_dir_str),
-        force: false,
-        compile: false,
-      },
-    )
-    .await
-    .unwrap();
-
-    assert_eq!(
-      shim_data.args,
-      vec![
-        "run",
-        "--allow-all",
-        "--config",
-        &config_path.to_string_lossy(),
-        "npm:cowsay"
-      ]
-    );
-  }
-
-  #[tokio::test]
-  async fn install_npm_no_lock() {
-    let temp_dir_str = env::temp_dir().to_string_lossy().into_owned();
-    let config_path = config_dir_for(&temp_dir_str, "cowsay").join("ende.json");
-    let (_, shim_data) = resolve_shim_data(
-      &Flags {
-        permissions: PermissionFlags {
-          allow_all: true,
-          ..Default::default()
-        },
-        no_lock: true,
-        ..Flags::default()
-      },
-      &InstallFlagsGlobal {
-        module_urls: vec!["npm:cowsay".to_string()],
-        args: vec![],
-        name: None,
-        root: Some(temp_dir_str),
-        force: false,
-        compile: false,
-      },
-    )
-    .await
-    .unwrap();
-
-    assert_eq!(
-      shim_data.args,
-      vec![
-        "run",
-        "--allow-all",
-        "--config",
-        &config_path.to_string_lossy(),
-        "--no-lock",
-        "npm:cowsay"
       ]
     );
   }
@@ -2646,115 +2255,6 @@ mod tests {
     assert!(super::validate_npm_tarball_urls(&content, &npmrc).is_err());
   }
 
-  #[test]
-  fn native_binary_shim_for_npm_package() {
-    // Set up a temp directory mimicking the global install layout:
-    //   <root>/bin/.<name>/node_modules/<pkg>/package.json
-    //   <root>/bin/.<name>/node_modules/<pkg>/bin/tool.exe  (Mach-O magic)
-    let temp_dir = TempDir::new();
-    let bin_dir = temp_dir.path().join("bin").to_path_buf();
-    let config_dir = bin_dir.join(".mytool");
-    let pkg_dir = config_dir.join("node_modules").join("mytool");
-    let bin_sub = pkg_dir.join("bin");
-    std::fs::create_dir_all(&bin_sub).unwrap();
-
-    // Write a package.json with a bin entry pointing to a binary
-    std::fs::write(
-      pkg_dir.join("package.json"),
-      r#"{"name": "mytool", "bin": {"mytool": "bin/tool.exe"}}"#,
-    )
-    .unwrap();
-
-    // Write a fake Mach-O 64-bit binary (magic bytes: 0xcffaedfe in LE = 0xfeedfacf)
-    let mut macho_bytes = vec![0xcf, 0xfa, 0xed, 0xfe];
-    macho_bytes.extend_from_slice(&[0u8; 100]); // pad
-    std::fs::write(bin_sub.join("tool.exe"), &macho_bytes).unwrap();
-
-    // Write the config dir's ende.json so the directory exists as expected
-    std::fs::write(config_dir.join("ende.json"), "{}").unwrap();
-
-    let bin_name_and_url = BinaryNameAndUrl {
-      name: "mytool".to_string(),
-      module_url: Url::parse("npm:mytool@1.0.0").unwrap(),
-      config_name: None,
-    };
-
-    let result = super::resolve_native_binary_path(&bin_name_and_url, &bin_dir);
-    assert!(result.is_some(), "should detect Mach-O binary");
-    assert!(
-      result.unwrap().ends_with("bin/tool.exe"),
-      "should return path to the binary"
-    );
-  }
-
-  #[test]
-  fn native_binary_not_detected_for_js_file() {
-    let temp_dir = TempDir::new();
-    let bin_dir = temp_dir.path().join("bin").to_path_buf();
-    let config_dir = bin_dir.join(".mytool");
-    let pkg_dir = config_dir.join("node_modules").join("mytool");
-    std::fs::create_dir_all(&pkg_dir).unwrap();
-
-    std::fs::write(
-      pkg_dir.join("package.json"),
-      r#"{"name": "mytool", "bin": {"mytool": "cli.js"}}"#,
-    )
-    .unwrap();
-    std::fs::write(
-      pkg_dir.join("cli.js"),
-      "#!/usr/bin/env node\nconsole.log('hello');",
-    )
-    .unwrap();
-
-    let bin_name_and_url = BinaryNameAndUrl {
-      name: "mytool".to_string(),
-      module_url: Url::parse("npm:mytool@1.0.0").unwrap(),
-      config_name: None,
-    };
-
-    let result = super::resolve_native_binary_path(&bin_name_and_url, &bin_dir);
-    assert!(
-      result.is_none(),
-      "should not detect JS file as native binary"
-    );
-  }
-
-  #[test]
-  fn native_binary_not_detected_for_non_node_shebang_js() {
-    // Regression: a JS bin script with a non-Node shebang (e.g.
-    // `#!/usr/bin/env deno`) was being misclassified as a native binary,
-    // which broke `ende install -g` on Windows since the generated shim
-    // execed the .js file directly instead of running `ende run`.
-    let temp_dir = TempDir::new();
-    let bin_dir = temp_dir.path().join("bin").to_path_buf();
-    let config_dir = bin_dir.join(".mytool");
-    let pkg_dir = config_dir.join("node_modules").join("mytool");
-    std::fs::create_dir_all(&pkg_dir).unwrap();
-
-    std::fs::write(
-      pkg_dir.join("package.json"),
-      r#"{"name": "mytool", "bin": {"mytool": "./main.js"}}"#,
-    )
-    .unwrap();
-    std::fs::write(
-      pkg_dir.join("main.js"),
-      "#!/usr/bin/env deno\nconsole.log('hello');",
-    )
-    .unwrap();
-
-    let bin_name_and_url = BinaryNameAndUrl {
-      name: "mytool".to_string(),
-      module_url: Url::parse("npm:mytool@1.0.0").unwrap(),
-      config_name: None,
-    };
-
-    let result = super::resolve_native_binary_path(&bin_name_and_url, &bin_dir);
-    assert!(
-      result.is_none(),
-      "JS file with non-Node shebang must not be classified as native binary"
-    );
-  }
-
   #[cfg(not(windows))]
   #[test]
   fn posix_shell_escape_matches_shim_needs() {
@@ -2789,7 +2289,6 @@ mod tests {
         "%PATH%/100%".to_string(),
         "".to_string(),
       ],
-      native_binary_path: None,
     };
     super::generate_executable_file(&shim_data).unwrap();
     let content = fs::read_to_string(&file_path).unwrap();
@@ -2804,53 +2303,7 @@ mod tests {
   }
 
   #[cfg(not(windows))]
-  #[test]
-  fn generate_shim_for_normal_native_binary_path_stays_plain() {
-    let temp_dir = TempDir::new();
-    let file_path = temp_dir.path().join("mytool").to_path_buf();
-    let shim_data = ShimData {
-      installation_dir: temp_dir.path().to_path_buf(),
-      file_path: file_path.clone(),
-      args: vec!["run".to_string(), "npm:mytool".to_string()],
-      native_binary_path: Some(PathBuf::from(
-        "/install/dir/.mytool/node_modules/mytool/bin/tool.exe",
-      )),
-    };
-    super::generate_executable_file(&shim_data).unwrap();
-    let content = fs::read_to_string(&file_path).unwrap();
-    assert!(
-      content
-        .contains("exec /install/dir/.mytool/node_modules/mytool/bin/tool.exe"),
-      "normal native binary paths should not need quotes, got: {content}"
-    );
-  }
-
   #[cfg(not(windows))]
-  #[test]
-  fn generate_shim_for_native_binary() {
-    let temp_dir = TempDir::new();
-    let file_path = temp_dir.path().join("mytool").to_path_buf();
-    let shim_data = ShimData {
-      installation_dir: temp_dir.path().to_path_buf(),
-      file_path: file_path.clone(),
-      args: vec!["run".to_string(), "npm:mytool".to_string()],
-      native_binary_path: Some(PathBuf::from(
-        "/install/dir/.mytool/node_modules/mytool/bin/tool.exe",
-      )),
-    };
-    super::generate_executable_file(&shim_data).unwrap();
-    let content = fs::read_to_string(&file_path).unwrap();
-    assert!(
-      content
-        .contains("exec /install/dir/.mytool/node_modules/mytool/bin/tool.exe"),
-      "shim should exec native binary directly, got: {content}"
-    );
-    assert!(
-      !content.contains("exec ende"),
-      "shim should not exec ende, got: {content}"
-    );
-  }
-
   #[cfg(not(windows))]
   #[test]
   fn generate_shim_for_js_module() {
@@ -2860,7 +2313,6 @@ mod tests {
       installation_dir: temp_dir.path().to_path_buf(),
       file_path: file_path.clone(),
       args: vec!["run".to_string(), "npm:mytool".to_string()],
-      native_binary_path: None,
     };
     super::generate_executable_file(&shim_data).unwrap();
     let content = fs::read_to_string(&file_path).unwrap();

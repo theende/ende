@@ -4,10 +4,6 @@
       "args": "run -R index.cjs",
       "output": "index.out"
     },
-    "esm_entrypoint": {
-      "args": "run -R main.ts",
-      "output": "main.out"
-    },
     "module_error": {
       "args": "run module_error.js",
       "output": "module_error.out",

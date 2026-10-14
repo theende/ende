@@ -36,7 +36,6 @@ use ende_core::url::Url;
 use ende_lib::args::CaData;
 use ende_lib::args::get_root_cert_store;
 use ende_lib::version::ENDE_VERSION_INFO;
-use ende_npm::resolution::NpmVersionResolver;
 use ende_npm_installer::graph::NpmCachingStrategy;
 use ende_resolver::ende_json::CompilerOptionsKey;
 use ende_resolver::loader::MemoryFilesRc;
@@ -87,7 +86,6 @@ use super::logging::lsp_warn;
 use super::lsp_custom;
 use super::lsp_custom::INFERRED_TYPE_COMMAND;
 use super::lsp_custom::TaskDefinition;
-use super::npm::CliNpmSearchApi;
 use super::parent_process_checker;
 use super::performance::Performance;
 use super::refactor;
@@ -329,7 +327,6 @@ pub struct Inner {
   module_registry: ModuleRegistry,
   /// A lazily create "server" for handling test run requests.
   maybe_testing_server: Option<testing::TestServer>,
-  pub npm_search_api: CliNpmSearchApi,
   project_version: usize,
   /// A collection of measurements which instrument that performance of the LSP.
   performance: Arc<Performance>,
@@ -359,7 +356,6 @@ impl std::fmt::Debug for Inner {
       .field("jsr_search_api", &self.jsr_search_api)
       .field("module_registry", &self.module_registry)
       .field("maybe_testing_server", &self.maybe_testing_server)
-      .field("npm_search_api", &self.npm_search_api)
       .field("project_version", &self.project_version)
       .field("performance", &self.performance)
       .field(
@@ -689,15 +685,6 @@ impl Inner {
     );
     let jsr_search_api =
       CliJsrSearchApi::new(module_registry.file_fetcher.clone());
-    let npm_search_api = CliNpmSearchApi::new(
-      module_registry.file_fetcher.clone(),
-      Arc::new(NpmVersionResolver {
-        link_packages: Default::default(),
-        newest_dependency_date_options: Default::default(),
-        overrides: Default::default(),
-        trust_policy: Default::default(),
-      }),
-    );
     let config = Config::default();
     let ts_server = Arc::new(TsServer::new(performance.clone()));
     let initial_cwd = resolve_cwd(None).unwrap().into_owned();
@@ -720,7 +707,6 @@ impl Inner {
       task_queue: Default::default(),
       maybe_testing_server: None,
       module_registry,
-      npm_search_api,
       performance,
       client_needs_file_uris_for_virtual_documents: false,
       registered_semantic_tokens_capabilities: false,
@@ -821,7 +807,6 @@ impl Inner {
       client: &self.client,
       module_registry: &self.module_registry,
       jsr_search_api: &self.jsr_search_api,
-      npm_search_api: &self.npm_search_api,
       document_modules: &self.document_modules,
       resolver: self.resolver.as_ref(),
     }
@@ -916,18 +901,6 @@ impl Inner {
     }
     self.jsr_search_api =
       CliJsrSearchApi::new(self.module_registry.file_fetcher.clone());
-    self.npm_search_api = CliNpmSearchApi::new(
-      self.module_registry.file_fetcher.clone(),
-      Arc::new(NpmVersionResolver {
-        // todo(dsherret): the npm_search_api should probably be specific
-        // to each workspace so that the link packages can be properly
-        // hooked up
-        link_packages: Default::default(),
-        newest_dependency_date_options: Default::default(),
-        overrides: Default::default(),
-        trust_policy: Default::default(),
-      }),
-    );
     self.performance.measure(mark);
   }
 
@@ -1771,11 +1744,7 @@ impl Inner {
       !path.contains("/node_modules/")
         && (path.rsplit_once('/').is_some_and(|(_, name)| {
           ende_config::ende_json::is_config_file_name(name)
-        }) || path.ends_with("/package.json")
-          || path.ends_with("/tsconfig.json"))
-        || path.ends_with("/node_modules/.package-lock.json")
-        || path.ends_with("/node_modules/.yarn-integrity.json")
-        || path.ends_with("/node_modules/.modules.yaml")
+        }) || path.ends_with("/tsconfig.json"))
         || path.ends_with("/node_modules/.ende/.setup-cache.bin")
         || self.config.tree.is_watched_file(specifier)
         || self.compiler_options_resolver.is_watched_file(specifier)
@@ -1789,9 +1758,6 @@ impl Inner {
             ConfigWatchedFileType::EndeJson => {
               changed_ende_json = true;
               lsp_custom::EndeConfigurationType::EndeJson
-            }
-            ConfigWatchedFileType::PackageJson => {
-              lsp_custom::EndeConfigurationType::PackageJson
             }
             _ => return None,
           };
@@ -1837,9 +1803,6 @@ impl Inner {
           let configuration_type = match t.1 {
             ConfigWatchedFileType::EndeJson => {
               lsp_custom::EndeConfigurationType::EndeJson
-            }
-            ConfigWatchedFileType::PackageJson => {
-              lsp_custom::EndeConfigurationType::PackageJson
             }
             _ => return None,
           };
@@ -4389,20 +4352,10 @@ impl Inner {
         && let Ok(file_uri) = url_to_uri(&config_file.specifier)
       {
         config_events.push(lsp_custom::EndeConfigurationChangeEvent {
-          scope_uri: scope_uri.clone(),
-          file_uri,
-          typ: lsp_custom::EndeConfigurationChangeType::Added,
-          configuration_type: lsp_custom::EndeConfigurationType::EndeJson,
-        });
-      }
-      if let Some(package_json) = config_data.maybe_pkg_json()
-        && let Ok(file_uri) = url_to_uri(&package_json.specifier())
-      {
-        config_events.push(lsp_custom::EndeConfigurationChangeEvent {
           scope_uri,
           file_uri,
           typ: lsp_custom::EndeConfigurationChangeType::Added,
-          configuration_type: lsp_custom::EndeConfigurationType::PackageJson,
+          configuration_type: lsp_custom::EndeConfigurationType::EndeJson,
         });
       }
     }
@@ -4425,7 +4378,6 @@ impl Inner {
   ) -> Result<PrepareCacheResult, AnyError> {
     let config_data = self.config.tree.data_for_specifier(&referrer);
     let scope = config_data.map(|d| d.scope.clone());
-    let byonm = config_data.map(|d| d.byonm).unwrap_or(false);
     let mut roots = if !specifiers.is_empty() {
       specifiers
     } else {
@@ -4435,18 +4387,14 @@ impl Inner {
     let scoped_resolver = self.resolver.get_scoped_resolver(scope.as_deref());
     roots.extend(scoped_resolver.configured_auto_import_roots());
 
-    if byonm {
-      roots.retain(|s| s.scheme() != "npm");
-    } else {
-      // always include the npm packages since resolution of one npm package
-      // might affect the resolution of other npm packages
-      roots.extend(
-        scoped_resolver
-          .npm_reqs()
-          .iter()
-          .map(|req| ModuleSpecifier::parse(&format!("npm:{}", req)).unwrap()),
-      );
-    }
+    // always include the npm packages since resolution of one npm package
+    // might affect the resolution of other npm packages
+    roots.extend(
+      scoped_resolver
+        .npm_reqs()
+        .iter()
+        .map(|req| ModuleSpecifier::parse(&format!("npm:{}", req)).unwrap()),
+    );
 
     let open_modules = self
       .document_modules
@@ -4648,19 +4596,6 @@ impl Inner {
         }
       };
     }
-    for package_json in self.config.tree.package_jsons() {
-      if let Some(scripts) = &package_json.scripts {
-        for (name, command) in scripts {
-          result.push(TaskDefinition {
-            name: name.clone(),
-            command: Some(command.clone()),
-            source_uri: url_to_uri(&package_json.specifier())
-              .map_err(|_| LspError::internal_error())?,
-            description: None,
-          });
-        }
-      }
-    }
     result.sort_by_key(|d| d.name.clone());
     Ok(result)
   }
@@ -4715,7 +4650,6 @@ impl Inner {
       })?;
     self.module_registry.clear_cache();
     self.jsr_search_api.clear_cache();
-    self.npm_search_api.clear_cache();
     Ok(Some(json!(true)))
   }
 

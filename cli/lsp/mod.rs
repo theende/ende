@@ -22,7 +22,6 @@ mod legacy_client;
 mod lint;
 mod logging;
 mod lsp_custom;
-mod npm;
 mod parent_process_checker;
 mod path_to_regex;
 mod performance;

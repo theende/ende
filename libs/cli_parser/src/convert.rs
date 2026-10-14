@@ -424,7 +424,6 @@ fn default_parse(
       || result.contains("config")
       || result.contains("import-map")
       || result.contains("no-remote")
-      || result.contains("no-npm")
       || result.contains("lock")
       || result.contains("no-lock")
       || result.contains("reload")
@@ -479,7 +478,6 @@ fn compile_args_parse(result: &ParseResult, flags: &mut Flags) {
 fn compile_args_without_check_parse(result: &ParseResult, flags: &mut Flags) {
   import_map_arg_parse(result, flags);
   no_remote_arg_parse(result, flags);
-  no_npm_arg_parse(result, flags);
   vendor_dir_arg_parse(result, flags);
   config_args_parse(result, flags);
   reload_arg_parse(result, flags);
@@ -652,12 +650,6 @@ fn import_map_arg_parse(result: &ParseResult, flags: &mut Flags) {
 fn no_remote_arg_parse(result: &ParseResult, flags: &mut Flags) {
   if result.get_bool("no-remote") {
     flags.no_remote = true;
-  }
-}
-
-fn no_npm_arg_parse(result: &ParseResult, flags: &mut Flags) {
-  if result.get_bool("no-npm") {
-    flags.no_npm = true;
   }
 }
 
@@ -1763,7 +1755,6 @@ fn info_parse(result: &ParseResult, flags: &mut Flags) {
   vendor_dir_arg_parse(result, flags);
   lock_args_parse(result, flags);
   no_remote_arg_parse(result, flags);
-  no_npm_arg_parse(result, flags);
   allow_and_deny_import_parse(result, flags);
 
   let json = result.get_bool("json");
@@ -1777,7 +1768,6 @@ fn doc_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
   import_map_arg_parse(result, flags);
   reload_arg_parse(result, flags);
   lock_args_parse(result, flags);
-  no_npm_arg_parse(result, flags);
   no_remote_arg_parse(result, flags);
   allow_and_deny_import_parse(result, flags);
 
@@ -2155,12 +2145,6 @@ fn install_parse(
   }
 
   let lockfile_only = result.get_bool("lockfile-only");
-  let production = result.get_bool("prod");
-  let skip_types = result.get_bool("skip-types");
-  let npm_target = NpmInstallTargetFlags {
-    os: result.get_one("os").map(|s| s.to_string()),
-    arch: result.get_one("arch").map(|s| s.to_string()),
-  };
 
   if result.get_bool("entrypoint") {
     // `--entrypoint` is a boolean flag; the entrypoints are the positional
@@ -2173,10 +2157,7 @@ fn install_parse(
       InstallFlagsLocal::Entrypoints(InstallEntrypointsFlags {
         entrypoints,
         lockfile_only,
-        production,
-        skip_types,
       }),
-      npm_target,
     ));
   } else if let Some(packages) = result.get_many("cmd") {
     if !packages.is_empty() {
@@ -2191,44 +2172,23 @@ fn install_parse(
           "to cache the packages without adding to a config, pass the `--entrypoint` flag",
         ));
       }
-      let dev = result.get_bool("dev");
-      let default_registry = if result.get_bool("jsr") {
-        Some(DefaultRegistry::Jsr)
-      } else {
-        // Default to npm when neither --npm nor --jsr is provided.
-        Some(DefaultRegistry::Npm)
-      };
       flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
         InstallFlagsLocal::Add(AddFlags {
           packages: packages.iter().map(|s| s.to_string()).collect(),
-          dev,
-          optional: result.get_bool("save-optional"),
           no_save: result.get_bool("no-save"),
-          default_registry,
           lockfile_only,
           save_exact: result.get_bool("save-exact"),
           unscoped: result.get_bool("unscoped"),
         }),
-        npm_target,
       ));
     } else {
       flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
-        InstallFlagsLocal::TopLevel(InstallTopLevelFlags {
-          lockfile_only,
-          production,
-          skip_types,
-        }),
-        npm_target,
+        InstallFlagsLocal::TopLevel(InstallTopLevelFlags { lockfile_only }),
       ));
     }
   } else {
     flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
-      InstallFlagsLocal::TopLevel(InstallTopLevelFlags {
-        lockfile_only,
-        production,
-        skip_types,
-      }),
-      npm_target,
+      InstallFlagsLocal::TopLevel(InstallTopLevelFlags { lockfile_only }),
     ));
   }
   Ok(())
@@ -2282,7 +2242,6 @@ fn init_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
   let mut empty = result.get_bool("empty");
   let mut yes = result.get_bool("yes");
 
-  let use_npm = result.get_bool("npm");
   let use_jsr = result.get_bool("jsr");
 
   let mut dir = None;
@@ -2295,13 +2254,7 @@ fn init_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
     let name = args[0].clone();
     let rest: Vec<String> = args[1..].iter().map(|s| s.to_string()).collect();
 
-    if use_npm {
-      package = Some(format!(
-        "npm:{}",
-        name.strip_prefix("npm:").unwrap_or(&name)
-      ));
-      package_args = rest;
-    } else if use_jsr {
+    if use_jsr {
       package = Some(format!(
         "jsr:{}",
         name.strip_prefix("jsr:").unwrap_or(&name)
@@ -2322,11 +2275,6 @@ fn init_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
         }
       }
     }
-  } else if use_npm {
-    return Err(CliError::new(
-      CliErrorKind::MissingRequired,
-      "Missing package name for --npm.",
-    ));
   } else if use_jsr {
     return Err(CliError::new(
       CliErrorKind::MissingRequired,
@@ -2386,20 +2334,11 @@ fn normalize_create_package_name(
     } else {
       Ok(package)
     }
-  } else if let Some(name) = package.strip_prefix("npm:") {
-    if use_jsr {
-      Err(CliError::new(
-        CliErrorKind::InvalidValue,
-        "Cannot use `--jsr` with an `npm:` specifier.",
-      ))
-    } else if name.is_empty() {
-      Err(CliError::new(
-        CliErrorKind::InvalidValue,
-        "Missing package name after 'npm:' prefix.",
-      ))
-    } else {
-      Ok(package)
-    }
+  } else if package.starts_with("npm:") {
+    Err(CliError::new(
+      CliErrorKind::InvalidValue,
+      format!("npm packages are not supported in Ende (found '{package}')."),
+    ))
   } else if use_jsr {
     Ok(format!("jsr:{package}"))
   } else {
@@ -2454,21 +2393,10 @@ fn add_parse(result: &ParseResult, flags: &mut Flags) {
     .get_many("packages")
     .map(|v| v.iter().map(|s| s.to_string()).collect())
     .unwrap_or_default();
-  let dev = result.get_bool("dev");
-  let default_registry = if result.get_bool("jsr") {
-    Some(DefaultRegistry::Jsr)
-  } else {
-    // Default to npm when neither --npm nor --jsr is provided, so
-    // `ende add express` works without requiring an `npm:` prefix.
-    Some(DefaultRegistry::Npm)
-  };
 
   flags.subcommand = EndeSubcommand::Add(AddFlags {
     packages,
-    dev,
-    optional: result.get_bool("save-optional"),
     no_save: result.get_bool("no-save"),
-    default_registry,
     lockfile_only: result.get_bool("lockfile-only"),
     save_exact: result.get_bool("save-exact"),
     unscoped: result.get_bool("unscoped"),
@@ -2549,10 +2477,7 @@ fn desktop_parse(
 fn ci_parse(result: &ParseResult, flags: &mut Flags) {
   env_file_arg_parse(result, flags);
   flags.frozen_lockfile = Some(true);
-  flags.subcommand = EndeSubcommand::Ci(CiFlags {
-    production: result.get_bool("prod"),
-    skip_types: result.get_bool("skip-types"),
-  });
+  flags.subcommand = EndeSubcommand::Ci(CiFlags {});
 }
 
 fn bump_version_parse(
@@ -2711,8 +2636,6 @@ fn list_parse(result: &ParseResult, flags: &mut Flags) {
       .get_one("depth")
       .and_then(|s| s.parse::<u16>().ok())
       .unwrap_or(0),
-    prod: result.get_bool("prod"),
-    dev: result.get_bool("dev"),
     filters,
   });
 }

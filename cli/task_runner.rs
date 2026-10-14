@@ -22,9 +22,6 @@ use tokio::task::JoinHandle;
 use tokio::task::LocalSet;
 use tokio_util::sync::CancellationToken;
 
-use crate::node::CliNodeResolver;
-use crate::npm::CliManagedNpmResolver;
-use crate::npm::CliNpmResolver;
 use crate::util::fs::canonicalize_path;
 
 pub fn get_script_with_args(script: &str, argv: &[String]) -> String {
@@ -303,60 +300,6 @@ pub fn real_env_vars() -> HashMap<OsString, OsString> {
     .collect()
 }
 
-// WARNING: Do not depend on this env var in user code. It's not stable API.
-pub(crate) static USE_PKG_JSON_HIDDEN_ENV_VAR_NAME: &str =
-  "ENDE_INTERNAL_TASK_USE_PKG_JSON";
-
-pub struct NpmCommand;
-
-impl ShellCommand for NpmCommand {
-  fn execute(
-    &self,
-    mut context: ShellCommandContext,
-  ) -> LocalBoxFuture<'static, ExecuteResult> {
-    if context.args.first().and_then(|s| s.to_str()) == Some("run")
-      && context.args.len() >= 2
-      // for now, don't run any npm scripts that have a flag because
-      // we don't handle stuff like `--workspaces` properly
-      && !context.args.iter().any(|s| s.to_string_lossy().starts_with('-'))
-    {
-      // run with ende task instead
-      let mut args: Vec<OsString> = Vec::with_capacity(context.args.len());
-      args.push("task".into());
-      args.extend(context.args.into_iter().skip(1));
-
-      let mut state = context.state;
-      state.apply_env_var(
-        OsStr::new(USE_PKG_JSON_HIDDEN_ENV_VAR_NAME),
-        OsStr::new("1"),
-      );
-      return ExecutableCommand::new(
-        "ende".to_string(),
-        std::env::current_exe()
-          .and_then(|p| canonicalize_path(&p))
-          .unwrap(),
-      )
-      .execute(ShellCommandContext {
-        args,
-        state,
-        ..context
-      });
-    }
-
-    // fallback to running the real npm command
-    let npm_path = match context.state.resolve_command_path(OsStr::new("npm")) {
-      Ok(path) => path,
-      Err(err) => {
-        let _ = context.stderr.write_line(&format!("{}", err));
-        return Box::pin(std::future::ready(ExecuteResult::from_exit_code(
-          err.exit_code(),
-        )));
-      }
-    };
-    ExecutableCommand::new("npm".to_string(), npm_path).execute(context)
-  }
-}
-
 pub struct EndeCommand(ExecutableCommand);
 
 impl Default for EndeCommand {
@@ -408,10 +351,6 @@ impl ShellCommand for NodeCommand {
     args.extend(context.args);
 
     let mut state = context.state;
-    state.apply_env_var(
-      OsStr::new(USE_PKG_JSON_HIDDEN_ENV_VAR_NAME),
-      OsStr::new("1"),
-    );
     state.apply_env_var(
       OsStr::new(crate::NODE_CHILD_DETECT_CJS_ENV_VAR),
       OsStr::new("1"),
@@ -529,98 +468,6 @@ impl ShellCommand for NodeModulesFileRunCommand {
     );
     executable_command.execute(ShellCommandContext { args, ..context })
   }
-}
-
-pub fn resolve_custom_commands(
-  node_resolver: &CliNodeResolver,
-  npm_resolver: &CliNpmResolver,
-  bin_dirs: &[PathBuf],
-) -> Result<HashMap<String, Rc<dyn ShellCommand>>, AnyError> {
-  let mut commands = match npm_resolver {
-    CliNpmResolver::Byonm(_) => {
-      // Walk the bin dirs in order (closest first) and merge; closest wins.
-      let mut commands: HashMap<String, Rc<dyn ShellCommand>> = HashMap::new();
-      for bin_dir in bin_dirs {
-        for (name, cmd) in
-          resolve_npm_commands_from_bin_dir(bin_dir, node_resolver)
-        {
-          commands.entry(name).or_insert(cmd);
-        }
-      }
-      commands
-    }
-    CliNpmResolver::Managed(npm_resolver) => {
-      resolve_managed_npm_commands(node_resolver, npm_resolver)?
-    }
-  };
-  commands.insert("npm".to_string(), Rc::new(NpmCommand));
-  Ok(commands)
-}
-
-/// Builds the list of `node_modules/.bin` directories to consult for a task.
-///
-/// For BYONM this walks up the filesystem from `cwd` collecting every
-/// `<ancestor>/node_modules/.bin` directory (matching how Node, npm, and pnpm
-/// resolve bin commands). For the managed npm resolver there is only ever a
-/// single `node_modules/.bin`.
-pub fn resolve_task_node_modules_bin_dirs(
-  npm_resolver: &CliNpmResolver,
-  cwd: &Path,
-) -> Vec<PathBuf> {
-  match npm_resolver {
-    CliNpmResolver::Byonm(_) => cwd
-      .ancestors()
-      .map(|dir| dir.join("node_modules").join(".bin"))
-      .collect(),
-    CliNpmResolver::Managed(npm_resolver) => npm_resolver
-      .root_node_modules_path()
-      .map(|p| vec![p.join(".bin")])
-      .unwrap_or_default(),
-  }
-}
-
-pub fn resolve_npm_commands_from_bin_dir(
-  bin_dir: &Path,
-  node_resolver: &CliNodeResolver,
-) -> HashMap<String, Rc<dyn ShellCommand>> {
-  let bin_commands = node_resolver.resolve_npm_commands_from_bin_dir(bin_dir);
-  bin_commands
-    .into_iter()
-    .map(|(command_name, path)| {
-      (
-        command_name.clone(),
-        Rc::new(NodeModulesFileRunCommand {
-          command_name,
-          path: path.path().to_path_buf(),
-        }) as Rc<dyn ShellCommand>,
-      )
-    })
-    .collect()
-}
-
-fn resolve_managed_npm_commands(
-  node_resolver: &CliNodeResolver,
-  npm_resolver: &CliManagedNpmResolver,
-) -> Result<HashMap<String, Rc<dyn ShellCommand>>, AnyError> {
-  let mut result = HashMap::new();
-  for id in npm_resolver.resolution().top_level_packages() {
-    let package_folder = npm_resolver.resolve_pkg_folder_from_pkg_id(&id)?;
-    let bins =
-      node_resolver.resolve_npm_binary_commands_for_package(&package_folder)?;
-    result.extend(bins.into_iter().map(|(command_name, path)| {
-      (
-        command_name.clone(),
-        Rc::new(NodeModulesFileRunCommand {
-          command_name,
-          path: path.path().to_path_buf(),
-        }) as Rc<dyn ShellCommand>,
-      )
-    }));
-  }
-  if !result.contains_key("npx") {
-    result.insert("npx".to_string(), Rc::new(NpxCommand));
-  }
-  Ok(result)
 }
 
 /// Runs an ende task future forwarding any signals received

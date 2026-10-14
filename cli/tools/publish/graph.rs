@@ -12,27 +12,20 @@ use deno_graph::ModuleGraph;
 use deno_graph::ResolutionResolved;
 use deno_graph::WalkOptions;
 use deno_semver::jsr::JsrPackageReqReference;
-use deno_semver::npm::NpmPackageReqReference;
 use ende_core::error::AnyError;
 use ende_core::url::Url;
 use ende_resolver::cache::ParsedSourceCache;
 
 use super::diagnostics::PublishDiagnostic;
 use super::diagnostics::PublishDiagnosticsCollector;
-use crate::npm::CliNpmResolver;
 
 pub struct GraphDiagnosticsCollector {
-  npm_resolver: CliNpmResolver,
   parsed_source_cache: Arc<ParsedSourceCache>,
 }
 
 impl GraphDiagnosticsCollector {
-  pub fn new(
-    npm_resolver: CliNpmResolver,
-    parsed_source_cache: Arc<ParsedSourceCache>,
-  ) -> Self {
+  pub fn new(parsed_source_cache: Arc<ParsedSourceCache>) -> Self {
     Self {
-      npm_resolver,
       parsed_source_cache,
     }
   }
@@ -78,30 +71,9 @@ impl GraphDiagnosticsCollector {
               }
             }
             "npm" => {
+              // reported by the specifier unfurler, which also sees
+              // specifiers that aren't in the module graph
               skip_specifiers.insert(resolution.specifier.clone());
-
-              // check for a missing version constraint
-              if let Ok(npm_req_ref) =
-                NpmPackageReqReference::from_specifier(&resolution.specifier)
-                && npm_req_ref.req().version_req.version_text() == "*"
-              {
-                let maybe_version =
-                  self.npm_resolver.as_managed().and_then(|managed| {
-                    managed
-                      .resolve_pkg_id_from_deno_module_req(npm_req_ref.req())
-                      .ok()
-                      .map(|id| id.nv.version.clone())
-                  });
-                diagnostics_collector.push(
-                  PublishDiagnostic::MissingConstraint {
-                    specifier: resolution.specifier.clone(),
-                    specifier_text: specifier_text.to_string(),
-                    resolved_version: maybe_version,
-                    text_info: SourceTextInfo::new(source_text.clone()),
-                    referrer: resolution.range.clone(),
-                  },
-                );
-              }
             }
             "http" | "https" => {
               skip_specifiers.insert(resolution.specifier.clone());

@@ -1,4 +1,4 @@
 jsr:@endetest/add [WILDLINE]
-npm:@denotest/esm-basic [WILDLINE]
-npm:@denotest/esm-import-cjs-default [WILDLINE]
-└─ npm:@denotest/cjs-default-export [WILDLINE]
+jsr:@endetest/deps [WILDLINE]
+├─ jsr:@endetest/module-graph [WILDLINE]
+└─ jsr:@endetest/no-module-graph [WILDLINE]
