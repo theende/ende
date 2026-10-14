@@ -33,6 +33,11 @@
       "output": "flag_unstable_byonm.out",
       "exitCode": 1
     },
+    "flag_import": {
+      "args": "run --import=setup.ts main.ts",
+      "output": "flag_import.out",
+      "exitCode": 1
+    },
     "config_keys_warn": {
       "cwd": "config_keys",
       "args": "run main.ts",

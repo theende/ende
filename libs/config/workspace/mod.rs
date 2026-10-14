@@ -164,6 +164,8 @@ pub enum WorkspaceDiagnosticKind {
   MemberImportsScopesIgnored,
   #[error("\"{0}\" field is not supported in Ende and is ignored.")]
   UnsupportedOption(&'static str),
+  #[error("\"{0}\" in \"unstable\" is not supported in Ende and is ignored.")]
+  UnsupportedUnstableFeature(&'static str),
   #[error(
     "Invalid workspace member name \"{name}\". Ensure the name is in the format '@scope/name'."
   )]
@@ -971,7 +973,16 @@ impl Workspace {
     for (url, folder) in &self.config_folders {
       let is_root = url == &self.root_dir_url;
       if let Some(config) = &folder.ende_json {
-        if !is_root {
+        if is_root {
+          // `"unstable"` is only read from the root config (members get a
+          // root-only warning instead).
+          for name in config.json.unsupported_unstable_features() {
+            diagnostics.push(WorkspaceDiagnostic {
+              config_url: config.specifier.clone(),
+              kind: WorkspaceDiagnosticKind::UnsupportedUnstableFeature(name),
+            });
+          }
+        } else {
           check_member_diagnostics(
             config,
             self.root_ende_json().map(|r| r.as_ref()),
@@ -3811,7 +3822,7 @@ pub mod test {
   fn test_root_member_root_only_in_member() {
     let workspace_dir = workspace_for_root_and_member(
       json!({
-        "unstable": ["byonm"],
+        "unstable": ["cron"],
         "lock": false,
         "minimumDependencyAge": 120,
         "nodeModulesDir": false,
@@ -3828,9 +3839,9 @@ pub mod test {
     // ignores member config
     assert_eq!(
       workspace_dir.workspace.unstable_features(),
-      &["byonm".to_string()]
+      &["cron".to_string()]
     );
-    assert!(workspace_dir.workspace.has_unstable("byonm"));
+    assert!(workspace_dir.workspace.has_unstable("cron"));
     assert!(!workspace_dir.workspace.has_unstable("sloppy-imports"));
     assert_eq!(
       workspace_dir
@@ -3910,6 +3921,46 @@ pub mod test {
       .chain(keys.iter().map(|key| diagnostic("member/ende.json", key)))
       .collect::<Vec<_>>();
     assert_eq!(workspace_dir.workspace.diagnostics(), expected);
+  }
+
+  #[test]
+  fn test_unsupported_unstable_features() {
+    let workspace_dir = workspace_for_root_and_member(
+      json!({
+        "unstable": [
+          "kv",
+          "cron",
+          "bundle",
+          "byonm",
+          "bare-node-builtins",
+          "detect-cjs",
+          "npm-lazy-caching",
+          "node-globals",
+          "abc"
+        ]
+      }),
+      json!({}),
+    );
+    let diagnostic = |name: &'static str| WorkspaceDiagnostic {
+      kind: WorkspaceDiagnosticKind::UnsupportedUnstableFeature(name),
+      config_url: url_from_file_path(&root_dir().join("ende.json")).unwrap(),
+    };
+    assert_eq!(
+      workspace_dir.workspace.diagnostics(),
+      vec![
+        diagnostic("kv"),
+        diagnostic("bundle"),
+        diagnostic("byonm"),
+        diagnostic("bare-node-builtins"),
+        diagnostic("detect-cjs"),
+        diagnostic("npm-lazy-caching"),
+        diagnostic("node-globals"),
+      ]
+    );
+    assert_eq!(
+      diagnostic("kv").to_string().lines().next().unwrap(),
+      "\"kv\" in \"unstable\" is not supported in Ende and is ignored."
+    );
   }
 
   #[test]

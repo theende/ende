@@ -18,6 +18,11 @@
       "output": "tunnel_flag.out",
       "exitCode": 1
     },
+    "serve_t_flag": {
+      "args": "serve -t main.ts",
+      "output": "serve_t_flag.out",
+      "exitCode": 1
+    },
     "connected_env_var_ignored": {
       "envs": {
         "ENDE_CONNECTED": "1",

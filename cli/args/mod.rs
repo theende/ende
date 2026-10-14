@@ -28,6 +28,7 @@ use ende_config::ende_json::PermissionConfigValue;
 use ende_config::ende_json::PermissionsObjectWithBase;
 pub use ende_config::ende_json::ProseWrap;
 use ende_config::ende_json::TestConfig;
+use ende_config::ende_json::UNSUPPORTED_UNSTABLE_FEATURES;
 pub use ende_config::glob::FilePatterns;
 pub use ende_config::workspace::TsTypeLib;
 use ende_config::workspace::Workspace;
@@ -1257,9 +1258,13 @@ impl CliOptions {
         .collect();
 
       // check and warn if the unstable flag of config file isn't supported, by
-      // iterating through the vector holding the unstable flags
+      // iterating through the vector holding the unstable flags. Features
+      // removed from Ende already got a workspace diagnostic.
       for unstable_value_from_config_file in &unstable_features {
-        if !all_valid_unstable_flags.contains(unstable_value_from_config_file) {
+        if !all_valid_unstable_flags.contains(unstable_value_from_config_file)
+          && !UNSUPPORTED_UNSTABLE_FEATURES
+            .contains(unstable_value_from_config_file)
+        {
           log::warn!(
             "{} '{}' isn't a valid unstable feature",
             colors::yellow("Warning"),

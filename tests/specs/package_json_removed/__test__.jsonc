@@ -74,12 +74,12 @@
     },
     "no_npm_flag_removed": {
       "args": "run --no-npm main.ts",
-      "output": "error: unexpected argument '--no-npm' found\n",
+      "output": "error: unexpected argument '--no-npm' found\n\n  tip: `--no-npm` is not supported in Ende\n",
       "exitCode": 1
     },
     "add_npm_flag_removed": {
       "args": "add --npm @denotest/esm-basic",
-      "output": "error: unexpected argument '--npm' found\n",
+      "output": "error: unexpected argument '--npm' found\n\n  tip: `--npm` is not supported in Ende\n",
       "exitCode": 1
     },
     "install_dev_flag_removed": {
@@ -89,7 +89,7 @@
     },
     "init_npm_flag_removed": {
       "args": "init --npm vite",
-      "output": "error: unexpected argument '--npm' found\n",
+      "output": "error: unexpected argument '--npm' found\n\n  tip: `--npm` is not supported in Ende\n",
       "exitCode": 1
     }
   }

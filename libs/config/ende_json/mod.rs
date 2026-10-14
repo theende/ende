@@ -1326,7 +1326,28 @@ impl ConfigFileJson {
     .map(|(key, _)| key)
     .collect()
   }
+
+  /// The removed features listed in `"unstable"`, which Ende ignores.
+  pub(crate) fn unsupported_unstable_features(&self) -> Vec<&'static str> {
+    UNSUPPORTED_UNSTABLE_FEATURES
+      .iter()
+      .copied()
+      .filter(|name| self.unstable.iter().any(|v| v == name))
+      .collect()
+  }
 }
+
+/// Unstable features removed from Ende. Listing one in `"unstable"` warns
+/// that it is ignored instead of reporting an invalid unstable feature.
+pub const UNSUPPORTED_UNSTABLE_FEATURES: &[&str] = &[
+  "kv",
+  "bundle",
+  "byonm",
+  "bare-node-builtins",
+  "detect-cjs",
+  "npm-lazy-caching",
+  "node-globals",
+];
 
 pub trait EndeJsonCache {
   fn get(&self, path: &Path) -> Option<ConfigFileRc>;

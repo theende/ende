@@ -1,1 +1,3 @@
-error: unexpected argument '--unstable-kv' found[WILDCARD]
+error: unexpected argument '--unstable-kv' found
+
+  tip: `--unstable-kv` is not supported in Ende

@@ -1,1 +1,3 @@
 error: unexpected argument '--bundle' found
+
+  tip: `--bundle` is not supported in Ende

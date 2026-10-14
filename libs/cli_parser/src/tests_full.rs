@@ -8701,7 +8701,14 @@ fn tunnel_flag_removed() {
     svec!["ende", "task", "--tunnel", "dev"],
     svec!["ende", "--tunnel", "main.ts"],
   ] {
-    assert!(flags_from_vec(args.clone()).is_err(), "{args:?}");
+    let err = flags_from_vec(args.clone()).unwrap_err();
+    assert_eq!(err.kind, CliErrorKind::UnknownFlag, "{args:?}");
+    let flag = args.iter().find(|a| a.starts_with('-')).unwrap();
+    assert_eq!(
+      err.suggestion,
+      Some(format!("`{flag}` is not supported in Ende")),
+      "{args:?}"
+    );
   }
 }
 
@@ -8715,6 +8722,13 @@ fn unstable_kv_flag_removed() {
   ] {
     let err = flags_from_vec(args.clone()).unwrap_err();
     assert_eq!(err.kind, CliErrorKind::UnknownFlag, "{args:?}");
+    assert_eq!(err.message, "unexpected argument '--unstable-kv' found");
+    // Not the misleading "a similar argument exists: '--unstable-fs'".
+    assert_eq!(
+      err.suggestion.as_deref(),
+      Some("`--unstable-kv` is not supported in Ende"),
+      "{args:?}"
+    );
   }
 }
 
@@ -8734,4 +8748,133 @@ fn unstable_node_globals_flag_removed() {
     "script.ts"
   ]);
   assert!(r.is_err());
+}
+
+#[test]
+fn removed_flags_not_supported_tip() {
+  for (args, flag) in [
+    (
+      svec!["ende", "run", "--unstable-bundle", "main.ts"],
+      "--unstable-bundle",
+    ),
+    (
+      svec!["ende", "run", "--unstable-byonm", "main.ts"],
+      "--unstable-byonm",
+    ),
+    (
+      svec!["ende", "run", "--unstable-bare-node-builtins", "main.ts"],
+      "--unstable-bare-node-builtins",
+    ),
+    (
+      svec!["ende", "run", "--unstable-detect-cjs", "main.ts"],
+      "--unstable-detect-cjs",
+    ),
+    (
+      svec!["ende", "run", "--unstable-npm-lazy-caching", "main.ts"],
+      "--unstable-npm-lazy-caching",
+    ),
+    (
+      svec!["ende", "run", "--unstable-node-globals", "main.ts"],
+      "--unstable-node-globals",
+    ),
+    (
+      svec!["ende", "--unstable-byonm", "main.ts"],
+      "--unstable-byonm",
+    ),
+    (
+      svec!["ende", "run", "--node-modules-dir", "main.ts"],
+      "--node-modules-dir",
+    ),
+    (
+      svec!["ende", "run", "--node-modules-dir=auto", "main.ts"],
+      "--node-modules-dir",
+    ),
+    (
+      svec!["ende", "test", "--node-modules-linker=hoisted"],
+      "--node-modules-linker",
+    ),
+    (
+      svec!["ende", "install", "--allow-scripts"],
+      "--allow-scripts",
+    ),
+    (
+      svec!["ende", "x", "--ignore-scripts", "cowsay"],
+      "--ignore-scripts",
+    ),
+    (
+      svec!["ende", "run", "--conditions=development", "main.ts"],
+      "--conditions",
+    ),
+    (
+      svec!["ende", "run", "--require=setup.cjs", "main.ts"],
+      "--require",
+    ),
+    (
+      svec!["ende", "compile", "--exclude-unused-npm", "main.ts"],
+      "--exclude-unused-npm",
+    ),
+    (
+      svec!["ende", "add", "--package-json", "jsr:@std/fs"],
+      "--package-json",
+    ),
+    (svec!["ende", "create", "--npm", "vite"], "--npm"),
+    (svec!["ende", "add", "--npm", "chalk"], "--npm"),
+    (svec!["ende", "run", "--no-npm", "main.ts"], "--no-npm"),
+    (svec!["ende", "compile", "--bundle", "main.ts"], "--bundle"),
+    (svec!["ende", "compile", "--minify", "main.ts"], "--minify"),
+    (svec!["ende", "serve", "-At", "main.ts"], "-t"),
+  ] {
+    let err = flags_from_vec(args.clone()).unwrap_err();
+    assert_eq!(err.kind, CliErrorKind::UnknownFlag, "{args:?}");
+    // `-At` reports the offending short flag on its own.
+    let arg = args
+      .iter()
+      .find(|a| a.starts_with(flag))
+      .map_or(flag, |a| a);
+    assert_eq!(
+      err.message,
+      format!("unexpected argument '{arg}' found"),
+      "{args:?}"
+    );
+    assert_eq!(
+      err.suggestion,
+      Some(format!("`{flag}` is not supported in Ende")),
+      "{args:?}"
+    );
+  }
+}
+
+#[test]
+fn removed_import_flag_suggests_preload() {
+  let err =
+    flags_from_vec(svec!["ende", "run", "--import=setup.ts", "main.ts"])
+      .unwrap_err();
+  assert_eq!(err.kind, CliErrorKind::UnknownFlag);
+  assert_eq!(err.message, "unexpected argument '--import=setup.ts' found");
+  assert_eq!(
+    err.suggestion.as_deref(),
+    Some("`--import` is not supported in Ende; use `--preload` instead")
+  );
+}
+
+#[test]
+fn unknown_flags_keep_default_tip() {
+  // `-t` was only `ende serve`'s short alias for `--tunnel`.
+  let err = flags_from_vec(svec!["ende", "run", "-t", "main.ts"]).unwrap_err();
+  assert_eq!(err.kind, CliErrorKind::UnknownFlag);
+  assert!(
+    !err
+      .suggestion
+      .as_deref()
+      .is_some_and(|s| s.contains("not supported")),
+    "{:?}",
+    err.suggestion
+  );
+  // Genuinely unknown flags still get "similar argument" suggestions.
+  let err = flags_from_vec(svec!["ende", "run", "--unstable-cro", "main.ts"])
+    .unwrap_err();
+  assert_eq!(
+    err.suggestion.as_deref(),
+    Some("a similar argument exists: '--unstable-cron'")
+  );
 }

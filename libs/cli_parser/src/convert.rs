@@ -19,6 +19,7 @@ use ende_permissions::SysDescriptor;
 use crate::error::CliError;
 use crate::error::CliErrorKind;
 use crate::flags::*;
+use crate::types::CommandDef;
 use crate::types::ParseResult;
 
 type UnstableFeatureEntry = (&'static str, Option<fn(&mut UnstableConfig)>);
@@ -257,6 +258,66 @@ pub fn convert(result: ParseResult) -> Result<Flags, CliError> {
 // Default (no subcommand)
 // ============================================================
 
+/// Subcommands Ende removed. Report them as unknown subcommands instead of
+/// trying to run a file with that name.
+const REMOVED_SUBCOMMANDS: &[&str] = &[
+  "bundle",
+  "approve-scripts",
+  "approve-builds",
+  "audit",
+  "pack",
+  "jupyter",
+  "deploy",
+  "sandbox",
+];
+
+/// Flags Ende removed. Passing one reports that it is not supported instead of
+/// suggesting a similarly named flag (e.g. `--unstable-kv` -> `--unstable-fs`).
+const REMOVED_FLAGS: &[&str] = &[
+  "--unstable-kv",
+  "--unstable-bundle",
+  "--unstable-byonm",
+  "--unstable-bare-node-builtins",
+  "--unstable-detect-cjs",
+  "--unstable-npm-lazy-caching",
+  "--unstable-node-globals",
+  "--tunnel",
+  "--connected",
+  "--node-modules-dir",
+  "--node-modules-linker",
+  "--allow-scripts",
+  "--ignore-scripts",
+  "--conditions",
+  "--require",
+  "--import",
+  "--exclude-unused-npm",
+  "--package-json",
+  "--npm",
+  "--no-npm",
+  "--bundle",
+  "--minify",
+];
+
+/// The tip for an unknown `flag` (without any `=value`) passed to `command`,
+/// if it is a flag Ende removed.
+pub(crate) fn removed_flag_tip(
+  flag: &str,
+  command: &CommandDef,
+) -> Option<String> {
+  // `-t` was only `ende serve`'s short alias for `--tunnel`.
+  let removed =
+    REMOVED_FLAGS.contains(&flag) || (flag == "-t" && command.name == "serve");
+  if !removed {
+    return None;
+  }
+  if flag == "--import" {
+    return Some(
+      "`--import` is not supported in Ende; use `--preload` instead".into(),
+    );
+  }
+  Some(format!("`{flag}` is not supported in Ende"))
+}
+
 /// When no subcommand is provided: if there is a script arg, treat as
 /// bare `run`; otherwise enter REPL.
 fn default_parse(
@@ -266,18 +327,6 @@ fn default_parse(
   // Check if there's a script_arg (from default subcommand = run)
   let script = result.get_one("script_arg");
   if let Some(script) = script {
-    // Subcommands Ende removed. Report them as unknown subcommands instead of
-    // trying to run a file with that name.
-    const REMOVED_SUBCOMMANDS: &[&str] = &[
-      "bundle",
-      "approve-scripts",
-      "approve-builds",
-      "audit",
-      "pack",
-      "jupyter",
-      "deploy",
-      "sandbox",
-    ];
     if REMOVED_SUBCOMMANDS.contains(&script) {
       return Err(
         CliError::new(

@@ -1,2 +1,3 @@
 error: unexpected argument '--allow-scripts' found
-[WILDCARD]
+
+  tip: `--allow-scripts` is not supported in Ende

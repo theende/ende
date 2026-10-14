@@ -54,8 +54,12 @@ impl CliError {
       format!("unexpected argument '{flag}' found"),
     );
 
-    // Find closest match via Levenshtein distance
-    if let Some(suggestion) = find_closest_flag(flag, command) {
+    // A removed flag gets a "not supported" tip instead of a misleading
+    // suggestion; otherwise find the closest match via Levenshtein distance.
+    let name = flag.split_once('=').map_or(flag, |(name, _)| name);
+    if let Some(tip) = crate::convert::removed_flag_tip(name, command) {
+      err.suggestion = Some(tip);
+    } else if let Some(suggestion) = find_closest_flag(flag, command) {
       err.suggestion =
         Some(format!("a similar argument exists: '{suggestion}'"));
     }
