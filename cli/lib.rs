@@ -609,13 +609,13 @@ fn setup_panic_hook() {
         target_os = "linux",
         any(target_arch = "x86_64", target_arch = "aarch64")
       ))]
-      let trace = ende_panic::trace_frame_pointer();
+      let trace = deno_panic::trace_frame_pointer();
       #[cfg(not(all(
         feature = "panic-trace-frame-pointer",
         target_os = "linux",
         any(target_arch = "x86_64", target_arch = "aarch64")
       )))]
-      let trace = ende_panic::trace();
+      let trace = deno_panic::trace();
       Some(trace.to_string())
     };
     #[cfg(not(feature = "panic-trace"))]
