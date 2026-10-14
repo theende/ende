@@ -36,6 +36,10 @@ pub fn env_var_path(sys: &impl EnvVar, name: &str) -> Option<PathBuf> {
 /// Reads `name` (an Ende name, see the module docs) from the process
 /// environment, falling back to the deprecated `DENO` name.
 pub fn var_os(name: &str) -> Option<OsString> {
+  #[allow(
+    clippy::disallowed_methods,
+    reason = "this crate exists to read the process environment"
+  )]
   read(name, |key| std::env::var_os(key))
 }
 
