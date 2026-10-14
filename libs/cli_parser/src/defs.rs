@@ -2118,58 +2118,6 @@ pub static CREATE_SUBCOMMAND: CommandDef = CommandDef {
   keep_double_dash: false,
 };
 
-pub static JUPYTER_SUBCOMMAND: CommandDef = CommandDef {
-  name: "jupyter",
-  about: "Deno kernel for Jupyter notebooks",
-  aliases: &[],
-  args: &[
-    ArgDef::new("install")
-      .long("install")
-      .set_true()
-      .conflicts_with(&["kernel"])
-.help("Install a kernelspec"),
-    ArgDef::new("name")
-      .short('n')
-      .long("name")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-      .conflicts_with(&["kernel"])
-.help("Set a name for the kernel (defaults to 'deno'). Useful when maintaing multiple Deno kernels."),
-    ArgDef::new("display")
-      .short('d')
-      .long("display")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-      .requires(&["install"])
-.help("Set a display name for the kernel (defaults to 'Deno'). Useful when maintaing multiple Deno kernels."),
-    ArgDef::new("kernel")
-      .long("kernel")
-      .set_true()
-      .conflicts_with(&["install"])
-      .requires(&["conn"])
-.help("Start the kernel"),
-    ArgDef::new("conn")
-      .long("conn")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-      .conflicts_with(&["install"])
-.help("Path to JSON file describing connection parameters, provided by Jupyter"),
-    ArgDef::new("force")
-      .long("force")
-      .set_true()
-      .requires(&["install"])
-.help("Force installation of a kernel, overwriting previously existing kernelspec"),
-  ],
-  // clap's `jupyter` exposes only its own flags (no runtime/permission/compile
-  // groups); `jupyter_parse` reads none of them, so they are trimmed to match.
-  arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS],
-  subcommands: &[],
-  default_subcommand: None,
-  trailing_var_arg: false,
-  passthrough: false,
-  keep_double_dash: false,
-};
-
 pub static PUBLISH_SUBCOMMAND: CommandDef = CommandDef {
   name: "publish",
   about: "Publish the current working directory's package or workspace",
@@ -3001,7 +2949,6 @@ pub static ENDE_ROOT: CommandDef = CommandDef {
     COMPLETIONS_SUBCOMMAND,
     INIT_SUBCOMMAND,
     CREATE_SUBCOMMAND,
-    JUPYTER_SUBCOMMAND,
     PUBLISH_SUBCOMMAND,
     ADD_SUBCOMMAND,
     REMOVE_SUBCOMMAND,

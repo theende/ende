@@ -397,10 +397,7 @@ impl CliModuleLoaderFactory {
         lib_worker: options.ts_type_lib_worker(),
         initial_cwd: options.initial_cwd().to_path_buf(),
         is_inspecting: options.is_inspecting(),
-        is_repl: matches!(
-          options.sub_command(),
-          EndeSubcommand::Repl(_) | EndeSubcommand::Jupyter(_)
-        ),
+        is_repl: matches!(options.sub_command(), EndeSubcommand::Repl(_)),
         code_cache,
         file_fetcher,
         main_module_graph_container,

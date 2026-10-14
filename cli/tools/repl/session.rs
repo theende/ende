@@ -659,41 +659,6 @@ impl ReplSession {
     Ok(())
   }
 
-  pub async fn call_function_on_args(
-    &mut self,
-    function_declaration: String,
-    args: &[cdp::RemoteObject],
-  ) -> Result<cdp::CallFunctionOnResponse, AnyError> {
-    let arguments: Option<Vec<cdp::CallArgument>> = if args.is_empty() {
-      None
-    } else {
-      Some(args.iter().map(|a| a.into()).collect())
-    };
-
-    let inspect_response = self
-      .post_message_with_event_loop(
-        "Runtime.callFunctionOn",
-        Some(cdp::CallFunctionOnArgs {
-          function_declaration,
-          object_id: None,
-          arguments,
-          silent: None,
-          return_by_value: None,
-          generate_preview: None,
-          user_gesture: None,
-          await_promise: None,
-          execution_context_id: Some(self.context_id),
-          object_group: None,
-          throw_on_side_effect: None,
-        }),
-      )
-      .await;
-
-    let response: cdp::CallFunctionOnResponse =
-      serde_json::from_value(inspect_response)?;
-    Ok(response)
-  }
-
   pub async fn call_function_on_repl_internal_obj(
     &mut self,
     function_declaration: String,

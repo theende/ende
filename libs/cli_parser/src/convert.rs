@@ -191,7 +191,6 @@ pub fn convert(result: ParseResult) -> Result<Flags, CliError> {
     Some("completions") => completions_parse(&result, &mut flags),
     Some("init") => init_parse(&result, &mut flags)?,
     Some("create") => create_parse(&result, &mut flags)?,
-    Some("jupyter") => jupyter_parse(&result, &mut flags),
     Some("publish") => publish_parse(&result, &mut flags),
     Some("add") => add_parse(&result, &mut flags),
     Some("remove" | "rm") => remove_parse(&result, &mut flags),
@@ -277,6 +276,7 @@ fn default_parse(
       "approve-builds",
       "audit",
       "pack",
+      "jupyter",
     ];
     if REMOVED_SUBCOMMANDS.contains(&script) {
       return Err(
@@ -312,7 +312,6 @@ fn default_parse(
       "completions",
       "init",
       "create",
-      "jupyter",
       "publish",
       "add",
       "remove",
@@ -2335,24 +2334,6 @@ fn normalize_create_package_name(
       "Missing `jsr:` prefix. For example: `ende create jsr:@scope/init`, or pass `--jsr`.",
     ))
   }
-}
-
-fn jupyter_parse(result: &ParseResult, flags: &mut Flags) {
-  let conn_file = result.get_one("conn").map(|s| s.to_string());
-  let kernel = result.get_bool("kernel");
-  let install = result.get_bool("install");
-  let display = result.get_one("display").map(|s| s.to_string());
-  let name = result.get_one("name").map(|s| s.to_string());
-  let force = result.get_bool("force");
-
-  flags.subcommand = EndeSubcommand::Jupyter(JupyterFlags {
-    install,
-    kernel,
-    conn_file,
-    name,
-    display,
-    force,
-  });
 }
 
 fn publish_parse(result: &ParseResult, flags: &mut Flags) {

@@ -306,7 +306,6 @@ walkdir = "=2.5.0"
 web-transport-proto = "0.2.7"
 webpki-roots = "0.26"
 which = { version = "8.0.0", default-features = false }
-zeromq = "0.6"
 zip = { version = "2.4.1", default-features = false, features = ["flate2"] }
 
 opentelemetry = "0.32.0"

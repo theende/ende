@@ -34,8 +34,6 @@ pub enum WorkerExecutionMode {
   ServeWorker {
     worker_index: usize,
   },
-  /// `deno jupyter`
-  Jupyter,
   /// `deno deploy`
   Deploy,
 }
@@ -52,7 +50,6 @@ impl WorkerExecutionMode {
       WorkerExecutionMode::Bench => 6,
       WorkerExecutionMode::ServeMain { .. }
       | WorkerExecutionMode::ServeWorker { .. } => 7,
-      WorkerExecutionMode::Jupyter => 8,
       WorkerExecutionMode::Deploy => 9,
     }
   }

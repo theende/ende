@@ -394,16 +394,6 @@ pub struct JSONReferenceFlags {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct JupyterFlags {
-  pub install: bool,
-  pub name: Option<String>,
-  pub display: Option<String>,
-  pub kernel: bool,
-  pub conn_file: Option<String>,
-  pub force: bool,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UninstallFlagsGlobal {
   pub packages: Vec<String>,
   pub root: Option<String>,
@@ -680,7 +670,6 @@ pub enum EndeSubcommand {
   List(ListFlags),
   Install(InstallFlags),
   JSONReference(JSONReferenceFlags),
-  Jupyter(JupyterFlags),
   Uninstall(UninstallFlags),
   Link(LinkFlags),
   Unlink(UnlinkFlags),
@@ -732,7 +721,6 @@ impl EndeSubcommand {
     matches!(
       self,
       Self::Test(_)
-        | Self::Jupyter(_)
         | Self::Repl(_)
         | Self::Bench(_)
         | Self::Lint(_)

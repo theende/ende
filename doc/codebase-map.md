@@ -31,7 +31,7 @@ first. For the conceptual layering behind this layout, see
 - `cli/tools/` — one module per subcommand. Simple example: `cli/tools/fmt.rs`.
   Complex example: the `cli/tools/test/` directory. Other notable tools include
   `compile.rs`, `coverage/`, `lint/`, `pm/` (package management), `installer/`,
-  `jupyter/`, `publish/`, `repl/`, and `serve.rs`.
+  `publish/`, `repl/`, and `serve.rs`.
 - `cli/lsp/` — the language server.
 - `cli/module_loader.rs`, `cli/graph_util.rs` — module graph construction and
   loading.

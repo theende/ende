@@ -3,6 +3,7 @@
 use test_util as util;
 use test_util::test;
 use util::assert_contains;
+use util::assert_not_contains;
 
 #[test]
 fn help_output() {
@@ -28,7 +29,6 @@ fn help_output() {
     "Generate and show documentation for a module or built-ins",
     "Format source files",
     "Show info about cache or info related to source file",
-    "Deno kernel for Jupyter notebooks",
     "Lint source files",
     "Initialize a new project",
     "Run tests",
@@ -40,11 +40,13 @@ fn help_output() {
   for description in subcommand_descriptions {
     assert_contains!(stdout, description);
   }
+  // Removed in Ende.
+  assert_not_contains!(stdout.to_lowercase(), "jupyter");
 }
 
 /// `ende --help` and `ende <sub> --help` speak "ende". The only remaining
 /// mentions of "deno" are third-party host names, the deprecated `DENO_*`
-/// env var note, header names, and doomed features (Deno Deploy, Jupyter).
+/// env var note, header names, and doomed features (Deno Deploy).
 #[test]
 fn help_output_says_ende() {
   const ALLOWED: &[&str] = &[
@@ -52,7 +54,6 @@ fn help_output_says_ende() {
     "The deprecated DENO_* names are still accepted.",
     "X-deno-client-address",
     "Deno Deploy",
-    "Deno kernel for Jupyter notebooks",
   ];
   for args in [
     &["--help"][..],

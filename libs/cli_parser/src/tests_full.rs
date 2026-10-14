@@ -6394,135 +6394,16 @@ fn create() {
 }
 
 #[test]
-fn jupyter() {
-  let r = flags_from_vec(svec!["ende", "jupyter"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Jupyter(JupyterFlags {
-        install: false,
-        kernel: false,
-        conn_file: None,
-        name: None,
-        display: None,
-        force: false,
-      }),
-      ..Flags::default()
-    }
-  );
-
-  let r = flags_from_vec(svec!["ende", "jupyter", "--install"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Jupyter(JupyterFlags {
-        install: true,
-        kernel: false,
-        conn_file: None,
-        name: None,
-        display: None,
-        force: false,
-      }),
-      ..Flags::default()
-    }
-  );
-
-  let r = flags_from_vec(svec!["ende", "jupyter", "--install", "--force"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Jupyter(JupyterFlags {
-        install: true,
-        kernel: false,
-        conn_file: None,
-        name: None,
-        display: None,
-        force: true,
-      }),
-      ..Flags::default()
-    }
-  );
-
-  let r = flags_from_vec(svec![
-    "ende",
-    "jupyter",
-    "--install",
-    "--name",
-    "debugdeno",
-    "--display",
-    "Deno (debug)"
-  ]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Jupyter(JupyterFlags {
-        install: true,
-        kernel: false,
-        conn_file: None,
-        name: Some("debugdeno".to_string()),
-        display: Some("Deno (debug)".to_string()),
-        force: false,
-      }),
-      ..Flags::default()
-    }
-  );
-
-  let r = flags_from_vec(svec!["ende", "jupyter", "-n", "debugdeno",]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Jupyter(JupyterFlags {
-        install: false,
-        kernel: false,
-        conn_file: None,
-        name: Some("debugdeno".to_string()),
-        display: None,
-        force: false,
-      }),
-      ..Flags::default()
-    }
-  );
-
-  let r = flags_from_vec(svec![
-    "ende",
-    "jupyter",
-    "--kernel",
-    "--conn",
-    "path/to/conn/file"
-  ]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Jupyter(JupyterFlags {
-        install: false,
-        kernel: true,
-        conn_file: Some(String::from("path/to/conn/file")),
-        name: None,
-        display: None,
-        force: false,
-      }),
-      ..Flags::default()
-    }
-  );
-
-  let r = flags_from_vec(svec![
-    "ende",
-    "jupyter",
-    "--install",
-    "--conn",
-    "path/to/conn/file"
-  ]);
-  r.unwrap_err();
-  let r = flags_from_vec(svec!["ende", "jupyter", "--kernel",]);
-  r.unwrap_err();
-  let r = flags_from_vec(svec!["ende", "jupyter", "--install", "--kernel",]);
-  r.unwrap_err();
-  let r = flags_from_vec(svec!["ende", "jupyter", "--display", "deno"]);
-  r.unwrap_err();
-  let r = flags_from_vec(svec!["ende", "jupyter", "--kernel", "--display"]);
-  r.unwrap_err();
-  let r = flags_from_vec(svec!["ende", "jupyter", "--force"]);
-  r.unwrap_err();
+fn jupyter_subcommand_removed() {
+  for args in [
+    svec!["ende", "jupyter"],
+    svec!["ende", "jupyter", "--install"],
+    svec!["ende", "jupyter", "--kernel", "--conn", "path/to/conn/file"],
+  ] {
+    let err = flags_from_vec(args).unwrap_err();
+    assert_eq!(err.kind, CliErrorKind::UnknownSubcommand);
+    assert_eq!(err.message, "unrecognized subcommand 'jupyter'");
+  }
 }
 
 #[test]
@@ -6935,36 +6816,6 @@ fn install_permissions_non_global() {
     r.unwrap_err()
       .to_string()
       .contains("Note: Permission flags can only be used in a global setting")
-  );
-}
-
-#[test]
-fn jupyter_unstable_flags() {
-  let r = flags_from_vec(svec![
-    "ende",
-    "jupyter",
-    "--unstable-ffi",
-    "--unstable-worker-options"
-  ]);
-
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Jupyter(JupyterFlags {
-        install: false,
-        kernel: false,
-        conn_file: None,
-        name: None,
-        display: None,
-        force: false,
-      }),
-      unstable_config: UnstableConfig {
-        sloppy_imports: false,
-        features: svec!["ffi", "worker-options"],
-        ..Default::default()
-      },
-      ..Flags::default()
-    }
   );
 }
 
@@ -8580,7 +8431,6 @@ fn tier3_aliases() {
     svec!["ende", "run", "--importmap=im.json", "x.ts"],
     svec!["ende", "run", "--unsafe-proto", "x.ts"],
     svec!["ende", "fmt", "--options-use-tabs", "x.ts"],
-    svec!["ende", "jupyter", "-d", "deno", "--install"],
   ];
   for args in ok {
     assert!(

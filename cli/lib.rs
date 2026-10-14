@@ -221,9 +221,6 @@ async fn run_subcommand(
         display::write_json_to_stdout(&json_reference.json)
       })
     }
-    EndeSubcommand::Jupyter(jupyter_flags) => spawn_subcommand(async {
-      tools::jupyter::kernel(Arc::new(flags), jupyter_flags).await
-    }),
     EndeSubcommand::Uninstall(uninstall_flags) => spawn_subcommand(async {
       tools::installer::uninstall(Arc::new(flags), uninstall_flags).await
     }),

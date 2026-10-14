@@ -2,6 +2,5 @@
 
 pub mod bench;
 pub mod deploy;
-pub mod jupyter;
 pub mod lint;
 pub mod testing;

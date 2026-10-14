@@ -15,7 +15,6 @@ pub mod fmt_editorconfig;
 pub mod info;
 pub mod init;
 pub mod installer;
-pub mod jupyter;
 pub mod lint;
 pub mod pm;
 pub mod publish;

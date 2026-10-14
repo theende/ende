@@ -10499,7 +10499,7 @@ fn lsp_ts_diagnostics_refresh_on_lsp_version_reset() {
 }
 
 #[test(timeout = 300)]
-fn lsp_jupyter_import_map_and_diagnostics() {
+fn lsp_notebook_import_map_and_diagnostics() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
   temp_dir.write(
@@ -10651,7 +10651,7 @@ fn lsp_jupyter_import_map_and_diagnostics() {
 }
 
 #[test(timeout = 300)]
-fn lsp_jupyter_completions() {
+fn lsp_notebook_completions() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
   temp_dir.write("ende.json", json!({}).to_string());
@@ -10783,14 +10783,14 @@ fn lsp_untitled_file_diagnostics() {
 }
 
 #[test(timeout = 300)]
-fn lsp_jupyter_untitled_notebook() {
+fn lsp_notebook_untitled_notebook() {
   use std::str::FromStr;
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir();
   temp_dir.write("ende.json", json!({}).to_string());
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
-  // Simulate VSCode opening an unsaved Jupyter notebook. The notebook URI uses
+  // Simulate VSCode opening an unsaved notebook. The notebook URI uses
   // the `untitled:` scheme and the cell URIs use the `vscode-notebook-cell:`
   // scheme with no directory component — neither corresponds to a file on
   // disk. This used to panic in `get_closest_package_json` because the
@@ -10821,7 +10821,7 @@ fn lsp_jupyter_untitled_notebook() {
 }
 
 #[test(timeout = 300)]
-fn lsp_jupyter_untitled_notebook_workspace_scope() {
+fn lsp_notebook_untitled_notebook_workspace_scope() {
   use std::str::FromStr;
   let context = TestContextBuilder::new().use_temp_cwd().build();
   let temp_dir = context.temp_dir();

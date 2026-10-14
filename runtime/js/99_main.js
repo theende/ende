@@ -641,28 +641,6 @@ const NOT_IMPORTED_OPS = [
   "op_register_bench",
   "op_bench_get_origin",
 
-  // Related to `Deno.jupyter` REPL API
-  "op_jupyter_broadcast",
-  "op_jupyter_input",
-  "op_jupyter_create_png_from_texture",
-  "op_jupyter_get_buffer",
-  // Related to the Jupyter ZMQ kernel worker
-  "op_jupyter_get_connection_info",
-  "op_jupyter_repl_evaluate",
-  "op_jupyter_repl_get_properties",
-  "op_jupyter_repl_global_lexical_scope_names",
-  "op_jupyter_repl_call_function_on_args",
-  "op_jupyter_repl_call_function_on",
-  "op_jupyter_repl_interrupt",
-  "op_jupyter_repl_cancel_interrupt",
-  "op_jupyter_recv_iopub",
-  "op_jupyter_recv_input",
-  "op_jupyter_send_input_reply",
-  "op_jupyter_deno_version",
-  "op_jupyter_typescript_version",
-  // Used in jupyter API
-  "op_base64_encode_from_buffer",
-
   // Used in the lint API
   "op_lint_report",
   "op_lint_get_source",
@@ -825,7 +803,7 @@ ObjectDefineProperties(finalEndeNs, {
 // (`{ core }`) that ende_core installed on `globalThis.Ende` during bootstrap.
 // `Deno` is a permanent alias: the very same object, defined with the same
 // property descriptor, so `Deno === Ende` and anything added to one later
-// (unstable APIs, `jupyter`, test harness hooks) is visible on both.
+// (unstable APIs, test harness hooks) is visible on both.
 function installEndeNamespace(ns) {
   ObjectDefineProperty(globalThis, "Ende", core.propReadOnly(ns));
   ObjectDefineProperty(globalThis, "Deno", core.propReadOnly(ns));
@@ -846,7 +824,6 @@ const executionModes = {
   test: 5,
   bench: 6,
   serve: 7,
-  jupyter: 8,
 };
 
 let protoSetRecorded = false;
@@ -1084,25 +1061,6 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
       tsVersion,
       target,
     );
-
-    // TODO(bartlomieju): this is not ideal, but because we use `ObjectAssign`
-    // above any properties that are defined elsewhere using `Object.defineProperty`
-    // are lost.
-    let jupyterNs = undefined;
-    ObjectDefineProperty(finalEndeNs, "jupyter", {
-      __proto__: null,
-      get() {
-        if (jupyterNs) {
-          return jupyterNs;
-        }
-        throw new Error(
-          "Deno.jupyter is only available in `deno jupyter` subcommand",
-        );
-      },
-      set(val) {
-        jupyterNs = val;
-      },
-    });
 
     for (let i = 0; i <= unstableFeatures.length; i++) {
       const id = unstableFeatures[i];

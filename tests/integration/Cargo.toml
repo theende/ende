@@ -18,10 +18,8 @@ path = "mod.rs"
 harness = false
 
 [dev-dependencies]
-anyhow.workspace = true
 async-trait.workspace = true
 bytes.workspace = true
-chrono = { workspace = true, features = ["now"] }
 deno_semver.workspace = true
 deno_unsync = { workspace = true, features = ["tokio"] }
 ende_cache_dir.workspace = true
@@ -53,10 +51,6 @@ test_util = { workspace = true, features = ["lsp"] }
 tokio.workspace = true
 tower-lsp.workspace = true
 url.workspace = true
-uuid = { workspace = true, features = ["serde"] }
-# Real, spec-compliant ZMTP implementation used by the Jupyter integration
-# tests so they exercise the kernel the same way libzmq peers do. Test-only.
-zeromq.workspace = true
 
 [target.'cfg(unix)'.dev-dependencies]
 nix.workspace = true

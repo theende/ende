@@ -61,7 +61,6 @@ use rand::rngs::SmallRng;
 use rand::seq::SliceRandom;
 use regex::Regex;
 use serde::Deserialize;
-use tokio::sync::mpsc::UnboundedSender;
 
 use crate::args::CliOptions;
 use crate::args::Flags;
@@ -751,7 +750,6 @@ fn get_test_reporter(options: &TestSpecifiersOptions) -> Box<dyn TestReporter> {
   reporter
 }
 
-#[allow(clippy::too_many_arguments, reason = "TODO: cleanup")]
 async fn configure_main_worker(
   worker_factory: Arc<CliMainWorkerFactory>,
   specifier: &Url,
@@ -759,7 +757,6 @@ async fn configure_main_worker(
   permissions_container: PermissionsContainer,
   worker_sender: TestEventWorkerSender,
   options: &TestSpecifierOptions,
-  sender: UnboundedSender<crate::ops::jupyter::IopubMessage>,
 ) -> Result<(Option<CoverageCollector>, MainWorker), CreateCustomWorkerError> {
   let mut worker = worker_factory.create_custom_worker(
     WorkerExecutionMode::Test,
@@ -769,13 +766,6 @@ async fn configure_main_worker(
     vec![
       ops::testing::ende_test::init(worker_sender.sender),
       ops::lint::ende_lint_ext_for_test::init(),
-      ops::jupyter::deno_jupyter_for_test::init(
-        sender,
-        // ende test does not service stdin requests; supplying a sender keeps
-        // the extension uniform with the live kernel build but the rx end is
-        // dropped so any `op_jupyter_input` call will resolve to `None`.
-        tokio::sync::mpsc::unbounded_channel().0,
-      ),
     ],
     Stdio {
       stdin: StdioPipe::inherit(),
@@ -884,7 +874,6 @@ pub async fn test_specifier(
   if fail_fast_tracker.should_stop() {
     return Ok(());
   }
-  let jupyter_channel = tokio::sync::mpsc::unbounded_channel();
   let (coverage_collector, mut worker) = configure_main_worker(
     worker_factory,
     &specifier,
@@ -892,7 +881,6 @@ pub async fn test_specifier(
     permissions_container,
     worker_sender,
     &options,
-    jupyter_channel.0,
   )
   .await?;
   let event_tracker = TestEventTracker::new(worker.js_runtime.op_state());

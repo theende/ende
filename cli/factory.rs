@@ -971,8 +971,7 @@ impl CliFactory {
     Ok(LibMainWorkerOptions {
       argv: cli_options.argv().clone(),
       // This optimization is only available for "run" subcommand
-      // because we need to register new ops for testing and jupyter
-      // integration.
+      // because we need to register new ops for testing.
       skip_op_registration: cli_options.sub_command().is_run(),
       log_level: cli_options.log_level().unwrap_or(log::Level::Info).into(),
       enable_testing_features: cli_options.enable_testing_features(),

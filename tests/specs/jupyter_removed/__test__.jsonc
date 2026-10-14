@@ -1,0 +1,20 @@
+// Copyright 2026 the Ende authors. MIT license.
+// `ende jupyter` and `Ende.jupyter` are not part of Ende.
+{
+  "tests": {
+    "subcommand": {
+      "args": "jupyter",
+      "output": "subcommand.out",
+      "exitCode": 1
+    },
+    "subcommand_install": {
+      "args": "jupyter --install",
+      "output": "subcommand.out",
+      "exitCode": 1
+    },
+    "runtime_api": {
+      "args": "run main.ts",
+      "output": "runtime_api.out"
+    }
+  }
+}
