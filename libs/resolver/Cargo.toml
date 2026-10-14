@@ -15,12 +15,11 @@ path = "lib.rs"
 
 [features]
 deno_ast = ["dep:deno_ast", "deno_graph/swc"]
-graph = ["deno_graph", "node_resolver/graph", "http", "ende_permissions"]
+graph = ["deno_graph", "http", "ende_permissions"]
 sync = [
   "dashmap",
+  "deno_unsync/tokio",
   "ende_maybe_sync/sync",
-  "ende_package_json/sync",
-  "node_resolver/sync",
   "ende_config/sync",
   "ende_cache_dir/sync",
 ]
@@ -33,7 +32,7 @@ boxed_error.workspace = true
 capacity_builder.workspace = true
 chrono.workspace = true
 dashmap = { workspace = true, optional = true }
-deno_ast = { workspace = true, features = ["cjs"], optional = true }
+deno_ast = { workspace = true, optional = true }
 deno_error.workspace = true
 deno_graph = { workspace = true, optional = true }
 deno_media_type.workspace = true
@@ -46,9 +45,6 @@ ende_config.workspace = true
 ende_env.workspace = true
 ende_lockfile.workspace = true
 ende_maybe_sync.workspace = true
-ende_npm.workspace = true
-ende_npmrc.workspace = true
-ende_package_json.workspace = true
 ende_permissions = { workspace = true, optional = true }
 futures.workspace = true
 http = { workspace = true, optional = true }
@@ -57,7 +53,6 @@ import_map.workspace = true
 indexmap.workspace = true
 jsonc-parser.workspace = true
 log.workspace = true
-node_resolver.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 phf = { workspace = true, features = ["macros"] }
@@ -70,6 +65,5 @@ twox-hash.workspace = true
 url.workspace = true
 
 [dev-dependencies]
-node_resolver.workspace = true
-sys_traits = { workspace = true, features = ["memory", "real", "serde_json"] }
+sys_traits = { workspace = true, features = ["getrandom", "memory", "real", "serde_json"] }
 test_util.workspace = true

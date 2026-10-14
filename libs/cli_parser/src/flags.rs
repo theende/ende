@@ -11,11 +11,9 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 pub use ende_config::ende_json::NewestDependencyDate;
-pub use ende_config::ende_json::NodeModulesDirMode;
 pub use ende_core::url::Url;
 pub use ende_lib::args::CaData;
 pub use ende_lib::args::UnstableConfig;
-pub use ende_npm_installer::PackagesAllowedScripts;
 pub use ende_runtime::ende_inspector_server::InspectPublishUid;
 pub use log::Level;
 use serde::Deserialize;
@@ -782,8 +780,6 @@ pub struct InternalFlags {
   /// Used when the language server is configured with an
   /// explicit cache option.
   pub cache_path: Option<PathBuf>,
-  /// Override the path to use for the node_modules directory.
-  pub root_node_modules_dir_override: Option<PathBuf>,
   /// Only reads to the lockfile instead of writing to it.
   pub lockfile_skip_write: bool,
   /// Set when running the desktop subcommand to use desktop type libs.
@@ -805,9 +801,6 @@ pub struct Flags {
   pub cached_only: bool,
   pub type_check_mode: TypeCheckMode,
   pub config_flag: ConfigFlag,
-  /// Internal only (no CLI flag): set by subcommands that need a specific
-  /// node_modules mode (`deploy`).
-  pub node_modules_dir: Option<NodeModulesDirMode>,
   pub vendor: Option<bool>,
   pub enable_testing_features: bool,
   pub ext: Option<String>,
@@ -837,8 +830,6 @@ pub struct Flags {
   pub permission_set: Option<String>,
   pub eszip: bool,
   pub preload: Vec<String>,
-  /// `--require` modules from `NODE_OPTIONS` (Node compat child processes).
-  pub require: Vec<String>,
   pub tunnel: bool,
   pub cpu_prof: Option<CpuProfFlags>,
   /// Watch configuration for subcommands that support `--watch`. `paths` is

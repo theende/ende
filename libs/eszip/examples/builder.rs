@@ -83,8 +83,6 @@ async fn main() {
     transpile_options: TranspileOptions::default(),
     emit_options: EmitOptions::default(),
     relative_file_base: None,
-    npm_packages: None,
-    npm_snapshot: Default::default(),
   })
   .unwrap();
   if let Some((import_map_specifier, import_map_content)) =

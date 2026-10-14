@@ -1574,7 +1574,6 @@ fn args_have_help_text() {
     "ext",
     "inspect-publish-uid",
     "json",
-    "no-use-env-proxy",
     "pr",
   ];
 

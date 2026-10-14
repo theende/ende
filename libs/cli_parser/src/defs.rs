@@ -610,16 +610,6 @@ static RUN_ARGS: &[ArgDef] = &[
     .set_true()
     .hidden()
 .help("Execute tasks with a tunnel to Deno Deploy.\n\n    Create a secure connection between your local machine and Deno Deploy,\n    providing access to centralised environment variables, logging,\n    and serving from your local environment to the public internet"),
-  ArgDef::new("use-env-proxy")
-    .long("use-env-proxy")
-    .set_true()
-    .conflicts_with(&["no-use-env-proxy"])
-.help("Use HTTP_PROXY, HTTPS_PROXY, and NO_PROXY for node:http/node:https"),
-  ArgDef::new("no-use-env-proxy")
-    .long("no-use-env-proxy")
-    .set_true()
-    .conflicts_with(&["use-env-proxy"])
-    .hidden(),
 ];
 
 static RUN_ARG_GROUPS: &[&[ArgDef]] = &[

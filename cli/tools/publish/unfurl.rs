@@ -23,11 +23,8 @@ use deno_graph::analysis::DynamicTemplatePart;
 use deno_graph::analysis::StaticDependencyKind;
 use deno_graph::analysis::TypeScriptReference;
 use ende_core::ModuleSpecifier;
-use ende_resolver::npm::NpmResolverSys;
 use ende_resolver::workspace::MappedResolution;
 use ende_resolver::workspace::WorkspaceResolver;
-use ende_runtime::ende_node::is_builtin_node_module;
-use node_resolver::NodeResolverSys;
 
 use crate::sys::CliSys;
 use crate::tools::unfurl_utils::ImportMetaResolveCollector;
@@ -257,7 +254,7 @@ pub enum PositionOrSourceRangeRef<'a> {
 }
 
 #[sys_traits::auto_impl]
-pub trait SpecifierUnfurlerSys: NodeResolverSys + NpmResolverSys {}
+pub trait SpecifierUnfurlerSys: ende_resolver::EndeResolverSys {}
 
 pub struct SpecifierUnfurler<TSys: SpecifierUnfurlerSys = CliSys> {
   workspace_resolver: Arc<WorkspaceResolver<TSys>>,
@@ -352,7 +349,7 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
     };
     let resolved = match resolved {
       Some(resolved) => resolved,
-      None if is_builtin_node_module(specifier) => {
+      None if ende_resolver::is_node_builtin_module_name(specifier) => {
         format!("node:{specifier}").parse().unwrap()
       }
       None => match ModuleSpecifier::options()

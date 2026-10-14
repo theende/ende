@@ -1,0 +1,8 @@
+{
+  "lint": {
+    "rules": {
+      "tags": ["recommended", "fresh"],
+      "include": ["fresh-handler-export"]
+    }
+  }
+}

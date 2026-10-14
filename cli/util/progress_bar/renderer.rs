@@ -337,7 +337,7 @@ mod test {
     let renderer = TextOnlyProgressBarRenderer::default();
     let mut data = ProgressData {
       display_entries: vec![ProgressDataDisplayEntry {
-        prompt: ProgressMessagePrompt::Blocking,
+        prompt: ProgressMessagePrompt::Download,
         message: "data".to_string(),
         position: 0,
         total_size: 10 * BYTES_TO_KIB,
@@ -350,7 +350,7 @@ mod test {
     };
     let text = renderer.render(data.clone());
     let text = test_util::strip_ansi_codes(&text);
-    assert_contains!(text, "Blocking ▰▰▱▱▱▱");
+    assert_contains!(text, "Download ▰▰▱▱▱▱");
     assert_contains!(text, "2/3\n  data 0.00KiB/10.00KiB\n");
 
     data.pending_entries = 0;
@@ -359,7 +359,7 @@ mod test {
     data.display_entries[0].total_size = 0;
     let text = renderer.render(data);
     let text = test_util::strip_ansi_codes(&text);
-    assert_contains!(text, "Blocking ▰▰▰▱▱▱");
+    assert_contains!(text, "Download ▰▰▰▱▱▱");
     assert_contains!(text, "\n  data\n");
   }
 }

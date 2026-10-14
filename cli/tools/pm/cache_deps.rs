@@ -11,13 +11,11 @@ use ende_core::error::AnyError;
 use ende_core::futures::StreamExt;
 use ende_core::futures::stream::FuturesUnordered;
 use ende_core::url::Url;
-use ende_npm_installer::PackageCaching;
-use ende_npm_installer::graph::NpmCachingStrategy;
 
 use crate::factory::CliFactory;
 use crate::graph_container::ModuleGraphContainer;
 use crate::graph_container::ModuleGraphUpdatePermit;
-use crate::graph_util::BuildGraphWithNpmOptions;
+use crate::graph_util::BuildGraphOptions;
 
 pub struct CacheTopLevelDepsOptions {
   pub lockfile_only: bool,
@@ -36,7 +34,6 @@ pub async fn cache_top_level_deps(
   let _clear_guard = factory
     .text_only_progress_bar()
     .deferred_keep_initialize_alive();
-  let npm_installer = factory.npm_installer().await?;
   if let Some(lockfile) = factory.maybe_lockfile().await? {
     lockfile.error_if_changed()?;
   }
@@ -203,26 +200,17 @@ pub async fn cache_top_level_deps(
 
     let graph_builder = factory.module_graph_builder().await?;
     graph_builder
-      .build_graph_roots_with_npm_resolution(
+      .build_graph_roots(
         graph,
         roots.clone(),
-        BuildGraphWithNpmOptions {
+        BuildGraphOptions {
           loader: None,
           is_dynamic: false,
-          npm_caching: NpmCachingStrategy::Manual,
         },
       )
       .await?;
     maybe_graph_error =
       graph_builder.graph_roots_valid(graph, &roots, true, true);
-  }
-
-  if options.lockfile_only {
-    // do a resolution install if the npm snapshot is in a
-    // pending state due to a config file change
-    npm_installer.install_resolution_if_pending().await?;
-  } else {
-    npm_installer.cache_packages(PackageCaching::All).await?;
   }
 
   maybe_graph_error?;

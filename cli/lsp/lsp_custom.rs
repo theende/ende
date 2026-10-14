@@ -81,15 +81,12 @@ pub struct EndeConfigurationData {
 #[serde(rename_all = "camelCase")]
 pub struct DidRefreshEndeConfigurationTreeNotificationParams {
   pub data: Vec<EndeConfigurationData>,
-  #[serde(rename = "endeDirNpmFolderUri", alias = "denoDirNpmFolderUri")]
-  pub ende_dir_npm_folder_uri: Option<lsp::Uri>,
 }
 
 impl DidRefreshEndeConfigurationTreeNotificationParams {
   /// The params with the `deno*` field names that legacy clients expect.
   pub fn into_legacy(self) -> Value {
     let mut value = serde_json::to_value(self).unwrap();
-    rename_field(&mut value, "endeDirNpmFolderUri", "denoDirNpmFolderUri");
     if let Some(data) = value.get_mut("data").and_then(|d| d.as_array_mut()) {
       for data in data {
         rename_field(data, "endeJson", "denoJson");

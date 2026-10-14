@@ -1,0 +1,28 @@
+// Copyright 2026 the Ende authors. MIT license.
+
+// `ende compile` and `ende desktop` need the main module; a directory is not
+// accepted as an entrypoint.
+{
+  "tests": {
+    "compile_cwd": {
+      "args": "compile -A --output main .",
+      "output": "compile_cwd.out",
+      "exitCode": 1
+    },
+    "compile_dir": {
+      "args": "compile -A --output main ./myapp",
+      "output": "compile_dir.out",
+      "exitCode": 1
+    },
+    "desktop_no_args": {
+      "args": "desktop",
+      "output": "desktop_no_args.out",
+      "exitCode": 1
+    },
+    "desktop_dir": {
+      "args": "desktop ./myapp",
+      "output": "desktop_dir.out",
+      "exitCode": 1
+    }
+  }
+}

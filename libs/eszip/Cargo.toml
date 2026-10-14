@@ -28,16 +28,13 @@ default = ["sha256"]
 
 [dependencies]
 anyhow = "1"
-async-trait = "0.1.68"
 deno_ast = { workspace = true, features = ["transpiling"] }
 deno_error = "0.7.0"
 deno_graph = { workspace = true, default-features = false, features = ["swc"] }
 deno_semver.workspace = true
-ende_npm.workspace = true
 futures = "0.3.26"
 hashlink = "0.8.2"
 import_map.workspace = true
-indexmap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2 = { version = "0.10.1", optional = true }

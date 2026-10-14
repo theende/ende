@@ -9,13 +9,6 @@
       "args": "run --sloppy-imports --check main.ts",
       "output": "sloppy.out"
     },
-    "sloppy2": {
-      "args": "run --check main.ts",
-      "envs": {
-        "ENDE_COMPAT": "1"
-      },
-      "output": "sloppy.out"
-    },
     "sloppy_env": {
       "args": "run --env-file=env_file --check main.ts",
       "output": "sloppy.out"

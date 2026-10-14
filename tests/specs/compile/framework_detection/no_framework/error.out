@@ -1,3 +1,0 @@
-error: Could not detect a supported framework in '[WILDCARD]'.
-Supported frameworks: Fresh
-Provide an explicit entrypoint instead of a directory.

@@ -13,7 +13,6 @@ use ende_runtime::UnconfiguredRuntime;
 use tokio_util::sync::CancellationToken;
 
 use super::run::check_permission_before_script;
-use super::run::maybe_npm_install;
 use crate::args::Flags;
 use crate::args::ServeFlags;
 use crate::args::WatchFlagsWithPaths;
@@ -59,8 +58,6 @@ pub async fn serve(
     &WorkspaceMainModuleResolver::new(workspace_resolver),
   ))?;
 
-  maybe_npm_install(&factory).await?;
-
   let worker_factory = Arc::new(
     factory
       .create_cli_main_worker_factory_with_roots(roots)
@@ -97,10 +94,8 @@ async fn do_serve(
       main_module.clone(),
       // TODO(bartlomieju):
       vec![],
-      vec![],
       unconfigured_runtime,
-    )
-    .await?;
+    )?;
   let worker_count = match worker_count {
     0 => return worker.run().await.map_err(Into::into),
     c => c,
@@ -163,9 +158,7 @@ async fn run_worker(
       main_module,
       // TODO(bartlomieju):
       vec![],
-      vec![],
-    )
-    .await?;
+    )?;
   if hmr {
     worker.run_for_watcher().await.map_err(Into::into)
   } else {
@@ -199,8 +192,6 @@ async fn serve_with_watch(
         let main_module = cli_options.resolve_main_module_with_resolver(
           Some(&WorkspaceMainModuleResolver::new(workspace_resolver)),
         )?;
-
-        maybe_npm_install(&factory).await?;
 
         let _ = watcher_communicator.watch_paths(cli_options.watch_paths());
         let worker_factory =

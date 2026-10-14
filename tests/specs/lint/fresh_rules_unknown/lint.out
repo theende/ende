@@ -1,0 +1,3 @@
+warn: Unknown lint tag "fresh" is ignored.
+warn: Unknown lint rule "fresh-handler-export" is ignored.
+Checked 1 file

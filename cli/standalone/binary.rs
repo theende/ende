@@ -835,7 +835,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       },
       unstable_config: UnstableConfig {
         legacy_flag_enabled: false,
-        detect_cjs: false,
         features: self
           .cli_options
           .unstable_features()

@@ -478,7 +478,6 @@ fn main() {
     return;
   }
 
-  ende_napi::print_linker_flags("ende");
   ende_webgpu::print_linker_flags("ende");
 
   // Host snapshots won't work when cross compiling.

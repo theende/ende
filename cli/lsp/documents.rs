@@ -24,7 +24,6 @@ use deno_error::JsErrorBox;
 use deno_graph::TypesDependency;
 use deno_path_util::url_to_file_path;
 use deno_semver::jsr::JsrPackageReqReference;
-use deno_semver::npm::NpmPackageReqReference;
 use ende_core::ModuleSpecifier;
 use ende_core::error::AnyError;
 use ende_core::futures::FutureExt;
@@ -35,12 +34,10 @@ use ende_core::resolve_url;
 use ende_core::url::Position;
 use ende_core::url::Url;
 use ende_resolver::ende_json::CompilerOptionsKey;
+use ende_resolver::workspace::ResolutionKind;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use lsp_types::Uri;
-use node_resolver::NodeResolutionKind;
-use node_resolver::ResolutionMode;
-use node_resolver::cache::NodeResolutionThreadLocalCache;
 use once_cell::sync::Lazy;
 use tower_lsp::lsp_types as lsp;
 
@@ -961,7 +958,6 @@ pub struct DocumentModule {
   pub headers: Option<HashMap<String, String>>,
   pub text: DocumentText,
   pub line_index: Arc<LineIndex>,
-  pub resolution_mode: ResolutionMode,
   pub dependencies: Arc<IndexMap<String, deno_graph::Dependency>>,
   pub types_dependency: Option<Arc<TypesDependency>>,
   pub navigation_tree: tokio::sync::OnceCell<Arc<NavigationTree>>,
@@ -1007,20 +1003,20 @@ impl DocumentModule {
       headers.as_ref(),
       open_document.map(|d| d.language_id),
     );
-    let (parsed_source, maybe_module, resolution_mode) =
-      if media_type_is_diagnosable(media_type) {
-        parse_and_analyze_module(
-          specifier.as_ref().clone(),
-          text.to_arc(),
-          headers.as_ref(),
-          media_type,
-          scope.as_deref(),
-          compiler_options_data,
-          resolver,
-        )
-      } else {
-        (None, None, ResolutionMode::Import)
-      };
+    let (parsed_source, maybe_module) = if media_type_is_diagnosable(media_type)
+    {
+      parse_and_analyze_module(
+        specifier.as_ref().clone(),
+        text.to_arc(),
+        headers.as_ref(),
+        media_type,
+        scope.as_deref(),
+        compiler_options_data,
+        resolver,
+      )
+    } else {
+      (None, None)
+    };
     let maybe_module = maybe_module.and_then(Result::ok);
     let dependencies = maybe_module
       .as_ref()
@@ -1046,7 +1042,6 @@ impl DocumentModule {
       headers,
       text,
       line_index: document.line_index().clone(),
-      resolution_mode,
       dependencies,
       types_dependency,
       navigation_tree: Default::default(),
@@ -1293,9 +1288,6 @@ impl DocumentModules {
     self.dep_info_by_scope = Default::default();
     self.assigned_scopes = Default::default();
 
-    node_resolver::PackageJsonThreadLocalCache::clear();
-    NodeResolutionThreadLocalCache::clear();
-
     // Clean up non-existent documents.
     self.documents.server.retain(|_, d| {
       let Some(module) =
@@ -1488,7 +1480,6 @@ impl DocumentModules {
       &self.config,
       &self.cache,
     ));
-    self.resolver.did_create_module(&module);
     modules.insert(document, module.clone());
     Some(module)
   }
@@ -1797,9 +1788,7 @@ impl DocumentModules {
               &import_source_types.specifier,
               &import_source_types.base,
               deno_graph::Position::zeroed(),
-              // todo(dsherret): this is wrong because it doesn't consider CJS referrers
-              ResolutionMode::Import,
-              NodeResolutionKind::Types,
+              ResolutionKind::Types,
             )
             .ok()?;
           let code_specifier = cli_resolver
@@ -1807,9 +1796,7 @@ impl DocumentModules {
               &import_source.specifier,
               &import_source.base,
               deno_graph::Position::zeroed(),
-              // todo(dsherret): this is wrong because it doesn't consider CJS referrers
-              ResolutionMode::Import,
-              NodeResolutionKind::Execution,
+              ResolutionKind::Execution,
             )
             .ok()?;
           dep_info
@@ -1823,7 +1810,6 @@ impl DocumentModules {
     self
       .dep_info_by_scope
       .get_or_init(|| {
-        NodeResolutionThreadLocalCache::clear();
         // Ensure at least module entries for workspace files are initialized.
         self.workspace_file_modules_by_scope();
         Arc::new(
@@ -1853,11 +1839,7 @@ impl DocumentModules {
     let dependencies = referrer_module.as_ref().map(|d| &d.dependencies);
     let mut results = Vec::new();
     let scoped_resolver = self.resolver.get_scoped_resolver(scope);
-    for (is_cjs, raw_specifier) in raw_specifiers {
-      let resolution_mode = match is_cjs {
-        true => ResolutionMode::Require,
-        false => ResolutionMode::Import,
-      };
+    for (_is_cjs, raw_specifier) in raw_specifiers {
       let result = if raw_specifier.starts_with("asset:") {
         if let Ok(specifier) = resolve_url(raw_specifier) {
           let media_type = MediaType::from_specifier(&specifier);
@@ -1870,23 +1852,11 @@ impl DocumentModules {
       {
         if let Some(specifier) = dep.maybe_type.maybe_specifier() {
           self
-            .resolve_dependency(
-              specifier,
-              referrer,
-              resolution_mode,
-              scope,
-              compiler_options_key,
-            )
+            .resolve_dependency(specifier, scope, compiler_options_key)
             .map(|(s, t, _)| (s, t))
         } else if let Some(specifier) = dep.maybe_code.maybe_specifier() {
           self
-            .resolve_dependency(
-              specifier,
-              referrer,
-              resolution_mode,
-              scope,
-              compiler_options_key,
-            )
+            .resolve_dependency(specifier, scope, compiler_options_key)
             .map(|(s, t, _)| (s, t))
         } else {
           None
@@ -1896,17 +1866,10 @@ impl DocumentModules {
           raw_specifier,
           referrer,
           deno_graph::Position::zeroed(),
-          resolution_mode,
-          NodeResolutionKind::Types,
+          ResolutionKind::Types,
         ) {
           Ok(specifier) => self
-            .resolve_dependency(
-              &specifier,
-              referrer,
-              resolution_mode,
-              scope,
-              compiler_options_key,
-            )
+            .resolve_dependency(&specifier, scope, compiler_options_key)
             .map(|(s, t, _)| (s, t)),
           _ => None,
         }
@@ -1920,43 +1883,21 @@ impl DocumentModules {
   pub fn resolve_dependency(
     &self,
     specifier: &Url,
-    referrer: &Url,
-    resolution_mode: ResolutionMode,
     scope: Option<&Url>,
     compiler_options_key: Option<&CompilerOptionsKey>,
   ) -> Option<(Url, MediaType, Option<Arc<Uri>>)> {
-    let mut specifier = specifier.clone();
-    let mut media_type = None;
-    if let Ok(npm_ref) = NpmPackageReqReference::from_specifier(&specifier) {
-      let scoped_resolver = self.resolver.get_scoped_resolver(scope);
-      let (s, mt) = scoped_resolver.npm_to_file_url(
-        &npm_ref,
-        referrer,
-        NodeResolutionKind::Types,
-        resolution_mode,
-      )?;
-      specifier = s;
-      media_type = Some(mt);
-    }
     let Some(module) =
-      self.module_for_specifier(&specifier, scope, compiler_options_key)
+      self.module_for_specifier(specifier, scope, compiler_options_key)
     else {
-      let media_type =
-        media_type.unwrap_or_else(|| MediaType::from_specifier(&specifier));
-      return Some((specifier, media_type, None));
+      let media_type = MediaType::from_specifier(specifier);
+      return Some((specifier.clone(), media_type, None));
     };
     if let Some(types) = module
       .types_dependency
       .as_ref()
       .and_then(|d| d.dependency.maybe_specifier())
     {
-      self.resolve_dependency(
-        types,
-        &specifier,
-        module.resolution_mode,
-        scope,
-        compiler_options_key,
-      )
+      self.resolve_dependency(types, scope, compiler_options_key)
     } else {
       Some((
         module.specifier.as_ref().clone(),
@@ -2213,13 +2154,9 @@ fn parse_and_analyze_module(
   scope: Option<&Url>,
   compiler_options_data: &LspCompilerOptionsData,
   resolver: &LspResolver,
-) -> (
-  Option<ParsedSourceResult>,
-  Option<ModuleResult>,
-  ResolutionMode,
-) {
+) -> (Option<ParsedSourceResult>, Option<ModuleResult>) {
   let parsed_source_result = parse_source(specifier.clone(), text, media_type);
-  let (module_result, resolution_mode) = analyze_module(
+  let module_result = analyze_module(
     specifier,
     &parsed_source_result,
     maybe_headers,
@@ -2227,11 +2164,7 @@ fn parse_and_analyze_module(
     compiler_options_data,
     resolver,
   );
-  (
-    Some(parsed_source_result),
-    Some(module_result),
-    resolution_mode,
-  )
+  (Some(parsed_source_result), Some(module_result))
 }
 
 fn parse_source(
@@ -2278,6 +2211,10 @@ fn panic_payload_to_string(error: &(dyn std::any::Any + Send)) -> String {
   }
 }
 
+#[allow(
+  clippy::result_large_err,
+  reason = "mirrors deno_graph's module result"
+)]
 fn analyze_module(
   specifier: ModuleSpecifier,
   parsed_source_result: &ParsedSourceResult,
@@ -2285,54 +2222,42 @@ fn analyze_module(
   scope: Option<&Url>,
   compiler_options_data: &LspCompilerOptionsData,
   resolver: &LspResolver,
-) -> (ModuleResult, ResolutionMode) {
+) -> ModuleResult {
   match parsed_source_result {
     Ok(parsed_source) => {
       let scoped_resolver = resolver.get_scoped_resolver(scope);
       let cli_resolver = scoped_resolver.as_cli_resolver();
-      let is_cjs_resolver = scoped_resolver.as_is_cjs_resolver();
       let valid_referrer = specifier.clone();
-      let module_resolution_mode = is_cjs_resolver.get_lsp_resolution_mode(
-        &specifier,
-        Some(parsed_source.compute_is_script()),
-      );
       let resolver = SingleReferrerGraphResolver {
         valid_referrer: &valid_referrer,
-        module_resolution_mode,
         cli_resolver,
         jsx_import_source_config: compiler_options_data
           .jsx_import_source_config
           .as_deref(),
       };
-      (
-        Ok(deno_graph::parse_module_from_ast(
-          deno_graph::ParseModuleFromAstOptions {
-            graph_kind: deno_graph::GraphKind::TypesOnly,
-            specifier,
-            maybe_headers,
-            mtime: None,
-            parsed_source,
-            // use a null file system because there's no need to bother resolving
-            // dynamic imports like import(`./dir/${something}`) in the LSP
-            file_system: &deno_graph::source::NullFileSystem,
-            jsr_url_provider: &CliJsrUrlProvider,
-            maybe_resolver: Some(&resolver),
-          },
-        )),
-        module_resolution_mode,
-      )
-    }
-    Err(diagnostic) => (
-      Err(deno_graph::ModuleGraphError::ModuleError(
-        deno_graph::ModuleErrorKind::Parse {
+      Ok(deno_graph::parse_module_from_ast(
+        deno_graph::ParseModuleFromAstOptions {
+          graph_kind: deno_graph::GraphKind::TypesOnly,
           specifier,
+          maybe_headers,
           mtime: None,
-          diagnostic: diagnostic.clone(),
-        }
-        .into_box(),
-      )),
-      ResolutionMode::Import,
-    ),
+          parsed_source,
+          // use a null file system because there's no need to bother resolving
+          // dynamic imports like import(`./dir/${something}`) in the LSP
+          file_system: &deno_graph::source::NullFileSystem,
+          jsr_url_provider: &CliJsrUrlProvider,
+          maybe_resolver: Some(&resolver),
+        },
+      ))
+    }
+    Err(diagnostic) => Err(deno_graph::ModuleGraphError::ModuleError(
+      deno_graph::ModuleErrorKind::Parse {
+        specifier,
+        mtime: None,
+        diagnostic: diagnostic.clone(),
+      }
+      .into_box(),
+    )),
   }
 }
 
@@ -2366,15 +2291,14 @@ mod tests {
   use super::*;
   use crate::lsp::cache::LspCache;
 
-  async fn setup() -> (DocumentModules, LspCache, TempDir) {
+  fn setup() -> (DocumentModules, LspCache, TempDir) {
     let temp_dir = TempDir::new();
     temp_dir.create_dir_all(".deno_dir");
     let cache = LspCache::new(Some(temp_dir.url().join(".deno_dir").unwrap()));
     let config = Config::default();
-    let resolver =
-      Arc::new(LspResolver::from_config(&config, &cache, None).await);
+    let resolver = Arc::new(LspResolver::from_config(&config, &cache));
     let compiler_options_resolver =
-      Arc::new(LspCompilerOptionsResolver::new(&config, &resolver, None));
+      Arc::new(LspCompilerOptionsResolver::new(&config, None));
     resolver.set_compiler_options_resolver(&compiler_options_resolver.inner);
     let mut document_modules = DocumentModules::default();
     document_modules.update_config(
@@ -2389,7 +2313,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_documents_open_close() {
-    let (mut document_modules, _, _) = setup().await;
+    let (mut document_modules, _, _) = setup();
     let uri = Uri::from_str("file:///a.ts").unwrap();
     let content = r#"import * as b from "./b.ts";
 console.log(b);
@@ -2420,7 +2344,7 @@ console.log(b);
 
   #[tokio::test]
   async fn test_documents_change() {
-    let (mut document_modules, _, _) = setup().await;
+    let (mut document_modules, _, _) = setup();
     let uri = Uri::from_str("file:///a.ts").unwrap();
     let content = r#"import * as b from "./b.ts";
 console.log(b);
@@ -2487,7 +2411,7 @@ const Counter = () => {
   async fn test_documents_refresh_dependencies_config_change() {
     // it should never happen that a user of this API causes this to happen,
     // but we'll guard against it anyway
-    let (mut document_modules, cache, temp_dir) = setup().await;
+    let (mut document_modules, cache, temp_dir) = setup();
 
     let file1_path = temp_dir.path().join("file1.ts");
     let file1_specifier = temp_dir.url().join("file1.ts").unwrap();
@@ -2538,10 +2462,9 @@ const Counter = () => {
         )
         .await;
 
-      let resolver =
-        Arc::new(LspResolver::from_config(&config, &cache, None).await);
+      let resolver = Arc::new(LspResolver::from_config(&config, &cache));
       let compiler_options_resolver =
-        Arc::new(LspCompilerOptionsResolver::new(&config, &resolver, None));
+        Arc::new(LspCompilerOptionsResolver::new(&config, None));
       resolver.set_compiler_options_resolver(&compiler_options_resolver.inner);
       document_modules.update_config(
         &config,
@@ -2584,10 +2507,9 @@ const Counter = () => {
         )
         .await;
 
-      let resolver =
-        Arc::new(LspResolver::from_config(&config, &cache, None).await);
+      let resolver = Arc::new(LspResolver::from_config(&config, &cache));
       let compiler_options_resolver =
-        Arc::new(LspCompilerOptionsResolver::new(&config, &resolver, None));
+        Arc::new(LspCompilerOptionsResolver::new(&config, None));
       resolver.set_compiler_options_resolver(&compiler_options_resolver.inner);
       document_modules.update_config(
         &config,

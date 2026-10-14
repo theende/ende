@@ -158,20 +158,6 @@ pub async fn remove_dir_all_if_exists(path: &Path) -> std::io::Result<()> {
   }
 }
 
-/// Gets the total size (in bytes) of a directory.
-pub fn dir_size(path: &Path) -> std::io::Result<u64> {
-  let entries = std::fs::read_dir(path)?;
-  let mut total = 0;
-  for entry in entries {
-    let entry = entry?;
-    total += match entry.metadata()? {
-      data if data.is_dir() => dir_size(&entry.path())?,
-      data => data.len(),
-    };
-  }
-  Ok(total)
-}
-
 pub fn specifier_from_file_path(
   path: &Path,
 ) -> Result<ModuleSpecifier, AnyError> {

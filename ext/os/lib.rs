@@ -26,10 +26,8 @@ pub mod sys_info;
 
 pub use ops::signal::SignalError;
 
-// The full list of environment variables supported by Node.js is available
-// at https://nodejs.org/api/cli.html#environment-variables
-const SORTED_NODE_ENV_VAR_ALLOWLIST: [&str; 4] =
-  ["FORCE_COLOR", "NODE_DEBUG", "NODE_OPTIONS", "NO_COLOR"];
+// Environment variables that can be read without an env permission check.
+const SORTED_ENV_VAR_ALLOWLIST: [&str; 2] = ["FORCE_COLOR", "NO_COLOR"];
 
 #[derive(Clone, Default)]
 pub struct ExitCode(Arc<AtomicI32>);
@@ -408,7 +406,7 @@ fn op_get_env(
   #[string] key: &str,
 ) -> Result<Option<String>, OsError> {
   let skip_permission_check =
-    SORTED_NODE_ENV_VAR_ALLOWLIST.binary_search(&key).is_ok();
+    SORTED_ENV_VAR_ALLOWLIST.binary_search(&key).is_ok();
 
   if !skip_permission_check && check_env_with_maybe_exit(state, key)?.is_break()
   {
@@ -961,13 +959,13 @@ fn op_os_uptime(state: &mut OpState) -> Result<u64, PermissionCheckError> {
 
 #[cfg(test)]
 mod test {
-  use crate::SORTED_NODE_ENV_VAR_ALLOWLIST;
+  use crate::SORTED_ENV_VAR_ALLOWLIST;
 
   #[test]
-  fn ensure_node_env_var_list_sorted() {
+  fn ensure_env_var_list_sorted() {
     // ensure this is sorted for binary search
-    let mut items = SORTED_NODE_ENV_VAR_ALLOWLIST.to_vec();
+    let mut items = SORTED_ENV_VAR_ALLOWLIST.to_vec();
     items.sort();
-    assert_eq!(items, SORTED_NODE_ENV_VAR_ALLOWLIST);
+    assert_eq!(items, SORTED_ENV_VAR_ALLOWLIST);
   }
 }

@@ -87,8 +87,6 @@ pub async fn install_global(
     ))
   };
 
-  let npmrc = factory.npmrc()?;
-
   if matches!(flags.config_flag, ConfigFlag::Discover)
     && cli_options.workspace().ende_jsons().next().is_some()
   {
@@ -165,9 +163,6 @@ pub async fn install_global(
       cli_options.initial_cwd(),
       install_flags_global.root.as_deref(),
     )?;
-    let npm_package_info_provider = factory
-      .npm_installer_factory()?
-      .lockfile_npm_package_info_provider()?;
     let deps_file_fetcher = create_deps_file_fetcher(Level::Info);
     let jsr_lockfile_fetcher = JsrLockfileFetcher {
       jsr_resolver: Arc::new(JsrFetchResolver::new(
@@ -175,8 +170,6 @@ pub async fn install_global(
         factory.jsr_version_resolver()?.clone(),
       )),
       file_fetcher: deps_file_fetcher,
-      npmrc: npmrc.clone(),
-      npm_package_info_provider,
     };
     setup_config_dir(
       &name_and_url,
@@ -388,7 +381,7 @@ async fn setup_config_dir(
   flags: &Flags,
   cwd: &Path,
   installation_dir: &Path,
-  jsr_lockfile_fetcher: Option<&JsrLockfileFetcher<'_>>,
+  jsr_lockfile_fetcher: Option<&JsrLockfileFetcher>,
   force: bool,
   extra_imports: &[(String, String)],
 ) -> Result<(), AnyError> {
@@ -1034,14 +1027,12 @@ fn is_in_path(dir: &Path) -> bool {
   false
 }
 
-struct JsrLockfileFetcher<'a> {
+struct JsrLockfileFetcher {
   jsr_resolver: Arc<JsrFetchResolver>,
   file_fetcher: Arc<CliFileFetcher>,
-  npmrc: Arc<ende_npmrc::ResolvedNpmRc>,
-  npm_package_info_provider: &'a dyn ende_lockfile::NpmPackageInfoProvider,
 }
 
-impl JsrLockfileFetcher<'_> {
+impl JsrLockfileFetcher {
   async fn fetch_lockfile(&self, module_url: &Url) -> Option<String> {
     let pkg_ref = JsrPackageReqReference::from_specifier(module_url).ok()?;
     let req = pkg_ref.req();
@@ -1070,13 +1061,13 @@ impl JsrLockfileFetcher<'_> {
     };
 
     // Parse and upgrade the lockfile to v5
-    let lockfile = match ende_lockfile::Lockfile::new(
+    let mut lockfile = match ende_lockfile::Lockfile::new(
       ende_lockfile::NewLockfileOptions {
         file_path: std::path::PathBuf::from(LOCKFILE_NAME),
         content,
         overwrite: false,
       },
-      self.npm_package_info_provider,
+      &ende_resolver::lockfile::NoNpmPackageInfoProvider,
     )
     .await
     {
@@ -1092,75 +1083,12 @@ impl JsrLockfileFetcher<'_> {
       }
     };
 
-    if let Err(url) = validate_npm_tarball_urls(&lockfile.content, &self.npmrc)
-    {
-      log::warn!(
-        "{} Not using lockfile from JSR package {} because it contains an npm tarball URL (\"{}\") not from a configured npm registry. This may indicate a security issue.",
-        crate::colors::yellow("Warning"),
-        nv,
-        url,
-      );
-      return None;
-    }
+    // npm packages aren't supported, so drop any npm entries
+    lockfile.content.remove_npm_entries();
 
     log::debug!("Using lockfile from JSR package {}", nv);
     Some(lockfile.as_json_string())
   }
-}
-
-/// Validates that all npm tarball URLs in the lockfile come from
-/// configured npm registries (or the default registry.npmjs.org).
-/// Returns `Err(bad_url)` on the first tarball from an unknown registry.
-fn validate_npm_tarball_urls(
-  content: &ende_lockfile::LockfileContent,
-  npmrc: &ende_npmrc::ResolvedNpmRc,
-) -> Result<(), String> {
-  let mut allowed_registries = npmrc.get_all_known_registries_urls();
-  // always allow the default npm registry
-  let default_npm_registry =
-    Url::parse(ende_npmrc::NPM_DEFAULT_REGISTRY).unwrap();
-  if !allowed_registries.contains(&default_npm_registry) {
-    allowed_registries.push(default_npm_registry);
-  }
-
-  for pkg_info in content.packages.npm.values() {
-    if let Some(tarball) = &pkg_info.tarball {
-      let tarball_str = tarball.as_str();
-      let is_allowed = Url::parse(tarball_str).is_ok_and(|tarball_url| {
-        allowed_registries.iter().any(|registry_url| {
-          tarball_url_matches_registry(&tarball_url, registry_url)
-        })
-      });
-      if !is_allowed {
-        return Err(tarball_str.to_string());
-      }
-    }
-  }
-
-  Ok(())
-}
-
-fn tarball_url_matches_registry(tarball_url: &Url, registry_url: &Url) -> bool {
-  if tarball_url.scheme() != registry_url.scheme()
-    || tarball_url.host_str() != registry_url.host_str()
-    || tarball_url.port_or_known_default()
-      != registry_url.port_or_known_default()
-    || tarball_url.username() != registry_url.username()
-    || tarball_url.password() != registry_url.password()
-  {
-    return false;
-  }
-
-  let registry_path = registry_url
-    .path()
-    .strip_suffix('/')
-    .unwrap_or_else(|| registry_url.path());
-  registry_path.is_empty()
-    || tarball_url.path() == registry_path
-    || tarball_url
-      .path()
-      .strip_prefix(registry_path)
-      .is_some_and(|suffix| suffix.starts_with('/'))
 }
 
 #[cfg(test)]
@@ -2066,196 +1994,6 @@ mod tests {
     }
   }
 
-  fn create_npmrc_with_registries(
-    default_url: &str,
-    scope_urls: &[(&str, &str)],
-  ) -> Arc<ende_npmrc::ResolvedNpmRc> {
-    use ende_npmrc::RegistryConfig;
-    use ende_npmrc::RegistryConfigWithUrl;
-    use ende_npmrc::ResolvedNpmRc;
-
-    let mut scopes = std::collections::HashMap::new();
-    for (scope, url) in scope_urls {
-      scopes.insert(
-        scope.to_string(),
-        RegistryConfigWithUrl {
-          registry_url: Url::parse(url).unwrap(),
-          config: Arc::new(RegistryConfig::default()),
-        },
-      );
-    }
-    Arc::new(ResolvedNpmRc {
-      default_config: RegistryConfigWithUrl {
-        registry_url: Url::parse(default_url).unwrap(),
-        config: Arc::new(RegistryConfig::default()),
-      },
-      scopes,
-      registry_configs: Default::default(),
-      replace_registry_host: Default::default(),
-      min_release_age_days: None,
-      trust_policy: Default::default(),
-      trust_policy_ignore_after_minutes: None,
-      trust_policy_exclude: Vec::new(),
-    })
-  }
-
-  fn create_lockfile_content_with_npm(
-    packages: &[(&str, Option<&str>)],
-  ) -> ende_lockfile::LockfileContent {
-    use ende_lockfile::NpmPackageInfo;
-    let mut content = ende_lockfile::LockfileContent::default();
-    for (id, tarball) in packages {
-      content.packages.npm.insert(
-        (*id).into(),
-        NpmPackageInfo {
-          integrity: Some("sha512-test".to_string()),
-          dependencies: Default::default(),
-          optional_dependencies: Default::default(),
-          optional_peers: Default::default(),
-          os: Default::default(),
-          cpu: Default::default(),
-          tarball: tarball.map(|t| t.into()),
-          deprecated: false,
-          scripts: false,
-          bin: false,
-        },
-      );
-    }
-    content
-  }
-
-  #[test]
-  fn validate_npm_tarball_urls_allows_default_registry() {
-    let npmrc =
-      create_npmrc_with_registries("https://registry.npmjs.org/", &[]);
-    let content = create_lockfile_content_with_npm(&[(
-      "chalk@5.0.0",
-      Some("https://registry.npmjs.org/chalk/-/chalk-5.0.0.tgz"),
-    )]);
-    assert!(super::validate_npm_tarball_urls(&content, &npmrc).is_ok());
-  }
-
-  #[test]
-  fn validate_npm_tarball_urls_allows_no_tarball() {
-    let npmrc =
-      create_npmrc_with_registries("https://registry.npmjs.org/", &[]);
-    let content = create_lockfile_content_with_npm(&[("chalk@5.0.0", None)]);
-    assert!(super::validate_npm_tarball_urls(&content, &npmrc).is_ok());
-  }
-
-  #[test]
-  fn validate_npm_tarball_urls_rejects_unknown_registry() {
-    let npmrc =
-      create_npmrc_with_registries("https://registry.npmjs.org/", &[]);
-    let content = create_lockfile_content_with_npm(&[(
-      "evil@1.0.0",
-      Some("https://evil.example.com/evil/-/evil-1.0.0.tgz"),
-    )]);
-    let result = super::validate_npm_tarball_urls(&content, &npmrc);
-    assert_eq!(
-      result.unwrap_err(),
-      "https://evil.example.com/evil/-/evil-1.0.0.tgz"
-    );
-  }
-
-  #[test]
-  fn validate_npm_tarball_urls_allows_scoped_registry() {
-    let npmrc = create_npmrc_with_registries(
-      "https://registry.npmjs.org/",
-      &[("myco", "https://npm.mycompany.com/")],
-    );
-    let content = create_lockfile_content_with_npm(&[(
-      "@myco/pkg@1.0.0",
-      Some("https://npm.mycompany.com/@myco/pkg/-/pkg-1.0.0.tgz"),
-    )]);
-    assert!(super::validate_npm_tarball_urls(&content, &npmrc).is_ok());
-  }
-
-  #[test]
-  fn validate_npm_tarball_urls_allows_path_scoped_registry() {
-    let npmrc = create_npmrc_with_registries(
-      "https://npm.mycompany.com/scoped/company/",
-      &[],
-    );
-
-    for tarball in [
-      "https://npm.mycompany.com/scoped/company/pkg/-/pkg-1.0.0.tgz",
-      "https://npm.mycompany.com:443/scoped/company/pkg/-/pkg-1.0.0.tgz",
-    ] {
-      let content =
-        create_lockfile_content_with_npm(&[("pkg@1.0.0", Some(tarball))]);
-      assert!(
-        super::validate_npm_tarball_urls(&content, &npmrc).is_ok(),
-        "expected {tarball} to be allowed"
-      );
-    }
-  }
-
-  #[test]
-  fn validate_npm_tarball_urls_rejects_path_scoped_registry_mismatches() {
-    let npmrc = create_npmrc_with_registries(
-      "https://npm.mycompany.com/scoped/company",
-      &[],
-    );
-
-    for tarball in [
-      "https://npm.mycompany.com/scoped/company/../other/pkg.tgz",
-      "https://npm.mycompany.com/scoped/company/%2e%2e/other/pkg.tgz",
-      "https://npm.mycompany.com/scoped/company-other/pkg.tgz",
-      "http://npm.mycompany.com/scoped/company/pkg.tgz",
-      "https://npm.mycompany.com:444/scoped/company/pkg.tgz",
-      "https://user@npm.mycompany.com/scoped/company/pkg.tgz",
-    ] {
-      let content =
-        create_lockfile_content_with_npm(&[("pkg@1.0.0", Some(tarball))]);
-      assert_eq!(
-        super::validate_npm_tarball_urls(&content, &npmrc).unwrap_err(),
-        tarball,
-      );
-    }
-  }
-
-  #[test]
-  fn validate_npm_tarball_urls_allows_npmjs_when_custom_default() {
-    // Even with a custom default registry, registry.npmjs.org should be allowed
-    let npmrc = create_npmrc_with_registries("https://npm.mycompany.com/", &[]);
-    let content = create_lockfile_content_with_npm(&[(
-      "chalk@5.0.0",
-      Some("https://registry.npmjs.org/chalk/-/chalk-5.0.0.tgz"),
-    )]);
-    assert!(super::validate_npm_tarball_urls(&content, &npmrc).is_ok());
-  }
-
-  #[test]
-  fn validate_npm_tarball_urls_mixed_valid_and_invalid() {
-    let npmrc =
-      create_npmrc_with_registries("https://registry.npmjs.org/", &[]);
-    let content = create_lockfile_content_with_npm(&[
-      (
-        "chalk@5.0.0",
-        Some("https://registry.npmjs.org/chalk/-/chalk-5.0.0.tgz"),
-      ),
-      (
-        "evil@1.0.0",
-        Some("https://evil.example.com/evil/-/evil-1.0.0.tgz"),
-      ),
-    ]);
-    assert!(super::validate_npm_tarball_urls(&content, &npmrc).is_err());
-  }
-
-  #[test]
-  fn validate_npm_tarball_urls_rejects_subdomain_spoof() {
-    // ensure "https://registry.npmjs.org" (no trailing slash) doesn't
-    // match "https://registry.npmjs.org.evil.com/..." via prefix
-    let npmrc = create_npmrc_with_registries("https://registry.npmjs.org", &[]);
-    let content = create_lockfile_content_with_npm(&[(
-      "evil@1.0.0",
-      Some("https://registry.npmjs.org.evil.com/evil/-/evil-1.0.0.tgz"),
-    )]);
-    assert!(super::validate_npm_tarball_urls(&content, &npmrc).is_err());
-  }
-
-  #[cfg(not(windows))]
   #[test]
   fn posix_shell_escape_matches_shim_needs() {
     assert_eq!(

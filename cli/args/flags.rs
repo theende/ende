@@ -20,7 +20,6 @@ use ende_config::glob::PathOrPatternSet;
 use ende_core::anyhow::Context;
 use ende_core::error::AnyError;
 use ende_lib::version::ENDE_VERSION_INFO;
-use ende_npm::NpmSystemInfo;
 pub use ende_runtime::ende_inspector_server::InspectPublishUid;
 use ende_telemetry::OtelConfig;
 use ende_telemetry::OtelConsoleConfig;
@@ -92,20 +91,6 @@ pub fn resolve_compile_target(flags: &CompileFlags) -> String {
     .target
     .clone()
     .unwrap_or_else(|| env!("TARGET").to_string())
-}
-
-fn npm_system_info_from_env() -> NpmSystemInfo {
-  let arch = ende_env::var_os("ENDE_INSTALL_ARCH");
-  if let Some(var) = arch.as_ref().and_then(|s| s.to_str()) {
-    NpmSystemInfo::from_rust(std::env::consts::OS, var)
-  } else {
-    NpmSystemInfo::default()
-  }
-}
-
-/// The npm platform/arch to resolve packages for.
-pub fn npm_system_info() -> NpmSystemInfo {
-  npm_system_info_from_env()
 }
 
 /// The module `GraphKind` that should be created for a `TypeCheckMode`.
@@ -508,10 +493,10 @@ impl FlagsExt for Flags {
         source_file: script,
         ..
       }) => resolve_single_folder_path(script, current_dir, |p| {
-        // The desktop entrypoint is commonly a directory (e.g. `ende desktop
-        // .` for framework detection), in which case the config lives in that
-        // directory itself — don't pop up to its parent. Only pop when the
-        // entrypoint is a file.
+        // The desktop entrypoint is a directory for bare `ende desktop` (which
+        // defaults to `.`), in which case the config lives in that directory
+        // itself — don't pop up to its parent. Only pop when the entrypoint is
+        // a file.
         if p.is_dir() {
           Some(p)
         } else {
@@ -615,7 +600,7 @@ fn bare_run_fast_path(args: &[OsString]) -> Option<Flags> {
       .iter()
       .map(|a| a.to_string_lossy().into_owned())
       .collect::<Vec<_>>();
-    let mut flags = Flags {
+    let flags = Flags {
       subcommand: EndeSubcommand::Run(RunFlags {
         script: script.to_string(),
         bare: false,
@@ -628,7 +613,6 @@ fn bare_run_fast_path(args: &[OsString]) -> Option<Flags> {
       code_cache_enabled: true,
       ..Default::default()
     };
-    ende_cli_parser::convert::apply_node_options(&mut flags);
     Some(flags)
   } else {
     None
@@ -1004,9 +988,8 @@ mod tests {
       ])
     );
 
-    // `ende desktop .` (and bare `ende desktop`) runs framework detection on
-    // the current directory, so config discovery must start in that directory
-    // rather than its parent. See issue #35653.
+    // For `ende desktop .` (and bare `ende desktop`) config discovery must
+    // start in the current directory rather than its parent. See issue #35653.
     let flags = flags_from_vec(svec!["ende", "desktop", "."]).unwrap();
     assert_eq!(flags.config_path_args(&cwd), Some(vec![cwd.clone()]));
 

@@ -55,9 +55,6 @@ use ende_runtime::tokio_util::create_basic_runtime;
 use indexmap::IndexSet;
 use lazy_regex::lazy_regex;
 use lsp_types::Uri;
-use node_resolver::NodeResolutionKind;
-use node_resolver::ResolutionMode;
-use node_resolver::cache::NodeResolutionThreadLocalCache;
 use once_cell::sync::Lazy;
 use regex::Captures;
 use regex::Regex;
@@ -4871,7 +4868,7 @@ impl SelectionRange {
 #[derive(Debug, Default)]
 pub struct TscSpecifierMap {
   normalized_specifiers: DashMap<String, ModuleSpecifier>,
-  denormalized_specifiers: DashMap<(ModuleSpecifier, bool), String>,
+  denormalized_specifiers: DashMap<ModuleSpecifier, String>,
 }
 
 impl TscSpecifierMap {
@@ -4887,43 +4884,11 @@ impl TscSpecifierMap {
     specifier: &ModuleSpecifier,
     media_type: MediaType,
   ) -> String {
-    self.denormalize_inner(specifier, media_type, false)
-  }
-
-  /// Denormalizes a specifier while hiding `node_modules` from TypeScript.
-  ///
-  /// TypeScript suppresses auto-import candidates from `node_modules/.ende`,
-  /// so direct package entry points that should be auto-importable are exposed
-  /// under a synthetic `$node_modules` path. Avoid using this for every
-  /// node_modules file, as that makes TypeScript treat the whole dependency
-  /// tree like user code.
-  pub fn denormalize_with_node_modules_alias(
-    &self,
-    specifier: &ModuleSpecifier,
-    media_type: MediaType,
-  ) -> String {
-    self.denormalize_inner(specifier, media_type, true)
-  }
-
-  fn denormalize_inner(
-    &self,
-    specifier: &ModuleSpecifier,
-    media_type: MediaType,
-    alias_node_modules: bool,
-  ) -> String {
     let original = specifier;
-    if let Some(specifier) = self
-      .denormalized_specifiers
-      .get(&(original.clone(), alias_node_modules))
-    {
+    if let Some(specifier) = self.denormalized_specifiers.get(original) {
       return specifier.to_string();
     }
     let mut specifier = original.to_string();
-    if alias_node_modules && !specifier.contains("/node_modules/@types/node/") {
-      // The ts server doesn't give completions from files in
-      // `node_modules/.ende/`. We work around it like this.
-      specifier = specifier.replace("/node_modules/", "/$node_modules/");
-    }
     // If the module's media type doesn't correspond to tsc's path-inferred
     // media type, force it to be the same by appending an extension.
     if MediaType::from_path(Path::new(&specifier)) != media_type {
@@ -4947,15 +4912,12 @@ impl TscSpecifierMap {
     if let Some(specifier) = self.normalized_specifiers.get(original) {
       return Ok(specifier.clone());
     }
-    let specifier_str = original
-      .replace(".d.ts.d.ts", ".d.ts")
-      .replace("$node_modules", "node_modules");
+    let specifier_str = original.replace(".d.ts.d.ts", ".d.ts");
     let specifier = ModuleSpecifier::parse(&specifier_str)?;
     if specifier.as_str() != original {
-      self.denormalized_specifiers.insert(
-        (specifier.clone(), original.contains("$node_modules")),
-        original.to_string(),
-      );
+      self
+        .denormalized_specifiers
+        .insert(specifier.clone(), original.to_string());
     }
     Ok(specifier)
   }
@@ -5124,7 +5086,10 @@ fn op_load<'s>(
           data,
           script_kind: crate::tsc::as_ts_script_kind(m.media_type),
           version: state.script_version(&specifier),
-          is_cjs: m.resolution_mode == ResolutionMode::Require,
+          is_cjs: matches!(
+            m.media_type,
+            MediaType::Cjs | MediaType::Cts | MediaType::Dcts
+          ),
           is_classic_script: m.notebook_uri.is_some(),
         }
       })
@@ -5244,7 +5209,6 @@ async fn op_poll_requests(
   };
 
   // clear the resolution cache after each request
-  NodeResolutionThreadLocalCache::clear();
 
   // While the language server sits idle the TSC isolate can hold on to a lot of
   // dead type-checker allocations (and the V8 heap pages behind them) that won't
@@ -5358,7 +5322,7 @@ fn op_resolve_inner(
     .map(|o| {
       o.map(|(s, mt)| {
         (
-          denormalize_with_auto_import_alias(state, &s, mt, Some(&referrer)),
+          state.specifier_map.denormalize(&s, mt),
           match mt {
             MediaType::Unknown => None,
             // surface these as .js for typescript so side-effect imports
@@ -5441,37 +5405,6 @@ fn span_with_context(
   }
 }
 
-fn should_alias_node_modules_for_auto_import(
-  state: &State,
-  specifier: &ModuleSpecifier,
-  scope: Option<&ModuleSpecifier>,
-) -> bool {
-  if !state.state_snapshot.resolver.in_node_modules(specifier) {
-    return false;
-  }
-  let scoped_resolver =
-    state.state_snapshot.resolver.get_scoped_resolver(scope);
-  let referrer = scope.unwrap_or(specifier);
-  scoped_resolver
-    .resource_url_to_configured_dep_key(specifier, referrer)
-    .is_some()
-}
-
-fn denormalize_with_auto_import_alias(
-  state: &State,
-  specifier: &ModuleSpecifier,
-  media_type: MediaType,
-  scope: Option<&ModuleSpecifier>,
-) -> String {
-  if should_alias_node_modules_for_auto_import(state, specifier, scope) {
-    state
-      .specifier_map
-      .denormalize_with_node_modules_alias(specifier, media_type)
-  } else {
-    state.specifier_map.denormalize(specifier, media_type)
-  }
-}
-
 #[op2(fast)]
 fn op_make_span(
   op_state: &mut OpState,
@@ -5524,7 +5457,6 @@ fn insert_root_module_script_names(
   state: &State,
   script_names: &mut IndexSet<String>,
   module: &DocumentModule,
-  scope: Option<&ModuleSpecifier>,
   is_open: bool,
 ) {
   let types_entry = (|| {
@@ -5535,8 +5467,6 @@ fn insert_root_module_script_names(
       .maybe_specifier()?;
     state.state_snapshot.document_modules.resolve_dependency(
       types_specifier,
-      &module.specifier,
-      module.resolution_mode,
       module.scope.as_deref(),
       Some(&module.compiler_options_key),
     )
@@ -5544,32 +5474,18 @@ fn insert_root_module_script_names(
   // If there is a types dep, use that as the root instead. But if the doc
   // is open, include both as roots.
   if let Some((types_specifier, types_media_type, _)) = &types_entry {
-    script_names.insert(denormalize_with_auto_import_alias(
-      state,
-      types_specifier,
-      *types_media_type,
-      scope,
-    ));
+    script_names.insert(
+      state
+        .specifier_map
+        .denormalize(types_specifier, *types_media_type),
+    );
   }
   if types_entry.is_none() || is_open {
-    script_names.insert(denormalize_with_auto_import_alias(
-      state,
-      &module.specifier,
-      module.media_type,
-      scope,
-    ));
-    // The auto-import alias hides `node_modules/.ende` from tsc, but
-    // requests for open documents (diagnostics, hover, etc.) use the
-    // unaliased name. Include it as a root too so they don't fail with
-    // "Could not find source file". See
-    // https://github.com/denoland/deno/issues/35170.
-    if is_open {
-      script_names.insert(
-        state
-          .specifier_map
-          .denormalize(&module.specifier, module.media_type),
-      );
-    }
+    script_names.insert(
+      state
+        .specifier_map
+        .denormalize(&module.specifier, module.media_type),
+    );
   }
 }
 
@@ -5608,16 +5524,9 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
       {
         continue;
       }
-      let referrer = compiler_options_data
-        .workspace_dir_or_source_url
-        .as_deref()
-        .or(scope.as_deref())
-        .unwrap_or(&specifier);
       let Some((specifier, media_type, _)) =
         state.state_snapshot.document_modules.resolve_dependency(
           &specifier,
-          referrer,
-          ResolutionMode::Import,
           scope.as_deref(),
           Some(compiler_options_key),
         )
@@ -5645,14 +5554,13 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
     {
       let resolver = SingleReferrerGraphResolver {
         valid_referrer: referrer,
-        module_resolution_mode: ResolutionMode::Import,
         cli_resolver: scoped_resolver.as_cli_resolver(),
         jsx_import_source_config: compiler_options_data
           .jsx_import_source_config
           .as_deref(),
       };
       for relative_specifier in relative_specifiers {
-        let Ok(mut specifier) = resolver
+        let Ok(specifier) = resolver
           .resolve(
             relative_specifier,
             &deno_graph::Range {
@@ -5670,20 +5578,6 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
         else {
           continue;
         };
-        if let Ok(req_ref) =
-          deno_semver::npm::NpmPackageReqReference::from_specifier(&specifier)
-        {
-          let Some((resolved, _)) = scoped_resolver.npm_to_file_url(
-            &req_ref,
-            referrer,
-            NodeResolutionKind::Types,
-            ResolutionMode::Import,
-          ) else {
-            lsp_log!("Failed to resolve {req_ref} to a file URL.");
-            continue;
-          };
-          specifier = resolved;
-        }
         let Some(module) =
           state.state_snapshot.document_modules.module_for_specifier(
             &specifier,
@@ -5693,12 +5587,11 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
         else {
           continue;
         };
-        script_names.insert(denormalize_with_auto_import_alias(
-          state,
-          &module.specifier,
-          module.media_type,
-          scope.as_deref(),
-        ));
+        script_names.insert(
+          state
+            .specifier_map
+            .denormalize(&module.specifier, module.media_type),
+        );
       }
     }
     for specifier in compiler_options_data.ts_config_roots.iter() {
@@ -5717,13 +5610,7 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
       else {
         continue;
       };
-      insert_root_module_script_names(
-        state,
-        script_names,
-        &module,
-        scope.as_deref(),
-        false,
-      );
+      insert_root_module_script_names(state, script_names, &module, false);
     }
   }
 
@@ -5760,12 +5647,11 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
         .state_snapshot
         .document_modules
         .module(&document, scope.map(|s| s.as_ref()))?;
-      Some(denormalize_with_auto_import_alias(
-        state,
-        &module.specifier,
-        module.media_type,
-        scope.map(|s| s.as_ref()),
-      ))
+      Some(
+        state
+          .specifier_map
+          .denormalize(&module.specifier, module.media_type),
+      )
     }));
 
     result
@@ -5774,7 +5660,7 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
   }
 
   // finally include the documents
-  for (scope, modules) in state
+  for (_, modules) in state
     .state_snapshot
     .document_modules
     .workspace_file_modules_by_scope()
@@ -5789,7 +5675,6 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
         state,
         script_names,
         &module,
-        scope.as_deref(),
         module.open_data.is_some(),
       );
     }
@@ -6763,10 +6648,9 @@ mod tests {
         .unwrap(),
       )
       .await;
-    let resolver =
-      Arc::new(LspResolver::from_config(&config, &cache, None).await);
+    let resolver = Arc::new(LspResolver::from_config(&config, &cache));
     let compiler_options_resolver =
-      Arc::new(LspCompilerOptionsResolver::new(&config, &resolver, None));
+      Arc::new(LspCompilerOptionsResolver::new(&config, None));
     resolver.set_compiler_options_resolver(&compiler_options_resolver.inner);
     let linter_resolver = Arc::new(LspLinterResolver::new(
       &config,
@@ -7336,26 +7220,6 @@ mod tests {
     };
     let actual = fixture.get_filter_text(None);
     assert_eq!(actual, Some("abc".to_string()));
-  }
-
-  #[test]
-  fn test_tsc_specifier_map_node_modules_alias_is_opt_in() {
-    let map = TscSpecifierMap::new();
-    let specifier = ModuleSpecifier::parse(
-      "file:///project/node_modules/.ende/pkg@1.0.0/node_modules/pkg/mod.d.ts",
-    )
-    .unwrap();
-
-    let denormalized = map.denormalize(&specifier, MediaType::Dts);
-    assert_eq!(denormalized, specifier.as_str());
-
-    let aliased =
-      map.denormalize_with_node_modules_alias(&specifier, MediaType::Dts);
-    assert_eq!(
-      aliased,
-      "file:///project/$node_modules/.ende/pkg@1.0.0/$node_modules/pkg/mod.d.ts",
-    );
-    assert_eq!(map.normalize(&aliased).unwrap(), specifier);
   }
 
   #[tokio::test]

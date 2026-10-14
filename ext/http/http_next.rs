@@ -41,7 +41,6 @@ use ende_http_h1 as h1;
 use ende_net::ops_tls::TlsStream;
 use ende_net::raw::NetworkStream;
 use ende_websocket::ServerWebSocket;
-use ende_websocket::ws_create_server_stream;
 use ende_websocket::ws_create_server_stream_with_guard;
 use fly_accept_encoding::Encoding;
 use hyper::StatusCode;
@@ -1833,24 +1832,6 @@ fn register_server_websocket(
     registry.register(key, &ws);
   }
   rid
-}
-
-/// Create a server WebSocket from a TCP stream resource (e.g. taken from a
-/// node:http TCPWrap handle). This lets ext/node hand off the raw stream
-/// without depending on ende_websocket directly.
-#[op2(fast)]
-#[smi]
-pub fn op_http_ws_create_from_stream_resource(
-  state: &mut OpState,
-  #[smi] stream_rid: ResourceId,
-  #[buffer] extra_bytes: &[u8],
-) -> Result<ResourceId, HttpNextError> {
-  let stream = ende_net::raw::take_network_stream_resource(
-    &mut state.resource_table,
-    stream_rid,
-  )?;
-  let read_buf = Bytes::copy_from_slice(extra_bytes);
-  Ok(ws_create_server_stream(state, stream, read_buf))
 }
 
 #[op2(fast)]

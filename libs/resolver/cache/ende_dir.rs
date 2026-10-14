@@ -111,12 +111,6 @@ impl<TSys: DiskCacheSys> EndeDir<TSys> {
     self.root.join("fast_check_cache_v2")
   }
 
-  /// Path for caching node analysis.
-  pub fn node_analysis_db_file_path(&self) -> PathBuf {
-    // bump this version name to invalidate the entire cache
-    self.root.join("node_analysis_cache_v2")
-  }
-
   /// Path for the cache used for type checking.
   pub fn type_checking_cache_db_file_path(&self) -> PathBuf {
     // bump this version name to invalidate the entire cache
@@ -142,11 +136,6 @@ impl<TSys: DiskCacheSys> EndeDir<TSys> {
   /// File used for the upgrade checker.
   pub fn upgrade_check_file_path(&self) -> PathBuf {
     self.root.join("latest.txt")
-  }
-
-  /// Folder used for the npm cache.
-  pub fn npm_folder_path(&self) -> PathBuf {
-    self.root.join("npm")
   }
 
   /// Path used for the REPL history file.

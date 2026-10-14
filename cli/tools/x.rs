@@ -1,6 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use std::collections::BTreeMap;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -14,8 +13,6 @@ use ende_core::anyhow;
 use ende_core::anyhow::Context;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
-use ende_runtime::ende_permissions::PathQueryDescriptor;
-use node_resolver::BinValue;
 
 use crate::args::CliOptions;
 use crate::args::ConfigFlag;
@@ -25,7 +22,6 @@ use crate::args::FlagsExt;
 use crate::args::XFlags;
 use crate::args::XFlagsKind;
 use crate::factory::CliFactory;
-use crate::npm::CliNpmResolver;
 use crate::tools::pm::CacheTopLevelDepsOptions;
 use crate::util::console::ConfirmOptions;
 use crate::util::console::confirm;
@@ -37,7 +33,7 @@ use crate::util::fs::canonicalize_path;
 ///
 /// `ende x` executes the target as an `ende run <target>` subprocess in the
 /// user's cwd, so it re-discovers the cwd `ende.json` `minimumDependencyAge`
-/// (including its `exclude`) and `.npmrc` policy exactly as a plain
+/// (including its `exclude`) exactly as a plain
 /// `ende run <target>` would. The only thing that subprocess can't observe is
 /// an explicit CLI flag, so we forward just that — rendering the EXPLICIT value
 /// (never a computed effective policy). Forwarding a config-derived scalar
@@ -88,16 +84,11 @@ fn config_flag_arg(flags: &Flags, initial_cwd: &Path) -> Option<String> {
 
 /// Like [`config_flag_arg`], but for re-run sites whose child does NOT
 /// auto-discover the user's cwd `ende.json`, so an original `ConfigFlag::Discover`
-/// must be resolved to the discovered config path and forwarded explicitly. Two
-/// such sites (issue #35991):
-/// - the npm auto-install re-run, which executes the *installed bin file* (under
-///   `ende_dir/ende_x_cache/...`): its config auto-discovery anchors on the
-///   installed file's directory, NEVER the user's cwd (it finds the internal
-///   temp `ende.json` instead).
-/// - the jsr/URL re-run, which executes a `jsr:`/`data:`/`http(s):` main module:
-///   `ende run` disables config discovery entirely for a non-`file:`/non-`npm:`
-///   entrypoint, so the child would drop the cwd policy (`minimumDependencyAge`,
-///   permission sets, ...) that the isolated install already honored.
+/// must be resolved to the discovered config path and forwarded explicitly
+/// (issue #35991): the jsr/URL re-run executes a `jsr:`/`data:`/`http(s):` main
+/// module, and `ende run` disables config discovery entirely for a non-`file:`
+/// entrypoint, so the child would drop the cwd policy (`minimumDependencyAge`,
+/// permission sets, ...) that the isolated install already honored.
 ///
 /// Resolving `Discover` to the discovered config keeps install and re-run
 /// consistent and matches applying the user's cwd policy. Explicit `Path`/
@@ -186,11 +177,7 @@ fn run_js_file(
   main_module: &ende_core::url::Url,
   ende_args: &[String],
   argv: &[String],
-  npm_process_state: Option<String>,
-  npm: bool,
 ) -> Result<i32, AnyError> {
-  use ende_runtime::ende_io::FromRawIoHandle;
-
   let ende_exe = std::env::current_exe()
     .and_then(|p| canonicalize_path(&p))
     .context("Failed to get current executable path")?;
@@ -202,25 +189,6 @@ fn run_js_file(
 
   let mut command = std::process::Command::new(ende_exe);
   command.args(&args);
-
-  let _temp_file = if let Some(state) = &npm_process_state {
-    let fd =
-      ende_runtime::ende_process::npm_process_state_tempfile(state.as_bytes())
-        .context("Failed to create npm process state tempfile")?;
-    command.env(
-      ende_runtime::ende_process::NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME,
-      (fd as usize).to_string(),
-    );
-    // Keep the file alive until the subprocess completes
-    // SAFETY: fd is valid
-    Some(unsafe { std::fs::File::from_raw_io_handle(fd) })
-  } else {
-    None
-  };
-
-  if npm {
-    crate::tools::run::set_npm_user_agent();
-  }
 
   #[cfg(unix)]
   {
@@ -234,113 +202,6 @@ fn run_js_file(
     let status = child.wait().context("Failed to wait for ende subprocess")?;
     Ok(status.code().unwrap_or(1))
   }
-}
-
-pub(crate) fn get_npm_process_state(
-  npm_resolver: &CliNpmResolver,
-) -> Option<String> {
-  match npm_resolver {
-    ende_resolver::npm::NpmResolver::Managed(managed) => {
-      let linker_mode = match managed.linker_mode() {
-        ende_config::ende_json::NodeModulesLinkerMode::Hoisted => {
-          ende_npm_installer::process_state::NpmProcessStateLinkerMode::Hoisted
-        }
-        ende_config::ende_json::NodeModulesLinkerMode::Isolated => {
-          ende_npm_installer::process_state::NpmProcessStateLinkerMode::Isolated
-        }
-      };
-      Some(
-        ende_npm_installer::process_state::NpmProcessState::new_managed(
-          managed.resolution().serialized_valid_snapshot(),
-          managed.root_node_modules_path(),
-          linker_mode,
-        )
-        .as_serialized(),
-      )
-    }
-    ende_resolver::npm::NpmResolver::Byonm(_) => None,
-  }
-}
-
-pub(crate) fn run_bin_value(
-  factory: &CliFactory,
-  flags: &Flags,
-  bin_value: BinValue,
-  npm_process_state: Option<String>,
-  unstable_args: &[String],
-  // Extra `ende run` args carrying the user's ORIGINAL CLI selections (config,
-  // minimum-dependency-age, permission-set). Computed by the caller from the
-  // original flags/cwd via `forwarded_run_args`, NOT from `flags` here: in the
-  // npm auto-install path `flags` is the internal runner flags whose
-  // `config_flag` points at a generated temp `ende.json` (issue #35991).
-  forwarded_args: &[String],
-) -> Result<i32, AnyError> {
-  match bin_value {
-    BinValue::JsFile(path_buf) => {
-      let path = deno_path_util::url_from_file_path(path_buf.as_ref())?;
-      let mut ende_args = flags.to_permission_args();
-      ende_args.extend(unstable_args.iter().cloned());
-      ende_args.extend(forwarded_args.iter().cloned());
-
-      run_js_file(&path, &ende_args, &flags.argv, npm_process_state, true)
-    }
-    BinValue::Executable(mut path_buf) => {
-      if cfg!(windows) && path_buf.extension().is_none() {
-        // prefer cmd shim over sh
-        path_buf.set_extension("cmd");
-        if !path_buf.exists() {
-          //  just fall back to original path
-          path_buf.set_extension("");
-        }
-      }
-      let permissions = factory.root_permissions_container()?;
-      permissions.check_run(
-        &ende_runtime::ende_permissions::RunQueryDescriptor::Path(
-          PathQueryDescriptor::new(
-            &factory.sys(),
-            std::borrow::Cow::Borrowed(path_buf.as_ref()),
-          )?,
-        ),
-        "entrypoint",
-      )?;
-      let mut child = std::process::Command::new(path_buf)
-        .args(&flags.argv)
-        .spawn()
-        .context("Failed to spawn command")?;
-      let status = child.wait()?;
-      Ok(status.code().unwrap_or(1))
-    }
-  }
-}
-
-/// Try to find a bin value from a map of bins, with fallbacks for scoped package names
-/// and single-bin packages.
-pub(crate) fn find_bin_value(
-  bins: &BTreeMap<String, BinValue>,
-  bin_name: &str,
-) -> Option<BinValue> {
-  bins
-    .get(bin_name)
-    .or_else(|| {
-      // Try the package name without scope as fallback
-      if bin_name.starts_with('@') && bin_name.contains('/') {
-        bin_name
-          .split('/')
-          .next_back()
-          .and_then(|name| bins.get(name))
-      } else {
-        None
-      }
-    })
-    .or_else(|| {
-      // If there's only one bin, use it
-      if bins.len() == 1 {
-        bins.values().next()
-      } else {
-        None
-      }
-    })
-    .cloned()
 }
 
 enum XTempDir {
@@ -534,8 +395,8 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
 
   let cache_setting = cli_options.cache_setting();
   let reload = matches!(cache_setting, CacheSetting::ReloadAll);
-  // Effective minimum dependency age policy (CLI flag > cwd deno.json > .npmrc
-  // > default) resolved from the ORIGINAL factory, i.e. the user's cwd config.
+  // Effective minimum dependency age policy (CLI flag > cwd ende.json >
+  // `ENDE_MINIMUM_DEPENDENCY_AGE` > default) resolved from the ORIGINAL factory, i.e. the user's cwd config.
   // This full config (age + exclude) is written into the generated temp
   // ende.json used for installing, since that temp workspace can't see the
   // user's cwd config on its own.
@@ -545,7 +406,7 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
     .clone();
   match thing_to_run {
     ReqRefOrUrl::Jsr(jsr_package_req_reference) => {
-      let new_factory = autoinstall_package(
+      autoinstall_package(
         &jsr_package_req_reference,
         &flags,
         reload,
@@ -556,21 +417,18 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
       )
       .await?;
 
-      let npm_resolver = new_factory.npm_resolver().await?;
-      let npm_process_state = get_npm_process_state(npm_resolver);
-
       let mut ende_args = flags.to_permission_args();
       ende_args.extend(unstable_args.iter().cloned());
       ende_args.extend(forwarded.iter().cloned());
       let url =
         ende_core::url::Url::parse(&jsr_package_req_reference.to_string())?;
-      run_js_file(&url, &ende_args, &flags.argv, npm_process_state, false)
+      run_js_file(&url, &ende_args, &flags.argv)
     }
     ReqRefOrUrl::Url(url) => {
       let mut ende_args = flags.to_permission_args();
       ende_args.extend(unstable_args.iter().cloned());
       ende_args.extend(forwarded.iter().cloned());
-      run_js_file(&url, &ende_args, &flags.argv, None, false)
+      run_js_file(&url, &ende_args, &flags.argv)
     }
   }
 }

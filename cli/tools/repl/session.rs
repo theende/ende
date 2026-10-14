@@ -15,17 +15,11 @@ use deno_ast::SourcePos;
 use deno_ast::SourceRangedForSpanned;
 use deno_ast::SourceTextInfo;
 use deno_ast::diagnostics::Diagnostic;
-use deno_ast::swc::ast as swc_ast;
-use deno_ast::swc::atoms::Wtf8Atom;
 use deno_ast::swc::common::comments::CommentKind;
-use deno_ast::swc::ecma_visit::Visit;
-use deno_ast::swc::ecma_visit::VisitWith;
-use deno_ast::swc::ecma_visit::noop_visit_type;
 use deno_error::JsErrorBox;
 use deno_graph::Position;
 use deno_graph::PositionRange;
 use deno_graph::analysis::SpecifierWithRange;
-use deno_semver::npm::NpmPackageReqReference;
 use ende_core::LocalInspectorSession;
 use ende_core::anyhow::anyhow;
 use ende_core::error::AnyError;
@@ -43,8 +37,6 @@ use ende_core::url::Url;
 use ende_lib::util::result::any_and_jserrorbox_downcast_ref;
 use ende_resolver::ende_json::CompilerOptionsResolver;
 use ende_runtime::worker::MainWorker;
-use node_resolver::NodeResolutionKind;
-use node_resolver::ResolutionMode;
 use once_cell::sync::Lazy;
 use regex::Match;
 use regex::Regex;
@@ -55,8 +47,6 @@ use crate::args::CliOptions;
 use crate::cdp;
 use crate::cdp::RemoteObjectId;
 use crate::colors;
-use crate::npm::CliNpmInstaller;
-use crate::resolver::CliResolver;
 use crate::tools::test::TestEventReceiver;
 use crate::tools::test::TestEventTracker;
 use crate::tools::test::TestFailureFormatOptions;
@@ -173,8 +163,6 @@ pub struct TsEvaluateResponse {
 
 pub struct ReplSession {
   internal_object_id: Option<RemoteObjectId>,
-  npm_installer: Option<Arc<CliNpmInstaller>>,
-  resolver: Arc<CliResolver>,
   // NB: `session` and `state` must come before Worker, so that relevant V8 objects
   // are dropped before the isolate is dropped with `worker`.
   session: LocalInspectorSession,
@@ -182,7 +170,6 @@ pub struct ReplSession {
   pub worker: MainWorker,
   pub context_id: u64,
   pub notifications: Arc<Mutex<UnboundedReceiver<Value>>>,
-  referrer: ModuleSpecifier,
   main_module: ModuleSpecifier,
   test_reporter_factory: Box<dyn Fn() -> Box<dyn TestReporter>>,
   /// This is only optional because it's temporarily taken when evaluating.
@@ -301,8 +288,6 @@ impl ReplSession {
   #[allow(clippy::too_many_arguments, reason = "construction")]
   pub async fn initialize(
     cli_options: &CliOptions,
-    npm_installer: Option<Arc<CliNpmInstaller>>,
-    resolver: Arc<CliResolver>,
     compiler_options_resolver: &CompilerOptionsResolver,
     mut worker: MainWorker,
     main_module: ModuleSpecifier,
@@ -345,10 +330,6 @@ impl ReplSession {
     }
     assert_ne!(context_id, 0);
 
-    let referrer =
-      ende_core::resolve_path("./$ende$repl.mts", cli_options.initial_cwd())
-        .unwrap();
-
     let cwd_url =
       Url::from_directory_path(cli_options.initial_cwd()).map_err(|_| {
         anyhow!(
@@ -362,13 +343,10 @@ impl ReplSession {
       .transpile;
     let mut repl_session = ReplSession {
       internal_object_id: None,
-      npm_installer,
-      resolver,
       worker,
       session,
       state,
       context_id,
-      referrer,
       notifications: Arc::new(Mutex::new(notification_rx)),
       test_reporter_factory: Box::new(move || {
         Box::new(PrettyTestReporter::new(
@@ -823,10 +801,6 @@ impl ReplSession {
       return Err(diagnostics.into());
     }
 
-    self
-      .check_for_npm_or_node_imports(&parsed_source.program())
-      .await?;
-
     self.analyze_and_handle_jsx(&parsed_source);
 
     let transpiled_src = parsed_source
@@ -916,49 +890,6 @@ impl ReplSession {
     }
   }
 
-  async fn check_for_npm_or_node_imports(
-    &mut self,
-    program: &swc_ast::Program,
-  ) -> Result<(), AnyError> {
-    let Some(npm_installer) = &self.npm_installer else {
-      return Ok(());
-    };
-
-    let mut collector = ImportCollector::new();
-    program.visit_with(&mut collector);
-
-    let resolved_imports = collector
-      .imports
-      .iter()
-      .flat_map(|i| {
-        let specifier = i.to_string_lossy();
-        self
-          .resolver
-          .resolve(
-            &specifier,
-            &self.referrer,
-            deno_graph::Position::zeroed(),
-            ResolutionMode::Import,
-            NodeResolutionKind::Execution,
-          )
-          .ok()
-          .or_else(|| ModuleSpecifier::parse(&specifier).ok())
-      })
-      .collect::<Vec<_>>();
-
-    let npm_imports = resolved_imports
-      .iter()
-      .flat_map(|url| NpmPackageReqReference::from_specifier(url).ok())
-      .map(|r| r.into_inner().req)
-      .collect::<Vec<_>>();
-    if !npm_imports.is_empty() {
-      npm_installer
-        .add_and_cache_package_reqs(&npm_imports)
-        .await?;
-    }
-    Ok(())
-  }
-
   async fn evaluate_expression(
     &mut self,
     expression: &str,
@@ -986,58 +917,6 @@ impl ReplSession {
       )
       .await;
     serde_json::from_value(res).map_err(JsErrorBox::from_err)
-  }
-}
-
-/// Walk an AST and get all import specifiers for analysis if any of them is
-/// an npm specifier.
-struct ImportCollector {
-  pub imports: Vec<Wtf8Atom>,
-}
-
-impl ImportCollector {
-  pub fn new() -> Self {
-    Self { imports: vec![] }
-  }
-}
-
-impl Visit for ImportCollector {
-  noop_visit_type!();
-
-  fn visit_call_expr(&mut self, call_expr: &swc_ast::CallExpr) {
-    if !matches!(call_expr.callee, swc_ast::Callee::Import(_)) {
-      return;
-    }
-
-    if !call_expr.args.is_empty() {
-      let arg = &call_expr.args[0];
-      if let swc_ast::Expr::Lit(swc_ast::Lit::Str(str_lit)) = &*arg.expr {
-        self.imports.push(str_lit.value.clone());
-      }
-    }
-  }
-
-  fn visit_module_decl(&mut self, module_decl: &swc_ast::ModuleDecl) {
-    use deno_ast::swc::ast::*;
-
-    match module_decl {
-      ModuleDecl::Import(import_decl) => {
-        if import_decl.type_only {
-          return;
-        }
-
-        self.imports.push(import_decl.src.value.clone());
-      }
-      ModuleDecl::ExportAll(export_all) => {
-        self.imports.push(export_all.src.value.clone());
-      }
-      ModuleDecl::ExportNamed(export_named) => {
-        if let Some(src) = &export_named.src {
-          self.imports.push(src.value.clone());
-        }
-      }
-      _ => {}
-    }
   }
 }
 

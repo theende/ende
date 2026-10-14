@@ -160,33 +160,25 @@ pub async fn run(
   let cli_options = factory.cli_options()?;
   let main_module = cli_options.resolve_main_module()?;
   let permissions = factory.root_permissions_container()?;
-  let npm_installer = factory.npm_installer_if_managed().await?.cloned();
-  let resolver = factory.resolver().await?.clone();
   let file_fetcher = factory.file_fetcher()?;
   let compiler_options_resolver = factory.compiler_options_resolver()?;
   let worker_factory = factory.create_cli_main_worker_factory().await?;
   let (worker, test_event_receiver) = create_single_test_event_channel();
   let test_event_sender = worker.sender;
-  let mut worker = worker_factory
-    .create_custom_worker(
-      WorkerExecutionMode::Repl,
-      main_module.clone(),
-      // `ende repl` doesn't support preloading modules
-      vec![],
-      // `ende repl` doesn't support require modules
-      vec![],
-      permissions.clone(),
-      vec![crate::ops::testing::ende_test::init(test_event_sender)],
-      Default::default(),
-      None,
-    )
-    .await?;
+  let mut worker = worker_factory.create_custom_worker(
+    WorkerExecutionMode::Repl,
+    main_module.clone(),
+    // `ende repl` doesn't support preloading modules
+    vec![],
+    permissions.clone(),
+    vec![crate::ops::testing::ende_test::init(test_event_sender)],
+    Default::default(),
+    None,
+  )?;
   worker.setup_repl().await?;
   let worker = worker.into_main_worker();
   let session = ReplSession::initialize(
     cli_options,
-    npm_installer,
-    resolver,
     compiler_options_resolver,
     worker,
     main_module.clone(),

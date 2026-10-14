@@ -48,7 +48,6 @@ use ende_io::ChildProcessStdio;
 use ende_io::ChildStderrResource;
 use ende_io::ChildStdinResource;
 use ende_io::ChildStdoutResource;
-use ende_io::IntoRawIoHandle;
 use ende_os::SignalError;
 use ende_permissions::PathQueryDescriptor;
 use ende_permissions::PermissionsContainer;
@@ -62,11 +61,6 @@ use ende_subprocess_windows::Stdio as StdStdio;
 use serde::Deserialize;
 #[cfg(unix)]
 use tokio::process::Child as AsyncChild;
-
-pub mod ipc;
-use ipc::IpcAdvancedStreamResource;
-use ipc::IpcJsonStreamResource;
-use ipc::IpcRefTracker;
 
 pub const UNSTABLE_FEATURE_NAME: &str = "process";
 #[cfg(unix)]
@@ -123,7 +117,6 @@ pub enum Stdio {
   Inherit,
   Piped,
   Null,
-  IpcForInternalUse,
 }
 
 impl Stdio {
@@ -132,8 +125,6 @@ impl Stdio {
       Stdio::Inherit => StdStdio::inherit(),
       Stdio::Piped => StdStdio::piped(),
       Stdio::Null => StdStdio::null(),
-      // IPC uses a pipe internally
-      Stdio::IpcForInternalUse => StdStdio::piped(),
     }
   }
 }
@@ -156,9 +147,6 @@ impl<'de> Deserialize<'de> for StdioOrFd {
         "inherit" => Ok(StdioOrFd::Stdio(Stdio::Inherit)),
         "piped" => Ok(StdioOrFd::Stdio(Stdio::Piped)),
         "null" => Ok(StdioOrFd::Stdio(Stdio::Null)),
-        "ipc_for_internal_use" => {
-          Ok(StdioOrFd::Stdio(Stdio::IpcForInternalUse))
-        }
         val => Err(serde::de::Error::unknown_variant(
           val,
           &["inherit", "piped", "null"],
@@ -315,40 +303,12 @@ impl StdioOrFd {
       }
     }
   }
-
-  pub fn is_ipc(&self) -> bool {
-    matches!(self, StdioOrFd::Stdio(Stdio::IpcForInternalUse))
-  }
 }
-
-#[allow(clippy::disallowed_types, reason = "definition")]
-pub type NpmProcessStateProviderRc =
-  ende_fs::sync::MaybeArc<dyn NpmProcessStateProvider>;
-
-pub trait NpmProcessStateProvider:
-  std::fmt::Debug + ende_fs::sync::MaybeSend + ende_fs::sync::MaybeSync
-{
-  /// Gets a string containing the serialized npm state of the process.
-  ///
-  /// This will be set on the `ENDE_DONT_USE_INTERNAL_NODE_COMPAT_STATE` environment
-  /// variable when doing a `child_process.fork`. The implementor can then check this environment
-  /// variable on startup to repopulate the internal npm state.
-  fn get_npm_process_state(&self) -> String {
-    // This method is only used in the CLI.
-    String::new()
-  }
-}
-
-#[derive(Debug)]
-pub struct EmptyNpmProcessStateProvider;
-
-impl NpmProcessStateProvider for EmptyNpmProcessStateProvider {}
 
 ende_core::extension!(
   ende_process,
   ops = [
     op_spawn_child,
-    op_node_spawn_child,
     op_spawn_wait,
     op_spawn_sync,
     op_spawn_kill,
@@ -359,10 +319,6 @@ ende_core::extension!(
     deprecated::op_kill,
   ],
   lazy_loaded_js = ["40_process.js"],
-  options = { get_npm_process_state: Option<NpmProcessStateProviderRc>  },
-  state = |state, options| {
-    state.put::<NpmProcessStateProviderRc>(options.get_npm_process_state.unwrap_or(ende_fs::sync::MaybeArc::new(EmptyNpmProcessStateProvider)));
-  },
 );
 
 /// Wraps an async child process handle.
@@ -427,9 +383,6 @@ pub struct SpawnArgs {
   #[cfg(windows)]
   #[serde(default)]
   windows_hide: bool,
-  ipc: Option<i32>,
-
-  serialization: Option<ChildIpcSerialization>,
 
   #[serde(flatten)]
   stdio: ChildStdio,
@@ -438,8 +391,6 @@ pub struct SpawnArgs {
 
   extra_stdio: Vec<StdioOrFd>,
   detached: bool,
-  #[serde(default)]
-  needs_npm_process_state: bool,
   #[cfg(unix)]
   argv0: Option<String>,
 
@@ -468,26 +419,6 @@ pub struct SpawnArgs {
 enum KillSignal {
   String(String),
   Number(i32),
-}
-
-#[derive(Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ChildIpcSerialization {
-  Json,
-  Advanced,
-}
-
-impl std::fmt::Display for ChildIpcSerialization {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(
-      f,
-      "{}",
-      match self {
-        ChildIpcSerialization::Json => "json",
-        ChildIpcSerialization::Advanced => "advanced",
-      }
-    )
-  }
 }
 
 #[cfg(unix)]
@@ -636,56 +567,11 @@ pub struct SpawnOutput {
   killed_by_max_buffer: bool,
 }
 
-type CreateCommand = (
-  Command,
-  Option<ResourceId>,
-  Vec<Option<i64>>,
-  Vec<ende_io::RawBiPipeHandle>,
-);
-
-pub fn npm_process_state_tempfile(
-  contents: &[u8],
-) -> Result<ende_io::RawIoHandle, std::io::Error> {
-  let mut temp_file = tempfile::tempfile()?;
-  temp_file.write_all(contents)?;
-  let handle = temp_file.into_raw_io_handle();
-  #[cfg(windows)]
-  {
-    use windows_sys::Win32::Foundation::HANDLE_FLAG_INHERIT;
-    // make the handle inheritable
-    // SAFETY: Win32 call, handle is valid
-    unsafe {
-      windows_sys::Win32::Foundation::SetHandleInformation(
-        handle as _,
-        HANDLE_FLAG_INHERIT,
-        HANDLE_FLAG_INHERIT,
-      );
-    }
-    Ok(handle)
-  }
-  #[cfg(unix)]
-  {
-    // SAFETY: libc call, fd is valid
-    let inheritable = unsafe {
-      // duplicate the FD to get a new one that doesn't have the CLOEXEC flag set
-      // so it can be inherited by the child process
-      libc::dup(handle)
-    };
-    // SAFETY: libc call, fd is valid
-    unsafe {
-      // close the old one
-      libc::close(handle);
-    }
-    Ok(inheritable)
-  }
-}
-
-pub const NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME: &str =
-  "ENDE_DONT_USE_INTERNAL_NODE_COMPAT_STATE_FD";
+type CreateCommand = (Command, Vec<Option<i64>>, Vec<ende_io::RawBiPipeHandle>);
 
 fn create_command(
   state: &mut OpState,
-  mut args: SpawnArgs,
+  args: SpawnArgs,
   api_name: &str,
   allow_cwd_inherit: bool,
   // When `true` (Unix only), the resolved command is run as an argument to
@@ -694,19 +580,6 @@ fn create_command(
   // match the POSIX `execvp` / Node.js behavior. Always `false` on Windows.
   wrap_in_shell: bool,
 ) -> Result<CreateCommand, ProcessError> {
-  let maybe_npm_process_state = if args.needs_npm_process_state {
-    let provider = state.borrow::<NpmProcessStateProviderRc>();
-    let process_state = provider.get_npm_process_state();
-    let fd = npm_process_state_tempfile(process_state.as_bytes())?;
-    args.env.push((
-      NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME.to_string(),
-      (fd as usize).to_string(),
-    ));
-    Some(fd)
-  } else {
-    None
-  };
-
   let (cmd, run_env) = compute_run_cmd_and_check_permissions(
     &args.cmd,
     args.cwd.as_deref(),
@@ -801,9 +674,7 @@ fn create_command(
   command.env_clear();
   command.envs(run_env.envs.into_iter().map(|(k, v)| (k.into_inner(), v)));
 
-  if args.stdio.stdin.is_ipc() {
-    args.ipc = Some(0);
-  } else if args.input.is_some() {
+  if args.input.is_some() {
     command.stdin(StdStdio::piped());
   } else {
     command.stdin(args.stdio.stdin.as_stdio()?);
@@ -835,43 +706,6 @@ fn create_command(
     let mut child_extra_stdio_fds = Vec::new();
     let mut fds_to_dup = Vec::new();
     let mut fds_to_close = Vec::new();
-    let mut ipc_rid = None;
-    if let Some(fd) = maybe_npm_process_state {
-      fds_to_close.push(fd);
-    }
-    if let Some(ipc) = args.ipc
-      && ipc >= 0
-    {
-      let (ipc_fd1, ipc_fd2) = ende_io::bi_pipe_pair_raw()?;
-      fds_to_dup.push((ipc_fd2, ipc, false));
-      fds_to_close.push(ipc_fd2);
-      /* One end returned to parent process (this) */
-      let pipe_rid = match args.serialization {
-        Some(ChildIpcSerialization::Json) | None => {
-          state.resource_table.add(IpcJsonStreamResource::new(
-            ipc_fd1 as _,
-            IpcRefTracker::new(state.external_ops_tracker.clone()),
-          )?)
-        }
-        Some(ChildIpcSerialization::Advanced) => {
-          state.resource_table.add(IpcAdvancedStreamResource::new(
-            ipc_fd1 as _,
-            IpcRefTracker::new(state.external_ops_tracker.clone()),
-          )?)
-        }
-      };
-
-      /* The other end passed to child process via NODE_CHANNEL_FD */
-      command.env("NODE_CHANNEL_FD", format!("{}", ipc));
-      command.env(
-        "NODE_CHANNEL_SERIALIZATION_MODE",
-        args
-          .serialization
-          .unwrap_or(ChildIpcSerialization::Json)
-          .to_string(),
-      );
-      ipc_rid = Some(pipe_rid);
-    }
 
     for (i, stdio) in args.extra_stdio.into_iter().enumerate() {
       // index 0 in `extra_stdio` actually refers to fd 3
@@ -957,7 +791,7 @@ fn create_command(
       command.env_remove(ENDE_EXTRA_STDIO_FDS_ENV_VAR);
     }
 
-    Ok((command, ipc_rid, extra_pipe_fds, fds_to_close))
+    Ok((command, extra_pipe_fds, fds_to_close))
   }
 
   #[cfg(windows)]
@@ -965,46 +799,7 @@ fn create_command(
     let mut extra_pipe_fds: Vec<Option<i64>> =
       Vec::with_capacity(args.extra_stdio.len());
 
-    let mut ipc_rid = None;
-    let mut handles_to_close = Vec::with_capacity(1);
-    if let Some(handle) = maybe_npm_process_state {
-      handles_to_close.push(handle);
-    }
-    if let Some(ipc) = args.ipc
-      && ipc >= 0
-    {
-      let (hd1, hd2) = ende_io::bi_pipe_pair_raw()?;
-
-      /* One end returned to parent process (this) */
-      let pipe_rid = match args.serialization {
-        Some(ChildIpcSerialization::Json) | None => {
-          state.resource_table.add(IpcJsonStreamResource::new(
-            hd1 as _,
-            IpcRefTracker::new(state.external_ops_tracker.clone()),
-          )?)
-        }
-        Some(ChildIpcSerialization::Advanced) => {
-          state.resource_table.add(IpcAdvancedStreamResource::new(
-            hd1 as _,
-            IpcRefTracker::new(state.external_ops_tracker.clone()),
-          )?)
-        }
-      };
-
-      /* The other end passed to child process via NODE_CHANNEL_FD */
-      command.env("NODE_CHANNEL_FD", format!("{}", hd2 as i64));
-      command.env(
-        "NODE_CHANNEL_SERIALIZATION_MODE",
-        args
-          .serialization
-          .unwrap_or(ChildIpcSerialization::Json)
-          .to_string(),
-      );
-
-      handles_to_close.push(hd2);
-
-      ipc_rid = Some(pipe_rid);
-    }
+    let mut handles_to_close = Vec::new();
 
     for (i, stdio) in args.extra_stdio.into_iter().enumerate() {
       // index 0 in `extra_stdio` actually refers to fd 3
@@ -1066,7 +861,7 @@ fn create_command(
       }
     }
 
-    Ok((command, ipc_rid, extra_pipe_fds, handles_to_close))
+    Ok((command, extra_pipe_fds, handles_to_close))
   }
 }
 
@@ -1077,23 +872,10 @@ struct Child {
   stdin_rid: Option<ResourceId>,
   stdout_rid: Option<ResourceId>,
   stderr_rid: Option<ResourceId>,
-  ipc_pipe_rid: Option<ResourceId>,
   extra_pipe_rids: Vec<Option<ResourceId>>,
 }
 
-#[derive(ToV8)]
-struct NodeChild {
-  rid: ResourceId,
-  pid: u32,
-  stdin_fd: Option<i64>,
-  stdout_fd: Option<i64>,
-  stderr_fd: Option<i64>,
-  ipc_pipe_rid: Option<ResourceId>,
-  extra_pipe_fds: Vec<Option<i64>>,
-}
-
 /// Spawn a child process, returning the raw child and its PID.
-/// Shared by both the Ende API and Node compat spawn paths.
 fn spawn_command(command: Command) -> Result<(AsyncChild, u32), ProcessError> {
   #[cfg(windows)]
   let mut command = command;
@@ -1161,7 +943,6 @@ fn spawn_command(command: Command) -> Result<(AsyncChild, u32), ProcessError> {
 fn spawn_child(
   state: &mut OpState,
   command: Command,
-  ipc_pipe_rid: Option<ResourceId>,
   extra_pipe_fds: Vec<Option<i64>>,
   detached: bool,
 ) -> Result<Child, ProcessError> {
@@ -1237,78 +1018,7 @@ fn spawn_child(
     stdin_rid,
     stdout_rid,
     stderr_rid,
-    ipc_pipe_rid,
     extra_pipe_rids,
-  })
-}
-
-/// Extract a raw OS file descriptor from a tokio child stdio handle.
-/// On Unix, uses `into_owned_fd()`. On Windows, uses `into_owned_handle()`
-/// + `open_osfhandle` to produce a CRT fd.
-macro_rules! child_stdio_to_fd {
-  ($child:expr, $field:ident) => {{
-    #[cfg(not(windows))]
-    {
-      $child
-        .$field
-        .take()
-        .map(|h| {
-          use std::os::unix::io::IntoRawFd;
-          h.into_owned_fd()
-            .map(|fd| fd.into_raw_fd() as i64)
-            .map_err(ProcessError::Io)
-        })
-        .transpose()?
-    }
-    #[cfg(windows)]
-    {
-      $child
-        .$field
-        .take()
-        .map(|h| {
-          use std::os::windows::io::IntoRawHandle;
-          let raw_handle = h.into_raw_handle();
-          // SAFETY: raw_handle is a valid OS handle from the child process.
-          let crt_fd = unsafe { libc::open_osfhandle(raw_handle as isize, 0) };
-          if crt_fd == -1 {
-            return Err(ProcessError::Io(crt_error()));
-          }
-          Ok(crt_fd as i64)
-        })
-        .transpose()?
-    }
-  }};
-}
-
-/// Spawn for Node compat: returns raw OS file descriptors for stdio
-/// instead of resource IDs, so the Node polyfill can use Pipe.open(fd).
-fn spawn_child_node(
-  state: &mut OpState,
-  command: Command,
-  ipc_pipe_rid: Option<ResourceId>,
-  extra_pipe_fds: Vec<Option<i64>>,
-  detached: bool,
-) -> Result<NodeChild, ProcessError> {
-  let (mut child, pid) = spawn_command(command)?;
-
-  let stdin_fd = child_stdio_to_fd!(child, stdin);
-  let stdout_fd = child_stdio_to_fd!(child, stdout);
-  let stderr_fd = child_stdio_to_fd!(child, stderr);
-
-  let child_rid = state.resource_table.add(ChildResource {
-    child: RefCell::new(child),
-    pid,
-    kill_on_drop: Cell::new(!detached),
-  });
-
-  Ok(NodeChild {
-    rid: child_rid,
-    pid,
-    stdin_fd,
-    stdout_fd,
-    stderr_fd,
-    ipc_pipe_rid,
-    extra_pipe_fds,
   })
 }
 
@@ -1599,59 +1309,21 @@ fn op_spawn_child(
   let detached = args.detached;
   #[cfg(unix)]
   let retry_args = args.clone();
-  let (command, pipe_rid, extra_pipe_fds, handles_to_close) = create_command(
+  let (command, extra_pipe_fds, handles_to_close) = create_command(
     state, args, &api_name, /* allow_cwd_inherit */ false,
     /* wrap_in_shell */ false,
   )?;
-  let child = spawn_child(state, command, pipe_rid, extra_pipe_fds, detached);
+  let child = spawn_child(state, command, extra_pipe_fds, detached);
   for handle in handles_to_close {
     ende_io::close_raw_handle(handle);
   }
   #[cfg(unix)]
   if matches!(&child, Err(err) if err.is_enoexec()) {
-    let (command, pipe_rid, extra_pipe_fds, handles_to_close) = create_command(
+    let (command, extra_pipe_fds, handles_to_close) = create_command(
       state, retry_args, &api_name, /* allow_cwd_inherit */ false,
       /* wrap_in_shell */ true,
     )?;
-    let child = spawn_child(state, command, pipe_rid, extra_pipe_fds, detached);
-    for handle in handles_to_close {
-      ende_io::close_raw_handle(handle);
-    }
-    return child;
-  }
-  child
-}
-
-/// Node compat version of op_spawn_child: returns raw OS file descriptors
-/// for stdio instead of resource IDs.
-#[op2(stack_trace)]
-fn op_node_spawn_child(
-  state: &mut OpState,
-  #[serde] args: SpawnArgs,
-  #[string] api_name: String,
-) -> Result<NodeChild, ProcessError> {
-  let detached = args.detached;
-  #[cfg(unix)]
-  let retry_args = args.clone();
-  // `child_process.spawn` in Node tolerates the parent's cwd being unlinked
-  // by inheriting it, so allow cwd inheritance for Node-compat spawns.
-  let (command, pipe_rid, extra_pipe_fds, handles_to_close) = create_command(
-    state, args, &api_name, /* allow_cwd_inherit */ true,
-    /* wrap_in_shell */ false,
-  )?;
-  let child =
-    spawn_child_node(state, command, pipe_rid, extra_pipe_fds, detached);
-  for handle in handles_to_close {
-    ende_io::close_raw_handle(handle);
-  }
-  #[cfg(unix)]
-  if matches!(&child, Err(err) if err.is_enoexec()) {
-    let (command, pipe_rid, extra_pipe_fds, handles_to_close) = create_command(
-      state, retry_args, &api_name, /* allow_cwd_inherit */ true,
-      /* wrap_in_shell */ true,
-    )?;
-    let child =
-      spawn_child_node(state, command, pipe_rid, extra_pipe_fds, detached);
+    let child = spawn_child(state, command, extra_pipe_fds, detached);
     for handle in handles_to_close {
       ende_io::close_raw_handle(handle);
     }
@@ -1701,7 +1373,7 @@ fn op_spawn_sync(
   let kill_signal = args.kill_signal.clone();
   #[cfg(unix)]
   let retry_args = args.clone();
-  let (mut command, _, _, _) = create_command(
+  let (mut command, _, _) = create_command(
     state,
     args,
     "Ende.Command().outputSync()",
@@ -1732,7 +1404,7 @@ fn op_spawn_sync(
     // POSIX `execvp` / Node.js behavior.
     #[cfg(unix)]
     Err(err) if err.raw_os_error() == Some(libc::ENOEXEC) => {
-      let (mut command, _, _, _) = create_command(
+      let (mut command, _, _) = create_command(
         state,
         retry_args,
         "Ende.Command().outputSync()",

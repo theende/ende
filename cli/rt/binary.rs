@@ -592,11 +592,6 @@ impl StandaloneModules {
     }
   }
 
-  pub fn path_in_root(&self, path: &Path) -> bool {
-    deno_path_util::normalize_path(Cow::Borrowed(path))
-      .starts_with(self.vfs.root())
-  }
-
   pub fn read<'a>(
     &'a self,
     specifier: &'a Url,

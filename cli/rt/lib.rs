@@ -21,7 +21,6 @@ mod code_cache;
 pub mod desktop;
 pub mod file_system;
 pub mod hmr;
-mod node;
 pub mod run;
 
 pub fn unstable_exit_cb(feature: &str, api_name: &str) {

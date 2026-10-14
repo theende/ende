@@ -22,8 +22,6 @@
         "explicit-function-return-type",
         "explicit-module-boundary-types",
         "for-direction",
-        "fresh-handler-export",
-        "fresh-server-event-handlers",
         "getter-return",
         "guard-for-in",
         "jsx-boolean-value",

@@ -1,0 +1,2 @@
+error: No entrypoint given: './myapp' is a directory.
+  hint: Pass the main module, for example `ende compile main.ts`.

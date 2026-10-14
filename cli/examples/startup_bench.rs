@@ -29,8 +29,6 @@ use std::time::Instant;
 use ende_core::FsModuleLoader;
 use ende_core::ModuleCodeString;
 use ende_core::resolve_path;
-use ende_resolver::npm::DenoInNpmPackageChecker;
-use ende_resolver::npm::NpmResolver;
 use ende_runtime::ende_fs::RealFs;
 use ende_runtime::ende_permissions::Permissions;
 use ende_runtime::ende_permissions::PermissionsContainer;
@@ -62,11 +60,7 @@ fn bootstrap_once() -> MainWorker {
     ..Default::default()
   };
 
-  MainWorker::bootstrap_from_options::<
-    DenoInNpmPackageChecker,
-    NpmResolver<Sys>,
-    Sys,
-  >(
+  MainWorker::bootstrap_from_options(
     &main_module,
     WorkerServiceOptions {
       ende_rt_native_addon_loader: None,
@@ -81,8 +75,6 @@ fn bootstrap_once() -> MainWorker {
         as std::sync::Arc<dyn ende_runtime::ende_web::BlobStoreTrait>,
       broadcast_channel: Default::default(),
       feature_checker: Default::default(),
-      node_services: Default::default(),
-      npm_process_state_provider: Default::default(),
       root_cert_store_provider: Default::default(),
       fetch_dns_resolver: Default::default(),
       shared_array_buffer_store: Default::default(),

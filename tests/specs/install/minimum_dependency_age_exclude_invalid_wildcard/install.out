@@ -1,10 +1,10 @@
-Warning "minimumDependencyAge.exclude" entry "npm:*" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "npm:@scope/*").
+Warning "minimumDependencyAge.exclude" entry "jsr:*" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "jsr:@scope/*").
     at file:///[WILDLINE]/ende.json
-Warning "minimumDependencyAge.exclude" entry "jsr:@endetest/*/add" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "npm:@scope/*").
+Warning "minimumDependencyAge.exclude" entry "jsr:@endetest/*/add" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "jsr:@scope/*").
     at file:///[WILDLINE]/ende.json
 Add jsr:@endetest/add@0.2.0
-Warning "minimumDependencyAge.exclude" entry "npm:*" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "npm:@scope/*").
+Warning "minimumDependencyAge.exclude" entry "jsr:*" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "jsr:@scope/*").
     at file:///[WILDLINE]/ende.json
-Warning "minimumDependencyAge.exclude" entry "jsr:@endetest/*/add" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "npm:@scope/*").
+Warning "minimumDependencyAge.exclude" entry "jsr:@endetest/*/add" may only use a single '*' wildcard at the end, preceded by a package name prefix (e.g. "jsr:@scope/*").
     at file:///[WILDLINE]/ende.json
 Download http://127.0.0.1:4250/@endetest/add/0.2.0/mod.ts

@@ -70,7 +70,6 @@ use crate::PathRef;
 use crate::ende_exe_path;
 use crate::eprintln;
 use crate::jsr_registry_url;
-use crate::npm_registry_url;
 use crate::print::spawn_thread;
 
 static CONTENT_TYPE_REG: Lazy<Regex> =
@@ -699,7 +698,6 @@ impl LspClientBuilder {
     }
     command
       .env("ENDE_DIR", ende_dir.path())
-      .env("NPM_CONFIG_REGISTRY", npm_registry_url())
       .env("JSR_URL", jsr_registry_url())
       // turn on diagnostic synchronization communication
       .env("ENDE_INTERNAL_DIAGNOSTIC_BATCH_NOTIFICATIONS", "1")

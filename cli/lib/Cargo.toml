@@ -26,9 +26,6 @@ deno_semver.workspace = true
 deno_terminal.workspace = true
 ende_env.workspace = true
 ende_fs = { workspace = true, features = ["sync_fs"] }
-ende_node = { workspace = true, features = ["sync_fs"] }
-ende_npm.workspace = true
-ende_npm_installer.workspace = true
 ende_resolver = { workspace = true, features = ["sync"] }
 ende_runtime.workspace = true
 env_logger.workspace = true
@@ -36,7 +33,6 @@ faster-hex.workspace = true
 indexmap.workspace = true
 libsui.workspace = true
 log = { workspace = true, features = ["serde"] }
-node_resolver = { workspace = true, features = ["sync"] }
 parking_lot.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

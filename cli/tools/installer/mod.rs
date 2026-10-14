@@ -4,9 +4,7 @@ use std::sync::Arc;
 
 use dashmap::DashSet;
 use ende_core::error::AnyError;
-use ende_core::parking_lot::Mutex;
 use ende_core::url::Url;
-use ende_npm_installer::lifecycle_scripts::LifecycleScriptsWarning;
 
 pub use self::bin_name_resolver::BinNameResolver;
 use crate::args::Flags;
@@ -16,8 +14,6 @@ use crate::args::InstallFlagsLocal;
 use crate::factory::CliFactory;
 use crate::graph_container::CollectSpecifiersOptions;
 use crate::graph_container::ModuleGraphContainer;
-use crate::npm::CliNpmResolver;
-use crate::sys::CliSys;
 use crate::util::display;
 
 mod bin_name_resolver;
@@ -26,17 +22,12 @@ mod local;
 
 pub use global::uninstall;
 pub use local::ci_command;
-use local::installed_npm_deps;
 
 #[derive(Default)]
 pub struct InstallStats {
   pub resolved_jsr: DashSet<String>,
   pub downloaded_jsr: DashSet<String>,
   pub reused_jsr: DashSet<String>,
-  pub resolved_npm: DashSet<String>,
-  pub downloaded_npm: DashSet<String>,
-  pub intialized_npm: DashSet<String>,
-  pub reused_npm: crate::util::sync::RelaxedAtomicCounter,
 }
 
 impl std::fmt::Debug for InstallStats {
@@ -58,20 +49,8 @@ impl std::fmt::Debug for InstallStats {
           .map(|s| s.as_str().to_string())
           .collect::<Vec<_>>(),
       )
-      .field("resolved_npm", &self.resolved_npm.len())
       .field("resolved_jsr_count", &self.resolved_jsr.len())
-      .field("downloaded_npm", &self.downloaded_npm.len())
       .field("downloaded_jsr_count", &self.downloaded_jsr.len())
-      .field(
-        "intialized_npm",
-        &self
-          .intialized_npm
-          .iter()
-          .map(|s| s.as_str().to_string())
-          .collect::<Vec<_>>(),
-      )
-      .field("intialized_npm_count", &self.intialized_npm.len())
-      .field("reused_npm", &self.reused_npm.get())
       .finish()
   }
 }
@@ -79,48 +58,13 @@ impl std::fmt::Debug for InstallStats {
 #[derive(Debug)]
 pub struct InstallReporter {
   stats: Arc<InstallStats>,
-
-  scripts_warnings: Arc<Mutex<Vec<LifecycleScriptsWarning>>>,
-
-  deprecation_messages: Arc<Mutex<Vec<String>>>,
 }
 
 impl InstallReporter {
   pub fn new() -> Self {
     Self {
       stats: Arc::new(InstallStats::default()),
-      scripts_warnings: Arc::new(Mutex::new(Vec::new())),
-      deprecation_messages: Arc::new(Mutex::new(Vec::new())),
     }
-  }
-
-  pub fn take_scripts_warnings(&self) -> Vec<LifecycleScriptsWarning> {
-    std::mem::take(&mut *self.scripts_warnings.lock())
-  }
-
-  pub fn take_deprecation_message(&self) -> Vec<String> {
-    std::mem::take(&mut *self.deprecation_messages.lock())
-  }
-}
-
-impl ende_npm_installer::InstallProgressReporter for InstallReporter {
-  fn initializing(&self, _nv: &deno_semver::package::PackageNv) {}
-
-  fn initialized(&self, nv: &deno_semver::package::PackageNv) {
-    self.stats.intialized_npm.insert(nv.to_string());
-  }
-
-  fn blocking(&self, _message: &str) {}
-
-  fn scripts_not_run_warning(
-    &self,
-    warning: ende_npm_installer::lifecycle_scripts::LifecycleScriptsWarning,
-  ) {
-    self.scripts_warnings.lock().push(warning);
-  }
-
-  fn deprecated_message(&self, message: String) {
-    self.deprecation_messages.lock().push(message);
   }
 }
 
@@ -149,28 +93,6 @@ impl deno_graph::source::Reporter for InstallReporter {
     package_nv: &deno_semver::package::PackageNv,
   ) {
     self.stats.resolved_jsr.insert(package_nv.to_string());
-  }
-}
-
-impl ende_npm::resolution::Reporter for InstallReporter {
-  fn on_resolved(
-    &self,
-    package_req: &deno_semver::package::PackageReq,
-    _nv: &deno_semver::package::PackageNv,
-  ) {
-    self.stats.resolved_npm.insert(package_req.to_string());
-  }
-}
-
-impl ende_npm_cache::TarballCacheReporter for InstallReporter {
-  fn download_started(&self, _nv: &deno_semver::package::PackageNv) {}
-
-  fn downloaded(&self, nv: &deno_semver::package::PackageNv) {
-    self.stats.downloaded_npm.insert(nv.to_string());
-  }
-
-  fn reused_cache(&self, _nv: &deno_semver::package::PackageNv) {
-    self.stats.reused_npm.inc();
   }
 }
 
@@ -226,7 +148,6 @@ pub async fn install_from_entrypoints(
   print_install_report(
     started.elapsed(),
     &factory.install_reporter()?.unwrap().clone(),
-    factory.npm_resolver().await?,
   );
   Ok(())
 }
@@ -251,7 +172,6 @@ pub async fn install_command(
 pub fn print_install_report(
   elapsed: std::time::Duration,
   install_reporter: &InstallReporter,
-  npm_resolver: &CliNpmResolver,
 ) {
   fn human_elapsed(elapsed: u128) -> String {
     display::human_elapsed_with_ms_limit(elapsed, 3_000)
@@ -259,11 +179,8 @@ pub fn print_install_report(
 
   let rep = install_reporter;
 
-  if !rep.stats.intialized_npm.is_empty()
-    || !rep.stats.downloaded_jsr.is_empty()
-  {
-    let total_installed =
-      rep.stats.intialized_npm.len() + rep.stats.downloaded_jsr.len();
+  if !rep.stats.downloaded_jsr.is_empty() {
+    let total_installed = rep.stats.downloaded_jsr.len();
     log::info!(
       "{} {} {} {} {}",
       deno_terminal::colors::gray("Installed"),
@@ -276,7 +193,7 @@ pub fn print_install_report(
       human_elapsed(elapsed.as_millis())
     );
 
-    let total_reused = rep.stats.reused_npm.get() + rep.stats.reused_jsr.len();
+    let total_reused = rep.stats.reused_jsr.len();
     log::info!(
       "{} {} {}",
       deno_terminal::colors::gray("Reused"),
@@ -309,26 +226,9 @@ pub fn print_install_report(
         deno_terminal::colors::green("+".repeat(jsr_downloaded))
       );
     }
-
-    let npm_download = rep.stats.downloaded_npm.len();
-    log::info!(
-      "{} {} {}",
-      deno_terminal::colors::gray("Downloaded"),
-      npm_download,
-      deno_terminal::colors::gray(format!(
-        "package{} from npm",
-        if npm_download == 1 { "" } else { "s" },
-      )),
-    );
-    if npm_download > 0 {
-      log::info!("{}", deno_terminal::colors::green("+".repeat(npm_download)));
-    }
   }
 
-  let installed_normal_deps =
-    installed_npm_deps(npm_resolver, install_reporter);
-
-  if !installed_normal_deps.is_empty() || !rep.stats.downloaded_jsr.is_empty() {
+  if !rep.stats.downloaded_jsr.is_empty() {
     log::info!("");
     log::info!("{}", deno_terminal::colors::cyan("Dependencies:"));
     let mut jsr_packages = rep
@@ -348,24 +248,6 @@ pub fn print_install_report(
         deno_terminal::colors::gray(version)
       );
     }
-    for pkg in &installed_normal_deps {
-      log::info!(
-        "{} {}{} {}",
-        deno_terminal::colors::green("+"),
-        deno_terminal::colors::gray("npm:"),
-        pkg.nv.name,
-        deno_terminal::colors::gray(pkg.nv.version.to_string())
-      );
-    }
     log::info!("");
-  }
-  let warnings = install_reporter.take_scripts_warnings();
-  for warning in warnings {
-    log::warn!("{}", warning.into_message(&CliSys::default()));
-  }
-
-  let deprecation_messages = install_reporter.take_deprecation_message();
-  for message in deprecation_messages {
-    log::warn!("{}", message);
   }
 }

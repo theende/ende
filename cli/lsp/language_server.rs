@@ -36,7 +36,6 @@ use ende_core::url::Url;
 use ende_lib::args::CaData;
 use ende_lib::args::get_root_cert_store;
 use ende_lib::version::ENDE_VERSION_INFO;
-use ende_npm_installer::graph::NpmCachingStrategy;
 use ende_resolver::ende_json::CompilerOptionsKey;
 use ende_resolver::loader::MemoryFilesRc;
 use ende_runtime::ende_tls::RootCertStoreProvider;
@@ -418,12 +417,7 @@ impl LanguageServer {
         open_modules: &open_modules,
       };
       let graph = module_graph_creator
-        .create_graph_with_loader(
-          GraphKind::All,
-          roots.clone(),
-          &mut loader,
-          NpmCachingStrategy::Eager,
-        )
+        .create_graph_with_loader(GraphKind::All, roots.clone(), &mut loader)
         .await?;
       let cli_options = factory.cli_options()?;
       let collect_bare_importable_pkg_names = || {
@@ -1277,8 +1271,6 @@ impl Inner {
         &self.config.settings,
         &self.workspace_files,
         &file_fetcher,
-        &self.http_client_provider,
-        self.cache.ende_dir(),
         reason,
       )
       .await;
@@ -1293,14 +1285,9 @@ impl Inner {
   fn refresh_compiler_options_resolver(&mut self) {
     let compiler_options_resolver = LspCompilerOptionsResolver::new(
       &self.config,
-      &self.resolver,
       Some(&self.compiler_options_resolver),
     );
     self.compiler_options_resolver = Arc::new(compiler_options_resolver);
-    // TODO(nayeemrmn): This represents a circular dependency between
-    // `LspCompilerOptionsResolver` and `LspResolver` because the former uses
-    // the node resolver to resolve `extends` in tsconfig. Break out the node
-    // resolver from `LspResolver`.
     self
       .resolver
       .set_compiler_options_resolver(&self.compiler_options_resolver.inner);
@@ -1316,15 +1303,9 @@ impl Inner {
   }
 
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
-  async fn refresh_resolver(&mut self) {
-    self.resolver = Arc::new(
-      LspResolver::from_config(
-        &self.config,
-        &self.cache,
-        Some(&self.http_client_provider),
-      )
-      .await,
-    );
+  fn refresh_resolver(&mut self) {
+    self.resolver =
+      Arc::new(LspResolver::from_config(&self.config, &self.cache));
   }
 
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
@@ -1337,8 +1318,6 @@ impl Inner {
       &self.workspace_files,
     );
 
-    // refresh the npm specifiers because it might have discovered
-    // a @types/node package and now's a good time to do that anyway
     self.refresh_dep_info();
 
     self.project_changed(vec![], ProjectScopesChange::Config);
@@ -1688,7 +1667,7 @@ impl Inner {
     self.refresh_workspace_files();
     self.refresh_config_tree("did_change_configuration").await;
     self.update_cache();
-    self.refresh_resolver().await;
+    self.refresh_resolver();
     self.refresh_compiler_options_resolver();
     self.refresh_linter_resolver();
     self.refresh_documents_config();
@@ -1775,7 +1754,7 @@ impl Inner {
       self.refresh_workspace_files();
       self.refresh_config_tree("did_change_watched_files").await;
       self.update_cache();
-      self.refresh_resolver().await;
+      self.refresh_resolver();
       self.refresh_compiler_options_resolver();
       self.refresh_linter_resolver();
       self.refresh_documents_config();
@@ -4290,7 +4269,7 @@ impl Inner {
     self.refresh_workspace_files();
     self.refresh_config_tree("initialized").await;
     self.update_cache();
-    self.refresh_resolver().await;
+    self.refresh_resolver();
     self.refresh_compiler_options_resolver();
     self.refresh_linter_resolver();
     self.refresh_documents_config();
@@ -4387,15 +4366,6 @@ impl Inner {
     let scoped_resolver = self.resolver.get_scoped_resolver(scope.as_deref());
     roots.extend(scoped_resolver.configured_auto_import_roots());
 
-    // always include the npm packages since resolution of one npm package
-    // might affect the resolution of other npm packages
-    roots.extend(
-      scoped_resolver
-        .npm_reqs()
-        .iter()
-        .map(|req| ModuleSpecifier::parse(&format!("npm:{}", req)).unwrap()),
-    );
-
     let open_modules = self
       .document_modules
       .documents
@@ -4475,7 +4445,7 @@ impl Inner {
   async fn post_cache(&mut self) {
     self.refresh_config_tree("post_cache").await;
     self.update_cache();
-    self.refresh_resolver().await;
+    self.refresh_resolver();
     self.refresh_compiler_options_resolver();
     self.refresh_linter_resolver();
     self.refresh_documents_config();
@@ -4530,7 +4500,7 @@ impl Inner {
       .refresh_config_tree("did_change_workspace_folders")
       .await;
     self.update_cache();
-    self.refresh_resolver().await;
+    self.refresh_resolver();
     self.refresh_compiler_options_resolver();
     self.refresh_linter_resolver();
     self.refresh_documents_config();

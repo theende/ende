@@ -12,6 +12,7 @@ use ende_core::serde::Deserialize;
 use ende_core::serde::Serialize;
 use ende_core::serde_json::json;
 use ende_core::url::Position;
+use ende_resolver::workspace::ResolutionKind;
 use import_map::ImportMap;
 use indexmap::IndexSet;
 use jsonc_parser::CollectOptions;
@@ -22,8 +23,6 @@ use jsonc_parser::ast::StringLit;
 use jsonc_parser::ast::Value as JsoncValue;
 use jsonc_parser::common::Ranged;
 use lsp_types::CompletionList;
-use node_resolver::NodeResolutionKind;
-use node_resolver::ResolutionMode;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use tower_lsp::lsp_types as lsp;
@@ -194,10 +193,6 @@ pub async fn get_import_completions(
     .as_workspace_resolver()
     .maybe_import_map();
   let (text, _, graph_range) = module.dependency_at_position(position)?;
-  let resolution_mode = graph_range
-    .resolution_mode
-    .map(node_resolver::ResolutionMode::from_deno_graph)
-    .unwrap_or_else(|| module.resolution_mode);
   let range = to_narrow_lsp_range(module.text_info(), graph_range.range);
   let scoped_resolver = resolver.get_scoped_resolver(module.scope.as_deref());
   let resolved = scoped_resolver
@@ -206,8 +201,7 @@ pub async fn get_import_completions(
       text,
       &module.specifier,
       deno_graph::Position::zeroed(),
-      resolution_mode,
-      NodeResolutionKind::Execution,
+      ResolutionKind::Execution,
     )
     .ok();
   match get_jsr_completions(
@@ -235,13 +229,8 @@ pub async fn get_import_completions(
           Some(lsp::CompletionResponse::List(completion_list))
         }
         _ => {
-          match get_local_completions(
-            &module.specifier,
-            resolution_mode,
-            text,
-            &range,
-            resolver,
-          ) {
+          match get_local_completions(&module.specifier, text, &range, resolver)
+          {
             Some(completion_list) => {
               // completions for local relative modules
               Some(lsp::CompletionResponse::List(completion_list))
@@ -414,7 +403,6 @@ fn get_import_map_completions(
 /// Return local completions that are relative to the base specifier.
 fn get_local_completions(
   referrer: &ModuleSpecifier,
-  resolution_mode: ResolutionMode,
   text: &str,
   range: &lsp::Range,
   resolver: &LspResolver,
@@ -430,8 +418,7 @@ fn get_local_completions(
       parent,
       referrer,
       deno_graph::Position::zeroed(),
-      resolution_mode,
-      NodeResolutionKind::Execution,
+      ResolutionKind::Execution,
     )
     .ok()?;
   let resolved_parent_path = url_to_file_path(&resolved_parent).ok()?;
@@ -970,7 +957,6 @@ mod tests {
       ModuleSpecifier::from_file_path(file_c).expect("could not create");
     let actual = get_local_completions(
       &specifier,
-      ResolutionMode::Import,
       "./",
       &lsp::Range {
         start: lsp::Position {

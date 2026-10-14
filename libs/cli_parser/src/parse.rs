@@ -152,7 +152,7 @@ fn parse_args(
       );
       if arg == "--" {
         // `--` still transitions to command-level trailing
-        // so that `ende init --jsr @fresh/init -- --serve` puts --serve
+        // so that `ende init --jsr @scope/init -- --serve` puts --serve
         // into the positional (through normal trailing -> handled below)
         i += 1;
         while i < args.len() {

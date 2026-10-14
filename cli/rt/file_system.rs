@@ -25,6 +25,8 @@ use ende_lib::standalone::virtual_fs::VfsEntry;
 use ende_lib::standalone::virtual_fs::VfsEntryRef;
 use ende_lib::standalone::virtual_fs::VirtualDirectory;
 use ende_lib::standalone::virtual_fs::VirtualFile;
+use ende_runtime::ende_ffi::EndeRtNativeAddonLoader;
+use ende_runtime::ende_ffi::EndeRtNativeAddonLoaderRc;
 use ende_runtime::ende_fs::FileSystem;
 use ende_runtime::ende_fs::FsDirEntry;
 use ende_runtime::ende_fs::FsFileType;
@@ -39,8 +41,6 @@ use ende_runtime::ende_io::fs::FsError;
 use ende_runtime::ende_io::fs::FsResult;
 use ende_runtime::ende_io::fs::FsStat;
 use ende_runtime::ende_io::fs::FsStatFs;
-use ende_runtime::ende_napi::EndeRtNativeAddonLoader;
-use ende_runtime::ende_napi::EndeRtNativeAddonLoaderRc;
 use ende_runtime::ende_permissions::CheckedPath;
 use ende_runtime::ende_permissions::CheckedPathBuf;
 #[cfg(windows)]

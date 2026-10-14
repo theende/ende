@@ -27,27 +27,6 @@ fn xdg_cache_home_dir() {
   assert!(xdg_cache_home.read_dir().count() > 0);
 }
 
-// TODO(2.0): reenable
-#[ignore]
-#[test]
-fn cache_matching_package_json_dep_should_not_install_all() {
-  let context = TestContextBuilder::for_npm().use_temp_cwd().build();
-  let temp_dir = context.temp_dir();
-  temp_dir.write(
-    "package.json",
-    r#"{ "dependencies": { "@types/node": "22.12.0", "@denotest/esm-basic": "*" } }"#,
-  );
-  let output = context
-    .new_command()
-    .args("cache npm:@types/node@22.12.0")
-    .run();
-  output.assert_matches_text(concat!(
-    "Download http://localhost:4260/@types/node\n",
-    "Download http://localhost:4260/@types/node/node-18.8.2.tgz\n",
-    "Initialize @types/node@22.12.0\n",
-  ));
-}
-
 // Regression test for https://github.com/denoland/deno/issues/17299
 #[test]
 fn cache_put_overwrite() {

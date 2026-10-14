@@ -11,8 +11,6 @@ mod http_util;
 mod jsr;
 mod lsp;
 mod module_loader;
-mod node;
-mod npm;
 mod ops;
 mod registry;
 mod resolver;
@@ -46,11 +44,8 @@ use ende_core::anyhow::Context;
 use ende_core::error::AnyError;
 use ende_core::futures::FutureExt;
 use ende_core::unsync::JoinHandle;
-use ende_lib::util::result::any_and_jserrorbox_downcast_ref;
 use ende_lib::util::result::js_error_downcast_ref;
 use ende_lib::worker::LibWorkerFactoryRoots;
-use ende_resolver::npm::ByonmResolvePkgFolderFromDenoReqError;
-use ende_resolver::npm::ResolvePkgFolderFromDenoReqError;
 use ende_runtime::UnconfiguredRuntime;
 use ende_runtime::WorkerExecutionMode;
 use ende_runtime::fmt_errors::format_js_error;
@@ -58,13 +53,6 @@ use ende_runtime::tokio_util::create_and_run_current_thread_with_maybe_metrics;
 use ende_telemetry::OtelConfig;
 use factory::CliFactory;
 use util::fs::canonicalize_path;
-
-/// Internal env var telling an Ende process started for a `node` command
-/// (by the Node compat child_process layer or `ende task`) to detect CommonJS
-/// like Node.js. Kept in sync with ext/node/polyfills/child_process.ts and
-/// ext/node/polyfills/internal/child_process.ts.
-pub(crate) const NODE_CHILD_DETECT_CJS_ENV_VAR: &str =
-  "ENDE_INTERNAL_NODE_DETECT_CJS";
 
 const MODULE_NOT_FOUND: &str = "Module not found";
 const UNSUPPORTED_SCHEME: &str = "Unsupported scheme";
@@ -327,35 +315,6 @@ async fn run_subcommand(
         match result {
           Ok(v) => Ok(v),
           Err(script_err) => {
-            if let Some(
-              worker::CreateCustomWorkerError::ResolvePkgFolderFromDenoReq(
-                ResolvePkgFolderFromDenoReqError::Byonm(
-                  ByonmResolvePkgFolderFromDenoReqError::UnmatchedReq(_),
-                ),
-              ),
-            ) = any_and_jserrorbox_downcast_ref::<
-              worker::CreateCustomWorkerError,
-            >(&script_err)
-              && flags.node_modules_dir.is_none()
-            {
-              let mut flags = flags.deref().clone();
-              let watch = flags.watch.clone();
-              flags.node_modules_dir =
-                Some(ende_config::ende_json::NodeModulesDirMode::None);
-              // use the current lockfile, but don't write it out
-              if flags.frozen_lockfile.is_none() {
-                flags.internal.lockfile_skip_write = true;
-              }
-              return tools::run::run_script(
-                WorkerExecutionMode::Run,
-                Arc::new(flags),
-                watch,
-                None,
-                roots,
-              )
-              .boxed_local()
-              .await;
-            }
             let script_err_msg = script_err.to_string();
             if should_fallback_on_run_error(script_err_msg.as_str()) {
               if run_flags.bare {
@@ -986,16 +945,6 @@ async fn resolve_flags_and_init(
 
   let sys = crate::sys::CliSys::default();
 
-  // Set by the Node compat layer when it runs a `node` command through Ende
-  // (child_process, `ende task`). Applies to this process only, so remove it
-  // before user code can spawn children. Must run before any threads spawn
-  // since it mutates the environment (the tunnel below can spawn threads).
-  if ende_env::var(NODE_CHILD_DETECT_CJS_ENV_VAR).is_ok() {
-    flags.unstable_config.detect_cjs = true;
-    // SAFETY: We're doing this before any threads are created.
-    unsafe { std::env::remove_var(NODE_CHILD_DETECT_CJS_ENV_VAR) };
-  }
-
   if ende_lib::args::has_flag_env_var(&sys, "ENDE_CONNECTED") {
     flags.tunnel = true;
   }
@@ -1018,9 +967,6 @@ async fn resolve_flags_and_init(
   }
 
   flags.unstable_config.fill_with_env(&sys);
-  if ende_env::var("ENDE_COMPAT").is_ok() {
-    flags.unstable_config.enable_node_compat();
-  }
 
   let otel_config = flags.otel_config();
   init_logging(flags.log_level, Some(otel_config.clone()));
@@ -1168,23 +1114,23 @@ fn wait_for_start(
 
     init_v8(&Flags::default());
 
-    let unconfigured = ende_runtime::UnconfiguredRuntime::new::<
-      ende_resolver::npm::DenoInNpmPackageChecker,
-      crate::npm::CliNpmResolver,
-      crate::sys::CliSys,
-    >(ende_runtime::UnconfiguredRuntimeOptions {
-      startup_snapshot,
-      residual_lazy_js_sources: ende_snapshots::RESIDUAL_LAZY_JS,
-      residual_lazy_esm_sources: ende_snapshots::RESIDUAL_LAZY_ESM,
-      create_params: ende_lib::worker::create_isolate_create_params(
-        &crate::sys::CliSys::default(),
-      ),
-      shared_array_buffer_store: Some(roots.shared_array_buffer_store.clone()),
-      compiled_wasm_module_store: Some(
-        roots.compiled_wasm_module_store.clone(),
-      ),
-      additional_extensions: vec![],
-    });
+    let unconfigured = ende_runtime::UnconfiguredRuntime::new(
+      ende_runtime::UnconfiguredRuntimeOptions {
+        startup_snapshot,
+        residual_lazy_js_sources: ende_snapshots::RESIDUAL_LAZY_JS,
+        residual_lazy_esm_sources: ende_snapshots::RESIDUAL_LAZY_ESM,
+        create_params: ende_lib::worker::create_isolate_create_params(
+          &crate::sys::CliSys::default(),
+        ),
+        shared_array_buffer_store: Some(
+          roots.shared_array_buffer_store.clone(),
+        ),
+        compiled_wasm_module_store: Some(
+          roots.compiled_wasm_module_store.clone(),
+        ),
+        additional_extensions: vec![],
+      },
+    );
 
     let (rx, mut tx): (
       Box<dyn AsyncRead + Unpin>,

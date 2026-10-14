@@ -19,8 +19,6 @@ use ende_core::error::AnyError;
 use ende_core::serde_json;
 use ende_core::sourcemap::SourceMap;
 use ende_core::url::Url;
-use ende_resolver::npm::DenoInNpmPackageChecker;
-use node_resolver::InNpmPackageChecker;
 use regex::Regex;
 use reporter::CoverageReporter;
 use text_lines::TextLines;
@@ -677,7 +675,6 @@ fn filter_coverages(
   coverages: Vec<cdp::ScriptCoverage>,
   include: Vec<String>,
   exclude: Vec<String>,
-  in_npm_pkg_checker: &DenoInNpmPackageChecker,
   link_dir_urls: &[String],
 ) -> Vec<cdp::ScriptCoverage> {
   let include: Vec<Regex> =
@@ -705,13 +702,8 @@ fn filter_coverages(
         || doc_test_re.is_match(e.url.as_str())
         // Exclude packages brought in via the "links" (formerly "patch")
         // feature. These are third-party dependencies replacing a registry
-        // version, so they shouldn't show up in the user's coverage report,
-        // matching how npm packages are excluded above.
-        || link_dir_urls.iter().any(|dir| e.url.starts_with(dir))
-        || Url::parse(&e.url)
-          .ok()
-          .map(|url| in_npm_pkg_checker.in_npm_package(&url))
-          .unwrap_or(false);
+        // version, so they shouldn't show up in the user's coverage report.
+        || link_dir_urls.iter().any(|dir| e.url.starts_with(dir));
 
       let is_included = include.iter().any(|p| p.is_match(&e.url));
       let is_excluded = exclude.iter().any(|p| p.is_match(&e.url));
@@ -738,10 +730,8 @@ pub fn cover_files(
 
   let factory = CliFactory::from_flags(flags);
   let cli_options = factory.cli_options()?;
-  let in_npm_pkg_checker = factory.in_npm_pkg_checker()?;
   let file_fetcher = factory.file_fetcher()?;
   let emitter = factory.emitter()?;
-  let cjs_tracker = factory.cjs_tracker()?;
 
   // Use the first include path as the default output path.
   let coverage_root = cli_options.initial_cwd().join(&files_include[0]);
@@ -762,13 +752,8 @@ pub fn cover_files(
     .keys()
     .map(|url| url.as_str().to_string())
     .collect::<Vec<_>>();
-  let script_coverages = filter_coverages(
-    script_coverages,
-    include,
-    exclude,
-    in_npm_pkg_checker,
-    &link_dir_urls,
-  );
+  let script_coverages =
+    filter_coverages(script_coverages, include, exclude, &link_dir_urls);
   if script_coverages.is_empty() {
     return Err(anyhow!("No covered files included in the report"));
   }
@@ -864,27 +849,22 @@ pub fn cover_files(
       | MediaType::Jsx
       | MediaType::Mts
       | MediaType::Cts
-      | MediaType::Tsx => {
-        let module_kind = ModuleKind::from_is_cjs(
-          cjs_tracker.is_maybe_cjs(&file.specifier, file.media_type)?,
-        );
-        Some(
-          match emitter.maybe_cached_emit(
-            &file.specifier,
-            module_kind,
-            &file.source,
-          )? {
-            Some(code) => code,
-            None => {
-              log::warn!(
-                "Missing transpiled source code for: \"{}\" (was it deleted after coverage was collected?). Skipping.",
-                file.specifier,
-              );
-              continue;
-            }
-          },
-        )
-      }
+      | MediaType::Tsx => Some(
+        match emitter.maybe_cached_emit(
+          &file.specifier,
+          ModuleKind::Esm,
+          &file.source,
+        )? {
+          Some(code) => code,
+          None => {
+            log::warn!(
+              "Missing transpiled source code for: \"{}\" (was it deleted after coverage was collected?). Skipping.",
+              file.specifier,
+            );
+            continue;
+          }
+        },
+      ),
       MediaType::SourceMap => {
         unreachable!()
       }

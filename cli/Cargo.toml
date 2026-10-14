@@ -84,12 +84,7 @@ ende_core.workspace = true
 ende_env.workspace = true
 ende_lib.workspace = true
 ende_lockfile.workspace = true
-ende_npm.workspace = true
-ende_npm_cache.workspace = true
-ende_npm_installer = { workspace = true }
-ende_npmrc.workspace = true
 ende_os.workspace = true
-ende_package_json = { workspace = true, features = ["sync"] }
 ende_print.workspace = true
 ende_resolver = { workspace = true, features = ["deno_ast", "graph", "sync"] }
 ende_runtime.workspace = true
@@ -98,7 +93,6 @@ ende_snapshots.workspace = true
 ende_telemetry.workspace = true
 eszip.workspace = true
 libsui.workspace = true
-node_resolver = { workspace = true, features = ["graph", "sync"] }
 v8.workspace = true
 
 anstream.workspace = true

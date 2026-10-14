@@ -41,18 +41,13 @@ use ende_ffi::EndeRtNativeAddonLoaderRc;
 use ende_fs::FileSystem;
 use ende_io::Stdio;
 use ende_kv::dynamic::MultiBackendDbHandler;
-use ende_node::ExtNodeSys;
-use ende_node::NodeExtInitServices;
 use ende_os::ExitCode;
 use ende_permissions::PermissionsContainer;
-use ende_process::NpmProcessStateProviderRc;
 use ende_tls::RootCertStoreProvider;
 use ende_tls::TlsKeys;
 use ende_web::BlobStoreTrait;
 use ende_web::InMemoryBroadcastChannel;
 use log::debug;
-use node_resolver::InNpmPackageChecker;
-use node_resolver::NpmPackageFolderResolver;
 
 use crate::BootstrapOptions;
 use crate::FeatureChecker;
@@ -196,11 +191,7 @@ impl Drop for MainWorker {
   }
 }
 
-pub struct WorkerServiceOptions<
-  TInNpmPackageChecker: InNpmPackageChecker,
-  TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TExtNodeSys: ExtNodeSys,
-> {
+pub struct WorkerServiceOptions {
   pub blob_store: Arc<dyn BlobStoreTrait>,
   pub broadcast_channel: InMemoryBroadcastChannel,
   pub ende_rt_native_addon_loader: Option<EndeRtNativeAddonLoaderRc>,
@@ -212,14 +203,6 @@ pub struct WorkerServiceOptions<
   /// If not provided runtime will error if code being
   /// executed tries to load modules.
   pub module_loader: Rc<dyn ModuleLoader>,
-  pub node_services: Option<
-    NodeExtInitServices<
-      TInNpmPackageChecker,
-      TNpmPackageFolderResolver,
-      TExtNodeSys,
-    >,
-  >,
-  pub npm_process_state_provider: Option<NpmProcessStateProviderRc>,
   pub permissions: PermissionsContainer,
   pub root_cert_store_provider: Option<Arc<dyn RootCertStoreProvider>>,
   pub fetch_dns_resolver: ende_fetch::dns::Resolver,
@@ -419,17 +402,9 @@ pub fn create_op_metrics(
 }
 
 impl MainWorker {
-  pub fn bootstrap_from_options<
-    TInNpmPackageChecker: InNpmPackageChecker + 'static,
-    TNpmPackageFolderResolver: NpmPackageFolderResolver + 'static,
-    TExtNodeSys: ExtNodeSys + 'static,
-  >(
+  pub fn bootstrap_from_options(
     main_module: &ModuleSpecifier,
-    services: WorkerServiceOptions<
-      TInNpmPackageChecker,
-      TNpmPackageFolderResolver,
-      TExtNodeSys,
-    >,
+    services: WorkerServiceOptions,
     options: WorkerOptions,
   ) -> Self {
     let (mut worker, bootstrap_options) =
@@ -438,17 +413,9 @@ impl MainWorker {
     worker
   }
 
-  fn from_options<
-    TInNpmPackageChecker: InNpmPackageChecker + 'static,
-    TNpmPackageFolderResolver: NpmPackageFolderResolver + 'static,
-    TExtNodeSys: ExtNodeSys + 'static,
-  >(
+  fn from_options(
     main_module: &ModuleSpecifier,
-    services: WorkerServiceOptions<
-      TInNpmPackageChecker,
-      TNpmPackageFolderResolver,
-      TExtNodeSys,
-    >,
+    services: WorkerServiceOptions,
     mut options: WorkerOptions,
   ) -> (Self, BootstrapOptions) {
     fn create_cache_inner(options: &WorkerOptions) -> Option<CreateCache> {
@@ -642,7 +609,7 @@ impl MainWorker {
         ende_io::ende_io::args(Some(options.stdio)),
         ende_fs::ende_fs::args(services.fs.clone()),
         ende_os::ende_os::args(Some(exit_code.clone())),
-        ende_process::ende_process::args(services.npm_process_state_provider),
+        ende_process::ende_process::args(),
         ops::runtime::ende_runtime::args(main_module.clone()),
         ops::worker_host::ende_worker_host::args(
           options.create_web_worker_cb.clone(),
@@ -1194,13 +1161,7 @@ pub struct UnconfiguredRuntime {
 }
 
 impl UnconfiguredRuntime {
-  pub fn new<
-    TInNpmPackageChecker: InNpmPackageChecker + 'static,
-    TNpmPackageFolderResolver: NpmPackageFolderResolver + 'static,
-    TExtNodeSys: ExtNodeSys + 'static,
-  >(
-    options: UnconfiguredRuntimeOptions,
-  ) -> Self {
+  pub fn new(options: UnconfiguredRuntimeOptions) -> Self {
     let mut extensions = common_extensions(true, true);
 
     extensions.extend(options.additional_extensions);

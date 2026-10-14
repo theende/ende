@@ -12,7 +12,6 @@ pub mod desktop_devtools;
 pub mod doc;
 pub mod fmt;
 pub mod fmt_editorconfig;
-pub mod framework;
 pub mod info;
 pub mod init;
 pub mod installer;

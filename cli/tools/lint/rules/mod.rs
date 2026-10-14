@@ -3,16 +3,19 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use deno_ast::ModuleSpecifier;
 use deno_graph::ModuleGraph;
 use deno_lint::diagnostic::LintDiagnostic;
 use deno_lint::rules::LintRule;
 use deno_lint::tags;
+use deno_terminal::colors;
 use ende_config::ende_json::LintRulesConfig;
 use ende_config::workspace::WorkspaceDirectory;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
+use ende_core::parking_lot::Mutex;
 use ende_resolver::workspace::WorkspaceResolver;
 
 use crate::sys::CliSys;
@@ -79,13 +82,14 @@ impl CliLintRule {
     }
   }
 
-  pub fn tags(&self) -> tags::Tags {
+  pub fn tags(&self) -> Vec<&'static tags::Tag> {
     use CliLintRuleKind::*;
-    match &self.0 {
+    let tags = match &self.0 {
       DenoLint(rule) => rule.tags(),
       Extended(rule) => rule.tags(),
       Package(rule) => rule.tags(),
-    }
+    };
+    tags.iter().filter(|t| **t != tags::FRESH).collect()
   }
 
   pub fn help_docs_url(&self) -> Cow<'static, str> {
@@ -139,6 +143,10 @@ impl ConfiguredRules {
   }
 }
 
+/// Rules from deno_lint for the Fresh framework, which Ende doesn't include.
+const FRESH_RULE_CODES: [&str; 2] =
+  ["fresh-handler-export", "fresh-server-event-handlers"];
+
 pub struct LintRuleProvider {
   workspace_resolver: Option<Arc<WorkspaceResolver<CliSys>>>,
 }
@@ -174,6 +182,7 @@ impl LintRuleProvider {
     ))];
     deno_lint_rules
       .into_iter()
+      .filter(|rule| !FRESH_RULE_CODES.contains(&rule.code()))
       .map(|rule| CliLintRule(CliLintRuleKind::DenoLint(rule)))
       .chain(cli_lint_rules)
       .chain(cli_graph_rules)
@@ -187,9 +196,12 @@ impl LintRuleProvider {
   ) -> ConfiguredRules {
     let all_rules = self.all_rules();
     let mut all_rule_names = HashSet::with_capacity(all_rules.len());
+    let mut all_tags = HashSet::new();
     for rule in &all_rules {
       all_rule_names.insert(rule.code().into());
+      all_tags.extend(rule.tags().iter().map(|t| t.display()));
     }
+    warn_unknown_tags_and_rules(&rules, &all_tags, &all_rule_names);
     let rules = filtered_rules(
       all_rules.into_iter(),
       rules
@@ -201,6 +213,39 @@ impl LintRuleProvider {
     ConfiguredRules {
       rules,
       all_rule_codes: all_rule_names,
+    }
+  }
+}
+
+/// Warns once per tag or rule code in the config or flags that doesn't exist.
+fn warn_unknown_tags_and_rules(
+  rules: &LintRulesConfig,
+  all_tags: &HashSet<&'static str>,
+  all_rule_codes: &HashSet<Cow<'static, str>>,
+) {
+  static WARNED: LazyLock<Mutex<HashSet<String>>> =
+    LazyLock::new(Default::default);
+
+  let unknown_tags = rules
+    .tags
+    .iter()
+    .flatten()
+    .filter(|tag| !all_tags.contains(tag.as_str()))
+    .map(|tag| format!("Unknown lint tag \"{tag}\" is ignored."));
+  let unknown_rules = rules
+    .include
+    .iter()
+    .chain(rules.exclude.iter())
+    .flatten()
+    // plugin rules (`plugin-name/rule-name`) are only known once plugins load
+    .filter(|code| {
+      !code.contains('/') && !all_rule_codes.contains(code.as_str())
+    })
+    .map(|code| format!("Unknown lint rule \"{code}\" is ignored."));
+  let mut warned = WARNED.lock();
+  for message in unknown_tags.chain(unknown_rules) {
+    if warned.insert(message.clone()) {
+      log::warn!("{}: {}", colors::yellow("warn"), message);
     }
   }
 }
@@ -290,11 +335,35 @@ mod test {
       .resolve_lint_rules(Default::default(), None)
       .rules
       .into_iter()
-      .filter(|r| r.tags().contains(&tags::RECOMMENDED))
+      .filter(|r| r.tags().contains(&&tags::RECOMMENDED))
       .map(|r| r.code().to_string())
       .filter(|n| n != "no-debugger")
       .collect::<Vec<_>>();
     recommended_rule_names.sort();
     assert_eq!(rule_names, recommended_rule_names);
+  }
+
+  #[test]
+  fn fresh_rules_are_not_available() {
+    let rules = LintRuleProvider::new(None).all_rules();
+    assert!(!rules.iter().any(|r| r.code().starts_with("fresh-")));
+    assert!(
+      !rules
+        .iter()
+        .any(|r| r.tags().iter().any(|t| t.display() == "fresh"))
+    );
+  }
+
+  #[test]
+  fn fresh_tag_enables_no_rules() {
+    let rules = LintRuleProvider::new(None).resolve_lint_rules(
+      LintRulesConfig {
+        exclude: None,
+        include: Some(vec!["fresh-handler-export".to_string()]),
+        tags: Some(vec!["fresh".to_string()]),
+      },
+      None,
+    );
+    assert!(rules.rules.is_empty());
   }
 }

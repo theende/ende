@@ -27,11 +27,6 @@ use ende_config::workspace::WorkspaceRc;
 use ende_maybe_sync::new_rc;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
-use node_resolver::DenoIsBuiltInNodeModuleChecker;
-use node_resolver::NodeResolutionKind;
-use node_resolver::NodeResolver;
-use node_resolver::NpmPackageFolderResolver;
-use node_resolver::ResolutionMode;
 #[cfg(feature = "sync")]
 use once_cell::sync::OnceCell;
 #[cfg(not(feature = "sync"))]
@@ -46,8 +41,6 @@ use url::Url;
 
 use crate::collections::FolderScopedWithUnscopedMap;
 use crate::factory::ConfigDiscoveryOption;
-use crate::npm::DenoInNpmPackageChecker;
-use crate::npm::NpmResolverSys;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
 type UrlRc = ende_maybe_sync::MaybeArc<Url>;
@@ -1089,38 +1082,18 @@ fn is_maybe_directory_error(err: &std::io::Error) -> bool {
     || cfg!(windows) && kind == ErrorKind::PermissionDenied
 }
 
-pub(crate) type TsConfigNodeResolver<TSys, TNpfr> = NodeResolver<
-  DenoInNpmPackageChecker,
-  DenoIsBuiltInNodeModuleChecker,
-  TNpfr,
-  TSys,
->;
-
-type GetNodeResolverFn<'a, NSys, TNpfr> =
-  Box<dyn Fn(&Url) -> Option<&'a TsConfigNodeResolver<NSys, TNpfr>> + 'a>;
-
-struct TsConfigCollector<
-  'a,
-  'b,
-  TSys: FsRead,
-  NSys: NpmResolverSys,
-  TNpfr: NpmPackageFolderResolver,
-> {
+struct TsConfigCollector<'a, TSys: FsRead> {
   roots: BTreeSet<PathBuf>,
   collected: IndexMap<UrlRc, Rc<TsConfigData>>,
   read_cache: HashMap<PathBuf, Result<Rc<TsConfigData>, Rc<std::io::Error>>>,
   currently_reading: IndexSet<PathBuf>,
   sys: &'a TSys,
-  get_node_resolver: GetNodeResolverFn<'b, NSys, TNpfr>,
   logged_warnings: &'a LoggedWarningsRc,
   overrides: CompilerOptionsOverrides,
 }
 
-impl<
-  TSys: FsRead + std::fmt::Debug,
-  NSys: NpmResolverSys,
-  TNpfr: NpmPackageFolderResolver,
-> std::fmt::Debug for TsConfigCollector<'_, '_, TSys, NSys, TNpfr>
+impl<TSys: FsRead + std::fmt::Debug> std::fmt::Debug
+  for TsConfigCollector<'_, TSys>
 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("TsConfigCollector")
@@ -1134,17 +1107,9 @@ impl<
   }
 }
 
-impl<
-  'a,
-  'b,
-  TSys: FsRead,
-  NSys: NpmResolverSys,
-  TNpfr: NpmPackageFolderResolver,
-> TsConfigCollector<'a, 'b, TSys, NSys, TNpfr>
-{
+impl<'a, TSys: FsRead> TsConfigCollector<'a, TSys> {
   fn new(
     sys: &'a TSys,
-    get_node_resolver: GetNodeResolverFn<'b, NSys, TNpfr>,
     logged_warnings: &'a LoggedWarningsRc,
     overrides: CompilerOptionsOverrides,
   ) -> Self {
@@ -1154,7 +1119,6 @@ impl<
       read_cache: Default::default(),
       currently_reading: Default::default(),
       sys,
-      get_node_resolver,
       logged_warnings,
       overrides,
     }
@@ -1275,18 +1239,27 @@ impl<
         }
       })
       .filter_map(|s| {
-        let node_resolver = (self.get_node_resolver)(&specifier)?;
-        let node_resolution = node_resolver
-          .resolve(
-            s,
-            &specifier,
-            ResolutionMode::Require,
-            NodeResolutionKind::Execution,
-          )
-          .ok()?;
-        let url = node_resolution.into_url().ok()?;
-        let path = url_to_file_path(&url).ok()?;
-        self.read_ts_config_with_cache(Cow::Owned(path)).ok()
+        // only relative and absolute paths are supported (no node_modules
+        // package lookups)
+        let extends_path = Path::new(s);
+        let extends_path = if extends_path.is_absolute() {
+          extends_path.to_path_buf()
+        } else if s.starts_with("./") || s.starts_with("../") {
+          path.parent()?.join(extends_path)
+        } else {
+          return None;
+        };
+        match self.read_ts_config_with_cache(Cow::Borrowed(&extends_path)) {
+          Ok(ts_config) => Some(ts_config),
+          Err(_) if extends_path.extension().is_none_or(|e| e != "json") => {
+            let mut with_ext = extends_path.into_os_string();
+            with_ext.push(".json");
+            self
+              .read_ts_config_with_cache(Cow::Owned(PathBuf::from(with_ext)))
+              .ok()
+          }
+          Err(_) => None,
+        }
       })
       .collect::<Vec<_>>();
     let sources = extends_targets
@@ -1479,14 +1452,9 @@ impl Default for CompilerOptionsResolver {
 }
 
 impl CompilerOptionsResolver {
-  pub fn new<
-    TSys: FsRead,
-    NSys: NpmResolverSys,
-    TNpfr: NpmPackageFolderResolver,
-  >(
+  pub fn new<TSys: FsRead>(
     sys: &TSys,
     workspace: &WorkspaceRc,
-    node_resolver: &TsConfigNodeResolver<NSys, TNpfr>,
     config_discover: &ConfigDiscoveryOption,
     overrides: &CompilerOptionsOverrides,
   ) -> Self {
@@ -1505,12 +1473,8 @@ impl CompilerOptionsResolver {
       };
     }
     let logged_warnings = new_rc(LoggedWarnings::default());
-    let mut ts_config_collector = TsConfigCollector::new(
-      sys,
-      Box::new(|_| Some(node_resolver)),
-      &logged_warnings,
-      overrides.clone(),
-    );
+    let mut ts_config_collector =
+      TsConfigCollector::new(sys, &logged_warnings, overrides.clone());
     let root_dir = workspace.root_dir();
     let mut workspace_configs =
       FolderScopedWithUnscopedMap::new(CompilerOptionsData::new(
@@ -1622,22 +1586,13 @@ impl CompilerOptionsResolver {
     self.entries().any(|(_, d, _)| !d.root_dirs().is_empty())
   }
 
-  pub fn new_for_dirs_by_scope<
-    TSys: FsRead,
-    NSys: NpmResolverSys,
-    TNpfr: NpmPackageFolderResolver,
-  >(
+  pub fn new_for_dirs_by_scope<TSys: FsRead>(
     sys: &TSys,
     dirs_by_scope: BTreeMap<&UrlRc, &WorkspaceDirectory>,
-    get_node_resolver: GetNodeResolverFn<'_, NSys, TNpfr>,
   ) -> Self {
     let logged_warnings = new_rc(LoggedWarnings::default());
-    let mut ts_config_collector = TsConfigCollector::new(
-      sys,
-      get_node_resolver,
-      &logged_warnings,
-      Default::default(),
-    );
+    let mut ts_config_collector =
+      TsConfigCollector::new(sys, &logged_warnings, Default::default());
     let mut workspace_configs =
       FolderScopedWithUnscopedMap::new(CompilerOptionsData::new(
         Vec::new(),

@@ -24,7 +24,6 @@ use ende_core::url::Url;
 use ende_lib::util::hash::FastInsecureHasher;
 use ende_lib::worker::create_isolate_create_params;
 use ende_resolver::ende_json::JsxImportSourceConfigResolver;
-use node_resolver::ResolutionMode;
 
 use super::ResolveArgs;
 use super::ResolveError;
@@ -33,7 +32,6 @@ use crate::tsc::Diagnostics;
 use crate::tsc::ExecError;
 use crate::tsc::LoadError;
 use crate::tsc::Request;
-use crate::tsc::RequestNpmState;
 use crate::tsc::Response;
 use crate::tsc::Stats;
 use crate::tsc::get_hash;
@@ -101,17 +99,11 @@ fn op_resolve_inner(
     resolve_url_or_path(args.base, &state.current_dir)?
   };
   let referrer_module = state.graph.get(&referrer);
-  for (is_cjs, specifier) in args.specifiers {
+  for (_is_cjs, specifier) in args.specifiers {
     let result = super::resolve_specifier_for_tsc(
       specifier,
       &referrer,
       &state.graph,
-      if is_cjs {
-        ResolutionMode::Require
-      } else {
-        ResolutionMode::Import
-      },
-      state.maybe_npm.as_ref(),
       referrer_module,
       &mut state.remapped_specifiers,
     )?;
@@ -165,7 +157,6 @@ ende_core::extension!(ende_cli_tsc,
       options.request.graph,
       options.request.jsx_import_source_config_resolver,
       options.request.hash_data,
-      options.request.maybe_npm,
       options.request.maybe_tsbuildinfo,
       options.root_map,
       options.remapped_specifiers,
@@ -254,18 +245,10 @@ fn op_emit_inner(state: &mut OpState, args: EmitArgs) -> bool {
 }
 
 #[op2(fast)]
-fn op_is_node_file(state: &mut OpState, #[string] path: &str) -> bool {
-  let state = state.borrow::<State>();
+fn op_is_node_file(#[string] path: &str) -> bool {
   ModuleSpecifier::parse(path)
     .ok()
-    .map(|specifier| {
-      state
-        .maybe_npm
-        .as_ref()
-        .map(|n| n.node_resolver.in_npm_package(&specifier))
-        .unwrap_or(false)
-        || specifier.as_str().starts_with("asset:///node/")
-    })
+    .map(|specifier| specifier.as_str().starts_with("asset:///node/"))
     .unwrap_or(false)
 }
 
@@ -324,7 +307,6 @@ fn op_load_inner(
   Ok(
     super::load_for_tsc::<FastString, _>(
       load_specifier,
-      state.maybe_npm.as_ref(),
       &state.current_dir,
       &state.graph,
       state.maybe_tsbuildinfo.as_deref(),
@@ -480,7 +462,6 @@ struct State {
   jsx_import_source_config_resolver: Arc<JsxImportSourceConfigResolver>,
   maybe_tsbuildinfo: Option<String>,
   maybe_response: Option<RespondArgs>,
-  maybe_npm: Option<RequestNpmState>,
   // todo(dsherret): it looks like the remapped_specifiers and
   // root_map could be combined... what is the point of the separation?
   remapped_specifiers: HashMap<String, ModuleSpecifier>,
@@ -498,7 +479,6 @@ impl Default for State {
       jsx_import_source_config_resolver: Default::default(),
       maybe_tsbuildinfo: Default::default(),
       maybe_response: Default::default(),
-      maybe_npm: Default::default(),
       remapped_specifiers: Default::default(),
       root_map: Default::default(),
       current_dir: Default::default(),
@@ -514,7 +494,6 @@ impl State {
     graph: Arc<ModuleGraph>,
     jsx_import_source_config_resolver: Arc<JsxImportSourceConfigResolver>,
     hash_data: u64,
-    maybe_npm: Option<RequestNpmState>,
     maybe_tsbuildinfo: Option<String>,
     root_map: HashMap<String, ModuleSpecifier>,
     remapped_specifiers: HashMap<String, ModuleSpecifier>,
@@ -525,7 +504,6 @@ impl State {
       hash_data,
       graph,
       jsx_import_source_config_resolver,
-      maybe_npm,
       maybe_tsbuildinfo,
       maybe_response: None,
       remapped_specifiers,
@@ -622,7 +600,6 @@ mod tests {
       Arc::new(graph),
       Default::default(),
       hash_data,
-      None,
       maybe_tsbuildinfo,
       HashMap::new(),
       HashMap::new(),
@@ -678,7 +655,6 @@ mod tests {
       graph: Arc::new(graph),
       jsx_import_source_config_resolver: Default::default(),
       hash_data,
-      maybe_npm: None,
       maybe_tsbuildinfo: None,
       root_names: vec![(specifier.clone(), MediaType::TypeScript)],
       check_mode: TypeCheckMode::All,

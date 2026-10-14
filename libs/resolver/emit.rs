@@ -26,13 +26,11 @@ use ende_maybe_sync::MaybeSync;
 use futures::FutureExt;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
-use node_resolver::InNpmPackageChecker;
 use url::Url;
 
 use crate::cache::EmitCacheRc;
 use crate::cache::EmitCacheSys;
 use crate::cache::ParsedSourceCacheRc;
-use crate::cjs::CjsTrackerRc;
 use crate::ende_json::CompilerOptionsParseError;
 use crate::ende_json::CompilerOptionsResolverRc;
 use crate::ende_json::TranspileAndEmitOptions;
@@ -44,32 +42,25 @@ use crate::ende_json::TranspileAndEmitOptions;
 type ArcStr = std::sync::Arc<str>;
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type EmitterRc<TInNpmPackageChecker, TSys> =
-  ende_maybe_sync::MaybeArc<Emitter<TInNpmPackageChecker, TSys>>;
+pub type EmitterRc<TSys> = ende_maybe_sync::MaybeArc<Emitter<TSys>>;
 
 #[sys_traits::auto_impl]
 pub trait EmitterSys: EmitCacheSys {}
 
 #[derive(Debug)]
-pub struct Emitter<TInNpmPackageChecker: InNpmPackageChecker, TSys: EmitterSys>
-{
-  cjs_tracker: CjsTrackerRc<TInNpmPackageChecker, TSys>,
+pub struct Emitter<TSys: EmitterSys> {
   emit_cache: EmitCacheRc<TSys>,
   parsed_source_cache: ParsedSourceCacheRc,
   compiler_options_resolver: CompilerOptionsResolverRc,
 }
 
-impl<TInNpmPackageChecker: InNpmPackageChecker, TSys: EmitterSys>
-  Emitter<TInNpmPackageChecker, TSys>
-{
+impl<TSys: EmitterSys> Emitter<TSys> {
   pub fn new(
-    cjs_tracker: CjsTrackerRc<TInNpmPackageChecker, TSys>,
     emit_cache: EmitCacheRc<TSys>,
     parsed_source_cache: ParsedSourceCacheRc,
     compiler_options_resolver: CompilerOptionsResolverRc,
   ) -> Self {
     Self {
-      cjs_tracker,
       emit_cache,
       parsed_source_cache,
       compiler_options_resolver,
@@ -92,13 +83,7 @@ impl<TInNpmPackageChecker: InNpmPackageChecker, TSys: EmitterSys>
             .maybe_emit_source(
               &module.specifier,
               module.media_type,
-              ModuleKind::from_is_cjs(
-                self.cjs_tracker.is_cjs_with_known_is_script(
-                  &module.specifier,
-                  module.media_type,
-                  module.is_script,
-                )?,
-              ),
+              ModuleKind::Esm,
               &module.source.text,
             )
             .boxed_local(),
@@ -340,19 +325,11 @@ impl<TInNpmPackageChecker: InNpmPackageChecker, TSys: EmitterSys>
           .map_err(JsErrorBox::from_err)?;
         let mut options = transpile_and_emit_options.emit.clone();
         options.source_map = SourceMapOption::None;
-        let is_cjs = self
-          .cjs_tracker
-          .is_cjs_with_known_is_script(
-            specifier,
-            media_type,
-            parsed_source.compute_is_script(),
-          )
-          .map_err(JsErrorBox::from_err)?;
         let transpiled_source = parsed_source
           .transpile(
             &transpile_and_emit_options.transpile,
             &deno_ast::TranspileModuleOptions {
-              module_kind: Some(ModuleKind::from_is_cjs(is_cjs)),
+              module_kind: Some(ModuleKind::Esm),
             },
             &options,
           )
@@ -483,15 +460,9 @@ pub enum EmitParsedSourceHelperError {
 }
 
 /// Helper to share code between async and sync emit_parsed_source methods.
-struct EmitParsedSourceHelper<
-  'a,
-  TInNpmPackageChecker: InNpmPackageChecker,
-  TSys: EmitterSys,
->(&'a Emitter<TInNpmPackageChecker, TSys>);
+struct EmitParsedSourceHelper<'a, TSys: EmitterSys>(&'a Emitter<TSys>);
 
-impl<TInNpmPackageChecker: InNpmPackageChecker, TSys: EmitterSys>
-  EmitParsedSourceHelper<'_, TInNpmPackageChecker, TSys>
-{
+impl<TSys: EmitterSys> EmitParsedSourceHelper<'_, TSys> {
   pub fn pre_emit_parsed_source(
     &self,
     specifier: &Url,

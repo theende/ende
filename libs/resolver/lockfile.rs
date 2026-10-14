@@ -11,106 +11,18 @@ use deno_path_util::fs::atomic_write_file_with_retries;
 use deno_semver::package::PackageNv;
 use ende_config::workspace::Workspace;
 use ende_lockfile::Lockfile;
-use ende_lockfile::NpmPackageInfoProvider;
 use ende_lockfile::WorkspaceMemberConfig;
-use ende_maybe_sync::MaybeSend;
-use ende_maybe_sync::MaybeSync;
-use ende_npm::registry::NpmRegistryApi;
-use ende_npm::resolution::DefaultTarballUrlProvider;
-use ende_npm::resolution::NpmRegistryDefaultTarballUrlProvider;
-use futures::TryStreamExt;
-use futures::stream::FuturesOrdered;
 use parking_lot::Mutex;
 use parking_lot::MutexGuard;
 
-use crate::workspace::WorkspaceNpmLinkPackagesRc;
-
-pub trait NpmRegistryApiEx: NpmRegistryApi + MaybeSend + MaybeSync {}
-
-impl<T> NpmRegistryApiEx for T where T: NpmRegistryApi + MaybeSend + MaybeSync {}
-
-#[allow(clippy::disallowed_types, reason = "definition")]
-type NpmRegistryApiRc = ende_maybe_sync::MaybeArc<dyn NpmRegistryApiEx>;
-
-pub struct LockfileNpmPackageInfoApiAdapter {
-  api: NpmRegistryApiRc,
-  workspace_link_packages: WorkspaceNpmLinkPackagesRc,
-}
-
-impl LockfileNpmPackageInfoApiAdapter {
-  pub fn new(
-    api: NpmRegistryApiRc,
-    workspace_link_packages: WorkspaceNpmLinkPackagesRc,
-  ) -> Self {
-    Self {
-      api,
-      workspace_link_packages,
-    }
-  }
-
-  async fn get_infos(
-    &self,
-    values: &[PackageNv],
-  ) -> Result<
-    Vec<ende_lockfile::Lockfile5NpmInfo>,
-    Box<dyn std::error::Error + Send + Sync>,
-  > {
-    let futs = values
-      .iter()
-      .map(|v| async move {
-        let info = self.api.package_info(v.name.as_str()).await?;
-        let version_info =
-          info.version_info(v, &self.workspace_link_packages.0)?;
-        Ok::<_, Box<dyn std::error::Error + Send + Sync>>(
-          ende_lockfile::Lockfile5NpmInfo {
-            tarball_url: version_info.dist.as_ref().and_then(|d| {
-              let tarball_url_provider = NpmRegistryDefaultTarballUrlProvider;
-              if d.tarball == tarball_url_provider.default_tarball_url(v) {
-                None
-              } else {
-                Some(d.tarball.clone())
-              }
-            }),
-            optional_dependencies: version_info
-              .optional_dependencies
-              .iter()
-              .map(|(k, v)| (k.to_string(), v.to_string()))
-              .collect::<std::collections::BTreeMap<_, _>>(),
-            cpu: version_info.cpu.iter().map(|s| s.to_string()).collect(),
-            os: version_info.os.iter().map(|s| s.to_string()).collect(),
-            deprecated: version_info.deprecated.is_some(),
-            bin: version_info.bin.is_some(),
-            scripts: version_info.has_install_script.unwrap_or(false)
-              || version_info.scripts.contains_key("preinstall")
-              || version_info.scripts.contains_key("install")
-              || version_info.scripts.contains_key("postinstall"),
-            optional_peers: version_info
-              .peer_dependencies_meta
-              .iter()
-              .filter_map(|(k, v)| {
-                if v.optional {
-                  version_info
-                    .peer_dependencies
-                    .get(k)
-                    .map(|v| (k.to_string(), v.to_string()))
-                } else {
-                  None
-                }
-              })
-              .collect::<std::collections::BTreeMap<_, _>>(),
-          },
-        )
-      })
-      .collect::<FuturesOrdered<_>>();
-    let package_infos = futs.try_collect::<Vec<_>>().await?;
-    Ok(package_infos)
-  }
-}
+/// Ende doesn't support npm packages, so npm entries in lockfiles written by
+/// older versions are discarded. When upgrading an old lockfile format, the
+/// npm package info the upgrade asks for is irrelevant, so empty info is
+/// returned for each package.
+pub struct NoNpmPackageInfoProvider;
 
 #[async_trait::async_trait(?Send)]
-impl ende_lockfile::NpmPackageInfoProvider
-  for LockfileNpmPackageInfoApiAdapter
-{
+impl ende_lockfile::NpmPackageInfoProvider for NoNpmPackageInfoProvider {
   async fn get_npm_package_info(
     &self,
     values: &[PackageNv],
@@ -118,18 +30,7 @@ impl ende_lockfile::NpmPackageInfoProvider
     Vec<ende_lockfile::Lockfile5NpmInfo>,
     Box<dyn std::error::Error + Send + Sync>,
   > {
-    let package_infos = self.get_infos(values).await;
-
-    match package_infos {
-      Ok(package_infos) => Ok(package_infos),
-      Err(err) => {
-        if self.api.mark_force_reload() {
-          self.get_infos(values).await
-        } else {
-          Err(err)
-        }
-      }
-    }
+    Ok(vec![Default::default(); values.len()])
   }
 }
 
@@ -175,7 +76,6 @@ pub struct LockfileFlags {
   pub lock: Option<PathBuf>,
   pub skip_write: bool,
   pub no_config: bool,
-  pub no_npm: bool,
 }
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
@@ -281,7 +181,6 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
     flags: LockfileFlags,
     workspace: &Workspace,
     maybe_external_import_map: Option<&serde_json::Value>,
-    api: &dyn NpmPackageInfoProvider,
   ) -> Result<Option<Self>, AnyError> {
     if flags.no_lock {
       return Ok(None);
@@ -308,7 +207,6 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
         frozen,
         skip_write: flags.skip_write,
       },
-      api,
     )
     .await?;
     let root_url = workspace.root_dir_url();
@@ -316,16 +214,18 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
       root: WorkspaceMemberConfig {
         // package.json is not supported in Ende
         package_json_deps: Default::default(),
-        dependencies: if let Some(map) = maybe_external_import_map {
-          ende_config::import_map::import_map_deps_from_value(map)
-            .collect::<HashSet<_>>()
-        } else {
-          root_folder
-            .ende_json
-            .as_deref()
-            .map(|d| d.dependencies())
-            .unwrap_or_default()
-        },
+        dependencies: without_npm_reqs(
+          if let Some(map) = maybe_external_import_map {
+            ende_config::import_map::import_map_deps_from_value(map)
+              .collect::<HashSet<_>>()
+          } else {
+            root_folder
+              .ende_json
+              .as_deref()
+              .map(|d| d.dependencies())
+              .unwrap_or_default()
+          },
+        ),
       },
       members: workspace
         .config_folders()
@@ -346,11 +246,13 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
             {
               let config = WorkspaceMemberConfig {
                 package_json_deps: Default::default(),
-                dependencies: folder
-                  .ende_json
-                  .as_deref()
-                  .map(|d| d.dependencies())
-                  .unwrap_or_default(),
+                dependencies: without_npm_reqs(
+                  folder
+                    .ende_json
+                    .as_deref()
+                    .map(|d| d.dependencies())
+                    .unwrap_or_default(),
+                ),
               };
               if config.dependencies.is_empty() {
                 // exclude empty workspace members
@@ -375,7 +277,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
           })
           .unwrap();
           let value = ende_lockfile::LockfileLinkContent {
-            dependencies: ende_json.dependencies(),
+            dependencies: without_npm_reqs(ende_json.dependencies()),
             optional_dependencies: Default::default(),
             peer_dependencies: Default::default(),
             peer_dependencies_meta: Default::default(),
@@ -386,7 +288,7 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
       npm_overrides: None,
     };
     lockfile.set_workspace_config(ende_lockfile::SetWorkspaceConfigOptions {
-      no_npm: flags.no_npm,
+      no_npm: false,
       no_config: flags.no_config,
       config,
     });
@@ -396,19 +298,23 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
   pub async fn read_from_path(
     sys: TSys,
     opts: LockfileReadFromPathOptions,
-    api: &dyn ende_lockfile::NpmPackageInfoProvider,
   ) -> Result<LockfileLock<TSys>, AnyError> {
     let lockfile = match sys.fs_read_to_string(&opts.file_path) {
       Ok(text) => {
-        Lockfile::new(
+        let mut lockfile = Lockfile::new(
           ende_lockfile::NewLockfileOptions {
             file_path: opts.file_path,
             content: &text,
             overwrite: false,
           },
-          api,
+          &NoNpmPackageInfoProvider,
         )
-        .await?
+        .await?;
+        // Dropping stale npm entries is not a change by itself: the file is
+        // left as is (and `--frozen` passes) until something else causes a
+        // write, which then omits them.
+        lockfile.content.remove_npm_entries();
+        lockfile
       }
       Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
         Lockfile::new_empty(opts.file_path, false)
@@ -523,4 +429,15 @@ impl<TSys: LockfileSys> deno_graph::source::Locker
       .lock()
       .insert_package(package_nv.clone(), checksum.into_string());
   }
+}
+
+/// npm packages aren't supported, so npm requirements never go in the
+/// lockfile.
+fn without_npm_reqs(
+  reqs: HashSet<deno_semver::jsr::JsrDepPackageReq>,
+) -> HashSet<deno_semver::jsr::JsrDepPackageReq> {
+  reqs
+    .into_iter()
+    .filter(|req| req.kind != deno_semver::package::PackageKind::Npm)
+    .collect()
 }

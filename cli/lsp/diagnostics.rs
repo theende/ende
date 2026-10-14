@@ -15,7 +15,6 @@ use deno_graph::SpecifierError;
 use deno_graph::fast_check::FastCheckDiagnostic;
 use deno_graph::source::ResolveError;
 use deno_semver::jsr::JsrPackageReqReference;
-use deno_semver::npm::NpmPackageReqReference;
 use deno_semver::package::PackageReq;
 use ende_core::ModuleSpecifier;
 use ende_core::anyhow::anyhow;
@@ -37,7 +36,6 @@ use import_map::ImportMapDiagnostic;
 use import_map::ImportMapErrorKind;
 use log::error;
 use lsp_types::Uri;
-use node_resolver::NodeResolutionKind;
 use sys_traits::EnvVar;
 use text_size::TextSize;
 use tokio::sync::mpsc;
@@ -158,8 +156,6 @@ impl DiagnosticsState {
         == Some(lsp::NumberOrString::String("no-cache".to_string()))
         || diagnostic.code
           == Some(lsp::NumberOrString::String("not-installed-jsr".to_string()))
-        || diagnostic.code
-          == Some(lsp::NumberOrString::String("not-installed-npm".to_string()))
       {
         no_cache_diagnostics.push(diagnostic.clone());
       }
@@ -744,10 +740,6 @@ pub enum EndeDiagnostic {
   NoCache(ModuleSpecifier),
   /// A jsr package reference was not found in the cache.
   NotInstalledJsr(PackageReq, ModuleSpecifier),
-  /// An npm package reference was not found in the cache.
-  NotInstalledNpm(PackageReq, ModuleSpecifier),
-  /// An npm package reference was not exported by its package.
-  NoExportNpm(NpmPackageReqReference),
   /// A local module was not found on the local file system.
   NoLocal(ModuleSpecifier),
   /// An error occurred when resolving the specifier string. The second field
@@ -767,8 +759,6 @@ impl EndeDiagnostic {
       Self::NoAttributeType => "no-attribute-type",
       Self::NoCache(_) => "no-cache",
       Self::NotInstalledJsr(_, _) => "not-installed-jsr",
-      Self::NotInstalledNpm(_, _) => "not-installed-npm",
-      Self::NoExportNpm(_) => "no-export-npm",
       Self::NoLocal(_) => "no-local",
       Self::ResolutionError(err, _) => match err {
         ResolutionError::InvalidDowngrade { .. } => "invalid-downgrade",
@@ -837,16 +827,13 @@ impl EndeDiagnostic {
           }),
           ..Default::default()
         },
-        "no-cache" | "not-installed-jsr" | "not-installed-npm" => {
+        "no-cache" | "not-installed-jsr" => {
           let data = diagnostic
             .data
             .clone()
             .ok_or_else(|| anyhow!("Diagnostic is missing data"))?;
           let data: DiagnosticDataSpecifier = serde_json::from_value(data)?;
-          let title = if matches!(
-            code.as_str(),
-            "not-installed-jsr" | "not-installed-npm"
-          ) {
+          let title = if code == "not-installed-jsr" {
             format!("Install \"{}\" and its dependencies.", data.specifier)
           } else {
             format!("Cache \"{}\" and its dependencies.", data.specifier)
@@ -934,7 +921,7 @@ impl EndeDiagnostic {
     if let Some(lsp::NumberOrString::String(code)) = &diagnostic.code {
       match code.as_str() {
         "import-map-remap" | "no-cache" | "not-installed-jsr"
-        | "not-installed-npm" | "no-attribute-type" | "redirect" => true,
+        | "no-attribute-type" | "redirect" => true,
         "no-local" => diagnostic.data.is_some(),
         _ => false,
       }
@@ -971,8 +958,6 @@ impl EndeDiagnostic {
       Self::NoAttributeType => (lsp::DiagnosticSeverity::ERROR, "The module is a JSON module and not being imported with an import attribute. Consider adding `with { type: \"json\" }` to the import statement.".to_string(), None),
       Self::NoCache(specifier) => (lsp::DiagnosticSeverity::ERROR, format!("Uncached or missing remote URL: {specifier}"), Some(json!({ "specifier": specifier }))),
       Self::NotInstalledJsr(pkg_req, specifier) => (lsp::DiagnosticSeverity::ERROR, format!("JSR package \"{pkg_req}\" is not installed or doesn't exist."), Some(json!({ "specifier": specifier }))),
-      Self::NotInstalledNpm(pkg_req, specifier) => (lsp::DiagnosticSeverity::ERROR, format!("npm package \"{pkg_req}\" is not installed or doesn't exist."), Some(json!({ "specifier": specifier }))),
-      Self::NoExportNpm(pkg_ref) => (lsp::DiagnosticSeverity::ERROR, format!("NPM package \"{}\" does not define an export \"{}\".", pkg_ref.req(), pkg_ref.sub_path().unwrap_or(".")), None),
       Self::NoLocal(specifier) => {
         let sloppy_resolution = sloppy_imports_resolve(specifier, ende_resolver::workspace::ResolutionKind::Execution, CliSys::default());
         let data = sloppy_resolution.as_ref().map(|(resolved, sloppy_reason)| {
@@ -1118,8 +1103,6 @@ fn diagnose_resolution(
       let scoped_resolver = snapshot
         .resolver
         .get_scoped_resolver(referrer_module.scope.as_deref());
-      let managed_npm_resolver =
-        scoped_resolver.as_maybe_managed_npm_resolver();
       for (_, headers) in scoped_resolver.redirect_chain_headers(specifier) {
         if let Some(message) = headers.get("x-deno-warning") {
           diagnostics.push(EndeDiagnostic::EndeWarn(message.clone()));
@@ -1161,50 +1144,16 @@ fn diagnose_resolution(
                 .push(EndeDiagnostic::NotInstalledJsr(req, specifier.clone()));
             }
             _ => {
-              match NpmPackageReqReference::from_specifier(specifier) {
-                Ok(pkg_ref) => {
-                  if let Some(npm_resolver) = managed_npm_resolver {
-                    // show diagnostics for npm package references that aren't cached
-                    let req = pkg_ref.req();
-                    if !npm_resolver.is_pkg_req_folder_cached(req) {
-                      diagnostics.push(EndeDiagnostic::NotInstalledNpm(
-                        req.clone(),
-                        specifier.clone(),
-                      ));
-                    } else {
-                      let resolution_kinds = [
-                        NodeResolutionKind::Types,
-                        NodeResolutionKind::Execution,
-                      ];
-                      if resolution_kinds.into_iter().all(|k| {
-                        scoped_resolver
-                          .npm_to_file_url(
-                            &pkg_ref,
-                            &referrer_module.specifier,
-                            k,
-                            referrer_module.resolution_mode,
-                          )
-                          .is_none()
-                      }) {
-                        diagnostics
-                          .push(EndeDiagnostic::NoExportNpm(pkg_ref.clone()));
-                      }
-                    }
-                  }
-                }
-                _ => {
-                  // When the document is not available, it means that it cannot be found
-                  // in the cache or locally on the disk, so we want to issue a diagnostic
-                  // about that.
-                  // these may be invalid, however, if this is an ambient module with
-                  // no real source (as in the case of a virtual module).
-                  let ende_diagnostic = match specifier.scheme() {
-                    "file" => EndeDiagnostic::NoLocal(specifier.clone()),
-                    _ => EndeDiagnostic::NoCache(specifier.clone()),
-                  };
-                  deferred_diagnostics.push(ende_diagnostic);
-                }
-              }
+              // When the document is not available, it means that it cannot be found
+              // in the cache or locally on the disk, so we want to issue a diagnostic
+              // about that.
+              // these may be invalid, however, if this is an ambient module with
+              // no real source (as in the case of a virtual module).
+              let ende_diagnostic = match specifier.scheme() {
+                "file" => EndeDiagnostic::NoLocal(specifier.clone()),
+                _ => EndeDiagnostic::NoCache(specifier.clone()),
+              };
+              deferred_diagnostics.push(ende_diagnostic);
             }
           }
         }
@@ -1542,20 +1491,6 @@ fn diagnose_import_map_entry_value(
       }
       let req = pkg_ref.into_inner().req;
       EndeDiagnostic::NotInstalledJsr(req, value.clone())
-    }
-    "npm" => {
-      let Ok(pkg_ref) = NpmPackageReqReference::from_specifier(value) else {
-        return;
-      };
-      let req = pkg_ref.req().clone();
-      let scoped_resolver = snapshot.resolver.get_scoped_resolver(Some(scope));
-      if scoped_resolver
-        .as_maybe_managed_npm_resolver()
-        .is_some_and(|npm_resolver| npm_resolver.is_pkg_req_folder_cached(&req))
-      {
-        return;
-      }
-      EndeDiagnostic::NotInstalledNpm(req, value.clone())
     }
     _ => return,
   };
@@ -2107,10 +2042,9 @@ mod tests {
       let config_file = ConfigFile::new(json_string, base_url).unwrap();
       config.tree.inject_config_file(config_file).await;
     }
-    let resolver =
-      Arc::new(LspResolver::from_config(&config, &cache, None).await);
+    let resolver = Arc::new(LspResolver::from_config(&config, &cache));
     let compiler_options_resolver =
-      Arc::new(LspCompilerOptionsResolver::new(&config, &resolver, None));
+      Arc::new(LspCompilerOptionsResolver::new(&config, None));
     resolver.set_compiler_options_resolver(&compiler_options_resolver.inner);
     let linter_resolver = Arc::new(LspLinterResolver::new(
       &config,

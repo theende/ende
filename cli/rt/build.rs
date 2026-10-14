@@ -6,6 +6,5 @@ fn main() {
     return;
   }
 
-  ende_runtime::ende_napi::print_linker_flags("endert");
   ende_runtime::ende_webgpu::print_linker_flags("endert");
 }

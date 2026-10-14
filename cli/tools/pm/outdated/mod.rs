@@ -27,7 +27,7 @@ use crate::factory::CliFactory;
 use crate::file_fetcher::CreateCliFileFetcherOptions;
 use crate::file_fetcher::create_cli_file_fetcher;
 use crate::jsr::JsrFetchResolver;
-use crate::npm::PackageInfoLoadError;
+use crate::jsr::PackageInfoLoadError;
 
 /// Packages whose metadata could not be fetched (e.g. unreachable or
 /// unauthorized private registries) are dropped from the update check. They are

@@ -7,15 +7,8 @@ use std::path::PathBuf;
 
 use base64::prelude::BASE64_STANDARD;
 use base64::prelude::Engine;
-use deno_semver::npm::NpmPackageReqReference;
-use ende_npm::resolution::PackageIdNotFoundError;
-use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
-use ende_npm_installer::process_state::NpmProcessState;
-use ende_npm_installer::process_state::NpmProcessStateFromEnvVarSys;
-use ende_npm_installer::process_state::NpmProcessStateKind;
 use ende_runtime::UNSTABLE_ENV_VAR_NAMES;
 use ende_runtime::colors;
-use ende_runtime::ende_node::ops::ipc::ChildIpcSerialization;
 use ende_runtime::ende_tls::deno_native_certs::load_native_certs;
 use ende_runtime::ende_tls::rustls;
 use ende_runtime::ende_tls::rustls::RootCertStore;
@@ -25,12 +18,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use sys_traits::EnvVar;
 use thiserror::Error;
-
-pub fn npm_pkg_req_ref_to_binary_command(
-  req_ref: &NpmPackageReqReference,
-) -> &str {
-  req_ref.sub_path().unwrap_or_else(|| &req_ref.req().name)
-}
 
 pub fn has_trace_permissions_enabled(sys: &impl EnvVar) -> bool {
   has_flag_env_var(sys, "ENDE_TRACE_PERMISSIONS")
@@ -42,46 +29,6 @@ pub fn has_flag_env_var(sys: &impl EnvVar, name: &str) -> bool {
   match ende_env::env_var_os(sys, name) {
     Some(value) => value == "1",
     None => false,
-  }
-}
-
-/// Reads the node IPC channel configuration that `node:child_process.fork()`
-/// passes to a child process through `NODE_CHANNEL_FD` (and the optional
-/// `NODE_CHANNEL_SERIALIZATION_MODE`), returning the channel fd and
-/// serialization mode so the child can wire up `process.send()` /
-/// `process.on("message")`. The env vars are removed once read so they don't
-/// leak into grandchild processes. Returns `Ok(None)` when no channel was set.
-///
-/// Shared by the `ende` CLI and the standalone (`endert`) runtime so the two
-/// entry points can't drift; the latter relies on this for IPC to work in a
-/// compiled binary's forked child (issue #26304).
-pub fn node_ipc_init(
-  sys: &impl EnvVar,
-) -> Result<
-  Option<(i64, ChildIpcSerialization)>,
-  ende_runtime::ende_core::anyhow::Error,
-> {
-  let maybe_node_channel_fd = sys.env_var("NODE_CHANNEL_FD").ok();
-  let maybe_node_channel_serialization =
-    if let Ok(serialization) = sys.env_var("NODE_CHANNEL_SERIALIZATION_MODE") {
-      Some(serialization.parse::<ChildIpcSerialization>()?)
-    } else {
-      None
-    };
-  if let Some(node_channel_fd) = maybe_node_channel_fd {
-    // Remove so that child processes don't inherit these environment variables.
-    // SAFETY: single-threaded at this point in startup
-    unsafe {
-      std::env::remove_var("NODE_CHANNEL_FD");
-      std::env::remove_var("NODE_CHANNEL_SERIALIZATION_MODE");
-    }
-    let node_channel_fd = node_channel_fd.parse::<i64>()?;
-    Ok(Some((
-      node_channel_fd,
-      maybe_node_channel_serialization.unwrap_or(ChildIpcSerialization::Json),
-    )))
-  } else {
-    Ok(None)
   }
 }
 
@@ -237,51 +184,10 @@ pub fn get_root_cert_store(
   Ok(root_cert_store)
 }
 
-pub fn npm_process_state(
-  sys: &impl NpmProcessStateFromEnvVarSys,
-) -> Option<&'static NpmProcessState> {
-  static NPM_PROCESS_STATE: std::sync::OnceLock<Option<NpmProcessState>> =
-    std::sync::OnceLock::new();
-
-  NPM_PROCESS_STATE
-    .get_or_init(|| {
-      use ende_runtime::ende_process::NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME;
-      let fd_or_path = sys.env_var_os(NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME)?;
-
-      sys.env_remove_var(NPM_RESOLUTION_STATE_FD_ENV_VAR_NAME);
-      if fd_or_path.is_empty() {
-        return None;
-      }
-      NpmProcessState::from_env_var(sys, fd_or_path)
-        .inspect_err(|e| {
-          log::error!("failed to resolve npm process state: {}", e);
-        })
-        .ok()
-    })
-    .as_ref()
-}
-
-pub fn resolve_npm_resolution_snapshot(
-  sys: &impl NpmProcessStateFromEnvVarSys,
-) -> Result<Option<ValidSerializedNpmResolutionSnapshot>, PackageIdNotFoundError>
-{
-  if let Some(NpmProcessStateKind::Snapshot(snapshot)) =
-    npm_process_state(sys).map(|s| &s.kind)
-  {
-    // TODO(bartlomieju): remove this clone
-    Ok(Some(snapshot.clone().into_valid()?))
-  } else {
-    Ok(None)
-  }
-}
-
 #[derive(Clone, Default, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct UnstableConfig {
   // TODO(bartlomieju): remove in Deno 2.5
   pub legacy_flag_enabled: bool, // --unstable
-  /// Internal only (no CLI flag): set for `ENDE_COMPAT`, Node child
-  /// processes and some npm entrypoints.
-  pub detect_cjs: bool,
   pub lazy_dynamic_imports: bool,
   pub raw_imports: bool,
   pub sloppy_imports: bool,
@@ -313,10 +219,5 @@ impl UnstableConfig {
       &mut self.sloppy_imports,
       UNSTABLE_ENV_VAR_NAMES.sloppy_imports,
     );
-  }
-
-  pub fn enable_node_compat(&mut self) {
-    self.sloppy_imports = true;
-    self.detect_cjs = true;
   }
 }

@@ -15,7 +15,17 @@ use ende_core::serde_json;
 
 use crate::args::jsr_url;
 use crate::file_fetcher::CliFileFetcher;
-use crate::npm::PackageInfoLoadError;
+
+/// Why fetching package metadata for a single package failed. Used to surface
+/// actionable diagnostics (e.g. in `ende outdated`) instead of silently
+/// dropping packages that live on unreachable or unauthorized registries.
+#[derive(Clone, Debug)]
+pub struct PackageInfoLoadError {
+  /// The registry URL the metadata was being fetched from.
+  pub registry_url: String,
+  /// A human readable description of what went wrong.
+  pub reason: String,
+}
 
 /// This is similar to a subset of `JsrCacheResolver` which fetches rather than
 /// just reads the cache. Keep in sync!

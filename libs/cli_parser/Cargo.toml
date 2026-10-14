@@ -17,7 +17,6 @@ deno_semver.workspace = true
 ende_config = { workspace = true, features = ["workspace"] }
 ende_core.workspace = true
 ende_lib.workspace = true
-ende_npm_installer.workspace = true
 ende_permissions.workspace = true
 ende_runtime.workspace = true
 log.workspace = true

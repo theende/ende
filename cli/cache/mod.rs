@@ -7,7 +7,6 @@ mod code_cache;
 mod fast_check;
 mod incremental;
 mod module_info;
-mod node;
 
 pub type EndeDir = ende_resolver::cache::EndeDir<CliSys>;
 pub type EndeDirProvider = ende_resolver::cache::EndeDirProvider<CliSys>;
@@ -21,7 +20,6 @@ pub use ende_cache_dir::CACHE_PERM;
 pub use fast_check::FastCheckCache;
 pub use incremental::IncrementalCache;
 pub use module_info::ModuleInfoCache;
-pub use node::SqliteNodeAnalysisCache;
 
 use crate::sys::CliSys;
 

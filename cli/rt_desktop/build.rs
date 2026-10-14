@@ -8,49 +8,16 @@ fn main() {
     return;
   }
 
-  // For cdylib targets, we must explicitly export NAPI symbols so that
-  // native addons (e.g. next-swc) can resolve them via dlsym.
-  // The print_linker_flags() functions use cargo:rustc-link-arg-bin
-  // which only applies to binary targets, so we emit cdylib-specific
-  // linker args here instead.
-  print_cdylib_napi_linker_flags();
+  print_cdylib_linker_flags();
 }
 
-fn print_cdylib_napi_linker_flags() {
-  let symbols_file_name = match std::env::consts::OS {
-    "android" | "freebsd" | "openbsd" => {
-      "generated_symbol_exports_list_linux.def".to_string()
-    }
-    os => format!("generated_symbol_exports_list_{}.def", os),
-  };
-
-  // Path relative to this build script's Cargo.toml
-  let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-  let symbols_path = std::path::Path::new(&manifest_dir)
-    .join("../../ext/napi")
-    .join(&symbols_file_name)
-    .canonicalize()
-    .expect("Missing NAPI symbols list");
-
-  println!("cargo:rerun-if-changed={}", symbols_path.display());
-
-  #[cfg(target_os = "macos")]
-  println!(
-    "cargo:rustc-cdylib-link-arg=-Wl,-exported_symbols_list,{}",
-    symbols_path.display(),
-  );
-
+fn print_cdylib_linker_flags() {
   #[cfg(any(
     target_os = "linux",
     target_os = "freebsd",
     target_os = "openbsd"
   ))]
   {
-    println!(
-      "cargo:rustc-cdylib-link-arg=-Wl,--export-dynamic-symbol-list={}",
-      symbols_path.display(),
-    );
-
     // V8 (via rusty_v8's `use_custom_libcxx`) statically links its own
     // libc++/libc++abi into this cdylib. A desktop backend (laufey) `dlopen`s
     // us into a process that already uses the system libstdc++. Without hiding
@@ -61,10 +28,9 @@ fn print_cdylib_napi_linker_flags() {
     // `Deno.serve` ever runs (denoland/deno#35381).
     //
     // `--exclude-libs,ALL` localizes every static-archive symbol (including the
-    // bundled libc++abi) so our calls resolve to our own copy. The NAPI/uv
-    // exports above are re-added explicitly, and the `laufey_runtime_*` entry
-    // points live in this crate's own objects (not an archive), so both stay
-    // visible.
+    // bundled libc++abi) so our calls resolve to our own copy. The
+    // `laufey_runtime_*` entry points live in this crate's own objects (not an
+    // archive), so they stay visible.
     println!("cargo:rustc-cdylib-link-arg=-Wl,--exclude-libs,ALL");
   }
 }

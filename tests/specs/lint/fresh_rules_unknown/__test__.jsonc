@@ -1,0 +1,7 @@
+// Copyright 2026 the Ende authors. MIT license.
+
+// Fresh lint rules and the "fresh" tag are not part of Ende's rule set.
+{
+  "args": "lint",
+  "output": "lint.out"
+}

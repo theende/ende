@@ -702,12 +702,7 @@ async fn install_after_modification(
     .await?;
 
   if let Some(install_reporter) = cli_factory.install_reporter()? {
-    let npm_resolver = cli_factory.npm_resolver().await?;
-    super::installer::print_install_report(
-      start.elapsed(),
-      install_reporter,
-      npm_resolver,
-    );
+    super::installer::print_install_report(start.elapsed(), install_reporter);
   }
 
   if let Some(lockfile) = cli_factory.maybe_lockfile().await? {

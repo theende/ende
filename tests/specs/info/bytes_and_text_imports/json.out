@@ -37,6 +37,5 @@
       "specifier": "file:///[WILDLINE]/main.ts"
     }
   ],
-  "redirects": {},
-  "npmPackages": {}
+  "redirects": {}
 }

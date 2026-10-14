@@ -10,8 +10,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@endetest/add@1.0.0",
-      "npm:@denotest/esm-basic@1.0.0"
+      "jsr:@endetest/add@1.0.0"
     ]
   }
 }

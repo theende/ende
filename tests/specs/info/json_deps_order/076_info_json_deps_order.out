@@ -160,6 +160,5 @@
       "specifier": "file://[WILDCARD]/recursive_imports/common.ts"
     }
   ],
-  "redirects": {},
-  "npmPackages": {}
+  "redirects": {}
 }

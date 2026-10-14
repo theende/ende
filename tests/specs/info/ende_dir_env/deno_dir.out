@@ -2,7 +2,6 @@ Warning: DENO_DIR is deprecated. Use ENDE_DIR instead.
 Ende version: [WILDLINE]
 ENDE_DIR location: [WILDLINE]deno_cache
 Remote modules cache: [WILDLINE]deno_cache[WILDLINE]
-npm modules cache: [WILDLINE]deno_cache[WILDLINE]
 Emitted modules cache: [WILDLINE]deno_cache[WILDLINE]
 Language server registries cache: [WILDLINE]deno_cache[WILDLINE]
 Origin storage: [WILDLINE]deno_cache[WILDLINE]

@@ -41,8 +41,8 @@ use crate::graph_container::MainModuleGraphContainer;
 use crate::graph_container::ModuleGraphContainer;
 use crate::graph_container::ModuleGraphUpdatePermit;
 use crate::jsr::JsrFetchResolver;
+use crate::jsr::PackageInfoLoadError;
 use crate::module_loader::ModuleLoadPreparer;
-use crate::npm::PackageInfoLoadError;
 use crate::util::progress_bar::ProgressBar;
 use crate::util::sync::AtomicFlag;
 

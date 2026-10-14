@@ -20,7 +20,6 @@ use ende_resolver::ende_json::get_base_compiler_options_for_emit;
 
 use crate::lsp::config::Config;
 use crate::lsp::logging::lsp_warn;
-use crate::lsp::resolver::LspResolver;
 use crate::sys::CliSys;
 use crate::util::fs::CollectSpecifiersOptions;
 use crate::util::fs::canonicalize_path_maybe_not_exists;
@@ -57,7 +56,6 @@ impl Default for LspCompilerOptionsResolver {
 impl LspCompilerOptionsResolver {
   pub fn new(
     config: &Config,
-    resolver: &LspResolver,
     previous: Option<&LspCompilerOptionsResolver>,
   ) -> Self {
     let empty_cache = HashMap::new();
@@ -73,12 +71,6 @@ impl LspCompilerOptionsResolver {
           .iter()
           .map(|(s, d)| (s, d.member_dir.as_ref()))
           .collect(),
-        Box::new(|s| {
-          resolver
-            .get_scoped_resolver(Some(s))
-            .as_node_resolver()
-            .map(|r| r.as_ref())
-        }),
       ),
       previous_roots_cache,
     )

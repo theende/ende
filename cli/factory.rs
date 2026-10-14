@@ -1,6 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use std::borrow::Cow;
 use std::future::Future;
 use std::path::Path;
 use std::path::PathBuf;
@@ -9,7 +8,6 @@ use std::sync::Arc;
 use deno_error::JsErrorBox;
 use deno_graph::packages::JsrVersionResolver;
 use ende_cache_dir::GlobalOrLocalHttpCache;
-use ende_cache_dir::npm::NpmCacheDir;
 use ende_config::workspace::WorkspaceDirectory;
 use ende_core::anyhow::Context;
 use ende_core::error::AnyError;
@@ -18,30 +16,17 @@ use ende_core::serde_json;
 use ende_core::url::Url;
 use ende_lib::args::CaData;
 use ende_lib::args::get_root_cert_store;
-use ende_lib::args::npm_process_state;
-use ende_lib::npm::NpmRegistryReadPermissionChecker;
-use ende_lib::npm::NpmRegistryReadPermissionCheckerMode;
-use ende_lib::npm::create_npm_process_state_provider;
 use ende_lib::worker::LibMainWorkerFactory;
 use ende_lib::worker::LibMainWorkerOptions;
 use ende_lib::worker::LibWorkerFactoryRoots;
-use ende_npm_cache::NpmCacheSetting;
-use ende_npm_installer::NpmInstallerFactoryOptions;
-use ende_npm_installer::lifecycle_scripts::LifecycleScriptsExecutor;
-use ende_npm_installer::lifecycle_scripts::NullLifecycleScriptsExecutor;
-use ende_npm_installer::process_state::NpmProcessStateKind;
-use ende_npmrc::ResolvedNpmRc;
 use ende_resolver::cache::ParsedSourceCache;
-use ende_resolver::cjs::IsCjsResolutionMode;
 use ende_resolver::ende_json::CompilerOptionsOverrides;
 use ende_resolver::ende_json::CompilerOptionsResolver;
 use ende_resolver::factory::ConfigDiscoveryOption;
-use ende_resolver::factory::NpmProcessStateOptions;
 use ende_resolver::factory::ResolverFactoryOptions;
 use ende_resolver::factory::SpecifiedImportMapProvider;
 use ende_resolver::import_map::WorkspaceExternalImportMapLoader;
 use ende_resolver::loader::MemoryFiles;
-use ende_resolver::npm::DenoInNpmPackageChecker;
 use ende_resolver::workspace::WorkspaceResolver;
 use ende_runtime::CpuProfilerConfig;
 use ende_runtime::FeatureChecker;
@@ -54,9 +39,6 @@ use ende_runtime::ende_tls::rustls::RootCertStore;
 use ende_runtime::ende_web::BlobStore;
 use ende_runtime::ende_web::BlobStoreTrait;
 use ende_runtime::permissions::RuntimePermissionDescriptorParser;
-use node_resolver::NodeConditionOptions;
-use node_resolver::NodeResolverOptions;
-use node_resolver::cache::NodeResolutionThreadLocalCache;
 use once_cell::sync::OnceCell;
 
 use crate::args::CliLockfile;
@@ -66,14 +48,11 @@ use crate::args::EndeSubcommand;
 use crate::args::Flags;
 use crate::args::FlagsExt;
 use crate::args::InstallFlags;
-use crate::args::InstallFlagsLocal;
-use crate::args::npm_system_info;
 use crate::cache::Caches;
 use crate::cache::CodeCache;
 use crate::cache::EndeDir;
 use crate::cache::GlobalHttpCache;
 use crate::cache::ModuleInfoCache;
-use crate::cache::SqliteNodeAnalysisCache;
 use crate::file_fetcher::CliFileFetcher;
 use crate::file_fetcher::CreateCliFileFetcherOptions;
 use crate::file_fetcher::TextDecodedFile;
@@ -87,17 +66,6 @@ use crate::module_loader::CliEmitter;
 use crate::module_loader::CliModuleLoaderFactory;
 use crate::module_loader::EszipModuleLoader;
 use crate::module_loader::ModuleLoadPreparer;
-use crate::node::CliNodeResolver;
-use crate::node::CliPackageJsonResolver;
-use crate::npm::CliNpmCache;
-use crate::npm::CliNpmCacheHttpClient;
-use crate::npm::CliNpmGraphResolver;
-use crate::npm::CliNpmInstaller;
-use crate::npm::CliNpmInstallerFactory;
-use crate::npm::CliNpmResolver;
-use crate::npm::DenoTaskLifeCycleScriptsExecutor;
-use crate::npm::NpmPackumentFormat;
-use crate::resolver::CliCjsTracker;
 use crate::resolver::CliResolver;
 use crate::resolver::on_resolve_diagnostic;
 use crate::standalone::binary::EndeCompileBinaryWriter;
@@ -105,7 +73,6 @@ use crate::sys::CliSys;
 use crate::tools::installer::BinNameResolver;
 use crate::tools::lint::LintRuleProvider;
 use crate::tools::run::hmr::HmrRunnerState;
-use crate::tsc::TypeCheckingCjsTracker;
 use crate::type_checker::TypeChecker;
 use crate::util::file_watcher::WatcherCommunicator;
 use crate::util::progress_bar::ProgressBar;
@@ -313,7 +280,6 @@ struct CliFactoryServices {
   module_graph_creator: Deferred<Arc<ModuleGraphCreator>>,
   module_info_cache: Deferred<Arc<ModuleInfoCache>>,
   module_load_preparer: Deferred<Arc<ModuleLoadPreparer>>,
-  npm_installer_factory: Deferred<CliNpmInstallerFactory>,
   permission_desc_parser:
     Deferred<Arc<RuntimePermissionDescriptorParser<CliSys>>>,
   resolver_factory: Deferred<Arc<CliResolverFactory>>,
@@ -372,7 +338,7 @@ impl CliFactory {
   pub async fn maybe_lockfile(
     &self,
   ) -> Result<Option<&Arc<CliLockfile>>, AnyError> {
-    self.npm_installer_factory()?.maybe_lockfile().await
+    self.workspace_factory()?.maybe_lockfile().await
   }
 
   pub fn cli_options(&self) -> Result<&Arc<CliOptions>, AnyError> {
@@ -411,7 +377,6 @@ impl CliFactory {
         | EndeSubcommand::Test(_)
         | EndeSubcommand::Check(_) => {
           _ = caches.dep_analysis_db();
-          _ = caches.node_analysis_db();
           if cli_options.type_check_mode().is_true() {
             _ = caches.fast_check_db();
             _ = caches.type_checking_cache_db();
@@ -571,169 +536,10 @@ impl CliFactory {
     CliSys::default() // very cheap to make
   }
 
-  pub fn in_npm_pkg_checker(
-    &self,
-  ) -> Result<&DenoInNpmPackageChecker, AnyError> {
-    self.resolver_factory()?.in_npm_package_checker()
-  }
-
   pub fn jsr_version_resolver(
     &self,
   ) -> Result<&Arc<JsrVersionResolver>, AnyError> {
     self.resolver_factory()?.jsr_version_resolver()
-  }
-
-  pub fn npm_cache(&self) -> Result<&Arc<CliNpmCache>, AnyError> {
-    self.npm_installer_factory()?.npm_cache()
-  }
-
-  pub fn npm_cache_dir(&self) -> Result<&Arc<NpmCacheDir>, AnyError> {
-    Ok(self.workspace_factory()?.npm_cache_dir()?)
-  }
-
-  pub fn npmrc(&self) -> Result<&Arc<ResolvedNpmRc>, AnyError> {
-    Ok(self.workspace_factory()?.npmrc())
-  }
-
-  pub async fn npm_graph_resolver(
-    &self,
-  ) -> Result<&Arc<CliNpmGraphResolver>, AnyError> {
-    self
-      .npm_installer_factory()?
-      .npm_deno_graph_resolver()
-      .await
-  }
-
-  pub async fn npm_installer_if_managed(
-    &self,
-  ) -> Result<Option<&Arc<CliNpmInstaller>>, AnyError> {
-    self
-      .npm_installer_factory()?
-      .npm_installer_if_managed()
-      .await
-  }
-
-  pub fn npm_installer_factory(
-    &self,
-  ) -> Result<&CliNpmInstallerFactory, AnyError> {
-    self.services.npm_installer_factory.get_or_try_init(|| {
-      let cli_options = self.cli_options()?;
-      let resolver_factory = self.resolver_factory()?;
-      let needs_full_packument = resolver_factory
-        .minimum_dependency_age_config()
-        .ok()
-        .and_then(|c| c.age.as_ref().and_then(|d| d.into_option()))
-        .is_some();
-      Ok(CliNpmInstallerFactory::new(
-        resolver_factory.clone(),
-        Arc::new(CliNpmCacheHttpClient::new(
-          // npm registry traffic is not an `import`: `--deny-import` governs
-          // `https://` module specifiers, not package resolution
-          self.http_client_provider().clone(),
-          self.text_only_progress_bar().clone(),
-          if needs_full_packument {
-            NpmPackumentFormat::Full
-          } else {
-            NpmPackumentFormat::Abbreviated
-          },
-        )),
-        match resolver_factory.npm_resolver()?.as_managed() {
-          Some(managed_npm_resolver) => {
-            Arc::new(DenoTaskLifeCycleScriptsExecutor::new(
-              managed_npm_resolver.clone(),
-              self.text_only_progress_bar().clone(),
-              cli_options.npm_system_info(),
-            )) as Arc<dyn LifecycleScriptsExecutor>
-          }
-          None => Arc::new(NullLifecycleScriptsExecutor),
-        },
-        self.text_only_progress_bar().clone(),
-        self
-          .install_reporter()?
-          .cloned()
-          .map(|r| r as Arc<dyn ende_npm_installer::InstallReporter>),
-        NpmInstallerFactoryOptions {
-          clean_on_install: match cli_options.sub_command() {
-            EndeSubcommand::Add { .. }
-            | EndeSubcommand::Remove { .. }
-            | EndeSubcommand::Link { .. }
-            | EndeSubcommand::Unlink { .. }
-            | EndeSubcommand::Cache { .. }
-            | EndeSubcommand::Ci { .. }
-            | EndeSubcommand::Uninstall { .. } => true,
-            EndeSubcommand::Install(flags) => match flags {
-              InstallFlags::Local(flags) => match flags {
-                InstallFlagsLocal::Add { .. }
-                | InstallFlagsLocal::TopLevel { .. } => true,
-                // someone might be terribly storing dependencies in a
-                // module and needs to populate their node_modules directory
-                // with the dependencies in that file
-                InstallFlagsLocal::Entrypoints { .. } => false,
-              },
-              InstallFlags::Global(_) => false,
-            },
-            EndeSubcommand::Bench { .. }
-            | EndeSubcommand::Check { .. }
-            | EndeSubcommand::Clean { .. }
-            | EndeSubcommand::Compile { .. }
-            | EndeSubcommand::Completions { .. }
-            | EndeSubcommand::Desktop { .. }
-            | EndeSubcommand::Coverage { .. }
-            | EndeSubcommand::Deploy { .. }
-            | EndeSubcommand::Doc { .. }
-            | EndeSubcommand::Eval { .. }
-            | EndeSubcommand::Fmt { .. }
-            | EndeSubcommand::Init { .. }
-            | EndeSubcommand::Info { .. }
-            | EndeSubcommand::List { .. }
-            | EndeSubcommand::JSONReference { .. }
-            | EndeSubcommand::Jupyter { .. }
-            | EndeSubcommand::Lsp
-            | EndeSubcommand::Lint { .. }
-            | EndeSubcommand::Repl { .. }
-            | EndeSubcommand::Run { .. }
-            | EndeSubcommand::Serve { .. }
-            | EndeSubcommand::Task { .. }
-            | EndeSubcommand::Test { .. }
-            | EndeSubcommand::Transpile { .. }
-            | EndeSubcommand::Outdated { .. }
-            | EndeSubcommand::Types
-            | EndeSubcommand::Upgrade { .. }
-            | EndeSubcommand::Vendor
-            | EndeSubcommand::Why { .. }
-            | EndeSubcommand::Publish { .. }
-            | EndeSubcommand::Help { .. }
-            | EndeSubcommand::X { .. }
-            | EndeSubcommand::BumpVersion { .. } => false,
-          },
-          // Always merge equivalent peer-dep variants when loading the
-          // snapshot from a lockfile. This is an in-memory normalization
-          // that collapses `NpmPackageId`s which differ only in
-          // peer-dependency cycle-unrolling depth (the encoding changed
-          // between releases, e.g. 2.7 -> 2.8). Without it, a complete
-          // lockfile written by an older deno is treated as not satisfying
-          // the requirements and the whole npm graph is re-resolved against
-          // the registry, which fails under `--cached-only` (offline
-          // isolates booting from an immutable, pre-baked `ENDE_DIR`). See
-          // denoland/deno#26427 for the original install-path dedup. This is
-          // safe on `ende run`: the dedup only affects the in-memory
-          // resolution snapshot and does not rewrite the user's lockfile
-          // unless a real resolution runs (which the dedup is precisely what
-          // avoids for an already-satisfied lockfile).
-          dedup_lockfile_peer_variants: true,
-          cache_setting: NpmCacheSetting::from_cache_setting(
-            &cli_options.cache_setting(),
-          ),
-          caching_strategy: cli_options.default_npm_caching_strategy(),
-          lifecycle_scripts_config: cli_options.lifecycle_scripts_config(),
-          production: false,
-          skip_types: false,
-          resolve_npm_resolution_snapshot: Box::new(|| {
-            ende_lib::args::resolve_npm_resolution_snapshot(&CliSys::default())
-          }),
-        },
-      ))
-    })
   }
 
   pub fn install_reporter(
@@ -753,19 +559,6 @@ impl CliFactory {
         _ => Ok(None),
       })
       .map(|opt| opt.as_ref())
-  }
-
-  pub async fn npm_installer(&self) -> Result<&Arc<CliNpmInstaller>, AnyError> {
-    self.npm_installer_factory()?.npm_installer().await
-  }
-
-  pub async fn npm_resolver(&self) -> Result<&CliNpmResolver, AnyError> {
-    self.initialize_npm_resolution_if_managed().await?;
-    self.resolver_factory()?.npm_resolver()
-  }
-
-  pub fn node_modules_dir_path(&self) -> Result<Option<&Path>, AnyError> {
-    self.workspace_factory()?.node_modules_dir_path()
   }
 
   fn workspace_factory(&self) -> Result<&Arc<CliWorkspaceFactory>, AnyError> {
@@ -804,12 +597,10 @@ impl CliFactory {
   pub async fn workspace_resolver(
     &self,
   ) -> Result<&Arc<WorkspaceResolver<CliSys>>, AnyError> {
-    self.initialize_npm_resolution_if_managed().await?;
     self.resolver_factory()?.workspace_resolver().await
   }
 
   pub async fn resolver(&self) -> Result<&Arc<CliResolver>, AnyError> {
-    self.initialize_npm_resolution_if_managed().await?;
     self.resolver_factory()?.ende_resolver().await
   }
 
@@ -865,24 +656,6 @@ impl CliFactory {
     )))
   }
 
-  pub async fn node_resolver(&self) -> Result<&Arc<CliNodeResolver>, AnyError> {
-    self.initialize_npm_resolution_if_managed().await?;
-    self.resolver_factory()?.node_resolver()
-  }
-
-  async fn initialize_npm_resolution_if_managed(&self) -> Result<(), AnyError> {
-    self
-      .npm_installer_factory()?
-      .initialize_npm_resolution_if_managed()
-      .await
-  }
-
-  pub fn pkg_json_resolver(
-    &self,
-  ) -> Result<&Arc<CliPackageJsonResolver>, AnyError> {
-    Ok(self.resolver_factory()?.pkg_json_resolver())
-  }
-
   pub fn compiler_options_resolver(
     &self,
   ) -> Result<&Arc<CompilerOptionsResolver>, AnyError> {
@@ -898,15 +671,8 @@ impl CliFactory {
           let cli_options = self.cli_options()?;
           Ok(Arc::new(TypeChecker::new(
             self.caches()?.clone(),
-            Arc::new(TypeCheckingCjsTracker::new(
-              self.cjs_tracker()?.clone(),
-              self.module_info_cache()?.clone(),
-            )),
             cli_options.clone(),
             self.module_graph_builder().await?.clone(),
-            self.node_resolver().await?.clone(),
-            self.npm_resolver().await?.clone(),
-            self.resolver_factory()?.pkg_json_resolver().clone(),
             self.sys(),
             self.compiler_options_resolver()?.clone(),
             if cli_options.code_cache_enabled() {
@@ -932,19 +698,14 @@ impl CliFactory {
           let cli_options = self.cli_options()?;
           Ok(Arc::new(ModuleGraphBuilder::new(
             self.caches()?.clone(),
-            self.cjs_tracker()?.clone(),
             cli_options.clone(),
             self.compiler_options_resolver()?.clone(),
             self.file_fetcher()?.clone(),
             self.global_http_cache()?.clone(),
-            self.in_npm_pkg_checker()?.clone(),
             self.jsr_version_resolver()?.clone(),
             self.maybe_lockfile().await?.cloned(),
             self.graph_reporter()?.clone(),
             self.module_info_cache()?.clone(),
-            self.npm_graph_resolver().await?.clone(),
-            self.npm_installer_if_managed().await?.cloned(),
-            self.npm_resolver().await?.clone(),
             self.resolver_factory()?.parsed_source_cache().clone(),
             self.text_only_progress_bar().clone(),
             self.resolver().await?.clone(),
@@ -1033,10 +794,6 @@ impl CliFactory {
         .boxed_local(),
       )
       .await
-  }
-
-  pub fn cjs_tracker(&self) -> Result<&Arc<CliCjsTracker>, AnyError> {
-    self.resolver_factory()?.cjs_tracker()
   }
 
   pub fn permission_desc_parser(
@@ -1128,50 +885,20 @@ impl CliFactory {
     &self,
   ) -> Result<CliModuleLoaderFactory, AnyError> {
     let cli_options = self.cli_options()?;
-    let cli_npm_resolver = self.npm_resolver().await?.clone();
-    let in_npm_pkg_checker = self.in_npm_pkg_checker()?;
-    let workspace_factory = self.workspace_factory()?;
     let resolver_factory = self.resolver_factory()?;
-    let npm_installer_factory = self.npm_installer_factory()?;
-    let cjs_tracker = self.cjs_tracker()?.clone();
-    let npm_registry_permission_checker = {
-      let mode = if resolver_factory.use_byonm()? {
-        NpmRegistryReadPermissionCheckerMode::Byonm
-      } else if let Some(node_modules_dir) =
-        workspace_factory.node_modules_dir_path()?
-      {
-        NpmRegistryReadPermissionCheckerMode::Local(
-          node_modules_dir.to_path_buf(),
-        )
-      } else {
-        NpmRegistryReadPermissionCheckerMode::Global(
-          self.npm_cache_dir()?.root_dir().to_path_buf(),
-        )
-      };
-      Arc::new(NpmRegistryReadPermissionChecker::new(self.sys(), mode))
-    };
 
     let maybe_eszip_loader =
       self.eszip_module_loader_provider()?.get().await?.cloned();
     let module_loader_factory = CliModuleLoaderFactory::new(
       cli_options,
-      cjs_tracker,
       if cli_options.code_cache_enabled() {
         Some(self.code_cache()?.clone())
       } else {
         None
       },
-      self.emitter()?.clone(),
       self.file_fetcher()?.clone(),
-      npm_installer_factory
-        .has_js_execution_started_flag()
-        .clone(),
-      in_npm_pkg_checker.clone(),
       self.main_module_graph_container().await?.clone(),
-      self.memory_files().clone(),
       self.module_load_preparer().await?.clone(),
-      npm_registry_permission_checker,
-      cli_npm_resolver.clone(),
       resolver_factory.parsed_source_cache().clone(),
       resolver_factory.module_loader()?.clone(),
       self.resolver().await?.clone(),
@@ -1189,8 +916,6 @@ impl CliFactory {
   ) -> Result<CliMainWorkerFactory, AnyError> {
     let cli_options = self.cli_options()?;
     let fs = self.fs();
-    let node_resolver = self.node_resolver().await?;
-    let npm_resolver = self.npm_resolver().await?;
     // Provide the watcher communicator whenever running under the file watcher,
     // not just for HMR. `CliMainWorker::run()` uses its presence to detect that
     // it is under a watcher and route `Ende.exit()` through isolate termination
@@ -1199,7 +924,6 @@ impl CliFactory {
     // HMR-specific behaviour is gated separately on `create_hmr_runner`. See
     // issue #7590.
     let maybe_file_watcher_communicator = self.watcher_communicator.clone();
-    let pkg_json_resolver = self.pkg_json_resolver()?;
     let module_loader_factory = self.create_module_loader_factory().await?;
     self.maybe_start_inspector_server()?;
 
@@ -1225,9 +949,6 @@ impl CliFactory {
       cli_options.coverage_dir(),
       maybe_cpu_prof_config_for_workers,
       Box::new(module_loader_factory),
-      node_resolver.clone(),
-      create_npm_process_state_provider(npm_resolver),
-      pkg_json_resolver.clone(),
       self.root_cert_store_provider().clone(),
       cli_options.resolve_storage_key_resolver(),
       self.sys(),
@@ -1238,10 +959,6 @@ impl CliFactory {
     Ok(CliMainWorkerFactory::new(
       lib_main_worker_factory,
       maybe_file_watcher_communicator,
-      self.maybe_lockfile().await?.cloned(),
-      self.npm_installer_if_managed().await?.cloned(),
-      npm_resolver.clone(),
-      self.text_only_progress_bar().clone(),
       self.create_cli_main_worker_options()?,
       self.root_permissions_container()?.clone(),
     ))
@@ -1251,7 +968,6 @@ impl CliFactory {
     &self,
   ) -> Result<LibMainWorkerOptions, AnyError> {
     let cli_options = self.cli_options()?;
-    let workspace_factory = self.workspace_factory()?;
     Ok(LibMainWorkerOptions {
       argv: cli_options.argv().clone(),
       // This optimization is only available for "run" subcommand
@@ -1260,9 +976,6 @@ impl CliFactory {
       skip_op_registration: cli_options.sub_command().is_run(),
       log_level: cli_options.log_level().unwrap_or(log::Level::Info).into(),
       enable_testing_features: cli_options.enable_testing_features(),
-      has_node_modules_dir: workspace_factory
-        .node_modules_dir_path()?
-        .is_some(),
       inspect_brk: cli_options.inspect_brk(),
       inspect_wait: cli_options.inspect_wait(),
       trace_ops: cli_options.trace_ops().clone(),
@@ -1270,21 +983,11 @@ impl CliFactory {
       auto_serve: ende_env::var("ENDE_AUTO_SERVE").is_ok(),
       is_inspecting: cli_options.is_inspecting(),
       location: cli_options.location_flag().clone(),
-      // if the user ran a binary command, we'll need to set process.argv[0]
-      // to be the name of the binary command instead of ende
-      argv0: cli_options
-        .take_binary_npm_command_name()
-        .or(std::env::args().next()),
-      node_debug: std::env::var("NODE_DEBUG").ok(),
-      node_cluster_unique_id: std::env::var("NODE_UNIQUE_ID").ok(),
-      node_cluster_sched_policy: std::env::var("NODE_CLUSTER_SCHED_POLICY")
-        .ok(),
       origin_data_folder_path: Some(self.ende_dir()?.origin_data_folder_path()),
       seed: cli_options.seed(),
       unsafely_ignore_certificate_errors: cli_options
         .unsafely_ignore_certificate_errors()
         .clone(),
-      node_ipc_init: cli_options.node_ipc_init(&self.sys())?,
       serve_port: cli_options.serve_port(),
       serve_host: cli_options.serve_host(),
       otel_config: cli_options.otel_config(),
@@ -1341,7 +1044,6 @@ impl CliFactory {
       create_hmr_runner,
       maybe_coverage_dir,
       maybe_cpu_prof_config,
-      default_npm_caching_strategy: cli_options.default_npm_caching_strategy(),
       initial_cwd: Arc::new(initial_cwd),
     })
   }
@@ -1349,9 +1051,6 @@ impl CliFactory {
   pub fn resolver_factory(&self) -> Result<&Arc<CliResolverFactory>, AnyError> {
     self.services.resolver_factory.get_or_try_init(|| {
       let options = self.cli_options()?;
-      let caches = self.caches()?;
-      let node_analysis_cache =
-        Arc::new(SqliteNodeAnalysisCache::new(caches.node_analysis_db()));
       Ok(Arc::new(CliResolverFactory::new(
         self.workspace_factory()?.clone(),
         ResolverFactoryOptions {
@@ -1372,36 +1071,7 @@ impl CliFactory {
               Ok("1") | Ok("true")
             ),
           },
-          is_cjs_resolution_mode: if options.is_node_main()
-            || options.unstable_detect_cjs()
-          {
-            IsCjsResolutionMode::ImplicitTypeCommonJs
-          } else if options.detect_cjs() {
-            IsCjsResolutionMode::ExplicitTypeCommonJs
-          } else {
-            IsCjsResolutionMode::Disabled
-          },
           newest_dependency_date: self.flags.minimum_dependency_age,
-          node_analysis_cache: Some(node_analysis_cache),
-          node_resolver_options: NodeResolverOptions {
-            conditions: NodeConditionOptions {
-              conditions: Vec::new(),
-              import_conditions_override: None,
-              require_conditions_override: None,
-            },
-            typescript_version: Some(
-              deno_semver::Version::parse_standard(
-                ende_lib::version::ENDE_VERSION_INFO.typescript,
-              )
-              .unwrap(),
-            ),
-            bundle_mode: false,
-            is_browser_platform: false,
-          },
-          node_code_translator_mode:
-            node_resolver::analyze::NodeCodeTranslatorMode::ModuleLoader,
-          node_resolution_cache: Some(Arc::new(NodeResolutionThreadLocalCache)),
-          npm_system_info: npm_system_info(),
           specified_import_map: Some(Box::new(CliSpecifiedImportMapProvider {
             cli_options: options.clone(),
             eszip_module_loader_provider: self
@@ -1416,12 +1086,8 @@ impl CliFactory {
           on_mapped_resolution_diagnostic: Some(Arc::new(
             on_resolve_diagnostic,
           )),
-          package_json_cache: Some(Arc::new(
-            node_resolver::PackageJsonThreadLocalCache,
-          )),
           allow_json_imports:
             ende_resolver::loader::AllowJsonImports::WithAttribute,
-          require_modules: options.require_modules()?,
         },
       )))
     })
@@ -1455,22 +1121,6 @@ fn new_workspace_factory_options(
       ConfigFlag::Disabled => ConfigDiscoveryOption::Disabled,
     },
     maybe_custom_ende_dir_root: flags.internal.cache_path.clone(),
-    // For `ende install/add/remove/init` we want to force the managed
-    // resolver so it can set up the `node_modules/` directory.
-    is_package_manager_subcommand: matches!(
-      flags.subcommand,
-      EndeSubcommand::Add(_)
-        | EndeSubcommand::Ci(_)
-        | EndeSubcommand::Clean(_)
-        | EndeSubcommand::Init(_)
-        | EndeSubcommand::Install(_)
-        | EndeSubcommand::Link(_)
-        | EndeSubcommand::List(_)
-        | EndeSubcommand::Outdated(_)
-        | EndeSubcommand::Remove(_)
-        | EndeSubcommand::Unlink(_)
-        | EndeSubcommand::Uninstall(_)
-    ),
     no_lock: flags.no_lock
       || matches!(
         flags.subcommand,
@@ -1480,32 +1130,6 @@ fn new_workspace_factory_options(
     frozen_lockfile: flags.frozen_lockfile,
     lock_arg: flags.lock.as_ref().map(|l| initial_cwd.join(l)),
     lockfile_skip_write: flags.internal.lockfile_skip_write,
-    no_npm: false,
-    node_modules_dir: flags.node_modules_dir,
-    npm_process_state: npm_process_state(&CliSys::default()).as_ref().map(
-      |s| {
-        use ende_npm_installer::process_state::NpmProcessStateLinkerMode;
-        NpmProcessStateOptions {
-          node_modules_dir: s
-            .local_node_modules_path
-            .as_ref()
-            .map(|s| Cow::Borrowed(s.as_str())),
-          is_byonm: matches!(s.kind, NpmProcessStateKind::Byonm),
-          linker_mode: Some(match s.linker_mode {
-            NpmProcessStateLinkerMode::Isolated => {
-              ende_config::ende_json::NodeModulesLinkerMode::Isolated
-            }
-            NpmProcessStateLinkerMode::Hoisted => {
-              ende_config::ende_json::NodeModulesLinkerMode::Hoisted
-            }
-          }),
-        }
-      },
-    ),
-    root_node_modules_dir_override: flags
-      .internal
-      .root_node_modules_dir_override
-      .clone(),
     vendor: flags.vendor,
   }
 }

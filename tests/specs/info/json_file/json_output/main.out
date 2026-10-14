@@ -87,6 +87,5 @@
       "specifier": "file://[WILDCARD]/subdir2/mod2.ts"
     }
   ],
-  "redirects": {},
-  "npmPackages": {}
+  "redirects": {}
 }

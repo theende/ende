@@ -39,7 +39,7 @@ pub fn get_script_with_args(script: &str, argv: &[String]) -> String {
   script.trim().to_owned()
 }
 
-pub struct TaskStdio(Option<ShellPipeReader>, ShellPipeWriter);
+pub struct TaskStdio(ShellPipeWriter);
 
 pub struct PrefixedWriter<W: std::io::Write> {
   prefix: Vec<u8>,
@@ -113,8 +113,8 @@ pub fn make_prefixed_task_io(prefix: String) -> (TaskIo, Vec<JoinHandle<()>>) {
 
   (
     TaskIo {
-      stdout: TaskStdio(None, out_w),
-      stderr: TaskStdio(None, err_w),
+      stdout: TaskStdio(out_w),
+      stderr: TaskStdio(err_w),
     },
     vec![out_handle, err_handle],
   )
@@ -122,16 +122,11 @@ pub fn make_prefixed_task_io(prefix: String) -> (TaskIo, Vec<JoinHandle<()>>) {
 
 impl TaskStdio {
   pub fn stdout() -> Self {
-    Self(None, ShellPipeWriter::stdout())
+    Self(ShellPipeWriter::stdout())
   }
 
   pub fn stderr() -> Self {
-    Self(None, ShellPipeWriter::stderr())
-  }
-
-  pub fn piped() -> Self {
-    let (r, w) = deno_task_shell::pipe();
-    Self(Some(r), w)
+    Self(ShellPipeWriter::stderr())
   }
 }
 
@@ -157,19 +152,12 @@ pub struct RunTaskOptions<'a> {
   pub env_vars: HashMap<OsString, OsString>,
   pub argv: &'a [String],
   pub custom_commands: HashMap<String, Rc<dyn ShellCommand>>,
-  /// Directories to prepend to `PATH` for the duration of the task,
-  /// ordered closest-first (closest entry ends up first in `PATH`).
-  pub node_modules_bin_dirs: &'a [PathBuf],
   pub stdio: Option<TaskIo>,
   pub kill_signal: KillSignal,
 }
 
-pub type TaskCustomCommands = HashMap<String, Rc<dyn ShellCommand>>;
-
 pub struct TaskResult {
   pub exit_code: i32,
-  pub stdout: Option<Vec<u8>>,
-  pub stderr: Option<Vec<u8>>,
 }
 
 pub async fn run_task(
@@ -178,8 +166,7 @@ pub async fn run_task(
   let script = get_script_with_args(opts.script, opts.argv);
   let seq_list = deno_task_shell::parser::parse(&script)
     .with_context(|| format!("Error parsing script '{}'.", opts.task_name))?;
-  let env_vars =
-    prepare_env_vars(opts.env_vars, opts.init_cwd, opts.node_modules_bin_dirs);
+  let env_vars = prepare_env_vars(opts.env_vars, opts.init_cwd);
   // `ende` runs the current executable; `deno` stays as an alias so existing
   // task scripts keep working.
   for name in ["ende", "deno"] {
@@ -196,21 +183,8 @@ pub async fn run_task(
     opts.kill_signal,
   );
   let stdio = opts.stdio.unwrap_or_default();
-  let (
-    TaskStdio(stdout_read, stdout_write),
-    TaskStdio(stderr_read, stderr_write),
-  ) = (stdio.stdout, stdio.stderr);
-
-  fn read(reader: ShellPipeReader) -> JoinHandle<Result<Vec<u8>, AnyError>> {
-    tokio::task::spawn_blocking(move || {
-      let mut buf = Vec::new();
-      reader.pipe_to(&mut buf)?;
-      Ok(buf)
-    })
-  }
-
-  let stdout = stdout_read.map(read);
-  let stderr = stderr_read.map(read);
+  let (TaskStdio(stdout_write), TaskStdio(stderr_write)) =
+    (stdio.stdout, stdio.stderr);
 
   let local = LocalSet::new();
   let future = async move {
@@ -222,19 +196,7 @@ pub async fn run_task(
       stderr_write,
     )
     .await;
-    Ok::<_, AnyError>(TaskResult {
-      exit_code,
-      stdout: if let Some(stdout) = stdout {
-        Some(stdout.await??)
-      } else {
-        None
-      },
-      stderr: if let Some(stderr) = stderr {
-        Some(stderr.await??)
-      } else {
-        None
-      },
-    })
+    Ok::<_, AnyError>(TaskResult { exit_code })
   };
   local.run_until(future).await
 }
@@ -242,7 +204,6 @@ pub async fn run_task(
 fn prepare_env_vars(
   mut env_vars: HashMap<OsString, OsString>,
   initial_cwd: &Path,
-  node_modules_bin_dirs: &[PathBuf],
 ) -> HashMap<OsString, OsString> {
   const INIT_CWD_NAME: &str = "INIT_CWD";
   if !env_vars.contains_key(OsStr::new(INIT_CWD_NAME)) {
@@ -252,40 +213,7 @@ fn prepare_env_vars(
       initial_cwd.to_path_buf().into_os_string(),
     );
   }
-  if !env_vars
-    .contains_key(OsStr::new(crate::npm::NPM_CONFIG_USER_AGENT_ENV_VAR))
-  {
-    env_vars.insert(
-      crate::npm::NPM_CONFIG_USER_AGENT_ENV_VAR.into(),
-      crate::npm::get_npm_config_user_agent().into(),
-    );
-  }
-  // Prepend in reverse so the closest dir ends up first in `PATH`.
-  for bin_dir in node_modules_bin_dirs.iter().rev() {
-    prepend_to_path(&mut env_vars, bin_dir.as_os_str().to_os_string());
-  }
   env_vars
-}
-
-fn prepend_to_path(
-  env_vars: &mut HashMap<OsString, OsString>,
-  value: OsString,
-) {
-  match env_vars.get_mut(OsStr::new("PATH")) {
-    Some(path) => {
-      if path.is_empty() {
-        *path = value;
-      } else {
-        let mut new_path = value;
-        new_path.push(if cfg!(windows) { ";" } else { ":" });
-        new_path.push(&path);
-        *path = new_path;
-      }
-    }
-    None => {
-      env_vars.insert("PATH".into(), value);
-    }
-  }
 }
 
 pub fn real_env_vars() -> HashMap<OsString, OsString> {
@@ -319,154 +247,6 @@ impl ShellCommand for EndeCommand {
     context: ShellCommandContext,
   ) -> LocalBoxFuture<'static, ExecuteResult> {
     self.0.execute(context)
-  }
-}
-
-pub struct NodeCommand;
-
-impl ShellCommand for NodeCommand {
-  fn execute(
-    &self,
-    context: ShellCommandContext,
-  ) -> LocalBoxFuture<'static, ExecuteResult> {
-    // continue to use Node if the first argument is a flag
-    // or there are no arguments provided for some reason
-    if context.args.is_empty()
-      || ({
-        let first_arg = context.args[0].to_string_lossy();
-        first_arg.starts_with('-') // has a flag
-      })
-    {
-      return ExecutableCommand::new("node".to_string(), PathBuf::from("node"))
-        .execute(context);
-    }
-
-    let mut args: Vec<OsString> = Vec::with_capacity(5 + context.args.len());
-    args.extend([
-      "run".into(),
-      "-A".into(),
-      "--unstable-sloppy-imports".into(),
-      "--unstable-unsafe-proto".into(),
-    ]);
-    args.extend(context.args);
-
-    let mut state = context.state;
-    state.apply_env_var(
-      OsStr::new(crate::NODE_CHILD_DETECT_CJS_ENV_VAR),
-      OsStr::new("1"),
-    );
-    ExecutableCommand::new(
-      "ende".to_string(),
-      std::env::current_exe()
-        .and_then(|p| canonicalize_path(&p))
-        .unwrap(),
-    )
-    .execute(ShellCommandContext {
-      args,
-      state,
-      ..context
-    })
-  }
-}
-
-pub struct NodeGypCommand;
-
-impl ShellCommand for NodeGypCommand {
-  fn execute(
-    &self,
-    context: ShellCommandContext,
-  ) -> LocalBoxFuture<'static, ExecuteResult> {
-    // at the moment this shell command is just to give a warning if node-gyp is not found
-    // in the future, we could try to run/install node-gyp for the user with ende
-    if context
-      .state
-      .resolve_command_path(OsStr::new("node-gyp"))
-      .is_err()
-    {
-      log::warn!(
-        "{} node-gyp was used in a script, but was not listed as a dependency. Either add it as a dependency or install it globally (e.g. `npm install -g node-gyp`)",
-        crate::colors::yellow("Warning")
-      );
-      Box::pin(std::future::ready(ExecuteResult::from_exit_code(0)))
-    } else {
-      ExecutableCommand::new(
-        "node-gyp".to_string(),
-        "node-gyp".to_string().into(),
-      )
-      .execute(context)
-    }
-  }
-}
-
-pub struct NpxCommand;
-
-impl ShellCommand for NpxCommand {
-  fn execute(
-    &self,
-    mut context: ShellCommandContext,
-  ) -> LocalBoxFuture<'static, ExecuteResult> {
-    if let Some(first_arg) = context.args.first().cloned() {
-      match context.state.resolve_custom_command(&first_arg) {
-        Some(command) => {
-          let context = ShellCommandContext {
-            args: context.args.into_iter().skip(1).collect::<Vec<_>>(),
-            ..context
-          };
-          command.execute(context)
-        }
-        _ => {
-          // can't find the command, so fallback to running the real npx command
-          let npx_path =
-            match context.state.resolve_command_path(OsStr::new("npx")) {
-              Ok(npx) => npx,
-              Err(err) => {
-                let _ = context.stderr.write_line(&format!("{}", err));
-                return Box::pin(std::future::ready(
-                  ExecuteResult::from_exit_code(err.exit_code()),
-                ));
-              }
-            };
-          ExecutableCommand::new("npx".to_string(), npx_path).execute(context)
-        }
-      }
-    } else {
-      let _ = context.stderr.write_line("npx: missing command");
-      Box::pin(std::future::ready(ExecuteResult::from_exit_code(1)))
-    }
-  }
-}
-
-/// Runs a module in the node_modules folder.
-#[derive(Clone)]
-pub struct NodeModulesFileRunCommand {
-  pub command_name: String,
-  pub path: PathBuf,
-}
-
-impl ShellCommand for NodeModulesFileRunCommand {
-  fn execute(
-    &self,
-    mut context: ShellCommandContext,
-  ) -> LocalBoxFuture<'static, ExecuteResult> {
-    let mut args: Vec<OsString> = vec![
-      "run".into(),
-      "--ext=js".into(),
-      "-A".into(),
-      self.path.clone().into_os_string(),
-    ];
-    args.extend(context.args);
-    let executable_command = deno_task_shell::ExecutableCommand::new(
-      "ende".to_string(),
-      std::env::current_exe()
-        .and_then(|p| canonicalize_path(&p))
-        .unwrap(),
-    );
-    // set this environment variable so that the launched process knows the npm command name
-    context.state.apply_env_var(
-      OsStr::new("ENDE_INTERNAL_NPM_CMD_NAME"),
-      OsStr::new(&self.command_name),
-    );
-    executable_command.execute(ShellCommandContext { args, ..context })
   }
 }
 
@@ -571,34 +351,6 @@ async fn listen_and_forward_all_signals(kill_signal: KillSignal) {
 mod test {
 
   use super::*;
-
-  #[test]
-  fn test_prepend_to_path() {
-    let mut env_vars = HashMap::new();
-
-    prepend_to_path(&mut env_vars, "/example".into());
-    assert_eq!(
-      env_vars,
-      HashMap::from([("PATH".into(), "/example".into())])
-    );
-
-    prepend_to_path(&mut env_vars, "/example2".into());
-    let separator = if cfg!(windows) { ";" } else { ":" };
-    assert_eq!(
-      env_vars,
-      HashMap::from([(
-        "PATH".into(),
-        format!("/example2{}/example", separator).into()
-      )])
-    );
-
-    env_vars.get_mut(OsStr::new("PATH")).unwrap().clear();
-    prepend_to_path(&mut env_vars, "/example".into());
-    assert_eq!(
-      env_vars,
-      HashMap::from([("PATH".into(), "/example".into())])
-    );
-  }
 
   #[test]
   fn test_get_script_with_args() {

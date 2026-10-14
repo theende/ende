@@ -4,7 +4,6 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::ffi::OsString;
-use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -12,11 +11,8 @@ use std::sync::Arc;
 use deno_graph::ModuleGraph;
 use deno_graph::packages::PackageSpecifiers;
 use ende_cache_dir::GlobalOrLocalHttpCache;
-use ende_core::anyhow::Context;
-use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::url::Url;
-use ende_npm_installer::graph::NpmCachingStrategy;
 use sys_traits::FsCanonicalize;
 use sys_traits::FsCreateDirAll;
 use walkdir::WalkDir;
@@ -29,8 +25,7 @@ use crate::factory::CliFactory;
 use crate::graph_container::CollectSpecifiersOptions;
 use crate::graph_container::ModuleGraphContainer;
 use crate::graph_container::ModuleGraphUpdatePermit;
-use crate::graph_util::BuildGraphWithNpmOptions;
-use crate::sys::CliSys;
+use crate::graph_util::BuildGraphOptions;
 use crate::util::fs::FsCleaner;
 use crate::util::progress_bar::ProgressBar;
 use crate::util::progress_bar::ProgressBarStyle;
@@ -280,21 +275,17 @@ async fn clean_except(
   graph.packages = PackageSpecifiers::default();
   let graph_builder = factory.module_graph_builder().await?;
   graph_builder
-    .build_graph_roots_with_npm_resolution(
+    .build_graph_roots(
       graph,
       roots.clone(),
-      BuildGraphWithNpmOptions {
+      BuildGraphOptions {
         loader: None,
         is_dynamic: false,
-        npm_caching: NpmCachingStrategy::Manual,
       },
     )
     .await?;
 
-  let npm_resolver = factory.npm_resolver().await?;
-
   let mut keep = HashSet::new();
-  let mut npm_reqs = Vec::new();
 
   let mut keep_paths_trie = PathTrie::new();
   if ende_dir_root_canonical != ende_dir.root {
@@ -321,18 +312,9 @@ async fn clean_except(
         deno_graph::Module::Wasm(wasm_module) => {
           keep.insert(&wasm_module.specifier);
         }
-        deno_graph::Module::Npm(npm_module) => {
-          if let Some(managed) = npm_resolver.as_managed() {
-            let id = managed
-              .resolution()
-              .resolve_pkg_id_from_pkg_req(npm_module.pkg_req_ref.req())
-              .unwrap();
-            npm_reqs
-              .extend(managed.resolution().resolve_pkg_reqs_from_pkg_id(&id));
-          }
-        }
-        deno_graph::Module::Node(_) => {}
-        deno_graph::Module::External(_) => {}
+        deno_graph::Module::Npm(_)
+        | deno_graph::Module::Node(_)
+        | deno_graph::Module::External(_) => {}
       },
       deno_graph::ModuleEntryRef::Err(_) => {}
       deno_graph::ModuleEntryRef::Redirect(_) => {}
@@ -352,35 +334,6 @@ async fn clean_except(
       let path = ende_dir.gen_cache.location.join(path);
       keep_paths_trie.insert(path);
     }
-  }
-
-  let npm_cache = factory.npm_cache()?;
-  let snap = npm_resolver.as_managed().unwrap().resolution().snapshot();
-  // TODO(nathanwhit): remove once we don't need packuments for creating the snapshot from lockfile
-  for package in snap.all_system_packages(&options.npm_system_info()) {
-    keep_paths_trie.insert(
-      npm_cache
-        .package_name_folder(&package.id.nv.name)
-        .join("registry.json"),
-    );
-  }
-  let snap = snap.subset(&npm_reqs);
-  // npm packages are not supported in Ende, so there is usually no
-  // node_modules directory to clean.
-  let node_modules_path = npm_resolver
-    .root_node_modules_path()
-    .filter(|path| path.is_dir());
-  let mut node_modules_keep = HashSet::new();
-  for package in snap.all_system_packages(&options.npm_system_info()) {
-    if node_modules_path.is_some() {
-      node_modules_keep.insert(package.get_package_cache_folder_id());
-    }
-    keep_paths_trie.insert(npm_cache.package_folder_for_id(
-      &ende_npm::NpmPackageCacheFolderId {
-        nv: package.id.nv.clone(),
-        copy_index: package.copy_index,
-      },
-    ));
   }
 
   if dry_run {
@@ -406,17 +359,6 @@ async fn clean_except(
     &ende_dir.root,
     dry_run,
   )?;
-  let mut node_modules_cleaned = FsCleaner::default();
-
-  if let Some(dir) = node_modules_path {
-    clean_node_modules(
-      &mut node_modules_cleaned,
-      &node_modules_keep,
-      dir,
-      dry_run,
-    )?;
-  }
-
   let mut vendor_cleaned = FsCleaner::default();
   if let Some(vendor_dir) = options.vendor_dir_path()
     && let GlobalOrLocalHttpCache::Local(cache) = local_or_global_http_cache
@@ -465,15 +407,11 @@ async fn clean_except(
   if !dry_run {
     log_stats(&state, &ende_dir.root);
 
-    if let Some(dir) = node_modules_path {
-      log_stats(&node_modules_cleaned, dir);
-    }
     if let Some(dir) = options.vendor_dir_path() {
       log_stats(&vendor_cleaned, dir);
     }
 
     let mut failed = state.failed;
-    failed.extend(node_modules_cleaned.failed);
     failed.extend(vendor_cleaned.failed);
     report_locked_files(&failed);
   }
@@ -574,183 +512,13 @@ fn walk_removing(
   Ok(())
 }
 
-fn clean_node_modules(
-  cleaner: &mut FsCleaner,
-  keep_pkgs: &HashSet<ende_npm::NpmPackageCacheFolderId>,
-  dir: &Path,
-  dry_run: bool,
-) -> Result<(), AnyError> {
-  if !dir.ends_with("node_modules") {
-    bail!("expected a node_modules directory, got: {}", dir.display());
-  }
-
-  let dir_metadata = match std::fs::symlink_metadata(dir) {
-    Ok(metadata) => metadata,
-    // Keep the original error message when the path is simply missing or has a
-    // non-directory component, rather than surfacing a raw stat error.
-    Err(err)
-      if matches!(
-        err.kind(),
-        ErrorKind::NotFound | ErrorKind::NotADirectory
-      ) =>
-    {
-      bail!("expected a node_modules directory, got: {}", dir.display());
-    }
-    Err(err) => {
-      return Err(err).with_context(|| {
-        format!("failed to stat node_modules directory at {}", dir.display())
-      });
-    }
-  };
-  if dir_metadata.file_type().is_symlink() {
-    bail!(
-      "refusing to clean symlinked node_modules directory at {}",
-      dir.display()
-    );
-  }
-  if !dir_metadata.is_dir() {
-    bail!("expected a node_modules directory, got: {}", dir.display());
-  }
-
-  let base = dir.join(".ende");
-  let base_metadata = match std::fs::symlink_metadata(&base) {
-    Ok(metadata) => metadata,
-    Err(err)
-      if matches!(
-        err.kind(),
-        ErrorKind::NotFound | ErrorKind::NotADirectory
-      ) =>
-    {
-      return Ok(());
-    }
-    Err(err) => {
-      return Err(err).with_context(|| {
-        format!("failed to stat node_modules/.ende at {}", base.display())
-      });
-    }
-  };
-  if base_metadata.file_type().is_symlink() {
-    bail!(
-      "refusing to clean symlinked node_modules/.ende directory at {}",
-      base.display()
-    );
-  }
-  if !base_metadata.is_dir() {
-    return Ok(());
-  }
-
-  let keep_ids = keep_pkgs
-    .iter()
-    .map(ende_resolver::npm::get_package_folder_id_folder_name)
-    .collect::<HashSet<_>>();
-
-  // remove the actual packages from node_modules/.ende
-  let entries = match std::fs::read_dir(&base) {
-    Ok(entries) => entries,
-    // `base` was confirmed to be a real directory above, so reaching this arm
-    // means it was concurrently removed (TOCTOU) between that check and here.
-    // There's nothing left to clean in that case.
-    Err(err)
-      if matches!(
-        err.kind(),
-        std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
-      ) =>
-    {
-      return Ok(());
-    }
-    Err(err) => {
-      return Err(err).with_context(|| {
-        format!(
-          "failed to clean node_modules directory at {}",
-          dir.display()
-        )
-      });
-    }
-  };
-
-  // TODO(nathanwhit): this probably shouldn't reach directly into this code
-  let sys = CliSys::default();
-  let mut setup_cache = ende_npm_installer::LocalSetupCache::load(
-    sys.clone(),
-    base.join(".setup-cache.bin"),
-  );
-
-  for entry in entries {
-    let entry = entry?;
-    if !entry.file_type()?.is_dir() {
-      continue;
-    }
-    let file_name = entry.file_name();
-    let file_name = file_name.to_string_lossy();
-    if keep_ids.contains(file_name.as_ref()) || file_name == "node_modules" {
-      continue;
-    } else if dry_run {
-      #[allow(clippy::print_stderr, reason = "actually want to output")]
-      {
-        eprintln!(" {}", entry.path().display());
-      }
-    } else {
-      cleaner.rm_rf(&entry.path())?;
-    }
-  }
-
-  let mut remove_symlink = |path: &Path| -> std::io::Result<()> {
-    if dry_run {
-      #[allow(clippy::print_stderr, reason = "actually want to output")]
-      {
-        eprintln!(" {}", path.display());
-      }
-      Ok(())
-    } else {
-      cleaner.remove_file(path, None)
-    }
-  };
-
-  // remove top level symlinks from node_modules/<package> to node_modules/.ende/<package>
-  // where the target doesn't exist (because it was removed above)
-  ende_npm_installer::remove_unused_node_modules_symlinks(
-    &sys,
-    dir,
-    &keep_ids,
-    &mut |name, path| {
-      setup_cache.remove_root_symlink(name);
-      remove_symlink(path)
-    },
-  )
-  .map_err(AnyError::from)?;
-
-  // remove symlinks from node_modules/.ende/node_modules/<package> to node_modules/.ende/<package>
-  // where the target doesn't exist (because it was removed above)
-  let ende_nm = base.join("node_modules");
-  ende_npm_installer::remove_unused_node_modules_symlinks(
-    &sys,
-    &ende_nm,
-    &keep_ids,
-    &mut |name, path| {
-      setup_cache.remove_deno_symlink(name);
-      remove_symlink(path)
-    },
-  )
-  .map_err(AnyError::from)?;
-  if !dry_run {
-    setup_cache.save();
-  }
-
-  Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-  use std::collections::HashSet;
   use std::path::Path;
   use std::path::PathBuf;
 
-  use test_util::TempDir;
-
   use super::Found::*;
-  use super::clean_node_modules;
   use super::format_locked_files_message;
-  use crate::util::fs::FsCleaner;
   use crate::util::windows::LockingProcess;
 
   #[test]
@@ -768,7 +536,7 @@ mod tests {
   fn locked_files_message_lists_holding_processes() {
     let paths = vec![
       PathBuf::from("/deno/dep_analysis_cache_v2"),
-      PathBuf::from("/deno/node_analysis_cache_v2"),
+      PathBuf::from("/deno/check_cache_v2"),
     ];
     let processes = vec![
       LockingProcess {
@@ -801,33 +569,6 @@ mod tests {
     let message = format_locked_files_message(&paths, &[]);
     assert!(message.starts_with("15 files could not be removed"));
     assert!(message.contains("... and 5 more"));
-  }
-
-  #[test]
-  fn clean_node_modules_refuses_symlinked_ende_dir() {
-    let temp_dir = TempDir::new();
-    temp_dir.create_dir_all("node_modules");
-    temp_dir.create_dir_all("victim/important_dir");
-    temp_dir.write("victim/important_dir/secret.txt", "secret");
-    temp_dir.symlink_dir("victim", "node_modules/.ende");
-
-    let mut cleaner = FsCleaner::new(None);
-    let node_modules = temp_dir.path().join("node_modules");
-    let err = clean_node_modules(
-      &mut cleaner,
-      &HashSet::new(),
-      node_modules.as_path(),
-      false,
-    )
-    .unwrap_err();
-
-    assert!(err.to_string().contains("refusing to clean symlinked"));
-    assert!(
-      temp_dir
-        .path()
-        .join("victim/important_dir/secret.txt")
-        .exists()
-    );
   }
 
   #[test]

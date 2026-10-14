@@ -1,7 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-mod npm;
-
 #[cfg(all(feature = "graph", feature = "deno_ast"))]
 mod module_loader;
 
@@ -12,10 +10,10 @@ use deno_media_type::MediaType;
 use ende_cache_dir::file_fetcher::File;
 #[cfg(all(feature = "graph", feature = "deno_ast"))]
 pub use module_loader::*;
-pub use npm::*;
 use parking_lot::RwLock;
 use url::Url;
 
+#[cfg(all(feature = "graph", feature = "deno_ast"))]
 fn media_type_name(media_type: MediaType) -> &'static str {
   match media_type {
     MediaType::JavaScript

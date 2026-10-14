@@ -5,15 +5,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use boxed_error::Boxed;
-use deno_path_util::url_from_file_path;
-use deno_path_util::url_to_file_path;
 use ende_core::ModuleSpecifier;
 use ende_core::error::JsError;
-use ende_node::NodeRequireLoaderRc;
-use ende_node::ops::ipc::ChildIpcSerialization;
-use ende_resolver::npm::DenoInNpmPackageChecker;
-use ende_resolver::npm::NpmResolver;
 use ende_runtime::BootstrapOptions;
 use ende_runtime::CpuProfilerConfig;
 use ende_runtime::FeatureChecker;
@@ -30,14 +23,10 @@ use ende_runtime::ende_core::ModuleLoader;
 use ende_runtime::ende_core::SharedArrayBufferStore;
 use ende_runtime::ende_core::error::CoreError;
 use ende_runtime::ende_core::v8;
+use ende_runtime::ende_ffi::EndeRtNativeAddonLoaderRc;
 use ende_runtime::ende_fs;
 use ende_runtime::ende_inspector_server::MainInspectorSessionChannel;
-use ende_runtime::ende_napi::EndeRtNativeAddonLoaderRc;
-use ende_runtime::ende_node::NodeExtInitServices;
-use ende_runtime::ende_node::NodeRequireLoader;
-use ende_runtime::ende_node::NodeResolver;
 use ende_runtime::ende_permissions::PermissionsContainer;
-use ende_runtime::ende_process::NpmProcessStateProviderRc;
 use ende_runtime::ende_telemetry::OtelConfig;
 use ende_runtime::ende_tls::RootCertStoreProvider;
 use ende_runtime::ende_web::Blob;
@@ -51,8 +40,6 @@ use ende_runtime::web_worker::WebWorkerServiceOptions;
 use ende_runtime::worker::MainWorker;
 use ende_runtime::worker::WorkerOptions;
 use ende_runtime::worker::WorkerServiceOptions;
-use node_resolver::UrlOrPath;
-use node_resolver::errors::ResolvePkgJsonBinExportError;
 use url::Url;
 
 use crate::args::has_trace_permissions_enabled;
@@ -61,9 +48,6 @@ use crate::util::checksum;
 
 pub struct CreateModuleLoaderResult {
   pub module_loader: Rc<dyn ModuleLoader>,
-  pub node_require_loader: Rc<dyn NodeRequireLoader>,
-  pub hook_registry:
-    Option<ende_runtime::ende_node::ops::module_hooks::LoaderHookRegistry>,
 }
 
 pub trait ModuleLoaderFactory: Send + Sync {
@@ -184,8 +168,42 @@ pub fn create_isolate_create_params<TSys: EndeLibSys>(
 
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod linux {
-  use ende_runtime::ende_node::ops::process::cgroup::CgroupVersion;
-  use ende_runtime::ende_node::ops::process::cgroup::parse_self_cgroup;
+  enum CgroupVersion<'a> {
+    V1 { cgroup_relpath: &'a str },
+    V2 { cgroup_relpath: &'a str },
+    None,
+  }
+
+  fn parse_self_cgroup(self_cgroup_content: &str) -> CgroupVersion<'_> {
+    let mut cgroup_version = CgroupVersion::None;
+
+    for line in self_cgroup_content.lines() {
+      let split = line.split(":").collect::<Vec<_>>();
+
+      match &split[..] {
+        // cgroup v1 memory controller — takes priority, break immediately
+        [_, "memory", cgroup_v1_relpath] => {
+          cgroup_version = CgroupVersion::V1 {
+            cgroup_relpath: cgroup_v1_relpath
+              .strip_prefix("/")
+              .unwrap_or(cgroup_v1_relpath),
+          };
+          break;
+        }
+        // cgroup v2 (but keep looking for v1 memory in hybrid mode)
+        ["0", "", cgroup_v2_relpath] => {
+          cgroup_version = CgroupVersion::V2 {
+            cgroup_relpath: cgroup_v2_relpath
+              .strip_prefix("/")
+              .unwrap_or(cgroup_v2_relpath),
+          };
+        }
+        _ => {}
+      }
+    }
+
+    cgroup_version
+  }
 
   /// Get memory limit with cgroup (either v1 or v2) taken into account.
   pub(super) fn get_memory_limit<TSys: crate::sys::EndeLibSys>(
@@ -227,39 +245,65 @@ mod linux {
 
     limit.or(system_total_memory)
   }
-}
 
-#[derive(Debug, Boxed, deno_error::JsError)]
-pub struct ResolveNpmBinaryEntrypointError(
-  pub Box<ResolveNpmBinaryEntrypointErrorKind>,
-);
+  #[cfg(test)]
+  mod tests {
+    use super::*;
 
-#[derive(Debug, thiserror::Error, deno_error::JsError)]
-pub enum ResolveNpmBinaryEntrypointErrorKind {
-  #[class(inherit)]
-  #[error(transparent)]
-  PathToUrl(#[from] deno_path_util::PathToUrlError),
-  #[class(inherit)]
-  #[error(transparent)]
-  ResolvePkgJsonBinExport(ResolvePkgJsonBinExportError),
-  #[class(generic)]
-  #[error("{original:#}\n\nFallback failed: {fallback:#}")]
-  Fallback {
-    fallback: ResolveNpmBinaryEntrypointFallbackError,
-    original: ResolvePkgJsonBinExportError,
-  },
-}
+    #[test]
+    fn test_parse_self_cgroup_v2() {
+      let self_cgroup = "0::/user.slice/user-1000.slice/session-3.scope";
+      let cgroup_version = parse_self_cgroup(self_cgroup);
+      assert!(matches!(
+        cgroup_version,
+        CgroupVersion::V2 { cgroup_relpath } if cgroup_relpath == "user.slice/user-1000.slice/session-3.scope"
+      ));
+    }
 
-#[derive(Debug, thiserror::Error, deno_error::JsError)]
-pub enum ResolveNpmBinaryEntrypointFallbackError {
-  #[class(inherit)]
-  #[error(transparent)]
-  PackageSubpathResolve(
-    node_resolver::errors::PackageSubpathFromDenoModuleResolveError,
-  ),
-  #[class(generic)]
-  #[error("Cannot find module '{0}'")]
-  ModuleNotFound(UrlOrPath),
+    #[test]
+    fn test_parse_self_cgroup_hybrid() {
+      let self_cgroup = r#"12:rdma:/
+11:blkio:/user.slice
+10:devices:/user.slice
+9:cpu,cpuacct:/user.slice
+8:pids:/user.slice/user-1000.slice/session-3.scope
+7:memory:/user.slice/user-1000.slice/session-3.scope
+6:perf_event:/
+5:freezer:/
+4:net_cls,net_prio:/
+3:hugetlb:/
+2:cpuset:/
+1:name=systemd:/user.slice/user-1000.slice/session-3.scope
+0::/user.slice/user-1000.slice/session-3.scope
+"#;
+      let cgroup_version = parse_self_cgroup(self_cgroup);
+      assert!(matches!(
+        cgroup_version,
+        CgroupVersion::V1 { cgroup_relpath } if cgroup_relpath == "user.slice/user-1000.slice/session-3.scope"
+      ));
+    }
+
+    #[test]
+    fn test_parse_self_cgroup_v1() {
+      let self_cgroup = r#"11:hugetlb:/
+10:pids:/user.slice/user-1000.slice
+9:perf_event:/
+8:devices:/user.slice
+7:net_cls,net_prio:/
+6:memory:/
+5:blkio:/
+4:cpuset:/
+3:cpu,cpuacct:/
+2:freezer:/
+1:name=systemd:/user.slice/user-1000.slice/session-2.scope
+"#;
+      let cgroup_version = parse_self_cgroup(self_cgroup);
+      assert!(matches!(
+        cgroup_version,
+        CgroupVersion::V1 { cgroup_relpath } if cgroup_relpath.is_empty()
+      ));
+    }
+  }
 }
 
 pub struct LibMainWorkerOptions {
@@ -267,7 +311,6 @@ pub struct LibMainWorkerOptions {
   pub log_level: WorkerLogLevel,
   pub enable_raw_imports: bool,
   pub enable_testing_features: bool,
-  pub has_node_modules_dir: bool,
   pub inspect_brk: bool,
   pub inspect_wait: bool,
   pub trace_ops: Option<Vec<String>>,
@@ -277,16 +320,11 @@ pub struct LibMainWorkerOptions {
   // If the runtime should try to use `export default { fetch }`
   pub auto_serve: bool,
   pub location: Option<Url>,
-  pub argv0: Option<String>,
-  pub node_debug: Option<String>,
-  pub node_cluster_unique_id: Option<String>,
-  pub node_cluster_sched_policy: Option<String>,
   pub otel_config: OtelConfig,
   pub origin_data_folder_path: Option<PathBuf>,
   pub seed: Option<u64>,
   pub unsafely_ignore_certificate_errors: Option<Vec<String>>,
   pub skip_op_registration: bool,
-  pub node_ipc_init: Option<(i64, ChildIpcSerialization)>,
   pub no_legacy_abort: bool,
   pub startup_snapshot: Option<&'static [u8]>,
   /// Residual `lazy_loaded_js` sources from the snapshot build script.
@@ -319,10 +357,6 @@ struct LibWorkerFactorySharedState<TSys: EndeLibSys> {
   maybe_cpu_prof_config: Option<CpuProfilerConfig>,
   main_inspector_session_tx: MainInspectorSessionChannel,
   module_loader_factory: Box<dyn ModuleLoaderFactory>,
-  node_resolver:
-    Arc<NodeResolver<DenoInNpmPackageChecker, NpmResolver<TSys>, TSys>>,
-  npm_process_state_provider: NpmProcessStateProviderRc,
-  pkg_json_resolver: Arc<node_resolver::PackageJsonResolver<TSys>>,
   root_cert_store_provider: Arc<dyn RootCertStoreProvider>,
   shared_array_buffer_store: SharedArrayBufferStore,
   storage_key_resolver: StorageKeyResolver,
@@ -344,36 +378,21 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
     unstable_features
   }
 
-  fn create_node_init_services(
-    &self,
-    node_require_loader: NodeRequireLoaderRc,
-  ) -> NodeExtInitServices<DenoInNpmPackageChecker, NpmResolver<TSys>, TSys> {
-    NodeExtInitServices {
-      node_require_loader,
-      node_resolver: self.node_resolver.clone(),
-      pkg_json_resolver: self.pkg_json_resolver.clone(),
-      sys: self.sys.clone(),
-    }
-  }
-
   fn create_web_worker_callback(
     self: &Arc<Self>,
     stdio: ende_runtime::ende_io::Stdio,
   ) -> Arc<CreateWebWorkerCb> {
     let shared = self.clone();
     Arc::new(move |args| {
-      let CreateModuleLoaderResult {
-        module_loader,
-        node_require_loader,
-        hook_registry,
-      } = shared.module_loader_factory.create_for_worker(
-        args.parent_permissions.clone(),
-        args.permissions.clone(),
-        args
-          .maybe_main_module_blob
-          .clone()
-          .map(|blob| (args.main_module.clone(), blob)),
-      );
+      let CreateModuleLoaderResult { module_loader } =
+        shared.module_loader_factory.create_for_worker(
+          args.parent_permissions.clone(),
+          args.permissions.clone(),
+          args
+            .maybe_main_module_blob
+            .clone()
+            .map(|blob| (args.main_module.clone(), blob)),
+        );
       let create_web_worker_cb =
         shared.create_web_worker_callback(stdio.clone());
 
@@ -399,9 +418,6 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
         root_cert_store_provider: Some(shared.root_cert_store_provider.clone()),
         module_loader,
         fs: shared.fs.clone(),
-        node_services: Some(
-          shared.create_node_init_services(node_require_loader),
-        ),
         blob_store: shared.blob_store.clone(),
         broadcast_channel: shared.broadcast_channel.clone(),
         shared_array_buffer_store: Some(
@@ -412,18 +428,13 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
         ),
         main_inspector_session_tx: shared.main_inspector_session_tx.clone(),
         feature_checker,
-        npm_process_state_provider: Some(
-          shared.npm_process_state_provider.clone(),
-        ),
         permissions: args.permissions,
       };
       let maybe_initial_cwd = shared.options.maybe_initial_cwd.clone();
       // Apply resource limits to v8::CreateParams if specified.
       // Uses individual V8 ResourceConstraints setters to match Node.js
       // behavior (node_worker.cc UpdateResourceConstraints).
-      let (create_params, resolved_limits) = if let Some(ref limits) =
-        args.resource_limits
-      {
+      let create_params = if let Some(ref limits) = args.resource_limits {
         let mut params =
           create_isolate_create_params(&shared.sys).unwrap_or_default();
 
@@ -444,26 +455,9 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
             params.set_code_range_size_in_bytes(code_range * 1024 * 1024);
         }
 
-        let mb = 1024 * 1024;
-        // Read back resolved values (including V8 defaults for
-        // unspecified fields), matching Node.js behavior.
-        // Note: integer division truncates sub-MB fractions, which is fine
-        // since V8 and Node.js both work in whole-MB granularity here.
-        let resolved = ende_node::ops::worker_threads::ResolvedResourceLimits {
-          max_young_generation_size_mb: params
-            .max_young_generation_size_in_bytes()
-            / mb,
-          max_old_generation_size_mb: params.max_old_generation_size_in_bytes()
-            / mb,
-          code_range_size_mb: params.code_range_size_in_bytes() / mb,
-          stack_size_mb: limits
-            .stack_size_mb
-            .unwrap_or(ende_node::ops::worker_threads::DEFAULT_STACK_SIZE_MB),
-        };
-
-        (Some(params), Some(resolved))
+        Some(params)
       } else {
-        (create_isolate_create_params(&shared.sys), None)
+        create_isolate_create_params(&shared.sys)
       };
 
       let options = WebWorkerOptions {
@@ -486,15 +480,6 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
           inspect: shared.options.is_inspecting,
           is_standalone: shared.options.is_standalone,
           auto_serve: shared.options.auto_serve,
-          has_node_modules_dir: shared.options.has_node_modules_dir,
-          argv0: shared.options.argv0.clone(),
-          node_debug: shared.options.node_debug.clone(),
-          node_cluster_unique_id: shared.options.node_cluster_unique_id.clone(),
-          node_cluster_sched_policy: shared
-            .options
-            .node_cluster_sched_policy
-            .clone(),
-          node_ipc_init: None,
           mode: WorkerExecutionMode::Worker,
           serve_port: shared.options.serve_port,
           serve_host: shared.options.serve_host.clone(),
@@ -538,21 +523,7 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
       let (mut worker, handle, bootstrap_options) =
         WebWorker::from_options(services, options);
 
-      // Store resolved resource limits in the worker's op state BEFORE
-      // bootstrapping, so the worker_threads polyfill can read them
-      // via op during init.
-      if let Some(resolved) = resolved_limits {
-        worker.js_runtime.op_state().borrow_mut().put(resolved);
-      }
-
       worker.bootstrap(&bootstrap_options);
-
-      // Wire the module hook registry into OpState after bootstrap so
-      // `module.registerHooks()` in worker scripts shares state with the
-      // worker's module loader (same pattern as the main worker).
-      if let Some(registry) = hook_registry {
-        worker.js_runtime.op_state().borrow_mut().put(registry);
-      }
 
       // When resource limits are set, install a near-heap-limit callback
       // that terminates the worker's isolate gracefully instead of
@@ -589,11 +560,6 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
     maybe_coverage_dir: Option<PathBuf>,
     maybe_cpu_prof_config: Option<CpuProfilerConfig>,
     module_loader_factory: Box<dyn ModuleLoaderFactory>,
-    node_resolver: Arc<
-      NodeResolver<DenoInNpmPackageChecker, NpmResolver<TSys>, TSys>,
-    >,
-    npm_process_state_provider: NpmProcessStateProviderRc,
-    pkg_json_resolver: Arc<node_resolver::PackageJsonResolver<TSys>>,
     root_cert_store_provider: Arc<dyn RootCertStoreProvider>,
     storage_key_resolver: StorageKeyResolver,
     sys: TSys,
@@ -613,9 +579,6 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
         maybe_cpu_prof_config,
         main_inspector_session_tx: MainInspectorSessionChannel::new(),
         module_loader_factory,
-        node_resolver,
-        npm_process_state_provider,
-        pkg_json_resolver,
         root_cert_store_provider,
         shared_array_buffer_store: roots.shared_array_buffer_store,
         storage_key_resolver,
@@ -631,13 +594,11 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
     permissions: PermissionsContainer,
     main_module: Url,
     preload_modules: Vec<Url>,
-    require_modules: Vec<Url>,
   ) -> Result<LibMainWorker, CoreError> {
     self.create_custom_worker(
       mode,
       main_module,
       preload_modules,
-      require_modules,
       permissions,
       vec![],
       Default::default(),
@@ -651,18 +612,13 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
     mode: WorkerExecutionMode,
     main_module: Url,
     preload_modules: Vec<Url>,
-    require_modules: Vec<Url>,
     permissions: PermissionsContainer,
     custom_extensions: Vec<Extension>,
     stdio: ende_runtime::ende_io::Stdio,
     unconfigured_runtime: Option<ende_runtime::UnconfiguredRuntime>,
   ) -> Result<LibMainWorker, CoreError> {
     let shared = &self.shared;
-    let CreateModuleLoaderResult {
-      module_loader,
-      node_require_loader,
-      hook_registry,
-    } = shared
+    let CreateModuleLoaderResult { module_loader } = shared
       .module_loader_factory
       .create_for_main(permissions.clone());
 
@@ -696,12 +652,6 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
       root_cert_store_provider: Some(shared.root_cert_store_provider.clone()),
       module_loader,
       fs: shared.fs.clone(),
-      node_services: Some(
-        shared.create_node_init_services(node_require_loader),
-      ),
-      npm_process_state_provider: Some(
-        shared.npm_process_state_provider.clone(),
-      ),
       blob_store: shared.blob_store.clone(),
       broadcast_channel: shared.broadcast_channel.clone(),
       fetch_dns_resolver: Default::default(),
@@ -733,15 +683,6 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
         inspect: shared.options.is_inspecting,
         is_standalone: shared.options.is_standalone,
         auto_serve: shared.options.auto_serve,
-        has_node_modules_dir: shared.options.has_node_modules_dir,
-        argv0: shared.options.argv0.clone(),
-        node_debug: shared.options.node_debug.clone(),
-        node_cluster_unique_id: shared.options.node_cluster_unique_id.clone(),
-        node_cluster_sched_policy: shared
-          .options
-          .node_cluster_sched_policy
-          .clone(),
-        node_ipc_init: shared.options.node_ipc_init,
         mode,
         no_legacy_abort: shared.options.no_legacy_abort,
         serve_port: shared.options.serve_port,
@@ -780,11 +721,6 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
       MainWorker::bootstrap_from_options(&main_module, services, options);
     worker.setup_memory_trim_handler();
 
-    // Wire module hook registry into OpState so JS ops share it with the loader
-    if let Some(registry) = hook_registry {
-      worker.js_runtime.op_state().borrow_mut().put(registry);
-    }
-
     // Store the main inspector session sender for worker debugging
     let inspector = worker.js_runtime.inspector();
     let session_tx = inspector.get_session_sender();
@@ -793,98 +729,14 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
     Ok(LibMainWorker {
       main_module,
       preload_modules,
-      require_modules,
       worker,
     })
-  }
-
-  pub fn resolve_npm_binary_entrypoint(
-    &self,
-    package_folder: &Path,
-    sub_path: Option<&str>,
-  ) -> Result<Url, ResolveNpmBinaryEntrypointError> {
-    match self
-      .shared
-      .node_resolver
-      .resolve_binary_export(package_folder, sub_path)
-    {
-      Ok(bin_value) => Ok(url_from_file_path(bin_value.path())?),
-      Err(original_err) => {
-        // if the binary entrypoint was not found, fallback to regular node resolution
-        let result =
-          self.resolve_binary_entrypoint_fallback(package_folder, sub_path);
-        match result {
-          Ok(Some(path)) => Ok(url_from_file_path(&path)?),
-          Ok(None) => Err(
-            ResolveNpmBinaryEntrypointErrorKind::ResolvePkgJsonBinExport(
-              original_err,
-            )
-            .into_box(),
-          ),
-          Err(fallback_err) => Err(
-            ResolveNpmBinaryEntrypointErrorKind::Fallback {
-              original: original_err,
-              fallback: fallback_err,
-            }
-            .into_box(),
-          ),
-        }
-      }
-    }
-  }
-
-  /// resolve the binary entrypoint using regular node resolution
-  fn resolve_binary_entrypoint_fallback(
-    &self,
-    package_folder: &Path,
-    sub_path: Option<&str>,
-  ) -> Result<Option<PathBuf>, ResolveNpmBinaryEntrypointFallbackError> {
-    // only fallback if the user specified a sub path
-    if sub_path.is_none() {
-      // it's confusing to users if the package doesn't have any binary
-      // entrypoint and we just execute the main script which will likely
-      // have blank output, so do not resolve the entrypoint in this case
-      return Ok(None);
-    }
-
-    let specifier = self
-      .shared
-      .node_resolver
-      .resolve_package_subpath_from_deno_module(
-        package_folder,
-        sub_path,
-        /* referrer */ None,
-        node_resolver::ResolutionMode::Import,
-        node_resolver::NodeResolutionKind::Execution,
-      )
-      .map_err(
-        ResolveNpmBinaryEntrypointFallbackError::PackageSubpathResolve,
-      )?;
-    let path = match specifier {
-      UrlOrPath::Url(ref url) => match url_to_file_path(url) {
-        Ok(path) => path,
-        Err(_) => {
-          return Err(ResolveNpmBinaryEntrypointFallbackError::ModuleNotFound(
-            specifier,
-          ));
-        }
-      },
-      UrlOrPath::Path(path) => path,
-    };
-    if self.shared.sys.fs_exists_no_err(&path) {
-      Ok(Some(path))
-    } else {
-      Err(ResolveNpmBinaryEntrypointFallbackError::ModuleNotFound(
-        UrlOrPath::Path(path),
-      ))
-    }
   }
 }
 
 pub struct LibMainWorker {
   main_module: Url,
   preload_modules: Vec<Url>,
-  require_modules: Vec<Url>,
   worker: MainWorker,
 }
 
@@ -964,17 +816,10 @@ impl LibMainWorker {
       self.worker.evaluate_module(id).await?;
       self.worker.run_event_loop(false).await?;
     }
-    // Even though we load as ESM here, these files will be forced to be loaded as CJS
-    // because of checks in get_known_mode_with_is_script
-    for require_module_url in self.require_modules.iter() {
-      let id = self.worker.preload_side_module(require_module_url).await?;
-      self.worker.evaluate_module(id).await?;
-      self.worker.run_event_loop(false).await?;
-    }
     Ok(())
   }
 
-  /// The "load phase": run any preload/require modules, then load and
+  /// The "load phase": run any preload modules, then load and
   /// first-evaluate the main module and fire the `load` event. This is
   /// everything that happens before the steady-state event loop begins.
   ///

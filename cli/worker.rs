@@ -6,8 +6,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use deno_ast::ModuleSpecifier;
-use deno_error::JsErrorBox;
-use deno_semver::npm::NpmPackageReqReference;
 use ende_core::Extension;
 use ende_core::OpState;
 use ende_core::error::CoreError;
@@ -16,9 +14,6 @@ use ende_core::futures::FutureExt;
 use ende_core::v8;
 use ende_lib::worker::LibMainWorker;
 use ende_lib::worker::LibMainWorkerFactory;
-use ende_lib::worker::ResolveNpmBinaryEntrypointError;
-use ende_npm_installer::PackageCaching;
-use ende_npm_installer::graph::NpmCachingStrategy;
 use ende_runtime::CpuProfilerConfig;
 use ende_runtime::WorkerExecutionMode;
 use ende_runtime::coverage::CoverageCollector;
@@ -31,15 +26,11 @@ use ende_runtime::ende_permissions::PermissionsContainer;
 use ende_runtime::worker::MainWorker;
 use tokio::select;
 
-use crate::args::CliLockfile;
-use crate::npm::CliNpmInstaller;
-use crate::npm::CliNpmResolver;
 use crate::sys::CliSys;
 use crate::tools::run::hmr::HmrRunner;
 use crate::tools::run::hmr::HmrRunnerState;
 use crate::util::file_watcher::WatcherCommunicator;
 use crate::util::file_watcher::WatcherRestartMode;
-use crate::util::progress_bar::ProgressBar;
 
 pub type CreateHmrRunnerCb = Box<dyn Fn() -> HmrRunnerState + Send + Sync>;
 
@@ -47,7 +38,6 @@ pub struct CliMainWorkerOptions {
   pub create_hmr_runner: Option<CreateHmrRunnerCb>,
   pub maybe_coverage_dir: Option<PathBuf>,
   pub maybe_cpu_prof_config: Option<CpuProfilerConfig>,
-  pub default_npm_caching_strategy: NpmCachingStrategy,
   pub needs_test_modules: bool,
   pub initial_cwd: Arc<ModuleSpecifier>,
 }
@@ -475,55 +465,24 @@ pub enum CreateCustomWorkerError {
   #[class(inherit)]
   #[error(transparent)]
   Core(#[from] CoreError),
-  #[class(inherit)]
-  #[error(transparent)]
-  ResolvePkgFolderFromDenoReq(
-    #[from] ende_resolver::npm::ResolvePkgFolderFromDenoReqError,
-  ),
-  #[class(inherit)]
-  #[error(transparent)]
-  UrlParse(#[from] ende_core::url::ParseError),
-  #[class(inherit)]
-  #[error(transparent)]
-  ResolveNpmBinaryEntrypoint(#[from] ResolveNpmBinaryEntrypointError),
-  #[class(inherit)]
-  #[error(transparent)]
-  NpmPackageReq(JsErrorBox),
-  #[class(inherit)]
-  #[error(transparent)]
-  LockfileWrite(#[from] ende_resolver::lockfile::LockfileWriteError),
 }
 
 pub struct CliMainWorkerFactory {
   lib_main_worker_factory: LibMainWorkerFactory<CliSys>,
-  maybe_lockfile: Option<Arc<CliLockfile>>,
-  npm_installer: Option<Arc<CliNpmInstaller>>,
-  npm_resolver: CliNpmResolver,
-  progress_bar: ProgressBar,
   root_permissions: PermissionsContainer,
   shared: Arc<SharedState>,
-  default_npm_caching_strategy: NpmCachingStrategy,
   needs_test_modules: bool,
 }
 
 impl CliMainWorkerFactory {
-  #[allow(clippy::too_many_arguments, reason = "construction")]
   pub fn new(
     lib_main_worker_factory: LibMainWorkerFactory<CliSys>,
     maybe_file_watcher_communicator: Option<Arc<WatcherCommunicator>>,
-    maybe_lockfile: Option<Arc<CliLockfile>>,
-    npm_installer: Option<Arc<CliNpmInstaller>>,
-    npm_resolver: CliNpmResolver,
-    progress_bar: ProgressBar,
     options: CliMainWorkerOptions,
     root_permissions: PermissionsContainer,
   ) -> Self {
     Self {
       lib_main_worker_factory,
-      maybe_lockfile,
-      npm_installer,
-      npm_resolver,
-      progress_bar,
       root_permissions,
       shared: Arc::new(SharedState {
         create_hmr_runner: options.create_hmr_runner,
@@ -532,131 +491,60 @@ impl CliMainWorkerFactory {
         maybe_file_watcher_communicator,
         initial_cwd: options.initial_cwd,
       }),
-      default_npm_caching_strategy: options.default_npm_caching_strategy,
       needs_test_modules: options.needs_test_modules,
     }
   }
 
-  pub async fn create_main_worker(
+  pub fn create_main_worker(
     &self,
     mode: WorkerExecutionMode,
     main_module: ModuleSpecifier,
     preload_modules: Vec<ModuleSpecifier>,
-    require_modules: Vec<ModuleSpecifier>,
   ) -> Result<CliMainWorker, CreateCustomWorkerError> {
-    self
-      .create_custom_worker(
-        mode,
-        main_module,
-        preload_modules,
-        require_modules,
-        self.root_permissions.clone(),
-        vec![],
-        Default::default(),
-        None,
-      )
-      .await
+    self.create_custom_worker(
+      mode,
+      main_module,
+      preload_modules,
+      self.root_permissions.clone(),
+      vec![],
+      Default::default(),
+      None,
+    )
   }
 
-  pub async fn create_main_worker_with_unconfigured_runtime(
+  pub fn create_main_worker_with_unconfigured_runtime(
     &self,
     mode: WorkerExecutionMode,
     main_module: ModuleSpecifier,
     preload_modules: Vec<ModuleSpecifier>,
-    require_modules: Vec<ModuleSpecifier>,
     unconfigured_runtime: Option<ende_runtime::UnconfiguredRuntime>,
   ) -> Result<CliMainWorker, CreateCustomWorkerError> {
-    self
-      .create_custom_worker(
-        mode,
-        main_module,
-        preload_modules,
-        require_modules,
-        self.root_permissions.clone(),
-        vec![],
-        Default::default(),
-        unconfigured_runtime,
-      )
-      .await
+    self.create_custom_worker(
+      mode,
+      main_module,
+      preload_modules,
+      self.root_permissions.clone(),
+      vec![],
+      Default::default(),
+      unconfigured_runtime,
+    )
   }
 
   #[allow(clippy::too_many_arguments, reason = "construction")]
-  pub async fn create_custom_worker(
+  pub fn create_custom_worker(
     &self,
     mode: WorkerExecutionMode,
     main_module: ModuleSpecifier,
     preload_modules: Vec<ModuleSpecifier>,
-    require_modules: Vec<ModuleSpecifier>,
     permissions: PermissionsContainer,
     custom_extensions: Vec<Extension>,
     stdio: ende_runtime::ende_io::Stdio,
     unconfigured_runtime: Option<ende_runtime::UnconfiguredRuntime>,
   ) -> Result<CliMainWorker, CreateCustomWorkerError> {
-    let main_module_npm_ref =
-      NpmPackageReqReference::from_specifier(&main_module).ok();
-    let mut npm_reqs = Vec::new();
-    if let Some(package_ref) = &main_module_npm_ref {
-      npm_reqs.push(package_ref.req().clone());
-    }
-    for specifier in preload_modules.iter().chain(require_modules.iter()) {
-      if let Ok(package_ref) = NpmPackageReqReference::from_specifier(specifier)
-      {
-        npm_reqs.push(package_ref.req().clone());
-      }
-    }
-
-    if !npm_reqs.is_empty()
-      && let Some(npm_installer) = &self.npm_installer
-    {
-      let _clear_guard = self.progress_bar.deferred_keep_initialize_alive();
-      npm_installer
-        .add_package_reqs(
-          &npm_reqs,
-          if matches!(
-            self.default_npm_caching_strategy,
-            NpmCachingStrategy::Lazy
-          ) {
-            PackageCaching::Only(npm_reqs.as_slice().into())
-          } else {
-            PackageCaching::All
-          },
-        )
-        .await
-        .map_err(CreateCustomWorkerError::NpmPackageReq)?;
-    }
-
-    let main_module = match main_module_npm_ref {
-      Some(package_ref) => {
-        // use a fake referrer that can be used to discover the package.json if necessary
-        let referrer = self.shared.initial_cwd.join("package.json")?;
-        let package_folder =
-          self.npm_resolver.resolve_pkg_folder_from_deno_module_req(
-            package_ref.req(),
-            &referrer,
-          )?;
-        let main_module =
-          self.lib_main_worker_factory.resolve_npm_binary_entrypoint(
-            &package_folder,
-            package_ref.sub_path(),
-          )?;
-
-        if let Some(lockfile) = &self.maybe_lockfile {
-          // For npm binary commands, ensure that the lockfile gets updated
-          // so that we can re-use the npm resolution the next time it runs
-          // for better performance
-          lockfile.write_if_changed()?;
-        }
-
-        main_module
-      }
-      None => main_module,
-    };
-
     let mut worker = self.lib_main_worker_factory.create_custom_worker(
       mode,
       main_module,
       preload_modules,
-      require_modules,
       permissions,
       custom_extensions,
       stdio,
@@ -705,7 +593,6 @@ mod tests {
 
   use ende_core::FsModuleLoader;
   use ende_core::resolve_path;
-  use ende_resolver::npm::DenoInNpmPackageChecker;
   use ende_runtime::ende_fs::RealFs;
   use ende_runtime::ende_permissions::Permissions;
   use ende_runtime::permissions::RuntimePermissionDescriptorParser;
@@ -727,11 +614,7 @@ mod tests {
       ..Default::default()
     };
 
-    MainWorker::bootstrap_from_options::<
-      DenoInNpmPackageChecker,
-      CliNpmResolver,
-      CliSys,
-    >(
+    MainWorker::bootstrap_from_options(
       &main_module,
       WorkerServiceOptions {
         ende_rt_native_addon_loader: None,
@@ -744,8 +627,6 @@ mod tests {
           as Arc<dyn ende_runtime::ende_web::BlobStoreTrait>,
         broadcast_channel: Default::default(),
         feature_checker: Default::default(),
-        node_services: Default::default(),
-        npm_process_state_provider: Default::default(),
         root_cert_store_provider: Default::default(),
         fetch_dns_resolver: Default::default(),
         shared_array_buffer_store: Default::default(),

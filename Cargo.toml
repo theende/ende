@@ -19,10 +19,7 @@ members = [
   "ext/image",
   "ext/io",
   "ext/kv",
-  "ext/napi",
-  "ext/napi/sym",
   "ext/net",
-  "ext/node",
   "ext/node_crypto",
   "ext/node_sqlite",
   "ext/rt_helper",
@@ -55,7 +52,6 @@ members = [
   "libs/node_shim",
   "libs/npm",
   "libs/npm_cache",
-  "libs/npm_installer",
   "libs/npmrc",
   "libs/ops",
   "libs/ops/compile_test_runner",
@@ -78,9 +74,7 @@ members = [
   "tests/util/test_macro",
   "tools/bsdiff_helper",
 ]
-# tests/sqlite_extension is excluded because it requires rusqlite's "loadable_extension"
-# feature, which is incompatible with the "session" feature used by the rest of the workspace.
-exclude = ["tests/util/std/hash/_wasm", "tests/sqlite_extension"]
+exclude = ["tests/util/std/hash/_wasm"]
 
 [workspace.package]
 authors = ["the Ende authors", "the Deno authors"]
@@ -548,11 +542,7 @@ opt-level = 3
 opt-level = 3
 [profile.release.package.ende_http_h1]
 opt-level = 3
-[profile.release.package.ende_napi]
-opt-level = 3
 [profile.release.package.ende_net]
-opt-level = 3
-[profile.release.package.ende_node]
 opt-level = 3
 [profile.release.package.ende_runtime]
 opt-level = 3

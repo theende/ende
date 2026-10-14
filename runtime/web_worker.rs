@@ -46,10 +46,7 @@ use ende_ffi::EndeRtNativeAddonLoaderRc;
 use ende_fs::FileSystem;
 use ende_io::Stdio;
 use ende_kv::dynamic::MultiBackendDbHandler;
-use ende_node::ExtNodeSys;
-use ende_node::NodeExtInitServices;
 use ende_permissions::PermissionsContainer;
-use ende_process::NpmProcessStateProviderRc;
 use ende_tls::RootCertStoreProvider;
 use ende_tls::TlsKeys;
 use ende_web::Blob;
@@ -61,8 +58,6 @@ use ende_web::Transferable;
 use ende_web::create_entangled_message_port;
 use ende_web::serialize_transferables;
 use log::debug;
-use node_resolver::InNpmPackageChecker;
-use node_resolver::NpmPackageFolderResolver;
 
 use crate::BootstrapOptions;
 use crate::FeatureChecker;
@@ -361,11 +356,7 @@ fn create_handles(
   (internal_handle, external_handle)
 }
 
-pub struct WebWorkerServiceOptions<
-  TInNpmPackageChecker: InNpmPackageChecker + 'static,
-  TNpmPackageFolderResolver: NpmPackageFolderResolver + 'static,
-  TExtNodeSys: ExtNodeSys + 'static,
-> {
+pub struct WebWorkerServiceOptions {
   pub blob_store: Arc<dyn BlobStoreTrait>,
   pub broadcast_channel: InMemoryBroadcastChannel,
   pub ende_rt_native_addon_loader: Option<EndeRtNativeAddonLoaderRc>,
@@ -374,14 +365,6 @@ pub struct WebWorkerServiceOptions<
   pub fs: Arc<dyn FileSystem>,
   pub main_inspector_session_tx: MainInspectorSessionChannel,
   pub module_loader: Rc<dyn ModuleLoader>,
-  pub node_services: Option<
-    NodeExtInitServices<
-      TInNpmPackageChecker,
-      TNpmPackageFolderResolver,
-      TExtNodeSys,
-    >,
-  >,
-  pub npm_process_state_provider: Option<NpmProcessStateProviderRc>,
   pub permissions: PermissionsContainer,
   pub root_cert_store_provider: Option<Arc<dyn RootCertStoreProvider>>,
   pub shared_array_buffer_store: Option<SharedArrayBufferStore>,
@@ -453,9 +436,6 @@ pub struct WebWorker {
 
 impl Drop for WebWorker {
   fn drop(&mut self) {
-    // clean up the package.json thread local cache
-    node_resolver::PackageJsonThreadLocalCache::clear();
-
     if let Some(memory_trim_handle) = self.memory_trim_handle.take() {
       memory_trim_handle.abort();
     }
@@ -463,16 +443,8 @@ impl Drop for WebWorker {
 }
 
 impl WebWorker {
-  pub fn bootstrap_from_options<
-    TInNpmPackageChecker: InNpmPackageChecker + 'static,
-    TNpmPackageFolderResolver: NpmPackageFolderResolver + 'static,
-    TExtNodeSys: ExtNodeSys + 'static,
-  >(
-    services: WebWorkerServiceOptions<
-      TInNpmPackageChecker,
-      TNpmPackageFolderResolver,
-      TExtNodeSys,
-    >,
+  pub fn bootstrap_from_options(
+    services: WebWorkerServiceOptions,
     options: WebWorkerOptions,
   ) -> (Self, SendableWebWorkerHandle) {
     let (mut worker, handle, bootstrap_options) =
@@ -481,16 +453,8 @@ impl WebWorker {
     (worker, handle)
   }
 
-  pub fn from_options<
-    TInNpmPackageChecker: InNpmPackageChecker + 'static,
-    TNpmPackageFolderResolver: NpmPackageFolderResolver + 'static,
-    TExtNodeSys: ExtNodeSys + 'static,
-  >(
-    services: WebWorkerServiceOptions<
-      TInNpmPackageChecker,
-      TNpmPackageFolderResolver,
-      TExtNodeSys,
-    >,
+  pub fn from_options(
+    services: WebWorkerServiceOptions,
     mut options: WebWorkerOptions,
   ) -> (Self, SendableWebWorkerHandle, BootstrapOptions) {
     // Permissions: many ops depend on this
@@ -593,7 +557,7 @@ impl WebWorker {
       ende_io::ende_io::init(Some(options.stdio)),
       ende_fs::ende_fs::init(services.fs.clone()),
       ende_os::ende_os::init(Some(ende_os::ExitCode::default())),
-      ende_process::ende_process::init(services.npm_process_state_provider),
+      ende_process::ende_process::init(),
       // Runtime ops that are always initialized for WebWorkers
       ops::runtime::ende_runtime::init(options.main_module.clone()),
       ops::worker_host::ende_worker_host::init(

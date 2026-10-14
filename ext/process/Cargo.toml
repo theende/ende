@@ -17,7 +17,6 @@ path = "lib.rs"
 deno_error.workspace = true
 deno_path_util.workspace = true
 ende_core.workspace = true
-ende_fs.workspace = true
 ende_io.workspace = true
 ende_os.workspace = true
 ende_permissions.workspace = true
@@ -25,11 +24,9 @@ ende_signals.workspace = true
 ende_subprocess_windows.workspace = true
 libc.workspace = true
 log.workspace = true
-memchr.workspace = true
 rand.workspace = true
 serde.workspace = true
 sys_traits = { workspace = true, features = ["real", "winapi", "libc"] }
-tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 

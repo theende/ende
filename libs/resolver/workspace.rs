@@ -3,7 +3,6 @@
 // use super::UrlRc;
 
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 use std::path::PathBuf;
@@ -15,21 +14,18 @@ use deno_path_util::url_from_file_path;
 use deno_path_util::url_to_file_path;
 use deno_semver::Version;
 use deno_semver::jsr::JsrPackageReqReference;
-use deno_semver::package::PackageName;
 use ende_config::ende_json::ConfigFileError;
 use ende_config::ende_json::ConfigFileRc;
 use ende_config::workspace::ResolverWorkspaceJsrPackage;
 use ende_config::workspace::Workspace;
 use ende_maybe_sync::MaybeDashMap;
 use ende_maybe_sync::new_rc;
-use ende_npm::registry::NpmPackageVersionInfo;
 use import_map::ImportMap;
 use import_map::ImportMapDiagnostic;
 use import_map::ImportMapError;
 use import_map::ImportMapErrorKind;
 use import_map::ImportMapWithDiagnostics;
 use indexmap::IndexMap;
-use node_resolver::NodeResolutionKind;
 use parking_lot::RwLock;
 use serde::Deserialize;
 use serde::Serialize;
@@ -715,11 +711,12 @@ impl ResolutionKind {
   }
 }
 
-impl From<NodeResolutionKind> for ResolutionKind {
-  fn from(value: NodeResolutionKind) -> Self {
-    match value {
-      NodeResolutionKind::Execution => Self::Execution,
-      NodeResolutionKind::Types => Self::Types,
+impl ResolutionKind {
+  #[cfg(feature = "graph")]
+  pub fn from_deno_graph(kind: deno_graph::source::ResolutionKind) -> Self {
+    match kind {
+      deno_graph::source::ResolutionKind::Execution => Self::Execution,
+      deno_graph::source::ResolutionKind::Types => Self::Types,
     }
   }
 }
@@ -1394,12 +1391,6 @@ impl BaseUrl<'_> {
   }
 }
 
-#[allow(clippy::disallowed_types, reason = "wraps Arc directly as the Rc type")]
-#[derive(Debug, Default, Clone)]
-pub struct WorkspaceNpmLinkPackagesRc(
-  pub std::sync::Arc<HashMap<PackageName, Vec<NpmPackageVersionInfo>>>,
-);
-
 #[cfg(test)]
 mod test {
   use std::path::Path;
@@ -1411,15 +1402,6 @@ mod test {
   use ende_config::workspace::WorkspaceDirectoryRc;
   use ende_config::workspace::WorkspaceDiscoverOptions;
   use ende_config::workspace::WorkspaceDiscoverStart;
-  use node_resolver::DenoIsBuiltInNodeModuleChecker;
-  use node_resolver::NodeResolver;
-  use node_resolver::NodeResolverOptions;
-  use node_resolver::NpmPackageFolderResolver;
-  use node_resolver::PackageJsonResolver;
-  use node_resolver::cache::NodeResolutionSys;
-  use node_resolver::errors::PackageFolderResolveError;
-  use node_resolver::errors::PackageFolderResolveErrorKind;
-  use node_resolver::errors::PackageNotFoundError;
   use serde_json::json;
   use sys_traits::FsCanonicalize;
   use sys_traits::impls::InMemorySys;
@@ -1428,9 +1410,6 @@ mod test {
   use super::*;
   use crate::ende_json::CompilerOptionsResolver;
   use crate::factory::ConfigDiscoveryOption;
-  use crate::npm::CreateInNpmPkgCheckerOptions;
-  use crate::npm::DenoInNpmPackageChecker;
-  use crate::npm::NpmResolverSys;
 
   pub struct UnreachableSys;
 
@@ -1469,51 +1448,6 @@ mod test {
     } else {
       PathBuf::from("/home/user")
     }
-  }
-
-  #[derive(Debug)]
-  struct TestNpmPackageFolderResolver;
-
-  impl NpmPackageFolderResolver for TestNpmPackageFolderResolver {
-    fn resolve_package_folder_from_package(
-      &self,
-      specifier: &str,
-      referrer: &node_resolver::UrlOrPathRef,
-    ) -> Result<PathBuf, PackageFolderResolveError> {
-      Err(PackageFolderResolveError(Box::new(
-        PackageFolderResolveErrorKind::PackageNotFound(PackageNotFoundError {
-          package_name: specifier.to_string(),
-          referrer: referrer.display(),
-          referrer_extra: None,
-        }),
-      )))
-    }
-
-    fn resolve_types_package_folder(
-      &self,
-      _types_package_name: &str,
-      _maybe_package_version: Option<&Version>,
-      _maybe_referrer: Option<&node_resolver::UrlOrPathRef>,
-    ) -> Option<PathBuf> {
-      None
-    }
-  }
-
-  #[allow(clippy::disallowed_types, reason = "ok in tests")]
-  fn setup_node_resolver<TSys: NpmResolverSys>(
-    sys: &TSys,
-  ) -> crate::ende_json::TsConfigNodeResolver<TSys, TestNpmPackageFolderResolver>
-  {
-    let package_json_resolver =
-      new_rc(PackageJsonResolver::new(sys.clone(), None));
-    NodeResolver::new(
-      DenoInNpmPackageChecker::new(CreateInNpmPkgCheckerOptions::Byonm),
-      DenoIsBuiltInNodeModuleChecker,
-      TestNpmPackageFolderResolver,
-      package_json_resolver,
-      NodeResolutionSys::new(sys.clone(), None),
-      NodeResolverOptions::default(),
-    )
   }
 
   #[test]
@@ -2083,7 +2017,6 @@ mod test {
     let compiler_options_resolver = new_rc(CompilerOptionsResolver::new(
       &sys,
       &workspace_dir.workspace,
-      &setup_node_resolver(&sys),
       &ConfigDiscoveryOption::DiscoverCwd,
       &Default::default(),
     ));
@@ -2237,7 +2170,6 @@ mod test {
     let compiler_options_resolver = new_rc(CompilerOptionsResolver::new(
       &sys,
       &workspace_dir.workspace,
-      &setup_node_resolver(&sys),
       &ConfigDiscoveryOption::DiscoverCwd,
       &Default::default(),
     ));
@@ -2360,7 +2292,6 @@ mod test {
     let compiler_options_resolver = new_rc(CompilerOptionsResolver::new(
       &sys,
       &workspace_dir.workspace,
-      &setup_node_resolver(&sys),
       &ConfigDiscoveryOption::DiscoverCwd,
       &Default::default(),
     ));

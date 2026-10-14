@@ -12,7 +12,6 @@ use std::sync::Arc;
 
 pub use deno_ast;
 pub use deno_graph;
-use ende_npm::resolution::ValidSerializedNpmResolutionSnapshot;
 use futures::future::BoxFuture;
 use futures::future::LocalBoxFuture;
 use futures::io::AsyncBufReadExt;
@@ -113,16 +112,6 @@ impl Eszip {
     match self {
       Eszip::V1(eszip) => eszip.get_import_map(specifier),
       Eszip::V2(eszip) => eszip.get_import_map(specifier),
-    }
-  }
-
-  /// Takes the npm snapshot out of the eszip.
-  pub fn take_npm_snapshot(
-    &mut self,
-  ) -> Option<ValidSerializedNpmResolutionSnapshot> {
-    match self {
-      Eszip::V1(_) => None,
-      Eszip::V2(eszip) => eszip.take_npm_snapshot(),
     }
   }
 }

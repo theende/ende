@@ -62,12 +62,8 @@ pub static IS_CI: Lazy<bool> = Lazy::new(|| std::env::var("CI").is_ok());
 
 pub fn env_vars_for_npm_tests() -> Vec<(String, String)> {
   vec![
-    ("NPM_CONFIG_REGISTRY".to_string(), npm_registry_url()),
-    ("NPM_CONFIG_MIN_RELEASE_AGE".to_string(), "0".to_string()),
-    ("JSR_NPM_URL".to_string(), npm_jsr_registry_url()),
-    ("NODEJS_ORG_MIRROR".to_string(), nodejs_org_mirror_url()),
+    ("ENDE_MINIMUM_DEPENDENCY_AGE".to_string(), "0".to_string()),
     ("NO_COLOR".to_string(), "1".to_string()),
-    ("SOCKET_DEV_URL".to_string(), socket_dev_api_url()),
   ]
 }
 
@@ -137,9 +133,7 @@ pub fn env_vars_for_jsr_provenance_tests() -> Vec<(String, String)> {
 
 pub fn env_vars_for_jsr_npm_tests() -> Vec<(String, String)> {
   vec![
-    ("NPM_CONFIG_REGISTRY".to_string(), npm_registry_url()),
-    ("NPM_CONFIG_MIN_RELEASE_AGE".to_string(), "0".to_string()),
-    ("JSR_NPM_URL".to_string(), npm_jsr_registry_url()),
+    ("ENDE_MINIMUM_DEPENDENCY_AGE".to_string(), "0".to_string()),
     ("JSR_URL".to_string(), jsr_registry_url()),
     (
       "ENDE_TESTING_DISABLE_GIT_CHECK".to_string(),
@@ -147,7 +141,6 @@ pub fn env_vars_for_jsr_npm_tests() -> Vec<(String, String)> {
     ),
     ("DISABLE_JSR_PROVENANCE".to_string(), "true".to_string()),
     ("NO_COLOR".to_string(), "1".to_string()),
-    ("NODEJS_ORG_MIRROR".to_string(), nodejs_org_mirror_url()),
   ]
 }
 
@@ -183,34 +176,6 @@ pub fn ende_config_path() -> PathRef {
   root_path().join("tests").join("config").join("ende.json")
 }
 
-/// Test server registry url.
-pub fn npm_registry_url() -> String {
-  format!("http://localhost:{}/", consts::PUBLIC_NPM_REGISTRY_PORT)
-}
-
-pub fn npm_registry_unset_url() -> String {
-  "http://NPM_CONFIG_REGISTRY.is.unset".to_string()
-}
-
-pub fn npm_jsr_registry_url() -> String {
-  format!("http://localhost:{}/", consts::PUBLIC_NPM_JSR_REGISTRY_PORT)
-}
-
-pub fn npm_jsr_registry_unset_url() -> String {
-  "http://JSR_NPM_URL.is.unset".to_string()
-}
-
-pub fn nodejs_org_mirror_url() -> String {
-  format!(
-    "http://127.0.0.1:{}/",
-    consts::NODEJS_ORG_MIRROR_SERVER_PORT
-  )
-}
-
-pub fn nodejs_org_mirror_unset_url() -> String {
-  "http://NODEJS_ORG_MIRROR.is.unset".to_string()
-}
-
 pub fn jsr_registry_url() -> String {
   format!("http://127.0.0.1:{}/", consts::JSR_REGISTRY_SERVER_PORT)
 }
@@ -228,10 +193,6 @@ pub fn gha_token_url() -> String {
     "http://127.0.0.1:{}/gha_oidc?test=true",
     consts::PROVENANCE_MOCK_SERVER_PORT
   )
-}
-
-pub fn socket_dev_api_url() -> String {
-  format!("http://localhost:{}/", consts::SOCKET_DEV_API_PORT)
 }
 
 pub fn jsr_registry_unset_url() -> String {
@@ -308,7 +269,7 @@ fn ensure_test_server_built() {
   }
 }
 
-pub const TEST_SERVERS_COUNT: usize = 39;
+pub const TEST_SERVERS_COUNT: usize = 40;
 
 #[derive(Default)]
 struct HttpServerCount {
@@ -562,9 +523,6 @@ pub fn ende_cmd() -> TestCommandBuilder {
 pub fn ende_cmd_with_ende_dir(ende_dir: &TempDir) -> TestCommandBuilder {
   TestCommandBuilder::new(ende_dir.clone())
     .env("ENDE_DIR", ende_dir.path())
-    .env("NPM_CONFIG_REGISTRY", npm_registry_unset_url())
-    .env("JSR_NPM_URL", npm_jsr_registry_unset_url())
-    .env("NODEJS_ORG_MIRROR", nodejs_org_mirror_unset_url())
     .env("JSR_URL", jsr_registry_unset_url())
 }
 

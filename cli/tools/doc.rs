@@ -36,7 +36,6 @@ use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
 use ende_lib::version::ENDE_VERSION_INFO;
-use ende_npm_installer::graph::NpmCachingStrategy;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 
@@ -257,15 +256,9 @@ pub async fn doc(
       )?;
 
       let graph = module_graph_creator
-        .create_graph(
-          GraphKind::TypesOnly,
-          module_specifiers.clone(),
-          NpmCachingStrategy::Eager,
-        )
+        .create_graph(GraphKind::TypesOnly, module_specifiers.clone())
         .await?;
 
-      // building the graph may have changed npm specifiers to
-      // file: specifiers, so get the new roots
       let mut module_specifiers =
         graph.roots.iter().cloned().collect::<Vec<_>>();
 

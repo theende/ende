@@ -25,11 +25,6 @@ pub static ENV_VARS: &[EnvVar] = &[
     example: None,
   },
   EnvVar {
-    name: "ENDE_COMPAT",
-    description: "Enable Node.js compatibility mode - extensionless imports, built-in\nNode.js modules, CommonJS detection and more.",
-    example: None,
-  },
-  EnvVar {
     name: "ENDE_COVERAGE_DIR",
     description: "Set the directory for collecting code coverage profiles.\nEquivalent to using the --coverage flag.",
     example: None,
@@ -160,11 +155,6 @@ pub static ENV_VARS: &[EnvVar] = &[
     name: "NO_PROXY",
     description: "Comma-separated list of hosts which do not use a proxy.",
     example: Some("(module downloads, fetch)"),
-  },
-  EnvVar {
-    name: "NODE_USE_ENV_PROXY",
-    description: "If set to 1, node:http and node:https honor HTTP_PROXY,\nHTTPS_PROXY, and NO_PROXY from the environment.",
-    example: None,
   },
   EnvVar {
     name: "SSLKEYLOGFILE",

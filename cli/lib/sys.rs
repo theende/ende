@@ -1,6 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use ende_node::ExtNodeSys;
 use sys_traits::EnvVar;
 use sys_traits::FsCanonicalize;
 use sys_traits::FsCreateDirAll;
@@ -26,7 +25,6 @@ pub trait EndeLibSys:
   + FsRead
   + ThreadSleep
   + SystemRandom
-  + ExtNodeSys
   + Clone
   + Send
   + Sync

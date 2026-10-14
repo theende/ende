@@ -15,7 +15,6 @@ use deno_ast::MediaType;
 use deno_ast::ModuleSpecifier;
 use deno_graph::GraphKind;
 use deno_semver::StackString;
-use deno_semver::npm::NpmPackageReqReference;
 use deno_terminal::colors;
 use ende_cache_dir::file_fetcher::CacheSetting;
 pub use ende_config::ende_json::BenchConfig;
@@ -40,15 +39,9 @@ use ende_core::anyhow::Context;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_lib::args::has_flag_env_var;
-use ende_lib::args::npm_pkg_req_ref_to_binary_command;
-use ende_lib::args::npm_process_state;
 use ende_lib::version::ENDE_VERSION_INFO;
 use ende_lib::worker::StorageKeyResolver;
-use ende_npm::NpmSystemInfo;
-use ende_npm_installer::LifecycleScriptsConfig;
-use ende_npm_installer::graph::NpmCachingStrategy;
 use ende_resolver::factory::resolve_jsr_url;
-use ende_runtime::ende_node::ops::ipc::ChildIpcSerialization;
 use ende_runtime::ende_permissions::AllowRunDescriptor;
 use ende_runtime::ende_permissions::PathDescriptor;
 use ende_runtime::ende_permissions::PermissionsOptions;
@@ -430,25 +423,6 @@ impl WorkspaceMainModuleResolver {
       } => specifier,
     };
 
-    // When the workspace resolver rewrites a bare specifier like
-    // `chalk/main.ts` into `npm:chalk@5/main.ts` via an import map alias,
-    // prefer a matching local file relative to cwd. Explicit `npm:`
-    // invocations keep strict semantics because the input itself starts
-    // with `npm:`.
-    if !specifier.starts_with("npm:")
-      && url.scheme() == "npm"
-      && let Ok(npm_ref) = NpmPackageReqReference::from_specifier(&url)
-      && npm_ref.sub_path().is_some()
-      && let Ok(cwd_path) = deno_path_util::url_to_file_path(cwd)
-    {
-      let local_path = cwd_path.join(specifier);
-      if local_path.is_file()
-        && let Ok(local_url) = deno_path_util::url_from_file_path(&local_path)
-      {
-        return Ok(local_url);
-      }
-    }
-
     Ok(url)
   }
 }
@@ -559,10 +533,6 @@ impl CliOptions {
     }
   }
 
-  pub fn npm_system_info(&self) -> NpmSystemInfo {
-    npm_system_info()
-  }
-
   /// Resolve the specifier for a specified import map.
   ///
   /// This will NOT include the config file if it
@@ -575,13 +545,6 @@ impl CliOptions {
       self.workspace().root_ende_json().map(|c| c.as_ref()),
       &self.initial_cwd,
     )
-  }
-
-  pub fn node_ipc_init(
-    &self,
-    sys: &CliSys,
-  ) -> Result<Option<(i64, ChildIpcSerialization)>, AnyError> {
-    ende_lib::args::node_ipc_init(sys)
   }
 
   pub fn serve_port(&self) -> Option<u16> {
@@ -664,22 +627,6 @@ impl CliOptions {
     Ok(modules)
   }
 
-  pub fn require_modules(&self) -> Result<Vec<ModuleSpecifier>, AnyError> {
-    if self.flags.require.is_empty() {
-      return Ok(vec![]);
-    }
-
-    let mut require = Vec::with_capacity(self.flags.require.len());
-    for require_specifier in self.flags.require.iter() {
-      require.push(resolve_url_or_path_normalized(
-        require_specifier,
-        self.initial_cwd(),
-      )?);
-    }
-
-    Ok(require)
-  }
-
   fn resolve_main_module_with_resolver_if_bare(
     &self,
     raw_specifier: &str,
@@ -740,24 +687,11 @@ impl CliOptions {
               deno_path_util::resolve_path(&specifier, self.initial_cwd())?
             } else {
               let default_resolve = || {
-                let url = resolve_url_or_path_normalized(
+                resolve_url_or_path_normalized(
                   &run_flags.script,
                   self.initial_cwd(),
-                )?;
-                if self.is_node_main()
-                  && url.scheme() == "file"
-                  && MediaType::from_specifier(&url) == MediaType::Unknown
-                {
-                  Ok::<_, AnyError>(
-                    try_resolve_node_binary_main_entrypoint(
-                      &run_flags.script,
-                      self.initial_cwd(),
-                    )?
-                    .unwrap_or(url),
-                  )
-                } else {
-                  Ok(url)
-                }
+                )
+                .map_err(|e| e.into())
               };
               self.resolve_main_module_with_resolver_if_bare(
                 &run_flags.script,
@@ -820,22 +754,6 @@ impl CliOptions {
     } else {
       StorageKeyResolver::new_use_main_module()
     }
-  }
-
-  // If the main module should be treated as being in an npm package.
-  // This is triggered via a secret environment variable which is used
-  // for functionality like child_process.fork. Users should NOT depend
-  // on this functionality.
-  pub fn is_node_main(&self) -> bool {
-    npm_process_state(&CliSys::default()).is_some()
-  }
-
-  /// Gets the NodeModulesDir mode set internally by a subcommand (there is
-  /// no flag or config option for it).
-  ///
-  /// Use `WorkspaceFactory.node_modules_dir_mode()` to get the resolved value.
-  pub fn specified_node_modules_dir(&self) -> Option<NodeModulesDirMode> {
-    self.flags.node_modules_dir
   }
 
   pub fn vendor_dir_path(&self) -> Option<&PathBuf> {
@@ -1288,27 +1206,6 @@ impl CliOptions {
     &self.flags.trace_ops
   }
 
-  pub fn take_binary_npm_command_name(&self) -> Option<String> {
-    match self.sub_command() {
-      EndeSubcommand::Run(flags) => {
-        const NPM_CMD_NAME_ENV_VAR_NAME: &str = "ENDE_INTERNAL_NPM_CMD_NAME";
-        match std::env::var(NPM_CMD_NAME_ENV_VAR_NAME) {
-          Ok(var) => {
-            // remove the env var so that child sub processes won't pick this up
-
-            // SAFETY: single-threaded at this point in startup
-            unsafe { std::env::remove_var(NPM_CMD_NAME_ENV_VAR_NAME) };
-            Some(var)
-          }
-          Err(_) => NpmPackageReqReference::from_str(&flags.script).ok().map(
-            |req_ref| npm_pkg_req_ref_to_binary_command(&req_ref).to_string(),
-          ),
-        }
-      }
-      _ => None,
-    }
-  }
-
   pub fn type_check_mode(&self) -> TypeCheckMode {
     self.flags.type_check_mode
   }
@@ -1319,16 +1216,6 @@ impl CliOptions {
 
   pub fn unsafely_ignore_certificate_errors(&self) -> &Option<Vec<String>> {
     &self.flags.unsafely_ignore_certificate_errors
-  }
-
-  pub fn unstable_detect_cjs(&self) -> bool {
-    self.flags.unstable_config.detect_cjs
-  }
-
-  pub fn detect_cjs(&self) -> bool {
-    // only enabled for Node child processes (package.json is not supported
-    // in Ende)
-    self.is_node_main()
   }
 
   pub fn unstable_raw_imports(&self) -> bool {
@@ -1445,71 +1332,6 @@ impl CliOptions {
     }
 
     full_paths
-  }
-
-  pub fn lifecycle_scripts_config(&self) -> LifecycleScriptsConfig {
-    LifecycleScriptsConfig {
-      allowed: Default::default(),
-      denied: Vec::new(),
-      initial_cwd: self.initial_cwd.clone(),
-      root_dir: self.workspace().root_dir_path(),
-      explicit_install: matches!(
-        self.sub_command(),
-        EndeSubcommand::Install(_)
-          | EndeSubcommand::Cache(_)
-          | EndeSubcommand::Add(_)
-      ),
-    }
-  }
-
-  pub fn default_npm_caching_strategy(&self) -> NpmCachingStrategy {
-    if matches!(
-      self.sub_command(),
-      EndeSubcommand::Install(InstallFlags::Local(
-        InstallFlagsLocal::TopLevel(_)
-          | InstallFlagsLocal::Add(_)
-          | InstallFlagsLocal::Entrypoints(InstallEntrypointsFlags {
-            lockfile_only: true,
-            ..
-          }),
-      )) | EndeSubcommand::Add(_)
-        | EndeSubcommand::List(_)
-        | EndeSubcommand::Outdated(_)
-    ) {
-      NpmCachingStrategy::Manual
-    } else {
-      NpmCachingStrategy::Eager
-    }
-  }
-}
-
-fn try_resolve_node_binary_main_entrypoint(
-  specifier: &str,
-  initial_cwd: &Path,
-) -> Result<Option<Url>, AnyError> {
-  // node allows running files at paths without a `.js` extension
-  // or at directories with an index.js file
-  let path = initial_cwd.join(specifier);
-  if path.is_dir() {
-    let index_file = path.join("index.js");
-    Ok(if index_file.is_file() {
-      Some(deno_path_util::url_from_file_path(&index_file)?)
-    } else {
-      None
-    })
-  } else {
-    let path = path.with_extension(
-      path
-        .extension()
-        .and_then(|s| s.to_str())
-        .map(|s| format!("{}.js", s))
-        .unwrap_or("js".to_string()),
-    );
-    if path.is_file() {
-      Ok(Some(deno_path_util::url_from_file_path(&path)?))
-    } else {
-      Ok(None)
-    }
   }
 }
 

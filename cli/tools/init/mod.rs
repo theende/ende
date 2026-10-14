@@ -459,17 +459,17 @@ mod test {
   fn jsr_name_to_create_script_test() {
     // scoped without subpath -> appends /create
     assert_eq!(
-      jsr_name_to_create_script("jsr:@fresh/init"),
-      "jsr:@fresh/init/create"
+      jsr_name_to_create_script("jsr:@scope/init"),
+      "jsr:@scope/init/create"
     );
     // scoped with version, no subpath -> appends /create (canonical form)
     assert_eq!(
-      jsr_name_to_create_script("jsr:@fresh/init@2"),
-      "jsr:@fresh/init@2/create"
+      jsr_name_to_create_script("jsr:@scope/init@2"),
+      "jsr:@scope/init@2/create"
     );
     assert_eq!(
-      jsr_name_to_create_script("jsr:@fresh/init@^2.0.0"),
-      "jsr:@fresh/init@^2.0.0/create"
+      jsr_name_to_create_script("jsr:@scope/init@^2.0.0"),
+      "jsr:@scope/init@^2.0.0/create"
     );
     // scoped with subpath -> appends /create
     assert_eq!(

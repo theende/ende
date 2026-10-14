@@ -785,7 +785,7 @@ async fn run_watch_no_dynamic() {
   check_alive_then_kill(child);
 }
 
-// Regression test: modules given via --preload (or --require / NODE_OPTIONS)
+// Regression test: modules given via --preload
 // must execute under --watch, both on the initial run and again after every
 // watcher restart. They were silently skipped because the watch path never
 // called execute_preload_modules().

@@ -1026,66 +1026,6 @@ fn v8_to_laufey_value<'a>(
   }
 }
 
-/// Promote this dylib's symbols to the global symbol scope so that
-/// native addons loaded via `dlopen` (e.g. next-swc.node) can resolve
-/// NAPI function symbols from our library.
-///
-/// By default, Laufey loads this dylib without `RTLD_GLOBAL`, so its symbols
-/// are only visible within the dylib itself. NAPI addons use
-/// `-undefined dynamic_lookup` (macOS) and expect NAPI symbols to be
-/// in the global symbol table. Re-opening ourselves with `RTLD_GLOBAL`
-/// promotes our exports to global scope.
-#[cfg(unix)]
-fn promote_dylib_symbols_to_global() {
-  #[repr(C)]
-  struct DlInfo {
-    dli_fname: *const std::ffi::c_char,
-    dli_fbase: *mut std::ffi::c_void,
-    dli_sname: *const std::ffi::c_char,
-    dli_saddr: *mut std::ffi::c_void,
-  }
-  unsafe extern "C" {
-    fn dladdr(
-      addr: *const std::ffi::c_void,
-      info: *mut DlInfo,
-    ) -> std::ffi::c_int;
-    fn dlopen(
-      path: *const std::ffi::c_char,
-      flags: std::ffi::c_int,
-    ) -> *mut std::ffi::c_void;
-  }
-  use libc::RTLD_GLOBAL;
-  use libc::RTLD_LAZY;
-  use libc::RTLD_NOLOAD;
-
-  // SAFETY:
-  // - `dladdr` reads the metadata of the function passed in; a known
-  //   function pointer in this dylib is always a valid argument.
-  // - `dlopen` with RTLD_NOLOAD doesn't load anything new — it only
-  //   bumps the refcount of an already-loaded image, then sets
-  //   RTLD_GLOBAL on its symbols. We pass the path returned by
-  //   `dladdr` (our own dylib) which is guaranteed loaded since
-  //   we're executing in it. On NULL return there's nothing for us
-  //   to clean up — the global-symbol-promotion just didn't happen
-  //   and any NAPI addon needing those symbols will fail with a
-  //   clear "symbol not found" later.
-  unsafe {
-    let mut info: DlInfo = std::mem::zeroed();
-    let addr = promote_dylib_symbols_to_global as *const std::ffi::c_void;
-    if dladdr(addr, &mut info) != 0 && !info.dli_fname.is_null() {
-      let handle =
-        dlopen(info.dli_fname, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
-      if handle.is_null() {
-        log::warn!(
-          "[desktop] dlopen(self, RTLD_NOLOAD|RTLD_GLOBAL) returned NULL; \
-           NAPI symbols will not be globally visible and native Node-API \
-           addons will fail to load"
-        );
-      }
-    }
-  }
-}
-
 /// Get the filesystem path of this dylib using `dladdr`.
 #[cfg(unix)]
 fn get_dylib_path() -> Option<PathBuf> {
@@ -1221,41 +1161,6 @@ laufey::main!(|| {
   #[cfg(not(unix))]
   let update_rolled_back = false;
 
-  // Make NAPI symbols visible to native addons (e.g. next-swc).
-  #[cfg(unix)]
-  promote_dylib_symbols_to_global();
-
-  // Guard against re-entry: when a framework dev server (e.g. Next.js)
-  // forks child/worker processes, they re-execute this dylib. Detect
-  // forked workers and run them headless (no Laufey window).
-  //
-  // A forked worker is recognized by the *combination* of:
-  //   1. argv shaped like `<exe> run [flags…] script.js …` (i.e.
-  //      `extract_fork_script_path` returns `Some`), OR
-  //   2. argv shaped like `<exe> run …` *and* one of the worker env
-  //      vars set by the parent dev server (NODE_CHANNEL_FD,
-  //      NEXT_PRIVATE_WORKER).
-  //
-  // The bare env-var check used to be enough, but a user shell that
-  // already had NODE_CHANNEL_FD set (e.g. running inside another forked
-  // process, Jest, pnpm) would silently take the headless path and
-  // never show a window. Requiring the `run` argv shape rules that out:
-  // the Laufey backend never invokes us with `run` as argv[1].
-  let args: Vec<_> = env::args_os().collect();
-  let argv_run = args
-    .get(1)
-    .and_then(|a| a.to_str())
-    .map(|s| s == "run")
-    .unwrap_or(false);
-  let is_worker = extract_fork_script_path(&args).is_some()
-    || (argv_run
-      && (env::var("NODE_CHANNEL_FD").is_ok()
-        || env::var("NEXT_PRIVATE_WORKER").is_ok()));
-  if is_worker {
-    run_on_runtime_thread(run_headless_worker);
-    return;
-  }
-
   // Set up panic hook for desktop error reporting.  The error reporting
   // URL is only known after binary metadata is parsed (in run_desktop),
   // so the hook reads from a global that gets set later.
@@ -1340,11 +1245,7 @@ laufey::main!(|| {
     std::env::set_var("DENO_SERVE_ADDRESS", &serve_address);
   }
 
-  // Read the embedded standalone section, extract the VFS, and chdir
-  // into the extraction dir — all BEFORE the tokio runtime starts.
-  // chdir is process-wide; doing it after the runtime build (and any
-  // worker / async tasks it spawns) would race with code that resolves
-  // relative paths.
+  // Read the embedded standalone section before the tokio runtime starts.
   let args: Vec<_> = env::args_os().collect();
   let data = match endert::binary::extract_standalone_with_finder(
     Cow::Owned(args),
@@ -1356,25 +1257,6 @@ laufey::main!(|| {
       return;
     }
   };
-  if data.metadata.self_extracting.is_some() {
-    if let Err(e) =
-      endert::binary::extract_vfs_to_disk(&data.vfs, &data.root_path)
-    {
-      log::error!("[desktop] failed to extract VFS: {:?}", e);
-      return;
-    }
-    // Frameworks like Next.js look for build output (e.g. .next/)
-    // relative to CWD.
-    if let Err(e) = std::env::set_current_dir(&data.root_path) {
-      log::error!(
-        "[desktop] failed to chdir to {}: {}",
-        data.root_path.display(),
-        e
-      );
-      return;
-    }
-  }
-
   // Everything above must stay on this (still effectively single-threaded)
   // loader thread — see the setenv comment. The runtime itself moves to a
   // dedicated thread with a real stack; the loader thread just parks in
@@ -1455,139 +1337,6 @@ fn run_on_runtime_thread<F: FnOnce() + Send + 'static>(f: F) {
     // process itself; this is a backstop in case it returned.
     ende_runtime::exit(1);
   }
-}
-
-/// Run as a headless worker (no Laufey window). Used when a framework dev
-/// server forks child processes that re-execute this dylib.
-fn run_headless_worker() {
-  endert::init_logging(None, None);
-  ende_runtime::ende_permissions::mark_standalone();
-  rustls::crypto::aws_lc_rs::default_provider()
-    .install_default()
-    .unwrap();
-
-  let rt = ende_runtime::tokio_util::create_basic_runtime();
-
-  rt.block_on(async {
-    let args: Vec<_> = env::args_os().collect();
-    log::debug!("[worker] args: {:?}", args);
-    #[allow(
-      clippy::disallowed_methods,
-      reason = "debug trace of the worker's current directory"
-    )]
-    let cwd = env::current_dir();
-    log::debug!("[worker] cwd: {:?}", cwd);
-
-    // Detect if this is a child_process.fork() invocation.
-    // fork() translates args to: ["run", "-A", "--unstable-...", "script.js", ...]
-    // Extract the script path so the forked worker runs the correct module
-    // instead of the embedded entrypoint.
-    let fork_module = extract_fork_script_path(&args);
-    log::debug!("[worker] fork_module: {:?}", fork_module);
-
-    let data = match endert::binary::extract_standalone_with_finder(
-      Cow::Owned(args),
-      find_section_in_dylib,
-    ) {
-      Ok(data) => data,
-      Err(e) => {
-        log::error!("Worker failed to load standalone data: {:?}", e);
-        return;
-      }
-    };
-
-    endert::load_env_vars(&data.metadata.env_vars_from_env_file);
-
-    let sys = if data.metadata.self_extracting.is_some() {
-      // VFS should already be extracted by the parent process.
-      // In dev mode (external dev server via ENDE_DESKTOP_DEV_URL), keep the
-      // source directory as CWD (inherited from parent). In production
-      // mode, set CWD to extraction directory.
-      if env::var("ENDE_DESKTOP_DEV_URL").is_err() {
-        let _ = std::env::set_current_dir(&data.root_path);
-      }
-      endert::file_system::EndeRtSys::new_self_extracting(data.vfs.clone())
-    } else {
-      endert::file_system::EndeRtSys::new(data.vfs.clone())
-    };
-
-    let options = endert::run::RunOptions {
-      override_main_module: fork_module,
-      ..Default::default()
-    };
-
-    log::debug!("[worker] starting run_with_options");
-
-    match endert::run::run_with_options(
-      Arc::new(sys.clone()),
-      sys,
-      data,
-      options,
-    )
-    .await
-    {
-      Ok(exit_code) => {
-        log::debug!(
-          "[worker] run_with_options completed with exit code: {}",
-          exit_code
-        );
-      }
-      Err(error) => {
-        let error_string = match js_error_downcast_ref(&error) {
-          Some(js_error) => format_js_error(js_error, None),
-          None => format!("{:?}", error),
-        };
-        log::debug!("[worker] run_with_options error: {}", error_string);
-        log::error!(
-          "{}: {}",
-          colors::red_bold("error"),
-          error_string.trim_start_matches("error: ")
-        );
-      }
-    }
-    log::debug!("[worker] block_on finished");
-  });
-  log::debug!("[worker] run_headless_worker returning");
-}
-
-/// Extract the script path from fork'd process arguments.
-///
-/// When `child_process.fork(scriptPath)` is called, the args are translated
-/// to Ende CLI args: `["<exe>", "run", "-A", "--unstable-...", "script.js", ...]`
-/// This function finds the script path (first non-flag arg after "run").
-fn extract_fork_script_path(
-  args: &[std::ffi::OsString],
-) -> Option<ende_core::url::Url> {
-  let args: Vec<String> = args
-    .iter()
-    .filter_map(|a| a.to_str().map(String::from))
-    .collect();
-
-  // Skip argv[0] (the executable), expect "run" as the subcommand
-  if args.len() < 3 || args[1] != "run" {
-    return None;
-  }
-
-  // Find the first arg after "run" that isn't a flag
-  for arg in &args[2..] {
-    if arg.starts_with('-') {
-      continue;
-    }
-    // This is the script path
-    let path = PathBuf::from(arg);
-    let path = if path.is_absolute() {
-      path
-    } else {
-      #[allow(
-        clippy::disallowed_methods,
-        reason = "endert_desktop has no resolve_cwd helper; resolves a relative fork-script path"
-      )]
-      let cwd = env::current_dir().ok()?;
-      cwd.join(path)
-    };
-    return ende_core::url::Url::from_file_path(path).ok();
-  }
-  None
 }
 
 /// Convert a laufey::Value to a DesktopValue for direct V8 conversion.
@@ -1703,14 +1452,7 @@ async fn run_desktop(
     );
   }
 
-  // The VFS extract + chdir for self-extracting bundles happens in
-  // `laufey::main!` before the tokio runtime is built — chdir is
-  // process-wide and isn't safe to do once async tasks are running.
-  let sys = if data.metadata.self_extracting.is_some() {
-    endert::file_system::EndeRtSys::new_self_extracting(data.vfs.clone())
-  } else {
-    endert::file_system::EndeRtSys::new(data.vfs.clone())
-  };
+  let sys = endert::file_system::EndeRtSys::new(data.vfs.clone());
 
   ende_runtime::ende_telemetry::init(
     &sys,
@@ -1768,21 +1510,6 @@ async fn run_desktop(
   // (set by `ende compile --desktop --hmr`).
   let hmr_watch_dir = env::var("ENDE_DESKTOP_HMR").ok().map(PathBuf::from);
 
-  // Framework dev servers handle their own HMR via websocket.
-  // For non-framework apps, V8-level HMR reloads the webview.
-  //
-  // For framework dev, the CLI spawned an external dev-server process and
-  // parsed its URL (ENDE_DESKTOP_DEV_URL, see `run_desktop_hmr` in
-  // cli/tools/desktop.rs); navigate there directly.
-  let external_dev_url = env::var("ENDE_DESKTOP_DEV_URL").ok();
-  let is_framework_dev = external_dev_url.is_some();
-
-  // In dev mode, restore CWD to the source directory so the framework
-  // dev server watches the original source files, not the extracted VFS.
-  if is_framework_dev && let Ok(source_dir) = env::var("ENDE_DESKTOP_HMR") {
-    std::env::set_current_dir(&source_dir)?;
-  }
-
   // Shared initial window ID for navigate_fut and HMR reload.
   let initial_window_id = Arc::new(AtomicU32::new(0));
   let initial_window_id_for_navigate = initial_window_id.clone();
@@ -1796,7 +1523,7 @@ async fn run_desktop(
   let open_windows_for_hmr = open_windows.clone();
 
   let hmr_on_reload: Option<endert::hmr::HmrReloadCallback> =
-    if hmr_watch_dir.is_some() && !is_framework_dev {
+    if hmr_watch_dir.is_some() {
       Some(Box::new(move || {
         let ids: Vec<u32> = open_windows_for_hmr
           .lock()
@@ -1847,11 +1574,7 @@ async fn run_desktop(
     auto_serve: true,
     serve_port: Some(desktop_serve_port),
     serve_host: Some("127.0.0.1".to_string()),
-    hmr_watch_dir: if is_framework_dev {
-      None
-    } else {
-      hmr_watch_dir
-    },
+    hmr_watch_dir,
     hmr_on_reload,
     op_state_init: Some(Box::new(move |state| {
       let (event_tx, event_rx) =
@@ -1911,7 +1634,6 @@ async fn run_desktop(
         state.put(ende_runtime::ops::desktop::DesktopAppName(name));
       }
     })),
-    override_main_module: None,
     auto_update_version,
     auto_update_rolled_back,
     error_reporting_url: data.metadata.error_reporting_url.clone(),
@@ -1924,9 +1646,7 @@ async fn run_desktop(
   // Run the Ende runtime and Laufey event loop concurrently.
   // We spawn the runtime first, wait for the server to be ready,
   // then navigate the webview.
-  let poll_serve_port = external_dev_url.is_none();
-  let url = external_dev_url
-    .unwrap_or_else(|| format!("http://127.0.0.1:{}", desktop_serve_port));
+  let url = format!("http://127.0.0.1:{}", desktop_serve_port);
   log::debug!("[desktop] starting runtime and laufey event loop");
   let run_fut =
     endert::run::run_with_options(Arc::new(sys.clone()), sys, data, run_opts);
@@ -1971,42 +1691,39 @@ async fn run_desktop(
     }
 
     let id = initial_window_id_for_navigate.load(Ordering::Acquire);
-    if poll_serve_port {
-      let mut server_ready = false;
-      for i in 0..60 {
-        if let Ok(mut stream) =
-          tokio::net::TcpStream::connect(("127.0.0.1", desktop_serve_port))
-            .await
-        {
-          let req = format!(
-            "GET / HTTP/1.1\r\nHost: 127.0.0.1:{}\r\nConnection: close\r\n\r\n",
-            desktop_serve_port
-          );
-          if stream.write_all(req.as_bytes()).await.is_ok() {
-            let mut buf = vec![0u8; 256];
-            if let Ok(n) = stream.read(&mut buf).await {
-              let response = String::from_utf8_lossy(&buf[..n]);
-              if response.starts_with("HTTP/1.1 2")
-                || response.starts_with("HTTP/1.1 3")
-                || response.starts_with("HTTP/1.0 2")
-                || response.starts_with("HTTP/1.0 3")
-              {
-                log::debug!(
-                  "[desktop] Server ready after {} attempts, navigating to {}",
-                  i + 1,
-                  &url
-                );
-                server_ready = true;
-                break;
-              }
+    let mut server_ready = false;
+    for i in 0..60 {
+      if let Ok(mut stream) =
+        tokio::net::TcpStream::connect(("127.0.0.1", desktop_serve_port)).await
+      {
+        let req = format!(
+          "GET / HTTP/1.1\r\nHost: 127.0.0.1:{}\r\nConnection: close\r\n\r\n",
+          desktop_serve_port
+        );
+        if stream.write_all(req.as_bytes()).await.is_ok() {
+          let mut buf = vec![0u8; 256];
+          if let Ok(n) = stream.read(&mut buf).await {
+            let response = String::from_utf8_lossy(&buf[..n]);
+            if response.starts_with("HTTP/1.1 2")
+              || response.starts_with("HTTP/1.1 3")
+              || response.starts_with("HTTP/1.0 2")
+              || response.starts_with("HTTP/1.0 3")
+            {
+              log::debug!(
+                "[desktop] Server ready after {} attempts, navigating to {}",
+                i + 1,
+                &url
+              );
+              server_ready = true;
+              break;
             }
           }
         }
-        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
       }
-      if !server_ready {
-        log::warn!("Server not ready after 15s, navigating anyway");
-      }
+      tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    }
+    if !server_ready {
+      log::warn!("Server not ready after 15s, navigating anyway");
     }
     laufey::Window::from_id(id).navigate(&url);
 
@@ -2049,13 +1766,10 @@ async fn run_desktop(
 
 #[cfg(test)]
 mod tests {
-  use std::ffi::OsString;
-
   use ende_runtime::ops::desktop::PermissionState;
 
   use super::desktop_menu_item_to_laufey_menu_item;
   use super::desktop_value_to_laufey_value;
-  use super::extract_fork_script_path;
   use super::laufey_value_to_desktop_value;
   use super::map_permission_status;
   use super::should_show_native_error_dialog;
@@ -2087,66 +1801,6 @@ mod tests {
   fn non_js_crash_is_surfaced() {
     // A non-JS runtime crash has no JS listener to report it.
     assert!(should_show_native_error_dialog(false, false));
-  }
-
-  // --- extract_fork_script_path ---
-  //
-  // Framework dev servers (e.g. Next.js) call `child_process.fork()` to
-  // re-exec this binary as a worker process. We detect that pattern by
-  // argv shape: `<exe> run [flags…] script.js …`. Mis-classifying the
-  // main launch as a worker would mean no window appears at all.
-
-  fn args(parts: &[&str]) -> Vec<OsString> {
-    parts.iter().map(|s| OsString::from(*s)).collect()
-  }
-
-  #[test]
-  fn fork_argv_shape_returns_script_url() {
-    let v =
-      extract_fork_script_path(&args(&["myapp", "run", "/tmp/worker.js"]));
-    let url = v.expect("argv with `run <abs-script>` is a worker");
-    assert!(url.as_str().ends_with("worker.js"));
-    assert_eq!(url.scheme(), "file");
-  }
-
-  #[test]
-  fn fork_argv_skips_flags_before_script() {
-    let v = extract_fork_script_path(&args(&[
-      "myapp",
-      "run",
-      "--allow-net",
-      "-A",
-      "/tmp/worker.js",
-    ]));
-    assert!(v.is_some(), "flags before the script path must be skipped");
-  }
-
-  #[test]
-  fn fork_argv_rejects_non_run_subcommand() {
-    // Only `<exe> run …` is the worker shape. The main desktop launch
-    // never has a subcommand at argv[1] — laufey passes no argv at all.
-    assert!(extract_fork_script_path(&args(&["myapp"])).is_none());
-    assert!(
-      extract_fork_script_path(&args(&["myapp", "task", "build"])).is_none()
-    );
-    assert!(extract_fork_script_path(&args(&["myapp", "test"])).is_none());
-  }
-
-  #[test]
-  fn fork_argv_run_with_only_flags_is_not_a_fork() {
-    // `<exe> run --help` has no script path — don't claim this is a
-    // worker.
-    let v = extract_fork_script_path(&args(&["myapp", "run", "--help"]));
-    assert!(
-      v.is_none(),
-      "argv with only flags after `run` is not a fork worker"
-    );
-  }
-
-  #[test]
-  fn fork_argv_bare_run_is_not_a_fork() {
-    // `<exe> run` with no further args isn't enough to be a fork.
-    assert!(extract_fork_script_path(&args(&["myapp", "run"])).is_none());
   }
 
   // --- map_permission_status ---

@@ -43,6 +43,5 @@ Download http://localhost:4545/subdir/redirects/redirect1.js
   "redirects": {
     "http://localhost:4546/subdir/redirects/redirect1.js": "http://localhost:4545/subdir/redirects/redirect1.js",
     "http://localhost:4548/subdir/redirects/redirect1.js": "http://localhost:4546/subdir/redirects/redirect1.js"
-  },
-  "npmPackages": {}
+  }
 }

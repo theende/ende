@@ -40,8 +40,6 @@ use crate::http_server;
 use crate::jsr_registry_unset_url;
 #[cfg(feature = "lsp")]
 use crate::lsp::LspClientBuilder;
-use crate::nodejs_org_mirror_unset_url;
-use crate::npm_registry_unset_url;
 use crate::print::spawn_thread;
 use crate::println;
 use crate::pty::Pty;
@@ -124,10 +122,6 @@ pub struct TestContextBuilder {
 impl TestContextBuilder {
   pub fn new() -> Self {
     Self::default().add_compile_env_vars()
-  }
-
-  pub fn for_npm() -> Self {
-    Self::new().use_http_server().add_npm_env_vars()
   }
 
   pub fn for_jsr() -> Self {
@@ -350,15 +344,6 @@ impl TestContext {
     self
       .new_command()
       .name("deno")
-      .args(args)
-      .run()
-      .skip_output_check();
-  }
-
-  pub fn run_npm(&self, args: impl AsRef<str>) {
-    self
-      .new_command()
-      .name("npm")
       .args(args)
       .run()
       .skip_output_check();
@@ -965,20 +950,11 @@ impl TestCommandBuilder {
     if !envs.contains_key("ENDE_DIR") && !envs.contains_key("DENO_DIR") {
       envs.insert("ENDE_DIR".to_string(), self.ende_dir.path().to_string());
     }
-    if !envs.contains_key("NPM_CONFIG_REGISTRY") {
-      envs.insert("NPM_CONFIG_REGISTRY".to_string(), npm_registry_unset_url());
-    }
     if !envs.contains_key("ENDE_NO_UPDATE_CHECK") {
       envs.insert("ENDE_NO_UPDATE_CHECK".to_string(), "1".to_string());
     }
     if !envs.contains_key("JSR_URL") {
       envs.insert("JSR_URL".to_string(), jsr_registry_unset_url());
-    }
-    if !envs.contains_key("NODEJS_ORG_MIRROR") {
-      envs.insert(
-        "NODEJS_ORG_MIRROR".to_string(),
-        nodejs_org_mirror_unset_url(),
-      );
     }
     if !envs.contains_key("PATH") {
       let path = std::env::var_os("PATH").unwrap_or_default();

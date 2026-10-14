@@ -804,7 +804,6 @@ impl<'a> TaskRunner<'a> {
       custom_commands: Default::default(),
       init_cwd: self.cli_options.initial_cwd(),
       argv,
-      node_modules_bin_dirs: &[],
       stdio,
       kill_signal,
     })

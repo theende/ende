@@ -147,9 +147,7 @@ pub fn flags_from_vec(args: Vec<String>) -> Result<Flags, CliError> {
     return Ok(flags);
   }
 
-  let mut flags = convert(parsed)?;
-  apply_node_options(&mut flags);
-  Ok(flags)
+  convert(parsed)
 }
 
 // ============================================================
@@ -1235,16 +1233,6 @@ fn run_parse(
   ext_arg_parse(result, flags);
 
   flags.tunnel = result.get_bool("tunnel");
-  if result.get_bool("use-env-proxy") {
-    // Node's --use-env-proxy is process-wide. Ende's node polyfills read the
-    // same env variable as the Node tests when selecting global proxy config.
-    // SAFETY: CLI parsing runs before worker startup and before Ende starts
-    // any threads that could concurrently read the process environment.
-    unsafe { std::env::set_var("NODE_USE_ENV_PROXY", "1") };
-  } else if result.get_bool("no-use-env-proxy") {
-    // SAFETY: see the --use-env-proxy branch above.
-    unsafe { std::env::set_var("NODE_USE_ENV_PROXY", "0") };
-  }
   flags.code_cache_enabled = !result.get_bool("no-code-cache");
   let coverage_dir = if result.contains("coverage") {
     Some(result.get_one("coverage").unwrap_or("coverage").to_string())
@@ -2344,7 +2332,7 @@ fn normalize_create_package_name(
   } else {
     Err(CliError::new(
       CliErrorKind::InvalidValue,
-      "Missing `jsr:` prefix. For example: `ende create jsr:@fresh/init`, or pass `--jsr`.",
+      "Missing `jsr:` prefix. For example: `ende create jsr:@scope/init`, or pass `--jsr`.",
     ))
   }
 }
@@ -2417,8 +2405,8 @@ fn desktop_parse(
     .map(|v| v.iter().map(|s| s.to_string()).collect::<Vec<_>>())
     .unwrap_or_default()
     .into_iter();
-  // The entrypoint is optional: bare `ende desktop` defaults to "." so
-  // framework detection runs against the current directory.
+  // Bare `ende desktop` defaults to "." so config discovery starts in the
+  // current directory; the command then fails asking for an entrypoint.
   let source_file = script.next().unwrap_or_else(|| ".".to_string());
   let args = script.collect();
 
@@ -2679,209 +2667,6 @@ fn deploy_parse(flags: &mut Flags, sandbox: bool) {
   // filled in by the shared trailing-arg handling in `flags_from_vec`, so this
   // must not copy `result.trailing` itself or every arg would be duplicated.
   flags.subcommand = EndeSubcommand::Deploy(DeployFlags { sandbox });
-}
-
-// ============================================================
-// NODE_OPTIONS support
-// ============================================================
-
-#[cfg(test)]
-thread_local! {
-    static TEST_NODE_OPTIONS: std::cell::RefCell<Option<String>> =
-        const { std::cell::RefCell::new(None) };
-}
-
-#[cfg(test)]
-pub fn set_test_node_options(value: Option<&str>) {
-  TEST_NODE_OPTIONS.with(|opt| {
-    *opt.borrow_mut() = value.map(|s| s.to_string());
-  });
-}
-
-/// Parse NODE_OPTIONS environment variable into a list of arguments.
-/// Handles quoted strings and backslash escapes, matching Node.js behavior.
-pub fn parse_node_options_env_var(
-  node_options: &str,
-) -> Result<Vec<String>, String> {
-  let mut env_argv = Vec::new();
-  let mut is_in_string = false;
-  let mut will_start_new_arg = true;
-
-  let chars: Vec<char> = node_options.chars().collect();
-  let mut index = 0;
-
-  while index < chars.len() {
-    let mut c = chars[index];
-
-    // Backslashes escape the following character
-    if c == '\\' && is_in_string {
-      if index + 1 == chars.len() {
-        return Err(
-          "invalid value for NODE_OPTIONS (invalid escape)".to_string(),
-        );
-      } else {
-        index += 1;
-        c = chars[index];
-      }
-    } else if c == ' ' && !is_in_string {
-      will_start_new_arg = true;
-      index += 1;
-      continue;
-    } else if c == '"' {
-      is_in_string = !is_in_string;
-      index += 1;
-      continue;
-    }
-
-    if will_start_new_arg {
-      env_argv.push(c.to_string());
-      will_start_new_arg = false;
-    } else if let Some(last) = env_argv.last_mut() {
-      last.push(c);
-    }
-
-    index += 1;
-  }
-
-  if is_in_string {
-    return Err(
-      "invalid value for NODE_OPTIONS (unterminated string)".to_string(),
-    );
-  }
-
-  Ok(env_argv)
-}
-
-/// Reads some flags from NODE_OPTIONS:
-/// https://nodejs.org/api/cli.html#node_optionsoptions
-/// Currently supports:
-/// - `--require` / `-r`
-/// - `--inspect-publish-uid`
-///
-/// Public because the CLI's bare-run fast path skips the full parse and has to
-/// apply these itself; `fast_path_matches_full_parse` asserts the two agree.
-#[allow(clippy::disallowed_methods, reason = "reads NODE_OPTIONS from env")]
-pub fn apply_node_options(flags: &mut Flags) {
-  let node_options = match std::env::var("NODE_OPTIONS") {
-    Ok(val) if !val.is_empty() => val,
-    _ => {
-      #[cfg(test)]
-      {
-        match TEST_NODE_OPTIONS.with(|opt| opt.borrow().clone()) {
-          Some(val) if !val.is_empty() => val,
-          _ => return,
-        }
-      }
-      #[cfg(not(test))]
-      return;
-    }
-  };
-
-  let args = match parse_node_options_env_var(&node_options) {
-    Ok(args) => args,
-    Err(_) => return,
-  };
-
-  // Filter to only supported flags, using a scan to track whether the
-  // previous token was --require/-r (so we keep its value argument too).
-  let filtered: Vec<&str> = args
-    .iter()
-    .map(String::as_str)
-    .scan(false, |prev_was_require, word| {
-      if word == "--require" || word == "-r" {
-        *prev_was_require = true;
-        return Some((word, true));
-      }
-      if word.starts_with("--inspect-publish-uid=") || *prev_was_require {
-        *prev_was_require = false;
-        return Some((word, true));
-      }
-      *prev_was_require = false;
-      Some((word, false))
-    })
-    .filter_map(|(word, should_keep)| should_keep.then_some(word))
-    .collect();
-
-  // Parse --require values
-  let mut node_require: Vec<String> = Vec::new();
-  let mut i = 0;
-  while i < filtered.len() {
-    let word = filtered[i];
-    if (word == "--require" || word == "-r") && i + 1 < filtered.len() {
-      node_require.push(filtered[i + 1].to_string());
-      i += 2;
-    } else if word.starts_with("--inspect-publish-uid=") {
-      // Handle below
-      i += 1;
-    } else {
-      i += 1;
-    }
-  }
-
-  // `--require` is only accepted from NODE_OPTIONS (Node compat child
-  // processes); Ende has no `--require` flag.
-  if !node_require.is_empty() {
-    flags.require = node_require;
-  }
-
-  // Parse --inspect-publish-uid (only if not already set from CLI)
-  if flags.inspect_publish_uid.is_none() {
-    for word in &filtered {
-      if let Some(value) = word.strip_prefix("--inspect-publish-uid=") {
-        let mut uid = InspectPublishUid {
-          console: false,
-          http: false,
-        };
-        for part in value.split(',') {
-          match part.trim() {
-            "stderr" | "console" => uid.console = true,
-            "http" => uid.http = true,
-            _ => {}
-          }
-        }
-        flags.inspect_publish_uid = Some(uid);
-        break;
-      }
-    }
-  }
-
-  // Parse --inspect / --inspect-brk / --inspect-wait from NODE_OPTIONS. These
-  // are mutually exclusive, so only apply them if no inspector flag was passed
-  // on the CLI.
-  if flags.inspect.is_none()
-    && flags.inspect_brk.is_none()
-    && flags.inspect_wait.is_none()
-  {
-    for word in &args {
-      if let Some(addr) = node_inspect_addr(word, "--inspect") {
-        flags.inspect = Some(addr);
-        break;
-      } else if let Some(addr) = node_inspect_addr(word, "--inspect-brk") {
-        flags.inspect_brk = Some(addr);
-        break;
-      } else if let Some(addr) = node_inspect_addr(word, "--inspect-wait") {
-        flags.inspect_wait = Some(addr);
-        break;
-      }
-    }
-  }
-}
-
-/// Parse a NODE_OPTIONS inspector flag (`--inspect`, `--inspect-brk`,
-/// `--inspect-wait`) into its listen address. A bare flag uses the default
-/// `127.0.0.1:9229`; `--flag=host:port` parses the attached address.
-fn node_inspect_addr(word: &str, flag: &str) -> Option<SocketAddr> {
-  if word == flag {
-    Some(SocketAddr::from(([127, 0, 0, 1], 9229)))
-  } else if let Some(rest) = word.strip_prefix(flag)
-    && let Some(value) = rest.strip_prefix('=')
-  {
-    // Unparseable values in NODE_OPTIONS are ignored rather than rejected
-    // (clap parsed NODE_OPTIONS with `ignore_errors`).
-    parse_socket_addr(value).ok()
-  } else {
-    None
-  }
 }
 
 fn x_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {

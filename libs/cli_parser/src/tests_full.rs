@@ -18,7 +18,6 @@ use pretty_assertions::assert_eq;
 use crate::CliErrorKind;
 use crate::convert::escape_and_split_commas;
 use crate::convert::flags_from_vec;
-use crate::convert::set_test_node_options;
 use crate::flags::*;
 
 /// Creates a Vec<String> from string literals.
@@ -6162,12 +6161,12 @@ fn init() {
   );
 
   // --jsr with jsr: prefix already present
-  let r = flags_from_vec(svec!["ende", "init", "--jsr", "jsr:@fresh/init"]);
+  let r = flags_from_vec(svec!["ende", "init", "--jsr", "jsr:@scope/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
       subcommand: EndeSubcommand::Init(InitFlags {
-        package: Some("jsr:@fresh/init".to_string()),
+        package: Some("jsr:@scope/init".to_string()),
         package_args: vec![],
         dir: None,
         lib: false,
@@ -6254,12 +6253,12 @@ fn create() {
   let r = flags_from_vec(svec!["ende", "create", "--npm", "vite"]);
   assert!(r.is_err());
 
-  let r = flags_from_vec(svec!["ende", "create", "--jsr", "@fresh/init"]);
+  let r = flags_from_vec(svec!["ende", "create", "--jsr", "@scope/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
       subcommand: EndeSubcommand::Init(InitFlags {
-        package: Some("jsr:@fresh/init".to_string()),
+        package: Some("jsr:@scope/init".to_string()),
         package_args: vec![],
         dir: None,
         lib: false,
@@ -6288,12 +6287,12 @@ fn create() {
     }
   );
 
-  let r = flags_from_vec(svec!["ende", "create", "jsr:@fresh/init"]);
+  let r = flags_from_vec(svec!["ende", "create", "jsr:@scope/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
       subcommand: EndeSubcommand::Init(InitFlags {
-        package: Some("jsr:@fresh/init".to_string()),
+        package: Some("jsr:@scope/init".to_string()),
         package_args: vec![],
         dir: None,
         lib: false,
@@ -6305,12 +6304,12 @@ fn create() {
     }
   );
 
-  let r = flags_from_vec(svec!["ende", "create", "--yes", "jsr:@fresh/init"]);
+  let r = flags_from_vec(svec!["ende", "create", "--yes", "jsr:@scope/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
       subcommand: EndeSubcommand::Init(InitFlags {
-        package: Some("jsr:@fresh/init".to_string()),
+        package: Some("jsr:@scope/init".to_string()),
         package_args: vec![],
         dir: None,
         lib: false,
@@ -6325,7 +6324,7 @@ fn create() {
   let r = flags_from_vec(svec![
     "ende",
     "create",
-    "jsr:@fresh/init",
+    "jsr:@scope/init",
     "--",
     "my-project"
   ]);
@@ -6333,7 +6332,7 @@ fn create() {
     r.unwrap(),
     Flags {
       subcommand: EndeSubcommand::Init(InitFlags {
-        package: Some("jsr:@fresh/init".to_string()),
+        package: Some("jsr:@scope/init".to_string()),
         package_args: svec!["my-project"],
         dir: None,
         lib: false,
@@ -6350,12 +6349,12 @@ fn create() {
   assert!(r.is_err());
 
   // --jsr flag
-  let r = flags_from_vec(svec!["ende", "create", "--jsr", "@fresh/init"]);
+  let r = flags_from_vec(svec!["ende", "create", "--jsr", "@scope/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
       subcommand: EndeSubcommand::Init(InitFlags {
-        package: Some("jsr:@fresh/init".to_string()),
+        package: Some("jsr:@scope/init".to_string()),
         package_args: vec![],
         dir: None,
         lib: false,
@@ -6369,12 +6368,12 @@ fn create() {
 
   // --jsr with --yes
   let r =
-    flags_from_vec(svec!["ende", "create", "--jsr", "--yes", "@fresh/init"]);
+    flags_from_vec(svec!["ende", "create", "--jsr", "--yes", "@scope/init"]);
   assert_eq!(
     r.unwrap(),
     Flags {
       subcommand: EndeSubcommand::Init(InitFlags {
-        package: Some("jsr:@fresh/init".to_string()),
+        package: Some("jsr:@scope/init".to_string()),
         package_args: vec![],
         dir: None,
         lib: false,
@@ -7674,132 +7673,6 @@ fn inspect_publish_uid_flag_parsing() {
 }
 
 #[test]
-fn node_options_require() {
-  // Test NODE_OPTIONS --require when no CLI --require is passed
-  set_test_node_options(Some("--require only.js"));
-  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
-  set_test_node_options(None);
-  assert_eq!(flags.require, vec!["only.js"]);
-}
-
-#[test]
-fn node_options_inspect_publish_uid() {
-  set_test_node_options(Some("--inspect-publish-uid=http"));
-  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
-  set_test_node_options(None);
-  assert_eq!(
-    flags.inspect_publish_uid,
-    Some(InspectPublishUid {
-      console: false,
-      http: true,
-    })
-  );
-}
-
-#[test]
-fn node_options_inspect_publish_uid_cli_precedence() {
-  set_test_node_options(Some("--inspect-publish-uid=http"));
-  let flags = flags_from_vec(svec![
-    "ende",
-    "run",
-    "--inspect-publish-uid=stderr",
-    "script.ts",
-  ])
-  .unwrap();
-  set_test_node_options(None);
-  assert_eq!(
-    flags.inspect_publish_uid,
-    Some(InspectPublishUid {
-      console: true,
-      http: false,
-    })
-  );
-}
-
-#[test]
-fn node_options_inspect() {
-  set_test_node_options(Some("--inspect=127.0.0.1:9333"));
-  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
-  set_test_node_options(None);
-  assert_eq!(flags.inspect, Some("127.0.0.1:9333".parse().unwrap()));
-}
-
-#[test]
-fn node_options_inspect_default_address() {
-  set_test_node_options(Some("--inspect"));
-  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
-  set_test_node_options(None);
-  assert_eq!(flags.inspect, Some("127.0.0.1:9229".parse().unwrap()));
-}
-
-#[test]
-fn node_options_inspect_brk_and_wait() {
-  set_test_node_options(Some("--inspect-brk=127.0.0.1:9334"));
-  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
-  set_test_node_options(None);
-  assert_eq!(flags.inspect_brk, Some("127.0.0.1:9334".parse().unwrap()));
-
-  set_test_node_options(Some("--inspect-wait=127.0.0.1:9335"));
-  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
-  set_test_node_options(None);
-  assert_eq!(flags.inspect_wait, Some("127.0.0.1:9335".parse().unwrap()));
-}
-
-#[test]
-fn node_options_inspect_cli_precedence() {
-  // An explicit CLI inspector flag suppresses the entire NODE_OPTIONS
-  // inspector family, since --inspect/-brk/-wait are mutually exclusive.
-  set_test_node_options(Some("--inspect=127.0.0.1:9333"));
-  let flags = flags_from_vec(svec![
-    "ende",
-    "run",
-    "--inspect-brk=127.0.0.1:9444",
-    "script.ts",
-  ])
-  .unwrap();
-  set_test_node_options(None);
-  assert_eq!(flags.inspect, None);
-  assert_eq!(flags.inspect_brk, Some("127.0.0.1:9444".parse().unwrap()));
-}
-
-#[test]
-fn node_options_combined() {
-  // Test NODE_OPTIONS with both --require and --inspect-publish-uid
-  set_test_node_options(Some(
-    "--require foo.js --inspect-publish-uid=stderr,http",
-  ));
-  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
-  set_test_node_options(None);
-  assert_eq!(flags.require, vec!["foo.js"]);
-  assert_eq!(
-    flags.inspect_publish_uid,
-    Some(InspectPublishUid {
-      console: true,
-      http: true,
-    })
-  );
-}
-
-#[test]
-fn node_options_empty() {
-  set_test_node_options(Some(""));
-  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
-  set_test_node_options(None);
-  assert!(flags.require.is_empty());
-  assert_eq!(flags.inspect_publish_uid, None);
-}
-
-#[test]
-fn node_options_ignores_unknown_flags() {
-  set_test_node_options(Some(
-    "--require known.js --unknown-flag --another-unknown",
-  ));
-  let flags = flags_from_vec(svec!["ende", "run", "script.ts",]).unwrap();
-  set_test_node_options(None);
-  assert_eq!(flags.require, vec!["known.js"]);
-}
-
-#[test]
 fn bump_version_patch() {
   let r = flags_from_vec(svec!["ende", "bump-version", "patch"]);
   assert_eq!(
@@ -8889,7 +8762,7 @@ fn double_dash_before_entrypoint() {
     "init",
     "--jsr",
     "--",
-    "@fresh/init",
+    "@scope/init",
     "--",
     "--serve"
   ])
@@ -8897,7 +8770,7 @@ fn double_dash_before_entrypoint() {
   assert_eq!(
     flags.subcommand,
     EndeSubcommand::Init(InitFlags {
-      package: Some("jsr:@fresh/init".to_string()),
+      package: Some("jsr:@scope/init".to_string()),
       package_args: svec!["--serve"],
       dir: None,
       lib: false,
@@ -8957,25 +8830,6 @@ fn hrtime_flags_are_accepted_as_no_ops() {
       EndeSubcommand::Run(RunFlags::new_default("script.ts".to_string()))
     );
   }
-}
-
-#[test]
-fn use_env_proxy_flags() {
-  let r = flags_from_vec(svec!["ende", "run", "--use-env-proxy", "script.ts"]);
-  assert!(r.is_ok());
-
-  let r =
-    flags_from_vec(svec!["ende", "run", "--no-use-env-proxy", "script.ts"]);
-  assert!(r.is_ok());
-
-  let r = flags_from_vec(svec![
-    "ende",
-    "run",
-    "--use-env-proxy",
-    "--no-use-env-proxy",
-    "script.ts"
-  ]);
-  assert!(r.is_err());
 }
 
 #[test]

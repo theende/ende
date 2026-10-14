@@ -255,13 +255,12 @@ async fn emit_declarations(
   let mut graph = ModuleGraph::new(GraphKind::All);
   let module_graph_builder = factory.module_graph_builder().await?;
   module_graph_builder
-    .build_graph_roots_with_npm_resolution(
+    .build_graph_roots(
       &mut graph,
       specifiers,
-      crate::graph_util::BuildGraphWithNpmOptions {
+      crate::graph_util::BuildGraphOptions {
         is_dynamic: false,
         loader: None,
-        npm_caching: cli_options.default_npm_caching_strategy(),
       },
     )
     .await?;

@@ -135,7 +135,6 @@ defineLazyInternal(
 defineLazyInternal("getCachedAbortSignal", "ext:ende_fetch/23_request.js");
 // `ext:ende_process/40_process.js` (registers process internals at module body).
 defineLazyInternal("getExtraPipeRids", "ext:ende_process/40_process.js");
-defineLazyInternal("getIpcPipeRid", "ext:ende_process/40_process.js");
 defineLazyInternal("kExtraStdio", "ext:ende_process/40_process.js");
 
 // the out buffer for `cpuUsage` and `memoryUsage`

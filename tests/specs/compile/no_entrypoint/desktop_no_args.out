@@ -1,0 +1,2 @@
+[WILDCARD]error: No entrypoint given.
+  hint: Pass the main module, for example `ende desktop main.ts`.

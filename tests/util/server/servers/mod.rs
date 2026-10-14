@@ -44,6 +44,7 @@ mod hyper_utils;
 mod jsr_registry;
 mod nodejs_org_mirror;
 mod npm_registry;
+mod otlp_grpc;
 mod socket_dev;
 mod ws;
 
@@ -91,6 +92,7 @@ const WS_HANG_PORT: u16 = 4264;
 const WS_PING_PORT: u16 = 4245;
 const H2_GRPC_PORT: u16 = 4246;
 const H2S_GRPC_PORT: u16 = 4247;
+const OTLP_GRPC_PORT: u16 = 4267;
 
 // Use the single-threaded scheduler. The hyper server is used as a point of
 // comparison for the (single-threaded!) benchmarks in cli/bench. We're not
@@ -133,6 +135,7 @@ pub async fn run_all_servers() {
   let h1_only_server_fut = wrap_http_h1_only_server(H1_ONLY_PORT);
   let h2_only_server_fut = wrap_http_h2_only_server(H2_ONLY_PORT);
   let h2_grpc_server_fut = grpc::h2_grpc_server(H2_GRPC_PORT, H2S_GRPC_PORT);
+  let otlp_grpc_server_fut = otlp_grpc::otlp_grpc_server(OTLP_GRPC_PORT);
 
   let registry_server_fut =
     jsr_registry::registry_server(JSR_REGISTRY_SERVER_PORT);
@@ -182,6 +185,7 @@ pub async fn run_all_servers() {
     h1_only_server_fut.boxed_local(),
     h2_only_server_fut.boxed_local(),
     h2_grpc_server_fut.boxed_local(),
+    otlp_grpc_server_fut.boxed_local(),
     registry_server_fut.boxed_local(),
     provenance_mock_server_fut.boxed_local(),
     node_js_mirror_server_fut.boxed_local(),

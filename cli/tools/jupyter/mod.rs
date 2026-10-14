@@ -80,10 +80,8 @@ pub async fn kernel(
   let cli_options = factory.cli_options()?;
   let permissions =
     PermissionsContainer::allow_all(factory.permission_desc_parser()?.clone());
-  let npm_installer = factory.npm_installer_if_managed().await?.cloned();
   let compiler_options_resolver_arc =
     factory.compiler_options_resolver()?.clone();
-  let resolver = factory.resolver().await?.clone();
   // Wrap in `Arc` so the kernel thread and the REPL background thread can
   // each create workers from the same factory without forcing `Clone` onto
   // `CliMainWorkerFactory` itself.
@@ -124,25 +122,22 @@ pub async fn kernel(
         stderr,
       } = worker;
 
-      let mut worker = repl_worker_factory
-        .create_custom_worker(
-          WorkerExecutionMode::Jupyter,
-          repl_main_module2.clone(),
-          vec![],
-          vec![],
-          repl_permissions,
-          vec![
-            ops::jupyter::ende_jupyter_repl::init(repl_iopub_tx, repl_input_tx),
-            ops::testing::ende_test::init(test_event_sender),
-          ],
-          Stdio {
-            stdin: StdioPipe::inherit(),
-            stdout: StdioPipe::file(stdout),
-            stderr: StdioPipe::file(stderr),
-          },
-          None,
-        )
-        .await?;
+      let mut worker = repl_worker_factory.create_custom_worker(
+        WorkerExecutionMode::Jupyter,
+        repl_main_module2.clone(),
+        vec![],
+        repl_permissions,
+        vec![
+          ops::jupyter::ende_jupyter_repl::init(repl_iopub_tx, repl_input_tx),
+          ops::testing::ende_test::init(test_event_sender),
+        ],
+        Stdio {
+          stdin: StdioPipe::inherit(),
+          stdout: StdioPipe::file(stdout),
+          stderr: StdioPipe::file(stderr),
+        },
+        None,
+      )?;
 
       worker.setup_repl().await?;
       worker.execute_script_static(
@@ -153,8 +148,6 @@ pub async fn kernel(
 
       let mut repl_session = repl::ReplSession::initialize(
         &cli_options_arc,
-        npm_installer,
-        resolver,
         &compiler_options_resolver_arc,
         worker,
         repl_main_module2,
@@ -210,22 +203,19 @@ pub async fn kernel(
     })?;
   let _ = cwd_url; // used later for test reporter if needed
 
-  let mut kernel_worker = worker_factory
-    .create_custom_worker(
-      WorkerExecutionMode::Jupyter,
-      kernel_main_module,
-      vec![],
-      vec![],
-      permissions,
-      vec![ops::jupyter::ende_jupyter_kernel::init()],
-      Stdio {
-        stdin: StdioPipe::inherit(),
-        stdout: StdioPipe::file(stdout2),
-        stderr: StdioPipe::file(stderr2),
-      },
-      None,
-    )
-    .await?;
+  let mut kernel_worker = worker_factory.create_custom_worker(
+    WorkerExecutionMode::Jupyter,
+    kernel_main_module,
+    vec![],
+    permissions,
+    vec![ops::jupyter::ende_jupyter_kernel::init()],
+    Stdio {
+      stdin: StdioPipe::inherit(),
+      stdout: StdioPipe::file(stdout2),
+      stderr: StdioPipe::file(stderr2),
+    },
+    None,
+  )?;
 
   // Populate op_state for the kernel worker.
   {

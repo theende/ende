@@ -655,6 +655,43 @@ impl LockfileContent {
       && self.remote.is_empty()
       && self.workspace.is_empty()
   }
+
+  /// Removes everything npm related: the `npm` section, npm specifiers,
+  /// npm dependencies of jsr packages, package.json dependencies, npm
+  /// overrides and npm links.
+  pub fn remove_npm_entries(&mut self) {
+    fn retain_non_npm(reqs: &mut HashSet<JsrDepPackageReq>) {
+      reqs.retain(|req| req.kind != PackageKind::Npm);
+    }
+    fn clean_member(member: &mut WorkspaceMemberConfigContent) {
+      member.package_json = Default::default();
+      retain_non_npm(&mut member.dependencies);
+    }
+
+    self
+      .packages
+      .specifiers
+      .retain(|req, _| req.kind != PackageKind::Npm);
+    self.packages.npm.clear();
+    for info in self.packages.jsr.values_mut() {
+      retain_non_npm(&mut info.dependencies);
+    }
+    clean_member(&mut self.workspace.root);
+    for member in self.workspace.members.values_mut() {
+      clean_member(member);
+    }
+    self.workspace.members.retain(|_, m| !m.is_empty());
+    self
+      .workspace
+      .links
+      .retain(|name, _| !name.starts_with("npm:"));
+    for link in self.workspace.links.values_mut() {
+      retain_non_npm(&mut link.dependencies);
+      retain_non_npm(&mut link.optional_dependencies);
+      retain_non_npm(&mut link.peer_dependencies);
+    }
+    self.workspace.npm_overrides = None;
+  }
 }
 
 pub struct NewLockfileOptions<'a> {
@@ -2072,5 +2109,86 @@ mod tests {
     .err()
     .unwrap();
     assert!(matches!(err.source, LockfileErrorReason::Empty));
+  }
+
+  #[test]
+  fn remove_npm_entries() {
+    let content = r#"{
+  "version": "5",
+  "specifiers": {
+    "jsr:@scope/a@1": "1.0.0",
+    "jsr:@scope/b@1": "1.0.0",
+    "npm:chalk@5": "5.0.0"
+  },
+  "jsr": {
+    "@scope/a@1.0.0": {
+      "integrity": "sha256-a",
+      "dependencies": ["jsr:@scope/b@1", "npm:chalk@5"]
+    },
+    "@scope/b@1.0.0": {
+      "integrity": "sha256-b"
+    }
+  },
+  "npm": {
+    "chalk@5.0.0": {
+      "integrity": "sha512-chalk"
+    }
+  },
+  "remote": {
+    "https://example.com/mod.ts": "abc"
+  },
+  "workspace": {
+    "dependencies": ["jsr:@scope/a@1", "npm:chalk@5"],
+    "packageJson": {
+      "dependencies": ["npm:chalk@5"]
+    },
+    "members": {
+      "npm-only": {
+        "dependencies": ["npm:chalk@5"]
+      }
+    },
+    "links": {
+      "npm:linked@1.0.0": {}
+    }
+  }
+}"#;
+    let mut lockfile = new_lockfile(NewLockfileOptions {
+      file_path: PathBuf::from("/ende.lock"),
+      content,
+      overwrite: false,
+    })
+    .unwrap();
+    lockfile.content.remove_npm_entries();
+    assert!(!lockfile.has_content_changed);
+    assert_eq!(
+      lockfile.as_json_string(),
+      r#"{
+  "version": "5",
+  "specifiers": {
+    "jsr:@scope/a@1": "1.0.0",
+    "jsr:@scope/b@1": "1.0.0"
+  },
+  "jsr": {
+    "@scope/a@1.0.0": {
+      "integrity": "sha256-a",
+      "dependencies": [
+        "jsr:@scope/b"
+      ]
+    },
+    "@scope/b@1.0.0": {
+      "integrity": "sha256-b"
+    }
+  },
+  "remote": {
+    "https://example.com/mod.ts": "abc"
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@scope/a@1"
+    ]
+  }
+}
+"#
+    );
   }
 }

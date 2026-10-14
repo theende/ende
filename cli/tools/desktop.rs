@@ -58,6 +58,11 @@ pub async fn desktop(
   let ende_dir_root = factory.ende_dir()?.root.clone();
 
   apply_desktop_config_to_flags(&mut desktop_flags, desktop_config);
+  super::compile::ensure_entrypoint_given(
+    "desktop",
+    &desktop_flags.source_file,
+    cli_options.initial_cwd(),
+  )?;
 
   if all_targets {
     let targets = [
@@ -309,137 +314,7 @@ async fn compile_desktop(
     });
   }
 
-  // Desktop framework detection: when --desktop is used and the source is
-  // "." (a directory), detect the framework and generate the entrypoint.
-  // The cwd resolved from CliOptions is reused for the HMR launch below so
-  // framework detection is single-sourced and can't drift between the two.
-  let detection_cwd = cli_options.initial_cwd().to_path_buf();
-  let detected_framework = if desktop_flags.source_file == "." {
-    super::framework::detect_framework(&detection_cwd)?
-  } else {
-    None
-  };
-  let desktop_entrypoint_file = if desktop_flags.source_file == "." {
-    let cwd = &detection_cwd;
-    if let Some(detection) = detected_framework.as_ref() {
-      let use_framework_hmr =
-        desktop_flags.hmr && detection.hmr_command.is_some();
-      let entrypoint_code = if use_framework_hmr {
-        NOOP_ENTRYPOINT.to_string()
-      } else {
-        detection.entrypoint_code.clone()
-      };
-      log::info!("Detected {} framework", detection.name);
-      if !use_framework_hmr {
-        // Run the framework's build step (e.g. `ende task build`) before its
-        // build output (`dist`, `.next`, etc.) is added to the compile includes
-        // below; otherwise the include points at a directory that doesn't exist
-        // yet and the compile fails (#35535). Mirrors `ende compile .`.
-        super::framework::run_build_command(detection, cwd)?;
-      }
-      // Sweep stale entrypoints leaked by previous interrupted runs. The
-      // NamedTempFile below cleans up on drop, but a Ctrl-C delivers SIGINT
-      // to the whole process group (see `run_desktop_hmr`) and the parent
-      // exits without running destructors — so the dev loop would otherwise
-      // accumulate `.ende_desktop_entry-*.ts` files in the project root.
-      const ENTRY_PREFIX: &str = ".ende_desktop_entry-";
-      // Name used by versions before the rename to Ende.
-      const LEGACY_ENTRY_PREFIX: &str = ".deno_desktop_entry-";
-      if let Ok(entries) = std::fs::read_dir(cwd) {
-        for entry in entries.flatten() {
-          let file_name = entry.file_name();
-          let file_name = file_name.to_string_lossy();
-          if file_name.starts_with(ENTRY_PREFIX)
-            || file_name.starts_with(LEGACY_ENTRY_PREFIX)
-          {
-            let _ = std::fs::remove_file(entry.path());
-          }
-        }
-      }
-      // Write a temporary entrypoint file. tempfile gives us a unique
-      // name (no collision between concurrent `ende desktop` runs in
-      // the same project) and 0600 mode (no symlink-pre-creation
-      // attack); cleanup-on-drop replaces the explicit guard.
-      let entrypoint_temp = tempfile::Builder::new()
-        .prefix(ENTRY_PREFIX)
-        .suffix(".ts")
-        .tempfile_in(cwd)
-        .with_context(|| {
-          format!("failed to create temp entrypoint file in {}", cwd.display())
-        })?;
-      {
-        use std::io::Write;
-        entrypoint_temp
-          .as_file()
-          .write_all(entrypoint_code.as_bytes())?;
-      }
-      let entrypoint_path = entrypoint_temp.path().to_path_buf();
-      desktop_flags.source_file = entrypoint_path.display().to_string();
-      if desktop_flags.output.is_none()
-        && let Some(dir_name) = cwd.file_name()
-      {
-        desktop_flags.output = Some(dir_name.to_string_lossy().into_owned());
-      }
-      // Add framework build output to includes. Skipped in HMR mode.
-      if !use_framework_hmr {
-        for inc in &detection.include_paths {
-          if !desktop_flags.include.contains(inc) {
-            desktop_flags.include.push(inc.clone());
-          }
-        }
-      }
-      Some(entrypoint_temp)
-    } else {
-      bail!(
-        "Could not detect a supported framework in the current directory.\nSupported frameworks: Fresh\nProvide an explicit entrypoint instead."
-      );
-    }
-  } else {
-    None
-  };
-
-  let self_extracting = desktop_entrypoint_file.is_some();
-  // `desktop_entrypoint_file` (a NamedTempFile) keeps the file alive while
-  // `compile_binary` reads it. It is explicitly closed right after compilation
-  // (see below) rather than on drop: the long-running `run_desktop_hmr` wait
-  // exits on Ctrl-C without running destructors, so a drop-only guard would
-  // leak the entrypoint for the whole dev session.
-
-  // No explicit icon, but a framework was detected — try to use its
-  // favicon (e.g. `static/favicon.ico`) as the app icon
-  // so the bundle gets the project's branding for free.
-  if desktop_flags.icon.is_none()
-    && let Some(detection) = detected_framework.as_ref()
-  {
-    let target_os = match desktop_flags.target.as_deref() {
-      Some(t) if t.contains("apple-darwin") => "macos",
-      Some(t) if t.contains("windows") => "windows",
-      Some(_) => "linux",
-      None => {
-        if cfg!(target_os = "macos") {
-          "macos"
-        } else if cfg!(target_os = "windows") {
-          "windows"
-        } else {
-          "linux"
-        }
-      }
-    };
-    if let Some(path) = super::framework::find_framework_favicon(
-      &detection_cwd,
-      detection,
-      target_os,
-    ) {
-      let display = path
-        .strip_prefix(&detection_cwd)
-        .unwrap_or(&path)
-        .display()
-        .to_string();
-      log::info!("Using {} favicon as icon: {}", detection.name, display);
-      desktop_flags.icon =
-        Some(crate::args::IconConfig::Single(path.display().to_string()));
-    }
-  }
+  let project_dir = cli_options.initial_cwd().to_path_buf();
 
   let inspector_requested = flags.inspect.is_some()
     || flags.inspect_brk.is_some()
@@ -461,14 +336,14 @@ async fn compile_desktop(
       .and_then(|p| p.file_stem())
       .map(|s| s.to_string_lossy().into_owned())
       .or_else(|| {
-        detection_cwd
+        project_dir
           .file_name()
           .map(|s| s.to_string_lossy().into_owned())
       })
       .filter(|s| !s.is_empty())
       .unwrap_or_else(|| "app".to_string());
     let key = faster_hex::hex_string(&sha2::Sha256::digest(
-      detection_cwd.to_string_lossy().as_bytes(),
+      project_dir.to_string_lossy().as_bytes(),
     ));
     let dir = ende_dir_root.join("desktop").join(&key[..16]);
     std::fs::create_dir_all(&dir).with_context(|| {
@@ -495,7 +370,7 @@ async fn compile_desktop(
     include: desktop_flags.include.clone(),
     exclude: desktop_flags.exclude.clone(),
     eszip: false,
-    self_extracting,
+    self_extracting: false,
     engine: desktop_flags.engine,
   };
 
@@ -511,20 +386,11 @@ async fn compile_desktop(
   )
   .await?;
 
-  // The temp entrypoint is embedded in the compiled dylib's VFS now; nothing
-  // downstream reads it from disk. Remove it deterministically here so the
-  // long-running HMR session (which exits on Ctrl-C without running the
-  // drop guard) can't leave it behind in the project root.
-  if let Some(entrypoint_file) = desktop_entrypoint_file {
-    let _ = entrypoint_file.close();
-  }
-
   if desktop_flags.hmr || inspector_requested {
     let backend = desktop_flags.backend.as_deref().unwrap_or("webview");
     run_desktop_hmr(
       &output_path,
-      &detection_cwd,
-      detected_framework.as_ref(),
+      &project_dir,
       backend,
       laufey_resolver,
       &flags,
@@ -1151,79 +1017,10 @@ fn resolve_hmr_icon_path(
   Ok(crate::util::fs::canonicalize_path(&icon_path).unwrap_or(icon_path))
 }
 
-/// Extract the local URL from a line of dev server output.
-fn parse_dev_server_url(line: &str) -> Option<String> {
-  let line = console_static_text::ansi::strip_ansi_codes(line);
-  // Vite prints `  ➜  Local:   http://localhost:5173/`
-  regex::Regex::new(r"Local:\s+(https?://\S+)")
-    .expect("regex to parse local url failed")
-    .captures(&line)
-    .and_then(|c| c.get(1))
-    .map(|m| m.as_str().to_owned())
-}
-
-/// Spawns a framework HMR dev server
-async fn spawn_framework_dev_server(
-  name: &str,
-  cmd_args: &[String],
-  cwd: &Path,
-) -> Result<(String, tokio::process::Child), AnyError> {
-  use tokio::io::AsyncBufReadExt;
-  use tokio::io::BufReader;
-
-  let mut child = tokio::process::Command::new(&cmd_args[0])
-    .args(&cmd_args[1..])
-    .current_dir(cwd)
-    .stdout(std::process::Stdio::piped())
-    .kill_on_drop(true)
-    .spawn()
-    .with_context(|| {
-      format!("failed to spawn HMR dev server: {:?}", cmd_args)
-    })?;
-
-  let stdout = child.stdout.take().ok_or_else(|| {
-    ende_core::anyhow::anyhow!("failed to capture HMR dev server stdout")
-  })?;
-  let mut lines = BufReader::new(stdout).lines();
-
-  let url = tokio::time::timeout(std::time::Duration::from_secs(15), async {
-    while let Ok(Some(line)) = lines.next_line().await {
-      let url = parse_dev_server_url(&line);
-      // Echo the dev server's own startup output (banner, URL, warnings) so
-      // it isn't swallowed while we scan for the URL.
-      log::info!("{line}");
-      if let Some(url) = url {
-        return Ok(url);
-      }
-    }
-    ende_core::anyhow::bail!("dev server exited without printing a URL")
-  })
-  .await
-  .map_err(|_| {
-    ende_core::anyhow::anyhow!(
-      "{name} dev server with HMR did not start within 15s"
-    )
-  })??;
-
-  // Keep forwarding the dev server's stdout so its HMR/compile logs stay
-  // visible after startup instead of being silently swallowed. The task ends
-  // on its own once the child is killed (on drop) and the pipe closes.
-  tokio::spawn(async move {
-    while let Ok(Some(line)) = lines.next_line().await {
-      log::info!("{line}");
-    }
-  });
-
-  Ok((url, child))
-}
-
 /// Launch the desktop app with HMR enabled after compilation.
-///
-/// Framework dev servers provide HMR via websocket.
 async fn run_desktop_hmr(
   dylib_path: &Path,
   source_dir: &Path,
-  framework: Option<&super::framework::FrameworkDetection>,
   backend: &str,
   laufey_resolver: &LaufeyBackendResolver,
   flags: &Flags,
@@ -1269,23 +1066,10 @@ async fn run_desktop_hmr(
     })
     .filter(|s| !s.is_empty());
 
-  if let Some(fw) = framework
-    && desktop_flags.hmr
-  {
-    log::info!(
-      "{} {} dev server with HMR in desktop mode",
-      colors::green("Running"),
-      fw.name,
-    );
-  }
-
   if desktop_flags.hmr {
     log::info!(
-      "{} {}desktop app with HMR (watching {})",
+      "{} desktop app with HMR (watching {})",
       colors::green("Running"),
-      framework
-        .map(|f| format!("{} ", f.name))
-        .unwrap_or_default(),
       source_abs.display(),
     );
   } else {
@@ -1312,24 +1096,6 @@ async fn run_desktop_hmr(
   if desktop_flags.hmr {
     cmd.env("ENDE_DESKTOP_HMR", &source_abs);
   }
-
-  let _dev_server_child = if desktop_flags.hmr
-    && let Some(fw) = framework
-    && let Some(dev_cmd) = &fw.hmr_command
-  {
-    let (dev_url, child) =
-      spawn_framework_dev_server(fw.name, dev_cmd, &source_abs).await?;
-    log::info!(
-      "{} {} HMR dev server at {}",
-      colors::green("Running"),
-      fw.name,
-      dev_url,
-    );
-    cmd.env("ENDE_DESKTOP_DEV_URL", &dev_url);
-    Some(child)
-  } else {
-    None
-  };
 
   // Wire up the unified DevTools multiplexer when --inspect is set.
   // The mux runs in this (parent) process and fronts both the Ende runtime
@@ -1460,11 +1226,6 @@ async fn run_desktop_hmr(
 const APP_DIR_MARKER: &str = ".ende-desktop-app";
 /// The marker written by versions before the rename to Ende; still recognized.
 const LEGACY_APP_DIR_MARKER: &str = ".deno-desktop-app";
-
-/// Used for `ende desktop --hmr` when a framework runs its own HMR server.
-/// The compiled app has nothing to serve in this case.
-const NOOP_ENTRYPOINT: &str =
-  "// @ts-nocheck\nawait new Promise<void>(() => {});\n";
 
 /// Prepare `app_dir` to receive a freshly built bundle.
 ///
@@ -5937,58 +5698,6 @@ def456  other.zip
     assert_eq!(
       parse_sha256sum(contents, "other.zip").as_deref(),
       Some("def456")
-    );
-  }
-
-  // --- parse_dev_server_url ---
-
-  #[test]
-  fn dev_server_url_matches() {
-    assert_eq!(
-      parse_dev_server_url("  ➜  Local:   http://localhost:5173/").as_deref(),
-      Some("http://localhost:5173/")
-    );
-    assert_eq!(
-      parse_dev_server_url("  Local:   https://localhost:5173/").as_deref(),
-      Some("https://localhost:5173/")
-    );
-  }
-
-  #[test]
-  fn dev_server_url_matches_colored_output() {
-    assert_eq!(
-      parse_dev_server_url(
-        "\x1b[32m➜\x1b[39m  \x1b[1mLocal\x1b[22m:   \
-         \x1b[36mhttp://127.0.0.1:\x1b[1m5173\x1b[22m/\x1b[39m"
-      )
-      .as_deref(),
-      Some("http://127.0.0.1:5173/")
-    );
-  }
-
-  #[test]
-  fn dev_server_url_matches_with_subpath() {
-    assert_eq!(
-      parse_dev_server_url("  Local:   http://localhost:5173/app").as_deref(),
-      Some("http://localhost:5173/app")
-    );
-    assert_eq!(
-      parse_dev_server_url("  Local:   http://192.168.1.1:5173").as_deref(),
-      Some("http://192.168.1.1:5173")
-    );
-    assert_eq!(
-      parse_dev_server_url("  Local:   https://localhost:5173/app").as_deref(),
-      Some("https://localhost:5173/app")
-    );
-  }
-
-  #[test]
-  fn dev_server_url_no_match() {
-    assert_eq!(parse_dev_server_url("Watching for file changes..."), None);
-    assert_eq!(parse_dev_server_url(""), None);
-    assert_eq!(
-      parse_dev_server_url("  Network:  http://192.168.1.1:5173/"),
-      None
     );
   }
 

@@ -4,7 +4,6 @@
 const { core, internals, primordials } = __bootstrap;
 const {
   op_kill,
-  op_node_spawn_child,
   op_run,
   op_run_status,
   op_spawn_child,
@@ -23,7 +22,6 @@ const {
   TypedArrayPrototypeSet,
   Uint8Array,
   TypeError,
-  NumberIsFinite,
   ObjectEntries,
   SafeArrayIterator,
   String,
@@ -175,8 +173,6 @@ function run({
 }
 
 const kExtraStdio = Symbol("extraStdio");
-const kIpc = Symbol("ipc");
-const kSerialization = Symbol("serialization");
 const kArgv0 = Symbol("argv0");
 
 const illegalConstructorKey = Symbol("illegalConstructorKey");
@@ -194,9 +190,7 @@ function spawnChildInner(command, apiName, {
   stderr = "piped",
   windowsRawArguments = false,
   detached = false,
-  [kSerialization]: serialization = "json",
   [kExtraStdio]: extraStdio = [],
-  [kIpc]: ipc = -1,
   [kArgv0]: argv0 = undefined,
 } = { __proto__: null }) {
   const child = op_spawn_child({
@@ -212,8 +206,6 @@ function spawnChildInner(command, apiName, {
     stdout,
     stderr,
     windowsRawArguments,
-    ipc,
-    serialization,
     extraStdio,
     detached,
   }, apiName);
@@ -266,171 +258,19 @@ async function readAllRid(rid) {
   return result;
 }
 
-const _ipcPipeRid = Symbol("[[ipcPipeRid]]");
 const _extraPipeRids = Symbol("[[_extraPipeRids]]");
 const _stdinRid = Symbol("[[stdinRid]]");
 const _stdoutRid = Symbol("[[stdoutRid]]");
 const _stderrRid = Symbol("[[stderrRid]]");
 
-internals.getIpcPipeRid = (process) => process[_ipcPipeRid];
 internals.getExtraPipeRids = (process) => process[_extraPipeRids];
 internals.kExtraStdio = kExtraStdio;
-
-// Node compat spawn: returns a lightweight object with raw fds for stdio
-// instead of a full Ende.ChildProcess with web streams.
-// The caller (child_process.ts) is responsible for providing all fields.
-function nodeSpawnChild(command, {
-  args = [],
-  cwd,
-  clearEnv = false,
-  argv0,
-  env = { __proto__: null },
-  uid,
-  gid,
-  stdin = "null",
-  stdout = "piped",
-  stderr = "piped",
-  windowsRawArguments = false,
-  windowsHide = false,
-  ipc = -1,
-  serialization = "json",
-  extraStdio = [],
-  detached = false,
-  needsNpmProcessState = false,
-}) {
-  const child = op_node_spawn_child({
-    cmd: pathFromURL(command),
-    args: ArrayPrototypeMap(args, String),
-    cwd: pathFromURL(cwd),
-    clearEnv,
-    argv0,
-    env: ObjectEntries(env),
-    uid,
-    gid,
-    stdin,
-    stdout,
-    stderr,
-    windowsRawArguments,
-    windowsHide,
-    ipc,
-    serialization,
-    extraStdio,
-    detached,
-    needsNpmProcessState,
-  }, "node:child_process");
-
-  const waitPromise = op_spawn_wait(child.rid);
-  let waitComplete = false;
-  const status = PromisePrototypeThen(waitPromise, (res) => {
-    waitComplete = true;
-    return res;
-  });
-
-  return {
-    __proto__: null,
-    rid: child.rid,
-    pid: child.pid,
-    stdinFd: child.stdinFd,
-    stdoutFd: child.stdoutFd,
-    stderrFd: child.stderrFd,
-    ipcPipeRid: child.ipcPipeRid,
-    extraPipeFds: child.extraPipeFds,
-    status,
-    kill(signal) {
-      op_spawn_kill(child.rid, signal);
-    },
-    ref() {
-      core.refOpPromise(waitPromise);
-      if (!waitComplete) {
-        op_spawn_child_ref(child.rid);
-      }
-    },
-    unref() {
-      core.unrefOpPromise(waitPromise);
-      if (!waitComplete) {
-        op_spawn_child_unref(child.rid);
-      }
-    },
-  };
-}
-
-// Node compat sync spawn: calls op_spawn_sync and returns pid/killedByTimeout
-// as normal fields instead of hidden properties on an Ende.CommandOutput.
-function nodeSpawnSyncChild({
-  args,
-  cwd,
-  clearEnv,
-  argv0,
-  env,
-  uid,
-  gid,
-  stdin,
-  stdout,
-  stderr,
-  extraStdio = [],
-  windowsRawArguments,
-  windowsHide = false,
-  needsNpmProcessState,
-  input,
-  timeout,
-  killSignal,
-  maxBuffer,
-}) {
-  const spawnArgs = {
-    cmd: pathFromURL(args[0]),
-    args: ArrayPrototypeMap(ArrayPrototypeSlice(args, 1), String),
-    cwd: pathFromURL(cwd),
-    clearEnv,
-    env: ObjectEntries(env),
-    uid,
-    gid,
-    stdin,
-    stdout,
-    stderr,
-    windowsRawArguments,
-    windowsHide,
-    extraStdio,
-    detached: false,
-    needsNpmProcessState,
-    input,
-    argv0,
-  };
-  const hasTimeout = timeout != null && timeout > 0;
-  // Only forward a finite, non-negative `maxBuffer` to the op so that
-  // Infinity / missing values map to "no limit" on the Rust side.
-  const hasMaxBuffer = typeof maxBuffer === "number" &&
-    NumberIsFinite(maxBuffer) && maxBuffer >= 0;
-  if (hasTimeout) {
-    spawnArgs.timeout = timeout;
-  }
-  if (hasMaxBuffer) {
-    spawnArgs.maxBuffer = maxBuffer;
-  }
-  // killSignal applies to both `timeout` and `maxBuffer` kills, matching
-  // Node's behavior.
-  if (killSignal != null && (hasTimeout || hasMaxBuffer)) {
-    spawnArgs.killSignal = killSignal;
-  }
-  const result = op_spawn_sync(spawnArgs);
-  return {
-    __proto__: null,
-    success: result.status.success,
-    code: result.status.code,
-    signal: result.status.signal,
-    stdout: result.stdout,
-    stderr: result.stderr,
-    pid: result.pid,
-    killedByTimeout: result.killedByTimeout,
-    killedByMaxBuffer: result.killedByMaxBuffer,
-  };
-}
 
 class ChildProcess {
   #rid;
   #waitPromise;
   #waitComplete = false;
 
-  [_ipcPipeRid];
   [_extraPipeRids];
   [_stdinRid];
   [_stdoutRid];
@@ -472,7 +312,6 @@ class ChildProcess {
     stdinRid,
     stdoutRid,
     stderrRid,
-    ipcPipeRid, // internal
     extraPipeRids,
   } = null) {
     if (key !== illegalConstructorKey) {
@@ -481,7 +320,6 @@ class ChildProcess {
 
     this.#rid = rid;
     this.#pid = pid;
-    this[_ipcPipeRid] = ipcPipeRid;
     this[_extraPipeRids] = extraPipeRids;
     this[_stdinRid] = stdinRid;
     this[_stdoutRid] = stdoutRid;
@@ -660,8 +498,6 @@ function spawnInner(command, {
     stdout,
     stderr,
     windowsRawArguments,
-    ipc: -1,
-    serialization: "json",
     extraStdio: [],
     detached: false,
   }, "Ende.Command().output()");
@@ -865,14 +701,10 @@ return {
   Command,
   kArgv0,
   kExtraStdio,
-  kIpc,
   kInputOption,
   kKillSignalOption,
-  kSerialization,
   kTimeoutOption,
   kill,
-  nodeSpawnChild,
-  nodeSpawnSyncChild,
   Process,
   run,
   spawn,

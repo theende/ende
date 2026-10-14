@@ -15,7 +15,6 @@ use deno_path_util::url_to_file_path;
 use ende_config::ende_json::EndeJsonCache;
 use ende_config::ende_json::FmtConfig;
 use ende_config::ende_json::FmtOptionsConfig;
-use ende_config::ende_json::NodeModulesDirMode;
 use ende_config::ende_json::TestConfig;
 use ende_config::glob::FilePatterns;
 use ende_config::glob::PathOrPatternSet;
@@ -38,23 +37,13 @@ use ende_core::serde_json;
 use ende_core::serde_json::Value;
 use ende_core::url::Url;
 use ende_lib::util::hash::FastInsecureHasher;
-use ende_npm_cache::NpmCacheSetting;
-use ende_npm_installer::LifecycleScriptsConfig;
-use ende_npm_installer::NpmInstallerFactory;
-use ende_npm_installer::NpmInstallerFactoryOptions;
-use ende_npm_installer::graph::NpmCachingStrategy;
-use ende_npm_installer::lifecycle_scripts::NullLifecycleScriptsExecutor;
-use ende_npmrc::ResolvedNpmRc;
 use ende_resolver::factory::ConfigDiscoveryOption;
-use ende_resolver::factory::ResolverFactory;
-use ende_resolver::factory::ResolverFactoryOptions;
 use ende_resolver::factory::WorkspaceFactory;
 use ende_resolver::factory::WorkspaceFactoryOptions;
 use ende_resolver::workspace::SpecifiedImportMap;
 use indexmap::IndexSet;
 use lsp_types::ClientCapabilities;
 use lsp_types::Uri;
-use node_resolver::NodeResolverOptions;
 use tower_lsp::lsp_types as lsp;
 
 use super::legacy_client;
@@ -65,17 +54,11 @@ use super::urls::uri_to_url;
 use super::urls::url_to_uri;
 use crate::args::CliLockfile;
 use crate::args::ConfigFile;
-use crate::cache::EndeDir;
 use crate::file_fetcher::CliFileFetcher;
-use crate::http_util::HttpClientProvider;
 use crate::lsp::logging::lsp_warn;
-use crate::npm::CliNpmCacheHttpClient;
-use crate::npm::NpmPackumentFormat;
 use crate::sys::CliSys;
 use crate::util::fs::canonicalize_path;
 use crate::util::fs::canonicalize_path_maybe_not_exists;
-use crate::util::progress_bar::ProgressBar;
-use crate::util::progress_bar::ProgressBarStyle;
 
 pub const SETTINGS_SECTION: &str = "ende";
 /// Still read when a client doesn't provide [`SETTINGS_SECTION`].
@@ -1121,9 +1104,6 @@ impl Config {
   }
 
   pub fn specifier_enabled(&self, specifier: &ModuleSpecifier) -> bool {
-    if self.tree.in_global_npm_cache(specifier) {
-      return true;
-    }
     let data = self.tree.data_for_specifier(specifier);
     if let Some(data) = &data
       && let Ok(path) = specifier.to_file_path()
@@ -1270,20 +1250,17 @@ pub enum ConfigWatchedFileType {
 
 /// Parts of [`ConfigData`] that are shared by every member of a workspace.
 ///
-/// These are resolved from the workspace root (single lockfile, npm registry config,
-/// `node_modules` directory, etc.), so they're computed once per workspace
-/// root and reused across members instead of being rebuilt for every scope.
+/// These are resolved from the workspace root (single lockfile, vendor
+/// directory, etc.), so they're computed once per workspace root and reused
+/// across members instead of being rebuilt for every scope.
 struct WorkspaceConfigData {
   lockfile: Option<Arc<CliLockfile>>,
-  npmrc: Option<Arc<ResolvedNpmRc>>,
-  node_modules_dir: Option<PathBuf>,
   vendor_dir: Option<PathBuf>,
 }
 
 impl WorkspaceConfigData {
   async fn load(
     workspace: &WorkspaceRc,
-    http_client_provider: Option<&Arc<HttpClientProvider>>,
     add_watched_file: &mut impl FnMut(ModuleSpecifier, ConfigWatchedFileType),
   ) -> Self {
     let mut workspace_factory = WorkspaceFactory::new(
@@ -1293,73 +1270,17 @@ impl WorkspaceConfigData {
         additional_config_file_names: &[],
         config_discovery: ConfigDiscoveryOption::DiscoverCwd,
         maybe_custom_ende_dir_root: None,
-        is_package_manager_subcommand: false,
         frozen_lockfile: None,
         lock_arg: None,
         lockfile_skip_write: true,
-        // The language server never modifies the node_modules directory.
-        node_modules_dir: Some(NodeModulesDirMode::None),
         no_lock: false,
-        no_npm: false,
-        npm_process_state: None,
-        root_node_modules_dir_override: None,
         vendor: None,
       },
     );
     // Reuse the already-discovered workspace instead of rediscovering it.
     workspace_factory.set_workspace_directory(workspace.root_dir());
-    let resolver_factory = ResolverFactory::new(
-      Arc::new(workspace_factory),
-      ResolverFactoryOptions {
-        // these default options are fine because we don't use this for
-        // anything other than resolving the lockfile at the moment
-        allow_json_imports:
-          ende_resolver::loader::AllowJsonImports::WithAttribute,
-        compiler_options_overrides: Default::default(),
-        is_cjs_resolution_mode: Default::default(),
-        on_mapped_resolution_diagnostic: None,
-        newest_dependency_date: None,
-        npm_system_info: Default::default(),
-        node_code_translator_mode: Default::default(),
-        node_resolver_options: NodeResolverOptions::default(),
-        node_analysis_cache: None,
-        node_resolution_cache: None,
-        package_json_cache: None,
-        specified_import_map: None,
-        unstable_sloppy_imports: false,
-        require_modules: vec![],
-      },
-    );
-    let pb = ProgressBar::new(ProgressBarStyle::TextOnly);
-    let npm_installer_factory = NpmInstallerFactory::new(
-      Arc::new(resolver_factory),
-      Arc::new(CliNpmCacheHttpClient::new(
-        http_client_provider
-          .cloned()
-          // will only happen in the tests
-          .unwrap_or_else(|| Arc::new(HttpClientProvider::new(None, None))),
-        pb.clone(),
-        NpmPackumentFormat::Abbreviated,
-      )),
-      Arc::new(NullLifecycleScriptsExecutor),
-      pb,
-      None,
-      NpmInstallerFactoryOptions {
-        clean_on_install: false,
-        dedup_lockfile_peer_variants: false,
-        cache_setting: NpmCacheSetting::Use,
-        caching_strategy: NpmCachingStrategy::Eager,
-        lifecycle_scripts_config: LifecycleScriptsConfig::default(),
-        production: false,
-        skip_types: false,
-        resolve_npm_resolution_snapshot: Box::new(|| Ok(None)),
-      },
-    );
-
-    let npmrc = Some(npm_installer_factory.workspace_factory().npmrc().clone());
-
     let vendor_dir = workspace.vendor_dir_path().cloned();
-    let lockfile = npm_installer_factory
+    let lockfile = workspace_factory
       .maybe_lockfile()
       .await
       .inspect_err(|err| {
@@ -1375,20 +1296,8 @@ impl WorkspaceConfigData {
       add_watched_file(specifier, ConfigWatchedFileType::Lockfile);
     }
 
-    let node_modules_dir = npm_installer_factory
-      .workspace_factory()
-      .node_modules_dir_path()
-      .inspect_err(|err| {
-        lsp_warn!("Failed resolving node_modules directory: {:#}", err);
-      })
-      .ok()
-      .flatten()
-      .map(|p| p.to_path_buf());
-
     Self {
       lockfile,
-      npmrc,
-      node_modules_dir,
       vendor_dir,
     }
   }
@@ -1403,10 +1312,8 @@ pub struct ConfigData {
   pub fmt_config: Arc<FmtConfig>,
   pub test_config: Arc<TestConfig>,
   pub exclude_files: Arc<PathOrPatternSet>,
-  pub node_modules_dir: Option<PathBuf>,
   pub vendor_dir: Option<PathBuf>,
   pub lockfile: Option<Arc<CliLockfile>>,
-  pub npmrc: Option<Arc<ResolvedNpmRc>>,
   pub import_map_from_settings: Option<ModuleSpecifier>,
   pub specified_import_map: Option<SpecifiedImportMap>,
   pub unstable: BTreeSet<String>,
@@ -1420,7 +1327,6 @@ impl ConfigData {
     scope: &Arc<Url>,
     settings: &Settings,
     file_fetcher: &Arc<CliFileFetcher>,
-    http_client_provider: &Arc<HttpClientProvider>,
     // sync requirement is because the lsp requires sync
     ende_json_cache: &(dyn EndeJsonCache + Sync),
     workspace_cache: &(dyn WorkspaceCache + Sync),
@@ -1460,7 +1366,6 @@ impl ConfigData {
           scope,
           settings,
           Some(file_fetcher),
-          Some(http_client_provider),
           ws_data_cache,
         )
         .await
@@ -1477,7 +1382,6 @@ impl ConfigData {
           scope.clone(),
           settings,
           Some(file_fetcher),
-          Some(http_client_provider),
           ws_data_cache,
         )
         .await;
@@ -1513,7 +1417,6 @@ impl ConfigData {
     scope: Arc<ModuleSpecifier>,
     settings: &Settings,
     file_fetcher: Option<&Arc<CliFileFetcher>>,
-    http_client_provider: Option<&Arc<HttpClientProvider>>,
     ws_data_cache: &mut HashMap<UrlRc, WorkspaceConfigData>,
   ) -> Self {
     let (settings, workspace_folder) = settings.get_for_specifier(&scope);
@@ -1555,7 +1458,7 @@ impl ConfigData {
       );
     }
 
-    // The lockfile, npm registry config, node_modules dir, etc. are resolved from the
+    // The lockfile, vendor dir, etc. are resolved from the
     // workspace root, so they're shared by every member. Load them once per
     // workspace root and reuse the result across members.
     let ws_root_url = member_dir.workspace.root_dir_url();
@@ -1569,17 +1472,14 @@ impl ConfigData {
         entry.insert(
           WorkspaceConfigData::load(
             &member_dir.workspace,
-            http_client_provider,
             &mut add_watched_file,
           )
           .await,
         )
       }
     };
-    let node_modules_dir = ws_data.node_modules_dir.clone();
     let vendor_dir = ws_data.vendor_dir.clone();
     let lockfile = ws_data.lockfile.clone();
-    let npmrc = ws_data.npmrc.clone();
 
     let default_file_pattern_base =
       scope.to_file_path().unwrap_or_else(|_| PathBuf::from("/"));
@@ -1704,10 +1604,8 @@ impl ConfigData {
       fmt_config,
       test_config,
       exclude_files,
-      node_modules_dir,
       vendor_dir,
       lockfile,
-      npmrc,
       import_map_from_settings,
       specified_import_map,
       unstable,
@@ -1734,7 +1632,6 @@ impl ConfigData {
 #[derive(Clone, Debug, Default)]
 pub struct ConfigTree {
   scopes: Arc<BTreeMap<Arc<Url>, Arc<ConfigData>>>,
-  global_npm_cache_url: Option<Arc<Url>>,
 }
 
 impl ConfigTree {
@@ -1835,21 +1732,7 @@ impl ConfigTree {
         })
       })
       .collect();
-    let ende_dir_npm_folder_uri = self
-      .global_npm_cache_url
-      .as_ref()
-      .and_then(|s| url_to_uri(s).ok());
-    lsp_custom::DidRefreshEndeConfigurationTreeNotificationParams {
-      data,
-      ende_dir_npm_folder_uri,
-    }
-  }
-
-  pub fn in_global_npm_cache(&self, url: &Url) -> bool {
-    self
-      .global_npm_cache_url
-      .as_ref()
-      .is_some_and(|s| url.as_str().starts_with(s.as_str()))
+    lsp_custom::DidRefreshEndeConfigurationTreeNotificationParams { data }
   }
 
   pub async fn refresh(
@@ -1857,8 +1740,6 @@ impl ConfigTree {
     settings: &Settings,
     workspace_files: &IndexSet<PathBuf>,
     file_fetcher: &Arc<CliFileFetcher>,
-    http_client_provider: &Arc<HttpClientProvider>,
-    ende_dir: &EndeDir,
     reason: &str,
   ) {
     lsp_log!("Refreshing configuration tree ({reason})...");
@@ -1867,7 +1748,7 @@ impl ConfigTree {
     // ConfigData::load calls
     let ende_json_cache = EndeJsonMemCache::default();
     let workspace_cache = WorkspaceMemCache::default();
-    // Shared per-workspace-root data (lockfile, npm registry config, node_modules dir),
+    // Shared per-workspace-root data (lockfile, vendor dir),
     // computed once per root and reused across its members.
     let mut ws_data_cache = HashMap::<UrlRc, WorkspaceConfigData>::new();
     let mut scopes = BTreeMap::new();
@@ -1899,7 +1780,6 @@ impl ConfigTree {
                 folder_url,
                 settings,
                 file_fetcher,
-                http_client_provider,
                 &ende_json_cache,
                 &workspace_cache,
                 &mut ws_data_cache,
@@ -1931,7 +1811,6 @@ impl ConfigTree {
           &scope,
           settings,
           file_fetcher,
-          http_client_provider,
           &ende_json_cache,
           &workspace_cache,
           &mut ws_data_cache,
@@ -1948,7 +1827,6 @@ impl ConfigTree {
           member_scope,
           settings,
           file_fetcher,
-          http_client_provider,
           &ende_json_cache,
           &workspace_cache,
           &mut ws_data_cache,
@@ -1959,10 +1837,6 @@ impl ConfigTree {
     }
 
     self.scopes = Arc::new(scopes);
-    self.global_npm_cache_url =
-      Url::from_directory_path(ende_dir.npm_folder_path())
-        .ok()
-        .map(Arc::new);
   }
 
   #[cfg(test)]
@@ -1991,7 +1865,6 @@ impl ConfigTree {
         workspace_dir,
         scope.clone(),
         &Default::default(),
-        None,
         None,
         &mut HashMap::new(),
       )

@@ -8,38 +8,16 @@ use std::path::PathBuf;
 
 use boxed_error::Boxed;
 use deno_error::JsError;
-use deno_semver::npm::NpmPackageReqReference;
-use ende_cache_dir::npm::NpmCacheDir;
-pub use node_resolver::DenoIsBuiltInNodeModuleChecker;
-use node_resolver::InNpmPackageChecker;
-use node_resolver::IsBuiltInNodeModuleChecker;
-use node_resolver::NodeResolutionKind;
-pub use node_resolver::NodeResolverOptions;
-use node_resolver::NodeResolverRc;
-use node_resolver::NpmPackageFolderResolver;
-use node_resolver::ResolutionMode;
-use node_resolver::UrlOrPath;
-use node_resolver::errors::NodeJsErrorCode;
-use node_resolver::errors::NodeResolveError;
-use node_resolver::errors::NodeResolveErrorKind;
-use node_resolver::errors::UnknownBuiltInNodeModuleError;
-use npm::NodeModulesOutOfDateError;
-use npm::NpmReqResolverRc;
-use npm::ResolveIfForNpmPackageErrorKind;
-use npm::ResolvePkgFolderFromDenoReqError;
 use thiserror::Error;
 use url::Url;
 
-use self::npm::NpmResolver;
-use self::npm::NpmResolverSys;
-use self::npm::ResolveNpmReqRefError;
 use crate::workspace::MappedResolution;
 use crate::workspace::MappedResolutionDiagnostic;
 use crate::workspace::MappedResolutionError;
+use crate::workspace::ResolutionKind;
 use crate::workspace::WorkspaceResolver;
 
 pub mod cache;
-pub mod cjs;
 pub mod collections;
 pub mod display;
 #[cfg(feature = "deno_ast")]
@@ -53,9 +31,7 @@ pub mod graph;
 pub mod import_map;
 pub mod loader;
 pub mod lockfile;
-pub mod npm;
-pub mod npmrc;
-#[cfg(feature = "sync")]
+#[cfg(all(feature = "sync", feature = "deno_ast"))]
 mod rt;
 pub mod workspace;
 
@@ -95,12 +71,87 @@ pub fn check_specifier_supported(
   }
 }
 
+/// Node.js built-in module names, used only to give bare imports of them
+/// (e.g. `import fs from "fs"`) a clear "not supported in Ende" error.
+static NODE_BUILTIN_MODULE_NAMES: &[&str] = &[
+  "_http_agent",
+  "_http_common",
+  "_http_outgoing",
+  "_http_server",
+  "_stream_duplex",
+  "_stream_passthrough",
+  "_stream_readable",
+  "_stream_transform",
+  "_stream_writable",
+  "_tls_common",
+  "_tls_wrap",
+  "assert",
+  "assert/strict",
+  "async_hooks",
+  "buffer",
+  "child_process",
+  "cluster",
+  "console",
+  "constants",
+  "crypto",
+  "dgram",
+  "diagnostics_channel",
+  "dns",
+  "dns/promises",
+  "domain",
+  "events",
+  "fs",
+  "fs/promises",
+  "http",
+  "http2",
+  "https",
+  "inspector",
+  "inspector/promises",
+  "module",
+  "net",
+  "os",
+  "path",
+  "path/posix",
+  "path/win32",
+  "perf_hooks",
+  "process",
+  "punycode",
+  "querystring",
+  "readline",
+  "readline/promises",
+  "repl",
+  "sqlite",
+  "stream",
+  "stream/consumers",
+  "stream/promises",
+  "stream/web",
+  "string_decoder",
+  "sys",
+  "test",
+  "test/reporters",
+  "timers",
+  "timers/promises",
+  "tls",
+  "trace_events",
+  "tty",
+  "url",
+  "util",
+  "util/types",
+  "v8",
+  "vm",
+  "wasi",
+  "worker_threads",
+  "zlib",
+];
+
+/// Whether the bare specifier names a Node.js built-in module.
+pub fn is_node_builtin_module_name(specifier: &str) -> bool {
+  NODE_BUILTIN_MODULE_NAMES.contains(&specifier)
+}
+
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type WorkspaceResolverRc<TSys> =
   ende_maybe_sync::MaybeArc<WorkspaceResolver<TSys>>;
-
-#[allow(clippy::disallowed_types, reason = "definition")]
-pub(crate) type NpmCacheDirRc = ende_maybe_sync::MaybeArc<NpmCacheDir>;
 
 #[derive(Debug, Clone)]
 pub struct EndeResolution {
@@ -131,21 +182,6 @@ impl EndeResolveError {
       err => ResolveError::from_err(err),
     }
   }
-
-  pub fn maybe_specifier(&self) -> Option<Cow<'_, UrlOrPath>> {
-    match self.as_kind() {
-      EndeResolveErrorKind::Node(err) => err.maybe_specifier(),
-      EndeResolveErrorKind::PathToUrl(err) => {
-        Some(Cow::Owned(UrlOrPath::Path(err.0.clone())))
-      }
-      EndeResolveErrorKind::ResolveNpmReqRef(err) => err.err.maybe_specifier(),
-      EndeResolveErrorKind::MappedResolution(_)
-      | EndeResolveErrorKind::ResolvePkgFolderFromDenoReq(_)
-      | EndeResolveErrorKind::InvalidVendorFolderImport
-      | EndeResolveErrorKind::NodeModulesOutOfDate(_)
-      | EndeResolveErrorKind::UnsupportedSpecifier(_) => None,
-    }
-  }
 }
 
 #[derive(Debug, Error, JsError)]
@@ -160,163 +196,44 @@ pub enum EndeResolveErrorKind {
   MappedResolution(#[from] MappedResolutionError),
   #[class(inherit)]
   #[error(transparent)]
-  Node(#[from] NodeResolveError),
-  #[class(inherit)]
-  #[error(transparent)]
-  NodeModulesOutOfDate(#[from] NodeModulesOutOfDateError),
-  #[class(inherit)]
-  #[error(transparent)]
-  PathToUrl(#[from] deno_path_util::PathToUrlError),
-  #[class(inherit)]
-  #[error(transparent)]
-  ResolveNpmReqRef(#[from] ResolveNpmReqRefError),
-  #[class(inherit)]
-  #[error(transparent)]
-  ResolvePkgFolderFromDenoReq(#[from] ResolvePkgFolderFromDenoReqError),
-  #[class(inherit)]
-  #[error(transparent)]
   UnsupportedSpecifier(#[from] UnsupportedSpecifierError),
 }
 
-impl EndeResolveErrorKind {
-  pub fn maybe_node_code(&self) -> Option<NodeJsErrorCode> {
-    match self {
-      EndeResolveErrorKind::InvalidVendorFolderImport
-      | EndeResolveErrorKind::MappedResolution { .. }
-      | EndeResolveErrorKind::NodeModulesOutOfDate { .. }
-      | EndeResolveErrorKind::PathToUrl { .. }
-      | EndeResolveErrorKind::ResolvePkgFolderFromDenoReq { .. }
-      | EndeResolveErrorKind::UnsupportedSpecifier { .. } => None,
-      EndeResolveErrorKind::ResolveNpmReqRef(err) => {
-        err.err.as_kind().maybe_code()
-      }
-      EndeResolveErrorKind::Node(err) => err.as_kind().maybe_code(),
-    }
-  }
-}
-
-#[derive(Debug)]
-pub struct NodeAndNpmResolvers<
-  TInNpmPackageChecker: InNpmPackageChecker,
-  TIsBuiltInNodeModuleChecker: IsBuiltInNodeModuleChecker,
-  TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TSys: NpmResolverSys,
-> {
-  pub node_resolver: NodeResolverRc<
-    TInNpmPackageChecker,
-    TIsBuiltInNodeModuleChecker,
-    TNpmPackageFolderResolver,
-    TSys,
-  >,
-  pub npm_resolver: NpmResolver<TSys>,
-  pub npm_req_resolver: NpmReqResolverRc<
-    TInNpmPackageChecker,
-    TIsBuiltInNodeModuleChecker,
-    TNpmPackageFolderResolver,
-    TSys,
-  >,
-}
-
 #[sys_traits::auto_impl]
-pub trait EndeResolverSys: NpmResolverSys {}
+pub trait EndeResolverSys:
+  sys_traits::FsCanonicalize
+  + sys_traits::FsMetadata
+  + sys_traits::FsRead
+  + sys_traits::FsReadDir
+  + std::fmt::Debug
+  + ende_maybe_sync::MaybeSend
+  + ende_maybe_sync::MaybeSync
+  + Clone
+  + 'static
+{
+}
 
-pub struct EndeResolverOptions<
-  'a,
-  TInNpmPackageChecker: InNpmPackageChecker,
-  TIsBuiltInNodeModuleChecker: IsBuiltInNodeModuleChecker,
-  TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TSys: EndeResolverSys,
-> {
-  pub in_npm_pkg_checker: TInNpmPackageChecker,
-  pub node_and_req_resolver: Option<
-    NodeAndNpmResolvers<
-      TInNpmPackageChecker,
-      TIsBuiltInNodeModuleChecker,
-      TNpmPackageFolderResolver,
-      TSys,
-    >,
-  >,
+pub struct EndeResolverOptions<'a, TSys: EndeResolverSys> {
   pub workspace_resolver: WorkspaceResolverRc<TSys>,
-  /// Whether "bring your own node_modules" is enabled where Ende does not
-  /// setup the node_modules directories automatically, but instead uses
-  /// what already exists on the file system.
-  pub is_byonm: bool,
   pub maybe_vendor_dir: Option<&'a PathBuf>,
 }
 
 #[allow(clippy::disallowed_types, reason = "definition")]
-pub type RawEndeResolverRc<
-  TInNpmPackageChecker,
-  TIsBuiltInNodeModuleChecker,
-  TNpmPackageFolderResolver,
-  TSys,
-> = ende_maybe_sync::MaybeArc<
-  RawEndeResolver<
-    TInNpmPackageChecker,
-    TIsBuiltInNodeModuleChecker,
-    TNpmPackageFolderResolver,
-    TSys,
-  >,
->;
-
-/// Helper type for a RawEndeResolverRc that has the implementations
-/// used by the Ende CLI.
-pub type DefaultRawEndeResolverRc<TSys> = RawEndeResolverRc<
-  npm::DenoInNpmPackageChecker,
-  DenoIsBuiltInNodeModuleChecker,
-  npm::NpmResolver<TSys>,
-  TSys,
->;
+pub type RawEndeResolverRc<TSys> =
+  ende_maybe_sync::MaybeArc<RawEndeResolver<TSys>>;
 
 /// A resolver that takes care of resolution, taking into account loaded
 /// import map, JSX settings.
 #[derive(Debug)]
-pub struct RawEndeResolver<
-  TInNpmPackageChecker: InNpmPackageChecker,
-  TIsBuiltInNodeModuleChecker: IsBuiltInNodeModuleChecker,
-  TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TSys: EndeResolverSys,
-> {
-  in_npm_pkg_checker: TInNpmPackageChecker,
-  node_and_npm_resolver: Option<
-    NodeAndNpmResolvers<
-      TInNpmPackageChecker,
-      TIsBuiltInNodeModuleChecker,
-      TNpmPackageFolderResolver,
-      TSys,
-    >,
-  >,
+pub struct RawEndeResolver<TSys: EndeResolverSys> {
   workspace_resolver: WorkspaceResolverRc<TSys>,
-  is_byonm: bool,
   maybe_vendor_specifier: Option<Url>,
 }
 
-impl<
-  TInNpmPackageChecker: InNpmPackageChecker,
-  TIsBuiltInNodeModuleChecker: IsBuiltInNodeModuleChecker,
-  TNpmPackageFolderResolver: NpmPackageFolderResolver,
-  TSys: EndeResolverSys,
->
-  RawEndeResolver<
-    TInNpmPackageChecker,
-    TIsBuiltInNodeModuleChecker,
-    TNpmPackageFolderResolver,
-    TSys,
-  >
-{
-  pub fn new(
-    options: EndeResolverOptions<
-      TInNpmPackageChecker,
-      TIsBuiltInNodeModuleChecker,
-      TNpmPackageFolderResolver,
-      TSys,
-    >,
-  ) -> Self {
+impl<TSys: EndeResolverSys> RawEndeResolver<TSys> {
+  pub fn new(options: EndeResolverOptions<TSys>) -> Self {
     Self {
-      in_npm_pkg_checker: options.in_npm_pkg_checker,
-      node_and_npm_resolver: options.node_and_req_resolver,
       workspace_resolver: options.workspace_resolver,
-      is_byonm: options.is_byonm,
       maybe_vendor_specifier: options
         .maybe_vendor_dir
         .and_then(|v| deno_path_util::url_from_directory_path(v).ok()),
@@ -327,42 +244,15 @@ impl<
     &self,
     raw_specifier: &str,
     referrer: &Url,
-    resolution_mode: ResolutionMode,
-    resolution_kind: NodeResolutionKind,
+    resolution_kind: ResolutionKind,
   ) -> Result<EndeResolution, EndeResolveError> {
     let mut maybe_diagnostic = None;
-    // Use node resolution if we're in an npm package
-    if let Some(node_and_npm_resolver) = self.node_and_npm_resolver.as_ref() {
-      let node_resolver = &node_and_npm_resolver.node_resolver;
-      if referrer.scheme() == "file"
-        && self.in_npm_pkg_checker.in_npm_package(referrer)
-      {
-        log::debug!(
-          "{}: specifier={} referrer={} mode={:?} kind={:?}",
-          deno_terminal::colors::magenta("resolving in npm package"),
-          raw_specifier,
-          referrer,
-          resolution_mode,
-          resolution_kind
-        );
-        return node_resolver
-          .resolve(raw_specifier, referrer, resolution_mode, resolution_kind)
-          .and_then(|res| {
-            Ok(EndeResolution {
-              url: res.into_url()?,
-              maybe_diagnostic,
-            })
-          })
-          .map_err(|e| e.into());
-      }
-    }
 
     // Attempt to resolve with the workspace resolver
-    let result = self.workspace_resolver.resolve(
-      raw_specifier,
-      referrer,
-      resolution_kind.into(),
-    );
+    let result =
+      self
+        .workspace_resolver
+        .resolve(raw_specifier, referrer, resolution_kind);
     let result = match result {
       Ok(resolution) => match resolution {
         MappedResolution::Normal {
@@ -377,7 +267,7 @@ impl<
           Ok(specifier)
         }
       },
-      Err(err) => Err(err.into()),
+      Err(err) => Err(err),
     };
 
     // When the user is vendoring, don't allow them to import directly from the vendor/ directory
@@ -392,151 +282,29 @@ impl<
     }
 
     // Node built-ins, npm packages and CommonJS modules are not supported.
-    match &result {
-      Ok(specifier) => check_specifier_supported(specifier).map_err(|e| {
-        EndeResolveErrorKind::UnsupportedSpecifier(e).into_box()
-      })?,
-      Err(_) => {
-        if DenoIsBuiltInNodeModuleChecker.is_builtin_node_module(raw_specifier)
-        {
-          return Err(
-            EndeResolveErrorKind::UnsupportedSpecifier(
-              UnsupportedSpecifierError::NodeBuiltin(raw_specifier.to_string()),
-            )
-            .into_box(),
-          );
-        }
-      }
-    }
-
-    let Some(NodeAndNpmResolvers {
-      node_resolver,
-      npm_req_resolver,
-      ..
-    }) = &self.node_and_npm_resolver
-    else {
-      return Ok(EndeResolution {
-        url: result?,
-        maybe_diagnostic,
-      });
-    };
-
     match result {
       Ok(specifier) => {
-        if specifier.scheme() == "node" {
-          let module_name = specifier.path();
-          return if node_resolver.is_builtin_node_module(module_name) {
-            Ok(EndeResolution {
-              url: specifier,
-              maybe_diagnostic,
-            })
-          } else {
-            Err(
-              NodeResolveErrorKind::UnknownBuiltInNodeModule(
-                UnknownBuiltInNodeModuleError {
-                  module_name: module_name.to_string(),
-                },
-              )
-              .into_box()
-              .into(),
-            )
-          };
-        }
-
-        if self.is_byonm
-          && let Ok(npm_req_ref) =
-            NpmPackageReqReference::from_specifier(&specifier)
-        {
-          return npm_req_resolver
-            .resolve_req_reference(
-              &npm_req_ref,
-              referrer,
-              resolution_mode,
-              resolution_kind,
-            )
-            .map_err(|err| {
-              EndeResolveErrorKind::ResolveNpmReqRef(err).into_box()
-            })
-            .and_then(|url_or_path| {
-              Ok(EndeResolution {
-                url: url_or_path.into_url()?,
-                maybe_diagnostic,
-              })
-            });
-        }
-
+        check_specifier_supported(&specifier).map_err(|e| {
+          EndeResolveErrorKind::UnsupportedSpecifier(e).into_box()
+        })?;
         Ok(EndeResolution {
-          url: node_resolver
-            .handle_if_in_node_modules(&specifier)
-            .unwrap_or(specifier),
+          url: specifier,
           maybe_diagnostic,
         })
       }
       Err(err) => {
-        // Check if the bare specifier is a known Node built-in module.
-        // Built-ins always take priority, matching Node.js behavior where
-        // built-in modules cannot be shadowed by node_modules packages.
-        if node_resolver.is_builtin_node_module(raw_specifier) {
-          return Ok(EndeResolution {
-            url: Url::parse(&format!("node:{}", raw_specifier)).unwrap(),
-            maybe_diagnostic,
-          });
-        }
-
-        // If byonm, check if the bare specifier resolves to an npm package
-        if self.is_byonm && referrer.scheme() == "file" {
-          let maybe_resolution = npm_req_resolver
-            .resolve_if_for_npm_pkg(
-              raw_specifier,
-              referrer,
-              resolution_mode,
-              resolution_kind,
+        if is_node_builtin_module_name(raw_specifier) {
+          Err(
+            EndeResolveErrorKind::UnsupportedSpecifier(
+              UnsupportedSpecifierError::NodeBuiltin(raw_specifier.to_string()),
             )
-            .map_err(|e| match e.into_kind() {
-              ResolveIfForNpmPackageErrorKind::NodeResolve(e) => {
-                EndeResolveErrorKind::Node(e).into_box()
-              }
-              ResolveIfForNpmPackageErrorKind::NodeModulesOutOfDate(e) => {
-                e.into()
-              }
-            })?;
-          if let Some(res) = maybe_resolution {
-            return Ok(EndeResolution {
-              url: res.into_url()?,
-              maybe_diagnostic,
-            });
-          }
+            .into_box(),
+          )
+        } else {
+          Err(EndeResolveErrorKind::MappedResolution(err).into_box())
         }
-
-        Err(err)
       }
     }
-  }
-
-  #[cfg(feature = "graph")]
-  pub(crate) fn resolve_non_workspace_npm_req_ref_to_file(
-    &self,
-    npm_req_ref: &NpmPackageReqReference,
-    referrer: &Url,
-    resolution_mode: ResolutionMode,
-    resolution_kind: NodeResolutionKind,
-  ) -> Result<node_resolver::UrlOrPath, npm::ResolveNpmReqRefError> {
-    let Some(NodeAndNpmResolvers {
-      npm_req_resolver, ..
-    }) = &self.node_and_npm_resolver
-    else {
-      return Err(npm::ResolveNpmReqRefError {
-        npm_req_ref: npm_req_ref.clone(),
-        err: npm::ResolveReqWithSubPathErrorKind::NoNpm(npm::NoNpmError)
-          .into_box(),
-      });
-    };
-    npm_req_resolver.resolve_req_reference(
-      npm_req_ref,
-      referrer,
-      resolution_mode,
-      resolution_kind,
-    )
   }
 }
 

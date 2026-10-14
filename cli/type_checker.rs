@@ -14,7 +14,6 @@ use deno_error::JsErrorBox;
 use deno_graph::Module;
 use deno_graph::ModuleGraph;
 use deno_graph::ResolutionError;
-use deno_semver::npm::NpmPackageReqReference;
 use deno_terminal::colors;
 use ende_config::ende_json::CompilerOptionTypesDeserializeError;
 use ende_core::url::Url;
@@ -41,13 +40,9 @@ use crate::cache::TypeCheckCache;
 use crate::graph_util::BuildFastCheckGraphOptions;
 use crate::graph_util::ModuleGraphBuilder;
 use crate::graph_util::module_error_for_tsc_diagnostic;
-use crate::node::CliNodeResolver;
-use crate::node::CliPackageJsonResolver;
-use crate::npm::CliNpmResolver;
 use crate::sys::CliSys;
 use crate::tsc;
 use crate::tsc::Diagnostics;
-use crate::tsc::TypeCheckingCjsTracker;
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
 #[class(type)]
@@ -113,50 +108,29 @@ pub struct CheckOptions {
 
 pub struct TypeChecker {
   caches: Arc<Caches>,
-  cjs_tracker: Arc<TypeCheckingCjsTracker>,
   cli_options: Arc<CliOptions>,
   module_graph_builder: Arc<ModuleGraphBuilder>,
-  node_resolver: Arc<CliNodeResolver>,
-  npm_resolver: CliNpmResolver,
-  package_json_resolver: Arc<CliPackageJsonResolver>,
   sys: CliSys,
   compiler_options_resolver: Arc<CompilerOptionsResolver>,
   code_cache: Option<Arc<crate::cache::CodeCache>>,
 }
 
 impl TypeChecker {
-  #[allow(clippy::too_many_arguments, reason = "construction")]
   pub fn new(
     caches: Arc<Caches>,
-    cjs_tracker: Arc<TypeCheckingCjsTracker>,
     cli_options: Arc<CliOptions>,
     module_graph_builder: Arc<ModuleGraphBuilder>,
-    node_resolver: Arc<CliNodeResolver>,
-    npm_resolver: CliNpmResolver,
-    package_json_resolver: Arc<CliPackageJsonResolver>,
     sys: CliSys,
     compiler_options_resolver: Arc<CompilerOptionsResolver>,
     code_cache: Option<Arc<crate::cache::CodeCache>>,
   ) -> Self {
     Self {
       caches,
-      cjs_tracker,
       cli_options,
       module_graph_builder,
-      node_resolver,
-      npm_resolver,
-      package_json_resolver,
       sys,
       compiler_options_resolver,
       code_cache,
-    }
-  }
-
-  pub fn create_request_npm_state(&self) -> tsc::RequestNpmState {
-    tsc::RequestNpmState {
-      cjs_tracker: self.cjs_tracker.clone(),
-      node_resolver: self.node_resolver.clone(),
-      npm_resolver: self.npm_resolver.clone(),
     }
   }
 
@@ -213,7 +187,6 @@ impl TypeChecker {
         graph,
         jsx_import_source_config_resolver,
         hash_data,
-        maybe_npm: Some(self.create_request_npm_state()),
         maybe_tsbuildinfo: None,
         root_names,
         // Declaration emit requires full type-checking regardless of
@@ -298,29 +271,6 @@ impl TypeChecker {
     mut graph: ModuleGraph,
     options: CheckOptions,
   ) -> Result<DiagnosticsByFolderIterator<'_>, CheckError> {
-    fn check_state_hash(resolver: &CliNpmResolver) -> Option<u64> {
-      match resolver {
-        CliNpmResolver::Byonm(_) => {
-          // not feasible and probably slower to compute
-          None
-        }
-        CliNpmResolver::Managed(resolver) => {
-          // we should probably go further and check all the individual npm packages
-          let mut package_reqs = resolver.resolution().package_reqs();
-          package_reqs.sort_by(|a, b| a.0.cmp(&b.0)); // determinism
-          let mut hasher = FastInsecureHasher::new_without_ende_version();
-          // ensure the cache gets busted when turning nodeModulesDir on or off
-          // as this could cause changes in resolution
-          hasher.write_hashable(resolver.root_node_modules_path().is_some());
-          for (pkg_req, pkg_nv) in package_reqs {
-            hasher.write_hashable(&pkg_req);
-            hasher.write_hashable(&pkg_nv);
-          }
-          Some(hasher.finish())
-        }
-      }
-    }
-
     if !options.type_check_mode.is_true() || graph.roots.is_empty() {
       return Ok(DiagnosticsByFolderIterator(
         DiagnosticsByFolderIteratorInner::Empty(Arc::new(graph)),
@@ -350,18 +300,13 @@ impl TypeChecker {
       DiagnosticsByFolderIteratorInner::Real(DiagnosticsByFolderRealIterator {
         graph,
         sys: &self.sys,
-        cjs_tracker: &self.cjs_tracker,
         jsx_import_source_config_resolver: Arc::new(
           JsxImportSourceConfigResolver::from_compiler_options_resolver(
             &self.compiler_options_resolver,
           )?,
         ),
-        node_resolver: &self.node_resolver,
-        npm_resolver: &self.npm_resolver,
-        _package_json_resolver: &self.package_json_resolver,
         compiler_options_resolver: &self.compiler_options_resolver,
         log_level: self.cli_options.log_level(),
-        npm_check_state_hash: check_state_hash(&self.npm_resolver),
         type_check_cache: TypeCheckCache::new(
           self.caches.type_checking_cache_db(),
         ),
@@ -506,17 +451,12 @@ enum DiagnosticsByFolderIteratorInner<'a> {
 struct DiagnosticsByFolderRealIterator<'a> {
   graph: Arc<ModuleGraph>,
   sys: &'a CliSys,
-  cjs_tracker: &'a Arc<TypeCheckingCjsTracker>,
   jsx_import_source_config_resolver: Arc<JsxImportSourceConfigResolver>,
-  node_resolver: &'a Arc<CliNodeResolver>,
-  npm_resolver: &'a CliNpmResolver,
-  _package_json_resolver: &'a Arc<CliPackageJsonResolver>,
   compiler_options_resolver: &'a CompilerOptionsResolver,
   type_check_cache: TypeCheckCache,
   groups: Vec<CheckGroup<'a>>,
   current_group_index: usize,
   log_level: Option<log::Level>,
-  npm_check_state_hash: Option<u64>,
   seen_diagnotics: FxHashSet<String>,
   options: CheckOptions,
   code_cache: Option<Arc<crate::cache::CodeCache>>,
@@ -596,27 +536,18 @@ impl DiagnosticsByFolderRealIterator<'_> {
     let mut graph_walker = GraphWalker::new(
       &self.graph,
       self.sys,
-      self.node_resolver,
-      self.npm_resolver,
       self.compiler_options_resolver,
       &self.bare_importable_pkg_names,
-      self.npm_check_state_hash,
       check_group.compiler_options,
       self.options.type_check_mode,
     );
     for import in check_group.imports.iter() {
-      graph_walker.add_config_import(import, &check_group.referrer);
+      graph_walker.add_config_import(import);
     }
 
     for root in &check_group.roots {
       graph_walker.add_root(root);
     }
-
-    // Add JSX runtime types to the roots so that TS can resolve
-    // the jsx-runtime module during type checking. Without this,
-    // TS 6.0+ emits TS2875 because it validates that the JSX
-    // runtime module actually exports the JSX namespace.
-    self.add_jsx_runtime_types(&mut graph_walker, check_group);
 
     let TscRoots {
       roots: root_names,
@@ -687,11 +618,6 @@ impl DiagnosticsByFolderRealIterator<'_> {
           .jsx_import_source_config_resolver
           .clone(),
         hash_data: compiler_options_hash_data,
-        maybe_npm: Some(tsc::RequestNpmState {
-          cjs_tracker: self.cjs_tracker.clone(),
-          node_resolver: self.node_resolver.clone(),
-          npm_resolver: self.npm_resolver.clone(),
-        }),
         maybe_tsbuildinfo,
         root_names,
         check_mode: self.options.type_check_mode,
@@ -795,70 +721,11 @@ impl DiagnosticsByFolderRealIterator<'_> {
     )
   }
 
-  fn add_jsx_runtime_types(
-    &self,
-    graph_walker: &mut GraphWalker,
-    check_group: &CheckGroup,
-  ) {
-    // Check each root to see if it has a jsxImportSource config.
-    // If so, resolve the jsx-runtime types and add to roots.
-    let mut seen_jsx_sources = HashSet::new();
-    for root in &check_group.roots {
-      let Some(jsx_config) =
-        self.jsx_import_source_config_resolver.for_specifier(root)
-      else {
-        continue;
-      };
-      let Some(specifier) = jsx_config.specifier() else {
-        continue;
-      };
-      if !seen_jsx_sources.insert(specifier.to_string()) {
-        continue;
-      }
-      // Construct the jsx-runtime specifier (e.g., "npm:react/jsx-runtime")
-      let jsx_runtime_specifier = format!("{specifier}/jsx-runtime");
-      let Ok(npm_ref) = deno_semver::npm::NpmPackageReqReference::from_str(
-        &jsx_runtime_specifier,
-      ) else {
-        continue;
-      };
-      // Try to resolve the package folder and then the subpath
-      let Ok(pkg_folder) = self
-        .npm_resolver
-        .resolve_pkg_folder_from_deno_module_req(npm_ref.req(), root)
-      else {
-        continue;
-      };
-      let Ok(resolved) =
-        self.node_resolver.resolve_package_subpath_from_deno_module(
-          &pkg_folder,
-          npm_ref.sub_path(),
-          Some(root),
-          node_resolver::ResolutionMode::Import,
-          node_resolver::NodeResolutionKind::Types,
-        )
-      else {
-        continue;
-      };
-      if let Ok(url) = resolved.into_url() {
-        let mt = MediaType::from_specifier(&url);
-        graph_walker.roots.push((url, mt));
-      }
-    }
-  }
-
   fn is_remote_diagnostic(&self, d: &tsc::Diagnostic) -> bool {
     let Some(file_name) = &d.file_name else {
       return false;
     };
-    if file_name.starts_with("https://") || file_name.starts_with("http://") {
-      return true;
-    }
-    // check if in an npm package
-    let Ok(specifier) = ModuleSpecifier::parse(file_name) else {
-      return false;
-    };
-    self.node_resolver.in_npm_package(&specifier)
+    file_name.starts_with("https://") || file_name.starts_with("http://")
   }
 }
 
@@ -890,8 +757,6 @@ enum TsSuppressionComment {
 struct GraphWalker<'a> {
   graph: &'a ModuleGraph,
   sys: &'a CliSys,
-  node_resolver: &'a CliNodeResolver,
-  npm_resolver: &'a CliNpmResolver,
   compiler_options_resolver: &'a CompilerOptionsResolver,
   /// Names of packages importable by bare specifier (workspace members and
   /// packages linked via the "links" field), used to enhance import errors.
@@ -911,38 +776,27 @@ struct PendingGraphWalkSpecifier<'a> {
 }
 
 impl<'a> GraphWalker<'a> {
-  #[allow(clippy::too_many_arguments, reason = "construction")]
   pub fn new(
     graph: &'a ModuleGraph,
     sys: &'a CliSys,
-    node_resolver: &'a CliNodeResolver,
-    npm_resolver: &'a CliNpmResolver,
     compiler_options_resolver: &'a CompilerOptionsResolver,
     bare_importable_pkg_names: &'a [String],
-    npm_cache_state_hash: Option<u64>,
     compiler_options: &CompilerOptions,
     type_check_mode: TypeCheckMode,
   ) -> Self {
-    let maybe_hasher = npm_cache_state_hash.map(|npm_cache_state_hash| {
-      let mut hasher = FastInsecureHasher::new_ende_versioned();
-      hasher.write_hashable(npm_cache_state_hash);
-      hasher.write_u8(match type_check_mode {
-        TypeCheckMode::All => 0,
-        TypeCheckMode::Local => 1,
-        TypeCheckMode::None => 2,
-      });
-      hasher.write_hashable(graph.has_node_specifier);
-      hasher.write_hashable(compiler_options);
-      hasher
+    let mut hasher = FastInsecureHasher::new_ende_versioned();
+    hasher.write_u8(match type_check_mode {
+      TypeCheckMode::All => 0,
+      TypeCheckMode::Local => 1,
+      TypeCheckMode::None => 2,
     });
+    hasher.write_hashable(compiler_options);
     Self {
       graph,
       sys,
-      node_resolver,
-      npm_resolver,
       compiler_options_resolver,
       bare_importable_pkg_names,
-      maybe_hasher,
+      maybe_hasher: Some(hasher),
       seen: FxHashSet::with_capacity_and_hasher(
         graph.imports.len() + graph.specifiers_count(),
         Default::default(),
@@ -954,34 +808,15 @@ impl<'a> GraphWalker<'a> {
     }
   }
 
-  pub fn add_config_import(&mut self, specifier: &'a Url, referrer: &Url) {
+  pub fn add_config_import(&mut self, specifier: &'a Url) {
     let specifier = self.graph.resolve(specifier);
     if self.seen.insert(specifier) {
-      match NpmPackageReqReference::from_specifier(specifier) {
-        Ok(req_ref) => match self.resolve_npm_req_ref(&req_ref, referrer) {
-          Some(resolved) => {
-            let mt = MediaType::from_specifier(&resolved);
-            self.roots.push((resolved, mt));
-          }
-          None => {
-            self
-              .missing_diagnostics
-              .push(tsc::Diagnostic::from_missing_error(
-                specifier.as_str(),
-                None,
-                maybe_additional_sloppy_imports_message(self.sys, specifier),
-              ));
-          }
-        },
-        _ => {
-          self.pending.push_back(PendingGraphWalkSpecifier {
-            specifier,
-            is_dynamic: false,
-            is_root: false,
-          });
-          self.resolve_pending();
-        }
-      }
+      self.pending.push_back(PendingGraphWalkSpecifier {
+        specifier,
+        is_dynamic: false,
+        is_root: false,
+      });
+      self.resolve_pending();
     }
   }
 
@@ -1251,12 +1086,7 @@ impl<'a> GraphWalker<'a> {
         }
         result
       }
-      Module::Node(_) | Module::Npm(_) => {
-        // don't bother adding this specifier to the hash
-        // because what matters is the resolved npm snapshot,
-        // which is hashed below
-        None
-      }
+      Module::Node(_) | Module::Npm(_) => None,
       Module::Json(module) => {
         if let Some(hasher) = &mut self.maybe_hasher {
           hasher.write_str(module.specifier.as_str());
@@ -1373,30 +1203,6 @@ impl<'a> GraphWalker<'a> {
         }
       }
     }
-  }
-
-  fn resolve_npm_req_ref(
-    &self,
-    req_ref: &NpmPackageReqReference,
-    referrer: &ModuleSpecifier,
-  ) -> Option<ModuleSpecifier> {
-    let pkg_dir = self
-      .npm_resolver
-      .as_managed()
-      .unwrap()
-      .resolve_pkg_folder_from_deno_module_req(req_ref.req())
-      .ok()?;
-    let resolved = self
-      .node_resolver
-      .resolve_package_subpath_from_deno_module(
-        &pkg_dir,
-        req_ref.sub_path(),
-        Some(referrer),
-        node_resolver::ResolutionMode::Import,
-        node_resolver::NodeResolutionKind::Types,
-      )
-      .ok()?;
-    resolved.into_url().ok()
   }
 }
 

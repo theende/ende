@@ -1,0 +1,50 @@
+// Copyright 2026 the Ende authors. MIT license.
+
+// Lockfiles written by older versions can contain npm entries. They are
+// ignored when loading and dropped the next time the lockfile is written.
+{
+  "tempDir": true,
+  "tests": {
+    "v5": {
+      "steps": [
+        {
+          // stale npm entries alone don't make the lockfile out of date
+          "args": "run --frozen main.ts",
+          "output": "[WILDCARD]3\n"
+        },
+        {
+          // nothing else changed, so the lockfile is left untouched
+          "args": "task --quiet cat ende.lock",
+          "output": "ende.lock.unchanged.out"
+        },
+        {
+          // adding a jsr dependency writes the lockfile without the npm
+          // entries and keeps the jsr ones
+          "args": "run subtract.ts",
+          "output": "[WILDCARD]1\n"
+        },
+        {
+          "args": "task --quiet cat ende.lock",
+          "output": "ende.lock.out"
+        }
+      ]
+    },
+    "v4": {
+      "steps": [
+        {
+          "args": "run --lock=ende.v4.lock main.ts",
+          "output": "[WILDCARD]3\n"
+        },
+        {
+          // the next write upgrades the lockfile to v5 without the npm entries
+          "args": "run --lock=ende.v4.lock subtract.ts",
+          "output": "[WILDCARD]1\n"
+        },
+        {
+          "args": "task --quiet cat ende.v4.lock",
+          "output": "ende.lock.out"
+        }
+      ]
+    }
+  }
+}

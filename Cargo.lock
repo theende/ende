@@ -593,26 +593,6 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.71.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f58bf3d7db68cfbac37cfc485a8d711e87e064c3d0fe0435b92f7a407f9d6b3"
-dependencies = [
- "bitflags 2.9.3",
- "cexpr",
- "clang-sys",
- "itertools 0.10.5",
- "log",
- "prettyplease",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash 2.1.1",
- "shlex",
- "syn 2.0.117",
-]
-
-[[package]]
-name = "bindgen"
 version = "0.72.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
@@ -1923,7 +1903,6 @@ dependencies = [
  "swc_eq_ignore_macros",
  "swc_macros_common",
  "swc_sourcemap",
- "swc_ts_fast_strip",
  "swc_visit",
  "text_lines",
  "thiserror 2.0.12",
@@ -2187,16 +2166,6 @@ dependencies = [
  "futures-util",
  "parking_lot",
  "tokio",
-]
-
-[[package]]
-name = "deno_whoami"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e75e4caa92b98a27f09c671d1399aee0f5970aa491b9a598523aac000a2192e3"
-dependencies = [
- "libc",
- "whoami",
 ]
 
 [[package]]
@@ -2926,12 +2895,7 @@ dependencies = [
  "ende_env",
  "ende_lib",
  "ende_lockfile",
- "ende_npm",
- "ende_npm_cache",
- "ende_npm_installer",
- "ende_npmrc",
  "ende_os",
- "ende_package_json",
  "ende_print",
  "ende_resolver",
  "ende_runtime",
@@ -2970,7 +2934,6 @@ dependencies = [
  "memchr",
  "msi",
  "nix 0.30.1",
- "node_resolver",
  "notify",
  "once_cell",
  "open",
@@ -3117,7 +3080,6 @@ dependencies = [
  "ende_config",
  "ende_core",
  "ende_lib",
- "ende_npm_installer",
  "ende_permissions",
  "ende_runtime",
  "log",
@@ -3556,9 +3518,6 @@ dependencies = [
  "deno_terminal",
  "ende_env",
  "ende_fs",
- "ende_node",
- "ende_npm",
- "ende_npm_installer",
  "ende_resolver",
  "ende_runtime",
  "env_logger",
@@ -3567,7 +3526,6 @@ dependencies = [
  "libc",
  "libsui",
  "log",
- "node_resolver",
  "parking_lot",
  "serde",
  "serde_json",
@@ -3602,25 +3560,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ende_napi"
-version = "0.190.0"
-dependencies = [
- "deno_error",
- "ende_core",
- "ende_node",
- "ende_permissions",
- "endert_helper",
- "libc",
- "libloading 0.7.4",
- "libuv-sys-lite",
- "log",
- "napi_sym",
- "object",
- "thiserror 2.0.12",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "ende_net"
 version = "0.251.0"
 dependencies = [
@@ -3648,63 +3587,6 @@ dependencies = [
  "url",
  "web-transport-proto",
  "x509-parser",
-]
-
-[[package]]
-name = "ende_node"
-version = "0.197.0"
-dependencies = [
- "base64 0.22.1",
- "boxed_error",
- "brotli",
- "bytes",
- "cc",
- "deno_ast",
- "deno_error",
- "deno_native_certs",
- "deno_path_util",
- "deno_whoami",
- "ende_core",
- "ende_dotenv",
- "ende_env",
- "ende_fs",
- "ende_inspector_server",
- "ende_io",
- "ende_net",
- "ende_node_crypto",
- "ende_os",
- "ende_package_json",
- "ende_permissions",
- "ende_process",
- "ende_resolver",
- "ende_subprocess_windows",
- "ende_tls",
- "errno",
- "filetime",
- "hdrhistogram",
- "idna",
- "ipnet",
- "libc",
- "libnghttp2",
- "libz-sys",
- "log",
- "nix 0.30.1",
- "node_resolver",
- "node_shim",
- "rand 0.8.5",
- "rustls-tokio-stream",
- "rustls-webpki",
- "serde",
- "smallvec",
- "socket2 0.5.5",
- "sys_traits",
- "thiserror 2.0.12",
- "tokio",
- "tokio-eld",
- "url",
- "webpki-root-certs",
- "windows-sys 0.59.0",
- "zstd",
 ]
 
 [[package]]
@@ -3845,49 +3727,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ende_npm_installer"
-version = "0.54.0"
-dependencies = [
- "anyhow",
- "async-once-cell",
- "async-trait",
- "bincode",
- "boxed_error",
- "capacity_builder",
- "deno_error",
- "deno_graph",
- "deno_path_util",
- "deno_semver",
- "deno_terminal",
- "deno_unsync",
- "ende_cache_dir",
- "ende_config",
- "ende_lockfile",
- "ende_npm",
- "ende_npm_cache",
- "ende_npmrc",
- "ende_package_json",
- "ende_resolver",
- "futures",
- "lazy-regex",
- "libc",
- "log",
- "once_cell",
- "parking_lot",
- "pathdiff",
- "rustc-hash 2.1.1",
- "serde",
- "serde_json",
- "sys_traits",
- "test_util",
- "thiserror 2.0.12",
- "tokio",
- "twox-hash 2.1.2",
- "url",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "ende_npmrc"
 version = "0.20.0"
 dependencies = [
@@ -4004,7 +3843,6 @@ dependencies = [
  "deno_error",
  "deno_path_util",
  "ende_core",
- "ende_fs",
  "ende_io",
  "ende_os",
  "ende_permissions",
@@ -4012,12 +3850,10 @@ dependencies = [
  "ende_subprocess_windows",
  "libc",
  "log",
- "memchr",
  "nix 0.30.1",
  "rand 0.8.5",
  "serde",
  "sys_traits",
- "tempfile",
  "thiserror 2.0.12",
  "tokio",
  "windows-sys 0.59.0",
@@ -4047,9 +3883,6 @@ dependencies = [
  "ende_env",
  "ende_lockfile",
  "ende_maybe_sync",
- "ende_npm",
- "ende_npmrc",
- "ende_package_json",
  "ende_permissions",
  "futures",
  "http",
@@ -4058,7 +3891,6 @@ dependencies = [
  "indexmap",
  "jsonc-parser",
  "log",
- "node_resolver",
  "once_cell",
  "parking_lot",
  "phf 0.11.2",
@@ -4101,11 +3933,7 @@ dependencies = [
  "ende_inspector_server",
  "ende_io",
  "ende_kv",
- "ende_napi",
  "ende_net",
- "ende_node",
- "ende_node_crypto",
- "ende_node_sqlite",
  "ende_os",
  "ende_permissions",
  "ende_process",
@@ -4126,7 +3954,6 @@ dependencies = [
  "libc",
  "log",
  "nix 0.30.1",
- "node_resolver",
  "notify",
  "once_cell",
  "qbsdiff",
@@ -4342,10 +4169,6 @@ dependencies = [
  "ende_core",
  "ende_env",
  "ende_lib",
- "ende_node",
- "ende_npm",
- "ende_npmrc",
- "ende_package_json",
  "ende_resolver",
  "ende_runtime",
  "ende_snapshots",
@@ -4358,7 +4181,6 @@ dependencies = [
  "libsui",
  "log",
  "memmap2",
- "node_resolver",
  "notify",
  "rustls",
  "serde",
@@ -4511,16 +4333,13 @@ name = "eszip"
 version = "0.137.0"
 dependencies = [
  "anyhow",
- "async-trait",
  "deno_ast",
  "deno_error",
  "deno_graph",
  "deno_semver",
- "ende_npm",
  "futures",
  "hashlink 0.8.4",
  "import_map",
- "indexmap",
  "insta",
  "jsonc-parser",
  "pretty_assertions",
@@ -4687,7 +4506,7 @@ checksum = "1ee447700ac8aa0b2f2bd7bc4462ad686ba06baa6727ac149a2d6277f0d240fd"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.4.1",
+ "redox_syscall",
  "windows-sys 0.52.0",
 ]
 
@@ -5294,20 +5113,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5081f264ed7adee96ea4b4778b6bb9da0a7228b084587aa3bd3ff05da7c5a3b"
 dependencies = [
  "hashbrown 0.17.1",
-]
-
-[[package]]
-name = "hdrhistogram"
-version = "7.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "765c9198f173dd59ce26ff9f95ef0aafd0a0fe01fb9d72841bc5066a4c06511d"
-dependencies = [
- "base64 0.21.7",
- "byteorder",
- "crossbeam-channel",
- "flate2",
- "nom 7.1.3",
- "num-traits",
 ]
 
 [[package]]
@@ -6584,17 +6389,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 
 [[package]]
-name = "libnghttp2"
-version = "1.68.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de061ac7dc8893bbb8b212a03444dc19f0f2f28e2be4c80dbc19aa9cc45586e5"
-dependencies = [
- "bindgen 0.71.1",
- "cc",
- "libc",
-]
-
-[[package]]
 name = "libsqlite3-sys"
 version = "0.38.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6620,16 +6414,6 @@ dependencies = [
  "thiserror 1.0.69",
  "windows 0.58.0",
  "zerocopy 0.7.32",
-]
-
-[[package]]
-name = "libuv-sys-lite"
-version = "1.48.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef43df715b26b66832106cde0adc4c156bc91f46fc35164ab257281f62657956"
-dependencies = [
- "bindgen 0.70.1",
- "libloading 0.8.5",
 ]
 
 [[package]]
@@ -6923,16 +6707,6 @@ dependencies = [
  "spirv",
  "thiserror 2.0.12",
  "unicode-ident",
-]
-
-[[package]]
-name = "napi_sym"
-version = "0.189.0"
-dependencies = [
- "quote",
- "serde",
- "serde_json",
- "syn 2.0.117",
 ]
 
 [[package]]
@@ -7615,7 +7389,7 @@ checksum = "4c42a9226546d68acdd9c0a280d17ce19bfe27a46bf68784e4066115788d008e"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.4.1",
+ "redox_syscall",
  "smallvec",
  "windows-targets 0.48.5",
 ]
@@ -8442,15 +8216,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4722d768eff46b75989dd134e5c353f0d6296e5aaa3132e776cbdb56be7731aa"
 dependencies = [
  "bitflags 1.3.2",
-]
-
-[[package]]
-name = "redox_syscall"
-version = "0.5.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d04b7d0ee6b4a0207a0a7adb104d23ecb0b47d6beae7152d0fa34b692b29fd6"
-dependencies = [
- "bitflags 2.9.3",
 ]
 
 [[package]]
@@ -10065,26 +9830,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "swc_ts_fast_strip"
-version = "36.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af7939f2933c4e0fbfedc30fcedd8530c557dee7ea7c73bc4bed854c751c476e"
-dependencies = [
- "anyhow",
- "bytes-str",
- "serde",
- "swc_atoms",
- "swc_common",
- "swc_ecma_ast",
- "swc_ecma_codegen",
- "swc_ecma_parser",
- "swc_ecma_transforms_base",
- "swc_ecma_transforms_react",
- "swc_ecma_transforms_typescript",
- "swc_ecma_visit",
-]
-
-[[package]]
 name = "swc_visit"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10164,14 +9909,12 @@ checksum = "88826d6169418c98e8bc52a43f79d50907dfa3e87ba5161930d42c6f980b35ee"
 dependencies = [
  "filetime",
  "getrandom 0.2.14",
- "js-sys",
  "junction",
  "libc",
  "parking_lot",
  "serde",
  "serde_json",
  "sys_traits_macros",
- "wasm-bindgen",
  "windows-sys 0.59.0",
 ]
 
@@ -10583,16 +10326,6 @@ dependencies = [
  "socket2 0.6.4",
  "tokio-macros",
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "tokio-eld"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d06d816c6ab33079aa237f8d8a1f0f2018eb5cbd4096713f42c33aacf2502518"
-dependencies = [
- "hdrhistogram",
- "tokio",
 ]
 
 [[package]]
@@ -11324,12 +11057,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasite"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8dad83b4f25e74f184f64c43b150b91efe7647395b42289f38e50566d82855b"
-
-[[package]]
 name = "wasm-bindgen"
 version = "0.2.122"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11486,15 +11213,6 @@ dependencies = [
  "http",
  "thiserror 2.0.12",
  "url",
-]
-
-[[package]]
-name = "webpki-root-certs"
-version = "0.26.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8c6dfa3ac045bc517de14c7b1384298de1dbd229d38e08e169d9ae8c170937c"
-dependencies = [
- "rustls-pki-types",
 ]
 
 [[package]]
@@ -11671,17 +11389,6 @@ dependencies = [
  "env_home",
  "rustix 1.1.4",
  "winsafe",
-]
-
-[[package]]
-name = "whoami"
-version = "1.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6994d13118ab492c3c80c1f81928718159254c53c472bf9ce36f8dae4add02a7"
-dependencies = [
- "redox_syscall 0.5.13",
- "wasite",
- "web-sys",
 ]
 
 [[package]]

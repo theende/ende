@@ -17,14 +17,6 @@ const GIT_COMMIT_HASH: &str = env!("GIT_COMMIT_HASH");
 const TYPESCRIPT: &str = "6.0.3";
 pub const ENDE_VERSION: &str = env!("ENDE_VERSION");
 
-/// The Node.js version that Ende reports through `process.version` /
-/// `process.versions.node`, used to enforce package.json `engines.node`
-/// constraints.
-///
-/// Re-exported from `ext/node`, which is the single source of truth shared with
-/// the `process.version` polyfill, so the engines check and the reported value
-/// can never drift.
-pub use ende_node::NODE_VERSION;
 // TODO(bartlomieju): ideally we could remove this const.
 const IS_CANARY: bool = option_env!("ENDE_CANARY").is_some();
 // TODO(bartlomieju): this is temporary, to allow Homebrew to cut RC releases as well

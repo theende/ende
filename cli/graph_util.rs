@@ -1,7 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -26,18 +25,12 @@ use deno_graph::source::ResolveError;
 use deno_path_util::url_to_file_path;
 use deno_semver::SmallStackString;
 use deno_semver::jsr::JsrDepPackageReq;
-use deno_semver::npm::NpmPackageReqReference;
 use ende_config::ende_json::CompilerOptionTypesDeserializeError;
-use ende_config::ende_json::NodeModulesDirMode;
 use ende_config::workspace::JsrPackageConfig;
 use ende_core::ModuleSpecifier;
 use ende_core::error::AnyError;
 use ende_core::parking_lot::Mutex;
 use ende_core::serde_json;
-use ende_lib::util::result::downcast_ref_ende_resolve_error;
-use ende_npm_installer::PackageCaching;
-use ende_npm_installer::format_unmet_peer_dep_warning;
-use ende_npm_installer::graph::NpmCachingStrategy;
 use ende_resolver::cache::ParsedSourceCache;
 use ende_resolver::ende_json::CompilerOptionsResolver;
 use ende_resolver::ende_json::JsxImportSourceConfigResolver;
@@ -45,19 +38,14 @@ use ende_resolver::ende_json::ToMaybeJsxImportSourceConfigError;
 use ende_resolver::file_fetcher::GraphLoaderReporterRc;
 use ende_resolver::graph::EnhanceGraphErrorMode;
 use ende_resolver::graph::EnhancedGraphError;
-use ende_resolver::graph::NpmTypesResolutionMode;
 use ende_resolver::graph::enhance_graph_error;
 use ende_resolver::graph::enhanced_integrity_error_message;
-use ende_resolver::graph::format_deno_graph_error;
-use ende_resolver::npm::DenoInNpmPackageChecker;
 use ende_runtime::ende_permissions::PermissionsContainer;
 use import_map::ImportMapErrorKind;
-use node_resolver::errors::NodeJsErrorCode;
 use sys_traits::FsMetadata;
 
 use crate::args::CliLockfile;
 use crate::args::CliOptions;
-use crate::args::EndeSubcommand;
 use crate::args::config_to_deno_graph_workspace_member;
 use crate::args::graph_kind;
 use crate::args::jsr_url;
@@ -67,10 +55,6 @@ use crate::cache::ModuleInfoCache;
 use crate::colors;
 use crate::file_fetcher::CliDenoGraphLoader;
 use crate::file_fetcher::CliFileFetcher;
-use crate::npm::CliNpmGraphResolver;
-use crate::npm::CliNpmInstaller;
-use crate::npm::CliNpmResolver;
-use crate::resolver::CliCjsTracker;
 use crate::resolver::CliResolver;
 use crate::sys::CliSys;
 use crate::type_checker::CheckError;
@@ -136,16 +120,7 @@ pub fn graph_valid(
   );
   match errors.next() {
     Some(error) => Err(JsErrorBox::from_err(error)),
-    _ => {
-      // finally surface the npm resolution result
-      if let Err(err) = &graph.npm_dep_graph_result {
-        return Err(JsErrorBox::new(
-          err.get_class(),
-          format_deno_graph_error(err),
-        ));
-      }
-      Ok(())
-    }
+    _ => Ok(()),
   }
 }
 
@@ -332,7 +307,7 @@ pub fn resolution_error_for_tsc_diagnostic(
     },
     ResolutionError::ResolverError {
       error,
-      specifier,
+      specifier: _,
       range,
     } => match error.as_ref() {
       ResolveError::Specifier(error) => match error {
@@ -366,28 +341,6 @@ pub fn resolution_error_for_tsc_diagnostic(
               })
             }
           }
-        } else if let Some(err) = downcast_ref_ende_resolve_error(error) {
-          let use_module_not_found_error = match err.maybe_node_code()? {
-            NodeJsErrorCode::ERR_INVALID_MODULE_SPECIFIER
-            | NodeJsErrorCode::ERR_INVALID_PACKAGE_CONFIG
-            | NodeJsErrorCode::ERR_UNKNOWN_FILE_EXTENSION
-            | NodeJsErrorCode::ERR_UNSUPPORTED_ESM_URL_SCHEME
-            | NodeJsErrorCode::ERR_INVALID_FILE_URL_PATH => return None,
-            // use generic "Cannot find module" message
-            NodeJsErrorCode::ERR_MODULE_NOT_FOUND
-            | NodeJsErrorCode::ERR_TYPES_NOT_FOUND => true,
-            // use the original error message
-            NodeJsErrorCode::ERR_UNKNOWN_BUILTIN_MODULE
-            | NodeJsErrorCode::ERR_INVALID_PACKAGE_TARGET
-            | NodeJsErrorCode::ERR_UNSUPPORTED_DIR_IMPORT
-            | NodeJsErrorCode::ERR_PACKAGE_IMPORT_NOT_DEFINED
-            | NodeJsErrorCode::ERR_PACKAGE_PATH_NOT_EXPORTED => false,
-          };
-          Some(ResolutionErrorRef {
-            specifier,
-            range,
-            is_module_not_found: use_module_not_found_error,
-          })
         } else {
           None
         }
@@ -416,7 +369,6 @@ pub struct CreateGraphOptions<'a> {
   pub is_dynamic: bool,
   /// Specify `None` to use the default CLI loader.
   pub loader: Option<&'a dyn Loader>,
-  pub npm_caching: NpmCachingStrategy,
 }
 
 pub struct CreatePublishGraphOptions<'a> {
@@ -480,13 +432,12 @@ impl ModuleGraphCreator {
     &self,
     graph_kind: GraphKind,
     roots: Vec<ModuleSpecifier>,
-    npm_caching: NpmCachingStrategy,
   ) -> Result<deno_graph::ModuleGraph, AnyError> {
     let mut cache = self
       .module_graph_builder
       .create_graph_loader_with_root_permissions();
     self
-      .create_graph_with_loader(graph_kind, roots, &mut cache, npm_caching)
+      .create_graph_with_loader(graph_kind, roots, &mut cache)
       .await
   }
 
@@ -495,7 +446,6 @@ impl ModuleGraphCreator {
     graph_kind: GraphKind,
     roots: Vec<ModuleSpecifier>,
     loader: &mut dyn Loader,
-    npm_caching: NpmCachingStrategy,
   ) -> Result<ModuleGraph, AnyError> {
     self
       .create_graph_with_options(CreateGraphOptions {
@@ -506,7 +456,6 @@ impl ModuleGraphCreator {
           .module_graph_builder
           .maybe_resolve_ts_config_imports(graph_kind),
         loader: Some(loader),
-        npm_caching,
       })
       .await
   }
@@ -581,7 +530,6 @@ impl ModuleGraphCreator {
         // do not include the tsconfig imports for `ende publish`
         imports: Vec::new(),
         loader: Some(&publish_loader),
-        npm_caching: self.options.default_npm_caching_strategy(),
       })
       .await?;
     if options.validate_graph {
@@ -600,13 +548,12 @@ impl ModuleGraphCreator {
         let mut type_check_graph = graph.clone();
         self
           .module_graph_builder
-          .build_graph_with_npm_resolution(
+          .build_graph(
             &mut type_check_graph,
             BuildGraphRequest::Roots(vec![], types_imports),
-            BuildGraphWithNpmOptions {
+            BuildGraphOptions {
               is_dynamic: false,
               loader: Some(&publish_loader),
-              npm_caching: self.options.default_npm_caching_strategy(),
             },
           )
           .await?;
@@ -655,13 +602,12 @@ impl ModuleGraphCreator {
 
     self
       .module_graph_builder
-      .build_graph_with_npm_resolution(
+      .build_graph(
         &mut graph,
         BuildGraphRequest::Roots(options.roots, options.imports),
-        BuildGraphWithNpmOptions {
+        BuildGraphOptions {
           is_dynamic: options.is_dynamic,
           loader: options.loader,
-          npm_caching: options.npm_caching,
         },
       )
       .await?;
@@ -684,7 +630,6 @@ impl ModuleGraphCreator {
           .module_graph_builder
           .maybe_resolve_ts_config_imports(graph_kind),
         loader: None,
-        npm_caching: self.options.default_npm_caching_strategy(),
       })
       .await?;
 
@@ -728,7 +673,7 @@ pub struct BuildFastCheckGraphOptions<'a> {
 }
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
-pub enum BuildGraphWithNpmResolutionError {
+pub enum BuildGraphError {
   #[class(inherit)]
   #[error(transparent)]
   CompilerOptionTypesDeserialize(#[from] CompilerOptionTypesDeserializeError),
@@ -741,11 +686,6 @@ pub enum BuildGraphWithNpmResolutionError {
   #[class(inherit)]
   #[error(transparent)]
   Other(#[from] JsErrorBox),
-  #[class(generic)]
-  #[error(
-    "Resolving npm specifier entrypoints this way is currently not supported with a manually managed node_modules directory"
-  )]
-  UnsupportedNpmSpecifierEntrypointResolutionWay,
 }
 
 pub enum BuildGraphRequest {
@@ -753,28 +693,22 @@ pub enum BuildGraphRequest {
   Reload(Vec<ModuleSpecifier>),
 }
 
-pub struct BuildGraphWithNpmOptions<'a> {
+pub struct BuildGraphOptions<'a> {
   pub is_dynamic: bool,
   /// Specify `None` to use the default CLI loader.
   pub loader: Option<&'a dyn Loader>,
-  pub npm_caching: NpmCachingStrategy,
 }
 
 pub struct ModuleGraphBuilder {
   caches: Arc<cache::Caches>,
-  cjs_tracker: Arc<CliCjsTracker>,
   cli_options: Arc<CliOptions>,
   compiler_options_resolver: Arc<CompilerOptionsResolver>,
   file_fetcher: Arc<CliFileFetcher>,
   global_http_cache: Arc<GlobalHttpCache>,
-  in_npm_pkg_checker: DenoInNpmPackageChecker,
   jsr_version_resolver: Arc<JsrVersionResolver>,
   lockfile: Option<Arc<CliLockfile>>,
   maybe_reporter: Option<Arc<dyn deno_graph::source::Reporter>>,
   module_info_cache: Arc<ModuleInfoCache>,
-  npm_graph_resolver: Arc<CliNpmGraphResolver>,
-  npm_installer: Option<Arc<CliNpmInstaller>>,
-  npm_resolver: CliNpmResolver,
   parsed_source_cache: Arc<ParsedSourceCache>,
   progress_bar: ProgressBar,
   resolver: Arc<CliResolver>,
@@ -787,19 +721,14 @@ impl ModuleGraphBuilder {
   #[allow(clippy::too_many_arguments, reason = "construction")]
   pub fn new(
     caches: Arc<cache::Caches>,
-    cjs_tracker: Arc<CliCjsTracker>,
     cli_options: Arc<CliOptions>,
     compiler_options_resolver: Arc<CompilerOptionsResolver>,
     file_fetcher: Arc<CliFileFetcher>,
     global_http_cache: Arc<GlobalHttpCache>,
-    in_npm_pkg_checker: DenoInNpmPackageChecker,
     jsr_version_resolver: Arc<JsrVersionResolver>,
     lockfile: Option<Arc<CliLockfile>>,
     maybe_reporter: Option<Arc<dyn deno_graph::source::Reporter>>,
     module_info_cache: Arc<ModuleInfoCache>,
-    npm_graph_resolver: Arc<CliNpmGraphResolver>,
-    npm_installer: Option<Arc<CliNpmInstaller>>,
-    npm_resolver: CliNpmResolver,
     parsed_source_cache: Arc<ParsedSourceCache>,
     progress_bar: ProgressBar,
     resolver: Arc<CliResolver>,
@@ -809,19 +738,14 @@ impl ModuleGraphBuilder {
   ) -> Self {
     Self {
       caches,
-      cjs_tracker,
       cli_options,
       compiler_options_resolver,
       file_fetcher,
       global_http_cache,
-      in_npm_pkg_checker,
       jsr_version_resolver,
       lockfile,
       maybe_reporter,
       module_info_cache,
-      npm_graph_resolver,
-      npm_installer,
-      npm_resolver,
       parsed_source_cache,
       progress_bar,
       resolver,
@@ -831,35 +755,34 @@ impl ModuleGraphBuilder {
     }
   }
 
-  pub async fn build_graph_roots_with_npm_resolution(
+  pub async fn build_graph_roots(
     &self,
     graph: &mut ModuleGraph,
     roots: Vec<ModuleSpecifier>,
-    options: BuildGraphWithNpmOptions<'_>,
-  ) -> Result<(), BuildGraphWithNpmResolutionError> {
+    options: BuildGraphOptions<'_>,
+  ) -> Result<(), BuildGraphError> {
     let request = BuildGraphRequest::Roots(
       roots,
       self.maybe_resolve_ts_config_imports(graph.graph_kind()),
     );
     self
-      .build_graph_with_npm_resolution(
+      .build_graph(
         graph,
         request,
-        BuildGraphWithNpmOptions {
+        BuildGraphOptions {
           is_dynamic: options.is_dynamic,
           loader: options.loader,
-          npm_caching: options.npm_caching,
         },
       )
       .await
   }
 
-  pub async fn build_graph_with_npm_resolution(
+  pub async fn build_graph(
     &self,
     graph: &mut ModuleGraph,
     request: BuildGraphRequest,
-    options: BuildGraphWithNpmOptions<'_>,
-  ) -> Result<(), BuildGraphWithNpmResolutionError> {
+    options: BuildGraphOptions<'_>,
+  ) -> Result<(), BuildGraphError> {
     #[allow(clippy::large_enum_variant, reason = "not important")]
     enum LoaderRef<'a> {
       Borrowed(&'a dyn Loader),
@@ -887,115 +810,54 @@ impl ModuleGraphBuilder {
       JsxImportSourceConfigResolver::from_compiler_options_resolver(
         &self.compiler_options_resolver,
       )?;
-    let graph_resolver = self.resolver.as_graph_resolver(
-      self.cjs_tracker.as_ref(),
-      &jsx_import_source_config_resolver,
-      None,
-      // When type checking, an npm package that has no type declarations
-      // (e.g. a "bring your own node_modules" dependency without bundled
-      // types and without a corresponding `@types` package) should be
-      // treated as untyped rather than producing a hard "Failed resolving
-      // types" error. Falling back to the execution entrypoint matches the
-      // behaviour of the managed npm resolver. See:
-      // https://github.com/denoland/deno/issues/23507
-      NpmTypesResolutionMode::FallbackToExecution,
-    );
+    let graph_resolver = self
+      .resolver
+      .as_graph_resolver(&jsx_import_source_config_resolver, None);
     let maybe_reporter = self.maybe_reporter.as_deref();
     let mut locker = self.lockfile.as_ref().map(|l| l.as_deno_graph_locker());
 
-    macro_rules! build_options {
-      ($npm_resolver:expr, $resolver:expr) => {
-        deno_graph::BuildOptions {
-          skip_dynamic_deps: self.cli_options.unstable_lazy_dynamic_imports()
-            && graph.graph_kind() == GraphKind::CodeOnly,
-          is_dynamic: options.is_dynamic,
-          passthrough_jsr_specifiers: false,
-          executor: Default::default(),
-          file_system: &self.sys,
-          jsr_metadata_store: None,
-          jsr_url_provider: &CliJsrUrlProvider,
-          jsr_version_resolver: Cow::Borrowed(
-            self.jsr_version_resolver.as_ref(),
-          ),
-          npm_resolver: $npm_resolver,
-          module_analyzer: &analyzer,
-          module_info_cacher: self.module_info_cache.as_ref(),
-          reporter: maybe_reporter,
-          resolver: Some($resolver),
-          locker: locker.as_mut().map(|l| l as _),
-          unstable_bytes_imports: self.cli_options.unstable_raw_imports(),
-          unstable_css_imports: self.cli_options.unstable_raw_imports(),
-          unstable_config_imports: false,
-          prefer_cached_jsr_versions: self.cli_options.cache_setting()
-            == ende_cache_dir::file_fetcher::CacheSetting::Only,
-        }
-      };
-    }
+    let build_options = deno_graph::BuildOptions {
+      skip_dynamic_deps: self.cli_options.unstable_lazy_dynamic_imports()
+        && graph.graph_kind() == GraphKind::CodeOnly,
+      is_dynamic: options.is_dynamic,
+      passthrough_jsr_specifiers: false,
+      executor: Default::default(),
+      file_system: &self.sys,
+      jsr_metadata_store: None,
+      jsr_url_provider: &CliJsrUrlProvider,
+      jsr_version_resolver: Cow::Borrowed(self.jsr_version_resolver.as_ref()),
+      npm_resolver: None,
+      module_analyzer: &analyzer,
+      module_info_cacher: self.module_info_cache.as_ref(),
+      reporter: maybe_reporter,
+      resolver: Some(&graph_resolver),
+      locker: locker.as_mut().map(|l| l as _),
+      unstable_bytes_imports: self.cli_options.unstable_raw_imports(),
+      unstable_css_imports: self.cli_options.unstable_raw_imports(),
+      unstable_config_imports: false,
+      prefer_cached_jsr_versions: self.cli_options.cache_setting()
+        == ende_cache_dir::file_fetcher::CacheSetting::Only,
+    };
 
     self
-      .build_graph_with_npm_resolution_and_build_options(
+      .build_graph_with_build_options(
         graph,
         request,
         loader.as_loader(),
-        build_options!(Some(self.npm_graph_resolver.as_ref()), &graph_resolver),
-        options.npm_caching,
+        build_options,
       )
       .await?;
-
-    if self.analyze_npm_sources() {
-      let has_npm_specifier = graph
-        .modules()
-        .any(|m| matches!(m, deno_graph::Module::Npm(_)))
-        || graph.roots.iter().any(|r| r.scheme() == "npm");
-      if has_npm_specifier {
-        // go through the graph and resolve npm: modules to real js modules
-        let cloned_graph = graph.clone();
-        let graph_resolver = self.resolver.as_graph_resolver(
-          self.cjs_tracker.as_ref(),
-          &jsx_import_source_config_resolver,
-          Some(&cloned_graph),
-          NpmTypesResolutionMode::FallbackToExecution,
-        );
-
-        graph
-          .build_npm_packages(
-            self.cli_options.start_dir.dir_url(),
-            deno_graph::source::ResolutionKind::Types,
-            loader.as_loader(),
-            build_options!(None, &graph_resolver),
-          )
-          .await;
-      }
-    }
 
     Ok(())
   }
 
-  async fn build_graph_with_npm_resolution_and_build_options<'a>(
+  async fn build_graph_with_build_options<'a>(
     &self,
     graph: &mut ModuleGraph,
     request: BuildGraphRequest,
     loader: &'a dyn deno_graph::source::Loader,
     options: deno_graph::BuildOptions<'a>,
-    npm_caching: NpmCachingStrategy,
-  ) -> Result<(), BuildGraphWithNpmResolutionError> {
-    // ensure an "npm install" is done if the user has explicitly
-    // opted into using a node_modules directory
-    if self
-      .cli_options
-      .specified_node_modules_dir()
-      .map(|m| m == NodeModulesDirMode::Auto)
-      .unwrap_or(false)
-      && let Some(npm_installer) = &self.npm_installer
-    {
-      let already_done = npm_installer
-        .ensure_top_level_package_json_install()
-        .await?;
-      if !already_done && matches!(npm_caching, NpmCachingStrategy::Eager) {
-        npm_installer.cache_packages(PackageCaching::All).await?;
-      }
-    }
-
+  ) -> Result<(), BuildGraphError> {
     // fill the graph with the information from the lockfile
     let is_first_execution = graph.roots.is_empty();
     if is_first_execution {
@@ -1011,12 +873,6 @@ impl ModuleGraphBuilder {
 
     match request {
       BuildGraphRequest::Roots(roots, imports) => {
-        if roots.iter().any(|r| r.scheme() == "npm")
-          && self.npm_resolver.is_byonm()
-          && !self.analyze_npm_sources()
-        {
-          return Err(BuildGraphWithNpmResolutionError::UnsupportedNpmSpecifierEntrypointResolutionWay);
-        }
         graph.build(roots, imports, loader, options).await;
       }
       BuildGraphRequest::Reload(urls) => {
@@ -1038,9 +894,10 @@ impl ModuleGraphBuilder {
       let mut lockfile = lockfile.lock();
       // https redirects
       if has_redirects_changed {
-        let graph_redirects = graph.redirects.iter().filter(|(from, _)| {
-          !matches!(from.scheme(), "npm" | "file" | "deno")
-        });
+        let graph_redirects = graph
+          .redirects
+          .iter()
+          .filter(|(from, _)| !matches!(from.scheme(), "file" | "deno"));
         for (from, to) in graph_redirects {
           lockfile.insert_redirect(from.to_string(), to.to_string());
         }
@@ -1062,69 +919,7 @@ impl ModuleGraphBuilder {
       }
     }
 
-    // Report any unmet peer dependency issues found during npm resolution. This
-    // is done here, after the graph is built, so the warning can point at the
-    // user modules that import the offending packages.
-    if let Some(npm_installer) = &self.npm_installer {
-      let diagnostics = npm_installer.take_unmet_peer_diagnostics();
-      if !diagnostics.is_empty() && log::log_enabled!(log::Level::Warn) {
-        // Only the top-level package of each diagnostic (its outermost
-        // ancestor) is annotated, so restrict the graph walk to those.
-        let wanted: HashSet<String> = diagnostics
-          .iter()
-          .filter_map(|d| d.ancestors.last().map(|nv| nv.to_string()))
-          .collect();
-        let importers = self.npm_peer_dep_importers(graph, &wanted);
-        log::warn!(
-          "{}",
-          format_unmet_peer_dep_warning(&diagnostics, &importers)
-        );
-      }
-    }
-
     Ok(())
-  }
-
-  /// Builds a map from a top-level npm package (`name@version`) to the user
-  /// modules that import it, used to annotate peer dependency warnings with the
-  /// source of a transitively introduced package. Only packages in `wanted`
-  /// are resolved, to avoid a full sweep of the graph.
-  fn npm_peer_dep_importers(
-    &self,
-    graph: &ModuleGraph,
-    wanted: &HashSet<String>,
-  ) -> HashMap<String, Vec<String>> {
-    let Some(managed) = self.npm_resolver.as_managed() else {
-      return HashMap::new();
-    };
-    let mut importers: HashMap<String, Vec<String>> = HashMap::new();
-    for module in graph.modules() {
-      let referrer = module.specifier();
-      for dep in module.dependencies().values() {
-        for specifier in [dep.get_code(), dep.get_type()].into_iter().flatten()
-        {
-          let Ok(npm_ref) = NpmPackageReqReference::from_specifier(specifier)
-          else {
-            continue;
-          };
-          let Ok(id) =
-            managed.resolve_pkg_id_from_deno_module_req(npm_ref.req())
-          else {
-            continue;
-          };
-          let nv = id.nv.to_string();
-          if !wanted.contains(&nv) {
-            continue;
-          }
-          let entry = importers.entry(nv).or_default();
-          let referrer = referrer.to_string();
-          if !entry.contains(&referrer) {
-            entry.push(referrer);
-          }
-        }
-      }
-    }
-    importers
   }
 
   pub fn build_fast_check_graph(
@@ -1150,12 +945,9 @@ impl ModuleGraphBuilder {
       JsxImportSourceConfigResolver::from_compiler_options_resolver(
         &self.compiler_options_resolver,
       )?;
-    let graph_resolver = self.resolver.as_graph_resolver(
-      self.cjs_tracker.as_ref(),
-      &jsx_import_source_config_resolver,
-      None,
-      NpmTypesResolutionMode::Strict,
-    );
+    let graph_resolver = self
+      .resolver
+      .as_graph_resolver(&jsx_import_source_config_resolver, None);
 
     graph.build_fast_check_type_graph(
       deno_graph::BuildFastCheckTypeGraphOptions {
@@ -1188,21 +980,14 @@ impl ModuleGraphBuilder {
     CliDenoGraphLoader::new(
       self.file_fetcher.clone(),
       self.global_http_cache.clone(),
-      self.in_npm_pkg_checker.clone(),
       self.sys.clone(),
       ende_resolver::file_fetcher::DenoGraphLoaderOptions {
         file_header_overrides: self.cli_options.resolve_file_header_overrides(),
         permissions: Some(permissions),
         file_permission_api_name,
         reporter: self.load_reporter.clone(),
-        include_npm_sources: self.analyze_npm_sources(),
       },
     )
-  }
-
-  fn analyze_npm_sources(&self) -> bool {
-    // only analyze npm packages with deno_graph for deno doc
-    matches!(self.cli_options.sub_command(), EndeSubcommand::Doc(_))
   }
 
   /// Check if `roots` and their deps are available. Returns `Ok(())` if

@@ -9,27 +9,20 @@ use deno_graph::JsonModule;
 use deno_graph::ModuleGraph;
 use deno_graph::WasmModule;
 use deno_media_type::MediaType;
-use node_resolver::InNpmPackageChecker;
-use node_resolver::analyze::CjsAnalysisSourceProvider;
-use node_resolver::errors::PackageJsonLoadError;
 use url::Url;
 
 use super::AllowJsonImports;
-use super::DenoNpmModuleLoaderRc;
 use super::LoadedModule;
 use super::LoadedModuleOrAsset;
 use super::LoadedModuleSource;
-use super::NpmModuleLoadError;
 use super::RequestedModuleType;
 use super::media_type_name;
 use crate::cache::ParsedSourceCacheRc;
-use crate::cjs::CjsTrackerRc;
 use crate::emit::EmitParsedSourceHelperError;
 use crate::emit::EmitterRc;
 use crate::graph::EnhanceGraphErrorMode;
 use crate::graph::EnhancedGraphError;
 use crate::graph::enhance_graph_error;
-use crate::npm::DenoInNpmPackageChecker;
 
 #[allow(
   clippy::disallowed_types,
@@ -48,26 +41,10 @@ pub enum LoadPreparedModuleErrorKind {
   Graph(#[from] EnhancedGraphError),
   #[class(inherit)]
   #[error(transparent)]
-  ClosestPkgJson(#[from] PackageJsonLoadError),
-  #[class(inherit)]
-  #[error(transparent)]
-  LoadMaybeCjs(#[from] LoadMaybeCjsError),
-  #[class(inherit)]
-  #[error(transparent)]
   Emit(#[from] EmitParsedSourceHelperError),
   #[class(inherit)]
   #[error(transparent)]
   UnsupportedSpecifier(#[from] crate::UnsupportedSpecifierError),
-}
-
-#[derive(Debug, thiserror::Error, deno_error::JsError)]
-pub enum LoadMaybeCjsError {
-  #[class(inherit)]
-  #[error(transparent)]
-  NpmModuleLoad(#[from] crate::emit::EmitParsedSourceHelperError),
-  #[class(inherit)]
-  #[error(transparent)]
-  TranslateCjsToEsm(#[from] node_resolver::analyze::TranslateCjsToEsmError),
 }
 
 #[derive(Debug, deno_error::JsError, Boxed)]
@@ -97,21 +74,18 @@ pub enum LoadCodeSourceErrorKind {
   },
   #[class(inherit)]
   #[error(transparent)]
-  NpmModuleLoad(#[from] NpmModuleLoadError),
-  #[class(inherit)]
-  #[error(transparent)]
   PathToUrl(#[from] deno_path_util::PathToUrlError),
   #[class(inherit)]
   #[error(transparent)]
   UnsupportedScheme(#[from] UnsupportedSchemeError),
 }
 
-// this message list additional `npm` and `jsr` schemes, but they should actually be handled
-// before these APIs are even hit.
+// this message lists the additional `jsr` scheme, but it should actually be
+// handled before these APIs are even hit.
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
 #[class(type)]
 #[error(
-  "Unsupported scheme \"{}\" for module \"{}\". Supported schemes:\n - \"blob\"\n - \"data\"\n - \"file\"\n - \"http\"\n - \"https\"\n - \"jsr\"\n - \"npm\"", url.scheme(), url
+  "Unsupported scheme \"{}\" for module \"{}\". Supported schemes:\n - \"blob\"\n - \"data\"\n - \"file\"\n - \"http\"\n - \"https\"\n - \"jsr\"", url.scheme(), url
 )]
 pub struct UnsupportedSchemeError {
   pub url: Url,
@@ -130,11 +104,7 @@ pub type ModuleLoaderRc<TSys> = ende_maybe_sync::MaybeArc<ModuleLoader<TSys>>;
 
 #[sys_traits::auto_impl]
 pub trait ModuleLoaderSys:
-  super::NpmModuleLoaderSys
-  + crate::emit::EmitterSys
-  + node_resolver::analyze::NodeCodeTranslatorSys
-  + crate::cjs::analyzer::EndeCjsCodeAnalyzerSys
-  + crate::npm::NpmResolverSys
+  crate::emit::EmitterSys + crate::EndeResolverSys
 {
 }
 
@@ -158,28 +128,19 @@ fn commonjs_not_supported(specifier: &Url) -> LoadPreparedModuleError {
 }
 
 pub struct ModuleLoader<TSys: ModuleLoaderSys> {
-  in_npm_pkg_checker: DenoInNpmPackageChecker,
-  npm_module_loader: DenoNpmModuleLoaderRc<TSys>,
   prepared_module_loader: PreparedModuleLoader<TSys>,
   allow_json_imports: AllowJsonImports,
 }
 
 impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
-  #[allow(clippy::too_many_arguments, reason = "all arguments are needed")]
   pub fn new(
-    cjs_tracker: CjsTrackerRc<DenoInNpmPackageChecker, TSys>,
-    emitter: EmitterRc<DenoInNpmPackageChecker, TSys>,
-    in_npm_pkg_checker: DenoInNpmPackageChecker,
-    npm_module_loader: DenoNpmModuleLoaderRc<TSys>,
+    emitter: EmitterRc<TSys>,
     parsed_source_cache: ParsedSourceCacheRc,
     sys: TSys,
     allow_json_imports: AllowJsonImports,
   ) -> Self {
     Self {
-      in_npm_pkg_checker,
-      npm_module_loader,
       prepared_module_loader: PreparedModuleLoader {
-        cjs_tracker,
         emitter,
         parsed_source_cache,
         sys,
@@ -200,7 +161,6 @@ impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
     // referrer from all error messages. This should be up to ende_core to display.
     maybe_referrer: Option<&Url>,
     requested_module_type: &RequestedModuleType<'_>,
-    cjs_analysis_source_provider: Option<&dyn CjsAnalysisSourceProvider>,
   ) -> Result<LoadedModuleOrAsset<'a>, LoadCodeSourceError> {
     let source = match self
       .prepared_module_loader
@@ -220,18 +180,6 @@ impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
             }
             .into(),
           );
-        } else if self.in_npm_pkg_checker.in_npm_package(specifier) {
-          let loaded_module = self
-            .npm_module_loader
-            .load(
-              Cow::Borrowed(specifier),
-              maybe_referrer,
-              requested_module_type,
-              cjs_analysis_source_provider,
-            )
-            .await
-            .map_err(LoadCodeSourceError::from)?;
-          LoadedModuleOrAsset::Module(loaded_module)
         } else {
           match requested_module_type {
             RequestedModuleType::Text
@@ -333,8 +281,7 @@ impl<TSys: ModuleLoaderSys> ModuleLoader<TSys> {
 }
 
 struct PreparedModuleLoader<TSys: ModuleLoaderSys> {
-  cjs_tracker: CjsTrackerRc<DenoInNpmPackageChecker, TSys>,
-  emitter: EmitterRc<DenoInNpmPackageChecker, TSys>,
+  emitter: EmitterRc<TSys>,
   parsed_source_cache: ParsedSourceCacheRc,
   sys: TSys,
 }
@@ -512,7 +459,6 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
         source,
         media_type,
         specifier,
-        is_script,
         ..
       })) => match requested_module_type {
         RequestedModuleType::Bytes => match source.try_get_original_bytes() {
@@ -531,16 +477,6 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
           })))
         }
         _ => {
-          // declaration files have no runtime code, so they're fine
-          if !media_type.is_declaration()
-            && self.cjs_tracker.is_cjs_with_known_is_script(
-              specifier,
-              *media_type,
-              *is_script,
-            )?
-          {
-            return Err(commonjs_not_supported(specifier));
-          }
           let code = match media_type {
             MediaType::JavaScript
             | MediaType::Unknown
@@ -592,9 +528,6 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
         media_type: MediaType::Wasm,
       }))),
       Some(deno_graph::Module::External(module)) => {
-        if module.specifier.as_str().contains("/node_modules/") {
-          return Ok(None);
-        }
         Ok(Some(CodeOrDeferredEmit::ExternalAsset {
           specifier: &module.specifier,
         }))
@@ -603,38 +536,5 @@ impl<TSys: ModuleLoaderSys> PreparedModuleLoader<TSys> {
         Ok(None)
       }
     }
-  }
-}
-
-pub struct GraphCjsAnalysisSourceProvider<'a> {
-  graph: &'a ModuleGraph,
-  fallback: Option<&'a dyn CjsAnalysisSourceProvider>,
-}
-
-impl<'a> GraphCjsAnalysisSourceProvider<'a> {
-  pub fn new(
-    graph: &'a ModuleGraph,
-    fallback: Option<&'a dyn CjsAnalysisSourceProvider>,
-  ) -> Self {
-    Self { graph, fallback }
-  }
-}
-
-impl CjsAnalysisSourceProvider for GraphCjsAnalysisSourceProvider<'_> {
-  fn load_source<'a>(&'a self, specifier: &Url) -> Option<Cow<'a, str>> {
-    if let Some(module) = self.graph.get(specifier) {
-      match module {
-        deno_graph::Module::Js(module) => {
-          return Some(Cow::Borrowed(module.source.text.as_ref()));
-        }
-        deno_graph::Module::Json(module) => {
-          return Some(Cow::Borrowed(module.source.text.as_ref()));
-        }
-        _ => {}
-      }
-    }
-    self
-      .fallback
-      .and_then(|provider| provider.load_source(specifier))
   }
 }

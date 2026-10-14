@@ -20,13 +20,11 @@ use ende_core::anyhow::anyhow;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::futures::FutureExt;
-use ende_npm_installer::graph::NpmCachingStrategy;
 use rand::Rng;
 
 use super::installer::BinNameResolver;
 use crate::args::CliOptions;
 use crate::args::CompileFlags;
-use crate::args::EndeSubcommand;
 use crate::args::Flags;
 use crate::factory::CliFactory;
 use crate::graph_util::ModuleGraphCreator;
@@ -64,90 +62,14 @@ pub async fn compile(
 }
 
 async fn compile_inner(
-  mut flags: Flags,
-  mut compile_flags: CompileFlags,
+  flags: Flags,
+  compile_flags: CompileFlags,
   watcher_communicator: Option<Arc<WatcherCommunicator>>,
 ) -> Result<(), AnyError> {
-  // Framework detection: when the source is a directory, detect the
-  // framework and generate an entrypoint automatically.
-  let source_dir = if compile_flags.source_file == "." {
-    Some(flags.initial_cwd.clone().unwrap_or_else(|| {
-      crate::util::env::resolve_cwd(None).unwrap().to_path_buf()
-    }))
-  } else {
-    let path = PathBuf::from(&compile_flags.source_file);
-    let path = if path.is_absolute() {
-      path
-    } else {
-      flags
-        .initial_cwd
-        .clone()
-        .unwrap_or_else(|| {
-          crate::util::env::resolve_cwd(None).unwrap().to_path_buf()
-        })
-        .join(path)
-    };
-    path.is_dir().then_some(path)
-  };
-
-  let _framework_entrypoint_file = if let Some(dir) = source_dir {
-    if let Some(detection) = super::framework::detect_framework(&dir)? {
-      log::info!("Detected {} framework", detection.name);
-      // Run the framework's build step (if any) before bundling its build
-      // output via `include_paths`.
-      super::framework::run_build_command(&detection, &dir)?;
-      // Write a temporary entrypoint file with a random suffix so we
-      // never overwrite an existing project file.
-      let entrypoint_path = dir.join(format!(
-        ".ende_compile_entry_{:08x}.ts",
-        rand::thread_rng().r#gen::<u32>()
-      ));
-      std::fs::write(&entrypoint_path, detection.entrypoint_code)?;
-      compile_flags.source_file = entrypoint_path.display().to_string();
-      if compile_flags.output.is_none()
-        && let Some(dir_name) = dir.file_name()
-      {
-        compile_flags.output = Some(dir_name.to_string_lossy().into_owned());
-      }
-      // Add framework build output to includes, resolved relative to the
-      // detected app directory so `ende compile ./myapp` picks up
-      // `./myapp/_fresh` rather than `./_fresh`.
-      for inc in detection.include_paths {
-        let resolved = dir.join(&inc).display().to_string();
-        if !compile_flags.include.contains(&resolved) {
-          compile_flags.include.push(resolved);
-        }
-      }
-      Some(entrypoint_path)
-    } else {
-      bail!(
-        "Could not detect a supported framework in '{}'.\n\
-         Supported frameworks: Fresh\n\
-         Provide an explicit entrypoint instead of a directory.",
-        dir.display()
-      );
-    }
-  } else {
-    None
-  };
-
-  // Keep flags.subcommand in sync so resolve_main_module sees the
-  // rewritten source_file instead of the original directory path.
-  flags.subcommand = EndeSubcommand::Compile(compile_flags.clone());
-
-  // Clean up temp entrypoints on exit (framework-detected).
-  struct CleanupGuard(Vec<PathBuf>);
-  impl Drop for CleanupGuard {
-    fn drop(&mut self) {
-      for path in &self.0 {
-        let _ = std::fs::remove_file(path);
-      }
-    }
-  }
-  // Register the framework entrypoint for cleanup up front so it's removed
-  // even if a later step fails and unwinds via `?`.
-  let _framework_cleanup =
-    _framework_entrypoint_file.map(|p| CleanupGuard(vec![p]));
+  let cwd = flags.initial_cwd.clone().unwrap_or_else(|| {
+    crate::util::env::resolve_cwd(None).unwrap().to_path_buf()
+  });
+  ensure_entrypoint_given("compile", &compile_flags.source_file, &cwd)?;
 
   let flags = Arc::new(flags);
   // boxed_local() is to avoid large futures
@@ -162,6 +84,26 @@ async fn compile_inner(
   }
 
   Ok(())
+}
+
+/// `ende compile` and `ende desktop` need the main module to compile. Fails
+/// with a usage hint when none is given or the given path is a directory.
+pub fn ensure_entrypoint_given(
+  subcommand: &str,
+  source_file: &str,
+  cwd: &Path,
+) -> Result<(), AnyError> {
+  let reason = if source_file.is_empty() || source_file == "." {
+    String::new()
+  } else if cwd.join(source_file).is_dir() {
+    format!(": '{source_file}' is a directory")
+  } else {
+    return Ok(());
+  };
+  bail!(
+    "No entrypoint given{reason}.\n  {} Pass the main module, for example `ende {subcommand} main.ts`.",
+    colors::cyan("hint:"),
+  )
 }
 
 pub async fn compile_binary(
@@ -508,9 +450,7 @@ async fn compile_eszip(
     transpile_options,
     emit_options,
     relative_file_base: Some(relative_file_base),
-    npm_packages: None,
     module_kind_resolver: Default::default(),
-    npm_snapshot: Default::default(),
   })?;
 
   if let Some(import_map_specifier) = maybe_import_map_specifier {
@@ -677,7 +617,7 @@ async fn build_compile_graph(
     let mut all_roots = roots.strict.clone();
     all_roots.extend(roots.include.iter().cloned());
     module_graph_creator
-      .create_graph(GraphKind::CodeOnly, all_roots, NpmCachingStrategy::Eager)
+      .create_graph(GraphKind::CodeOnly, all_roots)
       .await
   }
 }
@@ -824,10 +764,6 @@ fn get_module_roots_and_include_paths(
 
   for preload_module in cli_options.preload_modules()? {
     module_roots.push(preload_module);
-  }
-
-  for require_module in cli_options.require_modules()? {
-    module_roots.push(require_module);
   }
 
   Ok(CompileModuleRoots {

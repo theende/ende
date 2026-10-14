@@ -33,12 +33,10 @@ use ende_permissions::PermissionsContainer;
 use futures::FutureExt;
 use futures::future::LocalBoxFuture;
 use http::header;
-use node_resolver::InNpmPackageChecker;
 use thiserror::Error;
 use url::Url;
 
 use crate::loader::MemoryFilesRc;
-use crate::npm::DenoInNpmPackageChecker;
 
 #[derive(Debug, Boxed, JsError)]
 pub struct FetchError(pub Box<FetchErrorKind>);
@@ -445,11 +443,6 @@ pub type GraphLoaderReporterRc =
 
 pub struct DenoGraphLoaderOptions {
   pub file_header_overrides: HashMap<Url, HashMap<String, String>>,
-  /// Whether to include npm package sources in the graph.
-  ///
-  /// Generally we don't do this for performance reasons because we
-  /// don't need to pre-analyze npm sources for https specifiers.
-  pub include_npm_sources: bool,
   pub permissions: Option<PermissionsContainer>,
   /// Uses `check_open` with this API name for dynamic local-file loads.
   pub file_permission_api_name: Option<&'static str>,
@@ -477,12 +470,10 @@ pub struct DenoGraphLoader<
   file_content_overrides: Option<HashMap<Url, std::sync::Arc<[u8]>>>,
   file_fetcher: PermissionedFileFetcherRc<TBlobStore, TSys, THttpClient>,
   global_http_cache: GlobalHttpCacheRc<TSys>,
-  in_npm_pkg_checker: DenoInNpmPackageChecker,
   permissions: Option<PermissionsContainer>,
   file_permission_api_name: Option<&'static str>,
   sys: TSys,
   cache_info_enabled: bool,
-  include_npm_sources: bool,
   reporter: Option<GraphLoaderReporterRc>,
 }
 
@@ -495,20 +486,17 @@ impl<
   pub fn new(
     file_fetcher: PermissionedFileFetcherRc<TBlobStore, TSys, THttpClient>,
     global_http_cache: GlobalHttpCacheRc<TSys>,
-    in_npm_pkg_checker: DenoInNpmPackageChecker,
     sys: TSys,
     options: DenoGraphLoaderOptions,
   ) -> Self {
     Self {
       file_fetcher,
       global_http_cache,
-      in_npm_pkg_checker,
       sys,
       file_header_overrides: options.file_header_overrides,
       permissions: options.permissions,
       file_permission_api_name: options.file_permission_api_name,
       cache_info_enabled: false,
-      include_npm_sources: options.include_npm_sources,
       reporter: options.reporter,
       file_content_overrides: Default::default(),
     }
@@ -697,33 +685,7 @@ impl<
     specifier: &Url,
     options: deno_graph::source::LoadOptions,
   ) -> LoadFuture {
-    let specifier = if specifier.scheme() == "file"
-      && specifier.path().contains("/node_modules/")
-    {
-      // The specifier might be in a completely different symlinked tree than
-      // what the node_modules url is in (ex. `/my-project-1/node_modules`
-      // symlinked to `/my-project-2/node_modules`), so first we checked if the path
-      // is in a node_modules dir to avoid needlessly canonicalizing, then now compare
-      // against the canonicalized specifier.
-      let original_specifier = specifier;
-      let specifier = node_resolver::resolve_specifier_into_node_modules(
-        &self.sys, specifier,
-      );
-      if self.in_npm_pkg_checker.in_npm_package(&specifier) {
-        if self.include_npm_sources {
-          // use the canonical specifier for npm packages
-          Cow::Owned(specifier)
-        } else {
-          return Box::pin(std::future::ready(Ok(Some(
-            LoadResponse::External { specifier },
-          ))));
-        }
-      } else {
-        Cow::Borrowed(original_specifier)
-      }
-    } else {
-      Cow::Borrowed(specifier)
-    };
+    let specifier = Cow::Borrowed(specifier);
 
     if !matches!(
       specifier.scheme(),
@@ -967,16 +929,12 @@ mod test {
     DenoGraphLoader::new(
       file_fetcher,
       global_http_cache,
-      crate::npm::DenoInNpmPackageChecker::new(
-        crate::npm::CreateInNpmPkgCheckerOptions::Byonm,
-      ),
       sys,
       DenoGraphLoaderOptions {
         file_header_overrides: HashMap::new(),
         permissions: None,
         file_permission_api_name: None,
         reporter: None,
-        include_npm_sources: false,
       },
     )
   }

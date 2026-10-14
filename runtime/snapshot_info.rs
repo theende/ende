@@ -43,7 +43,7 @@ pub fn get_extensions_in_snapshot() -> Vec<Extension> {
     ende_io::ende_io::init(Some(Default::default())),
     ende_fs::ende_fs::init(fs),
     ende_os::ende_os::init(Default::default()),
-    ende_process::ende_process::init(Default::default()),
+    ende_process::ende_process::init(),
     ops::runtime::ende_runtime::init("deno:runtime".parse().unwrap()),
     ops::worker_host::ende_worker_host::init(
       Arc::new(|_| unreachable!("not used in snapshot.")),

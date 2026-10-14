@@ -6,7 +6,6 @@ use std::thread;
 use deno_terminal::colors;
 use ende_core::ModuleSpecifier;
 use ende_core::v8;
-use ende_node::ops::ipc::ChildIpcSerialization;
 use ende_telemetry::OtelConfig;
 use serde::Serialize;
 
@@ -106,12 +105,6 @@ pub struct BootstrapOptions {
   pub inspect: bool,
   /// If this is an `ende compile`-ed executable.
   pub is_standalone: bool,
-  pub has_node_modules_dir: bool,
-  pub argv0: Option<String>,
-  pub node_debug: Option<String>,
-  pub node_cluster_unique_id: Option<String>,
-  pub node_cluster_sched_policy: Option<String>,
-  pub node_ipc_init: Option<(i64, ChildIpcSerialization)>,
   pub mode: WorkerExecutionMode,
   pub no_legacy_abort: bool,
   // Used by `ende serve`
@@ -149,12 +142,6 @@ impl Default for BootstrapOptions {
       args: Default::default(),
       is_standalone: false,
       auto_serve: false,
-      has_node_modules_dir: false,
-      argv0: None,
-      node_debug: None,
-      node_cluster_unique_id: None,
-      node_cluster_sched_policy: None,
-      node_ipc_init: None,
       mode: WorkerExecutionMode::None,
       no_legacy_abort: false,
       serve_port: Default::default(),
@@ -187,12 +174,6 @@ struct BootstrapV8<'a>(
   bool,
   // enable_testing_features
   bool,
-  // has_node_modules_dir
-  bool,
-  // argv0
-  Option<&'a str>,
-  // node_debug
-  Option<&'a str>,
   // mode
   i32,
   // serve port
@@ -211,10 +192,6 @@ struct BootstrapV8<'a>(
   bool,
   // auto serve
   bool,
-  // node cluster unique id (NODE_UNIQUE_ID)
-  Option<&'a str>,
-  // node cluster scheduling policy (NODE_CLUSTER_SCHED_POLICY)
-  Option<&'a str>,
   // disable offscreen canvas
   bool,
 );
@@ -234,9 +211,6 @@ impl BootstrapOptions {
       self.unstable_features.as_ref(),
       self.inspect,
       self.enable_testing_features,
-      self.has_node_modules_dir,
-      self.argv0.as_deref(),
-      self.node_debug.as_deref(),
       self.mode.discriminant() as _,
       self.serve_port.unwrap_or_default(),
       self.serve_host.as_deref(),
@@ -250,8 +224,6 @@ impl BootstrapOptions {
       self.close_on_idle,
       self.is_standalone,
       self.auto_serve,
-      self.node_cluster_unique_id.as_deref(),
-      self.node_cluster_sched_policy.as_deref(),
       self.disable_offscreen_canvas,
     );
 

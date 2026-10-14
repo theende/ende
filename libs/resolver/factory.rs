@@ -1,23 +1,15 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 use std::borrow::Cow;
-use std::collections::BTreeSet;
-use std::path::Path;
 use std::path::PathBuf;
 
 use boxed_error::Boxed;
-use deno_path_util::fs::canonicalize_path_maybe_not_exists;
-use deno_semver::package::PackageName;
 use ende_cache_dir::EndeDirResolutionError;
 use ende_cache_dir::GlobalHttpCacheRc;
 use ende_cache_dir::GlobalOrLocalHttpCache;
 use ende_cache_dir::LocalHttpCache;
-use ende_cache_dir::npm::NpmCacheDir;
 use ende_config::ende_json::MinimumDependencyAgeConfig;
 use ende_config::ende_json::NewestDependencyDate;
-use ende_config::ende_json::NodeModulesDirMode;
-use ende_config::ende_json::NodeModulesLinkerMode;
-use ende_config::workspace::FolderConfigs;
 use ende_config::workspace::VendorEnablement;
 use ende_config::workspace::WorkspaceDirectory;
 use ende_config::workspace::WorkspaceDirectoryEmptyOptions;
@@ -28,27 +20,13 @@ use ende_config::workspace::WorkspaceDiscoverStart;
 use ende_maybe_sync::MaybeSend;
 use ende_maybe_sync::MaybeSync;
 use ende_maybe_sync::new_rc;
-pub use ende_npm::NpmSystemInfo;
-use ende_npm::resolution::NpmVersionResolver;
 use futures::future::FutureExt;
-use node_resolver::DenoIsBuiltInNodeModuleChecker;
-use node_resolver::NodeResolver;
-use node_resolver::NodeResolverOptions;
-use node_resolver::NodeResolverRc;
-use node_resolver::PackageJsonResolver;
-use node_resolver::PackageJsonResolverRc;
-use node_resolver::analyze::CjsModuleExportAnalyzerRc;
-use node_resolver::analyze::NodeCodeTranslator;
-use node_resolver::analyze::NodeCodeTranslatorRc;
-use node_resolver::cache::NodeResolutionSys;
 use thiserror::Error;
 use url::Url;
 
-use crate::DefaultRawEndeResolverRc;
 use crate::EndeResolverOptions;
-use crate::NodeAndNpmResolvers;
-use crate::NpmCacheDirRc;
 use crate::RawEndeResolver;
+use crate::RawEndeResolverRc;
 use crate::WorkspaceResolverRc;
 use crate::cache::EmitCache;
 use crate::cache::EmitCacheRc;
@@ -57,38 +35,16 @@ use crate::cache::EndeDirOptions;
 use crate::cache::EndeDirProvider;
 use crate::cache::EndeDirProviderRc;
 use crate::cache::EndeDirSys;
-use crate::cjs::CjsTracker;
-use crate::cjs::CjsTrackerRc;
-use crate::cjs::IsCjsResolutionMode;
-use crate::cjs::analyzer::EndeCjsCodeAnalyzer;
-use crate::cjs::analyzer::NodeAnalysisCacheRc;
-use crate::cjs::analyzer::NullNodeAnalysisCache;
 use crate::ende_json::CompilerOptionsOverrides;
 use crate::ende_json::CompilerOptionsResolver;
 use crate::ende_json::CompilerOptionsResolverRc;
 use crate::import_map::WorkspaceExternalImportMapLoader;
 use crate::import_map::WorkspaceExternalImportMapLoaderRc;
 use crate::loader::AllowJsonImports;
-use crate::loader::DenoNpmModuleLoaderRc;
-use crate::loader::NpmModuleLoader;
 use crate::lockfile::LockfileLock;
 use crate::lockfile::LockfileLockRc;
-use crate::npm::ByonmNpmResolverCreateOptions;
-use crate::npm::CreateInNpmPkgCheckerOptions;
-use crate::npm::DenoInNpmPackageChecker;
-use crate::npm::NpmReqResolver;
-use crate::npm::NpmReqResolverOptions;
-use crate::npm::NpmReqResolverRc;
-use crate::npm::NpmResolver;
-use crate::npm::NpmResolverCreateOptions;
-use crate::npm::managed::ManagedInNpmPkgCheckerCreateOptions;
-use crate::npm::managed::ManagedNpmResolverCreateOptions;
-use crate::npm::managed::NpmResolutionCellRc;
-use crate::npmrc::ResolvedNpmRcRc;
-use crate::npmrc::create_default_npmrc;
 use crate::workspace::FsCacheOptions;
 use crate::workspace::SloppyImportsOptions;
-use crate::workspace::WorkspaceNpmLinkPackagesRc;
 use crate::workspace::WorkspaceResolver;
 
 const DEFAULT_MINIMUM_DEPENDENCY_AGE_MINUTES: i64 = 1440;
@@ -99,22 +55,6 @@ type Deferred<T> = once_cell::sync::OnceCell<T>;
 #[cfg(not(feature = "sync"))]
 type Deferred<T> = once_cell::unsync::OnceCell<T>;
 
-pub type EndeCjsModuleExportAnalyzerRc<TSys> = CjsModuleExportAnalyzerRc<
-  EndeCjsCodeAnalyzer<TSys>,
-  DenoInNpmPackageChecker,
-  DenoIsBuiltInNodeModuleChecker,
-  NpmResolver<TSys>,
-  TSys,
->;
-pub type EndeNodeCodeTranslatorRc<TSys> = NodeCodeTranslatorRc<
-  EndeCjsCodeAnalyzer<TSys>,
-  DenoInNpmPackageChecker,
-  DenoIsBuiltInNodeModuleChecker,
-  NpmResolver<TSys>,
-  TSys,
->;
-#[allow(clippy::disallowed_types, reason = "definition")]
-pub type NpmVersionResolverRc = ende_maybe_sync::MaybeArc<NpmVersionResolver>;
 #[cfg(feature = "graph")]
 #[allow(clippy::disallowed_types, reason = "definition")]
 pub type JsrVersionResolverRc =
@@ -129,15 +69,6 @@ pub enum HttpCacheCreateErrorKind {
   EndeDirResolution(#[from] EndeDirResolutionError),
   #[error(transparent)]
   WorkspaceDiscover(#[from] WorkspaceDiscoverError),
-}
-
-#[derive(Debug, Boxed)]
-pub struct NpmCacheDirCreateError(pub Box<NpmCacheDirCreateErrorKind>);
-
-#[derive(Debug, Error)]
-pub enum NpmCacheDirCreateErrorKind {
-  #[error(transparent)]
-  EndeDirResolution(#[from] EndeDirResolutionError),
 }
 
 #[derive(Debug, Default)]
@@ -179,32 +110,16 @@ pub trait SpecifiedImportMapProvider:
   ) -> Result<Option<crate::workspace::SpecifiedImportMap>, anyhow::Error>;
 }
 
-#[derive(Debug)]
-pub struct NpmProcessStateOptions {
-  pub node_modules_dir: Option<Cow<'static, str>>,
-  pub is_byonm: bool,
-  pub linker_mode: Option<NodeModulesLinkerMode>,
-}
-
 #[derive(Debug, Default)]
 pub struct WorkspaceFactoryOptions {
   pub additional_config_file_names: &'static [&'static str],
   pub config_discovery: ConfigDiscoveryOption,
-  pub is_package_manager_subcommand: bool,
   pub frozen_lockfile: Option<bool>,
   pub lock_arg: Option<PathBuf>,
   /// Whether to skip writing to the lockfile.
   pub lockfile_skip_write: bool,
   pub maybe_custom_ende_dir_root: Option<PathBuf>,
-  pub node_modules_dir: Option<NodeModulesDirMode>,
   pub no_lock: bool,
-  pub no_npm: bool,
-  /// The process state if using ext/node and the current process was "forked".
-  /// This value is found at `ende_lib::args::NPM_PROCESS_STATE`
-  /// but in most scenarios this can probably just be `None`.
-  pub npm_process_state: Option<NpmProcessStateOptions>,
-  /// Override the path to the root node_modules directory.
-  pub root_node_modules_dir_override: Option<PathBuf>,
   pub vendor: Option<bool>,
 }
 
@@ -216,10 +131,9 @@ pub type WorkspaceFactoryRc<TSys> =
 pub trait WorkspaceFactorySys:
   EndeDirSys
   + crate::lockfile::LockfileSys
-  + crate::npm::NpmResolverSys
+  + crate::EndeResolverSys
   + ende_cache_dir::GlobalHttpCacheSys
   + ende_cache_dir::LocalHttpCacheSys
-  + crate::loader::NpmModuleLoaderSys
   + sys_traits::SystemTimeNow
 {
 }
@@ -232,15 +146,9 @@ pub struct WorkspaceFactory<TSys: WorkspaceFactorySys> {
   http_cache: Deferred<GlobalOrLocalHttpCache<TSys>>,
   jsr_url: Deferred<Url>,
   lockfile: async_once_cell::OnceCell<Option<LockfileLockRc<TSys>>>,
-  node_modules_dir_path: Deferred<Option<PathBuf>>,
-  npm_cache_dir: Deferred<NpmCacheDirRc>,
-  npmrc: Deferred<ResolvedNpmRcRc>,
-  node_modules_dir_mode: Deferred<NodeModulesDirMode>,
-  node_modules_linker_mode: Deferred<NodeModulesLinkerMode>,
   workspace_directory: Deferred<WorkspaceDirectoryRc>,
   workspace_external_import_map_loader:
     Deferred<WorkspaceExternalImportMapLoaderRc<TSys>>,
-  workspace_npm_link_packages: Deferred<WorkspaceNpmLinkPackagesRc>,
   initial_cwd: PathBuf,
   options: WorkspaceFactoryOptions,
 }
@@ -259,14 +167,8 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
       http_cache: Default::default(),
       jsr_url: Default::default(),
       lockfile: Default::default(),
-      node_modules_dir_path: Default::default(),
-      npm_cache_dir: Default::default(),
-      npmrc: Default::default(),
-      node_modules_dir_mode: Default::default(),
-      node_modules_linker_mode: Default::default(),
       workspace_directory: Default::default(),
       workspace_external_import_map_loader: Default::default(),
-      workspace_npm_link_packages: Default::default(),
       initial_cwd,
       options,
     }
@@ -312,123 +214,6 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
     &self.initial_cwd
   }
 
-  pub fn no_npm(&self) -> bool {
-    self.options.no_npm
-  }
-
-  /// Resolves the raw node_modules dir mode before any promotion
-  /// (e.g. Manual → Auto for package manager subcommands).
-  fn raw_node_modules_dir_mode(
-    &self,
-  ) -> Result<NodeModulesDirMode, anyhow::Error> {
-    if let Some(process_state) = &self.options.npm_process_state {
-      if process_state.is_byonm {
-        return Ok(NodeModulesDirMode::Manual);
-      }
-      if process_state.node_modules_dir.is_some() {
-        return Ok(NodeModulesDirMode::Auto);
-      } else {
-        return Ok(NodeModulesDirMode::None);
-      }
-    }
-    if let Some(flag) = self.options.node_modules_dir {
-      return Ok(flag);
-    }
-
-    let workspace = &self.workspace_directory()?.workspace;
-
-    if workspace.vendor_dir_path().is_some() {
-      Ok(NodeModulesDirMode::Auto)
-    } else {
-      // use the global cache
-      Ok(NodeModulesDirMode::None)
-    }
-  }
-
-  pub fn node_modules_dir_mode(
-    &self,
-  ) -> Result<NodeModulesDirMode, anyhow::Error> {
-    self
-      .node_modules_dir_mode
-      .get_or_try_init(|| {
-        let mode = self.raw_node_modules_dir_mode()?;
-        if mode == NodeModulesDirMode::Manual
-          && self.options.is_package_manager_subcommand
-        {
-          // force using the managed resolver for package management
-          // sub commands so that it sets up the node_modules directory
-          Ok(NodeModulesDirMode::Auto)
-        } else {
-          Ok(mode)
-        }
-      })
-      .copied()
-  }
-
-  pub fn node_modules_linker_mode(
-    &self,
-  ) -> Result<NodeModulesLinkerMode, anyhow::Error> {
-    self
-      .node_modules_linker_mode
-      .get_or_try_init(|| {
-        // There is no flag or config option for the linker mode; only a
-        // parent process's npm state can select it.
-        Ok(
-          self
-            .options
-            .npm_process_state
-            .as_ref()
-            .and_then(|process_state| process_state.linker_mode)
-            .unwrap_or_default(),
-        )
-      })
-      .copied()
-  }
-
-  /// Resolves the path to use for a local node_modules folder.
-  pub fn node_modules_dir_path(&self) -> Result<Option<&Path>, anyhow::Error> {
-    fn resolve_from_root(root_folder: &FolderConfigs, cwd: &Path) -> PathBuf {
-      root_folder
-        .ende_json
-        .as_ref()
-        .map(|c| Cow::Owned(c.dir_path()))
-        .unwrap_or(Cow::Borrowed(cwd))
-        .join("node_modules")
-    }
-
-    self
-      .node_modules_dir_path
-      .get_or_try_init(|| {
-        if let Some(path) = &self.options.root_node_modules_dir_override {
-          return Ok(Some(path.clone()));
-        }
-        if let Some(process_state) = &self.options.npm_process_state {
-          return Ok(
-            process_state
-              .node_modules_dir
-              .as_ref()
-              .map(|p| PathBuf::from(p.as_ref())),
-          );
-        }
-
-        let mode = self.node_modules_dir_mode()?;
-        let workspace = &self.workspace_directory()?.workspace;
-        let root_folder = workspace.root_folder_configs();
-        if !mode.uses_node_modules_dir() {
-          return Ok(None);
-        }
-
-        let node_modules_dir =
-          resolve_from_root(root_folder, &self.initial_cwd);
-
-        Ok(Some(canonicalize_path_maybe_not_exists(
-          &self.sys,
-          &node_modules_dir,
-        )?))
-      })
-      .map(|p| p.as_deref())
-  }
-
   pub fn ende_dir(&self) -> Result<&EndeDir<TSys>, EndeDirResolutionError> {
     self.ende_dir_provider().get_or_create()
   }
@@ -469,7 +254,6 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
 
   pub async fn maybe_lockfile(
     &self,
-    npm_package_info_provider: &dyn ende_lockfile::NpmPackageInfoProvider,
   ) -> Result<Option<&LockfileLockRc<TSys>>, anyhow::Error> {
     self
       .lockfile
@@ -493,11 +277,9 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
               self.options.config_discovery,
               ConfigDiscoveryOption::Disabled
             ),
-            no_npm: self.options.no_npm,
           },
           &workspace_directory.workspace,
           maybe_external_import_map.as_ref().map(|v| &v.value),
-          npm_package_info_provider,
         )
         .await?
         .map(ende_maybe_sync::new_rc);
@@ -506,25 +288,6 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
       })
       .await
       .map(|c| c.as_ref())
-  }
-
-  pub fn npm_cache_dir(
-    &self,
-  ) -> Result<&NpmCacheDirRc, NpmCacheDirCreateError> {
-    self.npm_cache_dir.get_or_try_init(|| {
-      let npm_cache_dir = self.ende_dir()?.npm_folder_path();
-      Ok(new_rc(NpmCacheDir::new(
-        &self.sys,
-        npm_cache_dir,
-        self.npmrc().get_all_known_registries_urls(),
-      )))
-    })
-  }
-
-  pub fn npmrc(&self) -> &ResolvedNpmRcRc {
-    self
-      .npmrc
-      .get_or_init(|| new_rc(create_default_npmrc(&self.sys)))
   }
 
   pub fn sys(&self) -> &TSys {
@@ -600,82 +363,36 @@ impl<TSys: WorkspaceFactorySys> WorkspaceFactory<TSys> {
         )))
       })
   }
-
-  pub fn workspace_npm_link_packages(
-    &self,
-  ) -> Result<&WorkspaceNpmLinkPackagesRc, anyhow::Error> {
-    self.workspace_npm_link_packages.get_or_try_init(|| {
-      // linked npm packages (folders with a package.json) are not
-      // supported in Ende
-      Ok(WorkspaceNpmLinkPackagesRc::default())
-    })
-  }
 }
 
 #[derive(Default)]
 pub struct ResolverFactoryOptions {
   pub compiler_options_overrides: CompilerOptionsOverrides,
-  pub is_cjs_resolution_mode: IsCjsResolutionMode,
   /// Prevents installing packages newer than the specified date.
   pub newest_dependency_date: Option<NewestDependencyDate>,
-  pub node_analysis_cache: Option<NodeAnalysisCacheRc>,
-  pub node_code_translator_mode: node_resolver::analyze::NodeCodeTranslatorMode,
-  pub node_resolver_options: NodeResolverOptions,
-  pub node_resolution_cache: Option<node_resolver::NodeResolutionCacheRc>,
-  pub npm_system_info: NpmSystemInfo,
-  pub package_json_cache: Option<node_resolver::PackageJsonCacheRc>,
   pub specified_import_map: Option<Box<dyn SpecifiedImportMapProvider>>,
   pub unstable_sloppy_imports: bool,
   #[cfg(feature = "graph")]
   pub on_mapped_resolution_diagnostic:
     Option<crate::graph::OnMappedResolutionDiagnosticFn>,
   pub allow_json_imports: AllowJsonImports,
-  /// Modules loaded via --require flag that should always be treated as CommonJS
-  pub require_modules: Vec<Url>,
 }
 
 pub struct ResolverFactory<TSys: WorkspaceFactorySys> {
   options: ResolverFactoryOptions,
-  sys: NodeResolutionSys<TSys>,
-  cjs_module_export_analyzer: Deferred<EndeCjsModuleExportAnalyzerRc<TSys>>,
-  cjs_tracker: Deferred<CjsTrackerRc<DenoInNpmPackageChecker, TSys>>,
   compiler_options_resolver: Deferred<CompilerOptionsResolverRc>,
   #[cfg(feature = "graph")]
-  ende_resolver:
-    async_once_cell::OnceCell<crate::graph::DefaultEndeResolverRc<TSys>>,
+  ende_resolver: async_once_cell::OnceCell<crate::graph::EndeResolverRc<TSys>>,
   #[cfg(feature = "deno_ast")]
-  emitter: Deferred<crate::emit::EmitterRc<DenoInNpmPackageChecker, TSys>>,
-  in_npm_package_checker: Deferred<DenoInNpmPackageChecker>,
+  emitter: Deferred<crate::emit::EmitterRc<TSys>>,
   #[cfg(feature = "graph")]
   jsr_version_resolver: Deferred<JsrVersionResolverRc>,
   minimum_dependency_age: Deferred<MinimumDependencyAgeConfig>,
-  node_code_translator: Deferred<EndeNodeCodeTranslatorRc<TSys>>,
-  node_resolver: Deferred<
-    NodeResolverRc<
-      DenoInNpmPackageChecker,
-      DenoIsBuiltInNodeModuleChecker,
-      NpmResolver<TSys>,
-      TSys,
-    >,
-  >,
-  npm_module_loader: Deferred<DenoNpmModuleLoaderRc<TSys>>,
-  npm_req_resolver: Deferred<
-    NpmReqResolverRc<
-      DenoInNpmPackageChecker,
-      DenoIsBuiltInNodeModuleChecker,
-      NpmResolver<TSys>,
-      TSys,
-    >,
-  >,
-  npm_resolver: Deferred<NpmResolver<TSys>>,
-  npm_resolution: NpmResolutionCellRc,
-  npm_version_resolver: Deferred<NpmVersionResolverRc>,
   #[cfg(feature = "deno_ast")]
   parsed_source_cache: crate::cache::ParsedSourceCacheRc,
-  pkg_json_resolver: Deferred<PackageJsonResolverRc<TSys>>,
   #[cfg(all(feature = "graph", feature = "deno_ast"))]
   module_loader: Deferred<crate::loader::ModuleLoaderRc<TSys>>,
-  raw_ende_resolver: async_once_cell::OnceCell<DefaultRawEndeResolverRc<TSys>>,
+  raw_ende_resolver: async_once_cell::OnceCell<RawEndeResolverRc<TSys>>,
   workspace_factory: WorkspaceFactoryRc<TSys>,
   workspace_resolver: async_once_cell::OnceCell<WorkspaceResolverRc<TSys>>,
 }
@@ -686,32 +403,17 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
     options: ResolverFactoryOptions,
   ) -> Self {
     Self {
-      sys: NodeResolutionSys::new(
-        workspace_factory.sys.clone(),
-        options.node_resolution_cache.clone(),
-      ),
-      cjs_module_export_analyzer: Default::default(),
-      cjs_tracker: Default::default(),
       compiler_options_resolver: Default::default(),
       raw_ende_resolver: Default::default(),
       #[cfg(feature = "graph")]
       ende_resolver: Default::default(),
       #[cfg(feature = "deno_ast")]
       emitter: Default::default(),
-      in_npm_package_checker: Default::default(),
       #[cfg(feature = "graph")]
       jsr_version_resolver: Default::default(),
       minimum_dependency_age: Default::default(),
-      node_code_translator: Default::default(),
-      node_resolver: Default::default(),
-      npm_module_loader: Default::default(),
-      npm_req_resolver: Default::default(),
-      npm_resolution: Default::default(),
-      npm_resolver: Default::default(),
-      npm_version_resolver: Default::default(),
       #[cfg(feature = "deno_ast")]
       parsed_source_cache: Default::default(),
-      pkg_json_resolver: Default::default(),
       #[cfg(all(feature = "graph", feature = "deno_ast"))]
       module_loader: Default::default(),
       workspace_factory,
@@ -722,23 +424,12 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
 
   pub async fn raw_ende_resolver(
     &self,
-  ) -> Result<&DefaultRawEndeResolverRc<TSys>, anyhow::Error> {
+  ) -> Result<&RawEndeResolverRc<TSys>, anyhow::Error> {
     self
       .raw_ende_resolver
       .get_or_try_init(
         async {
           Ok(new_rc(RawEndeResolver::new(EndeResolverOptions {
-            in_npm_pkg_checker: self.in_npm_package_checker()?.clone(),
-            node_and_req_resolver: if self.workspace_factory.no_npm() {
-              None
-            } else {
-              Some(NodeAndNpmResolvers {
-                node_resolver: self.node_resolver()?.clone(),
-                npm_resolver: self.npm_resolver()?.clone(),
-                npm_req_resolver: self.npm_req_resolver()?.clone(),
-              })
-            },
-            is_byonm: self.use_byonm()?,
             maybe_vendor_dir: self
               .workspace_factory
               .workspace_directory()?
@@ -753,58 +444,13 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
       .await
   }
 
-  pub fn cjs_module_export_analyzer(
-    &self,
-  ) -> Result<&EndeCjsModuleExportAnalyzerRc<TSys>, anyhow::Error> {
-    self.cjs_module_export_analyzer.get_or_try_init(|| {
-      let code_analyzer = EndeCjsCodeAnalyzer::new(
-        self
-          .options
-          .node_analysis_cache
-          .clone()
-          .unwrap_or_else(|| new_rc(NullNodeAnalysisCache)),
-        self.cjs_tracker()?.clone(),
-        #[cfg(feature = "deno_ast")]
-        new_rc(crate::cjs::analyzer::DenoAstModuleExportAnalyzer::new(
-          self.parsed_source_cache().clone(),
-        )),
-        #[cfg(not(feature = "deno_ast"))]
-        new_rc(crate::cjs::analyzer::NotImplementedModuleExportAnalyzer),
-      );
-      Ok(new_rc(
-        node_resolver::analyze::CjsModuleExportAnalyzer::new(
-          code_analyzer,
-          self.in_npm_package_checker()?.clone(),
-          self.node_resolver()?.clone(),
-          self.npm_resolver()?.clone(),
-          self.pkg_json_resolver().clone(),
-          self.workspace_factory.sys().clone(),
-        ),
-      ))
-    })
-  }
-
-  pub fn cjs_tracker(
-    &self,
-  ) -> Result<&CjsTrackerRc<DenoInNpmPackageChecker, TSys>, anyhow::Error> {
-    self.cjs_tracker.get_or_try_init(|| {
-      Ok(new_rc(CjsTracker::new(
-        self.in_npm_package_checker()?.clone(),
-        self.pkg_json_resolver().clone(),
-        self.options.is_cjs_resolution_mode,
-        self.options.require_modules.clone(),
-      )))
-    })
-  }
-
   pub fn compiler_options_resolver(
     &self,
   ) -> Result<&CompilerOptionsResolverRc, anyhow::Error> {
     self.compiler_options_resolver.get_or_try_init(|| {
       Ok(new_rc(CompilerOptionsResolver::new(
-        &self.sys,
+        self.workspace_factory.sys(),
         &self.workspace_factory.workspace_directory()?.workspace,
-        self.node_resolver()?,
         &self.workspace_factory.options.config_discovery,
         &self.options.compiler_options_overrides,
       )))
@@ -814,13 +460,9 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
   #[cfg(feature = "deno_ast")]
   pub fn emitter(
     &self,
-  ) -> Result<
-    &crate::emit::EmitterRc<DenoInNpmPackageChecker, TSys>,
-    anyhow::Error,
-  > {
+  ) -> Result<&crate::emit::EmitterRc<TSys>, anyhow::Error> {
     self.emitter.get_or_try_init(|| {
       Ok(new_rc(crate::emit::Emitter::new(
-        self.cjs_tracker()?.clone(),
         self.workspace_factory.emit_cache()?.clone(),
         self.parsed_source_cache().clone(),
         self.compiler_options_resolver()?.clone(),
@@ -831,39 +473,16 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
   #[cfg(feature = "graph")]
   pub async fn ende_resolver(
     &self,
-  ) -> Result<&crate::graph::DefaultEndeResolverRc<TSys>, anyhow::Error> {
+  ) -> Result<&crate::graph::EndeResolverRc<TSys>, anyhow::Error> {
     self
       .ende_resolver
       .get_or_try_init(async {
         Ok(new_rc(crate::graph::EndeResolver::new(
           self.raw_ende_resolver().await?.clone(),
-          self.workspace_factory.sys.clone(),
           self.options.on_mapped_resolution_diagnostic.clone(),
         )))
       })
       .await
-  }
-
-  pub fn in_npm_package_checker(
-    &self,
-  ) -> Result<&DenoInNpmPackageChecker, anyhow::Error> {
-    self.in_npm_package_checker.get_or_try_init(|| {
-      let options = match self.use_byonm()? {
-        true => CreateInNpmPkgCheckerOptions::Byonm,
-        false => CreateInNpmPkgCheckerOptions::Managed(
-          ManagedInNpmPkgCheckerCreateOptions {
-            root_cache_dir_url: self
-              .workspace_factory
-              .npm_cache_dir()?
-              .root_dir_url(),
-            maybe_node_modules_path: self
-              .workspace_factory
-              .node_modules_dir_path()?,
-          },
-        ),
-      };
-      Ok(DenoInNpmPackageChecker::new(options))
-    })
   }
 
   #[cfg(feature = "graph")]
@@ -877,7 +496,6 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
       let (exclude_jsr_pkgs, exclude_jsr_pkg_prefixes) =
         split_minimum_dependency_age_excludes(
           &minimum_dependency_age_config.exclude,
-          "jsr:",
         );
 
       Ok(new_rc(deno_graph::packages::JsrVersionResolver {
@@ -913,7 +531,7 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
       if config.age.is_none() {
         apply_minimum_dependency_age_fallbacks(
           &mut config,
-          workspace_factory.npmrc().min_release_age_days,
+          minimum_dependency_age_from_env(workspace_factory.sys()),
           chrono::DateTime::<chrono::Utc>::from(
             workspace_factory.sys().sys_time_now(),
           ),
@@ -928,197 +546,9 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
     })
   }
 
-  pub fn node_code_translator(
-    &self,
-  ) -> Result<&EndeNodeCodeTranslatorRc<TSys>, anyhow::Error> {
-    self.node_code_translator.get_or_try_init(|| {
-      Ok(new_rc(NodeCodeTranslator::new(
-        self.cjs_module_export_analyzer()?.clone(),
-        self.options.node_code_translator_mode,
-      )))
-    })
-  }
-
-  pub fn node_resolver(
-    &self,
-  ) -> Result<
-    &NodeResolverRc<
-      DenoInNpmPackageChecker,
-      DenoIsBuiltInNodeModuleChecker,
-      NpmResolver<TSys>,
-      TSys,
-    >,
-    anyhow::Error,
-  > {
-    self.node_resolver.get_or_try_init(|| {
-      Ok(new_rc(NodeResolver::new(
-        self.in_npm_package_checker()?.clone(),
-        DenoIsBuiltInNodeModuleChecker,
-        self.npm_resolver()?.clone(),
-        self.pkg_json_resolver().clone(),
-        self.sys.clone(),
-        self.options.node_resolver_options.clone(),
-      )))
-    })
-  }
-
-  pub fn npm_module_loader(
-    &self,
-  ) -> Result<&DenoNpmModuleLoaderRc<TSys>, anyhow::Error> {
-    self.npm_module_loader.get_or_try_init(|| {
-      Ok(new_rc(NpmModuleLoader::new(
-        self.cjs_tracker()?.clone(),
-        self.in_npm_package_checker()?.clone(),
-        self.node_code_translator()?.clone(),
-        self.workspace_factory.sys.clone(),
-      )))
-    })
-  }
-
-  pub fn npm_resolution(&self) -> &NpmResolutionCellRc {
-    &self.npm_resolution
-  }
-
-  pub fn npm_req_resolver(
-    &self,
-  ) -> Result<
-    &NpmReqResolverRc<
-      DenoInNpmPackageChecker,
-      DenoIsBuiltInNodeModuleChecker,
-      NpmResolver<TSys>,
-      TSys,
-    >,
-    anyhow::Error,
-  > {
-    self.npm_req_resolver.get_or_try_init(|| {
-      Ok(new_rc(NpmReqResolver::new(NpmReqResolverOptions {
-        in_npm_pkg_checker: self.in_npm_package_checker()?.clone(),
-        node_resolver: self.node_resolver()?.clone(),
-        npm_resolver: self.npm_resolver()?.clone(),
-        sys: self.workspace_factory.sys.clone(),
-      })))
-    })
-  }
-
-  pub fn npm_resolver(&self) -> Result<&NpmResolver<TSys>, anyhow::Error> {
-    self.npm_resolver.get_or_try_init(|| {
-      Ok(NpmResolver::<TSys>::new::<TSys>(if self.use_byonm()? {
-        NpmResolverCreateOptions::Byonm(ByonmNpmResolverCreateOptions {
-          sys: self.sys.clone(),
-          pkg_json_resolver: self.pkg_json_resolver().clone(),
-          root_node_modules_dir: Some(
-            match self.workspace_factory.node_modules_dir_path()? {
-              Some(node_modules_path) => node_modules_path.to_path_buf(),
-              // path needs to be canonicalized for node resolution
-              // (node_modules_dir_path above is already canonicalized)
-              None => canonicalize_path_maybe_not_exists(
-                &self.workspace_factory.sys,
-                self.workspace_factory.initial_cwd(),
-              )?
-              .join("node_modules"),
-            },
-          ),
-          search_stop_dir: None,
-        })
-      } else {
-        NpmResolverCreateOptions::Managed(ManagedNpmResolverCreateOptions {
-          sys: self.sys.clone(),
-          npm_resolution: self.npm_resolution().clone(),
-          npm_cache_dir: self.workspace_factory.npm_cache_dir()?.clone(),
-          maybe_node_modules_path: self
-            .workspace_factory
-            .node_modules_dir_path()?
-            .map(|p| p.to_path_buf()),
-          npm_system_info: self.options.npm_system_info.clone(),
-          npmrc: self.workspace_factory.npmrc().clone(),
-          linker_mode: self.workspace_factory.node_modules_linker_mode()?,
-        })
-      }))
-    })
-  }
-
-  pub fn npm_version_resolver(
-    &self,
-  ) -> Result<&NpmVersionResolverRc, anyhow::Error> {
-    self.npm_version_resolver.get_or_try_init(|| {
-      let minimum_dependency_age_config =
-        self.minimum_dependency_age_config()?;
-
-      // the `trust-policy` / `trust-policy-ignore-after` npmrc settings drive
-      // the `no-downgrade` publishing-trust policy
-      let npmrc = self.workspace_factory.npmrc();
-      let trust_policy = ende_npm::resolution::TrustPolicyOptions {
-        policy: match npmrc.trust_policy {
-          ende_npmrc::TrustPolicyConfig::NoDowngrade => {
-            ende_npm::resolution::NpmTrustPolicy::NoDowngrade
-          }
-          ende_npmrc::TrustPolicyConfig::Off => {
-            ende_npm::resolution::NpmTrustPolicy::Off
-          }
-        },
-        // turn the relative `trust-policy-ignore-after` minutes into an
-        // absolute cutoff (`now - minutes`) so the resolver stays clock-free
-        ignore_after_cutoff: npmrc.trust_policy_ignore_after_minutes.map(
-          |minutes| {
-            let now = chrono::DateTime::<chrono::Utc>::from(
-              self.workspace_factory.sys().sys_time_now(),
-            );
-            now - chrono::Duration::minutes(minutes as i64)
-          },
-        ),
-        // `trust-policy-exclude[]` package names exempted from the policy
-        #[allow(
-          clippy::disallowed_types,
-          reason = "Arc needed for shared exclude set"
-        )]
-        exclude: std::sync::Arc::new(
-          npmrc
-            .trust_policy_exclude
-            .iter()
-            .map(|s| s.to_ascii_lowercase())
-            .collect(),
-        ),
-      };
-
-      let (exclude, exclude_prefixes) = split_minimum_dependency_age_excludes(
-        &minimum_dependency_age_config.exclude,
-        "npm:",
-      );
-
-      Ok(new_rc(NpmVersionResolver {
-        newest_dependency_date_options:
-          ende_npm::resolution::NewestDependencyDateOptions {
-            date: minimum_dependency_age_config
-              .age
-              .as_ref()
-              .and_then(|d| d.into_option())
-              .map(ende_npm::resolution::NewestDependencyDate),
-            exclude,
-            exclude_prefixes,
-          },
-        link_packages: self
-          .workspace_factory
-          .workspace_npm_link_packages()?
-          .0
-          .clone(),
-        overrides: Default::default(),
-        trust_policy,
-      }))
-    })
-  }
-
   #[cfg(feature = "deno_ast")]
   pub fn parsed_source_cache(&self) -> &crate::cache::ParsedSourceCacheRc {
     &self.parsed_source_cache
-  }
-
-  pub fn pkg_json_resolver(&self) -> &PackageJsonResolverRc<TSys> {
-    self.pkg_json_resolver.get_or_init(|| {
-      new_rc(PackageJsonResolver::new(
-        self.workspace_factory.sys.clone(),
-        self.options.package_json_cache.clone(),
-      ))
-    })
   }
 
   #[cfg(all(feature = "graph", feature = "deno_ast"))]
@@ -1126,12 +556,8 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
     &self,
   ) -> Result<&crate::loader::ModuleLoaderRc<TSys>, anyhow::Error> {
     self.module_loader.get_or_try_init(|| {
-      let cjs_tracker = self.cjs_tracker()?;
       Ok(new_rc(crate::loader::ModuleLoader::new(
-        cjs_tracker.clone(),
         self.emitter()?.clone(),
-        self.in_npm_package_checker()?.clone(),
-        self.npm_module_loader()?.clone(),
         self.parsed_source_cache.clone(),
         self.workspace_factory.sys.clone(),
         self.options.allow_json_imports,
@@ -1195,31 +621,23 @@ impl<TSys: WorkspaceFactorySys> ResolverFactory<TSys> {
       )
       .await
   }
-
-  pub fn npm_system_info(&self) -> &NpmSystemInfo {
-    &self.options.npm_system_info
-  }
-
-  pub fn use_byonm(&self) -> Result<bool, anyhow::Error> {
-    Ok(
-      self.workspace_factory.node_modules_dir_mode()?
-        == NodeModulesDirMode::Manual,
-    )
-  }
 }
 
-/// Splits `minimumDependencyAge.exclude` entries with the given scheme
-/// (`npm:` or `jsr:`) into exact package names and package name prefixes
-/// (from trailing `*` wildcard entries like `npm:@scope/*`).
+/// Splits the `jsr:` entries of `minimumDependencyAge.exclude` into exact
+/// package names and package name prefixes (from trailing `*` wildcard entries
+/// like `jsr:@scope/*`).
+#[cfg(feature = "graph")]
 fn split_minimum_dependency_age_excludes(
   exclude: &[String],
-  scheme: &str,
-) -> (BTreeSet<PackageName>, Vec<PackageName>) {
-  let mut exact = BTreeSet::new();
+) -> (
+  std::collections::BTreeSet<deno_semver::package::PackageName>,
+  Vec<deno_semver::package::PackageName>,
+) {
+  let mut exact = std::collections::BTreeSet::new();
   let mut prefixes = Vec::new();
-  for entry in exclude.iter().filter_map(|v| v.strip_prefix(scheme)) {
+  for entry in exclude.iter().filter_map(|v| v.strip_prefix("jsr:")) {
     match entry.strip_suffix('*') {
-      // an empty prefix (from an invalid entry like `npm:*` that a config
+      // an empty prefix (from an invalid entry like `jsr:*` that a config
       // diagnostic warns about) would exclude every package
       Some(prefix) if !prefix.is_empty() => prefixes.push(prefix.into()),
       Some(_) => {}
@@ -1231,27 +649,38 @@ fn split_minimum_dependency_age_excludes(
   (exact, prefixes)
 }
 
+/// Reads the `ENDE_MINIMUM_DEPENDENCY_AGE` environment variable, which takes
+/// the same values as `--minimum-dependency-age` (`0` disables the check).
+/// It only applies when neither the flag nor ende.json configure the age.
+fn minimum_dependency_age_from_env(
+  sys: &(impl sys_traits::EnvVar + sys_traits::SystemTimeNow),
+) -> Option<NewestDependencyDate> {
+  let value = ende_env::env_var(sys, "ENDE_MINIMUM_DEPENDENCY_AGE").ok()?;
+  match ende_config::parse_minutes_duration_or_date(sys, value.trim()) {
+    Ok(date) => Some(date),
+    Err(err) => {
+      log::warn!("Ignoring invalid ENDE_MINIMUM_DEPENDENCY_AGE: {err:#}");
+      None
+    }
+  }
+}
+
 fn apply_minimum_dependency_age_fallbacks(
   config: &mut MinimumDependencyAgeConfig,
-  npmrc_min_release_age_days: Option<u64>,
+  env_age: Option<NewestDependencyDate>,
   now: chrono::DateTime<chrono::Utc>,
 ) {
   if config.age.is_some() {
     return;
   }
 
-  // Fall back to .npmrc's `min-release-age` when not configured in deno.json.
-  config.age = Some(if let Some(days) = npmrc_min_release_age_days {
-    if days == 0 {
-      NewestDependencyDate::Disabled
-    } else {
-      NewestDependencyDate::Enabled(now - chrono::Duration::days(days as i64))
-    }
-  } else {
+  // Fall back to the `ENDE_MINIMUM_DEPENDENCY_AGE` environment variable when
+  // not configured in ende.json, then to the default.
+  config.age = Some(env_age.unwrap_or_else(|| {
     NewestDependencyDate::Enabled(
       now - chrono::Duration::minutes(DEFAULT_MINIMUM_DEPENDENCY_AGE_MINUTES),
     )
-  });
+  }));
 }
 
 #[cfg(test)]
@@ -1282,7 +711,7 @@ mod tests {
   fn minimum_dependency_age_preserves_exclude_with_default() {
     let mut config = MinimumDependencyAgeConfig {
       age: None,
-      exclude: vec!["npm:chalk".to_string()],
+      exclude: vec!["jsr:@std/fs".to_string()],
     };
     apply_minimum_dependency_age_fallbacks(&mut config, None, now());
     assert_eq!(
@@ -1291,19 +720,27 @@ mod tests {
         now() - chrono::Duration::minutes(1440)
       ))
     );
-    assert_eq!(config.exclude, vec!["npm:chalk".to_string()]);
+    assert_eq!(config.exclude, vec!["jsr:@std/fs".to_string()]);
   }
 
   #[test]
-  fn minimum_dependency_age_prefers_npmrc_over_default() {
+  fn minimum_dependency_age_prefers_env_over_default() {
     let mut config = MinimumDependencyAgeConfig::default();
-    apply_minimum_dependency_age_fallbacks(&mut config, Some(2), now());
-    assert_eq!(
-      config.age,
-      Some(NewestDependencyDate::Enabled(
-        now() - chrono::Duration::days(2)
-      ))
+    let env_age =
+      NewestDependencyDate::Enabled(now() - chrono::Duration::days(2));
+    apply_minimum_dependency_age_fallbacks(&mut config, Some(env_age), now());
+    assert_eq!(config.age, Some(env_age));
+  }
+
+  #[test]
+  fn minimum_dependency_age_env_can_disable() {
+    let mut config = MinimumDependencyAgeConfig::default();
+    apply_minimum_dependency_age_fallbacks(
+      &mut config,
+      Some(NewestDependencyDate::Disabled),
+      now(),
     );
+    assert_eq!(config.age, Some(NewestDependencyDate::Disabled));
   }
 
   #[test]
@@ -1312,7 +749,9 @@ mod tests {
       age: Some(NewestDependencyDate::Disabled),
       exclude: Vec::new(),
     };
-    apply_minimum_dependency_age_fallbacks(&mut config, Some(2), now());
+    let env_age =
+      NewestDependencyDate::Enabled(now() - chrono::Duration::days(2));
+    apply_minimum_dependency_age_fallbacks(&mut config, Some(env_age), now());
     assert_eq!(config.age, Some(NewestDependencyDate::Disabled));
   }
 }

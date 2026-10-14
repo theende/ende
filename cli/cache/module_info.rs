@@ -209,37 +209,6 @@ impl ModuleInfoCacheModuleAnalyzer<'_> {
       );
     }
   }
-
-  pub fn analyze_sync(
-    &self,
-    specifier: &ModuleSpecifier,
-    media_type: MediaType,
-    source: &Arc<str>,
-  ) -> Result<ModuleInfo, deno_ast::ParseDiagnostic> {
-    // attempt to load from the cache
-    let source_hash = CacheDBHash::from_hashable(source);
-    if let Some(info) =
-      self.load_cached_module_info(specifier, media_type, source_hash)
-    {
-      return Ok(info);
-    }
-
-    // otherwise, get the module info from the parsed source cache
-    let parser = self.parsed_source_cache.as_capturing_parser();
-    let analyzer = ParserModuleAnalyzer::new(&parser);
-    let module_info =
-      analyzer.analyze_sync(specifier, source.clone(), media_type)?;
-
-    // then attempt to cache it
-    self.save_module_info_to_cache(
-      specifier,
-      media_type,
-      source_hash,
-      &module_info,
-    );
-
-    Ok(module_info)
-  }
 }
 
 #[async_trait::async_trait(?Send)]

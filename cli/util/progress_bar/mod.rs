@@ -24,7 +24,6 @@ mod renderer;
 #[derive(Debug, Clone, Copy)]
 pub enum ProgressMessagePrompt {
   Download,
-  Blocking,
   Initialize,
   Cleaning,
   Compile,
@@ -34,7 +33,6 @@ impl ProgressMessagePrompt {
   pub fn as_text(&self) -> String {
     match self {
       ProgressMessagePrompt::Download => colors::green("Download").to_string(),
-      ProgressMessagePrompt::Blocking => colors::cyan("Blocking").to_string(),
       ProgressMessagePrompt::Initialize => {
         colors::green("Initialize").to_string()
       }
@@ -285,23 +283,6 @@ impl DrawThreadRenderer for ProgressBarInner {
 #[derive(Clone, Debug)]
 pub struct ProgressBar {
   inner: ProgressBarInner,
-}
-
-impl ende_npm_installer::Reporter for ProgressBar {
-  type Guard = UpdateGuard;
-  type ClearGuard = UpdateGuard;
-
-  fn on_blocking(&self, message: &str) -> Self::Guard {
-    self.update_with_prompt(ProgressMessagePrompt::Blocking, message)
-  }
-
-  fn on_initializing(&self, message: &str) -> Self::Guard {
-    self.update_with_prompt(ProgressMessagePrompt::Initialize, message)
-  }
-
-  fn clear_guard(&self) -> Self::ClearGuard {
-    self.deferred_keep_initialize_alive()
-  }
 }
 
 impl ProgressBar {

@@ -1216,12 +1216,11 @@ fn lsp_did_refresh_ende_configuration_tree_notification() {
   temp_dir.write("non_workspace1/ende.json", json!({}).to_string());
   let mut client = context.new_lsp_command().build();
   client.initialize_default();
-  let mut res = client
+  let res = client
     .read_notification_with_method::<Value>(
       "ende/didRefreshEndeConfigurationTree",
     )
     .unwrap();
-  res.as_object_mut().unwrap().remove("endeDirNpmFolderUri");
   assert_eq!(
     res,
     json!({
@@ -1266,12 +1265,11 @@ fn lsp_did_refresh_ende_configuration_tree_notification() {
   }));
   client.handle_refresh_diagnostics_request();
   client.read_diagnostics();
-  let mut res = client
+  let res = client
     .read_notification_with_method::<Value>(
       "ende/didRefreshEndeConfigurationTree",
     )
     .unwrap();
-  res.as_object_mut().unwrap().remove("endeDirNpmFolderUri");
   assert_eq!(
     res,
     json!({
@@ -1319,12 +1317,11 @@ fn lsp_did_refresh_ende_configuration_tree_notification() {
       "disablePaths": ["non_workspace1"],
     },
   }));
-  let mut res = client
+  let res = client
     .read_notification_with_method::<Value>(
       "ende/didRefreshEndeConfigurationTree",
     )
     .unwrap();
-  res.as_object_mut().unwrap().remove("endeDirNpmFolderUri");
   assert_eq!(
     res,
     json!({
@@ -9175,53 +9172,6 @@ fn lsp_completions_auto_import() {
       ]
     })
   );
-  client.shutdown();
-}
-
-#[test(timeout = 300)]
-fn lsp_completions_auto_import_node_builtin() {
-  let context = TestContextBuilder::new()
-    .use_http_server()
-    .use_temp_cwd()
-    .build();
-  let temp_dir = context.temp_dir();
-  let mut client = context.new_lsp_command().build();
-  client.initialize_default();
-  client.did_open(json!({
-    "textDocument": {
-      "uri": url_to_uri(&temp_dir.url().join("file.ts").unwrap()).unwrap(),
-      "languageId": "typescript",
-      "version": 1,
-      "text": r#"
-        import "npm:@types/node";
-        pathToFileURL
-      "#,
-    }
-  }));
-  client.cache_specifier(temp_dir.url().join("file.ts").unwrap());
-  client.read_diagnostics();
-  let list = client.get_completion_list(
-    url_to_uri(&temp_dir.url().join("file.ts").unwrap())
-      .unwrap()
-      .as_str(),
-    (2, 21),
-    json!({ "triggerKind": 2 }),
-  );
-  assert!(!list.is_incomplete);
-  // Find pathToFileURL completion from node:url auto-import
-  let item = list.items.iter().find(|item| item.label == "pathToFileURL");
-  // TS 6.0.2 may not always provide this auto-import depending on
-  // @types/node loading timing. Verify it exists and resolves correctly
-  // when available.
-  if let Some(item) = item {
-    let res = client.write_request("completionItem/resolve", json!(item));
-    let res_obj = res.as_object().unwrap();
-    assert_eq!(res_obj.get("label").unwrap(), "pathToFileURL");
-    assert_eq!(
-      res_obj.get("labelDetails").unwrap(),
-      &json!({ "description": "node:url" }),
-    );
-  }
   client.shutdown();
 }
 
@@ -18098,8 +18048,6 @@ fn lsp_modern_client_receives_ende_names() {
       "ende/didRefreshEndeConfigurationTree",
     )
     .unwrap();
-  assert!(refresh.get("endeDirNpmFolderUri").is_some(), "{refresh}");
-  assert!(refresh.get("denoDirNpmFolderUri").is_none(), "{refresh}");
   assert_eq!(
     refresh["data"][0]["endeJson"],
     json!({
@@ -18195,8 +18143,6 @@ fn lsp_legacy_client_receives_deno_names() {
       "deno/didRefreshDenoConfigurationTree",
     )
     .unwrap();
-  assert!(refresh.get("denoDirNpmFolderUri").is_some(), "{refresh}");
-  assert!(refresh.get("endeDirNpmFolderUri").is_none(), "{refresh}");
   for data in refresh["data"].as_array().unwrap() {
     assert!(data.get("denoJson").is_some(), "{refresh}");
     assert!(data.get("endeJson").is_none(), "{refresh}");

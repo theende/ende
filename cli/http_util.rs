@@ -1,11 +1,8 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-use std::io::BufReader;
-use std::path::Path;
 use std::sync::Arc;
 
 use boxed_error::Boxed;
-use dashmap::DashMap;
 use deno_error::JsError;
 use deno_error::JsErrorBox;
 use ende_cache_dir::file_fetcher::RedirectHeaderParseError;
@@ -22,9 +19,6 @@ use ende_runtime::ende_fetch::create_http_client;
 use ende_runtime::ende_fetch::dns::ResolvedDenyCheckKind;
 use ende_runtime::ende_permissions::PermissionsContainer;
 use ende_runtime::ende_tls::RootCertStoreProvider;
-use ende_runtime::ende_tls::TlsKey;
-use ende_runtime::ende_tls::load_certs;
-use ende_runtime::ende_tls::load_private_keys;
 use http::HeaderMap;
 use http::StatusCode;
 use http::header::CONTENT_ENCODING;
@@ -49,7 +43,6 @@ pub struct HttpClientProvider {
   options: CreateHttpClientOptions,
   root_cert_store_provider: Option<Arc<dyn RootCertStoreProvider>>,
   client: OnceCell<ende_fetch::Client>,
-  cert_clients: DashMap<(String, String), ende_fetch::Client>,
 }
 
 impl std::fmt::Debug for HttpClientProvider {
@@ -72,7 +65,6 @@ impl HttpClientProvider {
       },
       root_cert_store_provider,
       client: OnceCell::new(),
-      cert_clients: DashMap::new(),
     }
   }
 
@@ -107,66 +99,6 @@ impl HttpClientProvider {
       .map_err(JsErrorBox::from_err)
     })?;
     Ok(HttpClient::new(client.clone()))
-  }
-
-  pub fn get_or_create_with_client_cert(
-    &self,
-    certfile: &Path,
-    keyfile: &Path,
-  ) -> Result<HttpClient, JsErrorBox> {
-    let cache_key = (
-      certfile.to_string_lossy().into_owned(),
-      keyfile.to_string_lossy().into_owned(),
-    );
-    if let Some(client) = self.cert_clients.get(&cache_key) {
-      return Ok(HttpClient::new(client.clone()));
-    }
-    let cert_data = std::fs::read(certfile).map_err(|e| {
-      JsErrorBox::generic(format!(
-        "Failed to read npmrc certfile '{}': {e}",
-        certfile.display()
-      ))
-    })?;
-    let key_data = std::fs::read(keyfile).map_err(|e| {
-      JsErrorBox::generic(format!(
-        "Failed to read npmrc keyfile '{}': {e}",
-        keyfile.display()
-      ))
-    })?;
-    let certs =
-      load_certs(&mut BufReader::new(cert_data.as_slice())).map_err(|e| {
-        JsErrorBox::generic(format!(
-          "Failed to parse npmrc certfile '{}': {e}",
-          certfile.display()
-        ))
-      })?;
-    let mut keys = load_private_keys(&key_data).map_err(|e| {
-      JsErrorBox::generic(format!(
-        "Failed to parse npmrc keyfile '{}': {e}",
-        keyfile.display()
-      ))
-    })?;
-    if keys.is_empty() {
-      return Err(JsErrorBox::generic(format!(
-        "No private keys found in npmrc keyfile '{}'",
-        keyfile.display()
-      )));
-    }
-    let tls_key = TlsKey(certs, keys.remove(0));
-    let client = create_http_client(
-      ENDE_VERSION_INFO.user_agent,
-      CreateHttpClientOptions {
-        root_cert_store: match &self.root_cert_store_provider {
-          Some(provider) => Some(provider.get_or_try_init()?.clone()),
-          None => None,
-        },
-        client_cert_chain_and_key: Some(tls_key),
-        ..self.options.clone()
-      },
-    )
-    .map_err(JsErrorBox::from_err)?;
-    self.cert_clients.insert(cache_key, client.clone());
-    Ok(HttpClient::new(client))
   }
 }
 
@@ -220,10 +152,7 @@ pub enum DownloadErrorKind {
 
 #[derive(Debug)]
 pub enum HttpClientResponse {
-  Success {
-    headers: HeaderMap<HeaderValue>,
-    body: Vec<u8>,
-  },
+  Success { body: Vec<u8> },
   NotFound,
   NotModified,
 }
@@ -231,7 +160,7 @@ pub enum HttpClientResponse {
 impl HttpClientResponse {
   pub fn into_bytes(self) -> Result<Vec<u8>, DownloadError> {
     match self {
-      Self::Success { body, .. } => Ok(body),
+      Self::Success { body } => Ok(body),
       Self::NotFound => Err(DownloadErrorKind::NotFound.into_box()),
       Self::NotModified => {
         Err(DownloadErrorKind::UnhandledNotModified.into_box())
@@ -241,7 +170,7 @@ impl HttpClientResponse {
 
   pub fn into_maybe_bytes(self) -> Result<Option<Vec<u8>>, DownloadError> {
     match self {
-      Self::Success { body, .. } => Ok(Some(body)),
+      Self::Success { body } => Ok(Some(body)),
       Self::NotFound => Ok(None),
       Self::NotModified => {
         Err(DownloadErrorKind::UnhandledNotModified.into_box())
@@ -327,9 +256,7 @@ impl HttpClient {
   }
 
   pub async fn download(&self, url: Url) -> Result<Vec<u8>, DownloadError> {
-    let response = self
-      .download_inner(url, &Default::default(), None, true)
-      .await?;
+    let response = self.download_inner(url, &Default::default(), None).await?;
     response.into_bytes()
   }
 
@@ -340,29 +267,7 @@ impl HttpClient {
     progress_guard: &UpdateGuard,
   ) -> Result<HttpClientResponse, DownloadError> {
     crate::util::retry::retry(
-      || self.download_inner(url.clone(), headers, Some(progress_guard), true),
-      |e| {
-        matches!(
-          e.as_kind(),
-          DownloadErrorKind::BadResponse(_) | DownloadErrorKind::Fetch(_)
-        )
-      },
-    )
-    .await
-  }
-
-  /// Like `download_with_progress_and_retries`, but bypasses the transparent
-  /// decompression middleware. The response body will contain raw bytes
-  /// (potentially gzip-compressed). The caller should check the
-  /// Content-Encoding header and decompress if needed.
-  pub async fn download_with_progress_and_retries_no_decompress(
-    &self,
-    url: Url,
-    headers: &HeaderMap,
-    progress_guard: &UpdateGuard,
-  ) -> Result<HttpClientResponse, DownloadError> {
-    crate::util::retry::retry(
-      || self.download_inner(url.clone(), headers, Some(progress_guard), false),
+      || self.download_inner(url.clone(), headers, Some(progress_guard)),
       |e| {
         matches!(
           e.as_kind(),
@@ -378,7 +283,7 @@ impl HttpClient {
     url: Url,
     headers: &HeaderMap<HeaderValue>,
   ) -> Result<Url, AnyError> {
-    let (_, url) = self.get_redirected_response(url, headers, true).await?;
+    let (_, url) = self.get_redirected_response(url, headers).await?;
     Ok(url)
   }
 
@@ -387,11 +292,8 @@ impl HttpClient {
     url: Url,
     headers: &HeaderMap<HeaderValue>,
     progress_guard: Option<&UpdateGuard>,
-    should_decompress: bool,
   ) -> Result<HttpClientResponse, DownloadError> {
-    let (response, _) = self
-      .get_redirected_response(url, headers, should_decompress)
-      .await?;
+    let (response, _) = self.get_redirected_response(url, headers).await?;
 
     if response.status() == 404 {
       return Ok(HttpClientResponse::NotFound);
@@ -413,7 +315,7 @@ impl HttpClient {
 
     get_response_body_with_progress(response, progress_guard)
       .await
-      .map(|(headers, body)| HttpClientResponse::Success { headers, body })
+      .map(|(_, body)| HttpClientResponse::Success { body })
       .map_err(|err| DownloadErrorKind::Other(err).into_box())
   }
 
@@ -421,16 +323,15 @@ impl HttpClient {
     &self,
     mut url: Url,
     headers: &HeaderMap<HeaderValue>,
-    should_decompress: bool,
   ) -> Result<(http::Response<ende_fetch::ResBody>, Url), DownloadError> {
     let mut req = self.get(url.clone())?.build();
     *req.headers_mut() = headers.clone();
-    let mut response = if should_decompress {
-      self.client.clone().send(req).await
-    } else {
-      self.client.clone().send_no_decompress(req).await
-    }
-    .map_err(|e| DownloadErrorKind::Fetch(e).into_box())?;
+    let mut response = self
+      .client
+      .clone()
+      .send(req)
+      .await
+      .map_err(|e| DownloadErrorKind::Fetch(e).into_box())?;
     let status = response.status();
     if status.is_redirection() && status != http::StatusCode::NOT_MODIFIED {
       let mut redirect_headers = headers.clone();
@@ -443,12 +344,12 @@ impl HttpClient {
         }
         *req.headers_mut() = redirect_headers.clone();
 
-        let new_response = if should_decompress {
-          self.client.clone().send(req).await
-        } else {
-          self.client.clone().send_no_decompress(req).await
-        }
-        .map_err(|e| DownloadErrorKind::Fetch(e).into_box())?;
+        let new_response = self
+          .client
+          .clone()
+          .send(req)
+          .await
+          .map_err(|e| DownloadErrorKind::Fetch(e).into_box())?;
         let status = new_response.status();
         if status.is_redirection() {
           response = new_response;
@@ -699,7 +600,6 @@ mod test {
       .get_redirected_response(
         Url::parse(&format!("http://{source_addr}/start")).unwrap(),
         &headers,
-        true,
       )
       .await
       .unwrap();

@@ -5,7 +5,6 @@ use std::sync::Arc;
 use deno_graph::packages::JsrPackageInfo;
 use deno_path_util::ResolveUrlOrPathError;
 use ende_config::ende_json::NewestDependencyDate;
-use ende_config::ende_json::NodeModulesDirMode;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
 use ende_core::url::Url;
@@ -22,7 +21,6 @@ pub async fn deploy(
   mut flags: Flags,
   deploy_flags: DeployFlags,
 ) -> Result<i32, AnyError> {
-  flags.node_modules_dir = Some(NodeModulesDirMode::None);
   flags.no_lock = true;
   flags.minimum_dependency_age = Some(NewestDependencyDate::Disabled);
   if deploy_flags.sandbox {
@@ -86,20 +84,15 @@ pub async fn deploy(
   let worker_factory =
     Arc::new(factory.create_cli_main_worker_factory().await?);
 
-  let mut worker = worker_factory
-    .create_custom_worker(
-      WorkerExecutionMode::Deploy,
-      specifier,
-      vec![],
-      vec![],
-      PermissionsContainer::allow_all(
-        factory.permission_desc_parser()?.clone(),
-      ),
-      vec![ops::deploy::ende_deploy::init()],
-      Default::default(),
-      None,
-    )
-    .await?;
+  let mut worker = worker_factory.create_custom_worker(
+    WorkerExecutionMode::Deploy,
+    specifier,
+    vec![],
+    PermissionsContainer::allow_all(factory.permission_desc_parser()?.clone()),
+    vec![ops::deploy::ende_deploy::init()],
+    Default::default(),
+    None,
+  )?;
 
   Ok(worker.run().await?)
 }

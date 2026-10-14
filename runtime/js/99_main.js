@@ -916,15 +916,15 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
       0: endeVersion,
       1: location_,
       2: unstableFeatures,
-      8: mode,
-      9: servePort,
-      10: serveHost,
-      11: serveIsMain,
-      12: serveWorkerCountOrIndex,
-      13: otelConfig,
-      15: standalone,
-      16: autoServe,
-      19: disableOffscreenCanvas,
+      5: mode,
+      6: servePort,
+      7: serveHost,
+      8: serveIsMain,
+      9: serveWorkerCountOrIndex,
+      10: otelConfig,
+      12: standalone,
+      13: autoServe,
+      14: disableOffscreenCanvas,
     } = runtimeOptions;
 
     endeNs.build.standalone = standalone;
@@ -1143,14 +1143,14 @@ function bootstrapWorkerRuntime(
       1: location_,
       2: unstableFeatures,
       4: enableTestingFeaturesFlag,
-      13: otelConfig,
-      15: standalone,
-      19: disableOffscreenCanvas,
+      10: otelConfig,
+      12: standalone,
+      14: disableOffscreenCanvas,
     } = runtimeOptions;
 
     endeNs.build.standalone = standalone;
 
-    closeOnIdle = runtimeOptions[14];
+    closeOnIdle = runtimeOptions[11];
 
     removeImportedOps(true);
 

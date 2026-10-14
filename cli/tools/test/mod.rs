@@ -44,7 +44,6 @@ use ende_core::unsync::spawn;
 use ende_core::unsync::spawn_blocking;
 use ende_core::url::Url;
 use ende_core::v8;
-use ende_npm_installer::graph::NpmCachingStrategy;
 use ende_runtime::WorkerExecutionMode;
 use ende_runtime::coverage::CoverageCollector;
 use ende_runtime::ende_io::Stdio;
@@ -757,38 +756,34 @@ async fn configure_main_worker(
   worker_factory: Arc<CliMainWorkerFactory>,
   specifier: &Url,
   preload_modules: Vec<Url>,
-  require_modules: Vec<Url>,
   permissions_container: PermissionsContainer,
   worker_sender: TestEventWorkerSender,
   options: &TestSpecifierOptions,
   sender: UnboundedSender<crate::ops::jupyter::IopubMessage>,
 ) -> Result<(Option<CoverageCollector>, MainWorker), CreateCustomWorkerError> {
-  let mut worker = worker_factory
-    .create_custom_worker(
-      WorkerExecutionMode::Test,
-      specifier.clone(),
-      preload_modules,
-      require_modules,
-      permissions_container,
-      vec![
-        ops::testing::ende_test::init(worker_sender.sender),
-        ops::lint::ende_lint_ext_for_test::init(),
-        ops::jupyter::deno_jupyter_for_test::init(
-          sender,
-          // ende test does not service stdin requests; supplying a sender keeps
-          // the extension uniform with the live kernel build but the rx end is
-          // dropped so any `op_jupyter_input` call will resolve to `None`.
-          tokio::sync::mpsc::unbounded_channel().0,
-        ),
-      ],
-      Stdio {
-        stdin: StdioPipe::inherit(),
-        stdout: StdioPipe::file(worker_sender.stdout),
-        stderr: StdioPipe::file(worker_sender.stderr),
-      },
-      None,
-    )
-    .await?;
+  let mut worker = worker_factory.create_custom_worker(
+    WorkerExecutionMode::Test,
+    specifier.clone(),
+    preload_modules,
+    permissions_container,
+    vec![
+      ops::testing::ende_test::init(worker_sender.sender),
+      ops::lint::ende_lint_ext_for_test::init(),
+      ops::jupyter::deno_jupyter_for_test::init(
+        sender,
+        // ende test does not service stdin requests; supplying a sender keeps
+        // the extension uniform with the live kernel build but the rx end is
+        // dropped so any `op_jupyter_input` call will resolve to `None`.
+        tokio::sync::mpsc::unbounded_channel().0,
+      ),
+    ],
+    Stdio {
+      stdin: StdioPipe::inherit(),
+      stdout: StdioPipe::file(worker_sender.stdout),
+      stderr: StdioPipe::file(worker_sender.stderr),
+    },
+    None,
+  )?;
   let coverage_collector = worker.maybe_setup_coverage_collector();
   // Store the isolate handle in OpState so that `op_test_isolate_exit` can
   // ask V8 to terminate the isolate when user code calls `Ende.exit()`
@@ -882,7 +877,6 @@ pub async fn test_specifier(
   permissions_container: PermissionsContainer,
   specifier: ModuleSpecifier,
   preload_modules: Vec<ModuleSpecifier>,
-  require_modules: Vec<ModuleSpecifier>,
   worker_sender: TestEventWorkerSender,
   fail_fast_tracker: FailFastTracker,
   options: TestSpecifierOptions,
@@ -895,7 +889,6 @@ pub async fn test_specifier(
     worker_factory,
     &specifier,
     preload_modules,
-    require_modules,
     permissions_container,
     worker_sender,
     &options,
@@ -1588,14 +1581,6 @@ async fn run_tests_for_worker_inner(
         })
         .await?;
 
-        // Close idle Node.js HTTP Agent connections to prevent cross-test
-        // pollution and false positive resource leak detection from pooled
-        // keepAlive connections. Defined in ext/node/polyfills/01_require.js.
-        _ = worker.js_runtime.execute_script(
-          located_script_name!(),
-          "Ende[Ende.internal].closeIdleConnections?.()",
-        );
-
         // Await activity stabilization. A leak counts as a failure of the
         // attempt, and is therefore retryable like any other failure. Only
         // check when the test function itself passed and afterEach didn't error
@@ -1712,7 +1697,6 @@ async fn test_specifiers(
   permission_desc_parser: &Arc<RuntimePermissionDescriptorParser<CliSys>>,
   specifiers: Vec<ModuleSpecifier>,
   preload_modules: Vec<ModuleSpecifier>,
-  require_modules: Vec<ModuleSpecifier>,
   options: TestSpecifiersOptions,
 ) -> Result<(), AnyError> {
   // Select this shard's files first (on a stable sorted order) so the split is
@@ -1749,7 +1733,6 @@ async fn test_specifiers(
     let worker_factory = worker_factory.clone();
     let specifier_dir = cli_options.workspace().resolve_member_dir(&specifier);
     let preload_modules = preload_modules.clone();
-    let require_modules = require_modules.clone();
     let worker_sender = test_event_sender_factory.worker();
     let fail_fast_tracker = fail_fast_tracker.clone();
     let specifier_options = options.specifier.clone();
@@ -1773,7 +1756,6 @@ async fn test_specifiers(
         permissions_container,
         specifier,
         preload_modules,
-        require_modules,
         worker_sender,
         fail_fast_tracker,
         specifier_options,
@@ -2310,7 +2292,7 @@ async fn filter_specifiers_by_changed(
     .map(|(specifier, _)| specifier.clone())
     .collect::<Vec<_>>();
   let graph = module_graph_creator
-    .create_graph(graph_kind, graph_roots, NpmCachingStrategy::Eager)
+    .create_graph(graph_kind, graph_roots)
     .await?;
   module_graph_creator.graph_valid(&graph)?;
 
@@ -2417,7 +2399,6 @@ pub async fn run_tests(
   let worker_factory =
     Arc::new(factory.create_cli_main_worker_factory().await?);
   let preload_modules = cli_options.preload_modules()?;
-  let require_modules = cli_options.require_modules()?;
 
   // Run tests
   test_specifiers(
@@ -2426,7 +2407,6 @@ pub async fn run_tests(
     factory.permission_desc_parser()?,
     specifiers_for_typecheck_and_test,
     preload_modules,
-    require_modules,
     TestSpecifiersOptions {
       cwd: Url::from_directory_path(cli_options.initial_cwd()).map_err(
         |_| {
@@ -2592,7 +2572,7 @@ pub async fn run_tests_with_watch(
           });
 
         let graph = module_graph_creator
-          .create_graph(graph_kind, graph_modules, NpmCachingStrategy::Eager)
+          .create_graph(graph_kind, graph_modules)
           .await?;
         module_graph_creator.graph_valid(&graph)?;
         let graph_modules = graph.roots.clone();
@@ -2680,7 +2660,6 @@ pub async fn run_tests_with_watch(
         let worker_factory =
           Arc::new(factory.create_cli_main_worker_factory().await?);
         let preload_modules = cli_options.preload_modules()?;
-        let require_modules = cli_options.require_modules()?;
 
         test_specifiers(
           worker_factory,
@@ -2688,7 +2667,6 @@ pub async fn run_tests_with_watch(
           factory.permission_desc_parser()?,
           specifiers_for_typecheck_and_test,
           preload_modules,
-          require_modules,
           TestSpecifiersOptions {
             cwd: Url::from_directory_path(cli_options.initial_cwd()).map_err(
               |_| {

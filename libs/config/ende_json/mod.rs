@@ -17,9 +17,6 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
-use serde::de;
-use serde::de::Unexpected;
-use serde::de::Visitor;
 use serde_json::Value;
 use serde_json::json;
 use sys_traits::FsMetadata;
@@ -1253,135 +1250,6 @@ pub enum MinimumDependencyAgeParseError {
   InvalidNumber,
   #[error("Unsupported \"minimumDependencyAge\" object.")]
   UnsupportedObject(#[source] serde_json::Error),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum NodeModulesDirMode {
-  Auto,
-  Manual,
-  None,
-}
-
-impl<'de> Deserialize<'de> for NodeModulesDirMode {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-  where
-    D: Deserializer<'de>,
-  {
-    struct NodeModulesDirModeVisitor;
-
-    impl Visitor<'_> for NodeModulesDirModeVisitor {
-      type Value = NodeModulesDirMode;
-
-      fn expecting(
-        &self,
-        formatter: &mut std::fmt::Formatter,
-      ) -> std::fmt::Result {
-        formatter.write_str(r#""auto", "manual", or "none""#)
-      }
-
-      fn visit_str<E>(self, value: &str) -> Result<NodeModulesDirMode, E>
-      where
-        E: de::Error,
-      {
-        match value {
-          "auto" => Ok(NodeModulesDirMode::Auto),
-          "manual" => Ok(NodeModulesDirMode::Manual),
-          "none" => Ok(NodeModulesDirMode::None),
-          _ => Err(de::Error::invalid_value(Unexpected::Str(value), &self)),
-        }
-      }
-
-      fn visit_bool<E>(self, value: bool) -> Result<NodeModulesDirMode, E>
-      where
-        E: de::Error,
-      {
-        if value {
-          Ok(NodeModulesDirMode::Auto)
-        } else {
-          Ok(NodeModulesDirMode::None)
-        }
-      }
-    }
-
-    deserializer.deserialize_any(NodeModulesDirModeVisitor)
-  }
-}
-
-impl std::fmt::Display for NodeModulesDirMode {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", self.as_str())
-  }
-}
-
-impl NodeModulesDirMode {
-  pub fn as_str(self) -> &'static str {
-    match self {
-      NodeModulesDirMode::Auto => "auto",
-      NodeModulesDirMode::Manual => "manual",
-      NodeModulesDirMode::None => "none",
-    }
-  }
-
-  pub fn uses_node_modules_dir(self) -> bool {
-    matches!(self, Self::Manual | Self::Auto)
-  }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
-#[serde(rename_all = "kebab-case")]
-pub enum NodeModulesLinkerMode {
-  #[default]
-  Isolated,
-  Hoisted,
-}
-
-impl<'de> Deserialize<'de> for NodeModulesLinkerMode {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-  where
-    D: Deserializer<'de>,
-  {
-    struct NodeModulesLinkerModeVisitor;
-
-    impl Visitor<'_> for NodeModulesLinkerModeVisitor {
-      type Value = NodeModulesLinkerMode;
-
-      fn expecting(
-        &self,
-        formatter: &mut std::fmt::Formatter,
-      ) -> std::fmt::Result {
-        formatter.write_str(r#""isolated" or "hoisted""#)
-      }
-
-      fn visit_str<E>(self, value: &str) -> Result<NodeModulesLinkerMode, E>
-      where
-        E: de::Error,
-      {
-        match value {
-          "isolated" => Ok(NodeModulesLinkerMode::Isolated),
-          "hoisted" => Ok(NodeModulesLinkerMode::Hoisted),
-          _ => Err(de::Error::invalid_value(Unexpected::Str(value), &self)),
-        }
-      }
-    }
-
-    deserializer.deserialize_str(NodeModulesLinkerModeVisitor)
-  }
-}
-
-impl std::fmt::Display for NodeModulesLinkerMode {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", self.as_str())
-  }
-}
-
-impl NodeModulesLinkerMode {
-  pub fn as_str(self) -> &'static str {
-    match self {
-      NodeModulesLinkerMode::Isolated => "isolated",
-      NodeModulesLinkerMode::Hoisted => "hoisted",
-    }
-  }
 }
 
 /// `deploy` config representation for serde
@@ -3081,9 +2949,9 @@ mod tests {
     // Object with only "exclude" (no "age") should be accepted. The age
     // can be supplied via the --minimum-dependency-age flag.
     let config =
-      parse(r#"{ "minimumDependencyAge": { "exclude": ["npm:chalk"] } }"#);
+      parse(r#"{ "minimumDependencyAge": { "exclude": ["jsr:@std/fs"] } }"#);
     assert!(config.age.is_none());
-    assert_eq!(config.exclude, vec!["npm:chalk".to_string()]);
+    assert_eq!(config.exclude, vec!["jsr:@std/fs".to_string()]);
 
     // Empty object should also be accepted.
     let config = parse(r#"{ "minimumDependencyAge": {} }"#);
@@ -3098,10 +2966,10 @@ mod tests {
 
     // Object with "age" still works.
     let config = parse(
-      r#"{ "minimumDependencyAge": { "age": 120, "exclude": ["npm:chalk"] } }"#,
+      r#"{ "minimumDependencyAge": { "age": 120, "exclude": ["jsr:@std/fs"] } }"#,
     );
     assert!(config.age.is_some());
-    assert_eq!(config.exclude, vec!["npm:chalk".to_string()]);
+    assert_eq!(config.exclude, vec!["jsr:@std/fs".to_string()]);
 
     // Bare value still works.
     let config = parse(r#"{ "minimumDependencyAge": 120 }"#);
@@ -3677,25 +3545,6 @@ mod tests {
         resolved_path,
       );
       assert_eq!(lock_config.frozen(), frozen);
-    }
-  }
-
-  #[test]
-  fn node_modules_dir_mode() {
-    let cases = [
-      (json!("auto"), Ok(NodeModulesDirMode::Auto)),
-      (json!("manual"), Ok(NodeModulesDirMode::Manual)),
-      (json!("none"), Ok(NodeModulesDirMode::None)),
-      (json!(true), Ok(NodeModulesDirMode::Auto)),
-      (json!(false), Ok(NodeModulesDirMode::None)),
-      (json!("other"), Err(r#"invalid value: string "other", expected "auto", "manual", or "none""#.into()))
-    ];
-
-    for (input, expected) in cases {
-      assert_eq!(
-        NodeModulesDirMode::deserialize(input).map_err(|e| e.to_string()),
-        expected
-      );
     }
   }
 }
