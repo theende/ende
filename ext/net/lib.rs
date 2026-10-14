@@ -10,7 +10,6 @@ mod quic;
 pub mod raw;
 pub mod resolve_addr;
 pub mod tcp;
-pub mod tunnel;
 #[cfg(windows)]
 pub mod win_pipe;
 
@@ -138,8 +137,6 @@ ende_core::extension!(ende_net,
     ops::op_net_listen_vsock,
     ops::op_net_accept_vsock,
     ops::op_net_connect_vsock,
-    ops::op_net_listen_tunnel,
-    ops::op_net_accept_tunnel,
 
     ops_tls::op_tls_key_null,
     ops_tls::op_tls_key_static,

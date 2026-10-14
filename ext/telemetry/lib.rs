@@ -530,9 +530,6 @@ mod hyper_client {
   use std::task::Poll;
   use std::time::Duration;
 
-  use ende_net::tunnel::TunnelConnection;
-  use ende_net::tunnel::TunnelStream;
-  use ende_net::tunnel::get_tunnel;
   use ende_tls::SocketUse;
   use ende_tls::TlsKey;
   use ende_tls::TlsKeys;
@@ -576,14 +573,11 @@ mod hyper_client {
     StdIo(#[from] std::io::Error),
     #[error(transparent)]
     Box(#[from] Box<dyn std::error::Error + Send + Sync>),
-    #[error(transparent)]
-    Tunnel(#[from] ende_net::tunnel::Error),
   }
 
   #[derive(Debug, Clone)]
   enum Connector {
     Http(HttpsConnector<HttpConnector>),
-    Tunnel(TunnelConnection),
     #[cfg(any(
       target_os = "android",
       target_os = "linux",
@@ -596,7 +590,6 @@ mod hyper_client {
   #[pin_project::pin_project(project = IOProj)]
   enum IO {
     Tls(#[pin] TokioIo<MaybeHttpsStream<TokioIo<TcpStream>>>),
-    Tunnel(#[pin] TunnelStream),
     #[cfg(any(
       target_os = "android",
       target_os = "linux",
@@ -613,7 +606,6 @@ mod hyper_client {
     ) -> Poll<std::io::Result<()>> {
       match self.project() {
         IOProj::Tls(stream) => stream.poll_read(cx, buf),
-        IOProj::Tunnel(stream) => stream.poll_read(cx, buf),
         #[cfg(any(
           target_os = "android",
           target_os = "linux",
@@ -632,7 +624,6 @@ mod hyper_client {
     ) -> Poll<Result<usize, std::io::Error>> {
       match self.project() {
         IOProj::Tls(stream) => stream.poll_write(cx, buf),
-        IOProj::Tunnel(stream) => stream.poll_write(cx, buf),
         #[cfg(any(
           target_os = "android",
           target_os = "linux",
@@ -648,7 +639,6 @@ mod hyper_client {
     ) -> Poll<Result<(), std::io::Error>> {
       match self.project() {
         IOProj::Tls(stream) => stream.poll_flush(cx),
-        IOProj::Tunnel(stream) => stream.poll_flush(cx),
         #[cfg(any(
           target_os = "android",
           target_os = "linux",
@@ -664,7 +654,6 @@ mod hyper_client {
     ) -> Poll<Result<(), std::io::Error>> {
       match self.project() {
         IOProj::Tls(stream) => stream.poll_shutdown(cx),
-        IOProj::Tunnel(stream) => stream.poll_shutdown(cx),
         #[cfg(any(
           target_os = "android",
           target_os = "linux",
@@ -677,7 +666,6 @@ mod hyper_client {
     fn is_write_vectored(&self) -> bool {
       match self {
         IO::Tls(stream) => stream.is_write_vectored(),
-        IO::Tunnel(stream) => stream.is_write_vectored(),
         #[cfg(any(
           target_os = "android",
           target_os = "linux",
@@ -694,7 +682,6 @@ mod hyper_client {
     ) -> Poll<Result<usize, std::io::Error>> {
       match self.project() {
         IOProj::Tls(stream) => stream.poll_write_vectored(cx, bufs),
-        IOProj::Tunnel(stream) => stream.poll_write_vectored(cx, bufs),
         #[cfg(any(
           target_os = "android",
           target_os = "linux",
@@ -709,7 +696,6 @@ mod hyper_client {
     fn connected(&self) -> Connected {
       match self {
         Self::Tls(stream) => stream.connected(),
-        Self::Tunnel(_) => Connected::new().proxy(true),
         #[cfg(any(
           target_os = "android",
           target_os = "linux",
@@ -736,7 +722,6 @@ mod hyper_client {
     ) -> Poll<Result<(), Self::Error>> {
       match self {
         Self::Http(c) => c.poll_ready(cx).map_err(Into::into),
-        Self::Tunnel(_) => Poll::Ready(Ok(())),
         #[cfg(any(
           target_os = "android",
           target_os = "linux",
@@ -753,10 +738,6 @@ mod hyper_client {
           Self::Http(mut connector) => {
             let stream = connector.call(dst).await?;
             Ok(TokioIo::new(IO::Tls(TokioIo::new(stream))))
-          }
-          Self::Tunnel(listener) => {
-            let stream = listener.create_agent_stream().await?;
-            Ok(TokioIo::new(IO::Tunnel(stream)))
           }
           #[cfg(any(
             target_os = "android",
@@ -794,9 +775,7 @@ mod hyper_client {
     fn build_connector(
       sys: &impl FsRead,
     ) -> ende_core::anyhow::Result<Connector> {
-      let connector = if let Some(tunnel) = get_tunnel() {
-        Connector::Tunnel(tunnel.clone())
-      } else if let Ok(addr) = ende_env::var("OTEL_ENDE_VSOCK") {
+      let connector = if let Ok(addr) = ende_env::var("OTEL_ENDE_VSOCK") {
         #[cfg(not(any(
           target_os = "android",
           target_os = "linux",
@@ -1423,7 +1402,6 @@ pub fn init(
     .map_err(|_| ende_core::anyhow::anyhow!("failed to set otel globals"))?;
 
   ende_signals::before_exit(before_exit);
-  ende_net::tunnel::disable_before_exit();
 
   Ok(())
 }
@@ -1449,8 +1427,6 @@ fn before_exit() {
 
   let r = meter_provider.shutdown();
   log::trace!("meters={:?}", r);
-
-  ende_net::tunnel::before_exit();
 }
 
 pub fn handle_log(record: &log::Record) {

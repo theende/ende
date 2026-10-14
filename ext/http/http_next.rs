@@ -571,41 +571,6 @@ impl RawRequestHeaders {
     Some(&self.bytes[header.value_start..header.value_start + header.value_len])
   }
 
-  /// Removes all headers with the given (lowercase) name, returning the
-  /// value of the first removed header.
-  fn remove(&mut self, name: &[u8]) -> Option<Vec<u8>> {
-    let mut value = None;
-    let mut i = 0;
-    while i < self.entries.len() {
-      let header = &self.entries[i];
-      let header_name =
-        &self.bytes[header.name_start..header.name_start + header.name_len];
-      if header_name.eq_ignore_ascii_case(name) {
-        if value.is_none() {
-          value = Some(
-            self.bytes
-              [header.value_start..header.value_start + header.value_len]
-              .to_vec(),
-          );
-        }
-        self.entries.remove(i);
-        if let Some(index) = self.host_index
-          && index > i
-        {
-          self.host_index = Some(index - 1);
-        }
-        if let Some(index) = self.authorization_index
-          && index > i
-        {
-          self.authorization_index = Some(index - 1);
-        }
-      } else {
-        i += 1;
-      }
-    }
-    value
-  }
-
   fn get_joined(&self, name: &[u8], separator: &[u8]) -> Option<Vec<u8>> {
     let mut out = None::<Vec<u8>>;
     for header in self.iter() {
@@ -1151,7 +1116,6 @@ struct RawHttpRecordOptions {
 
 struct RawHttpRecordInner {
   request_info: HttpConnectionProperties,
-  client_addr: Option<Vec<u8>>,
   method: RawMethod,
   path: String,
   headers: RawRequestHeaders,
@@ -1189,14 +1153,9 @@ impl RawHttpRecord {
     request_info: HttpConnectionProperties,
     method: RawMethod,
     path: String,
-    mut headers: RawRequestHeaders,
+    headers: RawRequestHeaders,
     options: RawHttpRecordOptions,
   ) -> Rc<Self> {
-    let client_addr = if crate::service::trust_proxy_headers() {
-      headers.remove(b"x-deno-client-address")
-    } else {
-      None
-    };
     let otel_info = ende_telemetry::OTEL_GLOBALS
       .get()
       .filter(|o| o.has_metrics())
@@ -1211,7 +1170,6 @@ impl RawHttpRecord {
       });
     Rc::new(Self(RefCell::new(RawHttpRecordInner {
       request_info,
-      client_addr,
       method,
       path,
       headers,
@@ -2223,17 +2181,8 @@ fn raw_request_remote_addr<'scope>(
   http: &RawHttpRecord,
 ) -> v8::Local<'scope, v8::Array> {
   let inner = http.0.borrow();
-  let (peer_ip, peer_port) = match &inner.client_addr {
-    Some(client_addr) => {
-      let addr: std::net::SocketAddr =
-        std::str::from_utf8(client_addr).unwrap().parse().unwrap();
-      (Rc::from(format!("{}", addr.ip())), Some(addr.port() as u32))
-    }
-    _ => (
-      inner.request_info.peer_address.clone(),
-      inner.request_info.peer_port,
-    ),
-  };
+  let peer_ip = inner.request_info.peer_address.clone();
+  let peer_port = inner.request_info.peer_port;
   let peer_ip: v8::Local<v8::Value> = v8::String::new_from_utf8(
     scope,
     peer_ip.as_bytes(),
@@ -2268,14 +2217,8 @@ where
     unreachable!()
   };
   let request_info = http.request_info();
-  let (peer_ip, peer_port) = match &*http.client_addr() {
-    Some(client_addr) => {
-      let addr: std::net::SocketAddr =
-        client_addr.to_str().unwrap().parse().unwrap();
-      (Rc::from(format!("{}", addr.ip())), Some(addr.port() as u32))
-    }
-    _ => (request_info.peer_address.clone(), request_info.peer_port),
-  };
+  let peer_ip = request_info.peer_address.clone();
+  let peer_port = request_info.peer_port;
 
   let peer_ip: v8::Local<v8::Value> = v8::String::new_from_utf8(
     scope,
@@ -5632,24 +5575,6 @@ fn is_normal_close(err: &(dyn std::error::Error + 'static)) -> bool {
 
     if let Some(err) = err.get_ref() {
       return is_normal_close(err);
-    }
-
-    return false;
-  }
-
-  if let Some(err) = err.downcast_ref::<ende_net::tunnel::Error>() {
-    if let ende_net::tunnel::Error::QuinnConnection(err) = err {
-      return is_normal_close(err);
-    }
-
-    return false;
-  }
-
-  if let Some(err) =
-    err.downcast_ref::<ende_net::tunnel::quinn::ConnectionError>()
-  {
-    if matches!(err, ende_net::tunnel::quinn::ConnectionError::LocallyClosed) {
-      return true;
     }
 
     return false;

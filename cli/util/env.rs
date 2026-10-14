@@ -3,7 +3,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
@@ -14,53 +13,6 @@ use std::sync::OnceLock;
 use deno_terminal::colors;
 
 use crate::sys::CliSys;
-
-/// Environment variables that configure Ende's own runtime behavior and must
-/// not be settable from an `.env` file loaded via `--env` / `--env-file`.
-///
-/// An `.env` file ships alongside the code it accompanies, so letting it set
-/// Ende's own control variables would let that file change runtime behavior
-/// the user did not opt into, for example silently enabling tunnel mode
-/// (`ENDE_CONNECTED`) or overriding the tunnel control endpoint
-/// (`ENDE_DEPLOY_TUNNEL_ENDPOINT`). Env files are meant to provide
-/// configuration to the user's program, not to reconfigure Ende itself, so
-/// these keys are ignored when they originate from an env file. The
-/// deprecated `DENO_*` names are listed too because they are still read as
-/// fallbacks.
-const ENV_FILE_DENYLIST: &[&str] = &[
-  "ENDE_CONNECTED",
-  "ENDE_DEPLOY_TUNNEL_ENDPOINT",
-  "DENO_CONNECTED",
-  "DENO_DEPLOY_TUNNEL_ENDPOINT",
-];
-
-/// Whether `key` is an Ende-internal control variable that must not be set from
-/// an env file. The comparison is ASCII case-insensitive because environment
-/// variable lookups are case-insensitive on Windows.
-fn is_denied_env_file_key(key: &OsStr) -> bool {
-  match key.to_str() {
-    Some(key) => ENV_FILE_DENYLIST
-      .iter()
-      .any(|denied| key.eq_ignore_ascii_case(denied)),
-    None => false,
-  }
-}
-
-pub fn handle_denied_env_file_key(
-  key: &OsStr,
-  file_path: &Path,
-  log_level: Option<log::Level>,
-) {
-  #[allow(clippy::print_stderr, reason = "can't use log crate yet")]
-  if log_level.map(|l| l >= log::Level::Info).unwrap_or(true) {
-    eprintln!(
-      "{} Ignoring '{}' from environment file '{}': this variable controls Ende's own runtime behavior and cannot be set from an env file.",
-      colors::yellow("Warning"),
-      key.to_string_lossy(),
-      file_path.display(),
-    )
-  }
-}
 
 pub fn resolve_cwd(
   initial_cwd: Option<&Path>,
@@ -226,11 +178,6 @@ impl WatchEnvTracker {
                 continue;
               }
 
-              if is_denied_env_file_key(&key_os) {
-                handle_denied_env_file_key(&key_os, &file_path, log_level);
-                continue;
-              }
-
               // Watched env reloads run between user-code isolates. Refreshing
               // libc here is sufficient for TZ because the replacement
               // isolate has not been created yet and has no cached timezone to
@@ -368,11 +315,6 @@ pub fn load_env_variables_from_env_files(
 
       let key_os = OsString::from(key);
       if original_env_keys.contains(&key_os) || loaded_keys.contains(&key_os) {
-        continue;
-      }
-
-      if is_denied_env_file_key(&key_os) {
-        handle_denied_env_file_key(&key_os, &env_file_path, flags_log_level);
         continue;
       }
 

@@ -257,11 +257,6 @@ pub struct CoverageFlags {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct DeployFlags {
-  pub sandbox: bool,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub enum DocSourceFileFlag {
   #[default]
   Builtin,
@@ -661,7 +656,6 @@ pub enum EndeSubcommand {
   Completions(CompletionsFlags),
   Desktop(DesktopFlags),
   Coverage(CoverageFlags),
-  Deploy(DeployFlags),
   Doc(DocFlags),
   Eval(EvalFlags),
   Fmt(FmtFlags),
@@ -818,7 +812,6 @@ pub struct Flags {
   pub permission_set: Option<String>,
   pub eszip: bool,
   pub preload: Vec<String>,
-  pub tunnel: bool,
   pub cpu_prof: Option<CpuProfFlags>,
   /// Watch configuration for subcommands that support `--watch`. `paths` is
   /// only populated for subcommands whose `--watch` accepts values.

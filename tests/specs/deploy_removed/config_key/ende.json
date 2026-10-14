@@ -1,0 +1,7 @@
+{
+  "deploy": {
+    "org": "my-org",
+    "app": "my-app",
+    "framework": "fresh"
+  }
+}

@@ -55,8 +55,6 @@ Following ops are provided, which can be accessed through `Ende.ops`:
 - op_net_listen_vsock
 - op_net_accept_vsock
 - op_net_connect_vsock
-- op_net_listen_tunnel
-- op_net_accept_tunnel
 - op_net_connect_tls
 - op_net_listen_tls
 - op_net_accept_tls

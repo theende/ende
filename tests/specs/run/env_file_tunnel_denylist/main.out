@@ -1,6 +1,0 @@
-[WILDLINE]Ignoring 'ENDE_CONNECTED' from environment file '[WILDLINE]
-[WILDLINE]Ignoring 'ENDE_DEPLOY_TUNNEL_ENDPOINT' from environment file '[WILDLINE]
-ENDE_CONNECTED: undefined
-ENDE_DEPLOY_TUNNEL_ENDPOINT: undefined
-NOT_DENYLISTED: ok
-user code started

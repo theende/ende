@@ -8229,14 +8229,10 @@ fn tier1_check_flags() {
 }
 
 #[test]
-fn tier1_serve_open_tunnel_hmr() {
+fn tier1_serve_open_hmr() {
   let flags =
     flags_from_vec(svec!["ende", "serve", "--open", "main.ts"]).unwrap();
   assert!(matches!(&flags.subcommand, EndeSubcommand::Serve(s) if s.open_site));
-
-  let flags =
-    flags_from_vec(svec!["ende", "serve", "--tunnel", "main.ts"]).unwrap();
-  assert!(flags.tunnel);
 
   // serve uses `--watch-hmr` (alias `--unstable-hmr`), not `--hmr`.
   for flag in ["--watch-hmr", "--unstable-hmr"] {
@@ -8681,76 +8677,32 @@ fn hrtime_flags_are_accepted_as_no_ops() {
 }
 
 #[test]
-fn deploy_subcommand() {
-  let r = flags_from_vec(svec!["ende", "deploy"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Deploy(DeployFlags { sandbox: false }),
-      ..Flags::default()
+fn deploy_subcommands_removed() {
+  for name in ["deploy", "sandbox"] {
+    for args in [svec!["ende", name], svec!["ende", name, "--prod"]] {
+      let err = flags_from_vec(args).unwrap_err();
+      assert_eq!(err.kind, CliErrorKind::UnknownSubcommand, "{name}");
+      assert_eq!(err.message, format!("unrecognized subcommand '{name}'"));
+      assert_eq!(
+        err.suggestion,
+        Some(format!("`ende {name}` is not supported in Ende"))
+      );
     }
-  );
-
-  // `deploy` is a passthrough subcommand: every arg after it is forwarded
-  // verbatim, exactly once. Regression test for a duplication bug where the
-  // args were written to `argv` both by `deploy_parse` and by the generic
-  // trailing-arg handling, turning `--prod` into `--prod --prod`.
-  let r = flags_from_vec(svec!["ende", "deploy", "--prod"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Deploy(DeployFlags { sandbox: false }),
-      argv: svec!["--prod"],
-      ..Flags::default()
-    }
-  );
-
-  let r =
-    flags_from_vec(svec!["ende", "deploy", "--project=myapp", "--prod", "-y"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Deploy(DeployFlags { sandbox: false }),
-      argv: svec!["--project=myapp", "--prod", "-y"],
-      ..Flags::default()
-    }
-  );
+  }
 }
 
 #[test]
-fn deploy_subcommand_passthrough_is_verbatim() {
-  // Everything after the subcommand is handed to deployctl untouched, so
-  // `--`, deno-looking flags and repeated flags must all survive as-is
-  // rather than being interpreted (or duplicated) by the deno parser.
-  let r = flags_from_vec(svec![
-    "ende",
-    "deploy",
-    "--prod",
-    "--",
-    "--allow-net",
-    "-A"
-  ]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Deploy(DeployFlags { sandbox: false }),
-      argv: svec!["--prod", "--", "--allow-net", "-A"],
-      ..Flags::default()
-    }
-  );
-}
-
-#[test]
-fn deploy_sandbox_subcommand() {
-  let r = flags_from_vec(svec!["ende", "sandbox", "--prod", "arg"]);
-  assert_eq!(
-    r.unwrap(),
-    Flags {
-      subcommand: EndeSubcommand::Deploy(DeployFlags { sandbox: true }),
-      argv: svec!["--prod", "arg"],
-      ..Flags::default()
-    }
-  );
+fn tunnel_flag_removed() {
+  for args in [
+    svec!["ende", "run", "--tunnel", "main.ts"],
+    svec!["ende", "run", "--connected", "main.ts"],
+    svec!["ende", "serve", "--tunnel", "main.ts"],
+    svec!["ende", "serve", "-t", "main.ts"],
+    svec!["ende", "task", "--tunnel", "dev"],
+    svec!["ende", "--tunnel", "main.ts"],
+  ] {
+    assert!(flags_from_vec(args.clone()).is_err(), "{args:?}");
+  }
 }
 
 #[test]

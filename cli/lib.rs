@@ -39,7 +39,6 @@ use std::sync::Arc;
 
 use args::TaskFlags;
 use deno_terminal::colors;
-use ende_config::glob::FilePatterns;
 use ende_core::anyhow::Context;
 use ende_core::error::AnyError;
 use ende_core::futures::FutureExt;
@@ -51,7 +50,6 @@ use ende_runtime::WorkerExecutionMode;
 use ende_runtime::fmt_errors::format_js_error;
 use ende_runtime::tokio_util::create_and_run_current_thread_with_maybe_metrics;
 use ende_telemetry::OtelConfig;
-use factory::CliFactory;
 use util::fs::canonicalize_path;
 
 const MODULE_NOT_FOUND: &str = "Module not found";
@@ -143,9 +141,6 @@ async fn run_subcommand(
       } else {
         tools::bench::run_benchmarks(flags, bench_flags).await
       }
-    }),
-    EndeSubcommand::Deploy(deploy_flags) => spawn_subcommand(async move {
-      tools::deploy::deploy(flags, deploy_flags).await
     }),
     EndeSubcommand::Doc(doc_flags) => spawn_subcommand(async {
       tools::doc::doc(Arc::new(flags), doc_flags).await
@@ -942,27 +937,6 @@ async fn resolve_flags_and_init(
 
   let sys = crate::sys::CliSys::default();
 
-  if ende_lib::args::has_flag_env_var(&sys, "ENDE_CONNECTED") {
-    flags.tunnel = true;
-  }
-
-  // Tunnel sets up env vars and OTEL, so connect before everything else.
-  if flags.tunnel && !matches!(flags.subcommand, EndeSubcommand::Deploy(_)) {
-    if let Err(err) = initialize_tunnel(&flags).await {
-      exit_for_error(
-        err.context("Failed to start with tunnel"),
-        initial_cwd.as_deref(),
-      );
-    }
-    // Also set under the deprecated `DENO_CONNECTED` name so user code that
-    // reads it keeps working.
-    // SAFETY: We're doing this before any threads are created.
-    unsafe {
-      std::env::set_var("ENDE_CONNECTED", "1");
-      std::env::set_var("DENO_CONNECTED", "1");
-    }
-  }
-
   flags.unstable_config.fill_with_env(&sys);
 
   let otel_config = flags.otel_config();
@@ -1208,233 +1182,4 @@ fn wait_for_start(
 
     Ok(Some((unconfigured, args, PathBuf::from(cmd.cwd))))
   })
-}
-
-#[derive(serde::Deserialize)]
-struct AuthTunnelOutput {
-  org: String,
-  app: String,
-  token: String,
-}
-
-async fn auth_tunnel(
-  no_config: bool,
-  env_token: Option<String>,
-) -> Result<AuthTunnelOutput, ende_core::anyhow::Error> {
-  let file = tempfile::NamedTempFile::new()?;
-
-  let mut args = vec![];
-  if let Some(token) = &env_token {
-    args.push("--token".to_string());
-    args.push(token.clone());
-  }
-  if no_config {
-    args.push("--really-no-config".into());
-  }
-
-  let mut child = tokio::process::Command::new(env::current_exe()?)
-    .arg("deploy")
-    .arg("tunnel-login")
-    .arg("--out")
-    .arg(file.path())
-    .args(args)
-    .spawn()?;
-  let out = child.wait().await?;
-
-  if !out.success() {
-    ende_runtime::exit(1);
-  }
-
-  let contents = tokio::fs::read(file.path()).await?;
-  let output: AuthTunnelOutput = ende_core::serde_json::from_slice(&contents)?;
-
-  Ok(output)
-}
-
-async fn initialize_tunnel(
-  flags: &Flags,
-) -> Result<(), ende_core::anyhow::Error> {
-  let factory = CliFactory::from_flags(Arc::new(flags.clone()));
-  let cli_options = factory.cli_options()?;
-  let start_dir = &cli_options.start_dir;
-  let deploy_config = cli_options
-    .start_dir
-    .to_deploy_config(FilePatterns::new_with_base(start_dir.dir_path()))?;
-
-  let no_config = flags.config_flag == crate::args::ConfigFlag::Disabled;
-
-  let host = ende_env::var("ENDE_DEPLOY_TUNNEL_ENDPOINT")
-    .unwrap_or_else(|_| "tunnel.global.prod.deno-cluster.net:443".into());
-
-  let env_token = ende_env::var("ENDE_DEPLOY_TOKEN").ok();
-  let env_org = ende_env::var("ENDE_DEPLOY_ORG").ok();
-  let env_app = ende_env::var("ENDE_DEPLOY_APP").ok();
-
-  let storage_token = tools::deploy::get_token_entry()
-    .and_then(|e| e.get_password())
-    .ok();
-
-  let (token, org, app) = if let (Some(token), Some(org), Some(app)) =
-    (&env_token, env_org, env_app)
-  {
-    (token.clone(), org, app)
-  } else if let Some(deploy_config) = &deploy_config
-    && let Some(app) = &deploy_config.app
-    && let Some(token) = &env_token
-  {
-    (token.clone(), deploy_config.org.clone(), app.clone())
-  } else if let Some(deploy_config) = deploy_config
-    && let Some(token) = storage_token
-    && let Some(app) = deploy_config.app
-  {
-    (token, deploy_config.org, app)
-  } else {
-    let o = auth_tunnel(no_config, env_token.clone()).await?;
-    (o.token, o.org, o.app)
-  };
-
-  let Some(addr) = tokio::net::lookup_host(&host).await?.next() else {
-    return Ok(());
-  };
-  let Some((hostname, _)) = host.split_once(':') else {
-    return Ok(());
-  };
-
-  let cert_store_provider = factory.root_cert_store_provider();
-  let root_cert_store = cert_store_provider.get_or_try_init()?.clone();
-
-  let tls_config = ende_runtime::ende_tls::create_client_config(
-    ende_runtime::ende_tls::TlsClientConfigOptions {
-      root_cert_store: Some(root_cert_store),
-      ca_certs: vec![],
-      unsafely_ignore_certificate_errors: None,
-      unsafely_disable_hostname_verification: false,
-      cert_chain_and_key: ende_runtime::ende_tls::TlsKeys::Null,
-      socket_use: ende_runtime::ende_tls::SocketUse::GeneralSsl,
-    },
-  )?;
-
-  let mut metadata = HashMap::new();
-  metadata.insert(
-    "hostname".into(),
-    ende_runtime::ende_os::sys_info::hostname(),
-  );
-  match &flags.subcommand {
-    EndeSubcommand::Run(run_flags) => {
-      metadata.insert("subcommand".into(), "run".into());
-      metadata.insert("entrypoint".into(), run_flags.script.clone());
-    }
-    EndeSubcommand::Serve(serve_flags) => {
-      metadata.insert("subcommand".into(), "serve".into());
-      metadata.insert("entrypoint".into(), serve_flags.script.clone());
-    }
-    EndeSubcommand::Task(task_flags) => {
-      metadata.insert("subcommand".into(), "task".into());
-      if let Some(task) = &task_flags.task {
-        metadata.insert("task".into(), task.clone());
-      }
-    }
-    EndeSubcommand::Repl(_) => {
-      metadata.insert("subcommand".into(), "repl".into());
-    }
-    EndeSubcommand::Eval(_) => {
-      metadata.insert("subcommand".into(), "eval".into());
-    }
-    _ => {}
-  }
-
-  let on_event = |event| {
-    use ende_runtime::ende_net::tunnel::Event;
-    match event {
-      Event::Routed(addr) => {
-        let endpoint = if addr.port() == 443 {
-          format!("https://{}", addr.hostname())
-        } else {
-          format!("https://{}:{}", addr.hostname(), addr.port())
-        };
-
-        // We explicitly use eprintln instead of log here since
-        // there is a circular dep between tunnel and telemetry
-        #[allow(clippy::print_stderr, reason = "can't use log crate yet")]
-        {
-          eprintln!(
-            "{}",
-            colors::green(format!("You are connected to {endpoint}"))
-          );
-        }
-      }
-      Event::Reconnect(duration, reason) => {
-        let reason = if let Some(reason) = reason {
-          format!(" ({reason})")
-        } else {
-          "".into()
-        };
-        // We explicitly use eprintln instead of log here since
-        // there is a circular dep between tunnel and telemetry
-        #[allow(clippy::print_stderr, reason = "can't use log crate yet")]
-        {
-          eprintln!(
-            "{}",
-            colors::green(format!(
-              "Reconnecting tunnel in {}s...{}",
-              duration.as_secs(),
-              reason
-            ))
-          );
-        }
-      }
-      _ => {}
-    }
-  };
-
-  let tunnel = match ende_runtime::ende_net::tunnel::TunnelConnection::connect(
-    addr,
-    hostname.to_owned(),
-    tls_config.clone(),
-    ende_runtime::ende_net::tunnel::Authentication::App {
-      token,
-      org: org.clone(),
-      app: app.clone(),
-    },
-    metadata.clone(),
-    on_event,
-  )
-  .await
-  {
-    Ok(res) => res,
-    Err(ende_runtime::ende_net::tunnel::Error::Unauthorized) => {
-      if let Ok(e) = tools::deploy::get_token_entry() {
-        let _ = e.delete_credential();
-      }
-
-      let output = auth_tunnel(no_config, env_token).await?;
-      ende_runtime::ende_net::tunnel::TunnelConnection::connect(
-        addr,
-        hostname.to_owned(),
-        tls_config,
-        ende_runtime::ende_net::tunnel::Authentication::App {
-          token: output.token,
-          org: output.org,
-          app: output.app,
-        },
-        metadata.clone(),
-        on_event,
-      )
-      .await?
-    }
-    Err(e) => return Err(e.into()),
-  };
-
-  if let Some(metadata) = tunnel.metadata() {
-    for (k, v) in metadata.env {
-      // SAFETY: We're doing this before any threads are created.
-      unsafe {
-        std::env::set_var(k, v);
-      }
-    }
-  }
-
-  ende_runtime::ende_net::tunnel::set_tunnel(tunnel);
-
-  Ok(())
 }

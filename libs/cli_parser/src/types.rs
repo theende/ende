@@ -19,9 +19,6 @@ pub struct CommandDef {
   /// If true, once the first positional arg is consumed, all remaining
   /// args are treated as positional (no flag parsing).
   pub trailing_var_arg: bool,
-  /// If true, pass all remaining args after subcommand name through
-  /// without parsing (deploy/sandbox pattern).
-  pub passthrough: bool,
   /// If true, a `--` separator before the forwarded args is kept in the
   /// forwarded argv (clap's `.last(true)` / external-subcommand behavior, e.g.
   /// `ende run x.ts -- -a` forwards `["--", "-a"]`). If false, the `--` is
@@ -40,7 +37,6 @@ impl CommandDef {
       subcommands: &[],
       default_subcommand: None,
       trailing_var_arg: false,
-      passthrough: false,
       keep_double_dash: false,
     }
   }

@@ -1,0 +1,3 @@
+error: unrecognized subcommand 'deploy'
+
+  tip: `ende deploy` is not supported in Ende

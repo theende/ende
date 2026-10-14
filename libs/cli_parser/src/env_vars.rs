@@ -61,7 +61,7 @@ pub static ENV_VARS: &[EnvVar] = &[
   },
   EnvVar {
     name: "ENDE_KV_REQUIRES_DISTRIBUTED_DATABASE",
-    description: "Require Ende.openKv() to resolve to a distributed (remote) database.\nWhen set to \"error\", Ende.openKv() is always exposed and rejects with a\nclear message unless the resolved path is remote. When set to \"warn\", a\nlocal/in-memory fallback is allowed but logs a warning. Used by\nDeno Deploy to surface a clear error when no KV database is attached.",
+    description: "Require Ende.openKv() to resolve to a distributed (remote) database.\nWhen set to \"error\", Ende.openKv() is always exposed and rejects with a\nclear message unless the resolved path is remote. When set to \"warn\", a\nlocal/in-memory fallback is allowed but logs a warning.",
     example: None,
   },
   EnvVar {
@@ -159,11 +159,6 @@ pub static ENV_VARS: &[EnvVar] = &[
   EnvVar {
     name: "SSLKEYLOGFILE",
     description: "Write TLS session keys to the specified file in NSS Key Log format\nfor debugging encrypted traffic with tools like Wireshark.",
-    example: None,
-  },
-  EnvVar {
-    name: "ENDE_TRUST_PROXY_HEADERS",
-    description: "If specified, removes X-deno-client-address header when serving HTTP.",
     example: None,
   },
   EnvVar {

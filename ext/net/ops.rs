@@ -52,7 +52,6 @@ use crate::raw::NetworkListenerResource;
 use crate::resolve_addr::resolve_addr;
 use crate::resolve_addr::resolve_addr_sync;
 use crate::tcp::TcpListener;
-use crate::tunnel::TunnelAddr;
 
 pub type Fd = u32;
 
@@ -75,15 +74,6 @@ impl From<SocketAddr> for IpAddr {
   fn from(addr: SocketAddr) -> Self {
     Self {
       hostname: addr.ip().to_string(),
-      port: addr.port(),
-    }
-  }
-}
-
-impl From<TunnelAddr> for IpAddr {
-  fn from(addr: TunnelAddr) -> Self {
-    Self {
-      hostname: addr.hostname(),
       port: addr.port(),
     }
   }
@@ -202,9 +192,6 @@ pub enum NetError {
   #[class(generic)]
   #[error("VSOCK is not supported on this platform")]
   VsockUnsupported,
-  #[class(generic)]
-  #[error("Tunnel is not open")]
-  TunnelMissing,
 }
 
 impl NetError {
@@ -990,49 +977,6 @@ pub async fn op_net_accept_vsock(
 #[op2(fast)]
 pub fn op_net_accept_vsock() -> Result<(), NetError> {
   Err(NetError::VsockUnsupported)
-}
-
-#[op2]
-pub fn op_net_listen_tunnel(
-  state: &mut OpState,
-) -> Result<(ResourceId, IpAddr), NetError> {
-  let Some(listener) = super::tunnel::get_tunnel() else {
-    return Err(NetError::TunnelMissing);
-  };
-  let listener = listener.clone();
-  let local_addr = listener.local_addr()?.into();
-  let rid = state
-    .resource_table
-    .add(crate::raw::NetworkListenerResource::new(listener));
-  Ok((rid, local_addr))
-}
-
-#[op2]
-pub async fn op_net_accept_tunnel(
-  state: Rc<RefCell<OpState>>,
-  #[smi] rid: ResourceId,
-) -> Result<(ResourceId, IpAddr, IpAddr), NetError> {
-  let resource = state
-    .borrow()
-    .resource_table
-    .get::<NetworkListenerResource<crate::tunnel::TunnelConnection>>(rid)
-    .map_err(|_| NetError::ListenerClosed)?;
-  let listener = RcRef::map(&resource, |r| &r.listener)
-    .try_borrow_mut()
-    .ok_or_else(|| NetError::AcceptTaskOngoing)?;
-  let cancel = RcRef::map(resource, |r| &r.cancel);
-  let (stream, _) = listener
-    .accept()
-    .try_or_cancel(cancel)
-    .await
-    .map_err(accept_err)?;
-  let local_addr = stream.local_addr()?;
-  let remote_addr = stream.peer_addr()?;
-  let rid = state
-    .borrow_mut()
-    .resource_table
-    .add(crate::tunnel::TunnelStreamResource::new(stream));
-  Ok((rid, local_addr.into(), remote_addr.into()))
 }
 
 #[derive(ToV8, Eq, PartialEq, Debug)]

@@ -12,7 +12,6 @@ const {
 const {
   op_dns_resolve,
   op_net_accept_tcp,
-  op_net_accept_tunnel,
   op_net_accept_unix,
   op_net_accept_vsock,
   op_net_connect_tcp,
@@ -23,7 +22,6 @@ const {
   op_net_leave_multi_v4_udp,
   op_net_leave_multi_v6_udp,
   op_net_listen_tcp,
-  op_net_listen_tunnel,
   op_net_listen_unix,
   op_net_listen_vsock,
   op_net_recv_udp,
@@ -264,17 +262,6 @@ class VsockConn extends Conn {
   }
 }
 
-class TunnelConn extends Conn {
-  constructor(rid, remoteAddr, localAddr) {
-    super(rid, remoteAddr, localAddr);
-    ObjectDefineProperty(this, internalRidSymbol, {
-      __proto__: null,
-      enumerable: false,
-      value: rid,
-    });
-  }
-}
-
 class Listener {
   #rid = 0;
   #addr = null;
@@ -309,9 +296,6 @@ class Listener {
       case "vsock":
         promise = op_net_accept_vsock(this.#rid);
         break;
-      case "tunnel":
-        promise = op_net_accept_tunnel(this.#rid);
-        break;
       default:
         throw new Error(`Unsupported transport: ${this.addr.transport}`);
     }
@@ -336,8 +320,6 @@ class Listener {
           { transport: "vsock", cid: remoteAddr[0], port: remoteAddr[1] },
           { transport: "vsock", cid: localAddr[0], port: localAddr[1] },
         );
-      case "tunnel":
-        return new TunnelConn(rid, remoteAddr, localAddr);
       default:
         throw new Error("unreachable");
     }
@@ -624,10 +606,6 @@ function listen(args) {
         port,
       };
       return new Listener(rid, addr, "vsock");
-    }
-    case "tunnel": {
-      const { 0: rid, 1: addr } = op_net_listen_tunnel();
-      return new Listener(rid, addr, "tunnel");
     }
     default:
       throw new TypeError(`Unsupported transport: '${transport}'`);

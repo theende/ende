@@ -42,18 +42,17 @@ fn help_output() {
   }
   // Removed in Ende.
   assert_not_contains!(stdout.to_lowercase(), "jupyter");
+  assert_not_contains!(stdout.to_lowercase(), "deploy");
 }
 
 /// `ende --help` and `ende <sub> --help` speak "ende". The only remaining
 /// mentions of "deno" are third-party host names, the deprecated `DENO_*`
-/// env var note, header names, and doomed features (Deno Deploy).
+/// env var note.
 #[test]
 fn help_output_says_ende() {
   const ALLOWED: &[&str] = &[
     "deno.land",
     "The deprecated DENO_* names are still accepted.",
-    "X-deno-client-address",
-    "Deno Deploy",
   ];
   for args in [
     &["--help"][..],

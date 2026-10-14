@@ -311,31 +311,8 @@ impl Default for WorkerOptions {
 pub(crate) fn request_builder_hook(
   request: &mut http::Request<ende_fetch::ReqBody>,
 ) -> Result<(), JsErrorBox> {
-  const X_DENO_FETCH_TOKEN: http::HeaderName =
-    http::HeaderName::from_static("x-deno-fetch-token");
   const CDN_LOOP: http::HeaderName = http::HeaderName::from_static("cdn-loop");
-  static X_DENO_FETCH_TOKEN_VALUE: OnceLock<Option<http::HeaderValue>> =
-    OnceLock::new();
   static CDN_LOOP_VALUE: OnceLock<Option<http::HeaderValue>> = OnceLock::new();
-
-  // Scrub Ende-specific headers to prevent user code from spoofing them.
-  if let http::header::Entry::Occupied(entry) =
-    request.headers_mut().entry(X_DENO_FETCH_TOKEN)
-  {
-    entry.remove_entry_mult();
-  }
-
-  let maybe_x_deno_fetch_token = X_DENO_FETCH_TOKEN_VALUE.get_or_init(|| {
-    std::env::var("X_DENO_FETCH_TOKEN")
-      .ok()
-      .and_then(|v| http::HeaderValue::from_str(&v).ok())
-  });
-
-  if let Some(token) = maybe_x_deno_fetch_token {
-    request
-      .headers_mut()
-      .insert(X_DENO_FETCH_TOKEN, token.clone());
-  }
 
   let cdn_loop_value = CDN_LOOP_VALUE.get_or_init(|| {
     std::env::var("CDN_LOOP")

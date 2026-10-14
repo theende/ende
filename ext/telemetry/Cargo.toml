@@ -19,7 +19,6 @@ deno_error.workspace = true
 deno_terminal.workspace = true
 ende_core.workspace = true
 ende_env.workspace = true
-ende_net.workspace = true
 ende_signals.workspace = true
 ende_tls.workspace = true
 flate2 = { workspace = true, features = ["default"] }

@@ -1,10 +1,10 @@
-// With ENDE_TRUST_PROXY_HEADERS=1, the x-deno-client-address request header
-// overrides the remote address reported to the handler and is stripped from
-// the request headers.
+// The Deno Deploy proxy header x-deno-client-address is an ordinary request
+// header in Ende: it never overrides the remote address reported to the
+// handler, even with the removed ENDE_TRUST_PROXY_HEADERS=1 set.
 const server = Deno.serve(
   { port: 0, onListen: () => {} },
   (req, info) => {
-    console.log("remoteAddr:", JSON.stringify(info.remoteAddr));
+    console.log("remoteAddr:", info.remoteAddr.hostname);
     console.log(
       "header visible:",
       req.headers.has("x-deno-client-address"),

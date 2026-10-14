@@ -1006,10 +1006,8 @@ mod tests {
   #[test]
   fn equal_help_output() {
     for command in ENDE_ROOT.subcommands {
-      // `help` has no help of its own, and passthrough commands (deploy,
-      // sandbox) forward `--help` to the external tool they proxy rather than
-      // rendering their own.
-      if command.name == "help" || command.passthrough {
+      // `help` has no help of its own.
+      if command.name == "help" {
         continue;
       }
 

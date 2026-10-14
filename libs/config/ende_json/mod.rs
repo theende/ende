@@ -1252,43 +1252,6 @@ pub enum MinimumDependencyAgeParseError {
   UnsupportedObject(#[source] serde_json::Error),
 }
 
-/// `deploy` config representation for serde
-///
-/// fields `include` and `exclude` are expanded from [SerializedFilesConfig].
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-struct SerializedDeployConfig {
-  pub org: String,
-  pub app: Option<String>,
-  #[serde(default)]
-  pub include: Option<Vec<String>>,
-  #[serde(default)]
-  pub exclude: Vec<String>,
-}
-
-impl SerializedDeployConfig {
-  pub fn into_resolved(
-    self,
-    config_file_specifier: &Url,
-  ) -> Result<DeployConfig, IntoResolvedError> {
-    let files = SerializedFilesConfig {
-      include: self.include,
-      exclude: self.exclude,
-    };
-    Ok(DeployConfig {
-      org: self.org,
-      app: self.app,
-      files: files.into_resolved(config_file_specifier)?,
-    })
-  }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct DeployConfig {
-  pub org: String,
-  pub app: Option<String>,
-  pub files: FilePatterns,
-}
-
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigFileJson {
@@ -1311,7 +1274,6 @@ pub struct ConfigFileJson {
   pub license: Option<Value>,
   pub permissions: Option<Value>,
   pub publish: Option<Value>,
-  pub deploy: Option<Value>,
 
   pub name: Option<String>,
   pub version: Option<String>,
@@ -1323,8 +1285,8 @@ pub struct ConfigFileJson {
   #[serde(default)]
   pub unstable: Vec<String>,
 
-  // npm-only keys Ende does not support. They are only read to warn that
-  // they are ignored (see `UNSUPPORTED_CONFIG_KEYS`).
+  // npm-only and Deno Deploy keys Ende does not support. They are only read
+  // to warn that they are ignored (see `unsupported_keys`).
   #[serde(skip_serializing)]
   pub(crate) node_modules_dir: Option<Value>,
   #[serde(skip_serializing)]
@@ -1341,10 +1303,12 @@ pub struct ConfigFileJson {
   pub(crate) catalogs: Option<Value>,
   #[serde(skip_serializing)]
   pub(crate) patch: Option<Value>,
+  #[serde(skip_serializing)]
+  pub(crate) deploy: Option<Value>,
 }
 
 impl ConfigFileJson {
-  /// The npm-only keys present in this config, which Ende ignores.
+  /// The unsupported keys present in this config, which Ende ignores.
   pub(crate) fn unsupported_keys(&self) -> Vec<&'static str> {
     [
       ("nodeModulesDir", &self.node_modules_dir),
@@ -1355,6 +1319,7 @@ impl ConfigFileJson {
       ("catalog", &self.catalog),
       ("catalogs", &self.catalogs),
       ("patch", &self.patch),
+      ("deploy", &self.deploy),
     ]
     .into_iter()
     .filter(|(_, value)| value.is_some())
@@ -2314,34 +2279,6 @@ impl ConfigFile {
         Ok(Some(tasks_config))
       }
       _ => Ok(None),
-    }
-  }
-
-  pub fn to_deploy_config(
-    &self,
-  ) -> Result<Option<DeployConfig>, ToInvalidConfigError> {
-    match self.json.deploy.clone() {
-      Some(config) => {
-        let mut exclude_patterns = self.resolve_exclude_patterns()?;
-        let mut serialized: SerializedDeployConfig =
-          serde_json::from_value(config).map_err(|error| {
-            ToInvalidConfigError::Parse {
-              config: "deploy",
-              source: error,
-            }
-          })?;
-        // top level excludes at the start because they're lower priority
-        exclude_patterns.extend(std::mem::take(&mut serialized.exclude));
-        serialized.exclude = exclude_patterns;
-        serialized
-          .into_resolved(&self.specifier)
-          .map(Some)
-          .map_err(|error| ToInvalidConfigError::InvalidConfig {
-            config: "deploy",
-            source: error,
-          })
-      }
-      None => Ok(None),
     }
   }
 

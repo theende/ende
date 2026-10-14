@@ -203,8 +203,6 @@ pub fn convert(result: ParseResult) -> Result<Flags, CliError> {
     Some("types") => types_parse(&mut flags),
     Some("lsp") => lsp_parse(&mut flags),
     Some("vendor") => vendor_parse(&mut flags),
-    Some("deploy") => deploy_parse(&mut flags, false),
-    Some("sandbox") => deploy_parse(&mut flags, true),
     Some("why") => why_parse(&result, &mut flags),
     Some("transpile") => transpile_parse(&result, &mut flags),
     Some("bump-version") => bump_version_parse(&result, &mut flags)?,
@@ -277,6 +275,8 @@ fn default_parse(
       "audit",
       "pack",
       "jupyter",
+      "deploy",
+      "sandbox",
     ];
     if REMOVED_SUBCOMMANDS.contains(&script) {
       return Err(
@@ -321,8 +321,6 @@ fn default_parse(
       "types",
       "lsp",
       "vendor",
-      "deploy",
-      "sandbox",
       "x",
     ];
     if known_subcommands.contains(&script) {
@@ -386,7 +384,6 @@ fn default_parse(
     // Bare run - same as `ende run` but with bare=true
     runtime_args_parse(result, flags, true, true)?;
     ext_arg_parse(result, flags);
-    flags.tunnel = result.get_bool("tunnel");
     flags.code_cache_enabled = !result.get_bool("no-code-cache");
     let coverage_dir = if result.contains("coverage") {
       Some(result.get_one("coverage").unwrap_or("coverage").to_string())
@@ -1231,7 +1228,6 @@ fn run_parse(
   runtime_args_parse(result, flags, true, true)?;
   ext_arg_parse(result, flags);
 
-  flags.tunnel = result.get_bool("tunnel");
   flags.code_cache_enabled = !result.get_bool("no-code-cache");
   let coverage_dir = if result.contains("coverage") {
     Some(result.get_one("coverage").unwrap_or("coverage").to_string())
@@ -1309,7 +1305,6 @@ fn serve_parse(
 
   runtime_args_parse(result, flags, true, true)?;
   flags.code_cache_enabled = !result.get_bool("no-code-cache");
-  flags.tunnel = result.get_bool("tunnel");
 
   let script = result
     .get_one("script_arg")
@@ -1846,8 +1841,6 @@ fn task_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
     } else {
       None
     };
-
-  flags.tunnel = result.get_bool("tunnel");
 
   let task_name = result.get_one("task_name").map(|s| s.to_string());
   let eval = result.get_bool("eval");
@@ -2641,13 +2634,6 @@ fn lsp_parse(flags: &mut Flags) {
 
 fn vendor_parse(flags: &mut Flags) {
   flags.subcommand = EndeSubcommand::Vendor;
-}
-
-fn deploy_parse(flags: &mut Flags, sandbox: bool) {
-  // deploy/sandbox are passthrough - all args go into argv. Note that argv is
-  // filled in by the shared trailing-arg handling in `flags_from_vec`, so this
-  // must not copy `result.trailing` itself or every arg would be duplicated.
-  flags.subcommand = EndeSubcommand::Deploy(DeployFlags { sandbox });
 }
 
 fn x_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {

@@ -171,10 +171,7 @@ mod test {
       deprecated_name("OTEL_ENDE_VSOCK").as_deref(),
       Some("OTEL_DENO_VSOCK")
     );
-    assert_eq!(
-      deprecated_name("X_ENDE_FETCH_TOKEN").as_deref(),
-      Some("X_DENO_FETCH_TOKEN")
-    );
+    assert_eq!(deprecated_name("X_ENDE_Y").as_deref(), Some("X_DENO_Y"));
     // Only a whole `ENDE` segment is replaced.
     assert_eq!(deprecated_name("OTEL_EXPORTER_ENDPOINT"), None);
     assert_eq!(deprecated_name("LEGENDE_X"), None);

@@ -15,7 +15,6 @@ path = "lib.rs"
 
 [dependencies]
 deno_error.workspace = true
-deno_tunnel.workspace = true
 ende_core.workspace = true
 ende_features.workspace = true
 ende_permissions.workspace = true

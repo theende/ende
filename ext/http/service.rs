@@ -13,7 +13,6 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::rc::Weak;
 use std::sync::Arc;
-use std::sync::OnceLock;
 use std::task::Context;
 use std::task::Poll;
 use std::task::Waker;
@@ -786,7 +785,6 @@ struct HttpRecordInner {
   legacy_abort: bool,
   automatic_compression: bool,
   otel_info: Option<OtelInfo>,
-  client_addr: Option<http::HeaderValue>,
 }
 
 pub struct HttpRecord(RefCell<Option<HttpRecordInner>>);
@@ -802,15 +800,6 @@ impl Drop for HttpRecord {
   }
 }
 
-pub(crate) fn trust_proxy_headers() -> bool {
-  static TRUST_PROXY_HEADERS: OnceLock<bool> = OnceLock::new();
-
-  *TRUST_PROXY_HEADERS.get_or_init(|| {
-    ende_env::var_os("ENDE_TRUST_PROXY_HEADERS")
-      .is_some_and(|value| value == "1")
-  })
-}
-
 impl HttpRecord {
   fn new(
     request: Request,
@@ -820,12 +809,7 @@ impl HttpRecord {
     legacy_abort: bool,
     automatic_compression: bool,
   ) -> Rc<Self> {
-    let (mut request_parts, request_body) = request.into_parts();
-    let client_addr = if trust_proxy_headers() {
-      request_parts.headers.remove("x-deno-client-address")
-    } else {
-      None
-    };
+    let (request_parts, request_body) = request.into_parts();
     let request_body = Some(BufferedIncoming::new(request_body).into());
 
     let (mut response_parts, _) = http::Response::new(()).into_parts();
@@ -867,7 +851,6 @@ impl HttpRecord {
       automatic_compression,
       needs_close_after_finish: false,
       otel_info,
-      client_addr,
     });
     record
   }
@@ -1186,10 +1169,6 @@ impl HttpRecord {
         }
       }
     }
-  }
-
-  pub fn client_addr(&self) -> Ref<'_, Option<http::HeaderValue>> {
-    Ref::map(self.self_ref(), |inner| &inner.client_addr)
   }
 }
 

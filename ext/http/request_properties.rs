@@ -173,7 +173,6 @@ impl HttpPropertyExtractor for DefaultHttpPropertyExtractor {
         target_os = "macos"
       ))]
       NetworkStreamAddress::Vsock(vsock) => Some(vsock.port()),
-      NetworkStreamAddress::Tunnel(ref addr) => Some(addr.port() as _),
       #[cfg(windows)]
       NetworkStreamAddress::WindowsPipe(_) => None,
     };
@@ -189,7 +188,6 @@ impl HttpPropertyExtractor for DefaultHttpPropertyExtractor {
       NetworkStreamAddress::Vsock(addr) => {
         Rc::from(format!("vsock:{}", addr.cid()))
       }
-      NetworkStreamAddress::Tunnel(ref addr) => Rc::from(addr.hostname()),
       #[cfg(windows)]
       NetworkStreamAddress::WindowsPipe(_) => Rc::from("pipe"),
     };
@@ -240,7 +238,6 @@ fn listener_properties(
       target_os = "macos"
     ))]
     NetworkStreamAddress::Vsock(vsock) => Some(vsock.port()),
-    NetworkStreamAddress::Tunnel(addr) => Some(addr.port() as _),
     #[cfg(windows)]
     NetworkStreamAddress::WindowsPipe(_) => None,
   };
@@ -295,13 +292,6 @@ fn req_host_from_addr(
     NetworkStreamAddress::Vsock(vsock) => {
       format!("{}:{}", vsock.cid(), vsock.port())
     }
-    NetworkStreamAddress::Tunnel(addr) => {
-      if addr.port() == 443 {
-        addr.hostname()
-      } else {
-        format!("{}:{}", addr.hostname(), addr.port())
-      }
-    }
     #[cfg(windows)]
     NetworkStreamAddress::WindowsPipe(_) => "localhost".to_owned(),
   }
@@ -310,7 +300,7 @@ fn req_host_from_addr(
 fn req_scheme_from_stream_type(stream_type: NetworkStreamType) -> &'static str {
   match stream_type {
     NetworkStreamType::Tcp => "http://",
-    NetworkStreamType::Tls | NetworkStreamType::Tunnel => "https://",
+    NetworkStreamType::Tls => "https://",
     #[cfg(unix)]
     NetworkStreamType::Unix => "http+unix://",
     #[cfg(any(
@@ -338,7 +328,7 @@ fn req_host<'a>(
           return Some(Cow::Borrowed(auth.host()));
         }
       }
-      NetworkStreamType::Tls | NetworkStreamType::Tunnel => {
+      NetworkStreamType::Tls => {
         if port == 443 {
           return Some(Cow::Borrowed(auth.host()));
         }

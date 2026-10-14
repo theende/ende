@@ -125,7 +125,6 @@ fn parse_args(
   // Whether any positional value has been consumed yet.
   let mut positional_started = false;
   let mut found_subcommand = skip_subcommand.is_none();
-  let mut passthrough_from: Option<usize> = None;
   // Per-positional trailing: when set, ALL remaining args (including flags)
   // go into this positional's values instead of being parsed as flags.
   let mut positional_trailing_def: Option<&ArgDef> = None;
@@ -243,11 +242,6 @@ fn parse_args(
       && (arg == sub_name || cmd_def.aliases.contains(&arg.as_str()))
     {
       found_subcommand = true;
-      // If passthrough, collect everything after
-      if cmd_def.passthrough {
-        passthrough_from = Some(i + 1);
-        break;
-      }
       i += 1;
       continue;
     }
@@ -324,13 +318,6 @@ fn parse_args(
         }
       }
       i += 1;
-    }
-  }
-
-  // Handle passthrough: collect everything after the subcommand token
-  if let Some(start) = passthrough_from {
-    for arg in args.iter().skip(start) {
-      result.trailing.push(arg.clone());
     }
   }
 

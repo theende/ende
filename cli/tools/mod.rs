@@ -6,7 +6,6 @@ pub mod check;
 pub mod clean;
 pub mod compile;
 pub mod coverage;
-pub mod deploy;
 pub mod desktop;
 pub mod desktop_devtools;
 pub mod doc;

@@ -577,8 +577,6 @@ const LINT_ARGS: &[ArgDef] = &[
   ArgDef::new("no-config").long("no-config").set_true(),
 ];
 
-const DEPLOY_ARGS: &[ArgDef] = &[];
-
 const SERVE_ARGS: &[ArgDef] = &[
   ArgDef::new("script_arg")
     .positional()
@@ -707,7 +705,6 @@ static TEST_ROOT: CommandDef = CommandDef {
       subcommands: &[],
       default_subcommand: None,
       trailing_var_arg: true,
-      passthrough: false,
       keep_double_dash: true,
     },
     CommandDef {
@@ -719,7 +716,6 @@ static TEST_ROOT: CommandDef = CommandDef {
       subcommands: &[],
       default_subcommand: None,
       trailing_var_arg: true,
-      passthrough: false,
       keep_double_dash: false,
     },
     CommandDef {
@@ -731,7 +727,6 @@ static TEST_ROOT: CommandDef = CommandDef {
       subcommands: &[],
       default_subcommand: None,
       trailing_var_arg: true,
-      passthrough: false,
       keep_double_dash: false,
     },
     CommandDef {
@@ -743,7 +738,6 @@ static TEST_ROOT: CommandDef = CommandDef {
       subcommands: &[],
       default_subcommand: None,
       trailing_var_arg: false,
-      passthrough: false,
       keep_double_dash: false,
     },
     CommandDef {
@@ -755,7 +749,6 @@ static TEST_ROOT: CommandDef = CommandDef {
       subcommands: &[],
       default_subcommand: None,
       trailing_var_arg: false,
-      passthrough: false,
       keep_double_dash: false,
     },
     CommandDef {
@@ -767,7 +760,6 @@ static TEST_ROOT: CommandDef = CommandDef {
       subcommands: &[],
       default_subcommand: None,
       trailing_var_arg: true,
-      passthrough: false,
       keep_double_dash: false,
     },
     CommandDef {
@@ -779,25 +771,11 @@ static TEST_ROOT: CommandDef = CommandDef {
       subcommands: &[],
       default_subcommand: None,
       trailing_var_arg: false,
-      passthrough: false,
-      keep_double_dash: false,
-    },
-    CommandDef {
-      name: "deploy",
-      about: "Deploy to Deno Deploy",
-      aliases: &[],
-      args: DEPLOY_ARGS,
-      arg_groups: &[],
-      subcommands: &[],
-      default_subcommand: None,
-      trailing_var_arg: false,
-      passthrough: true,
       keep_double_dash: false,
     },
   ],
   default_subcommand: Some("run"),
   trailing_var_arg: false,
-  passthrough: false,
   keep_double_dash: false,
 };
 
@@ -1324,17 +1302,6 @@ fn default_subcommand_with_allow_read_values() {
     r.get_many("allow-read"),
     Some(vec!["/tmp".to_string()].as_slice())
   );
-}
-
-#[test]
-fn passthrough_subcommand() {
-  let r = parse(
-    &TEST_ROOT,
-    &svec!["ende", "deploy", "--project=myapp", "--prod"],
-  )
-  .unwrap();
-  assert_eq!(r.subcommand.as_deref(), Some("deploy"));
-  assert_eq!(r.trailing, vec!["--project=myapp", "--prod"]);
 }
 
 #[test]

@@ -1,0 +1,35 @@
+// Copyright 2026 the Ende authors. MIT license.
+// Deno Deploy (`ende deploy`, `ende sandbox`, `--tunnel`, the `deploy` config
+// key) is not part of Ende.
+{
+  "tests": {
+    "deploy_subcommand": {
+      "args": "deploy --prod",
+      "output": "deploy.out",
+      "exitCode": 1
+    },
+    "sandbox_subcommand": {
+      "args": "sandbox",
+      "output": "sandbox.out",
+      "exitCode": 1
+    },
+    "tunnel_flag": {
+      "args": "run --tunnel main.ts",
+      "output": "tunnel_flag.out",
+      "exitCode": 1
+    },
+    "connected_env_var_ignored": {
+      "envs": {
+        "ENDE_CONNECTED": "1",
+        "DENO_CONNECTED": "1"
+      },
+      "args": "run main.ts",
+      "output": "main.out"
+    },
+    "config_key_warns": {
+      "cwd": "config_key",
+      "args": "run main.ts",
+      "output": "config_key/main.out"
+    }
+  }
+}
