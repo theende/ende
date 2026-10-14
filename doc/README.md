@@ -15,8 +15,7 @@ live, the kind of background that saves a lot of exploration time up front.
 - [`testing.md`](./testing.md) — the test taxonomy (spec, unit, WPT) and which
   command runs each one.
 - [`ci.md`](./ci.md) — how the CI workflow is generated and how it decides which
-  jobs to run, including the docs-only fast path that brought this directory
-  into existence.
+  jobs to run, how it caches, and how docs-only changes skip CI.
 - [`desktop-architecture.md`](./desktop-architecture.md) — how `ende desktop`
   wires a native window to an Ende runtime: the load model, the ABI handshake,
   the two transports, and the lifecycle edges.

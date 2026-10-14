@@ -21,9 +21,11 @@ import {
 const cacheVersion = 125;
 
 // Lean CI. While `fullMatrix` is false, CI only runs on pushes to and PRs
-// against `primary`, and only runs: pre-build, lint (linux + macOS), the debug
-// build/test/libs jobs for linux-x86_64 and macos-aarch64, and the ci-status
-// gate. Turned off: Windows, release builds and publishing (tag builds), WPT,
+// against `primary` (plus the weekly schedule and manual dispatch), and only
+// runs: pre-build, lint (linux), the debug build/test/libs jobs for
+// linux-x86_64 and macos-aarch64, and the ci-status gate. The macOS jobs only
+// run on the schedule and on manual dispatch, not on push/PR. Turned off:
+// Windows, release builds and publishing (tag builds), WPT,
 // benchmarks, ende_core nextest/miri. Steps that need denoland-only secrets or infrastructure stay
 // gated on `isDenoland` either way.
 // Restore the full matrix once Ende is fully operational by setting this to
@@ -113,6 +115,10 @@ const isTag = conditions.isTag();
 const isNotTag = isTag.not();
 const isMainOrTag = isMainBranch.or(isTag);
 const isPr = conditions.isPr();
+const isSchedule = conditions.isEvent("schedule");
+const isScheduleOrDispatch = isSchedule.or(
+  conditions.isEvent("workflow_dispatch"),
+);
 const hasCiFullLabel = conditions.hasPrLabel("ci-full");
 const hasCiBenchLabel = conditions.hasPrLabel("ci-bench");
 
@@ -400,8 +406,10 @@ function createRestoreAndSaveCacheSteps(m: {
       // unconditionally because we don't want caches that only need updating
       // occassionally (like the cargo home cache) to be lost over time as
       // other caches that need to be updated frequently (like the cargo build
-      // cache) get populated and purge old caches.
-      key: `${m.cacheKeyPrefix}-\${{ github.sha }}`,
+      // cache) get populated and purge old caches. The run id keeps the key
+      // unique when a scheduled or manual run builds a sha that a push run
+      // already cached (otherwise the save is rejected as a duplicate key).
+      key: `${m.cacheKeyPrefix}-\${{ github.sha }}-\${{ github.run_id }}`,
     },
   });
   return { restoreCacheStep, saveCacheStep };
@@ -434,25 +442,54 @@ function createCargoCacheHomeStep(m: {
 
 // factory for cache steps parameterized by os/arch/profile/job
 // works with both defineExprObj (inline values) and defineMatrix (matrix expressions)
+//
+// The target/ cache is multi-GB, so only a few jobs save one (`saveTarget`):
+// the build jobs and the linux lint job (clippy's check-mode output shares
+// little with a build). Every other job restores another job's cache
+// (`targetCachePrefix`) and never saves its own, which keeps the number of
+// target/ caches small enough for the repo's cache quota. All jobs restore on
+// `primary` too, so pushes there build incrementally; to stop stale artifacts
+// piling up across incremental builds, the saving jobs build cold on the
+// weekly schedule and save a fresh cache. Likewise only the build jobs save the
+// cargo home cache (`saveCargoHome`); every job restores the build job's one.
 function createCacheSteps(m: {
   os: ExpressionValue;
   arch: ExpressionValue;
   profile: ExpressionValue;
   cachePrefix: string;
+  // the job whose target/ cache to restore (defaults to `cachePrefix`)
+  targetCachePrefix?: string;
+  // save target/ under `cachePrefix` (on `primary` only)
+  saveTarget?: true | Condition;
+  saveCargoHome?: true;
 }) {
-  const cargoHomeCacheSteps = createCargoCacheHomeStep(m);
-  const buildCacheSteps = createRestoreAndSaveCacheSteps({
-    name: "build output",
-    path: [
-      "./target",
-      "!./target/*/gn_out",
-      "!./target/*/gn_root",
-      "!./target/*/*.zip",
-      "!./target/*/*.tar.gz",
-    ],
-    cacheKeyPrefix:
-      `${cacheVersion}-cargo-target-${m.os}-${m.arch}-${m.profile}-${m.cachePrefix}`,
+  const cargoHomeCacheSteps = createCargoCacheHomeStep({
+    ...m,
+    cachePrefix: "build-main",
   });
+  const buildCacheSteps = (cachePrefix: string) =>
+    createRestoreAndSaveCacheSteps({
+      name: "build output",
+      path: [
+        "./target",
+        "!./target/*/gn_out",
+        "!./target/*/gn_root",
+        "!./target/*/*.zip",
+        "!./target/*/*.tar.gz",
+      ],
+      cacheKeyPrefix:
+        `${cacheVersion}-cargo-target-${m.os}-${m.arch}-${m.profile}-${cachePrefix}`,
+    });
+  const restoreBuildCacheStep =
+    buildCacheSteps(m.targetCachePrefix ?? m.cachePrefix).restoreCacheStep;
+  const saveSteps = [
+    ...(m.saveCargoHome ? [cargoHomeCacheSteps.saveCacheStep] : []),
+    ...(m.saveTarget == null ? [] : [
+      buildCacheSteps(m.cachePrefix).saveCacheStep.if(
+        isMainBranch.and(isNotTag).and(m.saveTarget),
+      ),
+    ]),
+  ];
   const mtimeCacheAndRestoreStep = step({
     name: "Apply and update mtime cache",
     uses: "./.github/mtime_cache",
@@ -463,14 +500,15 @@ function createCacheSteps(m: {
   return {
     restoreCacheStep: step(
       cargoHomeCacheSteps.restoreCacheStep,
-      buildCacheSteps.restoreCacheStep.if(isMainBranch.not().and(isNotTag)),
+      restoreBuildCacheStep.if(
+        // jobs that save build cold on the schedule (see above)
+        m.saveTarget == null ? isNotTag : isNotTag.and(isSchedule.not()),
+      ),
       // this should always be done when saving OR restoring
       mtimeCacheAndRestoreStep,
     ),
-    saveCacheStep: step(
-      cargoHomeCacheSteps.saveCacheStep,
-      buildCacheSteps.saveCacheStep.if(isMainBranch.and(isNotTag)),
-    ),
+    // undefined for jobs that only restore
+    saveCacheStep: saveSteps.length > 0 ? step(...saveSteps) : undefined,
   };
 }
 // Pin rustup-init to 1.28.2: sh.rustup.rs currently serves 1.29.0, which has
@@ -782,12 +820,38 @@ const buildJobs = buildItems.map((rawBuildItem) => {
     if: buildItem.use_sysroot,
     ...sysRootConfig,
   });
+  // Lean CI only builds (and so tests) macOS weekly and on manual dispatch.
+  // The dependent test jobs are skipped with it, which ci-status accepts.
+  const runOnThisEvent = !fullMatrix && rawBuildItem.os === "macos"
+    ? isScheduleOrDispatch
+    : true;
+  // The rest of CI only exercises the default v8 backend. Make sure the
+  // experimental QuickJS backend (the ende_v8 facade over the v8x crate)
+  // keeps compiling for the ende + endert binaries so `ende compile`
+  // and the desktop runtime don't silently regress (notably the
+  // mutually-exclusive v8/quickjs feature guard). A `check` is enough to
+  // catch feature/build-script breakage and does not clobber the v8
+  // binary the build job produces. Lean CI runs it off the build job's
+  // critical path (and out of its cache): in build-libs on linux-x86_64 and
+  // in test-libs on macos-aarch64.
+  const quickJsCheckStep = step({
+    name: "Check QuickJS backend (ende + endert)",
+    if: isDebug.and(
+      isLinux.and(buildItem.arch.equals("x86_64")).or(
+        isMacos.and(buildItem.arch.equals("aarch64")),
+      ),
+    ),
+    run:
+      `cargo check --locked -p ende -p endert --no-default-features --features quickjs`,
+    env: { CARGO_PROFILE_DEV_DEBUG: 0 },
+  });
   const buildJob = job(
     jobIdForJob("build"),
     {
       name: jobNameForJob("build"),
       needs: [preBuildJob],
-      if: preBuildJob.outputs.skip_build.notEquals("true").and(notDocsOnly),
+      if: preBuildJob.outputs.skip_build.notEquals("true").and(notDocsOnly)
+        .and(runOnThisEvent),
       runsOn: buildItem.runner,
       // This is required to successfully authenticate with Azure using OIDC for
       // code signing, which only runs on denoland/deno.
@@ -804,6 +868,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
         } = createCacheSteps({
           ...buildItem,
           cachePrefix: "build-main",
+          saveTarget: true,
+          saveCargoHome: true,
         });
         const tarSourcePublishStep = step({
           name: "Create source tarballs (release, linux)",
@@ -1250,24 +1316,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
                 `cargo build --locked ${packagesToBuild} ${binsToBuild} --features=ende/panic-trace`,
               env: { CARGO_PROFILE_DEV_DEBUG: 0 },
             },
-            {
-              // The rest of CI only exercises the default v8 backend. Make sure the
-              // experimental QuickJS backend (the ende_v8 facade over the v8x crate)
-              // keeps compiling for the ende + endert binaries so `ende compile`
-              // and the desktop runtime don't silently regress (notably the
-              // mutually-exclusive v8/quickjs feature guard). A `check` is enough to
-              // catch feature/build-script breakage and does not clobber the v8
-              // binary this job produces.
-              name: "Check QuickJS backend (ende + endert)",
-              if: isDebug.and(
-                isLinux.and(buildItem.arch.equals("x86_64")).or(
-                  isMacos.and(buildItem.arch.equals("aarch64")),
-                ),
-              ),
-              run:
-                `cargo check --locked -p ende -p endert --no-default-features --features quickjs`,
-              env: { CARGO_PROFILE_DEV_DEBUG: 0 },
-            },
+            // lean CI runs this in build-libs / test-libs instead
+            ...(fullMatrix ? [quickJsCheckStep] : []),
             cargoBuildReleaseStep,
             {
               // Run a minimal check to ensure that binary is not corrupted, regardless
@@ -1410,7 +1460,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           ),
           cargoBuildStep,
           publishStep,
-          saveCacheStep.if(buildItem.save_cache),
+          saveCacheStep!.if(buildItem.save_cache),
         );
       })(),
     },
@@ -1437,16 +1487,27 @@ const buildJobs = buildItems.map((rawBuildItem) => {
       }),
     });
     const testCrateNameExpr = testMatrix.test_crate;
-    const {
-      restoreCacheStep,
-      saveCacheStep,
-    } = createCacheSteps({
+    const { restoreCacheStep } = createCacheSteps({
       ...buildItem,
       cachePrefix: `test-${testCrateNameExpr}`,
+      targetCachePrefix: "build-main",
     });
-    // shard_index > 0 jobs only run on PRs (main runs unsharded)
+    // Lean CI shards on every event. With the full matrix, shard_index > 0
+    // jobs only run on PRs (main runs unsharded in shard 0). Each shard's
+    // harness writes a report covering only its own tests, so the
+    // knownCiFailures check works per shard.
+    const isSharded = fullMatrix ? isPr : true;
     const isShardZero = testMatrix.shard_index.equals(0);
-    const shouldRunShard = isShardZero.or(isPr);
+    const shouldRunShard = isShardZero.or(isSharded);
+    const shardEnv = fullMatrix
+      ? {
+        CI_SHARD_INDEX: isPr.then(testMatrix.shard_index).else(""),
+        CI_SHARD_TOTAL: isPr.then(testMatrix.shard_total).else(""),
+      }
+      : {
+        CI_SHARD_INDEX: testMatrix.shard_index,
+        CI_SHARD_TOTAL: testMatrix.shard_total,
+      };
     // Some test shards can finish close to the default 30m job timeout
     // and get cancelled during harness shutdown.
     const timeoutMinutes = ((rawBuildItem.profile === "debug" &&
@@ -1508,6 +1569,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             name: "Build ffi (debug)",
             if: isDebug.and(testCrateNameExpr.equals("specs")),
             run: "cargo build -p test_ffi",
+            // match the build and test steps so the restored cache is reused
+            env: { CARGO_PROFILE_DEV_DEBUG: 0 },
           },
           {
             name: "Build ffi (release)",
@@ -1523,8 +1586,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             ),
             env: {
               CARGO_PROFILE_DEV_DEBUG: 0,
-              CI_SHARD_INDEX: isPr.then(testMatrix.shard_index).else(""),
-              CI_SHARD_TOTAL: isPr.then(testMatrix.shard_total).else(""),
+              ...shardEnv,
             },
           },
           {
@@ -1536,10 +1598,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               `cargo test -p ${testMatrix.test_package} --test ${testMatrix.test_crate} --release`,
               `target/test_results_${testMatrix.test_crate}.json`,
             ),
-            env: {
-              CI_SHARD_INDEX: isPr.then(testMatrix.shard_index).else(""),
-              CI_SHARD_TOTAL: isPr.then(testMatrix.shard_total).else(""),
-            },
+            env: shardEnv,
           },
           {
             name: "Ensure no git changes",
@@ -1569,7 +1628,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               path: `target/test_results_${testMatrix.test_crate}.json`,
             },
           },
-          saveCacheStep.if(buildItem.save_cache),
         ),
       },
     ));
@@ -1582,12 +1640,10 @@ const buildJobs = buildItems.map((rawBuildItem) => {
       .or(isWindows.and(buildItem.arch.equals("x86_64"))),
   );
   if (libsCondition.isPossiblyTrue()) {
-    const {
-      restoreCacheStep,
-      saveCacheStep,
-    } = createCacheSteps({
+    const { restoreCacheStep } = createCacheSteps({
       ...buildItem,
       cachePrefix: "test-libs",
+      targetCachePrefix: "build-main",
     });
     additionalJobs.push(job(jobIdForJob("test-libs"), {
       name: jobNameForJob("test libs"),
@@ -1602,6 +1658,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
         sysRootStep,
         endeArtifact.download(),
         testServerArtifact.download(),
+        ...(fullMatrix ? [] : [quickJsCheckStep]),
         {
           name: "Test libs",
           run: `cargo test --locked --lib ${
@@ -1609,19 +1666,18 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           }`,
           env: { CARGO_PROFILE_DEV_DEBUG: 0 },
         },
-        saveCacheStep,
       ),
     }));
   }
   if (
     isDebug.and(isLinux).and(buildItem.arch.equals("x86_64")).isPossiblyTrue()
   ) {
-    const {
-      restoreCacheStep,
-      saveCacheStep,
-    } = createCacheSteps({
+    const { restoreCacheStep } = createCacheSteps({
       ...buildItem,
       cachePrefix: "build-libs",
+      // Like lint, this job runs `cargo check` without the sysroot RUSTFLAGS,
+      // so the linux lint cache is the closest match (the build cache is not).
+      targetCachePrefix: "lint",
     });
     additionalJobs.push(job(jobIdForJob("build-libs"), {
       name: jobNameForJob("build libs"),
@@ -1650,7 +1706,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             "cargo check -p ende --features=lsp-tracing",
           ],
         },
-        saveCacheStep,
+        ...(fullMatrix ? [] : [quickJsCheckStep]),
       ),
     }));
   }
@@ -1856,7 +1912,7 @@ const lintMatrix = defineMatrix({
     ...Runners.windowsX86,
     profile: "debug",
     job: "lint",
-  }].filter((item) => fullMatrix || item.os !== "windows"),
+  }].filter((item) => fullMatrix || item.os === "linux"),
 });
 
 const lintJob = job("lint", {
@@ -1880,6 +1936,9 @@ const lintJob = job("lint", {
     } = createCacheSteps({
       ...lintMatrix,
       cachePrefix: "lint",
+      // clippy (check mode, all workspace features, no sysroot RUSTFLAGS)
+      // shares little with the build cache, so linux lint keeps its own.
+      saveTarget: lintMatrix.os.equals("linux"),
     });
     return step(
       cloneRepoStep,
@@ -1905,7 +1964,7 @@ const lintJob = job("lint", {
         run:
           "deno run --allow-write --allow-read --allow-run --allow-net --allow-env ./tools/lint.js",
       },
-      saveCacheStep,
+      saveCacheStep!,
     );
   })(),
 });
@@ -1953,6 +2012,9 @@ const endeCoreTestProfile = defineExprObj({
 const endeCoreTestCacheSteps = createCacheSteps({
   ...endeCoreTestProfile,
   cachePrefix: "ende-core-test",
+  // release nextest of libs/* shares little with the release build (which
+  // adds frame-pointer flags and build-std), so it keeps its own cache
+  saveTarget: true,
 });
 const endeCoreTestJob = job("ende-core-test", {
   name: `ende_core test linux-x86_64`,
@@ -2026,7 +2088,7 @@ const endeCoreTestJob = job("ende-core-test", {
         "cargo run -p ende_core --example op2 --features v8",
       ],
     },
-    endeCoreTestCacheSteps.saveCacheStep,
+    endeCoreTestCacheSteps.saveCacheStep!,
   ),
 });
 
@@ -2094,6 +2156,7 @@ const ciStatusJob = job("ci-status", {
   steps: step({
     name: "Ensure CI success",
     run: [
+      // skipped jobs (e.g. macOS on push/PR in lean CI) are not failures
       "if [[ \"${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}\" == \"true\" ]]; then",
       "  echo 'CI failed'",
       "  exit 1",
@@ -2104,6 +2167,22 @@ const ciStatusJob = job("ci-status", {
 
 // === generate workflow ===
 
+// Skip CI for docs-only changes. GitHub can't combine `paths` with
+// `paths-ignore`, so this is one ordered `paths` list where the last matching
+// pattern wins and a run starts if any changed file ends up included. Markdown
+// that code or tests read is re-included: formatter/test fixtures under
+// `tests/` and `libs/config/testdata/`, and the op2 tables that `libs/ops`
+// embeds with `include_str!`. Workflow files are not Markdown, so they always
+// trigger CI.
+const ciPaths = [
+  "**",
+  "!**/*.md",
+  "!doc/**",
+  "tests/**",
+  "libs/config/testdata/**",
+  "libs/ops/op2/*.md",
+];
+
 const workflow = createWorkflow({
   name: "ci",
   permissions: {
@@ -2113,11 +2192,14 @@ const workflow = createWorkflow({
   on: {
     push: {
       branches: [primaryBranch],
-      // tag pushes run the release build and publish jobs
+      // tag pushes run the release build and publish jobs (GitHub does not
+      // evaluate path filters for tag pushes)
       ...(fullMatrix ? { tags: ["*"] } : {}),
+      paths: ciPaths,
     },
     pull_request: {
       branches: [primaryBranch],
+      paths: ciPaths,
       types: [
         "opened",
         "reopened",
@@ -2127,6 +2209,10 @@ const workflow = createWorkflow({
         "ready_for_review",
       ],
     },
+    // Weekly cold build: resets the target/ caches (see createCacheSteps) and,
+    // in lean CI, is when the macOS jobs run.
+    schedule: [{ cron: "0 6 * * 1" }],
+    workflow_dispatch: {},
   },
   concurrency: {
     group:

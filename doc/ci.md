@@ -1,7 +1,7 @@
 # Continuous integration
 
 This page explains how the main CI workflow is structured, how it decides which
-jobs to run, and the docs-only fast path.
+jobs to run, how it caches, and how docs-only changes are skipped.
 
 ## The workflow is generated, not hand-written
 
@@ -20,28 +20,51 @@ deno run -A .github/workflows/ci.ts
 Other workflows in `.github/workflows/` follow the same `*.ts` →
 `*.generated.yml` pattern.
 
-## Job overview
+## Lean mode (`fullMatrix`)
 
-On a pull request the workflow runs, roughly:
+`ci.ts` starts with `const fullMatrix = false;`. While it is `false`, CI runs a
+lean matrix sized for Ende's current state. Setting it to `true` and
+regenerating restores the full upstream matrix (Windows, release builds and tag
+publishing, WPT, benchmarks, `ende_core` nextest/miri, macOS lint).
+
+The workflow triggers on pushes to `primary`, PRs against `primary`, a weekly
+schedule (Monday 06:00 UTC) and manual dispatch (the "Run workflow" button on
+the Actions tab). In lean mode:
+
+| Job                                      | Push / PR | Weekly / manual |
+| ---------------------------------------- | --------- | --------------- |
+| `pre-build`, `ci status`                 | yes       | yes             |
+| `lint` (linux-x86_64)                    | yes       | yes             |
+| `build`, `test`, `build libs` (linux)    | yes       | yes             |
+| `build`, `test`, `test libs` (macOS arm) | no        | yes             |
+
+Skipped macOS jobs are fine for `ci status` (see below). The QuickJS backend
+`cargo check` runs in `build libs` (linux) and `test libs` (macOS), off the
+build job's critical path.
+
+## Job overview
 
 - **`pre-build`** — a fast gating job. It decides whether downstream jobs should
   run at all and exposes the decision through job outputs.
-- **`build`** (per platform) and **`build libs`** — compile Ende and the
-  `ende_core` libraries.
-- **`test`** (per platform, sharded) — the spec, unit, node-compat and WPT
-  suites, depending on `build`.
-- **`bench`** — benchmarks.
-- **`ende-core-test`** and **`ende-core-miri`** — the `ende_core` / `libs/*`
-  crate tests (the latter under Miri).
+- **`build`** (per platform) — builds `ende`, `endert` and `test_server` and
+  uploads them as artifacts for the test jobs.
+- **`build libs`** — `cargo check`s the Wasm-compatible crates and feature
+  combinations.
+- **`test`** (per platform and test crate) — the `specs`, `integration` and
+  `unit` suites, run against the binaries from `build`. `specs` and
+  `integration` are split across two shards.
+- **`test libs`** — `cargo test --lib` for the workspace crates.
 - **`lint`** — formatting check, jsdoc check, and `tools/lint.js` (Rust + JS).
 - **`ci-status`** — an aggregator that the branch protection rule keys on. It
   passes as long as none of its dependencies failed or were cancelled; skipped
   dependencies are fine.
+- Full matrix only: **`bench`**, **`wpt`**, **`ende-core-test`**,
+  **`ende-core-miri`** and **`publish-canary`**.
 
 ## How `pre-build` gates the rest
 
-`pre-build` runs a few cheap checks and publishes their results as outputs that
-downstream jobs read in their `if:` conditions:
+`pre-build` runs a few cheap checks on PRs and publishes their results as
+outputs that downstream jobs read in their `if:` conditions:
 
 - `skip_build` — set when a draft PR has not opted into CI. When true, the
   build, test, lint, bench and `ende_core` jobs are all skipped.
@@ -57,32 +80,83 @@ needs.pre_build.outputs.skip_build != 'true' &&
   needs.pre_build.outputs.docs_only != 'true'
 ```
 
-## The docs-only fast path
+## Skipping docs-only changes
 
-A pull request that changes **only** files under `doc/` does not need to compile
-or test anything. For those PRs CI runs the `lint` job and skips everything
-else.
+Pushes and PRs whose changes are **only** Markdown files or files under `doc/`
+do not start the workflow at all. Both triggers use one ordered `paths` list
+(GitHub cannot combine `paths` with `paths-ignore`). The last pattern that
+matches a file decides whether it counts, and the workflow starts if any changed
+file counts:
 
-How it works:
+```
+**                        everything ...
+!**/*.md                  ... except Markdown anywhere
+!doc/**                   ... and anything under doc/
+tests/**                  re-included: test and formatter fixtures
+libs/config/testdata/**   re-included: formatter fixtures
+libs/ops/op2/*.md         re-included: embedded with include_str!
+```
 
-1. In `pre-build`, `tools/check_docs_only_changes.js` diffs the PR against its
-   base SHA. If every changed file is under `doc/` (and at least one file
-   changed), it writes `docs_only=true` to the job output. An empty or failed
-   diff defaults to `false`, so the full pipeline runs when in doubt.
-2. The build, build-libs, test, bench, `ende-core-test` and `ende-core-miri`
-   jobs each add `&& docs_only != 'true'` to their run condition, so they are
-   skipped on a docs-only PR. The `test` jobs depend on `build`, so skipping
-   `build` cascades to them automatically.
-3. The `lint` job is intentionally **not** gated on `docs_only`. It still runs,
-   which means Markdown is still formatted and linted
-   (`./tools/format.js --check` covers `doc/`). This is the "lint and nothing
-   else" behavior.
-4. `ci-status` still runs and passes: its skipped dependencies count as neither
-   failure nor cancellation, and `lint` succeeds, so the required status check
-   goes green and the PR can merge.
+Add a pattern there if code or tests start reading another Markdown file.
+Workflow files are not Markdown, so changing them always runs CI. Tag pushes
+ignore path filters.
 
-The moment a PR also touches anything outside `doc/`, `docs_only` is `false` and
-the full pipeline runs as normal.
+Because nothing runs, Markdown in a docs-only change is not format-checked by
+CI; run `./tools/format.js` locally. If `ci status` is ever made a required
+check, a docs-only PR would wait for it forever. The usual fix is a small extra
+workflow, also named `ci`, with a `ci status` job that runs on the inverse paths
+and just succeeds.
+
+The older `docs_only` output of `pre-build` still exists. With the path filter
+in place it only matters for a PR whose changes are all under `doc/` but not all
+Markdown, which runs `lint` alone.
+
+## Caches
+
+Rust build output (`target/`) is cached with `actions/cache`. Caches are
+multi-GB and the repository has a 10 GB cache quota, so only a few jobs save
+one:
+
+- **`build`** saves `target/` per platform. It also saves the cargo home
+  (registry and git checkouts) that every other job restores.
+- **`lint`** on linux saves its own `target/`, since clippy's check-mode output
+  shares little with a build.
+- **`test`** and **`test libs`** restore the `build` cache of their platform.
+  **`build libs`** restores the `lint` cache (both run `cargo check` without the
+  Linux sysroot flags). None of them save.
+
+Every run, including pushes to `primary`, restores the most recent cache and
+builds incrementally. The `Apply and update mtime cache` step
+(`.github/mtime_cache`) keeps restored artifacts valid by restoring source file
+modification times. Incremental builds accumulate stale artifacts, so the weekly
+scheduled run builds **cold** (the saving jobs skip the restore) and saves a
+fresh cache, which later runs then pick up. To throw all caches away, bump
+`cacheVersion` at the top of `ci.ts`.
+
+## Test sharding
+
+`specs` and `integration` run as two matrix jobs each. The jobs pass
+`CI_SHARD_INDEX` and `CI_SHARD_TOTAL` to the test harness, which keeps the tests
+whose name hashes to its shard (`shard_index_of` in
+`tests/util/lib/test_runner.rs`). Hashing the name keeps a test on the same
+shard when others are added or removed. In lean mode every event is sharded;
+with the full matrix, only PRs are, and pushes run each suite whole in shard 0.
+
+## Known failures (`knownCiFailures`)
+
+Some tests fail by design until something outside this repository exists (for
+example published releases for the `upgrade` specs). They are listed with a
+reason in `knownCiFailures` at the top of `ci.ts`. The test step runs the whole
+suite, then reads the JSON report the harness writes to
+`target/test_results_<crate>.json`:
+
+- the step passes if the suite passed, or if every failed test is listed in
+  `knownCiFailures` (each one is printed as a warning);
+- it fails if any unlisted test failed, or if the suite failed without a report
+  or without any failed test in it (a build error or crash).
+
+Each shard's report covers only its own tests, so the check works per shard.
+Remove an entry as soon as its reason is gone.
 
 ## Changing CI behavior
 

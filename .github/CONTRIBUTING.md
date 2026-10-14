@@ -87,10 +87,13 @@ Before submitting your pull request, make sure that:
 You can run `./x verify` as a quick pre-commit check — it runs formatting and
 JS/TS linting in one step.
 
-CI currently runs a lean matrix (lint plus debug build/test on linux-x86_64 and
-macos-aarch64) on pushes to and PRs against `primary`. The switch (`fullMatrix`)
-and the list of tests CI tolerates as known failures (`knownCiFailures`) live at
-the top of `.github/workflows/ci.ts`; after editing it, regenerate with
+CI currently runs a lean matrix (lint plus debug build/test on linux-x86_64) on
+pushes to and PRs against `primary`; changes that only touch Markdown or `doc/`
+skip CI. The macOS (aarch64) build/test jobs run weekly (Monday 06:00 UTC, a
+cold build that also refreshes the build caches) and when the workflow is run
+manually from the Actions tab. The switch (`fullMatrix`) and the list of tests
+CI tolerates as known failures (`knownCiFailures`) live at the top of
+`.github/workflows/ci.ts`; after editing it, regenerate with
 `./.github/workflows/ci.ts`.
 
 ## Building from source

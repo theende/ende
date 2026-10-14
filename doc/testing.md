@@ -61,8 +61,9 @@ the appropriate `tools/lint.js` invocation (`--js` when only JS/TS changed).
 
 ## What CI runs
 
-On a pull request, CI builds Ende across the supported platforms and runs the
-spec, unit and WPT suites, plus the `ende_core` crate tests and lint. The
-exception is a PR that only edits `doc/`: it runs the `lint` job alone and skips
-the rest, since Markdown changes cannot affect the binary. See
-[`ci.md`](./ci.md) for how that decision is made.
+On every push to `primary` and every pull request, CI builds Ende on Linux and
+runs lint plus the spec, unit and integration suites (specs and integration
+split across two shards). macOS runs weekly and on manual dispatch. Changes that
+only touch Markdown or `doc/` skip CI entirely, except Markdown that tests or
+code read. See [`ci.md`](./ci.md) for the details, including the full matrix
+behind the `fullMatrix` switch.
