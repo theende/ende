@@ -13,7 +13,6 @@ pub use ende_http;
 pub use ende_image;
 pub use ende_inspector_server;
 pub use ende_io;
-pub use ende_kv;
 pub use ende_net;
 pub use ende_os;
 pub use ende_permissions;

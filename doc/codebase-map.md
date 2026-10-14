@@ -44,7 +44,7 @@ roughly by purpose:
 - **Web platform:** `web`, `fetch`, `url`, `crypto`, `console`, `webidl`,
   `websocket`, `webgpu`, `canvas`, `image`, `broadcast_channel`, `webstorage`.
 - **System access:** `fs`, `net`, `io`, `os`, `process`, `signals`, `tls`.
-- **Ende APIs:** `kv`, `cron`, `cache`, `ffi`, `telemetry`.
+- **Ende APIs:** `cron`, `cache`, `ffi`, `telemetry`.
 
 The conventional layout inside an extension is Rust ops in `lib.rs` (and
 submodules) and JavaScript API files named with a numeric prefix that controls

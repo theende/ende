@@ -559,13 +559,6 @@ fn get_message_suggestions_inner(
         )),
         FixSuggestion::hint(cstr!("Use <u>import.meta.dirname</> instead.")),
       ];
-    } else if msg.contains("openKv is not a function") {
-      return vec![
-        FixSuggestion::info("Ende.openKv() is an unstable API."),
-        FixSuggestion::hint(
-          "Run again with `--unstable-kv` flag to enable this API.",
-        ),
-      ];
     } else if msg.contains("cron is not a function") {
       return vec![
         FixSuggestion::info("Ende.cron() is an unstable API."),

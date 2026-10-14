@@ -53,13 +53,6 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     env_var: None,
   },
   UnstableFeatureDescription {
-    name: "kv",
-    help_text: "Enable unstable KV APIs",
-    show_in_help: true,
-    kind: UnstableFeatureKind::Runtime,
-    env_var: None,
-  },
-  UnstableFeatureDescription {
     name: "lazy-dynamic-imports",
     help_text: "Lazily loads statically analyzable dynamic imports when not running with type checking. Warning: This may change the order of semver specifier resolution.",
     show_in_help: true,

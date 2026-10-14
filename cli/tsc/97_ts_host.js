@@ -25,16 +25,11 @@ function spanned(name, f) {
 
 /** @type {ReadonlySet<string>} */
 const unstableEndeProps = new Set([
-  "AtomicOperation",
   "DatagramConn",
-  "Kv",
-  "KvListIterator",
-  "KvU64",
   "UnixConnectOptions",
   "UnixListenOptions",
   "listen",
   "listenDatagram",
-  "openKv",
   "connectQuic",
   "listenQuic",
   "QuicBidirectionalStream",

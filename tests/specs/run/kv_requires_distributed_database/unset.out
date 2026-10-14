@@ -1,2 +1,0 @@
-typeof openKv: undefined
-caught: Deno.openKv is not a function

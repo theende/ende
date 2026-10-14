@@ -53,7 +53,6 @@ ende_http.workspace = true
 ende_image.workspace = true
 ende_inspector_server.workspace = true
 ende_io.workspace = true
-ende_kv.workspace = true
 ende_net.workspace = true
 ende_os.workspace = true
 ende_permissions.workspace = true

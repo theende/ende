@@ -163,7 +163,7 @@ pub struct UnstableConfig {
   pub raw_imports: bool,
   pub sloppy_imports: bool,
   pub tsgo: bool,
-  pub features: Vec<String>, // --unstabe-kv --unstable-cron
+  pub features: Vec<String>, // --unstable-cron --unstable-ffi
 }
 
 impl UnstableConfig {

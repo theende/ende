@@ -45,10 +45,8 @@ use ende_cron::CronHandlerImpl;
 use ende_ffi::EndeRtNativeAddonLoaderRc;
 use ende_fs::FileSystem;
 use ende_io::Stdio;
-use ende_kv::dynamic::MultiBackendDbHandler;
 use ende_permissions::PermissionsContainer;
 use ende_tls::RootCertStoreProvider;
-use ende_tls::TlsKeys;
 use ende_web::Blob;
 use ende_web::BlobStoreTrait;
 use ende_web::InMemoryBroadcastChannel;
@@ -533,22 +531,6 @@ impl WebWorker {
         options.unsafely_ignore_certificate_errors.clone(),
       ),
       ende_tls::ende_tls::init(),
-      ende_kv::ende_kv::init(
-        Box::new(MultiBackendDbHandler::remote_or_sqlite(
-          None,
-          options.seed,
-          ende_kv::remote::HttpOptions {
-            user_agent: options.bootstrap.user_agent.clone(),
-            root_cert_store_provider: services.root_cert_store_provider,
-            unsafely_ignore_certificate_errors: options
-              .unsafely_ignore_certificate_errors
-              .clone(),
-            client_cert_chain_and_key: TlsKeys::Null,
-            proxy: None,
-          },
-        )),
-        ende_kv::KvConfig::builder().build(),
-      ),
       ende_cron::ende_cron::init(Box::new(CronHandlerImpl::create_from_env())),
       ende_http::ende_http::init(ende_http::Options {
         no_legacy_abort: options.bootstrap.no_legacy_abort,

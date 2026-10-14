@@ -694,7 +694,7 @@ fn granular_unstable_features() {
       "compile",
       "--output",
       &exe.to_string_lossy(),
-      "--unstable-kv",
+      "--unstable-cron",
       "./compile/unstable_features.ts",
     ])
     .run();
@@ -702,7 +702,7 @@ fn granular_unstable_features() {
   output.skip_output_check();
   let output = context.new_command().name(&exe).run();
   output.assert_exit_code(0);
-  output.assert_matches_text("Kv {}\nObject [Temporal] {}\n");
+  output.assert_matches_text("function\nObject [Temporal] {}\n");
 }
 
 #[test]
@@ -720,7 +720,7 @@ fn granular_unstable_features_config_file() {
   dir.write(
     "ende.json",
     serde_json::to_string_pretty(&serde_json::json!({
-      "unstable": ["kv", "temporal"]
+      "unstable": ["cron", "temporal"]
     }))
     .unwrap(),
   );
@@ -739,7 +739,7 @@ fn granular_unstable_features_config_file() {
   output.skip_output_check();
   let output = context.new_command().name(&exe).run();
   output.assert_exit_code(0);
-  output.assert_matches_text("Kv {}\nObject [Temporal] {}\n");
+  output.assert_matches_text("function\nObject [Temporal] {}\n");
 }
 
 #[test]

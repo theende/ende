@@ -858,8 +858,8 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       } else {
         None
       },
-      // Bake in a stable app identity so origin-bound storage (default
-      // `Ende.openKv()`, `localStorage`, `caches`) persists to a per-app
+      // Bake in a stable app identity so origin-bound storage
+      // (`localStorage`, `caches`) persists to a per-app
       // directory at runtime. Prefer an explicit `--app-name`, otherwise derive
       // it from the output file name (minus any executable extension Ende adds).
       // Resolving here keeps the identity stable even if the binary is later

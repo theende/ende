@@ -163,7 +163,7 @@ pub struct CompileFlags {
   pub eszip: bool,
   pub self_extracting: bool,
   /// Stable identity for the compiled app. Determines where origin-bound
-  /// storage (default `Ende.openKv()`, `localStorage`, `caches`) is persisted.
+  /// storage (`localStorage`, `caches`) is persisted.
   /// Defaults to the output file name when not set.
   pub app_name: Option<String>,
   /// JS engine the compiled binary should run on. Named `engine` because

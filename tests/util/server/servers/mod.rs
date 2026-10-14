@@ -12,13 +12,6 @@ use std::time::Duration;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use bytes::Bytes;
-use denokv_proto::datapath::AtomicWrite;
-use denokv_proto::datapath::AtomicWriteOutput;
-use denokv_proto::datapath::AtomicWriteStatus;
-use denokv_proto::datapath::ReadRangeOutput;
-use denokv_proto::datapath::SnapshotRead;
-use denokv_proto::datapath::SnapshotReadOutput;
-use denokv_proto::datapath::SnapshotReadStatus;
 use futures::FutureExt;
 use futures::StreamExt;
 use http;
@@ -34,7 +27,6 @@ use http_body_util::Full;
 use http_body_util::combinators::UnsyncBoxBody;
 use hyper_utils::run_server_with_remote_addr;
 use pretty_assertions::assert_eq;
-use prost::Message;
 use sha2::Digest;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -59,9 +51,6 @@ use crate::consts::*;
 const TEST_AUTH_TOKEN: &str = "abcdef123456789";
 const TEST_BASIC_AUTH_USERNAME: &str = "testuser123";
 const TEST_BASIC_AUTH_PASSWORD: &str = "testpassabc";
-const KV_DATABASE_ID: &str = "11111111-1111-1111-1111-111111111111";
-const KV_ACCESS_TOKEN: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const KV_DATABASE_TOKEN: &str = "MOCKMOCKMOCKMOCKMOCKMOCKMOCK";
 const REDIRECT_PORT: u16 = 4546;
 const ANOTHER_REDIRECT_PORT: u16 = 4547;
 const DOUBLE_REDIRECTS_PORT: u16 = 4548;
@@ -886,201 +875,6 @@ console.log("imported", import.meta.url);
       let query = req.uri().query().map(|s| s.to_string());
       let res = Response::new(string_body(&query.unwrap_or_default()));
       Ok(res)
-    }
-    (&Method::POST, "/kv_remote_authorize") => {
-      if req
-        .headers()
-        .get("authorization")
-        .and_then(|x| x.to_str().ok())
-        .unwrap_or_default()
-        != format!("Bearer {}", KV_ACCESS_TOKEN)
-      {
-        return Ok(
-          Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .body(empty_body())
-            .unwrap(),
-        );
-      }
-
-      Ok(
-        Response::builder()
-          .header("content-type", "application/json")
-          .body(json_body(serde_json::json!({
-            "version": 1,
-            "databaseId": KV_DATABASE_ID,
-            "endpoints": [
-              {
-                "url": format!("http://localhost:{}/kv_blackhole", PORT),
-                "consistency": "strong",
-              }
-            ],
-            "token": KV_DATABASE_TOKEN,
-            "expiresAt": "2099-01-01T00:00:00Z",
-          })))
-          .unwrap(),
-      )
-    }
-    (&Method::POST, "/kv_remote_authorize_invalid_format") => {
-      if req
-        .headers()
-        .get("authorization")
-        .and_then(|x| x.to_str().ok())
-        .unwrap_or_default()
-        != format!("Bearer {}", KV_ACCESS_TOKEN)
-      {
-        return Ok(
-          Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .body(empty_body())
-            .unwrap(),
-        );
-      }
-
-      Ok(
-        Response::builder()
-          .header("content-type", "application/json")
-          .body(json_body(serde_json::json!({
-            "version": 1,
-            "databaseId": KV_DATABASE_ID,
-          })))
-          .unwrap(),
-      )
-    }
-    (&Method::POST, "/kv_remote_authorize_invalid_version") => {
-      if req
-        .headers()
-        .get("authorization")
-        .and_then(|x| x.to_str().ok())
-        .unwrap_or_default()
-        != format!("Bearer {}", KV_ACCESS_TOKEN)
-      {
-        return Ok(
-          Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .body(empty_body())
-            .unwrap(),
-        );
-      }
-
-      Ok(
-        Response::builder()
-          .header("content-type", "application/json")
-          .body(json_body(serde_json::json!({
-            "version": 1000,
-            "databaseId": KV_DATABASE_ID,
-            "endpoints": [
-              {
-                "url": format!("http://localhost:{}/kv_blackhole", PORT),
-                "consistency": "strong",
-              }
-            ],
-            "token": KV_DATABASE_TOKEN,
-            "expiresAt": "2099-01-01T00:00:00Z",
-          })))
-          .unwrap(),
-      )
-    }
-    (&Method::POST, "/kv_blackhole/snapshot_read") => {
-      if req
-        .headers()
-        .get("authorization")
-        .and_then(|x| x.to_str().ok())
-        .unwrap_or_default()
-        != format!("Bearer {}", KV_DATABASE_TOKEN)
-      {
-        return Ok(
-          Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .body(empty_body())
-            .unwrap(),
-        );
-      }
-
-      let body = req
-        .into_body()
-        .collect()
-        .await
-        .unwrap_or_default()
-        .to_bytes();
-      let Ok(body): Result<SnapshotRead, _> = prost::Message::decode(&body[..])
-      else {
-        return Ok(
-          Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(empty_body())
-            .unwrap(),
-        );
-      };
-      if body.ranges.is_empty() {
-        return Ok(
-          Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(empty_body())
-            .unwrap(),
-        );
-      }
-      Ok(
-        Response::builder()
-          .body(UnsyncBoxBody::new(Full::new(Bytes::from(
-            SnapshotReadOutput {
-              ranges: body
-                .ranges
-                .iter()
-                .map(|_| ReadRangeOutput { values: vec![] })
-                .collect(),
-              read_disabled: false,
-              read_is_strongly_consistent: true,
-              status: SnapshotReadStatus::SrSuccess.into(),
-            }
-            .encode_to_vec(),
-          ))))
-          .unwrap(),
-      )
-    }
-    (&Method::POST, "/kv_blackhole/atomic_write") => {
-      if req
-        .headers()
-        .get("authorization")
-        .and_then(|x| x.to_str().ok())
-        .unwrap_or_default()
-        != format!("Bearer {}", KV_DATABASE_TOKEN)
-      {
-        return Ok(
-          Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .body(empty_body())
-            .unwrap(),
-        );
-      }
-
-      let body = req
-        .into_body()
-        .collect()
-        .await
-        .unwrap_or_default()
-        .to_bytes();
-      let Ok(_body): Result<AtomicWrite, _> = prost::Message::decode(&body[..])
-      else {
-        return Ok(
-          Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(empty_body())
-            .unwrap(),
-        );
-      };
-      Ok(
-        Response::builder()
-          .body(UnsyncBoxBody::new(Full::new(Bytes::from(
-            AtomicWriteOutput {
-              status: AtomicWriteStatus::AwSuccess.into(),
-              versionstamp: vec![0u8; 10],
-              failed_checks: vec![],
-            }
-            .encode_to_vec(),
-          ))))
-          .unwrap(),
-      )
     }
     (&Method::GET, "/upgrade/sleep/release-latest.txt") => {
       tokio::time::sleep(Duration::from_secs(95)).await;

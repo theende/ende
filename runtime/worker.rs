@@ -40,11 +40,9 @@ use ende_cron::CronHandlerImpl;
 use ende_ffi::EndeRtNativeAddonLoaderRc;
 use ende_fs::FileSystem;
 use ende_io::Stdio;
-use ende_kv::dynamic::MultiBackendDbHandler;
 use ende_os::ExitCode;
 use ende_permissions::PermissionsContainer;
 use ende_tls::RootCertStoreProvider;
-use ende_tls::TlsKeys;
 use ende_web::BlobStoreTrait;
 use ende_web::InMemoryBroadcastChannel;
 use log::debug;
@@ -561,24 +559,6 @@ impl MainWorker {
           services.root_cert_store_provider.clone(),
           options.unsafely_ignore_certificate_errors.clone(),
         ),
-        ende_kv::ende_kv::args(
-          Box::new(MultiBackendDbHandler::remote_or_sqlite(
-            options.origin_storage_dir.clone(),
-            options.seed,
-            ende_kv::remote::HttpOptions {
-              user_agent: options.bootstrap.user_agent.clone(),
-              root_cert_store_provider: services
-                .root_cert_store_provider
-                .clone(),
-              unsafely_ignore_certificate_errors: options
-                .unsafely_ignore_certificate_errors
-                .clone(),
-              client_cert_chain_and_key: TlsKeys::Null,
-              proxy: None,
-            },
-          )),
-          ende_kv::KvConfig::builder().build(),
-        ),
         ende_http::ende_http::args(ende_http::Options {
           no_legacy_abort: options.bootstrap.no_legacy_abort,
           ..Default::default()
@@ -1014,7 +994,6 @@ fn common_extensions(
     ende_ffi::ende_ffi::lazy_init(),
     ende_net::ende_net::lazy_init(),
     ende_tls::ende_tls::init(),
-    ende_kv::ende_kv::lazy_init(),
     ende_cron::ende_cron::init(Box::new(CronHandlerImpl::create_from_env())),
     ende_http::ende_http::lazy_init(),
     ende_io::ende_io::lazy_init(),

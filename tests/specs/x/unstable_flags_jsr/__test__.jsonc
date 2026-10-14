@@ -3,12 +3,12 @@
   "tests": {
     "with_flag": {
       "if": "notSlowCiShard",
-      "args": "x -y --unstable-kv jsr:@endetest/x-unstable-kv",
+      "args": "x -y --unstable-cron jsr:@endetest/x-unstable-cron",
       "output": "with_flag.out"
     },
     "without_flag": {
       "if": "notSlowCiShard",
-      "args": "x -y jsr:@endetest/x-unstable-kv",
+      "args": "x -y jsr:@endetest/x-unstable-cron",
       "exitCode": 1,
       "output": "without_flag.out"
     }

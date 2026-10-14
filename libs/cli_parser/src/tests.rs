@@ -1679,7 +1679,7 @@ fn post_fork_flag_wiring() {
 #[test]
 fn every_subcommand_accepts_unstable_flags() {
   fn accepts_unstable(cmd: &CommandDef) -> bool {
-    cmd.all_args().any(|a| a.name == "unstable-kv")
+    cmd.all_args().any(|a| a.name == "unstable-cron")
       && cmd.all_args().any(|a| a.name == "unstable")
   }
 

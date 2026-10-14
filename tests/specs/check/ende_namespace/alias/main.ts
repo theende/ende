@@ -7,13 +7,13 @@ c = d;
 d = c;
 
 // unstable augmentations of the namespace are visible through both names
-let kv: Deno.Kv | undefined;
-let kv2: Ende.Kv | undefined;
-kv = kv2;
-kv2 = kv;
+let cs: Deno.CronSchedule | undefined;
+let cs2: Ende.CronSchedule | undefined;
+cs = cs2;
+cs2 = cs;
 
 const ns: typeof Deno = Ende;
 const version: string = Deno.version.ende;
 const fromWindow: typeof Ende = window.Deno;
 
-console.log(a, b, c, d, kv, kv2, ns, version, fromWindow);
+console.log(a, b, c, d, cs, cs2, ns, version, fromWindow);

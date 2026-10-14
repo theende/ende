@@ -8706,6 +8706,19 @@ fn tunnel_flag_removed() {
 }
 
 #[test]
+fn unstable_kv_flag_removed() {
+  for args in [
+    svec!["ende", "run", "--unstable-kv", "main.ts"],
+    svec!["ende", "compile", "--unstable-kv", "main.ts"],
+    svec!["ende", "test", "--unstable-kv"],
+    svec!["ende", "--unstable-kv", "main.ts"],
+  ] {
+    let err = flags_from_vec(args.clone()).unwrap_err();
+    assert_eq!(err.kind, CliErrorKind::UnknownFlag, "{args:?}");
+  }
+}
+
+#[test]
 fn bundle_subcommand_removed() {
   let err = flags_from_vec(svec!["ende", "bundle", "main.ts"]).unwrap_err();
   assert_eq!(err.kind, CliErrorKind::UnknownSubcommand);

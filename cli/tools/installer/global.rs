@@ -1287,7 +1287,7 @@ mod tests {
     let (bin_info, shim_data) = resolve_shim_data(
       &Flags {
         unstable_config: UnstableConfig {
-          features: vec!["kv".to_string(), "cron".to_string()],
+          features: vec!["ffi".to_string(), "cron".to_string()],
           ..Default::default()
         },
         ..Default::default()
@@ -1309,7 +1309,7 @@ mod tests {
       shim_data.args,
       vec![
         "run",
-        "--unstable-kv",
+        "--unstable-ffi",
         "--unstable-cron",
         "--config",
         &config_path.to_string_lossy(),

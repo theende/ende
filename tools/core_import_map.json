@@ -523,7 +523,6 @@
     "ext:ende_http/00_serve.ts": "../ext/http/00_serve.ts",
     "ext:ende_http/01_http.js": "../ext/http/01_http.js",
     "ext:ende_io/12_io.js": "../ext/io/12_io.js",
-    "ext:ende_kv/01_db.ts": "../ext/kv/01_db.ts",
     "ext:ende_net/01_net.js": "../ext/net/01_net.js",
     "ext:ende_net/02_tls.js": "../ext/net/02_tls.js",
     "ext:ende_os/30_os.js": "../ext/os/30_os.js",

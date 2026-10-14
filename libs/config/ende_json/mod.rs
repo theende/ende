@@ -2573,7 +2573,7 @@ mod tests {
           "dependencies": ["build"]
         }
       },
-      "unstable": ["kv", "ffi"]
+      "unstable": ["cron", "ffi"]
     }"#;
     let config_dir = Url::parse("file:///deno/").unwrap();
     let config_specifier = config_dir.join("tsconfig.json").unwrap();
@@ -2669,7 +2669,7 @@ mod tests {
 
     assert_eq!(
       config_file.json.unstable,
-      vec!["kv".to_string(), "ffi".to_string()],
+      vec!["cron".to_string(), "ffi".to_string()],
     )
   }
 

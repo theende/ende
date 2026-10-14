@@ -1,0 +1,21 @@
+// Copyright 2026 the Ende authors. MIT license.
+// Ende KV (`Ende.openKv`, `Ende.Kv`, queues, KV Connect, `--unstable-kv`) is
+// not part of Ende.
+{
+  "tests": {
+    "runtime_api": {
+      "args": "run --quiet --reload --allow-read main.js",
+      "output": "main.out"
+    },
+    "unstable_kv_flag": {
+      "args": "run --unstable-kv main.js",
+      "output": "unstable_kv_flag.out",
+      "exitCode": 1
+    },
+    "config_unstable_kv_warns": {
+      "cwd": "config_key",
+      "args": "run main.ts",
+      "output": "config_key/main.out"
+    }
+  }
+}

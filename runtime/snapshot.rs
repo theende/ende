@@ -68,7 +68,6 @@ pub fn create_runtime_snapshot(
     ende_ffi::ende_ffi::lazy_init(),
     ende_net::ende_net::lazy_init(),
     ende_tls::ende_tls::lazy_init(),
-    ende_kv::ende_kv::lazy_init(),
     ende_cron::ende_cron::init(Box::new(
       ende_cron::local::LocalCronHandler::new(),
     )),

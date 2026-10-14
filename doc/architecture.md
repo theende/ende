@@ -64,7 +64,7 @@ lives. Examples:
   `ext/webidl`, `ext/websocket`, `ext/webgpu`, `ext/canvas`.
 - System access: `ext/fs`, `ext/net`, `ext/io`, `ext/os`, `ext/process`,
   `ext/signals`, `ext/tls`.
-- Ende-specific: `ext/kv`, `ext/cron`, `ext/cache`, `ext/ffi`.
+- Ende-specific: `ext/cron`, `ext/cache`, `ext/ffi`.
 
 The typical shape of an extension is:
 

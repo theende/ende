@@ -18,7 +18,6 @@ members = [
   "ext/http",
   "ext/image",
   "ext/io",
-  "ext/kv",
   "ext/net",
   "ext/rt_helper",
   "ext/signals",
@@ -89,11 +88,6 @@ deno_terminal = "=0.2.3"
 deno_unsync = { version = "0.4.4", default-features = false }
 v8 = { package = "ende_v8", version = "0.4.0", path = "./libs/ende_v8", default-features = false, features = ["simdutf"] }
 
-denokv_proto = "0.14.0"
-denokv_remote = "0.14.0"
-# denokv_sqlite brings in bundled sqlite if we don't disable the default features
-denokv_sqlite = { default-features = false, version = "0.14.0" }
-
 # exts
 ende_cache = { version = "0.192.0", path = "./ext/cache" }
 ende_canvas = { version = "0.121.0", path = "./ext/canvas" }
@@ -105,7 +99,6 @@ ende_fs = { version = "0.169.0", path = "./ext/fs" }
 ende_http = { version = "0.257.0", path = "./ext/http" }
 ende_image = { version = "0.35.0", path = "./ext/image" }
 ende_io = { version = "0.169.0", path = "./ext/io" }
-ende_kv = { version = "0.167.0", path = "./ext/kv" }
 ende_net = { version = "0.251.0", path = "./ext/net" }
 ende_os = { version = "0.76.0", path = "./ext/os" }
 ende_process = { version = "0.74.0", path = "./ext/process" }
@@ -255,7 +248,7 @@ reqwest = { version = "=0.12.5", default-features = false, features = ["rustls-t
 # already depends on `zstd`, and modern RPM tooling reads zstd payloads.
 rpm = { version = "0.25.1", default-features = false, features = ["payload", "zstd-compression"] }
 rstest = "0"
-rusqlite = { version = "0.40.0", features = ["unlock_notify", "bundled", "session", "modern_sqlite", "limits", "backup", "fallible_uint"] } # "modern_sqlite": need sqlite >= 3.49.0 for some db configs; "fallible_uint": ToSql for u64/usize (needed when crates like ende_cache are published/built standalone, not just feature-unified via denokv_sqlite)
+rusqlite = { version = "0.40.0", features = ["unlock_notify", "bundled", "session", "modern_sqlite", "limits", "backup", "fallible_uint"] } # "modern_sqlite": need sqlite >= 3.49.0 for some db configs; "fallible_uint": ToSql for u64/usize (needed when crates like ende_cache are published/built standalone)
 rustls = { version = "=0.23.40", default-features = false, features = ["logging", "std", "tls12", "aws_lc_rs"] }
 rustls-pemfile = "2"
 rustls-tokio-stream = "=0.8.0"

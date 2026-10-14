@@ -12985,8 +12985,8 @@ Deno.test({
   async fn(t) {
     console.log("test a");
     await t.step("step of test a", () => {});
-    const kv = await Deno.openKv();
-    kv.close();
+    const ac = new AbortController();
+    const c = Deno.cron("x", "*/5 * * * *", { signal: ac.signal }, () => {}); ac.abort(); await c;
   }
 });
 "#;
@@ -12999,7 +12999,7 @@ Deno.test({
   client.change_configuration(json!({
     "ende": {
       "enable": true,
-      "unstable": ["kv"],
+      "unstable": ["cron"],
     },
   }));
 

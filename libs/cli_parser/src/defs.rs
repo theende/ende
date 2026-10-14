@@ -408,11 +408,6 @@ pub static UNSTABLE_FEATURE_ARGS: &[ArgDef] = &[
     .set_true()
     .hidden()
 .help("Enable unstable HTTP APIs"),
-  ArgDef::new("unstable-kv")
-    .long("unstable-kv")
-    .set_true()
-    .hidden()
-.help("Enable unstable KV APIs"),
   ArgDef::new("unstable-lazy-dynamic-imports")
     .long("unstable-lazy-dynamic-imports")
     .set_true()
@@ -1714,7 +1709,7 @@ pub static COMPILE_SUBCOMMAND: CommandDef = CommandDef {
       .long("app-name")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Stable identity for the compiled app.\n  Determines where origin-bound storage such as the default `Ende.openKv()`,\n  `localStorage` and `caches` is persisted (under the platform's app data directory).\n  Defaults to the output file name. Set this to keep storage stable across renames."),
+.help("Stable identity for the compiled app.\n  Determines where origin-bound storage such as `localStorage` and `caches`\n  is persisted (under the platform's app data directory).\n  Defaults to the output file name. Set this to keep storage stable across renames."),
     ArgDef::new("check")
       .long("check")
       .action(ArgAction::Set)

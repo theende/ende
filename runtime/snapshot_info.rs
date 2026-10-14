@@ -32,10 +32,6 @@ pub fn get_extensions_in_snapshot() -> Vec<Extension> {
     ende_ffi::ende_ffi::init(None),
     ende_net::ende_net::init(None, None),
     ende_tls::ende_tls::init(),
-    ende_kv::ende_kv::init(
-      Box::new(ende_kv::sqlite::SqliteDbHandler::new(None, None)),
-      ende_kv::KvConfig::builder().build(),
-    ),
     ende_cron::ende_cron::init(Box::new(
       ende_cron::local::LocalCronHandler::new(),
     )),

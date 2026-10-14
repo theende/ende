@@ -2048,73 +2048,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "denokv_proto"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "540b7d962b3107c34fc51183338499d9ec5befaac0225eccd3ce46dd9b1243f6"
-dependencies = [
- "async-trait",
- "chrono",
- "deno_error",
- "futures",
- "num-bigint",
- "prost",
- "serde",
- "uuid",
-]
-
-[[package]]
-name = "denokv_remote"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ce7f058cc5e0bcd230b07451bf7ee46b1b30c4d37f895cb736e43ce6a23dbf7"
-dependencies = [
- "async-stream",
- "async-trait",
- "bytes",
- "chrono",
- "deno_error",
- "denokv_proto",
- "futures",
- "http",
- "log",
- "prost",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
- "tokio",
- "tokio-util",
- "url",
- "uuid",
-]
-
-[[package]]
-name = "denokv_sqlite"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cedc50f9f299c8e3b33c81156a34b24a82a85e2b22cd9100db6b9c45f5c8c31"
-dependencies = [
- "async-stream",
- "async-trait",
- "chrono",
- "deno_error",
- "denokv_proto",
- "futures",
- "hex",
- "log",
- "num-bigint",
- "rand 0.8.5",
- "rusqlite",
- "serde_json",
- "thiserror 2.0.12",
- "tokio",
- "tokio-stream",
- "uuid",
- "v8_valueserializer",
-]
-
-[[package]]
 name = "der"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3272,42 +3205,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ende_kv"
-version = "0.167.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "base64 0.22.1",
- "boxed_error",
- "bytes",
- "chrono",
- "deno_error",
- "deno_path_util",
- "denokv_proto",
- "denokv_remote",
- "denokv_sqlite",
- "ende_core",
- "ende_env",
- "ende_features",
- "ende_fetch",
- "ende_permissions",
- "ende_tls",
- "faster-hex",
- "http",
- "http-body-util",
- "log",
- "num-bigint",
- "rand 0.8.5",
- "rusqlite",
- "serde",
- "serde_json",
- "sys_traits",
- "thiserror 2.0.12",
- "tokio",
- "url",
-]
-
-[[package]]
 name = "ende_lib"
 version = "0.77.0"
 dependencies = [
@@ -3568,7 +3465,6 @@ dependencies = [
  "ende_image",
  "ende_inspector_server",
  "ende_io",
- "ende_kv",
  "ende_net",
  "ende_os",
  "ende_permissions",
@@ -9287,7 +9183,6 @@ dependencies = [
  "bsdiff",
  "bytes",
  "deno_unsync",
- "denokv_proto",
  "faster-hex",
  "fastwebsockets 0.8.1",
  "futures",
@@ -9300,7 +9195,6 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "pretty_assertions",
- "prost",
  "rustls",
  "rustls-pemfile",
  "rustls-tokio-stream",
@@ -9626,9 +9520,7 @@ dependencies = [
  "futures-io",
  "futures-sink",
  "futures-util",
- "hashbrown 0.15.5",
  "pin-project-lite",
- "slab",
  "tokio",
 ]
 
@@ -10136,21 +10028,6 @@ dependencies = [
  "paste",
  "temporal_capi",
  "which 6.0.1",
-]
-
-[[package]]
-name = "v8_valueserializer"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e05741b8524f73cbf239bea12239458d3a835246c5c637cc9e7e601eac60770"
-dependencies = [
- "bitflags 2.9.3",
- "encoding_rs",
- "indexmap",
- "num-bigint",
- "serde",
- "thiserror 1.0.69",
- "wtf8",
 ]
 
 [[package]]
@@ -11329,12 +11206,6 @@ name = "writeable"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
-
-[[package]]
-name = "wtf8"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c01ae8492c38f52376efd3a17d0994b6bcf3df1e39c0226d458b7d81670b2a06"
 
 [[package]]
 name = "wyz"

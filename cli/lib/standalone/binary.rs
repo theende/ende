@@ -80,7 +80,7 @@ pub struct Metadata {
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub self_extracting: Option<String>,
   /// Stable identity for the compiled app, used to locate its persistent
-  /// origin storage (default `Ende.openKv()`, `localStorage`, `caches`).
+  /// origin storage (`localStorage`, `caches`).
   /// Resolved at compile time from `--app-name`, falling back to the output
   /// file name.
   #[serde(default, skip_serializing_if = "Option::is_none")]

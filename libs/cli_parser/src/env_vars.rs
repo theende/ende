@@ -45,26 +45,6 @@ pub static ENV_VARS: &[EnvVar] = &[
     example: None,
   },
   EnvVar {
-    name: "ENDE_KV_DB_MODE",
-    description: "Controls whether Ende.openKv() API should use disk based or in-memory\ndatabase.",
-    example: None,
-  },
-  EnvVar {
-    name: "ENDE_KV_DEFAULT_PATH",
-    description: "Set the default path for Ende.openKv() when no path is provided.",
-    example: None,
-  },
-  EnvVar {
-    name: "ENDE_KV_PATH_PREFIX",
-    description: "Set a prefix to be added to all Ende.openKv() paths.",
-    example: None,
-  },
-  EnvVar {
-    name: "ENDE_KV_REQUIRES_DISTRIBUTED_DATABASE",
-    description: "Require Ende.openKv() to resolve to a distributed (remote) database.\nWhen set to \"error\", Ende.openKv() is always exposed and rejects with a\nclear message unless the resolved path is remote. When set to \"warn\", a\nlocal/in-memory fallback is allowed but logs a warning.",
-    example: None,
-  },
-  EnvVar {
     name: "ENDE_EMIT_CACHE_MODE",
     description: "Control if the transpiled sources should be cached.",
     example: None,

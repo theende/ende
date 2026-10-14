@@ -11,17 +11,17 @@
   "steps": [
     {
       "if": "unix",
-      "args": "compile -A --unstable-kv --app-name shared --output out_a main.ts",
+      "args": "compile -A --app-name shared --output out_a main.ts",
       "output": "[WILDCARD]"
     },
     {
       "if": "unix",
-      "args": "compile -A --unstable-kv --app-name shared --output out_b main.ts",
+      "args": "compile -A --app-name shared --output out_b main.ts",
       "output": "[WILDCARD]"
     },
     {
       "if": "unix",
-      "args": "compile -A --unstable-kv --app-name lonely --output out_c main.ts",
+      "args": "compile -A --app-name lonely --output out_c main.ts",
       "output": "[WILDCARD]"
     },
     {
@@ -44,17 +44,17 @@
     },
     {
       "if": "windows",
-      "args": "compile -A --unstable-kv --app-name shared --output out_a.exe main.ts",
+      "args": "compile -A --app-name shared --output out_a.exe main.ts",
       "output": "[WILDCARD]"
     },
     {
       "if": "windows",
-      "args": "compile -A --unstable-kv --app-name shared --output out_b.exe main.ts",
+      "args": "compile -A --app-name shared --output out_b.exe main.ts",
       "output": "[WILDCARD]"
     },
     {
       "if": "windows",
-      "args": "compile -A --unstable-kv --app-name lonely --output out_c.exe main.ts",
+      "args": "compile -A --app-name lonely --output out_c.exe main.ts",
       "output": "[WILDCARD]"
     },
     {

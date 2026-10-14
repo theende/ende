@@ -1047,7 +1047,6 @@
           "fmt-component",
           "fmt-sql",
           "http",
-          "kv",
           "net",
           "raw-imports",
           "sloppy-imports",

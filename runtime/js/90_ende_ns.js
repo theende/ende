@@ -50,11 +50,6 @@ function lazyProcess() {
 }
 const signals = core.loadExtScript("ext:ende_os/40_signals.js");
 const tty = core.loadExtScript("ext:runtime/40_tty.js");
-// Deno.Kv is a niche API and pulls 06_streams. Defer.
-let _kvImpl;
-function lazyKv() {
-  return _kvImpl ?? (_kvImpl = core.loadExtScript("ext:ende_kv/01_db.ts"));
-}
 // `Ende.cron`, `Ende.UnsafeWindowSurface`, `Ende.telemetry` are rarely used
 // and their backing modules (`01_cron.ts`, `02_surface.js`, `telemetry.ts`)
 // are several KB of bytecode + closures each in the snapshot heap. Defer the
@@ -311,24 +306,6 @@ const endeNsUnstableById = { __proto__: null };
 endeNsUnstableById[unstableIds.cron] = {
   get cron() {
     return lazyCron().cron;
-  },
-};
-
-endeNsUnstableById[unstableIds.kv] = {
-  get openKv() {
-    return lazyKv().openKv;
-  },
-  get AtomicOperation() {
-    return lazyKv().AtomicOperation;
-  },
-  get Kv() {
-    return lazyKv().Kv;
-  },
-  get KvU64() {
-    return lazyKv().KvU64;
-  },
-  get KvListIterator() {
-    return lazyKv().KvListIterator;
   },
 };
 

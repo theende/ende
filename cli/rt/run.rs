@@ -806,20 +806,11 @@ pub async fn run_with_options(
       // can leak the string here.
       checker.enable_feature(feature.leak());
     }
-    // Mirror cli/factory.rs: force-enable the unstable KV feature when
-    // ENDE_KV_REQUIRES_DISTRIBUTED_DATABASE=error so Ende.openKv() is exposed
-    // and surfaces a clear "no database attached" error.
-    if ende_env::var("ENDE_KV_REQUIRES_DISTRIBUTED_DATABASE").as_deref()
-      == Ok("error")
-      && !checker.check("kv")
-    {
-      checker.enable_feature("kv");
-    }
     checker
   });
   // Resolve a persistent, per-app data directory so origin-bound storage such
-  // as the default `Ende.openKv()`, `localStorage` and `caches` persists to
-  // disk instead of silently falling back to an in-memory database. A compiled
+  // as `localStorage` and `caches` persists to disk instead of silently
+  // falling back to an in-memory database. A compiled
   // binary is a standalone app, so we store under the platform's app data
   // directory (`%LOCALAPPDATA%`, `~/Library/Application Support`,
   // `$XDG_DATA_HOME`) keyed by the app name, rather than polluting `ENDE_DIR`.

@@ -86,10 +86,6 @@ fn run_test(test: &CollectedTest) -> TestResult {
     ende = ende.arg("--unstable-cron");
   }
 
-  if test.name.contains("::kv_") {
-    ende = ende.arg("--unstable-kv");
-  }
-
   if test.name.ends_with("::webgpu_test") {
     ende = ende.arg("--unstable-webgpu");
   }
