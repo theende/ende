@@ -43,6 +43,15 @@ for (const file of project.getSourceFiles()) {
       continue;
     }
 
+    // `import Deno = Ende;` aliases the namespace above; an import-equals
+    // declaration can't take `declare`, `export` or a @category tag.
+    if (
+      node.getKind() === ts.SyntaxKind.ImportEqualsDeclaration &&
+      node.getName() === "Deno"
+    ) {
+      continue;
+    }
+
     const parent = node.getFirstAncestorByKind(ts.SyntaxKind.ModuleDeclaration);
     const isInterfaceOrType =
       node.getKind() === ts.SyntaxKind.InterfaceDeclaration ||
