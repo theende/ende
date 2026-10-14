@@ -58,8 +58,6 @@ pub type CliNpmInstallerFactory = ende_npm_installer::NpmInstallerFactory<
   ProgressBar,
   CliSys,
 >;
-pub type CliNpmCacheServices =
-  ende_npm_installer::NpmCacheServices<CliNpmCacheHttpClient, CliSys>;
 pub type CliNpmInstaller =
   ende_npm_installer::NpmInstaller<CliNpmCacheHttpClient, CliSys>;
 pub type CliNpmCache = ende_npm_cache::NpmCache<CliSys>;

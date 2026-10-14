@@ -2918,7 +2918,6 @@ dependencies = [
  "dprint-plugin-jupyter",
  "dprint-plugin-markdown",
  "dprint-plugin-typescript",
- "ende_bundle_runtime",
  "ende_cache_dir",
  "ende_cli_parser",
  "ende_config",
@@ -2941,7 +2940,6 @@ dependencies = [
  "ende_subprocess_windows",
  "ende_telemetry",
  "ende_v8",
- "esbuild_client",
  "eszip",
  "faster-hex",
  "fastwebsockets 0.8.1",
@@ -3042,18 +3040,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ende_bundle_runtime"
-version = "0.46.0"
-dependencies = [
- "async-trait",
- "deno_error",
- "ende_core",
- "ende_permissions",
- "regex",
- "serde",
-]
-
-[[package]]
 name = "ende_cache"
 version = "0.192.0"
 dependencies = [
@@ -3130,7 +3116,6 @@ version = "0.9.0"
 dependencies = [
  "criterion",
  "deno_semver",
- "ende_bundle_runtime",
  "ende_config",
  "ende_core",
  "ende_lib",
@@ -3572,7 +3557,6 @@ dependencies = [
  "deno_path_util",
  "deno_semver",
  "deno_terminal",
- "ende_bundle_runtime",
  "ende_env",
  "ende_fs",
  "ende_node",
@@ -4106,7 +4090,6 @@ dependencies = [
  "deno_terminal",
  "ed25519-dalek",
  "encoding_rs",
- "ende_bundle_runtime",
  "ende_cache",
  "ende_canvas",
  "ende_core",
@@ -4526,23 +4509,6 @@ name = "error_reporter"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31ae425815400e5ed474178a7a22e275a9687086a12ca63ec793ff292d8fdae8"
-
-[[package]]
-name = "esbuild_client"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4aad340fec9a377656190d6fbf205d589c322484c6a1d37ebbf328fe6f541720"
-dependencies = [
- "anyhow",
- "async-trait",
- "deno_unsync",
- "indexmap",
- "log",
- "parking_lot",
- "paste",
- "serde",
- "tokio",
-]
 
 [[package]]
 name = "eszip"

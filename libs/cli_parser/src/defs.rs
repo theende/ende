@@ -424,11 +424,6 @@ ArgDef::new("unstable-bare-node-builtins")
     .set_true()
     .hidden()
 .help("Enable unstable `BroadcastChannel` API"),
-  ArgDef::new("unstable-bundle")
-    .long("unstable-bundle")
-    .set_true()
-    .hidden()
-.help("Enable unstable bundle runtime API"),
   ArgDef::new("unstable-byonm")
     .long("unstable-byonm")
     .set_true()
@@ -547,7 +542,7 @@ ArgDef::new("unstable-bare-node-builtins")
 ];
 
 /// The only permission args accepted by commands that resolve a module graph
-/// but never run it (`bundle`, `cache`, `check`, `doc`, `info`). Unlike the
+/// but never run it (`cache`, `check`, `doc`, `info`). Unlike the
 /// flags in `PERMISSION_ARGS` these are shown in the normal options table,
 /// since those commands have no "Permission options" section.
 pub static IMPORT_PERMISSION_ARGS: &[ArgDef] = &[
@@ -1823,13 +1818,6 @@ pub static COMPILE_SUBCOMMAND: CommandDef = CommandDef {
       .long("self-extracting")
       .set_true()
 .help("Create a self-extracting binary that extracts the embedded file system to disk on first run and then runs from there"),
-    ArgDef::new("bundle").long("bundle").set_true()
-.help("Experimental. Bundle the entrypoint with esbuild before embedding, instead of shipping the whole node_modules tree.\n  Produces a smaller binary with faster startup, at the cost of dropping dynamic require/import patterns that can't be statically traced."),
-    ArgDef::new("minify")
-      .long("minify")
-      .set_true()
-      .requires(&["bundle"])
-.help("Experimental. Minify the bundled output. Only meaningful with --bundle.\n  Reduces both the embedded bundle size and runtime memory use, at the cost of less readable stack traces."),
     ArgDef::new("app-name")
       .long("app-name")
       .action(ArgAction::Set)
@@ -2768,93 +2756,6 @@ pub static VENDOR_SUBCOMMAND: CommandDef = CommandDef {
   keep_double_dash: false,
 };
 
-pub static BUNDLE_SUBCOMMAND: CommandDef = CommandDef {
-  name: "bundle",
-  about: "Output a single JavaScript file with all dependencies",
-  aliases: &[],
-  args: &[
-    ArgDef::new("file")
-      .positional()
-      .action(ArgAction::Append)
-      .num_args(NumArgs::OneOrMore),
-    ArgDef::new("output")
-      .short('o')
-      .long("output")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-.help("Output path`"),
-    ArgDef::new("outdir")
-      .long("outdir")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-.help("Output directory for bundled files"),
-    ArgDef::new("format")
-      .long("format")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-      .default_value("esm"),
-    ArgDef::new("packages")
-      .long("packages")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-      .default_value("bundle")
-.help("How to handle packages. Accepted values are 'bundle' or 'external'"),
-    ArgDef::new("platform")
-      .long("platform")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Exact(1))
-      .default_value("ende")
-.help("Platform to bundle for. Accepted values are 'browser' or 'ende'"),
-    ArgDef::new("sourcemap")
-      .long("sourcemap")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Optional)
-      .require_equals()
-      .value_parser(ValueParser::Choices(&["linked", "inline", "external"]))
-.help("Generate source map. Accepted values are 'linked', 'inline', or 'external'"),
-    ArgDef::new("external")
-      .long("external")
-      .action(ArgAction::Append)
-      .num_args(NumArgs::ZeroOrMore),
-    ArgDef::new("watch").long("watch").set_true()
-.help("Watch and rebuild on changes"),
-    ArgDef::new("minify").long("minify").set_true()
-.help("Minify the output"),
-    ArgDef::new("keep-names").long("keep-names").set_true()
-.help("Keep function and class names"),
-    ArgDef::new("code-splitting")
-      .long("code-splitting")
-      .set_true()
-.help("Enable code splitting"),
-    ArgDef::new("inline-imports")
-      .long("inline-imports")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Optional)
-      .require_equals()
-      .default_value("true")
-.help("Whether to inline imported modules into the importing file [default: true]"),
-    ArgDef::new("declaration").long("declaration").set_true()
-.help("Generate .d.ts declaration files alongside the bundle"),
-    ArgDef::new("check")
-      .long("check")
-      .action(ArgAction::Set)
-      .num_args(NumArgs::Optional)
-      .require_equals()
-.help("Enable type-checking. This subcommand does not type-check by default; pass --check=all to also type-check remote modules. Alternatively, use the 'ende check' subcommand."),
-  ],
-  arg_groups: &[
-    COMPILE_ARGS,
-    UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS,
-    IMPORT_PERMISSION_ARGS,
-    ALLOW_SCRIPTS_ARG,
-  ],
-  subcommands: &[],
-  default_subcommand: None,
-  trailing_var_arg: false,
-  passthrough: false,
-  keep_double_dash: false,
-};
-
 pub static AUDIT_SUBCOMMAND: CommandDef = CommandDef {
   name: "audit",
   about: "Audit currently installed dependencies",
@@ -3467,7 +3368,6 @@ pub static ENDE_ROOT: CommandDef = CommandDef {
     APPROVE_SCRIPTS_SUBCOMMAND,
     LSP_SUBCOMMAND,
     VENDOR_SUBCOMMAND,
-    BUNDLE_SUBCOMMAND,
     AUDIT_SUBCOMMAND,
     WHY_SUBCOMMAND,
     TRANSPILE_SUBCOMMAND,

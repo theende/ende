@@ -9,7 +9,6 @@ use file_test_runner::collection::CollectedTest;
 use file_test_runner::collection::collect_tests_or_exit;
 use file_test_runner::collection::strategies::TestPerFileCollectionStrategy;
 use test_util as util;
-use test_util::TestContextBuilder;
 use test_util::test_runner::FlakyTestTracker;
 use test_util::test_runner::Parallelism;
 use test_util::test_runner::flaky_test_ci;
@@ -68,17 +67,7 @@ fn main() {
 }
 
 fn run_test(test: &CollectedTest) -> TestResult {
-  let mut ende = if test.name.ends_with("::bundle_test") {
-    TestContextBuilder::new()
-      .add_npm_env_vars()
-      .use_http_server()
-      .build()
-      .new_command()
-  } else {
-    util::ende_cmd()
-  };
-
-  ende = ende
+  let mut ende = util::ende_cmd()
     .disable_diagnostic_logging()
     .current_dir(util::root_path())
     .arg("test")
@@ -92,10 +81,6 @@ fn run_test(test: &CollectedTest) -> TestResult {
     .arg("--unstable-vsock")
     .arg("--location=http://127.0.0.1:4545/")
     .arg("--no-prompt");
-
-  if test.name.ends_with("::bundle_test") {
-    ende = ende.arg("--unstable-bundle");
-  }
 
   if test.name.ends_with("::cron_test") {
     ende = ende.arg("--unstable-cron");

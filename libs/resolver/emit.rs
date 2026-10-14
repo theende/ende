@@ -545,7 +545,7 @@ fn transpile(
   // swc decorator pass otherwise hoists every computed class-member key into
   // a `var _computedKey; _computedKey = ...;` pair at module scope, which
   // looks like a side effect and blocks downstream tree-shaking (e.g. in
-  // `deno bundle`). See denoland/deno#30817.
+  // bundlers). See denoland/deno#30817.
   let owned_options;
   let transpile_options = if !matches!(
     transpile_options.decorators,

@@ -2930,10 +2930,6 @@ fn dep_and_registry_subcommands_env_file() {
     (svec!["ende", "outdated", "--env-file"], svec![".env"]),
     (svec!["ende", "update", "--env-file"], svec![".env"]),
     (
-      svec!["ende", "bundle", "--env-file", "main.ts"],
-      svec![".env"],
-    ),
-    (
       svec!["ende", "check", "--env-file", "main.ts"],
       svec![".env"],
     ),
@@ -5064,9 +5060,7 @@ fn compile() {
         exclude: Default::default(),
         eszip: false,
         self_extracting: false,
-        bundle: false,
         app_name: None,
-        minify: false,
         exclude_unused_npm: false,
         engine: Default::default(),
       }),
@@ -5196,9 +5190,7 @@ fn compile_watch_with_no_clear_screen() {
         exclude: Default::default(),
         eszip: false,
         self_extracting: false,
-        bundle: false,
         app_name: None,
-        minify: false,
         exclude_unused_npm: false,
         engine: Default::default(),
       }),
@@ -5233,9 +5225,7 @@ fn compile_with_flags() {
         exclude: vec!["exclude.txt".to_string()],
         eszip: false,
         self_extracting: false,
-        bundle: false,
         app_name: None,
-        minify: false,
         exclude_unused_npm: false,
         engine: Default::default(),
       }),
@@ -8253,9 +8243,7 @@ fn preload_flag_test() {
         exclude: Default::default(),
         eszip: false,
         self_extracting: false,
-        bundle: false,
         app_name: None,
-        minify: false,
         exclude_unused_npm: false,
         engine: Default::default(),
       }),
@@ -9274,12 +9262,10 @@ fn tier1_test_sanitize_and_snapshot_flags() {
 }
 
 #[test]
-fn tier1_compile_bundle_flags() {
+fn tier1_compile_flags() {
   let flags = flags_from_vec(svec![
     "ende",
     "compile",
-    "--bundle",
-    "--minify",
     "--app-name=MyApp",
     "--exclude-unused-npm",
     "main.ts"
@@ -9288,12 +9274,15 @@ fn tier1_compile_bundle_flags() {
   let EndeSubcommand::Compile(c) = flags.subcommand else {
     unreachable!()
   };
-  assert!(c.bundle);
-  assert!(c.minify);
   assert_eq!(c.app_name, Some("MyApp".to_string()));
   assert!(c.exclude_unused_npm);
+}
 
-  // --minify requires --bundle.
+#[test]
+fn compile_bundle_flags_removed() {
+  assert!(
+    flags_from_vec(svec!["ende", "compile", "--bundle", "main.ts"]).is_err()
+  );
   assert!(
     flags_from_vec(svec!["ende", "compile", "--minify", "main.ts"]).is_err()
   );
@@ -9371,20 +9360,6 @@ fn tier1_serve_open_tunnel_hmr() {
       flags_from_vec(svec!["ende", "serve", flag, "main.ts"]).unwrap();
     assert!(flags.watch.map(|w| w.hmr).unwrap_or(false));
   }
-}
-
-#[test]
-fn tier1_bundle_check_and_declaration() {
-  let flags =
-    flags_from_vec(svec!["ende", "bundle", "--check=all", "main.ts"]).unwrap();
-  assert_eq!(flags.type_check_mode, TypeCheckMode::All);
-
-  let flags =
-    flags_from_vec(svec!["ende", "bundle", "--declaration", "main.ts"])
-      .unwrap();
-  assert!(
-    matches!(flags.subcommand, EndeSubcommand::Bundle(b) if b.declaration)
-  );
 }
 
 #[test]
@@ -9952,72 +9927,10 @@ fn deploy_sandbox_subcommand() {
 }
 
 #[test]
-fn bundle_sourcemap_bare_does_not_consume_entrypoint() {
-  // `--sourcemap` takes an optional value that must be attached with `=`.
-  // Regression test for a bug where it was defined as taking exactly one
-  // value, so `--sourcemap main.ts` swallowed the entrypoint and left the
-  // bundle with no modules at all.
-  let flags =
-    flags_from_vec(svec!["ende", "bundle", "--sourcemap", "main.ts"]).unwrap();
-  let EndeSubcommand::Bundle(b) = flags.subcommand else {
-    unreachable!()
-  };
-  assert_eq!(b.entrypoints, svec!["main.ts"]);
-  assert_eq!(b.sourcemap, Some(SourceMapType::Linked));
-}
-
-#[test]
-fn bundle_sourcemap_values() {
-  let cases = [
-    ("--sourcemap=linked", SourceMapType::Linked),
-    ("--sourcemap=inline", SourceMapType::Inline),
-    ("--sourcemap=external", SourceMapType::External),
-  ];
-  for (flag, expected) in cases {
-    let flags = flags_from_vec(svec!["ende", "bundle", flag, "main.ts"])
-      .unwrap_or_else(|e| panic!("{flag} should parse: {e:?}"));
-    let EndeSubcommand::Bundle(b) = flags.subcommand else {
-      unreachable!()
-    };
-    assert_eq!(b.entrypoints, svec!["main.ts"], "{flag}");
-    assert_eq!(b.sourcemap, Some(expected), "{flag}");
-  }
-
-  // Absent means no source map at all.
-  let flags = flags_from_vec(svec!["ende", "bundle", "main.ts"]).unwrap();
-  let EndeSubcommand::Bundle(b) = flags.subcommand else {
-    unreachable!()
-  };
-  assert_eq!(b.sourcemap, None);
-}
-
-#[test]
-fn bundle_platform_values() {
-  let cases = [
-    (None, BundlePlatform::Ende),
-    (Some("--platform=ende"), BundlePlatform::Ende),
-    (Some("--platform=browser"), BundlePlatform::Browser),
-    // Deprecated name, still accepted with a warning.
-    (Some("--platform=deno"), BundlePlatform::Ende),
-  ];
-  for (flag, expected) in cases {
-    let mut args = svec!["ende", "bundle"];
-    args.extend(flag.map(String::from));
-    args.push("main.ts".to_string());
-    let flags = flags_from_vec(args).unwrap();
-    let EndeSubcommand::Bundle(b) = flags.subcommand else {
-      unreachable!()
-    };
-    assert_eq!(b.platform, expected, "{flag:?}");
-  }
-}
-
-#[test]
-fn bundle_sourcemap_rejects_invalid_value() {
-  // Invalid values must error rather than being silently coerced to 'linked'.
-  let r =
-    flags_from_vec(svec!["ende", "bundle", "--sourcemap=bogus", "main.ts"]);
-  assert!(r.is_err(), "expected --sourcemap=bogus to be rejected");
+fn bundle_subcommand_removed() {
+  let err = flags_from_vec(svec!["ende", "bundle", "main.ts"]).unwrap_err();
+  assert_eq!(err.kind, CliErrorKind::UnknownSubcommand);
+  assert_eq!(err.message, "unrecognized subcommand 'bundle'");
 }
 
 #[test]

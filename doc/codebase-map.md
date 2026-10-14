@@ -30,8 +30,8 @@ first. For the conceptual layering behind this layout, see
 - `cli/args/` — flag parsing (`flags.rs`) and resolved configuration.
 - `cli/tools/` — one module per subcommand. Simple example: `cli/tools/fmt.rs`.
   Complex example: the `cli/tools/test/` directory. Other notable tools include
-  `compile.rs`, `bundle/`, `coverage/`, `lint/`, `pm/` (package management),
-  `installer/`, `jupyter/`, `publish/`, `repl/`, and `serve.rs`.
+  `compile.rs`, `coverage/`, `lint/`, `pm/` (package management), `installer/`,
+  `jupyter/`, `publish/`, `repl/`, and `serve.rs`.
 - `cli/lsp/` — the language server.
 - `cli/module_loader.rs`, `cli/graph_util.rs` — module graph construction and
   loading.
@@ -44,7 +44,7 @@ roughly by purpose:
 - **Web platform:** `web`, `fetch`, `url`, `crypto`, `console`, `webidl`,
   `websocket`, `webgpu`, `canvas`, `image`, `broadcast_channel`, `webstorage`.
 - **System access:** `fs`, `net`, `io`, `os`, `process`, `signals`, `tls`.
-- **Ende APIs:** `kv`, `cron`, `cache`, `ffi`, `napi`, `bundle`, `telemetry`.
+- **Ende APIs:** `kv`, `cron`, `cache`, `ffi`, `napi`, `telemetry`.
 - **Node compatibility:** `node` (most `node:*` builtins), `node_crypto`,
   `node_sqlite`.
 

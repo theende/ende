@@ -73,7 +73,6 @@ const lazyTelemetry = () =>
     (_telemetry = core.loadExtScript("ext:ende_telemetry/telemetry.ts"));
 import { unstableIds } from "ext:ende_features/flags.js";
 const { loadWebGPU } = core.loadExtScript("ext:ende_webgpu/00_init.js");
-import { bundle } from "ext:ende_bundle_runtime/bundle.ts";
 
 const { ObjectDefineProperty, Float64Array } = primordials;
 
@@ -307,10 +306,6 @@ core.defineGlobalProperties(endeNs, {
 });
 
 const endeNsUnstableById = { __proto__: null };
-
-endeNsUnstableById[unstableIds.bundle] = {
-  bundle,
-};
 
 // endeNsUnstableById[unstableIds.broadcastChannel] = { __proto__: null }
 

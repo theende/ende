@@ -530,13 +530,6 @@ fn get_message_suggestions_inner(
           "Run again with `--unstable-kv` flag to enable this API.",
         ),
       ];
-    } else if msg.contains("bundle is not a function") {
-      return vec![
-        FixSuggestion::info("Ende.bundle() is an unstable API."),
-        FixSuggestion::hint(
-          "Run again with `--unstable-bundle` flag to enable this API.",
-        ),
-      ];
     } else if msg.contains("cron is not a function") {
       return vec![
         FixSuggestion::info("Ende.cron() is an unstable API."),

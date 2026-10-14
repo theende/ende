@@ -522,8 +522,6 @@ async fn compile_desktop(
     exclude: desktop_flags.exclude.clone(),
     eszip: false,
     self_extracting,
-    bundle: false,
-    minify: false,
     exclude_unused_npm: desktop_flags.exclude_unused_npm,
     engine: desktop_flags.engine,
   };

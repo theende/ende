@@ -89,7 +89,6 @@ fn bootstrap_once() -> MainWorker {
       compiled_wasm_module_store: Default::default(),
       v8_code_cache: Default::default(),
       fs,
-      bundle_provider: None,
     },
     options,
   )

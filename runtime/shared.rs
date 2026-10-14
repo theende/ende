@@ -20,8 +20,7 @@ extension!(runtime,
     ende_napi,
     ende_http,
     ende_io,
-    ende_fs,
-    ende_bundle_runtime
+    ende_fs
   ],
   esm_entry_point = "ext:runtime/90_ende_ns.js",
   esm = [

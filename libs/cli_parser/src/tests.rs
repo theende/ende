@@ -1629,7 +1629,7 @@ fn permission_help_section_is_rendered() {
 /// every permission flag during the clap cutover.
 #[test]
 fn graph_only_commands_take_only_import_permissions() {
-  for cmd in ["bundle", "cache", "check", "doc", "info"] {
+  for cmd in ["cache", "check", "doc", "info"] {
     let sub = defs::ENDE_ROOT.find_subcommand(cmd).unwrap();
     let names: Vec<&str> = sub
       .args

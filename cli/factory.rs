@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use deno_error::JsErrorBox;
 use deno_graph::packages::JsrVersionResolver;
-use ende_bundle_runtime::BundlePlatform;
 use ende_cache_dir::GlobalOrLocalHttpCache;
 use ende_cache_dir::npm::NpmCacheDir;
 use ende_config::workspace::WorkspaceDirectory;
@@ -61,7 +60,6 @@ use node_resolver::NodeResolverOptions;
 use node_resolver::cache::NodeResolutionThreadLocalCache;
 use once_cell::sync::OnceCell;
 
-use crate::args::BundleFlags;
 use crate::args::CliLockfile;
 use crate::args::CliOptions;
 use crate::args::ConfigFlag;
@@ -94,7 +92,6 @@ use crate::node::CliNodeResolver;
 use crate::node::CliPackageJsonResolver;
 use crate::npm::CliNpmCache;
 use crate::npm::CliNpmCacheHttpClient;
-use crate::npm::CliNpmCacheServices;
 use crate::npm::CliNpmGraphResolver;
 use crate::npm::CliNpmInstaller;
 use crate::npm::CliNpmInstallerFactory;
@@ -598,42 +595,6 @@ impl CliFactory {
     self.npm_installer_factory()?.npm_cache()
   }
 
-  pub fn create_npm_cache_services(
-    &self,
-    npmrc: Arc<ResolvedNpmRc>,
-  ) -> Result<CliNpmCacheServices, AnyError> {
-    let sys = self.sys();
-    let npm_cache_dir = Arc::new(NpmCacheDir::new(
-      &sys,
-      self.ende_dir()?.npm_folder_path(),
-      npmrc.get_all_known_registries_urls(),
-    ));
-    let packument_format = if npmrc.min_release_age_days.is_some()
-      || npmrc.trust_policy != ende_npmrc::TrustPolicyConfig::Off
-    {
-      NpmPackumentFormat::Full
-    } else {
-      NpmPackumentFormat::Abbreviated
-    };
-    let npm_client = Arc::new(CliNpmCacheHttpClient::new(
-      self.http_client_provider().clone(),
-      self.text_only_progress_bar().clone(),
-      packument_format,
-    ));
-    Ok(CliNpmCacheServices::new(
-      npm_cache_dir,
-      sys,
-      NpmCacheSetting::from_cache_setting(&self.cli_options()?.cache_setting()),
-      npmrc,
-      npm_client,
-      packument_format,
-      self
-        .install_reporter()?
-        .cloned()
-        .map(|r| r as Arc<dyn ende_npm_cache::TarballCacheReporter>),
-    ))
-  }
-
   pub fn npm_cache_dir(&self) -> Result<&Arc<NpmCacheDir>, AnyError> {
     Ok(self.workspace_factory()?.npm_cache_dir()?)
   }
@@ -731,7 +692,6 @@ impl CliFactory {
             },
             EndeSubcommand::Audit { .. }
             | EndeSubcommand::Bench { .. }
-            | EndeSubcommand::Bundle { .. }
             | EndeSubcommand::Check { .. }
             | EndeSubcommand::Clean { .. }
             | EndeSubcommand::Compile { .. }
@@ -1331,9 +1291,6 @@ impl CliFactory {
       self.sys(),
       self.create_lib_main_worker_options()?,
       roots,
-      Some(Arc::new(crate::tools::bundle::CliBundleProvider::new(
-        self.flags.clone(),
-      ))),
     );
 
     Ok(CliMainWorkerFactory::new(
@@ -1500,30 +1457,11 @@ impl CliFactory {
               )
               .unwrap(),
             ),
-            bundle_mode: matches!(
-              self.flags.subcommand,
-              EndeSubcommand::Bundle(_)
-            ) || self.flags.internal.force_bundle_mode,
-            is_browser_platform: matches!(
-              self.flags.subcommand,
-              EndeSubcommand::Bundle(BundleFlags {
-                platform: BundlePlatform::Browser,
-                ..
-              })
-            ),
+            bundle_mode: false,
+            is_browser_platform: false,
           },
-          node_code_translator_mode: if matches!(
-            options.sub_command(),
-            EndeSubcommand::Bundle(_)
-          ) || self
-            .flags
-            .internal
-            .force_bundle_mode
-          {
-            node_resolver::analyze::NodeCodeTranslatorMode::Disabled
-          } else {
-            node_resolver::analyze::NodeCodeTranslatorMode::ModuleLoader
-          },
+          node_code_translator_mode:
+            node_resolver::analyze::NodeCodeTranslatorMode::ModuleLoader,
           node_resolution_cache: Some(Arc::new(NodeResolutionThreadLocalCache)),
           npm_system_info: npm_system_info(&self.flags.subcommand),
           specified_import_map: Some(Box::new(CliSpecifiedImportMapProvider {
@@ -1551,15 +1489,8 @@ impl CliFactory {
             }
             _ => None,
           },
-          allow_json_imports: if matches!(
-            self.flags.subcommand,
-            EndeSubcommand::Bundle(_)
-          ) || self.flags.internal.force_bundle_mode
-          {
-            ende_resolver::loader::AllowJsonImports::Always
-          } else {
-            ende_resolver::loader::AllowJsonImports::WithAttribute
-          },
+          allow_json_imports:
+            ende_resolver::loader::AllowJsonImports::WithAttribute,
           require_modules: options.require_modules()?,
         },
       )))

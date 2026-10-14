@@ -396,9 +396,7 @@ async fn install_global_compiled(
     exclude: vec![],
     eszip: false,
     self_extracting: false,
-    bundle: false,
     app_name: None,
-    minify: false,
     exclude_unused_npm: false,
     engine: Default::default(),
   };

@@ -158,13 +158,6 @@ async fn run_subcommand(
         tools::bench::run_benchmarks(flags, bench_flags).await
       }
     }),
-    EndeSubcommand::Bundle(bundle_flags) => spawn_subcommand(async {
-      log::warn!(
-        "⚠️  {} is experimental and subject to changes",
-        colors::cyan("ende bundle")
-      );
-      tools::bundle::bundle(Arc::new(flags), bundle_flags).await
-    }),
     EndeSubcommand::Deploy(deploy_flags) => spawn_subcommand(async move {
       tools::deploy::deploy(flags, deploy_flags).await
     }),

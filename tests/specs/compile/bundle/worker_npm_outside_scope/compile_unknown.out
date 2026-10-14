@@ -1,3 +1,0 @@
-[WILDCARD]error: Import "@denotest/this-package-does-not-exist" not a dependency
-    at [WILDLINE]/outside/worker_unknown.ts:5:7
-error: bundling failed

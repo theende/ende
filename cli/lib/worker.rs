@@ -8,7 +8,6 @@ use std::sync::Arc;
 use boxed_error::Boxed;
 use deno_path_util::url_from_file_path;
 use deno_path_util::url_to_file_path;
-use ende_bundle_runtime::BundleProvider;
 use ende_core::ModuleSpecifier;
 use ende_core::error::JsError;
 use ende_node::NodeRequireLoaderRc;
@@ -329,7 +328,6 @@ struct LibWorkerFactorySharedState<TSys: EndeLibSys> {
   storage_key_resolver: StorageKeyResolver,
   sys: TSys,
   options: LibMainWorkerOptions,
-  bundle_provider: Option<Arc<dyn BundleProvider>>,
 }
 
 impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
@@ -418,7 +416,6 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
           shared.npm_process_state_provider.clone(),
         ),
         permissions: args.permissions,
-        bundle_provider: shared.bundle_provider.clone(),
       };
       let maybe_initial_cwd = shared.options.maybe_initial_cwd.clone();
       // Apply resource limits to v8::CreateParams if specified.
@@ -602,7 +599,6 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
     sys: TSys,
     options: LibMainWorkerOptions,
     roots: LibWorkerFactoryRoots,
-    bundle_provider: Option<Arc<dyn BundleProvider>>,
   ) -> Self {
     Self {
       shared: Arc::new(LibWorkerFactorySharedState {
@@ -625,7 +621,6 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
         storage_key_resolver,
         sys,
         options,
-        bundle_provider,
       }),
     }
   }
@@ -717,7 +712,6 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
       feature_checker,
       permissions,
       v8_code_cache: shared.code_cache.clone(),
-      bundle_provider: shared.bundle_provider.clone(),
     };
 
     let maybe_initial_cwd = shared.options.maybe_initial_cwd.clone();

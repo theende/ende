@@ -94,7 +94,6 @@ pub fn create_runtime_snapshot(
     ops::permissions::ende_permissions::lazy_init(),
     ops::tty::ende_tty::lazy_init(),
     ops::http::ende_http_runtime::lazy_init(),
-    ende_bundle_runtime::ende_bundle_runtime::lazy_init(),
     ops::desktop::ende_desktop::lazy_init(),
     ops::bootstrap::ende_bootstrap::init(Some(snapshot_options), false),
     runtime::lazy_init(),

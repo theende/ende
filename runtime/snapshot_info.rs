@@ -63,7 +63,6 @@ pub fn get_extensions_in_snapshot() -> Vec<Extension> {
     ops::permissions::ende_permissions::init(),
     ops::tty::ende_tty::init(),
     ops::http::ende_http_runtime::init(),
-    ende_bundle_runtime::ende_bundle_runtime::init(None),
     ops::desktop::ende_desktop::init(),
     ops::bootstrap::ende_bootstrap::init(None, false),
     runtime::init(),

@@ -11,11 +11,6 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use deno_semver::package::PackageReq;
-pub use ende_bundle_runtime::BundleFormat;
-use ende_bundle_runtime::BundleOptions;
-pub use ende_bundle_runtime::BundlePlatform;
-pub use ende_bundle_runtime::PackageHandling;
-pub use ende_bundle_runtime::SourceMapType;
 pub use ende_config::ende_json::NewestDependencyDate;
 pub use ende_config::ende_json::NodeModulesDirMode;
 pub use ende_config::ende_json::NodeModulesLinkerMode;
@@ -197,15 +192,10 @@ pub struct CompileFlags {
   pub exclude: Vec<String>,
   pub eszip: bool,
   pub self_extracting: bool,
-  /// Bundle the entrypoint with esbuild before embedding it, instead of
-  /// shipping the entire node_modules tree. Experimental.
-  pub bundle: bool,
   /// Stable identity for the compiled app. Determines where origin-bound
   /// storage (default `Ende.openKv()`, `localStorage`, `caches`) is persisted.
   /// Defaults to the output file name when not set.
   pub app_name: Option<String>,
-  /// Minify the bundle. Only meaningful with `bundle: true`.
-  pub minify: bool,
   /// Prune the embedded managed npm snapshot to only those packages reachable
   /// from npm specifiers in the module graph. Opt-in because non-statically
   /// analyzable dynamic imports may not appear in the graph; pass
@@ -736,52 +726,12 @@ pub struct CleanFlags {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct BundleFlags {
-  pub entrypoints: Vec<String>,
-  pub output_path: Option<String>,
-  pub output_dir: Option<String>,
-  pub external: Vec<String>,
-  pub format: BundleFormat,
-  pub minify: bool,
-  pub keep_names: bool,
-  pub code_splitting: bool,
-  pub inline_imports: bool,
-  pub packages: PackageHandling,
-  pub sourcemap: Option<SourceMapType>,
-  pub platform: BundlePlatform,
-  pub watch: bool,
-  pub declaration: bool,
-}
-
-impl From<BundleOptions> for BundleFlags {
-  fn from(value: BundleOptions) -> Self {
-    Self {
-      entrypoints: value.entrypoints,
-      output_path: value.output_path,
-      output_dir: value.output_dir,
-      external: value.external,
-      format: value.format,
-      minify: value.minify,
-      keep_names: value.keep_names,
-      code_splitting: value.code_splitting,
-      platform: value.platform,
-      watch: false,
-      sourcemap: value.sourcemap,
-      inline_imports: value.inline_imports,
-      packages: value.packages,
-      declaration: false,
-    }
-  }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EndeSubcommand {
   Add(AddFlags),
   Audit(AuditFlags),
   ApproveScripts(ApproveScriptsFlags),
   Remove(RemoveFlags),
   Bench(BenchFlags),
-  Bundle(BundleFlags),
   Cache(CacheFlags),
   Check(CheckFlags),
   Ci(CiFlags),
@@ -912,22 +862,6 @@ pub struct InternalFlags {
   pub lockfile_skip_write: bool,
   /// Set when running the desktop subcommand to use desktop type libs.
   pub is_desktop: bool,
-  /// Set by `ende compile --bundle` when the bundled output contains
-  /// references that need to resolve against npm packages at runtime
-  /// (CJS dependencies, native addons). When true, the standalone
-  /// binary writer embeds (a subset of) the npm tree. Pure-ESM bundles
-  /// leave this false and ship a tiny binary.
-  pub compile_bundle_embed_node_modules: bool,
-  /// Absolute paths the bundle path-rewriter resolved at build time —
-  /// the on-disk files the compiled binary will require() at runtime.
-  /// The standalone binary writer maps these back to npm packages so
-  /// it can embed only what's reachable, instead of the whole tree.
-  pub compile_bundle_referenced_paths: Vec<PathBuf>,
-  /// Force-enable bundle-style resolution config regardless of the
-  /// current subcommand. Set by `compile --bundle` so the bundle phase
-  /// of compilation pulls deep CJS files (e.g. `jiti.cjs`) into the
-  /// module graph the same way `ende bundle` does.
-  pub force_bundle_mode: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

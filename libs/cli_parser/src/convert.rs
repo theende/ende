@@ -213,7 +213,6 @@ pub fn convert(result: ParseResult) -> Result<Flags, CliError> {
     Some("vendor") => vendor_parse(&mut flags),
     Some("deploy") => deploy_parse(&mut flags, false),
     Some("sandbox") => deploy_parse(&mut flags, true),
-    Some("bundle") => bundle_parse(&result, &mut flags),
     Some("audit") => audit_parse(&result, &mut flags)?,
     Some("why") => why_parse(&result, &mut flags),
     Some("transpile") => transpile_parse(&result, &mut flags),
@@ -283,6 +282,17 @@ fn default_parse(
   // Check if there's a script_arg (from default subcommand = run)
   let script = result.get_one("script_arg");
   if let Some(script) = script {
+    // `ende bundle` is not part of Ende. Report it as an unknown subcommand
+    // instead of trying to run a file named `bundle`.
+    if script == "bundle" {
+      return Err(
+        CliError::new(
+          CliErrorKind::UnknownSubcommand,
+          "unrecognized subcommand 'bundle'",
+        )
+        .with_suggestion("`ende bundle` is not supported in Ende"),
+      );
+    }
     // Check if the script name is actually a known subcommand name.
     // If so, a non-global flag was placed before it and we should error.
     let known_subcommands = [
@@ -321,7 +331,6 @@ fn default_parse(
       "vendor",
       "deploy",
       "sandbox",
-      "bundle",
       "audit",
       "x",
     ];
@@ -943,7 +952,6 @@ fn unstable_args_parse(result: &ParseResult, flags: &mut Flags) {
     ("unstable-ffi", None),
     ("unstable-worker-options", None),
     ("unstable-broadcast-channel", None),
-    ("unstable-bundle", None),
     ("unstable-byonm", None),
     ("unstable-cron", None),
     ("unstable-fs", None),
@@ -2128,9 +2136,7 @@ fn compile_parse(
     exclude,
     eszip,
     self_extracting,
-    bundle: result.get_bool("bundle"),
     app_name: result.get_one("app-name").map(|s| s.to_string()),
-    minify: result.get_bool("minify"),
     exclude_unused_npm: result.get_bool("exclude-unused-npm"),
     engine: result
       .get_one("engine")
@@ -3151,82 +3157,6 @@ fn node_inspect_addr(word: &str, flag: &str) -> Option<SocketAddr> {
   } else {
     None
   }
-}
-
-fn bundle_parse(result: &ParseResult, flags: &mut Flags) {
-  compile_args_without_check_parse(result, flags);
-  // `compile_args_without_check_parse` deliberately omits `--check`; apply it
-  // here so `ende bundle --check=all` type-checks (mirrors clap, #30159).
-  check_arg_parse(result, flags);
-  // `bundle` resolves a module graph but never runs it, so the only
-  // permissions it takes are the import ones.
-  allow_and_deny_import_parse(result, flags);
-
-  let entrypoints = result
-    .get_many("file")
-    .map(|v| v.to_vec())
-    .unwrap_or_default();
-  let output_path = result.get_one("output").map(|s| s.to_string());
-  let output_dir = result.get_one("outdir").map(|s| s.to_string());
-  let format_str = result.get_one("format").unwrap_or("esm");
-  let format = match format_str {
-    "cjs" => BundleFormat::Cjs,
-    "iife" => BundleFormat::Iife,
-    _ => BundleFormat::Esm,
-  };
-  let packages_str = result.get_one("packages").unwrap_or("bundle");
-  let packages = match packages_str {
-    "external" => PackageHandling::External,
-    _ => PackageHandling::Bundle,
-  };
-  let platform_str = result.get_one("platform").unwrap_or("ende");
-  let platform = match platform_str {
-    "browser" => BundlePlatform::Browser,
-    _ => {
-      if platform_str == "deno" {
-        // use eprintln instead of log::warn because logging hasn't been initialized yet
-        #[allow(clippy::print_stderr, reason = "can't use log crate yet")]
-        {
-          eprintln!(
-            "Warning: The bundle platform \"deno\" is deprecated. Use \"ende\" instead."
-          );
-        }
-      }
-      BundlePlatform::Ende
-    }
-  };
-  // `--sourcemap` takes an optional value that must be attached with `=`, so a
-  // bare `--sourcemap` means "linked" and never swallows the next argument.
-  let sourcemap = if result.contains("sourcemap") {
-    Some(match result.get_one("sourcemap").unwrap_or("linked") {
-      "inline" => SourceMapType::Inline,
-      "external" => SourceMapType::External,
-      _ => SourceMapType::Linked,
-    })
-  } else {
-    None
-  };
-  let external = result
-    .get_many("external")
-    .map(|v| v.to_vec())
-    .unwrap_or_default();
-
-  flags.subcommand = EndeSubcommand::Bundle(BundleFlags {
-    entrypoints,
-    output_path,
-    output_dir,
-    external,
-    format,
-    packages,
-    platform,
-    sourcemap,
-    watch: result.get_bool("watch"),
-    minify: result.get_bool("minify"),
-    keep_names: result.get_bool("keep-names"),
-    code_splitting: result.get_bool("code-splitting"),
-    inline_imports: !matches!(result.get_one("inline-imports"), Some("false")),
-    declaration: result.get_bool("declaration"),
-  });
 }
 
 fn audit_parse(

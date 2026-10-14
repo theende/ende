@@ -21,9 +21,9 @@ of the `ende` binary. From the top down:
 ## The CLI layer (`cli/`)
 
 The `ende` crate in `cli/` is everything a user touches directly. It owns flag
-parsing, the subcommands (`run`, `test`, `fmt`, `lint`, `compile`, `bundle`,
-`install`, `publish`, and so on), package-management tooling, the LSP, and the
-module loader that ties module resolution to the runtime.
+parsing, the subcommands (`run`, `test`, `fmt`, `lint`, `compile`, `install`,
+`publish`, and so on), package-management tooling, the LSP, and the module
+loader that ties module resolution to the runtime.
 
 Key entry points:
 
@@ -36,8 +36,7 @@ Key entry points:
   the graph to the runtime.
 
 The CLI is intentionally heavy: it pulls in TypeScript checking, npm and JSR
-resolution, the lockfile, and the bundler. Lower layers must not depend back up
-into it.
+resolution, and the lockfile. Lower layers must not depend back up into it.
 
 ## The runtime layer (`runtime/`)
 
@@ -65,8 +64,7 @@ lives. Examples:
   `ext/webidl`, `ext/websocket`, `ext/webgpu`, `ext/canvas`.
 - System access: `ext/fs`, `ext/net`, `ext/io`, `ext/os`, `ext/process`,
   `ext/signals`, `ext/tls`.
-- Ende-specific: `ext/kv`, `ext/cron`, `ext/cache`, `ext/ffi`, `ext/napi`,
-  `ext/bundle`.
+- Ende-specific: `ext/kv`, `ext/cron`, `ext/cache`, `ext/ffi`, `ext/napi`.
 - Node compatibility: `ext/node` (the bulk of the `node:*` builtins, both Rust
   ops and JavaScript polyfills), plus `ext/node_crypto` and `ext/node_sqlite`.
 

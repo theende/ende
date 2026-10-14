@@ -8,7 +8,6 @@ members = [
   "cli/rt",
   "cli/rt_desktop",
   "cli/snapshot",
-  "ext/bundle",
   "ext/cache",
   "ext/canvas",
   "ext/cron",
@@ -115,7 +114,6 @@ denokv_remote = "0.14.0"
 denokv_sqlite = { default-features = false, version = "0.14.0" }
 
 # exts
-ende_bundle_runtime = { version = "0.46.0", path = "./ext/bundle" }
 ende_cache = { version = "0.192.0", path = "./ext/cache" }
 ende_canvas = { version = "0.121.0", path = "./ext/canvas" }
 ende_cron = { version = "0.139.0", path = "./ext/cron" }

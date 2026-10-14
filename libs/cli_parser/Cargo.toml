@@ -14,7 +14,6 @@ path = "src/lib.rs"
 
 [dependencies]
 deno_semver.workspace = true
-ende_bundle_runtime.workspace = true
 ende_config = { workspace = true, features = ["workspace"] }
 ende_core.workspace = true
 ende_lib.workspace = true

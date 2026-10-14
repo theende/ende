@@ -39,7 +39,6 @@ deno_path_util.workspace = true
 deno_terminal.workspace = true
 ed25519-dalek.workspace = true
 encoding_rs.workspace = true
-ende_bundle_runtime.workspace = true
 ende_cache.workspace = true
 ende_canvas.workspace = true
 ende_core.workspace = true

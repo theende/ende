@@ -77,7 +77,6 @@ deno_path_util.workspace = true
 deno_semver.workspace = true
 deno_task_shell.workspace = true
 deno_terminal.workspace = true
-ende_bundle_runtime.workspace = true
 ende_cache_dir = { workspace = true, features = ["sync"] }
 ende_cli_parser.workspace = true
 ende_config = { workspace = true, features = ["sync", "workspace"] }
@@ -127,7 +126,6 @@ dprint-plugin-jupyter.workspace = true
 dprint-plugin-markdown.workspace = true
 dprint-plugin-typescript.workspace = true
 ende_dotenv.workspace = true
-esbuild_client = { version = "0.7.2", features = ["serde"] }
 faster-hex.workspace = true
 fastwebsockets.workspace = true
 # If you disable the default __vendored_zlib_ng feature above, you _must_ be able to link against `-lz`.

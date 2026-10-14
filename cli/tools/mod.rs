@@ -2,7 +2,6 @@
 
 pub mod bench;
 pub mod bump_version;
-pub mod bundle;
 pub mod check;
 pub mod clean;
 pub mod compile;

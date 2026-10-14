@@ -24,7 +24,6 @@ deno_media_type.workspace = true
 deno_path_util.workspace = true
 deno_semver.workspace = true
 deno_terminal.workspace = true
-ende_bundle_runtime.workspace = true
 ende_env.workspace = true
 ende_fs = { workspace = true, features = ["sync_fs"] }
 ende_node = { workspace = true, features = ["sync_fs"] }

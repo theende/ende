@@ -388,7 +388,6 @@ pub struct WebWorkerServiceOptions<
   pub permissions: PermissionsContainer,
   pub root_cert_store_provider: Option<Arc<dyn RootCertStoreProvider>>,
   pub shared_array_buffer_store: Option<SharedArrayBufferStore>,
-  pub bundle_provider: Option<Arc<dyn ende_bundle_runtime::BundleProvider>>,
 }
 
 pub struct WebWorkerOptions {
@@ -616,7 +615,6 @@ impl WebWorker {
       ops::permissions::ende_permissions::init(),
       ops::tty::ende_tty::init(),
       ops::http::ende_http_runtime::init(),
-      ende_bundle_runtime::ende_bundle_runtime::init(services.bundle_provider),
       ops::desktop::ende_desktop::init(),
       ops::bootstrap::ende_bootstrap::init(
         options.startup_snapshot.and_then(|_| Default::default()),

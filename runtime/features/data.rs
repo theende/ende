@@ -186,13 +186,6 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     env_var: None,
   },
   UnstableFeatureDescription {
-    name: "bundle",
-    help_text: "Enable unstable bundle runtime API",
-    show_in_help: true,
-    kind: UnstableFeatureKind::Runtime,
-    env_var: None,
-  },
-  UnstableFeatureDescription {
     name: "tsgo",
     help_text: "Enable unstable TypeScript Go integration",
     show_in_help: true,

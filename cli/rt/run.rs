@@ -1812,7 +1812,6 @@ pub async fn run_with_options(
     sys.clone(),
     lib_main_worker_options,
     Default::default(),
-    None,
   );
 
   // Initialize v8 once from the main thread.
