@@ -856,7 +856,7 @@ pub fn main() {
     // NOTE(lucacasonato): due to new PKU feature introduced in V8 11.6 we need to
     // initialize the V8 platform on a parent thread of all threads that will spawn
     // V8 isolates.
-    let flags = match resolve_flags_and_init(args, initial_cwd.clone()).await {
+    let flags = match resolve_flags_and_init(args, initial_cwd.clone()) {
       Ok(flags) => flags,
       Err(err) => return (Err(err), initial_cwd),
     };
@@ -884,7 +884,7 @@ pub fn main() {
   }
 }
 
-async fn resolve_flags_and_init(
+fn resolve_flags_and_init(
   args: Vec<std::ffi::OsString>,
   initial_cwd: Option<std::path::PathBuf>,
 ) -> Result<Flags, AnyError> {
