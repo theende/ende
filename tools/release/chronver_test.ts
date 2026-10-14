@@ -8,6 +8,7 @@ import {
   isNewerRelease,
   nextReleaseVersion,
   parseChronVer,
+  releaseTagError,
 } from "./chronver.ts";
 
 Deno.test("parseChronVer accepts dates with an optional same-day number", () => {
@@ -107,5 +108,22 @@ Deno.test("nextReleaseVersion numbers additional releases on the same day", () =
       new Set(["v2026.10.14", "v2026.10.14.1", "v2026.10.14.2"]),
     ),
     "2026.10.14.3",
+  );
+});
+
+Deno.test("releaseTagError accepts v plus the product version", () => {
+  assertEquals(releaseTagError("v2026.10.14", "2026.10.14"), undefined);
+  assertEquals(releaseTagError("v2026.10.14.1", "2026.10.14.1"), undefined);
+});
+
+Deno.test("releaseTagError rejects tags that aren't ChronVer", () => {
+  for (const tag of ["2026.10.14", "v2.1.0", "v2026.10.14-rc1", "primary"]) {
+    assert(releaseTagError(tag, "2026.10.14")?.includes("not a ChronVer"));
+  }
+});
+
+Deno.test("releaseTagError rejects tags that don't match version.txt", () => {
+  assert(
+    releaseTagError("v2026.10.14.1", "2026.10.14")?.includes("does not match"),
   );
 });

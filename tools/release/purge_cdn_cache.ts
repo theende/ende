@@ -2,7 +2,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 // deno-lint-ignore-file no-console
 
-// Purges the Cloudflare edge cache for mutable files on dl.deno.land.
+// Purges the Cloudflare edge cache for mutable files on dl.ende.sh.
 //
 // The `*-latest.txt` files live at a stable URL but change on every release,
 // and the edge caches them for 4 hours. If anything requests one between the
@@ -11,7 +11,7 @@
 //
 // Usage: purge_cdn_cache.ts <file>...
 
-const BASE_URL = "https://dl.deno.land";
+const BASE_URL = "https://dl.ende.sh";
 
 // `ende upgrade` appends `?lsp` when the check comes from the LSP
 // (see cli/tools/upgrade.rs). Cloudflare's cache key includes the query

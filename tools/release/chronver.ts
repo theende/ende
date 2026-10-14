@@ -91,3 +91,22 @@ export function nextReleaseVersion(
   }
   return version;
 }
+
+/**
+ * Why `tag` can't be released from a commit whose `cli/lib/version.txt` holds
+ * `productVersion`, or `undefined` when it can. A release tag is `v` plus the
+ * exact product version.
+ */
+export function releaseTagError(
+  tag: string,
+  productVersion: string,
+): string | undefined {
+  if (!tag.startsWith("v") || parseChronVer(tag) == null) {
+    return `Tag ${tag} is not a ChronVer release tag (vYYYY.MM.DD[.N]).`;
+  }
+  if (tag !== `v${productVersion}`) {
+    return `Tag ${tag} does not match cli/lib/version.txt (${productVersion}) ` +
+      `at this commit; expected v${productVersion}.`;
+  }
+  return undefined;
+}

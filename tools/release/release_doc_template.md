@@ -1,39 +1,19 @@
 - [ ] Fork this gist and follow the instructions there.
 
+See `doc/releasing.md` in the repository for what each workflow does.
+
 ## Pre-flight
 
 **During this process the `primary` branch should be frozen and no commits
 should land until the release is finished.**
 
-- [ ] Ensure forks and local clones of:
-  - [`denoland/deno`](https://github.com/denoland/deno/),
-  - [`denoland/dotcom`](https://github.com/denoland/dotcom/),
-  - [`denoland/deno_docker`](https://github.com/denoland/deno_docker/),
-  - [`denoland/deno-docs`](https://github.com/denoland/deno-docs)
-- [ ] Check https://deno.land/benchmarks?-100 and ensure there's no recent
-      regressions.
-- [ ] Write a message in company's `#cli` channel:
+- [ ] Check that CI on `primary` is green:
+      https://github.com/theende/ende/actions/workflows/ci.generated.yml
 
-```
-:lock:
+## Phase 1: Bumping the version
 
-@here
-
-Deno v$VERSION is now getting released.
-
-`denoland/deno` is now locked.
-
-*DO NOT LAND ANY PRs*
-
-Release checklist: <LINK TO THIS FORKED GIST GOES HERE>
-```
-
-## Updating `deno`
-
-### Phase 1: Bumping versions
-
-- [ ] Go to the "version_bump" workflow in the CLI repo's actions:
-      https://github.com/denoland/deno/actions/workflows/version_bump.generated.yml
+- [ ] Go to the "version_bump" workflow in the repo's actions:
+      https://github.com/theende/ende/actions/workflows/version_bump.generated.yml
   1. Click on the "Run workflow" button.
   1. In the drop down, select the `primary` branch.
   1. Run the workflow. It sets the version to the UTC date it runs on
@@ -42,19 +22,19 @@ Release checklist: <LINK TO THIS FORKED GIST GOES HERE>
 - [ ] Wait for the workflow to complete and for a pull request to be
       automatically opened. Review the pull request, make any necessary changes,
       and merge it.
-  - ⛔ **DO NOT** create a release tag manually That will automatically happen.
+  - ⛔ **DO NOT** create a release tag manually. That will automatically happen.
 
   <details>
      <summary>Failure Steps</summary>
 
   1. Checkout the branch the release is being made on.
   2. Manually run `./tools/release/01_bump_crate_versions.ts`
-     1. Ensure the crate versions were bumped correctly
+     1. Ensure `cli/lib/version.txt` holds `$VERSION`
      2. Ensure `Releases.md` was updated correctly
   3. Open a PR with the changes and continue with the steps below.
   </details>
 
-### Phase 2: Publish
+## Phase 2: Tagging
 
 - [ ] Go to the "release_tag" workflow in the repo's actions:
       https://github.com/theende/ende/actions/workflows/release_tag.generated.yml
@@ -65,96 +45,73 @@ Release checklist: <LINK TO THIS FORKED GIST GOES HERE>
      <summary>Failure Steps</summary>
 
   1. The workflow is restartable. Try restarting it.
-  2. If that doesn't work, check out the `primary` branch and manually create
-     and push the `v$VERSION` tag.
+  2. If that doesn't work, check out the release commit and manually create and
+     push the `v$VERSION` tag. Push it with your own credentials: a tag pushed
+     with the workflow's default token does not start other workflows.
   </details>
 
-- [ ] This CI run create a tag which triggers a second CI run that publishes the
-      GitHub draft release.
+## Phase 3: Building
 
-  The CI pipeline will create a release draft on GitHub
-  (https://github.com/denoland/deno/releases).
+- [ ] The tag starts the "release" workflow:
+      https://github.com/theende/ende/actions/workflows/release.generated.yml
+      Wait for it to complete. It builds every target and creates a **draft**
+      release at https://github.com/theende/ende/releases.
+
+  <details>
+     <summary>Failure Steps</summary>
+
+  1. "verify tag" failed: the tag doesn't match `cli/lib/version.txt` at the
+     tagged commit. Delete the tag and redo Phase 2 from the right commit.
+  2. A build failed: re-run the failed jobs. To start over, run the workflow by
+     hand with the `tag` input set to `v$VERSION`. A re-run replaces the assets
+     of the draft.
+  </details>
 
 - ⛔ Verify that:
-  - [ ] There are 46 assets on the v$VERSION
-        [GitHub release draft](https://github.com/denoland/deno/releases/).
-  - [ ] There are 48 zip files for this version on
-        [dl.deno.land](https://dash.cloudflare.com/895762025d37fc687ecd72d7cc80204a/r2/default/buckets/dl-deno-land?prefix=release%2Fv$VERSION).
+  - [ ] The v$VERSION draft has 7 assets for each of the 4 targets
+        (`aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`,
+        `aarch64-unknown-linux-gnu`, `x86_64-pc-windows-msvc`):
+    - `ende-<target>.zip`
+    - `ende-<target>.zip.sha256sum`
+    - `ende-<target>.sha256sum`
+    - `endert-<target>.zip`
+    - `endert-<target>.zip.sha256sum`
+    - `libendert-<target>.zip`
+    - `libendert-<target>.zip.sha256sum`
+  - [ ] If v$PAST_VERSION is published, each target also has a delta patch,
+        `ende-<target>.from-$PAST_VERSION.bsdiff`, plus its checksum file.
+  - [ ] Downloading the archive for your platform and running `ende --version`
+        prints `ende $VERSION`.
+  - [ ] If signing is set up: on macOS, `codesign -dv ende` shows the Developer
+        ID authority; on Windows, the file properties of `ende.exe` show a valid
+        digital signature.
 
-- [ ] Publish the release on Github
+## Phase 4: Publishing
 
-## Update https://deno.com
+- [ ] Edit the draft's release notes if needed, then publish it.
+- [ ] Publishing starts the "post_publish" workflow, which points
+      https://dl.ende.sh/release-latest.txt at v$VERSION. Until then
+      `ende upgrade` keeps offering v$PAST_VERSION. Check that
+      `curl -s https://dl.ende.sh/release-latest.txt` prints `v$VERSION`.
+  - If dl.ende.sh uploads are not enabled (the `DL_ENDE_SH_ENABLED` variable),
+    upload `release-latest.txt` (content `v$VERSION` and a newline) and the
+    `endert-*`/`libendert-*` archives (to `release/v$VERSION/`) by hand.
 
-- [ ] Run
-      https://github.com/denoland/dotcom/actions/workflows/update_version.yml to
-      automatically open a PR.
-  - [ ] Merge the PR.
-
-## Update https://docs.deno.com
-
-- [ ] Run
-      https://github.com/denoland/deno-docs/actions/workflows/update_versions.yml
-      to automatically open a PR.
-  - [ ] Merge the PR.
-
-## Updating `deno_docker`
-
-- [ ] Run the version bump workflow:
-      https://github.com/denoland/deno_docker/actions/workflows/version_bump.yml
-- [ ] This will open a PR. Review and merge it.
-- [ ] Create a `$VERSION` tag (_without_ `v` prefix).
-- [ ] This will trigger a publish CI run. Verify that it completes sucessfully.
-
-## Updating `deno_pypi`
-
-- [ ] Run the version bump workflow:
-      https://github.com/denoland/deno_pypi/actions/workflows/version-bump.yml
-- [ ] This will open a PR. Review and merge it.
-- [ ] Run the release workflow:
-      https://github.com/denoland/deno_pypi/actions/workflows/release.yml
-- [ ] This will trigger a publish CI run. Verify that it completes sucessfully
-      and new version is available at https://pypi.org/project/deno/.
-
-## Update MDN
-
-- [ ] If a new JavaScript or Web API has been added or enabled, make sure
-      https://github.com/mdn/browser-compat-data has been updated to reflect API
-      changes in this release. If in doubt message @bartlomieju and skip this
-      step.
-
-## Add `deno upgrade` banner
+## Add `ende upgrade` banner
 
 - [ ] You can optionally add a banner that will be printed when users run
-      `deno
-      upgrade`. This is useful in situation when you want to inform
-      users about a need to run a command to enjoy a new feature or a breaking
-      change.
+      `ende upgrade`. This is useful in situation when you want to inform users
+      about a need to run a command to enjoy a new feature or a breaking change.
   - Create `banner.txt` file with the content you want to print - _it must be
     plaintext_.
-  - Upload the file in
-    https://dash.cloudflare.com/895762025d37fc687ecd72d7cc80204a/r2/default/buckets/dl-deno-land?prefix=release%2Fv$VERSION/banner.txt.
+  - Upload it to `release/v$VERSION/banner.txt` in the dl.ende.sh bucket.
 
 ## All done!
 
-- [ ] Write a message in company's #cli channel:
-
-```
-:unlock:
-
-@here
-
-`denoland/deno` is now unlocked.
-
-*You can land PRs now*
-
-Deno v$VERSION has been released.
-```
+- [ ] Unfreeze `primary`.
 
 ## Downgrading
 
 In case something went wrong:
 
-1. Update https://dl.deno.land/release-latest.txt to the previous release.
-1. Revert the PR to the [dotcom repo](https://github.com/denoland/dotcom/) in
-   order to prevent the [`setup-deno`](https://github.com/denoland/setup-deno)
-   GH action from pulling it in.
+1. Point https://dl.ende.sh/release-latest.txt back at `v$PAST_VERSION`.

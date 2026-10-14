@@ -22,14 +22,21 @@ console.error("Latest file:", latestFile);
 Deno.writeTextFileSync(latestFile, version + "\n");
 
 // Check that this version is actually newer
-const response = await fetch("https://dl.deno.land/release-latest.txt");
-if (!response.ok) {
+const response = await fetch("https://dl.ende.sh/release-latest.txt");
+let latestVersionText: string | undefined;
+if (response.ok) {
+  latestVersionText = (await response.text()).trim();
+} else if (response.status === 404) {
+  // nothing published yet: this is the first release
+  await response.body?.cancel();
+} else {
   throw new Error(`Failed to fetch: ${response.statusText}`);
 }
-const latestVersionText = (await response.text()).trim();
-console.error("Currently published latest:", latestVersionText);
+console.error("Currently published latest:", latestVersionText ?? "(none)");
 
-if (!isNewerRelease(version, latestVersionText)) {
+if (
+  latestVersionText != null && !isNewerRelease(version, latestVersionText)
+) {
   console.error(
     "Skipping upload because this version is not greater than the latest.",
   );

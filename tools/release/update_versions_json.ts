@@ -19,7 +19,7 @@ interface Versions {
 }
 
 let versions: Versions = { cli: [] };
-const response = await fetch("https://dl.deno.land/versions.json");
+const response = await fetch("https://dl.ende.sh/versions.json");
 if (response.ok) {
   versions = await response.json();
   if (!Array.isArray(versions.cli)) {

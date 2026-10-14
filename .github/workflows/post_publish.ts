@@ -1,6 +1,13 @@
 #!/usr/bin/env -S deno run --check --allow-write=. --allow-read=. --lock=./tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
-import { conditions, createWorkflow, step } from "jsr:@david/gagen@0.3.1";
+import { createWorkflow, expr, step } from "jsr:@david/gagen@0.3.1";
+import { dlEndeShEnabled, dlS3Env } from "./common.ts";
+
+// Runs when a GitHub release is published (the release workflow only creates
+// drafts). Points `ende upgrade` at the new version by updating
+// dl.ende.sh/release-latest.txt, which must not happen before the release's
+// assets are public. Off until the DL_ENDE_SH_ENABLED variable is `true`
+// (see common.ts for the storage secrets).
 
 const workflow = createWorkflow({
   name: "post_publish",
@@ -22,9 +29,13 @@ const workflow = createWorkflow({
   },
   jobs: [{
     id: "update-dl-version",
-    name: "update dl.deno.land version",
+    name: "update dl.ende.sh version",
     runsOn: "ubuntu-latest",
-    if: conditions.isRepository("denoland/deno"),
+    if: dlEndeShEnabled,
+    env: {
+      // Purging the CDN cache is optional (Cloudflare only).
+      HAS_CLOUDFLARE_TOKEN: "${{ secrets.CLOUDFLARE_API_TOKEN != '' }}",
+    },
     steps: [
       step({
         name: "Clone repository",
@@ -35,12 +46,9 @@ const workflow = createWorkflow({
         with: { "deno-version": "v2.x" },
       }),
       step({
-        name: "Upload version file to dl.deno.land",
+        name: "Upload version file to dl.ende.sh",
         env: {
-          AWS_ACCESS_KEY_ID: "${{ vars.S3_ACCESS_KEY_ID }}",
-          AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRET_ACCESS_KEY }}",
-          AWS_ENDPOINT_URL_S3: "${{ vars.S3_ENDPOINT }}",
-          AWS_DEFAULT_REGION: "${{vars.S3_REGION }}",
+          ...dlS3Env,
           INPUT_VERSION: "${{ inputs.version }}",
         },
         run: [
@@ -53,15 +61,16 @@ const workflow = createWorkflow({
           '  *) echo "Not a release tag: $VERSION" >&2; exit 1 ;;',
           "esac",
           'deno run --allow-net --allow-write tools/release/update_versions_json.ts "$VERSION"',
-          "aws s3 cp versions.json s3://dl-deno-land/versions.json --content-type application/json",
+          'aws s3 cp versions.json "s3://$DL_S3_BUCKET/versions.json" --content-type application/json',
           'LATEST_FILE=$(deno run --allow-net --allow-write tools/release/upload_version_file.ts "$VERSION" || exit 0)',
           '[ -z "$LATEST_FILE" ] && exit 0',
-          'aws s3 cp "$LATEST_FILE" "s3://dl-deno-land/$LATEST_FILE"',
+          'aws s3 cp "$LATEST_FILE" "s3://$DL_S3_BUCKET/$LATEST_FILE" --content-type text/plain',
           'echo "LATEST_FILE=$LATEST_FILE" >> "$GITHUB_ENV"',
         ],
       }),
       step({
         name: "Purge CDN cache",
+        if: expr("env.HAS_CLOUDFLARE_TOKEN").equals("true"),
         env: {
           CLOUDFLARE_ZONE_ID: "${{ secrets.CLOUDFLARE_ZONE_ID }}",
           CLOUDFLARE_API_TOKEN: "${{ secrets.CLOUDFLARE_API_TOKEN }}",

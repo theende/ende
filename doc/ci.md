@@ -158,6 +158,15 @@ suite, then reads the JSON report the harness writes to
 Each shard's report covers only its own tests, so the check works per shard.
 Remove an entry as soon as its reason is gone.
 
+## Releases
+
+Release tags are not built by `ci.ts` (its tag publishing is part of the
+disabled full matrix). Pushing a `v*` tag runs the separate `release` workflow
+(`.github/workflows/release.ts`), which builds, signs and packages every target
+into a draft GitHub release. See [`releasing.md`](./releasing.md). The steps it
+shares with `ci.ts` (the Linux sysroot, the Rust toolchain, macOS lld) live in
+`.github/workflows/common.ts`.
+
 ## Changing CI behavior
 
 When you change which jobs run or add a new gate, edit `ci.ts`, regenerate the

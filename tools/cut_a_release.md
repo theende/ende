@@ -12,3 +12,6 @@ bumped for releases.
 1. Wait for the "Create Gist URL" step to complete and look at its output for
    the Gist URL.
 1. Follow the instructions in the gist.
+
+See [`doc/releasing.md`](../doc/releasing.md) for what each workflow does and
+the secrets they need.

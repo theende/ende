@@ -368,6 +368,7 @@ async function ensureWorkflowYmlsUpToDate() {
   const generators = [
     ".github/workflows/ci.ts",
     ".github/workflows/pr.ts",
+    ".github/workflows/release.ts",
     ".github/workflows/release_tag.ts",
     ".github/workflows/post_publish.ts",
     ".github/workflows/start_release.ts",
