@@ -5,6 +5,42 @@ use test_util::test;
 use util::assert_contains;
 use util::assert_not_contains;
 
+/// The product version, which `cli/lib/version.txt` holds.
+fn ende_version() -> String {
+  util::root_path()
+    .join("cli/lib/version.txt")
+    .read_to_string()
+    .trim()
+    .to_string()
+}
+
+/// `ende --version` prints the ChronVer product version, not a crate version.
+#[test]
+fn version_output_is_chronver() {
+  let version = ende_version();
+  let is_chronver = |v: &str| {
+    let parts = v.split('.').collect::<Vec<_>>();
+    matches!(parts.len(), 3 | 4)
+      && parts[0].len() == 4
+      && parts[1].len() == 2
+      && parts[2].len() == 2
+      && parts.iter().all(|p| p.bytes().all(|b| b.is_ascii_digit()))
+  };
+  assert!(is_chronver(&version), "{version}");
+
+  let output = util::ende_cmd().arg("-V").split_output().run();
+  output.assert_exit_code(0);
+  assert_eq!(output.stdout(), format!("ende {version}\n"));
+
+  let output = util::ende_cmd().arg("--version").split_output().run();
+  output.assert_exit_code(0);
+  let first_line = output.stdout().lines().next().unwrap().to_string();
+  assert!(
+    first_line.starts_with(&format!("ende {version} (")),
+    "{first_line}"
+  );
+}
+
 #[test]
 fn help_output() {
   let output = util::ende_cmd()

@@ -881,7 +881,7 @@ console.log("imported", import.meta.url);
       Ok(
         Response::builder()
           .status(StatusCode::OK)
-          .body(string_body("99999.99.99"))
+          .body(string_body("v9999.12.31"))
           .unwrap(),
       )
     }
@@ -890,7 +890,7 @@ console.log("imported", import.meta.url);
         Response::builder()
           .status(StatusCode::OK)
           // use an ende version that will never happen
-          .body(string_body("99999.99.99"))
+          .body(string_body("v9999.12.31"))
           .unwrap(),
       )
     }

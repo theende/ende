@@ -471,7 +471,10 @@ fn json_version(
     .map(String::from)
     .unwrap_or_else(|| state.listen.to_string());
   let body = json!({
-    "Browser": format!("ende-desktop/{}", env!("CARGO_PKG_VERSION")),
+    "Browser": format!(
+      "ende-desktop/{}",
+      ende_lib::version::ENDE_VERSION_INFO.ende
+    ),
     "Protocol-Version": "1.3",
     "V8-Version": ende_core::v8::VERSION_STRING,
     // Advertise one of the two upstream WS URLs as the "browser" URL.

@@ -1692,7 +1692,7 @@ impl LaufeyBackendResolver {
     let mut headers = http::HeaderMap::new();
     if let Ok(ua) = http::HeaderValue::from_str(&format!(
       "ende-desktop/{} (+https://ende.sh)",
-      env!("CARGO_PKG_VERSION")
+      ende_lib::version::ENDE_VERSION_INFO.ende
     )) {
       headers.insert(http::header::USER_AGENT, ua);
     }

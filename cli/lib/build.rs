@@ -1,14 +1,20 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
+#[allow(dead_code, reason = "only the parser is used here")]
+#[path = "chronver.rs"]
+mod chronver;
+
 fn main() {
-  // todo(dsherret): remove this after Deno 242.0 is published and then
-  // align the version of this crate with Deno then. We need to wait because
-  // there was previously a deno_lib 2.4.0 published (https://crates.io/crates/deno_lib/versions)
+  // `version.txt` is the single source of truth for Ende's product version
+  // (a ChronVer date, see `chronver.rs`). It is independent of the crate
+  // versions in Cargo.toml; the release tooling in `tools/release` writes it.
   let version_path = std::path::Path::new(".").join("version.txt");
   println!("cargo:rerun-if-changed={}", version_path.display());
   #[allow(clippy::disallowed_methods, reason = "build code")]
   let text = std::fs::read_to_string(version_path).unwrap();
-  println!("cargo:rustc-env=ENDE_VERSION={}", text);
+  let version = chronver::ChronVer::parse(text.trim())
+    .unwrap_or_else(|err| panic!("cli/lib/version.txt: {err}"));
+  println!("cargo:rustc-env=ENDE_VERSION={}", version);
 
   let commit_hash = git_commit_hash();
   println!("cargo:rustc-env=GIT_COMMIT_HASH={}", commit_hash);

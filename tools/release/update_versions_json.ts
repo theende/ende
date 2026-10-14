@@ -6,7 +6,7 @@
 // version into the "cli" list in descending (newest-first) order (if not
 // already present), and writes the result to versions.json.
 
-import { greaterThan, parse } from "jsr:@std/semver@1";
+import { isNewerRelease } from "./chronver.ts";
 
 const version = Deno.args[0];
 if (!version) {
@@ -32,14 +32,12 @@ if (response.ok) {
   await response.body?.cancel();
 }
 
-// Insert in descending (newest-first) order rather than blindly prepending.
-// Releases are not always published newest-first: a patch to an older minor
-// (e.g. v2.9.5) can ship after a newer release (e.g. v3.0.0), and a prepend
-// would then list it above the newer versions. Insert by semver so the
-// ordering stays correct.
+// Insert in descending (newest-first) order rather than blindly prepending,
+// so re-publishing an older release (e.g. a manual re-run of post_publish)
+// doesn't list it above newer ones. Versions are ChronVer dates; SemVer
+// entries from before Ende used ChronVer sort below them.
 if (!versions.cli.includes(version)) {
-  const parsed = parse(version);
-  const idx = versions.cli.findIndex((v) => greaterThan(parsed, parse(v)));
+  const idx = versions.cli.findIndex((v) => isNewerRelease(version, v));
   if (idx === -1) {
     versions.cli.push(version);
   } else {

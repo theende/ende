@@ -14,12 +14,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use deno_semver::Version;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::unsync::spawn;
 use ende_core::url::Url;
+use ende_lib::chronver::ChronVer;
 use ende_lib::version;
 use once_cell::sync::Lazy;
 use sha2::Digest;
@@ -96,10 +96,10 @@ enum UpgradeCheckKind {
 #[async_trait(?Send)]
 trait VersionProvider: Clone {
   /// Fetch the latest available version.
-  async fn latest_version(&self) -> Result<String, AnyError>;
+  async fn latest_version(&self) -> Result<ChronVer, AnyError>;
 
   /// The version of the current executable.
-  fn current_version(&self) -> Cow<'_, str>;
+  fn current_version(&self) -> ChronVer;
 }
 
 #[derive(Clone)]
@@ -122,7 +122,7 @@ impl RealVersionProvider {
 
 #[async_trait(?Send)]
 impl VersionProvider for RealVersionProvider {
-  async fn latest_version(&self) -> Result<String, AnyError> {
+  async fn latest_version(&self) -> Result<ChronVer, AnyError> {
     fetch_latest_version(
       &self.http_client_provider.get_or_create()?,
       self.check_kind,
@@ -130,8 +130,8 @@ impl VersionProvider for RealVersionProvider {
     .await
   }
 
-  fn current_version(&self) -> Cow<'_, str> {
-    Cow::Borrowed(version::ENDE_VERSION_INFO.ende)
+  fn current_version(&self) -> ChronVer {
+    version::ende_chronver()
   }
 }
 
@@ -169,7 +169,7 @@ impl<TEnvironment: UpdateCheckerEnvironment, TVersionProvider: VersionProvider>
   }
 
   /// Returns a version if a new one is available and it should be prompted about.
-  pub fn should_prompt(&self) -> Option<String> {
+  pub fn should_prompt(&self) -> Option<ChronVer> {
     let file = self.maybe_file.as_ref()?;
     // If the current version saved is not the actually current version of the binary
     // It means
@@ -180,14 +180,7 @@ impl<TEnvironment: UpdateCheckerEnvironment, TVersionProvider: VersionProvider>
     if file.current_version != current_version {
       return None;
     }
-    if file.latest_version == current_version {
-      return None;
-    }
-
-    if let Ok(current) = Version::parse_standard(&current_version)
-      && let Ok(latest) = Version::parse_standard(&file.latest_version)
-      && current >= latest
-    {
+    if current_version >= file.latest_version {
       return None;
     }
 
@@ -196,7 +189,7 @@ impl<TEnvironment: UpdateCheckerEnvironment, TVersionProvider: VersionProvider>
       .current_time()
       .signed_duration_since(file.last_prompt);
     if last_prompt_age > chrono::Duration::hours(UPGRADE_CHECK_INTERVAL) {
-      Some(file.latest_version.clone())
+      Some(file.latest_version)
     } else {
       None
     }
@@ -212,51 +205,15 @@ impl<TEnvironment: UpdateCheckerEnvironment, TVersionProvider: VersionProvider>
   }
 }
 
-fn get_release_notes_url(version: &str) -> String {
+fn get_release_notes_url(version: &ChronVer) -> String {
   format!("{RELEASE_URL}/tag/v{version}")
 }
 
-fn get_minor_version_blog_post_url(semver: &Version) -> String {
-  format!("https://ende.sh/blog/v{}.{}", semver.major, semver.minor)
-}
-
-fn print_release_notes(current_version: &str, new_version: &str) {
-  let Ok(current_semver) = Version::parse_standard(current_version) else {
-    return;
-  };
-  let Ok(new_semver) = Version::parse_standard(new_version) else {
-    return;
-  };
-
-  let is_switching_from_deno1_to_deno2 =
-    new_semver.major == 2 && current_semver.major == 1;
-
-  if is_switching_from_deno1_to_deno2 {
-    log::info!(
-      "{}\n\n  {}\n",
-      colors::gray("Migration guide:"),
-      colors::bold(
-        "https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations"
-      )
-    );
-  }
-
-  let should_print = current_semver.major != new_semver.major
-    || current_semver.minor != new_semver.minor;
-
-  if !should_print {
-    return;
-  }
-
+fn print_release_notes(new_version: &ChronVer) {
   log::info!(
     "{}\n\n  {}\n",
     colors::gray("Release notes:"),
     colors::bold(get_release_notes_url(new_version))
-  );
-  log::info!(
-    "{}\n\n  {}\n",
-    colors::gray("Blog post:"),
-    colors::bold(get_minor_version_blog_post_url(&new_semver))
   );
 }
 
@@ -312,7 +269,7 @@ pub fn check_for_upgrades(
       "{} {} → {} {}",
       colors::green("A new release of Ende is available:"),
       colors::cyan(version::ENDE_VERSION_INFO.ende),
-      colors::cyan(&upgrade_version),
+      colors::cyan(upgrade_version.to_string()),
       colors::italic_gray("Run `ende upgrade` to install it.")
     );
 
@@ -343,18 +300,12 @@ async fn check_for_upgrades_for_lsp_with_provider(
   let latest_version = version_provider.latest_version().await?;
   let current_version = version_provider.current_version();
 
-  // Nothing to upgrade
-  if current_version == latest_version {
-    return Ok(None);
-  }
-
-  if let Ok(current) = Version::parse_standard(&current_version)
-    && let Ok(latest) = Version::parse_standard(&latest_version)
-    && current >= latest
-  {
+  if current_version >= latest_version {
     return Ok(None); // nothing to upgrade
   }
-  Ok(Some(LspVersionUpgradeInfo { latest_version }))
+  Ok(Some(LspVersionUpgradeInfo {
+    latest_version: latest_version.to_string(),
+  }))
 }
 
 async fn fetch_and_store_latest_version<
@@ -374,14 +325,14 @@ async fn fetch_and_store_latest_version<
       .current_time()
       .sub(chrono::Duration::hours(UPGRADE_CHECK_INTERVAL + 1)),
     last_checked: env.current_time(),
-    current_version: version_provider.current_version().to_string(),
+    current_version: version_provider.current_version(),
     latest_version,
   };
 
   env.write_check_file(&version_file.serialize());
 }
 
-fn get_binary_cache_path(dl_dir: &Path, version: &str) -> PathBuf {
+fn get_binary_cache_path(dl_dir: &Path, version: &ChronVer) -> PathBuf {
   dl_dir.join(format!("release/v{}/{}", version, *ARCHIVE_NAME))
 }
 
@@ -876,13 +827,15 @@ pub async fn upgrade(
   let sys = &sys_traits::impls::RealSys;
 
   // Try delta upgrade when not disabled
+  let current_version = version::ende_chronver();
   let maybe_delta_binary = if !upgrade_flags.no_delta
+    && should_try_delta(&current_version, &selected_version_to_upgrade)
     && try_read_cached_binary(sys, &cache_path).is_none()
   {
     try_delta_upgrade(
       &client,
       &current_exe_path,
-      version::ENDE_VERSION_INFO.ende,
+      &current_version,
       &selected_version_to_upgrade,
     )
     .await
@@ -969,10 +922,7 @@ pub async fn upgrade(
       format!("failed to remove '{}'", new_exe_path.display())
     })?;
     log::info!("Upgraded successfully (dry run)");
-    print_release_notes(
-      version::ENDE_VERSION_INFO.ende,
-      &selected_version_to_upgrade,
-    );
+    print_release_notes(&selected_version_to_upgrade);
     drop(temp_dir);
     return Ok(());
   }
@@ -995,10 +945,7 @@ pub async fn upgrade(
     "\nUpgraded successfully to Ende {}\n",
     colors::green(format!("v{selected_version_to_upgrade}")),
   );
-  print_release_notes(
-    version::ENDE_VERSION_INFO.ende,
-    &selected_version_to_upgrade,
-  );
+  print_release_notes(&selected_version_to_upgrade);
 
   if let Ok(Some(text)) = banner_handle.await {
     log::info!("\n{}\n", text);
@@ -1009,35 +956,33 @@ pub async fn upgrade(
   Ok(())
 }
 
-/// The version passed to `ende upgrade`, without a leading `v`, or `None`
-/// to upgrade to the latest release.
+const INVALID_VERSION_HELP: &str = "Ende versions are release dates in the form YYYY.MM.DD[.N], like 2026.10.14 or 2026.10.14.1.";
+
+/// The version passed to `ende upgrade`, or `None` to upgrade to the latest
+/// release.
 fn requested_version(
   upgrade_flags: &UpgradeFlags,
-) -> Result<Option<String>, AnyError> {
+) -> Result<Option<ChronVer>, AnyError> {
   let Some(passed_version) = &upgrade_flags.version else {
     return Ok(None);
   };
-  let passed_version =
-    passed_version.strip_prefix('v').unwrap_or(passed_version);
-  if Version::parse_standard(passed_version).is_err() {
-    bail!(
-      "Invalid version passed ({})\n\nPass a release version, like 1.45.0.\n\nUsage:\n{}",
+  match ChronVer::parse(passed_version) {
+    Ok(version) => Ok(Some(version)),
+    Err(_) => bail!(
+      "Invalid version passed ({})\n\n{}\n\nUsage:\n{}",
       colors::gray(passed_version),
+      INVALID_VERSION_HELP,
       UPGRADE_USAGE
-    );
+    ),
   }
-  Ok(Some(passed_version.to_string()))
 }
 
 fn select_specific_version_for_upgrade(
-  version: String,
+  version: ChronVer,
   force: bool,
-) -> Option<String> {
-  if !force && version::ENDE_VERSION_INFO.ende == version {
-    log::info!(
-      "Version {} is already installed",
-      version::ENDE_VERSION_INFO.ende
-    );
+) -> Option<ChronVer> {
+  if !force && version::ende_chronver() == version {
+    log::info!("Version {} is already installed", version);
     return None;
   }
 
@@ -1047,7 +992,7 @@ fn select_specific_version_for_upgrade(
 async fn find_latest_version_to_upgrade(
   http_client_provider: Arc<HttpClientProvider>,
   force: bool,
-) -> Result<Option<String>, AnyError> {
+) -> Result<Option<ChronVer>, AnyError> {
   log::info!("{}", colors::gray("Looking up latest version"));
 
   let client = http_client_provider.get_or_create()?;
@@ -1064,8 +1009,8 @@ async fn find_latest_version_to_upgrade(
       }
     };
 
-  let current_version = version::ENDE_VERSION_INFO.ende;
-  let should_upgrade = force || current_version != latest_version_found;
+  let current_version = version::ende_chronver();
+  let should_upgrade = force || latest_version_found > current_version;
 
   log::info!("");
   if should_upgrade {
@@ -1087,14 +1032,15 @@ async fn find_latest_version_to_upgrade(
 async fn fetch_latest_version(
   client: &HttpClient,
   check_kind: UpgradeCheckKind,
-) -> Result<String, AnyError> {
+) -> Result<ChronVer, AnyError> {
   let url = get_latest_version_url(check_kind);
   let text = client.download_text(url.parse()?).await?;
-  Ok(normalize_version_from_server(&text))
+  parse_latest_version(&text)
 }
 
-fn normalize_version_from_server(text: &str) -> String {
-  text.trim().trim_start_matches('v').to_string()
+/// Parses the contents of `release-latest.txt`, e.g. `v2026.10.14`.
+fn parse_latest_version(text: &str) -> Result<ChronVer, AnyError> {
+  Ok(ChronVer::parse(text.trim())?)
 }
 
 fn get_latest_version_url(check_kind: UpgradeCheckKind) -> String {
@@ -1114,7 +1060,7 @@ fn base_upgrade_url() -> Cow<'static, str> {
   }
 }
 
-fn get_download_url(version: &str) -> Result<Url, AnyError> {
+fn get_download_url(version: &ChronVer) -> Result<Url, AnyError> {
   let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
     "http://localhost:4545/ende-upgrade"
   } else {
@@ -1131,80 +1077,21 @@ fn get_download_url(version: &str) -> Result<Url, AnyError> {
   })
 }
 
-/// Build the chain of consecutive versions from current to target.
-/// Each release only has a delta from its immediate predecessor, so
-/// multi-step upgrades (e.g. 2.7.10 -> 2.7.12) require chaining:
-///   download 2.7.11's delta from 2.7.10, apply,
-///   download 2.7.12's delta from 2.7.11, apply.
-///
-/// Supports:
-/// - Same-minor patch upgrades (e.g. 2.7.10 -> 2.7.12)
-/// - Cross-minor upgrades (e.g. 2.7.13 -> 2.8.0 -> 2.8.1): the first
-///   step crosses the minor boundary, remaining steps are same-minor.
-///
-/// Total chain length is capped at 3 steps. Returns empty if the
-/// versions are not eligible for delta upgrade.
-fn build_delta_chain(
-  current_version: &str,
-  target_version: &str,
-) -> Vec<(String, String)> {
-  let Ok(current) = Version::parse_standard(current_version) else {
-    return vec![];
-  };
-  let Ok(target) = Version::parse_standard(target_version) else {
-    return vec![];
-  };
-  if !current.pre.is_empty()
-    || !target.pre.is_empty()
-    || current.major != target.major
-  {
-    return vec![];
-  }
-
-  let mut chain = Vec::new();
-
-  if current.minor == target.minor {
-    // Same minor: chain through consecutive patches
-    let diff = target.patch.saturating_sub(current.patch);
-    if diff == 0 || diff > 3 {
-      return vec![];
-    }
-    for i in 0..diff {
-      chain.push((
-        format!("{}.{}.{}", current.major, current.minor, current.patch + i),
-        format!(
-          "{}.{}.{}",
-          current.major,
-          current.minor,
-          current.patch + i + 1
-        ),
-      ));
-    }
-  } else if target.minor == current.minor + 1 {
-    // Cross-minor: first step jumps to target_minor.0, then chain patches
-    let minor_zero = format!("{}.{}.0", target.major, target.minor);
-    chain.push((current_version.to_string(), minor_zero));
-    for i in 0..target.patch {
-      chain.push((
-        format!("{}.{}.{}", target.major, target.minor, i),
-        format!("{}.{}.{}", target.major, target.minor, i + 1),
-      ));
-    }
-    if chain.len() > 3 {
-      return vec![];
-    }
-  } else {
-    // Too many minor versions apart
-    return vec![];
-  }
-
-  chain
+/// Each release publishes a delta patch from the release before it. Only a
+/// patch straight from the installed version is tried; there is none from a
+/// version to itself.
+fn should_try_delta(
+  current_version: &ChronVer,
+  target_version: &ChronVer,
+) -> bool {
+  current_version != target_version
 }
 
-/// Construct the delta patch download URL for a stable release.
+/// Construct the URL of the delta patch from `current_version` to
+/// `target_version`, which is published with the target release.
 fn get_delta_download_url(
-  current_version: &str,
-  target_version: &str,
+  current_version: &ChronVer,
+  target_version: &ChronVer,
 ) -> Result<Url, AnyError> {
   let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
     "http://localhost:4545/ende-upgrade"
@@ -1221,8 +1108,8 @@ fn get_delta_download_url(
 
 /// Construct the URL for the delta patch's SHA-256 checksum file.
 fn get_delta_checksum_url(
-  current_version: &str,
-  target_version: &str,
+  current_version: &ChronVer,
+  target_version: &ChronVer,
 ) -> Result<Url, AnyError> {
   let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
     "http://localhost:4545/ende-upgrade"
@@ -1238,7 +1125,7 @@ fn get_delta_checksum_url(
 }
 
 /// Construct the URL for the uncompressed binary's SHA-256 checksum file.
-fn get_binary_checksum_url(target_version: &str) -> Result<Url, AnyError> {
+fn get_binary_checksum_url(target_version: &ChronVer) -> Result<Url, AnyError> {
   let release_url = if std::env::var_os("ENDE_TESTING_UPGRADE").is_some() {
     "http://localhost:4545/ende-upgrade"
   } else {
@@ -1275,41 +1162,20 @@ fn compute_sha256(data: &[u8]) -> String {
   faster_hex::hex_string(&digest)
 }
 
-/// Attempt a delta upgrade by chaining consecutive bsdiff patches.
-/// For a single-step upgrade (e.g. 2.7.11 -> 2.7.12), downloads and
-/// applies one patch. For multi-step (e.g. 2.7.10 -> 2.7.12), chains
-/// patches: downloads the 2.7.10->2.7.11 patch from the 2.7.11 release,
-/// applies it, then downloads the 2.7.11->2.7.12 patch from the 2.7.12
-/// release, applies that. Returns `Some(final_binary)` on success, or
-/// `None` on any failure (triggering full download fallback).
+/// Attempt a delta upgrade with the bsdiff patch from `current_version` to
+/// `target_version`. Returns `Some(new_binary)` on success, or `None` on any
+/// failure (including a missing patch), triggering the full download
+/// fallback.
 async fn try_delta_upgrade(
   client: &HttpClient,
   current_exe: &Path,
-  current_version: &str,
-  target_version: &str,
+  current_version: &ChronVer,
+  target_version: &ChronVer,
 ) -> Option<Vec<u8>> {
-  let chain = build_delta_chain(current_version, target_version);
-  if chain.is_empty() {
-    log::debug!(
-      "No delta chain from {} to {}, skipping delta upgrade",
-      current_version,
-      target_version
-    );
-    return None;
-  }
-
-  let steps = chain.len();
-  log::info!(
-    "{}",
-    colors::gray(format!(
-      "Attempting delta upgrade ({} step{})",
-      steps,
-      if steps > 1 { "s" } else { "" }
-    ))
-  );
+  log::info!("{}", colors::gray("Attempting delta upgrade"));
 
   // Read the current binary
-  let mut binary = match std::fs::read(current_exe) {
+  let binary = match std::fs::read(current_exe) {
     Ok(data) => data,
     Err(e) => {
       log::debug!("Failed to read current binary: {}", e);
@@ -1335,82 +1201,86 @@ async fn try_delta_upgrade(
     return None;
   }
 
-  // Apply each step in the chain
-  for (i, (src, dst)) in chain.iter().enumerate() {
-    if steps > 1 {
-      log::info!(
-        "{}",
-        colors::gray(format!("Step {}/{}: {} -> {}", i + 1, steps, src, dst))
+  // Download the delta patch (published with the target release)
+  let delta_url =
+    get_delta_download_url(current_version, target_version).ok()?;
+  log::info!(
+    "{}",
+    colors::gray(format!("Downloading delta patch {}", &delta_url))
+  );
+  let delta_data = match download_package(client, delta_url).await {
+    Ok(Some(data)) => data,
+    Ok(None) => {
+      log::debug!(
+        "Delta patch not found for {} -> {}",
+        current_version,
+        target_version
       );
+      return None;
     }
+    Err(e) => {
+      log::debug!("Failed to download delta patch: {}", e);
+      return None;
+    }
+  };
 
-    // Download the delta patch (from the DST version's release)
-    let delta_url = get_delta_download_url(src, dst).ok()?;
-    log::info!(
-      "{}",
-      colors::gray(format!("Downloading delta patch {}", &delta_url))
+  // Verify the delta patch's own checksum
+  let delta_checksum_url =
+    get_delta_checksum_url(current_version, target_version).ok()?;
+  if let Some(expected_delta_hash) =
+    fetch_sha256_from_url(client, delta_checksum_url).await
+  {
+    let actual_delta_hash = compute_sha256(&delta_data);
+    if actual_delta_hash != expected_delta_hash {
+      log::warn!(
+        "Delta patch checksum mismatch for {} -> {}",
+        current_version,
+        target_version
+      );
+      return None;
+    }
+  } else {
+    log::debug!(
+      "Could not fetch delta patch checksum for {} -> {}",
+      current_version,
+      target_version
     );
-    let delta_data = match download_package(client, delta_url).await {
-      Ok(Some(data)) => data,
-      Ok(None) => {
-        log::debug!("Delta patch not found for {} -> {}", src, dst);
-        return None;
-      }
-      Err(e) => {
-        log::debug!("Failed to download delta patch: {}", e);
-        return None;
-      }
-    };
+    return None;
+  }
 
-    // Verify the delta patch's own checksum
-    let delta_checksum_url = get_delta_checksum_url(src, dst).ok()?;
-    if let Some(expected_delta_hash) =
-      fetch_sha256_from_url(client, delta_checksum_url).await
-    {
-      let actual_delta_hash = compute_sha256(&delta_data);
-      if actual_delta_hash != expected_delta_hash {
-        log::warn!("Delta patch checksum mismatch for {} -> {}", src, dst);
-        return None;
-      }
-    } else {
-      log::debug!(
-        "Could not fetch delta patch checksum for {} -> {}",
-        src,
-        dst
+  // Apply the bsdiff patch
+  let binary = match apply_bsdiff_patch(&binary, &delta_data) {
+    Ok(data) => data,
+    Err(e) => {
+      log::warn!(
+        "Failed to apply delta patch {} -> {}: {}",
+        current_version,
+        target_version,
+        e
       );
       return None;
     }
+  };
 
-    // Apply the bsdiff patch
-    binary = match apply_bsdiff_patch(&binary, &delta_data) {
-      Ok(data) => data,
-      Err(e) => {
-        log::warn!("Failed to apply delta patch {} -> {}: {}", src, dst, e);
-        return None;
-      }
-    };
-
-    // Verify the intermediate/final binary
-    let checksum_url = get_binary_checksum_url(dst).ok()?;
-    if let Some(expected_hash) =
-      fetch_sha256_from_url(client, checksum_url).await
-    {
-      let actual_hash = compute_sha256(&binary);
-      if actual_hash != expected_hash {
-        log::warn!(
-          "Patched binary checksum mismatch after step {} -> {}",
-          src,
-          dst
-        );
-        return None;
-      }
-    } else {
-      log::debug!(
-        "Could not fetch binary checksum for v{}, skipping delta",
-        dst
+  // Verify the patched binary
+  let checksum_url = get_binary_checksum_url(target_version).ok()?;
+  if let Some(expected_hash) = fetch_sha256_from_url(client, checksum_url).await
+  {
+    let actual_hash = compute_sha256(&binary);
+    if actual_hash != expected_hash {
+      log::warn!(
+        "Patched binary checksum mismatch for {} -> {}",
+        current_version,
+        target_version
       );
       return None;
     }
+  } else {
+    log::debug!(
+      "Could not fetch binary checksum for v{}, skipping delta",
+      target_version
+    );
+    return None;
   }
 
   log::info!("{}", colors::gray("Delta upgrade checksum verified"));
@@ -1471,7 +1341,7 @@ fn apply_bsdiff_patch(
 const MAX_PATCH_SIZE: usize = 2 * 1024 * 1024 * 1024;
 
 fn spawn_banner_task(
-  version: &str,
+  version: &ChronVer,
   client: HttpClient,
 ) -> ende_core::unsync::JoinHandle<Option<String>> {
   let banner_url = get_banner_url(version);
@@ -1488,7 +1358,7 @@ fn spawn_banner_task(
   })
 }
 
-fn get_banner_url(version: &str) -> Option<Url> {
+fn get_banner_url(version: &ChronVer) -> Option<Url> {
   Url::parse(&format!("{}/v{}/banner.txt", DL_RELEASE_URL, version)).ok()
 }
 
@@ -1663,8 +1533,8 @@ fn check_exe(exe_path: &Path) -> Result<(), AnyError> {
 struct CheckVersionFile {
   pub last_prompt: chrono::DateTime<chrono::Utc>,
   pub last_checked: chrono::DateTime<chrono::Utc>,
-  pub current_version: String,
-  pub latest_version: String,
+  pub current_version: ChronVer,
+  pub latest_version: ChronVer,
 }
 
 impl CheckVersionFile {
@@ -1677,14 +1547,11 @@ impl CheckVersionFile {
       return None;
     }
 
-    let latest_version = split_content[2].trim().to_owned();
-    if latest_version.is_empty() {
-      return None;
-    }
-    let current_version = split_content[3].trim().to_owned();
-    if current_version.is_empty() {
-      return None;
-    }
+    // Files written before Ende used ChronVer hold SemVer versions. They
+    // don't parse, so they are treated like a missing file and the latest
+    // version is checked again.
+    let latest_version = ChronVer::parse(split_content[2].trim()).ok()?;
+    let current_version = ChronVer::parse(split_content[3].trim()).ok()?;
     let last_prompt = chrono::DateTime::parse_from_rfc3339(split_content[0])
       .map(|dt| dt.with_timezone(&chrono::Utc))
       .ok()?;
@@ -1783,33 +1650,58 @@ mod test {
 
     assert_eq!(requested_version(&upgrade_flags).unwrap(), None);
 
-    upgrade_flags.version = Some("1.46.0".to_string());
+    upgrade_flags.version = Some("2026.10.14".to_string());
     assert_eq!(
       requested_version(&upgrade_flags).unwrap(),
-      Some("1.46.0".to_string())
+      Some(cv("2026.10.14"))
     );
 
-    upgrade_flags.version = Some("v1.46.5".to_string());
+    upgrade_flags.version = Some("v2026.10.14.1".to_string());
     assert_eq!(
       requested_version(&upgrade_flags).unwrap(),
-      Some("1.46.5".to_string())
+      Some(cv("2026.10.14.1"))
     );
 
-    upgrade_flags.version = Some("5c69b4861b52a".to_string());
-    let err = requested_version(&upgrade_flags).unwrap_err().to_string();
-    assert_contains!(err, "Invalid version passed");
-    assert_contains!(err, "Pass a release version, like 1.45.0.");
+    for invalid in ["5c69b4861b52a", "11.asd.1324", "2026.1.14", "2026.10.14.0"]
+    {
+      upgrade_flags.version = Some(invalid.to_string());
+      let err = test_util::strip_ansi_codes(
+        &requested_version(&upgrade_flags).unwrap_err().to_string(),
+      )
+      .to_string();
+      assert_contains!(err, &format!("Invalid version passed ({invalid})"));
+      assert_contains!(err, INVALID_VERSION_HELP);
+    }
+  }
 
-    upgrade_flags.version = Some("11.asd.1324".to_string());
-    let err = requested_version(&upgrade_flags).unwrap_err().to_string();
-    assert_contains!(err, "Invalid version passed");
-    assert_contains!(err, "Pass a release version, like 1.45.0.");
+  #[test]
+  fn test_requested_version_rejects_semver() {
+    let upgrade_flags = UpgradeFlags {
+      dry_run: false,
+      force: false,
+      no_delta: false,
+      version: Some("2.9.7".to_string()),
+      output: None,
+      checksum: None,
+      pr: None,
+      branch: None,
+    };
+    let err = test_util::strip_ansi_codes(
+      &requested_version(&upgrade_flags).unwrap_err().to_string(),
+    )
+    .to_string();
+    assert_contains!(err, "Invalid version passed (2.9.7)");
+    assert_contains!(
+      err,
+      "Ende versions are release dates in the form YYYY.MM.DD[.N], like 2026.10.14 or 2026.10.14.1."
+    );
+    assert_contains!(err, "ende upgrade");
   }
 
   #[test]
   fn test_parse_upgrade_check_file() {
     let file = CheckVersionFile::parse(
-      "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!1.2.3!1.2.2"
+      "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!2026.10.15!2026.10.14"
         .to_string(),
     )
     .unwrap();
@@ -1821,8 +1713,8 @@ mod test {
       file.last_checked.to_rfc3339(),
       "2020-01-01T00:00:00+00:00".to_string()
     );
-    assert_eq!(file.latest_version, "1.2.3".to_string());
-    assert_eq!(file.current_version, "1.2.2".to_string());
+    assert_eq!(file.latest_version, cv("2026.10.15"));
+    assert_eq!(file.current_version, cv("2026.10.14"));
 
     let result =
       CheckVersionFile::parse("2020-01-01T00:00:00+00:00!".to_string());
@@ -1835,10 +1727,28 @@ mod test {
     assert!(result.is_none());
 
     let result = CheckVersionFile::parse(
-      "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!1.2.3!1.2.2!stable!x"
+      "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!2026.10.15!2026.10.14!stable!x"
         .to_string(),
     );
     assert!(result.is_none());
+  }
+
+  #[test]
+  fn test_parse_upgrade_check_file_with_semver_versions() {
+    // Files written before Ende used ChronVer hold SemVer versions. They
+    // load without error, as if there were no file, so the next run checks
+    // for the latest version again.
+    for text in [
+      "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!2.9.8!2.9.7",
+      "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!2.9.8!2.9.7!stable",
+      "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!2026.10.15!2.9.7",
+      "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!2.9.8!2026.10.14",
+    ] {
+      assert!(
+        CheckVersionFile::parse(text.to_string()).is_none(),
+        "{text}"
+      );
+    }
   }
 
   #[test]
@@ -1848,11 +1758,11 @@ mod test {
     // channel is ignored, whatever it is.
     for channel in ["stable", "canary", "rc", "lts", "alpha", "beta", "x"] {
       let file = CheckVersionFile::parse(format!(
-        "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!1.2.3!1.2.2!{channel}"
+        "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!2026.10.15!2026.10.14!{channel}"
       ))
       .unwrap();
-      assert_eq!(file.latest_version, "1.2.3".to_string());
-      assert_eq!(file.current_version, "1.2.2".to_string());
+      assert_eq!(file.latest_version, cv("2026.10.15"));
+      assert_eq!(file.current_version, cv("2026.10.14"));
     }
   }
 
@@ -1867,12 +1777,12 @@ mod test {
       )
       .unwrap()
       .with_timezone(&chrono::Utc),
-      latest_version: "1.2.3".to_string(),
-      current_version: "1.2.2".to_string(),
+      latest_version: cv("2026.10.14.1"),
+      current_version: cv("2026.10.14"),
     };
     assert_eq!(
       file.serialize(),
-      "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!1.2.3!1.2.2"
+      "2020-01-01T00:00:00+00:00!2020-01-01T00:00:00+00:00!2026.10.14.1!2026.10.14"
     );
   }
 
@@ -1920,15 +1830,15 @@ mod test {
 
   #[async_trait(?Send)]
   impl VersionProvider for TestUpdateCheckerEnvironment {
-    async fn latest_version(&self) -> Result<String, AnyError> {
+    async fn latest_version(&self) -> Result<ChronVer, AnyError> {
       match self.latest_version.borrow().clone() {
-        Ok(result) => Ok(result),
+        Ok(result) => parse_latest_version(&result),
         Err(err) => bail!("{}", err),
       }
     }
 
-    fn current_version(&self) -> Cow<'_, str> {
-      Cow::Owned(self.current_version.borrow().clone())
+    fn current_version(&self) -> ChronVer {
+      cv(&self.current_version.borrow())
     }
   }
 
@@ -1949,8 +1859,8 @@ mod test {
   #[tokio::test]
   async fn test_update_checker() {
     let env = TestUpdateCheckerEnvironment::new();
-    env.set_current_version("1.0.0");
-    env.set_latest_version("1.1.0");
+    env.set_current_version("2026.10.14");
+    env.set_latest_version("2026.10.15");
     let checker = UpdateChecker::new(env.clone(), env.clone());
 
     // no version, so we should check, but not prompt
@@ -1966,25 +1876,25 @@ mod test {
     // should not check for latest version because we just did
     assert!(!checker.should_check_for_new_version());
     // but should prompt
-    assert_eq!(checker.should_prompt(), Some("1.1.0".to_string()));
+    assert_eq!(checker.should_prompt(), Some(cv("2026.10.15")));
 
     // fast forward an hour and bump the latest version
     env.add_hours(1);
-    env.set_latest_version("1.2.0");
+    env.set_latest_version("2026.10.15.1");
     assert!(!checker.should_check_for_new_version());
-    assert_eq!(checker.should_prompt(), Some("1.1.0".to_string()));
+    assert_eq!(checker.should_prompt(), Some(cv("2026.10.15")));
 
     // fast forward again and it should check for a newer version
     env.add_hours(UPGRADE_CHECK_INTERVAL);
     assert!(checker.should_check_for_new_version());
-    assert_eq!(checker.should_prompt(), Some("1.1.0".to_string()));
+    assert_eq!(checker.should_prompt(), Some(cv("2026.10.15")));
 
     fetch_and_store_latest_version(&env, &env).await;
 
     // reload and store that we prompted
     let checker = UpdateChecker::new(env.clone(), env.clone());
     assert!(!checker.should_check_for_new_version());
-    assert_eq!(checker.should_prompt(), Some("1.2.0".to_string()));
+    assert_eq!(checker.should_prompt(), Some(cv("2026.10.15.1")));
     checker.store_prompted();
 
     // reload and it should now say not to prompt
@@ -1995,17 +1905,17 @@ mod test {
     // but if we fast forward past the upgrade interval it should prompt again
     env.add_hours(UPGRADE_CHECK_INTERVAL + 1);
     assert!(checker.should_check_for_new_version());
-    assert_eq!(checker.should_prompt(), Some("1.2.0".to_string()));
+    assert_eq!(checker.should_prompt(), Some(cv("2026.10.15.1")));
 
     // upgrade the version and it should stop prompting
-    env.set_current_version("1.2.0");
+    env.set_current_version("2026.10.15.1");
     assert!(checker.should_check_for_new_version());
     assert_eq!(checker.should_prompt(), None);
 
     // now try failing when fetching the latest version
     env.add_hours(UPGRADE_CHECK_INTERVAL + 1);
     env.set_latest_version_err("Failed");
-    env.set_latest_version("1.3.0");
+    env.set_latest_version("2026.11.01");
 
     // this will silently fail
     fetch_and_store_latest_version(&env, &env).await;
@@ -2020,21 +1930,48 @@ mod test {
       .current_time()
       .sub(chrono::Duration::hours(UPGRADE_CHECK_INTERVAL + 1));
     env.write_check_file(&format!(
-      "{}!{}!1.1.0!1.0.0!stable",
+      "{}!{}!2026.10.15!2026.10.14!stable",
       last_prompt.to_rfc3339(),
       env.current_time().to_rfc3339(),
     ));
-    env.set_current_version("1.0.0");
+    env.set_current_version("2026.10.14");
 
     let checker = UpdateChecker::new(env.clone(), env.clone());
     assert!(!checker.should_check_for_new_version());
-    assert_eq!(checker.should_prompt(), Some("1.1.0".to_string()));
+    assert_eq!(checker.should_prompt(), Some(cv("2026.10.15")));
 
     // storing the prompt rewrites the file without the channel
     checker.store_prompted();
     assert_eq!(env.read_check_file().split('!').count(), 4);
     let checker = UpdateChecker::new(env.clone(), env);
     assert_eq!(checker.should_prompt(), None);
+  }
+
+  #[tokio::test]
+  async fn test_update_checker_with_old_semver_check_file() {
+    // a check file written by a SemVer release of Ende
+    let env = TestUpdateCheckerEnvironment::new();
+    let last_prompt = env
+      .current_time()
+      .sub(chrono::Duration::hours(UPGRADE_CHECK_INTERVAL + 1));
+    env.write_check_file(&format!(
+      "{}!{}!2.9.8!2.9.7",
+      last_prompt.to_rfc3339(),
+      env.current_time().to_rfc3339(),
+    ));
+    env.set_current_version("2026.10.14");
+    env.set_latest_version("2026.10.15");
+
+    // the stored versions are unknown, so check again and don't prompt
+    let checker = UpdateChecker::new(env.clone(), env.clone());
+    assert!(checker.should_check_for_new_version());
+    assert_eq!(checker.should_prompt(), None);
+
+    // the check replaces the file with one in the current format
+    fetch_and_store_latest_version(&env, &env).await;
+    let checker = UpdateChecker::new(env.clone(), env);
+    assert!(!checker.should_check_for_new_version());
+    assert_eq!(checker.should_prompt(), Some(cv("2026.10.15")));
   }
 
   #[tokio::test]
@@ -2045,13 +1982,13 @@ mod test {
         .current_time()
         .sub(chrono::Duration::hours(UPGRADE_CHECK_INTERVAL + 1)),
       last_checked: env.current_time(),
-      latest_version: "1.26.2".to_string(),
-      current_version: "1.27.0".to_string(),
+      latest_version: cv("2026.10.14"),
+      current_version: cv("2026.10.14.1"),
     }
     .serialize();
     env.write_check_file(&file_content);
-    env.set_current_version("1.27.0");
-    env.set_latest_version("1.26.2");
+    env.set_current_version("2026.10.14.1");
+    env.set_latest_version("2026.10.14");
     let checker = UpdateChecker::new(env.clone(), env);
 
     // since currently running version is newer than latest available (eg. CDN
@@ -2067,13 +2004,13 @@ mod test {
         .current_time()
         .sub(chrono::Duration::hours(UPGRADE_CHECK_INTERVAL + 1)),
       last_checked: env.current_time(),
-      latest_version: "1.26.2".to_string(),
-      current_version: "1.25.0".to_string(),
+      latest_version: cv("2026.10.20"),
+      current_version: cv("2026.10.01"),
     }
     .serialize();
     env.write_check_file(&file_content);
     // simulate an upgrade done since the file was written
-    env.set_current_version("1.26.0");
+    env.set_current_version("2026.10.14");
     let checker = UpdateChecker::new(env.clone(), env);
     assert_eq!(checker.should_prompt(), None);
   }
@@ -2091,21 +2028,26 @@ mod test {
   }
 
   #[test]
-  fn test_normalize_version_server() {
-    // should strip v
-    assert_eq!(normalize_version_from_server("v1.0.0"), "1.0.0");
-    // should not replace v after start
+  fn test_parse_latest_version() {
     assert_eq!(
-      normalize_version_from_server("  v1.0.0-test-v\n\n  "),
-      "1.0.0-test-v"
+      parse_latest_version("2026.10.14").unwrap(),
+      cv("2026.10.14")
     );
+    // trims whitespace and strips a leading v
+    assert_eq!(
+      parse_latest_version("  v2026.10.14.1\n\n  ").unwrap(),
+      cv("2026.10.14.1")
+    );
+    let err = parse_latest_version("2.9.7").unwrap_err().to_string();
+    assert_contains!(err, "Invalid version '2.9.7'");
+    assert!(parse_latest_version("v2026.10.14-test-v").is_err());
   }
 
   #[tokio::test]
   async fn test_upgrades_lsp() {
     let env = TestUpdateCheckerEnvironment::new();
-    env.set_current_version("1.0.0");
-    env.set_latest_version("2.0.0");
+    env.set_current_version("2026.10.14");
+    env.set_latest_version("2026.10.14.1");
 
     // greater
     {
@@ -2115,13 +2057,13 @@ mod test {
       assert_eq!(
         maybe_info,
         Some(LspVersionUpgradeInfo {
-          latest_version: "2.0.0".to_string(),
+          latest_version: "2026.10.14.1".to_string(),
         })
       );
     }
     // equal
     {
-      env.set_latest_version("1.0.0");
+      env.set_latest_version("v2026.10.14");
       let maybe_info = check_for_upgrades_for_lsp_with_provider(&env)
         .await
         .unwrap();
@@ -2129,7 +2071,7 @@ mod test {
     }
     // less
     {
-      env.set_latest_version("0.9.0");
+      env.set_latest_version("2026.10.13");
       let maybe_info = check_for_upgrades_for_lsp_with_provider(&env)
         .await
         .unwrap();
@@ -2138,28 +2080,13 @@ mod test {
   }
 
   #[test]
-  fn blog_post_links() {
-    let version = Version::parse_standard("1.46.0").unwrap();
-    assert_eq!(
-      get_minor_version_blog_post_url(&version),
-      "https://ende.sh/blog/v1.46"
-    );
-
-    let version = Version::parse_standard("2.1.1").unwrap();
-    assert_eq!(
-      get_minor_version_blog_post_url(&version),
-      "https://ende.sh/blog/v2.1"
-    );
-  }
-
-  #[test]
   fn test_get_binary_cache_path() {
     let dl_dir = Path::new("/dl");
 
-    let path = get_binary_cache_path(dl_dir, "1.46.0");
+    let path = get_binary_cache_path(dl_dir, &cv("2026.10.14.1"));
     assert_eq!(
       path,
-      dl_dir.join(format!("release/v1.46.0/{}", *ARCHIVE_NAME))
+      dl_dir.join(format!("release/v2026.10.14.1/{}", *ARCHIVE_NAME))
     );
   }
 
@@ -2224,103 +2151,35 @@ mod test {
   }
 
   #[test]
-  fn test_build_delta_chain() {
-    // Single step
+  fn test_get_delta_download_url() {
+    // a patch straight from the installed version, however far apart the
+    // two releases are
+    let target = env!("TARGET");
     assert_eq!(
-      build_delta_chain("2.7.11", "2.7.12"),
-      vec![("2.7.11".to_string(), "2.7.12".to_string())]
+      get_delta_download_url(&cv("2026.10.14"), &cv("2027.03.02.1"))
+        .unwrap()
+        .as_str(),
+      format!(
+        "https://github.com/theende/ende/releases/download/v2027.03.02.1/ende-{target}.from-2026.10.14.bsdiff"
+      )
     );
-
-    // Multi-step (2 steps)
     assert_eq!(
-      build_delta_chain("2.7.10", "2.7.12"),
-      vec![
-        ("2.7.10".to_string(), "2.7.11".to_string()),
-        ("2.7.11".to_string(), "2.7.12".to_string()),
-      ]
+      get_delta_checksum_url(&cv("2026.10.14"), &cv("2027.03.02.1"))
+        .unwrap()
+        .as_str(),
+      format!(
+        "https://github.com/theende/ende/releases/download/v2027.03.02.1/ende-{target}.from-2026.10.14.bsdiff.sha256sum"
+      )
     );
-
-    // Multi-step (3 steps, max)
-    assert_eq!(
-      build_delta_chain("2.7.9", "2.7.12"),
-      vec![
-        ("2.7.9".to_string(), "2.7.10".to_string()),
-        ("2.7.10".to_string(), "2.7.11".to_string()),
-        ("2.7.11".to_string(), "2.7.12".to_string()),
-      ]
-    );
-
-    // Too far apart (> 3 steps, same minor)
-    assert!(build_delta_chain("2.7.0", "2.7.5").is_empty());
-    assert!(build_delta_chain("2.7.8", "2.7.12").is_empty());
-
-    // Cross-minor: direct jump to .0
-    assert_eq!(
-      build_delta_chain("2.7.13", "2.8.0"),
-      vec![("2.7.13".to_string(), "2.8.0".to_string())]
-    );
-
-    // Cross-minor: jump to .0 then one patch
-    assert_eq!(
-      build_delta_chain("2.7.13", "2.8.1"),
-      vec![
-        ("2.7.13".to_string(), "2.8.0".to_string()),
-        ("2.8.0".to_string(), "2.8.1".to_string()),
-      ]
-    );
-
-    // Cross-minor: jump to .0 then two patches (3 steps total, max)
-    assert_eq!(
-      build_delta_chain("2.7.13", "2.8.2"),
-      vec![
-        ("2.7.13".to_string(), "2.8.0".to_string()),
-        ("2.8.0".to_string(), "2.8.1".to_string()),
-        ("2.8.1".to_string(), "2.8.2".to_string()),
-      ]
-    );
-
-    // Cross-minor: too many steps (> 3)
-    assert!(build_delta_chain("2.7.13", "2.8.3").is_empty());
-
-    // Cross-minor: too many minors apart
-    assert!(build_delta_chain("2.6.10", "2.8.0").is_empty());
-
-    // Different major
-    assert!(build_delta_chain("1.46.3", "2.0.0").is_empty());
-
-    // Downgrade
-    assert!(build_delta_chain("2.7.12", "2.7.11").is_empty());
-
-    // Same version
-    assert!(build_delta_chain("2.7.12", "2.7.12").is_empty());
-
-    // Pre-release
-    assert!(build_delta_chain("2.7.11-rc.0", "2.7.12").is_empty());
-
-    // Invalid
-    assert!(build_delta_chain("invalid", "2.7.12").is_empty());
   }
 
   #[test]
-  fn test_get_delta_download_url() {
-    let url = get_delta_download_url("2.7.11", "2.7.12").unwrap();
-    let url_str = url.to_string();
-    assert!(
-      url_str.contains("/download/v2.7.12/"),
-      "URL should contain target version: {url_str}"
-    );
-    assert!(
-      url_str.contains(".from-2.7.11.bsdiff"),
-      "URL should contain source version and bsdiff extension: {url_str}"
-    );
-    assert!(
-      url_str.contains(&format!("/ende-{}.from-", env!("TARGET"))),
-      "URL should contain target name: {url_str}"
-    );
-    assert!(
-      url_str.starts_with("https://github.com/theende/ende/releases/"),
-      "URL should point at the ende releases: {url_str}"
-    );
+  fn test_should_try_delta() {
+    assert!(should_try_delta(&cv("2026.10.14"), &cv("2026.10.14.1")));
+    assert!(should_try_delta(&cv("2026.10.14"), &cv("2027.06.30")));
+    assert!(should_try_delta(&cv("2026.10.14"), &cv("2026.01.02")));
+    // no patch exists from a version to itself
+    assert!(!should_try_delta(&cv("2026.10.14"), &cv("2026.10.14")));
   }
 
   #[test]
@@ -2333,9 +2192,9 @@ mod test {
   fn test_get_download_url() {
     let target = env!("TARGET");
     assert_eq!(
-      get_download_url("2.0.0").unwrap().as_str(),
+      get_download_url(&cv("2026.10.14")).unwrap().as_str(),
       format!(
-        "https://github.com/theende/ende/releases/download/v2.0.0/ende-{target}.zip"
+        "https://github.com/theende/ende/releases/download/v2026.10.14/ende-{target}.zip"
       )
     );
   }
@@ -2343,9 +2202,9 @@ mod test {
   #[test]
   fn test_get_binary_checksum_url() {
     assert_eq!(
-      get_binary_checksum_url("2.0.0").unwrap().as_str(),
+      get_binary_checksum_url(&cv("2026.10.14")).unwrap().as_str(),
       format!(
-        "https://github.com/theende/ende/releases/download/v2.0.0/ende-{}.sha256sum",
+        "https://github.com/theende/ende/releases/download/v2026.10.14/ende-{}.sha256sum",
         env!("TARGET")
       )
     );
@@ -2354,8 +2213,8 @@ mod test {
   #[test]
   fn test_get_release_notes_url() {
     assert_eq!(
-      get_release_notes_url("2.1.0"),
-      "https://github.com/theende/ende/releases/tag/v2.1.0"
+      get_release_notes_url(&cv("2026.10.14.1")),
+      "https://github.com/theende/ende/releases/tag/v2026.10.14.1"
     );
   }
 
@@ -2473,59 +2332,9 @@ mod test {
   }
 
   #[test]
-  fn test_chained_bsdiff_patches() {
-    // Simulate a 3-step upgrade: 2.7.10 -> 2.7.11 -> 2.7.12 -> 2.7.13
-    // Use realistic-ish binary content that differs slightly per version
-    let base = b"DENO_BINARY_v2.7.10_padding_to_simulate_real_binary_size_";
-    let mut binary_v10 = base.to_vec();
-    binary_v10.extend_from_slice(&[0u8; 1024]);
-
-    let mut binary_v11 = binary_v10.clone();
-    // Simulate code changes: modify some bytes
-    binary_v11[20..26].copy_from_slice(b"2.7.11");
-    binary_v11[500..510].copy_from_slice(b"new_code_1");
-
-    let mut binary_v12 = binary_v11.clone();
-    binary_v12[20..26].copy_from_slice(b"2.7.12");
-    binary_v12[700..710].copy_from_slice(b"new_code_2");
-
-    let mut binary_v13 = binary_v12.clone();
-    binary_v13[20..26].copy_from_slice(b"2.7.13");
-    binary_v13[900..910].copy_from_slice(b"new_code_3");
-
-    // Generate consecutive delta patches
-    let mut patch_10_11 = Vec::new();
-    bsdiff::diff(&binary_v10, &binary_v11, &mut patch_10_11).unwrap();
-    let mut patch_11_12 = Vec::new();
-    bsdiff::diff(&binary_v11, &binary_v12, &mut patch_11_12).unwrap();
-    let mut patch_12_13 = Vec::new();
-    bsdiff::diff(&binary_v12, &binary_v13, &mut patch_12_13).unwrap();
-
-    // Chain: apply patches sequentially starting from v10
-    let result_v11 = apply_bsdiff_patch(&binary_v10, &patch_10_11).unwrap();
-    assert_eq!(result_v11, binary_v11, "v10 -> v11 patch failed");
-
-    let result_v12 = apply_bsdiff_patch(&result_v11, &patch_11_12).unwrap();
-    assert_eq!(result_v12, binary_v12, "v11 -> v12 patch failed");
-
-    let result_v13 = apply_bsdiff_patch(&result_v12, &patch_12_13).unwrap();
-    assert_eq!(result_v13, binary_v13, "v12 -> v13 patch failed");
-
-    // Verify patches are reasonable size (bsdiff has overhead for small
-    // inputs, so just check they're not wildly larger)
-    assert!(
-      patch_10_11.len() < binary_v10.len() * 2,
-      "patch should not be much larger than binary: {} vs {}",
-      patch_10_11.len(),
-      binary_v10.len()
-    );
-  }
-
-  #[test]
-  fn test_chained_patches_checksum_verification() {
+  fn test_patch_checksum_verification() {
     // Verify that applying a wrong patch produces a different checksum,
-    // which would be caught by the per-step verification in
-    // try_delta_upgrade
+    // which would be caught by the verification in try_delta_upgrade
     let binary_a = b"binary_version_a_content_here_padding";
     let binary_b = b"binary_version_b_content_here_padding";
     let binary_c = b"binary_version_c_content_here_padding";
@@ -2558,31 +2367,20 @@ mod test {
 
   #[test]
   fn test_delta_url_uses_target_release() {
-    // Verify that the delta URL downloads from the TARGET version's
-    // release (not the source), since patches live on the new release
-    let url = get_delta_download_url("2.7.10", "2.7.11").unwrap();
+    // patches live on the release they upgrade to
+    let url =
+      get_delta_download_url(&cv("2026.10.14"), &cv("2026.10.15")).unwrap();
     assert!(
-      url.to_string().contains("/download/v2.7.11/"),
+      url.to_string().contains("/download/v2026.10.15/"),
       "delta should be fetched from target release: {url}"
     );
     assert!(
-      url.to_string().contains(".from-2.7.10.bsdiff"),
-      "delta filename should reference source version: {url}"
+      url.to_string().contains(".from-2026.10.14.bsdiff"),
+      "delta filename should reference the installed version: {url}"
     );
+  }
 
-    // For a chain 2.7.10 -> 2.7.12, the intermediate step should
-    // fetch from v2.7.11's release
-    let chain = build_delta_chain("2.7.10", "2.7.12");
-    assert_eq!(chain.len(), 2);
-    let url_step1 = get_delta_download_url(&chain[0].0, &chain[0].1).unwrap();
-    assert!(
-      url_step1.to_string().contains("/download/v2.7.11/"),
-      "step 1 should fetch from v2.7.11 release"
-    );
-    let url_step2 = get_delta_download_url(&chain[1].0, &chain[1].1).unwrap();
-    assert!(
-      url_step2.to_string().contains("/download/v2.7.12/"),
-      "step 2 should fetch from v2.7.12 release"
-    );
+  fn cv(text: &str) -> ChronVer {
+    ChronVer::parse(text).unwrap()
   }
 }

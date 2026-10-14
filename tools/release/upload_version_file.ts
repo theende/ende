@@ -6,7 +6,7 @@
 // file name to stdout. Exits with code 1 if the version is not greater than
 // the current published latest (to skip the upload).
 
-import { greaterThan, parse } from "jsr:@std/semver@1";
+import { isNewerRelease } from "./chronver.ts";
 
 const version = Deno.args[0];
 if (!version) {
@@ -29,9 +29,7 @@ if (!response.ok) {
 const latestVersionText = (await response.text()).trim();
 console.error("Currently published latest:", latestVersionText);
 
-const latestVersion = parse(latestVersionText);
-const currentVersion = parse(version);
-if (!greaterThan(currentVersion, latestVersion)) {
+if (!isNewerRelease(version, latestVersionText)) {
   console.error(
     "Skipping upload because this version is not greater than the latest.",
   );

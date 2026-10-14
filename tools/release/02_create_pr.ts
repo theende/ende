@@ -2,20 +2,21 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { EndeWorkspace } from "./ende_workspace.ts";
 import { $, createOctoKit, getGitHubRepository } from "./deps.ts";
+import { readProductVersion } from "./chronver.ts";
 
 const octoKit = createOctoKit();
 const workspace = await EndeWorkspace.load();
 const repo = workspace.repo;
-const cliCrate = workspace.getCliCrate();
+const version = readProductVersion();
 
 const originalBranch = await repo.gitCurrentBranch();
-const newBranchName = `release_${cliCrate.version.replace(/\./, "_")}`;
+const newBranchName = `release_${version.replaceAll(".", "_")}`;
 
 // Create and push branch
 $.logStep(`Creating branch ${newBranchName}...`);
 await repo.gitBranch(newBranchName);
 await repo.gitAdd();
-await repo.gitCommit(cliCrate.version);
+await repo.gitCommit(version);
 $.logStep("Pushing branch...");
 await repo.gitPush("-u", "origin", "HEAD");
 
@@ -26,15 +27,15 @@ const openedPr = await octoKit.request("POST /repos/{owner}/{repo}/pulls", {
   base: originalBranch,
   head: newBranchName,
   draft: true,
-  title: cliCrate.version,
+  title: version,
   body: getPrBody(),
 });
 $.log(`Opened PR at ${openedPr.data.url}`);
 
 function getPrBody() {
-  let text = `Bumped versions for ${cliCrate.version}\n\n` +
+  let text = `Set the Ende version to ${version}\n\n` +
     `Please ensure:\n` +
-    `- [ ] Crate versions are bumped correctly\n` +
+    `- [ ] cli/lib/version.txt holds the right version\n` +
     `- [ ] Releases.md is updated correctly (think relevancy and remove reverts)\n\n` +
     `To make edits to this PR:\n` +
     "```shell\n" +

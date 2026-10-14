@@ -1250,7 +1250,7 @@ pub static UPGRADE_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
       .value_name("VERSION")
-      .help("Version (v1.46.0), or pr 12345 to install from a PR"),
+      .help("Version (v2026.10.14), or pr 12345 to install from a PR"),
     ArgDef::new("pr-number-positional")
       .positional()
       .action(ArgAction::Set)
@@ -2383,7 +2383,7 @@ pub static LSP_SUBCOMMAND: CommandDef = CommandDef {
 
 pub static VENDOR_SUBCOMMAND: CommandDef = CommandDef {
   name: "vendor",
-  about: "`ende vendor` was removed in 2.0.\n\nSee the 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
+  about: "`ende vendor` was removed.\n\nSee the Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
   aliases: &[],
   args: &[
     ArgDef::new("help")

@@ -39,7 +39,7 @@ pub static UPGRADE_USAGE: &str = cstr!(
   <bold>ende upgrade</>
 
 <g>Specific version</>
-  <bold>ende upgrade</> <p(245)>1.45.0</>
+  <bold>ende upgrade</> <p(245)>2026.10.14</>
 
 <g>From a pull request</> <p(245)>(requires gh CLI)</>
   <bold>ende upgrade</> <p(245)>pr 12345</>"

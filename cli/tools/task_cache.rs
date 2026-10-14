@@ -426,7 +426,7 @@ fn compute_static_hash(
   // legitimately differ across platforms or releases even when its inputs are
   // byte-for-byte identical, so a cache shared across them (e.g. a synced
   // ENDE_DIR) must not hit across them.
-  hasher.write_str(env!("CARGO_PKG_VERSION"));
+  hasher.write_str(ende_lib::version::ENDE_VERSION_INFO.ende);
   hasher.write_str(std::env::consts::OS);
   hasher.write_str(std::env::consts::ARCH);
   hasher.write_str(key.command);

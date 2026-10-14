@@ -9,14 +9,17 @@
     },
     {
       "commandName": "./deno_copy",
-      "args": "upgrade --force --version 1.43.2 --output ./deno_copy2",
+      "args": "upgrade --force --version 2026.10.14 --output ./deno_copy2",
       "output": "upgrade.out",
       "exitCode": 0,
       "flaky": true
     },
     {
-      "commandName": "./deno_copy",
-      "args": ["eval", "if (Deno.version.ende === '1.43.2') { Deno.exit(1); }"],
+      // ./deno_copy was left alone: it is still a copy of the test binary
+      "args": [
+        "eval",
+        "if (Deno.statSync('./deno_copy').size !== Deno.statSync(Deno.execPath()).size) { Deno.exit(1); }"
+      ],
       "exitCode": 0,
       "output": ""
     },

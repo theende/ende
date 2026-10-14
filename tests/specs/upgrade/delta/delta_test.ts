@@ -1,8 +1,7 @@
 // Integration test for delta (bsdiff) upgrades.
-// Exercises: adjacent version check, delta download, patch application,
-// hash verification, and fallback to full download.
+// A delta patch is only tried straight from the installed version
+// (`ende-<target>.from-<installed>.bsdiff`), whatever the target version.
 
-const target = Deno.build.target;
 const currentVersion = Deno.version.ende;
 
 async function runUpgrade(
@@ -26,58 +25,52 @@ async function runUpgrade(
   };
 }
 
-// Parse major.minor.patch from current version
-const parts = currentVersion.split(".").map(Number);
-const [major, minor, patch] = parts;
-
-// Test 1: Adjacent version (patch + 1) should attempt delta upgrade
-console.log("=== Test 1: Adjacent version triggers delta path ===");
+// Test 1: any other version tries a delta from the installed version
+console.log("=== Test 1: Another version triggers delta path ===");
 {
-  const nextVersion = `${major}.${minor}.${patch + 1}`;
   const result = await runUpgrade([
     "--version",
-    nextVersion,
+    "9999.12.31",
     "--dry-run",
   ]);
   const combined = result.stdout + result.stderr;
-  // Should attempt delta (may succeed or fall back depending on server)
-  console.log(
-    combined.includes("delta") || combined.includes("Downloading")
-      ? "PASS: upgrade attempted"
-      : "PASS: upgrade completed (full download fallback)",
-  );
-}
-
-// Test 2: Non-adjacent version should skip delta entirely
-console.log("\n=== Test 2: Non-adjacent version skips delta ===");
-{
-  const farVersion = `${major}.${minor}.${patch + 5}`;
-  const result = await runUpgrade([
-    "--version",
-    farVersion,
-    "--dry-run",
-  ]);
-  const combined = result.stdout + result.stderr;
-  // Should NOT attempt delta for non-adjacent versions
-  if (combined.includes("delta patch")) {
-    console.log("FAIL: delta was attempted for non-adjacent version");
+  if (!combined.includes("Attempting delta upgrade")) {
+    console.log("FAIL: delta was not attempted");
+    console.log(combined);
     Deno.exit(1);
   }
-  console.log("PASS: delta skipped for non-adjacent version");
+  console.log("PASS: delta attempted");
+}
+
+// Test 2: reinstalling the installed version skips delta (no patch exists
+// from a version to itself)
+console.log("\n=== Test 2: Same version skips delta ===");
+{
+  const result = await runUpgrade([
+    "--version",
+    currentVersion,
+    "--force",
+    "--dry-run",
+  ]);
+  const combined = result.stdout + result.stderr;
+  if (combined.includes("Attempting delta upgrade")) {
+    console.log("FAIL: delta was attempted for the installed version");
+    Deno.exit(1);
+  }
+  console.log("PASS: delta skipped for the installed version");
 }
 
 // Test 3: --no-delta flag disables delta upgrades
 console.log("\n=== Test 3: --no-delta flag disables delta ===");
 {
-  const nextVersion = `${major}.${minor}.${patch + 1}`;
   const result = await runUpgrade([
     "--version",
-    nextVersion,
+    "9999.12.31",
     "--dry-run",
     "--no-delta",
   ]);
   const combined = result.stdout + result.stderr;
-  if (combined.includes("delta patch")) {
+  if (combined.includes("Attempting delta upgrade")) {
     console.log("FAIL: delta was attempted despite --no-delta");
     Deno.exit(1);
   }

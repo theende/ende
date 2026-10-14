@@ -4529,10 +4529,10 @@ fn upgrade_with_ca_file() {
 #[test]
 fn upgrade_version() {
   for args in [
-    svec!["ende", "upgrade", "1.46.0"],
-    svec!["ende", "upgrade", "--version", "1.46.0"],
+    svec!["ende", "upgrade", "2026.10.14.1"],
+    svec!["ende", "upgrade", "--version", "2026.10.14.1"],
     // the positional version takes precedence over `--version`
-    svec!["ende", "upgrade", "--version", "1.0.0", "1.46.0"],
+    svec!["ende", "upgrade", "--version", "2026.10.14", "2026.10.14.1"],
   ] {
     assert_eq!(
       flags_from_vec(args.clone()).unwrap(),
@@ -4541,7 +4541,7 @@ fn upgrade_version() {
           force: false,
           dry_run: false,
           no_delta: false,
-          version: Some("1.46.0".to_string()),
+          version: Some("2026.10.14.1".to_string()),
           output: None,
           checksum: None,
           pr: None,

@@ -4,18 +4,10 @@ import { createWorkflow, step } from "jsr:@david/gagen@0.3.1";
 
 const workflow = createWorkflow({
   name: "start_release",
+  // The version is the UTC date of the release (ChronVer), so there is
+  // nothing to choose.
   on: {
-    workflow_dispatch: {
-      inputs: {
-        releaseKind: {
-          description: "Kind of release",
-          default: "patch",
-          type: "choice",
-          options: ["patch", "minor", "major"],
-          required: true,
-        },
-      },
-    },
+    workflow_dispatch: {},
   },
   jobs: [{
     id: "build",
@@ -50,8 +42,7 @@ const workflow = createWorkflow({
           GITHUB_TOKEN: "${{ secrets.DENOBOT_GIST_PAT }}",
           GH_WORKFLOW_ACTOR: "${{ github.actor }}",
         },
-        run:
-          "./tools/release/00_start_release.ts --${{github.event.inputs.releaseKind}}",
+        run: "./tools/release/00_start_release.ts",
       }),
     ],
   }],

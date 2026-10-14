@@ -228,7 +228,7 @@ mod tests {
   #[test]
   fn primary_branch_and_tags_seed_the_cache() {
     assert!(is_primary_or_tag_ref("refs/heads/primary"));
-    assert!(is_primary_or_tag_ref("refs/tags/v2.9.7"));
+    assert!(is_primary_or_tag_ref("refs/tags/v2026.10.14"));
     assert!(!is_primary_or_tag_ref("refs/heads/main"));
     assert!(!is_primary_or_tag_ref("refs/pull/1/merge"));
   }

@@ -58,6 +58,36 @@ fn compile_basic() {
   output.assert_matches_text("Welcome to Deno!\n");
 }
 
+/// A compiled binary runs on endert, which must report the same product
+/// version as the `ende` that compiled it.
+#[test]
+fn compile_reports_ende_version() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let dir = context.temp_dir();
+  dir.write("main.ts", "console.log(Ende.version.ende);");
+  let exe = if cfg!(windows) {
+    dir.path().join("version.exe")
+  } else {
+    dir.path().join("version")
+  };
+  context
+    .new_command()
+    .args_vec(["compile", "--output", &exe.to_string_lossy(), "main.ts"])
+    .run()
+    .skip_output_check()
+    .assert_exit_code(0);
+  let version = util::root_path()
+    .join("cli/lib/version.txt")
+    .read_to_string()
+    .trim()
+    .to_string();
+  context
+    .new_command()
+    .name(&exe)
+    .run()
+    .assert_matches_text(format!("{version}\n"));
+}
+
 #[test]
 fn standalone_args() {
   let context = TestContextBuilder::new().build();

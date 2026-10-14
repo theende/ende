@@ -1,13 +1,13 @@
 error: Invalid version passed (asdfasdf)
 
-Pass a release version, like 1.45.0.
+Ende versions are release dates in the form YYYY.MM.DD[.N], like 2026.10.14 or 2026.10.14.1.
 
 Usage:
 Latest
   ende upgrade
 
 Specific version
-  ende upgrade 1.45.0
+  ende upgrade 2026.10.14
 
 From a pull request (requires gh CLI)
   ende upgrade pr 12345

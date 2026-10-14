@@ -1,6 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 pub mod args;
+pub mod chronver;
 pub mod loader;
 pub mod standalone;
 pub mod sys;

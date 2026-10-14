@@ -928,9 +928,9 @@ fn upgrade_subcommand() {
 
 #[test]
 fn upgrade_with_positional() {
-  let r = parse(&TEST_ROOT, &svec!["ende", "upgrade", "1.46.0"]).unwrap();
+  let r = parse(&TEST_ROOT, &svec!["ende", "upgrade", "2026.10.14"]).unwrap();
   assert_eq!(r.subcommand.as_deref(), Some("upgrade"));
-  assert_eq!(r.get_one("version-positional"), Some("1.46.0"));
+  assert_eq!(r.get_one("version-positional"), Some("2026.10.14"));
 }
 
 #[test]

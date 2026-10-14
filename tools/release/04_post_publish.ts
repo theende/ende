@@ -2,15 +2,16 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { EndeWorkspace } from "./ende_workspace.ts";
 import { $, createOctoKit, getGitHubRepository } from "./deps.ts";
+import { readProductVersion } from "./chronver.ts";
 
 const workspace = await EndeWorkspace.load();
 const repo = workspace.repo;
-const cliCrate = workspace.getCliCrate();
+const version = readProductVersion();
 
 $.logStep("Creating release tag...");
 await createReleaseTag();
 
-$.logStep("Forwarding release commit to main...");
+$.logStep("Forwarding release commit to primary...");
 try {
   await forwardReleaseCommitToMain();
 } catch (err) {
@@ -20,7 +21,7 @@ try {
 async function createReleaseTag() {
   await repo.gitFetchTags("origin");
   const tags = await repo.getGitTags();
-  const tagName = `v${cliCrate.version}`;
+  const tagName = `v${version}`;
 
   if (tags.has(tagName)) {
     $.log(`Tag ${tagName} already exists.`);
@@ -31,25 +32,25 @@ async function createReleaseTag() {
 }
 
 async function forwardReleaseCommitToMain() {
-  // if this is a patch release, open a PR to forward the most recent commit back to main
+  // if this is a patch release, open a PR to forward the most recent commit back to primary
   const currentBranch = await repo.gitCurrentBranch();
-  const isPatchRelease = currentBranch !== "main";
+  const isPatchRelease = currentBranch !== "primary";
 
   if (!isPatchRelease) {
     $.log("Not doing a patch release. Skipping.");
     return;
   }
 
-  await repo.command("git fetch origin main");
+  await repo.command("git fetch origin primary");
   const releaseCommitHash = await repo.command("git rev-parse HEAD").text();
-  const newBranchName = `forward_v${cliCrate.version}`;
+  const newBranchName = `forward_v${version}`;
   $.logStep(`Creating branch ${newBranchName}...`);
   await repo.command([
     "git",
     "checkout",
     "-b",
     newBranchName,
-    "origin/main",
+    "origin/primary",
   ]);
   const cherryPickResult = await repo.command([
     "git",
@@ -72,10 +73,10 @@ async function forwardReleaseCommitToMain() {
       "POST /repos/{owner}/{repo}/pulls",
       {
         ...getGitHubRepository(),
-        base: "main",
+        base: "primary",
         head: newBranchName,
         draft: true,
-        title: `chore: forward v${cliCrate.version} release commit to main`,
+        title: `chore: forward v${version} release commit to primary`,
         body: getPrBody(),
       },
     );
@@ -95,7 +96,7 @@ async function forwardReleaseCommitToMain() {
     }
 
     text +=
-      `This is the release commit being forwarded back to main for ${cliCrate.version}\n\n` +
+      `This is the release commit being forwarded back to primary for ${version}\n\n` +
       `Please ensure:\n` +
       `- [ ] Everything looks ok in the PR\n` +
       `- [ ] The release has been published\n\n` +

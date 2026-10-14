@@ -13,7 +13,7 @@ const workflow = createWorkflow({
     workflow_dispatch: {
       inputs: {
         version: {
-          description: "Release tag to publish, e.g. v2.9.6",
+          description: "Release tag to publish, e.g. v2026.10.14",
           type: "string",
           required: true,
         },

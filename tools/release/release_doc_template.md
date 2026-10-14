@@ -2,8 +2,8 @@
 
 ## Pre-flight
 
-**During this process $BRANCH_NAME branch should be frozen and no commits should
-land until the release is finished.**
+**During this process the `primary` branch should be frozen and no commits
+should land until the release is finished.**
 
 - [ ] Ensure forks and local clones of:
   - [`denoland/deno`](https://github.com/denoland/deno/),
@@ -35,9 +35,9 @@ Release checklist: <LINK TO THIS FORKED GIST GOES HERE>
 - [ ] Go to the "version_bump" workflow in the CLI repo's actions:
       https://github.com/denoland/deno/actions/workflows/version_bump.generated.yml
   1. Click on the "Run workflow" button.
-  1. In the drop down, select the `main` branch.
-  1. For the kind of release, select either `patch` or `minor`.
-  1. Run the workflow.
+  1. In the drop down, select the `primary` branch.
+  1. Run the workflow. It sets the version to the UTC date it runs on
+     (`$VERSION` today), with `.N` appended if that date already has a release.
 
 - [ ] Wait for the workflow to complete and for a pull request to be
       automatically opened. Review the pull request, make any necessary changes,
@@ -65,13 +65,12 @@ Release checklist: <LINK TO THIS FORKED GIST GOES HERE>
 
   1. The workflow was designed to be restartable. Try restarting it.
   2. If that doesn't work, then do the following:
-     1. Checkout the `v$MINOR_VERSION` branch.
+     1. Checkout the `primary` branch.
      2. If `cargo publish` hasn't completed then run
         `./tools/release/03_publish_crates.ts`
         - Note that you will need access to crates.io so it might fail.
      3. If `cargo publish` succeeded and a release tag wasn't created, then
-        manually create and push the `v$VERSION` tag on the `v$MINOR_VERSION`
-        branch.
+        manually create and push the `v$VERSION` tag on the `primary` branch.
   </details>
 
 - [ ] This CI run create a tag which triggers a second CI run that publishes the

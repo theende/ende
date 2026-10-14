@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 // deno-lint-ignore-file no-console
-import { greaterThan, parse } from "jsr:@std/semver@1";
+import { isNewerRelease } from "./chronver.ts";
 
 const response = await fetch("https://dl.deno.land/release-latest.txt");
 if (!response.ok) {
@@ -12,9 +12,7 @@ const currentVersionText = Deno.args[0];
 console.error("Latest version:", latestVersionText);
 console.error("Current version:", currentVersionText);
 
-const latestVersion = parse(latestVersionText);
-const currentVersion = parse(currentVersionText);
-const isGreater = greaterThan(currentVersion, latestVersion);
+const isGreater = isNewerRelease(currentVersionText, latestVersionText);
 if (isGreater) {
   console.error("Updating release-latest.txt");
 } else {

@@ -45,14 +45,6 @@ export class EndeWorkspace {
     return this.getCrate("ende");
   }
 
-  getEndeRtCrate() {
-    return this.getCrate("endert");
-  }
-
-  getEndeLibCrate() {
-    return this.getCrate("ende_lib");
-  }
-
   getCrate(name: string) {
     return this.#repo.getCrate(name);
   }

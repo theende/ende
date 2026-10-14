@@ -1,0 +1,13 @@
+error: Invalid version passed (2.9.7)
+
+Ende versions are release dates in the form YYYY.MM.DD[.N], like 2026.10.14 or 2026.10.14.1.
+
+Usage:
+Latest
+  ende upgrade
+
+Specific version
+  ende upgrade 2026.10.14
+
+From a pull request (requires gh CLI)
+  ende upgrade pr 12345

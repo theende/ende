@@ -9,7 +9,7 @@
     },
     {
       "commandName": "./deno_copy",
-      "args": "upgrade --force --version 1.43.2",
+      "args": "upgrade --force --version 2026.10.14",
       "output": "upgrade.out",
       "exitCode": 0,
       "flaky": true

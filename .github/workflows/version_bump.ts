@@ -4,18 +4,10 @@ import { createWorkflow, step } from "jsr:@david/gagen@0.3.1";
 
 const workflow = createWorkflow({
   name: "version_bump",
+  // The version is the UTC date the workflow runs on (ChronVer), so there
+  // is nothing to choose.
   on: {
-    workflow_dispatch: {
-      inputs: {
-        releaseKind: {
-          description: "Kind of version bump",
-          default: "patch",
-          type: "choice",
-          options: ["patch", "minor", "major"],
-          required: true,
-        },
-      },
-    },
+    workflow_dispatch: {},
   },
   jobs: [{
     id: "build",
@@ -51,10 +43,7 @@ const workflow = createWorkflow({
       }),
       step({
         name: "Run version bump",
-        run: [
-          "git remote add upstream https://github.com/denoland/deno",
-          "./tools/release/01_bump_crate_versions.ts --${{github.event.inputs.releaseKind}}",
-        ],
+        run: "./tools/release/01_bump_crate_versions.ts",
       }),
       step({
         name: "Create PR",

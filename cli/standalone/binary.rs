@@ -1202,8 +1202,10 @@ mod tests {
   #[test]
   fn runtime_download_url_uses_ende_host() {
     assert_eq!(
-      runtime_download_url("release/v2.0.0/endert-aarch64-apple-darwin.zip"),
-      "https://dl.ende.sh/release/v2.0.0/endert-aarch64-apple-darwin.zip"
+      runtime_download_url(
+        "release/v2026.10.14.1/endert-aarch64-apple-darwin.zip"
+      ),
+      "https://dl.ende.sh/release/v2026.10.14.1/endert-aarch64-apple-darwin.zip"
     );
   }
 

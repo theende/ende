@@ -65,7 +65,7 @@ fn upgrade_prompt() {
     // - We need to use a pty here because the upgrade prompt
     //   doesn't occur except when there's a pty.
     // - Version comes from the test server.
-    pty.expect(" 99999.99.99 Run `ende upgrade` to install it.");
+    pty.expect(" 9999.12.31 Run `ende upgrade` to install it.");
   });
 }
 

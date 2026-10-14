@@ -1,7 +1,7 @@
 // Test script that fetches the upgrade zip, computes its checksum,
 // and then runs upgrade commands to verify checksum validation works.
 
-const version = "99.99.99";
+const version = "9999.12.31";
 const target = Deno.build.target;
 const archiveName = `ende-${target}.zip`;
 const downloadUrl =

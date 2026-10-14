@@ -4951,7 +4951,9 @@ declare namespace Ende {
    * @category Runtime
    */
   export const version: {
-    /** Ende CLI's version. For example: `"1.26.0"`. */
+    /** Ende CLI's version. Ende versions are release dates in the
+     * ChronVer form `YYYY.MM.DD`, with `.N` appended for additional releases
+     * on the same day. For example: `"2026.10.14"` or `"2026.10.14.1"`. */
     ende: string;
     /** The V8 version used by Ende. For example: `"10.7.100.0"`.
      *

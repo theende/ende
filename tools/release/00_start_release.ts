@@ -3,13 +3,14 @@
 
 // deno-lint-ignore-file no-console
 
-import { $, createOctoKit, semver } from "./deps.ts";
+import { $, createOctoKit } from "./deps.ts";
+import { nextReleaseVersion, readProductVersion } from "./chronver.ts";
 
 const currentDirPath = $.path(import.meta.dirname!);
 
 $.logStep("Getting next version...");
-const currentVersion = semver.parse(getCliVersion())!;
-const nextVersion = getNextVersion(semver.parse(getCliVersion())!);
+const currentVersion = readProductVersion();
+const nextVersion = nextReleaseVersion(new Date(), await getReleaseTags());
 
 $.logStep("Creating gist with instructions...");
 const releaseInstructions = buildEndeReleaseInstructionsDoc();
@@ -18,10 +19,10 @@ if (Deno.args.some((a) => a === "--dry-run")) {
 } else {
   const octoKit = createOctoKit();
   const result = await octoKit.request("POST /gists", {
-    description: `Ende CLI v${semver.format(nextVersion)} release checklist`,
+    description: `Ende CLI v${nextVersion} release checklist`,
     public: false,
     files: {
-      [`release_${semver.format(nextVersion)}.md`]: {
+      [`release_${nextVersion}.md`]: {
         content: releaseInstructions,
       },
     },
@@ -36,46 +37,21 @@ if (Deno.args.some((a) => a === "--dry-run")) {
   $.log("==============================================");
 }
 
-function getNextVersion(originalVersion: semver.SemVer) {
-  if (Deno.args.some((a) => a === "--patch")) {
-    return semver.increment(originalVersion, "patch");
-  } else if (Deno.args.some((a) => a === "--minor")) {
-    return semver.increment(originalVersion, "minor");
-  } else if (Deno.args.some((a) => a === "--major")) {
-    return semver.increment(originalVersion, "major");
-  } else {
-    throw new Error("Missing argument");
-  }
+/** The release tags on origin, so a second release today gets `.1`. */
+async function getReleaseTags() {
+  const lines = await $`git ls-remote --tags --refs origin`.lines();
+  return new Set(
+    lines.filter((line) => line.length > 0).map((line) =>
+      line.split("\t")[1].replace(/^refs\/tags\//, "")
+    ),
+  );
 }
 
 function buildEndeReleaseInstructionsDoc() {
-  function getMinorVersion(version: string) {
-    return version.split(".").slice(0, 2).join(".");
-  }
-
   const templateText = currentDirPath
     .join("release_doc_template.md")
     .readTextSync()
-    .replaceAll("$BRANCH_NAME", `v${nextVersion.major}.${nextVersion.minor}`)
-    .replaceAll("$VERSION", semver.format(nextVersion))
-    .replaceAll("$MINOR_VERSION", getMinorVersion(semver.format(nextVersion)))
-    .replaceAll("$PAST_VERSION", semver.format(currentVersion));
-  return `# Ende CLI ${
-    semver.format(nextVersion)
-  } Release Checklist\n\n${templateText}`;
-}
-
-function getCliVersion() {
-  const cargoTomlText = currentDirPath
-    .join("../../cli/Cargo.toml")
-    .readTextSync();
-  const result = cargoTomlText.match(/^version\s*=\s*"([^"]+)"$/m);
-  if (result == null || result.length !== 2) {
-    $.log("Cargo.toml");
-    $.log("==========");
-    $.log(cargoTomlText);
-    $.log("==========");
-    throw new Error("Could not find version in text.");
-  }
-  return result[1];
+    .replaceAll("$VERSION", nextVersion)
+    .replaceAll("$PAST_VERSION", currentVersion);
+  return `# Ende CLI ${nextVersion} Release Checklist\n\n${templateText}`;
 }

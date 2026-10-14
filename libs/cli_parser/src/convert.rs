@@ -634,7 +634,7 @@ fn permission_args_parse(result: &ParseResult, flags: &mut Flags) {
     #[allow(clippy::print_stderr, reason = "can't use log crate yet")]
     {
       eprintln!(
-        "{} `allow-hrtime` and `deny-hrtime` have been removed in 2.0, as high resolution time is now always allowed",
+        "{} `allow-hrtime` and `deny-hrtime` have been removed, as high resolution time is now always allowed",
         ende_runtime::colors::yellow("Warning")
       );
     }

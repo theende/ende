@@ -9,6 +9,12 @@
       "args": "upgrade asdfasdf",
       "output": "shorthand.out",
       "exitCode": 1
+    },
+    // Ende versions are ChronVer dates; SemVer versions are rejected.
+    "semver": {
+      "args": "upgrade 2.9.7",
+      "output": "semver.out",
+      "exitCode": 1
     }
   }
 }

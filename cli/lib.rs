@@ -454,7 +454,7 @@ async fn run_subcommand(
       tools::bump_version::bump_version_command(Arc::new(flags), version_flags)
     }),
     EndeSubcommand::Vendor => exit_with_message(
-      "⚠️  `ende vendor` was removed in 2.0.\n\nSee the 1.x to 2.x Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
+      "⚠️  `ende vendor` was removed.\n\nSee the Migration Guide for migration instructions: https://docs.ende.sh/runtime/manual/advanced/migrate_deprecations",
       1,
     ),
     EndeSubcommand::Publish(publish_flags) => spawn_subcommand(async {
@@ -949,7 +949,7 @@ fn resolve_flags_and_init(
   // TODO(bartlomieju): remove in Deno v2.5 and hard error then.
   if flags.unstable_config.legacy_flag_enabled {
     log::warn!(
-      "{} The `--unstable` flag has been removed in 2.0. Use granular `--unstable-*` flags instead.\nLearn more at: https://docs.ende.sh/runtime/manual/tools/unstable_flags",
+      "{} The `--unstable` flag has been removed. Use granular `--unstable-*` flags instead.\nLearn more at: https://docs.ende.sh/runtime/manual/tools/unstable_flags",
       colors::yellow("Warning")
     );
   }
