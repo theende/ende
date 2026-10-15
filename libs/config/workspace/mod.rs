@@ -1826,6 +1826,18 @@ impl WorkspaceDirectory {
           .options
           .use_editor_config
           .or(root_config.options.use_editor_config),
+        typescript: combine_dprint_options(
+          root_config.options.typescript,
+          member_config.options.typescript,
+        ),
+        json: combine_dprint_options(
+          root_config.options.json,
+          member_config.options.json,
+        ),
+        markdown: combine_dprint_options(
+          root_config.options.markdown,
+          member_config.options.markdown,
+        ),
       },
       files: combine_patterns(root_config.files, member_config.files),
     })
@@ -2287,6 +2299,21 @@ fn warn_deprecated_config_file_names(workspace: &Workspace) {
     {
       crate::ende_json::warn_if_deprecated_file_name(&path);
     }
+  }
+}
+
+/// Merges a dprint plugin section (e.g. `fmt.typescript`) key by key, with
+/// the member's keys taking precedence over the root's.
+fn combine_dprint_options(
+  root: Option<serde_json::Map<String, serde_json::Value>>,
+  member: Option<serde_json::Map<String, serde_json::Value>>,
+) -> Option<serde_json::Map<String, serde_json::Value>> {
+  match (root, member) {
+    (Some(mut root), Some(member)) => {
+      root.extend(member);
+      Some(root)
+    }
+    (root, member) => member.or(root),
   }
 }
 
@@ -3517,6 +3544,9 @@ pub mod test {
           sort_named_imports: None,
           sort_named_exports: None,
           use_editor_config: None,
+          typescript: None,
+          json: None,
+          markdown: None,
         },
         files: FilePatterns {
           base: root_dir().join("member"),
@@ -3565,6 +3595,9 @@ pub mod test {
           sort_named_imports: None,
           sort_named_exports: None,
           use_editor_config: None,
+          typescript: None,
+          json: None,
+          markdown: None,
         },
         files: FilePatterns {
           base: root_dir(),
@@ -3577,6 +3610,48 @@ pub mod test {
         },
       }
     );
+  }
+
+  #[test]
+  fn test_root_member_fmt_dprint_sections_merge_by_key() {
+    let workspace_dir = workspace_for_root_and_member(
+      json!({
+        "fmt": {
+          "typescript": {
+            "lineWidth": 100,
+            "preferHanging": true,
+          },
+          "markdown": {
+            "textWrap": "never",
+          },
+        }
+      }),
+      json!({
+        "fmt": {
+          "typescript": {
+            "lineWidth": 120,
+          },
+          "json": {
+            "trailingCommas": "never",
+          },
+        }
+      }),
+    );
+    assert_eq!(workspace_dir.workspace.diagnostics(), vec![]);
+    let options = workspace_dir
+      .to_fmt_config(FilePatterns::new_with_base(workspace_dir.dir_path()))
+      .unwrap()
+      .options;
+    let as_map = |value: serde_json::Value| match value {
+      serde_json::Value::Object(map) => Some(map),
+      _ => unreachable!(),
+    };
+    assert_eq!(
+      options.typescript,
+      as_map(json!({ "lineWidth": 120, "preferHanging": true }))
+    );
+    assert_eq!(options.json, as_map(json!({ "trailingCommas": "never" })));
+    assert_eq!(options.markdown, as_map(json!({ "textWrap": "never" })));
   }
 
   #[test]

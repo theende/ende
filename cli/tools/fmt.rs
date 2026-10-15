@@ -21,6 +21,10 @@ use std::sync::atomic::Ordering;
 
 use async_trait::async_trait;
 use deno_ast::ParsedSource;
+use dprint_core::configuration::ConfigKeyMap;
+use dprint_core::configuration::ConfigKeyValue;
+use dprint_core::configuration::GlobalConfiguration;
+use dprint_core::configuration::ResolveConfigurationResult;
 use ende_config::ende_json::NewLineKind;
 use ende_config::glob::FileCollector;
 use ende_config::glob::FilePatterns;
@@ -30,6 +34,7 @@ use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::futures;
 use ende_core::parking_lot::Mutex;
+use ende_core::serde_json;
 use ende_core::unsync::spawn_blocking;
 use log::debug;
 use log::info;
@@ -191,6 +196,10 @@ fn resolve_paths_with_options_batches(
   let mut paths_with_options_batches =
     Vec::with_capacity(members_fmt_options.len());
   for (_ctx, member_fmt_options) in members_fmt_options {
+    // Report invalid dprint options once, rather than once per file.
+    get_resolved_typescript_config(&member_fmt_options.options)?;
+    get_resolved_json_config(&member_fmt_options.options)?;
+    get_resolved_markdown_config(&member_fmt_options.options)?;
     let files =
       collect_fmt_files(cli_options, member_fmt_options.files.clone());
     if !files.is_empty() {
@@ -306,7 +315,7 @@ fn format_markdown(
   fmt_options: &FmtOptionsConfig,
   unstable_options: &UnstableFmtOptions,
 ) -> Result<Option<String>, AnyError> {
-  let markdown_config = get_resolved_markdown_config(fmt_options);
+  let markdown_config = get_resolved_markdown_config(fmt_options)?;
   dprint_plugin_markdown::format_text(
     file_text,
     &markdown_config,
@@ -351,7 +360,7 @@ fn format_markdown(
           PathBuf::from(format!("ende_fmt_stdin.{extension}"));
         match extension {
           "json" | "jsonc" => {
-            let mut json_config = get_resolved_json_config(fmt_options);
+            let mut json_config = get_resolved_json_config(fmt_options)?;
             json_config.line_width = line_width;
             dprint_plugin_json::format_text(&fake_filename, text, &json_config)
           }
@@ -378,7 +387,7 @@ fn format_markdown(
           }
           _ => {
             let mut codeblock_config =
-              get_resolved_typescript_config(fmt_options);
+              get_resolved_typescript_config(fmt_options)?;
             codeblock_config.line_width = line_width;
             dprint_plugin_typescript::format_text(
               dprint_plugin_typescript::FormatTextOptions {
@@ -408,7 +417,7 @@ pub fn format_json(
   file_text: &str,
   fmt_options: &FmtOptionsConfig,
 ) -> Result<Option<String>, AnyError> {
-  let config = get_resolved_json_config(fmt_options);
+  let config = get_resolved_json_config(fmt_options)?;
   dprint_plugin_json::format_text(file_path, file_text, &config)
 }
 
@@ -522,7 +531,7 @@ fn format_markup_embedded(
     | "application/json"
     | "application/ld+json"
     | "importmap" => {
-      let mut json_config = get_resolved_json_config(fmt_options);
+      let mut json_config = get_resolved_json_config(fmt_options)?;
       json_config.line_width = print_width;
       let path = file_path.with_extension("json");
       dprint_plugin_json::format_text(&path, text, &json_config)
@@ -553,8 +562,7 @@ fn format_markup_embedded(
         _ => "js",
       };
       let path = file_path.with_extension(ext);
-      let mut typescript_config =
-        get_typescript_config_builder(fmt_options).build();
+      let mut typescript_config = get_resolved_typescript_config(fmt_options)?;
       typescript_config.line_width = print_width;
       dprint_plugin_typescript::format_text(
         dprint_plugin_typescript::FormatTextOptions {
@@ -825,7 +833,7 @@ pub fn format_file(
       }
     }
     _ => {
-      let config = get_resolved_typescript_config(fmt_options);
+      let config = get_resolved_typescript_config(fmt_options)?;
       dprint_plugin_typescript::format_text(
         dprint_plugin_typescript::FormatTextOptions {
           path: file_path,
@@ -857,7 +865,7 @@ pub fn format_parsed_source(
 ) -> Result<Option<String>, AnyError> {
   dprint_plugin_typescript::format_parsed_source(
     parsed_source,
-    &get_resolved_typescript_config(fmt_options),
+    &get_resolved_typescript_config(fmt_options)?,
     Some(&create_external_formatter_for_typescript(unstable_options)),
   )
 }
@@ -1281,128 +1289,213 @@ fn files_str(len: usize) -> &'static str {
   if len == 1 { "file" } else { "files" }
 }
 
-fn get_typescript_config_builder(
+/// Sets a dprint configuration key the way dprint's `ConfigurationBuilder`s
+/// do.
+fn set_config_key(
+  config: &mut ConfigKeyMap,
+  key: &str,
+  value: impl Into<ConfigKeyValue>,
+) {
+  config.insert(key.to_string(), value.into());
+}
+
+/// Resolves a dprint plugin's configuration from, in increasing order of
+/// precedence: dprint's Deno preset, the `fmt` options already in `config`,
+/// and the `fmt.<plugin>` section of the config file (`section`), whose keys
+/// are dprint's own.
+fn resolve_dprint_config<T: Clone + serde::Serialize>(
+  plugin: &str,
+  mut config: ConfigKeyMap,
+  section: Option<&serde_json::Map<String, serde_json::Value>>,
+  resolve_config: impl FnOnce(
+    ConfigKeyMap,
+    &GlobalConfiguration,
+  ) -> ResolveConfigurationResult<T>,
+) -> Result<T, AnyError> {
+  // dprint fills in its Deno preset for every key that isn't set.
+  set_config_key(&mut config, "deno", true);
+  for (key, value) in section.into_iter().flatten() {
+    let value = serde_json::from_value(value.clone()).with_context(|| {
+      format!("Invalid \"fmt.{plugin}\" configuration: {key}: {value}")
+    })?;
+    config.insert(key.clone(), value);
+  }
+  let result = resolve_config(config, &GlobalConfiguration::default());
+  if !result.diagnostics.is_empty() {
+    let diagnostics = result
+      .diagnostics
+      .iter()
+      .map(|d| format!("  {}: {}", d.property_name, d.message))
+      .collect::<Vec<_>>()
+      .join("\n");
+    bail!("Invalid \"fmt.{plugin}\" configuration:\n{diagnostics}");
+  }
+  Ok(result.config)
+}
+
+fn get_resolved_typescript_config(
   options: &FmtOptionsConfig,
-) -> dprint_plugin_typescript::configuration::ConfigurationBuilder {
+) -> Result<dprint_plugin_typescript::configuration::Configuration, AnyError> {
   use dprint_plugin_typescript::configuration as dprint_config;
   use ende_config::ende_json::*;
 
-  let mut builder =
-    dprint_plugin_typescript::configuration::ConfigurationBuilder::new();
-  builder.deno();
+  let mut config = ConfigKeyMap::new();
 
   if let Some(use_tabs) = options.use_tabs {
-    builder.use_tabs(use_tabs);
+    set_config_key(&mut config, "useTabs", use_tabs);
   }
 
   if let Some(line_width) = options.line_width {
-    builder.line_width(line_width);
+    set_config_key(&mut config, "lineWidth", line_width as i32);
   }
 
   if let Some(indent_width) = options.indent_width {
-    builder.indent_width(indent_width);
+    set_config_key(&mut config, "indentWidth", indent_width as i32);
   }
 
   if let Some(single_quote) = options.single_quote
     && single_quote
   {
-    builder.quote_style(
-      dprint_plugin_typescript::configuration::QuoteStyle::PreferSingle,
+    set_config_key(
+      &mut config,
+      "quoteStyle",
+      dprint_plugin_typescript::configuration::QuoteStyle::PreferSingle
+        .to_string(),
     );
   }
 
   if let Some(semi_colons) = options.semi_colons {
-    builder.semi_colons(match semi_colons {
-      true => dprint_plugin_typescript::configuration::SemiColons::Prefer,
-      false => dprint_plugin_typescript::configuration::SemiColons::Asi,
-    });
+    set_config_key(
+      &mut config,
+      "semiColons",
+      match semi_colons {
+        true => dprint_plugin_typescript::configuration::SemiColons::Prefer,
+        false => dprint_plugin_typescript::configuration::SemiColons::Asi,
+      }
+      .to_string(),
+    );
   }
 
   if let Some(quote_props) = options.quote_props {
-    builder.quote_props(match quote_props {
-      QuoteProps::AsNeeded => dprint_config::QuoteProps::AsNeeded,
-      QuoteProps::Consistent => dprint_config::QuoteProps::Consistent,
-      QuoteProps::Preserve => dprint_config::QuoteProps::Preserve,
-    });
+    set_config_key(
+      &mut config,
+      "quoteProps",
+      match quote_props {
+        QuoteProps::AsNeeded => dprint_config::QuoteProps::AsNeeded,
+        QuoteProps::Consistent => dprint_config::QuoteProps::Consistent,
+        QuoteProps::Preserve => dprint_config::QuoteProps::Preserve,
+      }
+      .to_string(),
+    );
   }
 
   if let Some(new_line_kind) = options.new_line_kind {
-    builder.new_line_kind(match new_line_kind {
-      NewLineKind::Auto => dprint_core::configuration::NewLineKind::Auto,
-      NewLineKind::CarriageReturnLineFeed => {
-        dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
-      }
-      NewLineKind::LineFeed => {
-        dprint_core::configuration::NewLineKind::LineFeed
-      }
-      NewLineKind::System => {
-        if cfg!(windows) {
+    set_config_key(
+      &mut config,
+      "newLineKind",
+      match new_line_kind {
+        NewLineKind::Auto => dprint_core::configuration::NewLineKind::Auto,
+        NewLineKind::CarriageReturnLineFeed => {
           dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
-        } else {
+        }
+        NewLineKind::LineFeed => {
           dprint_core::configuration::NewLineKind::LineFeed
         }
+        NewLineKind::System => {
+          if cfg!(windows) {
+            dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
+          } else {
+            dprint_core::configuration::NewLineKind::LineFeed
+          }
+        }
       }
-    });
+      .to_string(),
+    );
   }
 
   if let Some(use_braces) = options.use_braces {
-    builder.use_braces(match use_braces {
-      UseBraces::Always => dprint_config::UseBraces::Always,
-      UseBraces::Maintain => dprint_config::UseBraces::Maintain,
-      UseBraces::PreferNone => dprint_config::UseBraces::PreferNone,
-      UseBraces::WhenNotSingleLine => {
-        dprint_config::UseBraces::WhenNotSingleLine
+    set_config_key(
+      &mut config,
+      "useBraces",
+      match use_braces {
+        UseBraces::Always => dprint_config::UseBraces::Always,
+        UseBraces::Maintain => dprint_config::UseBraces::Maintain,
+        UseBraces::PreferNone => dprint_config::UseBraces::PreferNone,
+        UseBraces::WhenNotSingleLine => {
+          dprint_config::UseBraces::WhenNotSingleLine
+        }
       }
-    });
+      .to_string(),
+    );
   }
 
   if let Some(brace_position) = options.brace_position {
-    builder.brace_position(match brace_position {
-      BracePosition::Maintain => dprint_config::BracePosition::Maintain,
-      BracePosition::NextLine => dprint_config::BracePosition::NextLine,
-      BracePosition::SameLine => dprint_config::BracePosition::SameLine,
-      BracePosition::SameLineUnlessHanging => {
-        dprint_config::BracePosition::SameLineUnlessHanging
+    set_config_key(
+      &mut config,
+      "bracePosition",
+      match brace_position {
+        BracePosition::Maintain => dprint_config::BracePosition::Maintain,
+        BracePosition::NextLine => dprint_config::BracePosition::NextLine,
+        BracePosition::SameLine => dprint_config::BracePosition::SameLine,
+        BracePosition::SameLineUnlessHanging => {
+          dprint_config::BracePosition::SameLineUnlessHanging
+        }
       }
-    });
+      .to_string(),
+    );
   }
 
   if let Some(single_body_position) = options.single_body_position {
-    builder.single_body_position(match single_body_position {
-      SingleBodyPosition::Maintain => {
-        dprint_config::SameOrNextLinePosition::Maintain
+    set_config_key(
+      &mut config,
+      "singleBodyPosition",
+      match single_body_position {
+        SingleBodyPosition::Maintain => {
+          dprint_config::SameOrNextLinePosition::Maintain
+        }
+        SingleBodyPosition::NextLine => {
+          dprint_config::SameOrNextLinePosition::NextLine
+        }
+        SingleBodyPosition::SameLine => {
+          dprint_config::SameOrNextLinePosition::SameLine
+        }
       }
-      SingleBodyPosition::NextLine => {
-        dprint_config::SameOrNextLinePosition::NextLine
-      }
-      SingleBodyPosition::SameLine => {
-        dprint_config::SameOrNextLinePosition::SameLine
-      }
-    });
+      .to_string(),
+    );
   }
 
   if let Some(next_control_flow_position) = options.next_control_flow_position {
-    builder.next_control_flow_position(match next_control_flow_position {
-      NextControlFlowPosition::Maintain => {
-        dprint_config::NextControlFlowPosition::Maintain
+    set_config_key(
+      &mut config,
+      "nextControlFlowPosition",
+      match next_control_flow_position {
+        NextControlFlowPosition::Maintain => {
+          dprint_config::NextControlFlowPosition::Maintain
+        }
+        NextControlFlowPosition::NextLine => {
+          dprint_config::NextControlFlowPosition::NextLine
+        }
+        NextControlFlowPosition::SameLine => {
+          dprint_config::NextControlFlowPosition::SameLine
+        }
       }
-      NextControlFlowPosition::NextLine => {
-        dprint_config::NextControlFlowPosition::NextLine
-      }
-      NextControlFlowPosition::SameLine => {
-        dprint_config::NextControlFlowPosition::SameLine
-      }
-    });
+      .to_string(),
+    );
   }
 
   if let Some(trailing_commas) = options.trailing_commas {
-    builder.trailing_commas(match trailing_commas {
-      TrailingCommas::Always => dprint_config::TrailingCommas::Always,
-      TrailingCommas::Never => dprint_config::TrailingCommas::Never,
-      TrailingCommas::OnlyMultiLine => {
-        dprint_config::TrailingCommas::OnlyMultiLine
+    set_config_key(
+      &mut config,
+      "trailingCommas",
+      match trailing_commas {
+        TrailingCommas::Always => dprint_config::TrailingCommas::Always,
+        TrailingCommas::Never => dprint_config::TrailingCommas::Never,
+        TrailingCommas::OnlyMultiLine => {
+          dprint_config::TrailingCommas::OnlyMultiLine
+        }
       }
-    });
+      .to_string(),
+    );
   }
 
   if let Some(operator_position) = options.operator_position {
@@ -1410,192 +1503,248 @@ fn get_typescript_config_builder(
       OperatorPosition::Maintain => dprint_config::OperatorPosition::Maintain,
       OperatorPosition::NextLine => dprint_config::OperatorPosition::NextLine,
       OperatorPosition::SameLine => dprint_config::OperatorPosition::SameLine,
-    };
+    }
+    .to_string();
     // Because Ende's defaults are set at AST specific options, we need to
     // set them to AST specific options to override them.
-    builder.binary_expression_operator_position(option);
-    builder.conditional_expression_operator_position(option);
-    builder.conditional_type_operator_position(option);
+    for key in [
+      "binaryExpression.operatorPosition",
+      "conditionalExpression.operatorPosition",
+      "conditionalType.operatorPosition",
+    ] {
+      set_config_key(&mut config, key, option.as_str());
+    }
   }
 
   if let Some(jsx_bracket_position) = options.jsx_bracket_position {
-    builder.jsx_bracket_position(match jsx_bracket_position {
-      BracketPosition::Maintain => {
-        dprint_config::SameOrNextLinePosition::Maintain
+    set_config_key(
+      &mut config,
+      "jsx.bracketPosition",
+      match jsx_bracket_position {
+        BracketPosition::Maintain => {
+          dprint_config::SameOrNextLinePosition::Maintain
+        }
+        BracketPosition::NextLine => {
+          dprint_config::SameOrNextLinePosition::NextLine
+        }
+        BracketPosition::SameLine => {
+          dprint_config::SameOrNextLinePosition::SameLine
+        }
       }
-      BracketPosition::NextLine => {
-        dprint_config::SameOrNextLinePosition::NextLine
-      }
-      BracketPosition::SameLine => {
-        dprint_config::SameOrNextLinePosition::SameLine
-      }
-    });
+      .to_string(),
+    );
   }
 
   if let Some(jsx_force_new_lines_surrounding_content) =
     options.jsx_force_new_lines_surrounding_content
   {
-    builder.jsx_force_new_lines_surrounding_content(
+    set_config_key(
+      &mut config,
+      "jsx.forceNewLinesSurroundingContent",
       jsx_force_new_lines_surrounding_content,
     );
   }
 
   if let Some(jsx_multi_line_parens) = options.jsx_multi_line_parens {
-    builder.jsx_multi_line_parens(match jsx_multi_line_parens {
-      MultiLineParens::Always => dprint_config::JsxMultiLineParens::Always,
-      MultiLineParens::Never => dprint_config::JsxMultiLineParens::Never,
-      MultiLineParens::Prefer => dprint_config::JsxMultiLineParens::Prefer,
-    });
+    set_config_key(
+      &mut config,
+      "jsx.multiLineParens",
+      match jsx_multi_line_parens {
+        MultiLineParens::Always => dprint_config::JsxMultiLineParens::Always,
+        MultiLineParens::Never => dprint_config::JsxMultiLineParens::Never,
+        MultiLineParens::Prefer => dprint_config::JsxMultiLineParens::Prefer,
+      }
+      .to_string(),
+    );
   }
 
   if let Some(type_literal_separator_kind) = options.type_literal_separator_kind
   {
-    builder.type_literal_separator_kind(match type_literal_separator_kind {
-      SeparatorKind::Comma => dprint_config::SemiColonOrComma::Comma,
-      SeparatorKind::SemiColon => dprint_config::SemiColonOrComma::SemiColon,
-    });
+    set_config_key(
+      &mut config,
+      "typeLiteral.separatorKind",
+      match type_literal_separator_kind {
+        SeparatorKind::Comma => dprint_config::SemiColonOrComma::Comma,
+        SeparatorKind::SemiColon => dprint_config::SemiColonOrComma::SemiColon,
+      }
+      .to_string(),
+    );
   }
 
   if let Some(space_around) = options.space_around {
-    builder.space_around(space_around);
+    set_config_key(&mut config, "spaceAround", space_around);
   }
 
   if let Some(space_surrounding_properties) =
     options.space_surrounding_properties
   {
-    builder.space_surrounding_properties(space_surrounding_properties);
-    builder.import_declaration_space_surrounding_named_imports(
-      space_surrounding_properties,
-    );
-    builder.export_declaration_space_surrounding_named_exports(
-      space_surrounding_properties,
-    );
+    for key in [
+      "spaceSurroundingProperties",
+      "importDeclaration.spaceSurroundingNamedImports",
+      "exportDeclaration.spaceSurroundingNamedExports",
+    ] {
+      set_config_key(&mut config, key, space_surrounding_properties);
+    }
   }
 
   if let Some(sort_named_imports) = options.sort_named_imports {
-    builder.import_declaration_sort_named_imports(match sort_named_imports {
-      SortOrder::Maintain => dprint_config::SortOrder::Maintain,
-      SortOrder::CaseSensitive => dprint_config::SortOrder::CaseSensitive,
-      SortOrder::CaseInsensitive => dprint_config::SortOrder::CaseInsensitive,
-    });
+    set_config_key(
+      &mut config,
+      "importDeclaration.sortNamedImports",
+      match sort_named_imports {
+        SortOrder::Maintain => dprint_config::SortOrder::Maintain,
+        SortOrder::CaseSensitive => dprint_config::SortOrder::CaseSensitive,
+        SortOrder::CaseInsensitive => dprint_config::SortOrder::CaseInsensitive,
+      }
+      .to_string(),
+    );
   }
 
   if let Some(sort_named_exports) = options.sort_named_exports {
-    builder.export_declaration_sort_named_exports(match sort_named_exports {
-      SortOrder::Maintain => dprint_config::SortOrder::Maintain,
-      SortOrder::CaseSensitive => dprint_config::SortOrder::CaseSensitive,
-      SortOrder::CaseInsensitive => dprint_config::SortOrder::CaseInsensitive,
-    });
+    set_config_key(
+      &mut config,
+      "exportDeclaration.sortNamedExports",
+      match sort_named_exports {
+        SortOrder::Maintain => dprint_config::SortOrder::Maintain,
+        SortOrder::CaseSensitive => dprint_config::SortOrder::CaseSensitive,
+        SortOrder::CaseInsensitive => dprint_config::SortOrder::CaseInsensitive,
+      }
+      .to_string(),
+    );
   }
 
-  builder
-}
-
-fn get_resolved_typescript_config(
-  options: &FmtOptionsConfig,
-) -> dprint_plugin_typescript::configuration::Configuration {
-  get_typescript_config_builder(options).build()
+  resolve_dprint_config(
+    "typescript",
+    config,
+    options.typescript.as_ref(),
+    dprint_config::resolve_config,
+  )
 }
 
 fn get_resolved_markdown_config(
   options: &FmtOptionsConfig,
-) -> dprint_plugin_markdown::configuration::Configuration {
-  let mut builder =
-    dprint_plugin_markdown::configuration::ConfigurationBuilder::new();
-
-  builder.deno();
+) -> Result<dprint_plugin_markdown::configuration::Configuration, AnyError> {
+  let mut config = ConfigKeyMap::new();
 
   if let Some(line_width) = options.line_width {
-    builder.line_width(line_width);
+    set_config_key(&mut config, "lineWidth", line_width as i32);
   }
 
   if let Some(prose_wrap) = options.prose_wrap {
-    builder.text_wrap(match prose_wrap {
-      ProseWrap::Always => {
-        dprint_plugin_markdown::configuration::TextWrap::Always
+    set_config_key(
+      &mut config,
+      "textWrap",
+      match prose_wrap {
+        ProseWrap::Always => {
+          dprint_plugin_markdown::configuration::TextWrap::Always
+        }
+        ProseWrap::Never => {
+          dprint_plugin_markdown::configuration::TextWrap::Never
+        }
+        ProseWrap::Preserve => {
+          dprint_plugin_markdown::configuration::TextWrap::Maintain
+        }
       }
-      ProseWrap::Never => {
-        dprint_plugin_markdown::configuration::TextWrap::Never
-      }
-      ProseWrap::Preserve => {
-        dprint_plugin_markdown::configuration::TextWrap::Maintain
-      }
-    });
+      .to_string(),
+    );
   }
 
   if let Some(new_line_kind) = options.new_line_kind {
-    builder.new_line_kind(match new_line_kind {
-      NewLineKind::Auto => dprint_core::configuration::NewLineKind::Auto,
-      NewLineKind::CarriageReturnLineFeed => {
-        dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
-      }
-      NewLineKind::LineFeed => {
-        dprint_core::configuration::NewLineKind::LineFeed
-      }
-      NewLineKind::System => {
-        if cfg!(windows) {
+    set_config_key(
+      &mut config,
+      "newLineKind",
+      match new_line_kind {
+        NewLineKind::Auto => dprint_core::configuration::NewLineKind::Auto,
+        NewLineKind::CarriageReturnLineFeed => {
           dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
-        } else {
+        }
+        NewLineKind::LineFeed => {
           dprint_core::configuration::NewLineKind::LineFeed
         }
+        NewLineKind::System => {
+          if cfg!(windows) {
+            dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
+          } else {
+            dprint_core::configuration::NewLineKind::LineFeed
+          }
+        }
       }
-    });
+      .to_string(),
+    );
   }
 
-  builder.build()
+  resolve_dprint_config(
+    "markdown",
+    config,
+    options.markdown.as_ref(),
+    dprint_plugin_markdown::configuration::resolve_config,
+  )
 }
 
 fn get_resolved_json_config(
   options: &FmtOptionsConfig,
-) -> dprint_plugin_json::configuration::Configuration {
+) -> Result<dprint_plugin_json::configuration::Configuration, AnyError> {
   use dprint_plugin_json::configuration::TrailingCommaKind;
   use ende_config::ende_json::JsonTrailingCommaKind;
 
-  let mut builder =
-    dprint_plugin_json::configuration::ConfigurationBuilder::new();
+  let mut config = ConfigKeyMap::new();
 
-  builder.deno();
   if let Some(json_trailing_commas) = options.json_trailing_commas {
-    builder.trailing_commas(match json_trailing_commas {
-      JsonTrailingCommaKind::Always => TrailingCommaKind::Always,
-      JsonTrailingCommaKind::Jsonc => TrailingCommaKind::Jsonc,
-      JsonTrailingCommaKind::Maintain => TrailingCommaKind::Maintain,
-      JsonTrailingCommaKind::Never => TrailingCommaKind::Never,
-    });
+    set_config_key(
+      &mut config,
+      "trailingCommas",
+      match json_trailing_commas {
+        JsonTrailingCommaKind::Always => TrailingCommaKind::Always,
+        JsonTrailingCommaKind::Jsonc => TrailingCommaKind::Jsonc,
+        JsonTrailingCommaKind::Maintain => TrailingCommaKind::Maintain,
+        JsonTrailingCommaKind::Never => TrailingCommaKind::Never,
+      }
+      .to_string(),
+    );
   }
 
   if let Some(use_tabs) = options.use_tabs {
-    builder.use_tabs(use_tabs);
+    set_config_key(&mut config, "useTabs", use_tabs);
   }
 
   if let Some(line_width) = options.line_width {
-    builder.line_width(line_width);
+    set_config_key(&mut config, "lineWidth", line_width as i32);
   }
 
   if let Some(indent_width) = options.indent_width {
-    builder.indent_width(indent_width);
+    set_config_key(&mut config, "indentWidth", indent_width as i32);
   }
 
   if let Some(new_line_kind) = options.new_line_kind {
-    builder.new_line_kind(match new_line_kind {
-      NewLineKind::Auto => dprint_core::configuration::NewLineKind::Auto,
-      NewLineKind::CarriageReturnLineFeed => {
-        dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
-      }
-      NewLineKind::LineFeed => {
-        dprint_core::configuration::NewLineKind::LineFeed
-      }
-      NewLineKind::System => {
-        if cfg!(windows) {
+    set_config_key(
+      &mut config,
+      "newLineKind",
+      match new_line_kind {
+        NewLineKind::Auto => dprint_core::configuration::NewLineKind::Auto,
+        NewLineKind::CarriageReturnLineFeed => {
           dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
-        } else {
+        }
+        NewLineKind::LineFeed => {
           dprint_core::configuration::NewLineKind::LineFeed
         }
+        NewLineKind::System => {
+          if cfg!(windows) {
+            dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
+          } else {
+            dprint_core::configuration::NewLineKind::LineFeed
+          }
+        }
       }
-    });
+      .to_string(),
+    );
   }
 
-  builder.build()
+  resolve_dprint_config(
+    "json",
+    config,
+    options.json.as_ref(),
+    dprint_plugin_json::configuration::resolve_config,
+  )
 }
 
 fn get_resolved_lax_markup_config(
@@ -1768,6 +1917,7 @@ fn is_supported_ext_fmt(path: &Path) -> bool {
 #[cfg(test)]
 mod test {
   use ende_config::ende_json::JsonTrailingCommaKind;
+  use ende_core::serde_json;
   use test_util::assert_starts_with;
 
   use super::*;
@@ -2015,6 +2165,187 @@ mod test {
     )
     .unwrap();
     assert_eq!(file_text, None);
+  }
+
+  fn dprint_section(
+    value: serde_json::Value,
+  ) -> Option<serde_json::Map<String, serde_json::Value>> {
+    match value {
+      serde_json::Value::Object(map) => Some(map),
+      _ => unreachable!(),
+    }
+  }
+
+  fn format_text_with(
+    file_name: &str,
+    text: &str,
+    options: FmtOptionsConfig,
+  ) -> Result<Option<String>, AnyError> {
+    format_file(
+      Path::new(file_name),
+      &FileContents {
+        had_bom: false,
+        text: text.to_string().into(),
+      },
+      &options,
+      &UnstableFmtOptions::default(),
+      None,
+    )
+  }
+
+  #[test]
+  fn test_dprint_section_key_overrides_fmt_option() {
+    let file_text = format_text_with(
+      "test.ts",
+      "let a = 1\n",
+      FmtOptionsConfig {
+        semi_colons: Some(false),
+        typescript: dprint_section(serde_json::json!({
+          "semiColons": "always",
+        })),
+        ..Default::default()
+      },
+    )
+    .unwrap();
+    assert_eq!(file_text, Some("let a = 1;\n".to_string()));
+  }
+
+  #[test]
+  fn test_fmt_option_overrides_preset_without_section_key() {
+    let file_text = format_text_with(
+      "test.ts",
+      "let a = \"x\";\n",
+      FmtOptionsConfig {
+        single_quote: Some(true),
+        typescript: dprint_section(serde_json::json!({
+          "semiColons": "always",
+        })),
+        ..Default::default()
+      },
+    )
+    .unwrap();
+    assert_eq!(file_text, Some("let a = 'x';\n".to_string()));
+  }
+
+  #[test]
+  fn test_dprint_section_arrow_function_use_parentheses() {
+    let file_text = format_text_with(
+      "test.ts",
+      "const f = (x) => x;\n",
+      FmtOptionsConfig {
+        typescript: dprint_section(serde_json::json!({
+          "arrowFunction.useParentheses": "preferNone",
+        })),
+        ..Default::default()
+      },
+    )
+    .unwrap();
+    assert_eq!(file_text, Some("const f = x => x;\n".to_string()));
+  }
+
+  #[test]
+  fn test_dprint_section_unknown_key_errors() {
+    let err = format_text_with(
+      "test.ts",
+      "let a = 1;\n",
+      FmtOptionsConfig {
+        typescript: dprint_section(serde_json::json!({
+          "notARealOption": true,
+        })),
+        ..Default::default()
+      },
+    )
+    .unwrap_err()
+    .to_string();
+    assert!(err.contains("\"fmt.typescript\""), "{err}");
+    assert!(err.contains("notARealOption"), "{err}");
+  }
+
+  #[test]
+  fn test_dprint_section_invalid_value_errors() {
+    let err = format_text_with(
+      "test.md",
+      "# Hi\n",
+      FmtOptionsConfig {
+        markdown: dprint_section(serde_json::json!({
+          "textWrap": "sometimes",
+        })),
+        ..Default::default()
+      },
+    )
+    .unwrap_err()
+    .to_string();
+    assert!(err.contains("\"fmt.markdown\""), "{err}");
+    assert!(err.contains("textWrap"), "{err}");
+  }
+
+  #[test]
+  fn test_dprint_json_section_key_overrides_fmt_option() {
+    let file_text = format_text_with(
+      "test.json",
+      "{\n  \"a\": 1\n}\n",
+      FmtOptionsConfig {
+        json_trailing_commas: Some(JsonTrailingCommaKind::Never),
+        json: dprint_section(serde_json::json!({
+          "trailingCommas": "always",
+        })),
+        ..Default::default()
+      },
+    )
+    .unwrap();
+    assert_eq!(file_text, Some("{\n  \"a\": 1,\n}\n".to_string()));
+  }
+
+  #[test]
+  fn test_dprint_markdown_section() {
+    let file_text = format_text_with(
+      "test.md",
+      "_hi_\n",
+      FmtOptionsConfig {
+        markdown: dprint_section(serde_json::json!({
+          "emphasisKind": "asterisks",
+        })),
+        ..Default::default()
+      },
+    )
+    .unwrap();
+    assert_eq!(file_text, Some("*hi*\n".to_string()));
+  }
+
+  #[test]
+  fn test_default_configs_match_dprint_deno_presets() {
+    // Without any options, Ende's configuration is dprint's Deno preset.
+    let options = FmtOptionsConfig::default();
+    assert_eq!(
+      serde_json::to_value(get_resolved_typescript_config(&options).unwrap())
+        .unwrap(),
+      serde_json::to_value(
+        dprint_plugin_typescript::configuration::ConfigurationBuilder::new()
+          .deno()
+          .build()
+      )
+      .unwrap()
+    );
+    assert_eq!(
+      serde_json::to_value(get_resolved_json_config(&options).unwrap())
+        .unwrap(),
+      serde_json::to_value(
+        dprint_plugin_json::configuration::ConfigurationBuilder::new()
+          .deno()
+          .build()
+      )
+      .unwrap()
+    );
+    assert_eq!(
+      serde_json::to_value(get_resolved_markdown_config(&options).unwrap())
+        .unwrap(),
+      serde_json::to_value(
+        dprint_plugin_markdown::configuration::ConfigurationBuilder::new()
+          .deno()
+          .build()
+      )
+      .unwrap()
+    );
   }
 
   #[test]

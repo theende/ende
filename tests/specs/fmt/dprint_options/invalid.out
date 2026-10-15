@@ -1,0 +1,2 @@
+error: Invalid "fmt.typescript" configuration:
+  arrowFunction.useParens: Unknown property in configuration

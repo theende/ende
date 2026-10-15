@@ -1,0 +1,9 @@
+
+from [WILDCARD]unformatted.json:
+2 | -  "a": [
+2 | +  "a": [1, 2]
+3 | -    1,
+4 | -    2
+5 | -  ]
+
+error: Found 1 not formatted file in 1 file

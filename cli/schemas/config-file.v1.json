@@ -787,6 +787,21 @@
           "default": true,
           "type": "boolean"
         },
+        "typescript": {
+          "description": "dprint-plugin-typescript options for JavaScript and TypeScript, using dprint's own option names (as in a dprint.json). They take precedence over the options above. See https://dprint.dev/plugins/typescript/config/",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "json": {
+          "description": "dprint-plugin-json options for JSON and JSONC, using dprint's own option names (as in a dprint.json). They take precedence over the options above. See https://dprint.dev/plugins/json/config/",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "markdown": {
+          "description": "dprint-plugin-markdown options for Markdown, using dprint's own option names (as in a dprint.json). They take precedence over the options above. See https://dprint.dev/plugins/markdown/config/",
+          "type": "object",
+          "additionalProperties": true
+        },
         "options": {
           "type": "object",
           "properties": {

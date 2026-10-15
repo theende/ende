@@ -366,6 +366,15 @@ pub struct FmtOptionsConfig {
   /// Whether `ende fmt` should read `.editorconfig` files to fill in
   /// options that are not otherwise set. Defaults to `true` when unset.
   pub use_editor_config: Option<bool>,
+  /// dprint-plugin-typescript options, using dprint's own key names. They
+  /// take precedence over the options above.
+  pub typescript: Option<serde_json::Map<String, Value>>,
+  /// dprint-plugin-json options, using dprint's own key names. They take
+  /// precedence over the options above.
+  pub json: Option<serde_json::Map<String, Value>>,
+  /// dprint-plugin-markdown options, using dprint's own key names. They
+  /// take precedence over the options above.
+  pub markdown: Option<serde_json::Map<String, Value>>,
 }
 
 impl FmtOptionsConfig {
@@ -396,6 +405,9 @@ impl FmtOptionsConfig {
       && self.sort_named_imports.is_none()
       && self.sort_named_exports.is_none()
       && self.use_editor_config.is_none()
+      && self.typescript.is_none()
+      && self.json.is_none()
+      && self.markdown.is_none()
   }
 }
 
@@ -476,6 +488,9 @@ struct SerializedFmtConfig {
   pub sort_named_imports: Option<SortOrder>,
   pub sort_named_exports: Option<SortOrder>,
   pub use_editor_config: Option<bool>,
+  pub typescript: Option<serde_json::Map<String, Value>>,
+  pub json: Option<serde_json::Map<String, Value>>,
+  pub markdown: Option<serde_json::Map<String, Value>>,
   #[serde(rename = "options")]
   pub deprecated_options: FmtOptionsConfig,
   pub include: Option<Vec<String>>,
@@ -520,6 +535,9 @@ impl SerializedFmtConfig {
       sort_named_imports: self.sort_named_imports,
       sort_named_exports: self.sort_named_exports,
       use_editor_config: self.use_editor_config,
+      typescript: self.typescript,
+      json: self.json,
+      markdown: self.markdown,
     };
     if !self.deprecated_files.is_null() {
       log::warn!(
@@ -2663,6 +2681,9 @@ mod tests {
           sort_named_imports: Some(SortOrder::Maintain),
           sort_named_exports: Some(SortOrder::CaseSensitive),
           use_editor_config: Some(false),
+          typescript: None,
+          json: None,
+          markdown: None,
         },
       }
     );

@@ -1,0 +1,32 @@
+{
+  "tests": {
+    // ende.json passes dprint-plugin-typescript and dprint-plugin-json
+    // options through `fmt.typescript` and `fmt.json`.
+    "formats_typescript_with_dprint_options": {
+      "args": "fmt --config ende.json --check unformatted.ts",
+      "output": "unformatted_ts.out",
+      "exitCode": 1
+    },
+    "formats_json_with_dprint_options": {
+      "args": "fmt --config ende.json --check unformatted.json",
+      "output": "unformatted_json.out",
+      "exitCode": 1
+    },
+    "formatted_files_pass_check": {
+      "args": "fmt --config ende.json --check formatted.ts formatted.json",
+      "output": "Checked 2 files\n"
+    },
+    // Without the dprint options the default style would reformat the file.
+    "defaults_differ": {
+      "args": "fmt --no-config --check formatted.ts",
+      "output": "[WILDCARD]error: Found 1 not formatted file in 1 file\n",
+      "exitCode": 1
+    },
+    // Unknown dprint keys are a config error naming the section and key.
+    "invalid_dprint_option": {
+      "args": "fmt --config invalid.json --check formatted.ts",
+      "output": "invalid.out",
+      "exitCode": 1
+    }
+  }
+}

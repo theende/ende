@@ -1,0 +1,23 @@
+
+from [WILDCARD]unformatted.ts:
+ 1 | -import { type B, A, type C, D } from "./mod.ts";
+ 1 | +import { A, D, type B, type C } from "./mod.ts";
+   | ...
+ 3 | -enum Color { Red, Green, Blue }
+ 3 | +enum Color {
+ 4 | +  Red,
+ 5 | +  Green,
+ 6 | +  Blue
+ 7 | +}
+   | ...
+ 5 | -const double = (x) => x * 2;
+ 9 | +const double = x => x * 2;
+   | ...
+ 9 | -  2,
+13 | +  2
+   | ...
+13 | -  case 1:
+17 | +  case 1: {
+14 | -  {
+
+error: Found 1 not formatted file in 1 file

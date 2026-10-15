@@ -1,0 +1,7 @@
+{
+  "fmt": {
+    "typescript": {
+      "arrowFunction.useParens": "preferNone"
+    }
+  }
+}

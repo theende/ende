@@ -1,0 +1,17 @@
+{
+  "fmt": {
+    "typescript": {
+      "arrowFunction.useParentheses": "preferNone",
+      "enumDeclaration.memberSpacing": "newLine",
+      "importDeclaration.sortTypeOnlyImports": "last",
+      "memberExpression.linePerExpression": true,
+      "preferHanging": false,
+      "quoteStyle": "alwaysDouble",
+      "switchCase.bracePosition": "sameLine",
+      "trailingCommas": "never"
+    },
+    "json": {
+      "array.preferSingleLine": true
+    }
+  }
+}
