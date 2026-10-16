@@ -330,7 +330,7 @@ pub async fn run(flags: Arc<Flags>, x_flags: XFlags) -> Result<i32, AnyError> {
     XFlagsKind::Command(command) => command,
     XFlagsKind::Print => {
       log::info!(
-        "Provide a JSR package or a URL to run. For example: ende x jsr:@std/http/file-server"
+        "Provide a JSR package or a URL to run. For example: ende x jsr:@ende/http/file-server"
       );
       return Ok(0);
     }

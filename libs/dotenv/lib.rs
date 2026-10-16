@@ -984,7 +984,7 @@ u4QuUoobAgMBAAE=
         ("KEY1", "test_user"),
         ("KEY1_1", "test_user_with_separator"),
         // an underscore is part of the variable name (matching bash and
-        // @std/dotenv), so `$KEY1_1` resolves the `KEY1_1` variable; `{` and
+        // @ende/dotenv), so `$KEY1_1` resolves the `KEY1_1` variable; `{` and
         // `}` still terminate an unbraced reference
         ("KEY", ">test_user_with_separator<>test_user}<>test_user{<"),
       ],

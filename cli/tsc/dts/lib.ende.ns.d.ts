@@ -586,7 +586,7 @@ declare namespace Ende {
      * Examples:
      *
      * ```ts
-     * import { assertEquals } from "jsr:@std/assert";
+     * import { assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test({
      *   name: "inherit",
@@ -601,7 +601,7 @@ declare namespace Ende {
      * ```
      *
      * ```ts
-     * import { assertEquals } from "jsr:@std/assert";
+     * import { assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test({
      *   name: "true",
@@ -616,7 +616,7 @@ declare namespace Ende {
      * ```
      *
      * ```ts
-     * import { assertEquals } from "jsr:@std/assert";
+     * import { assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test({
      *   name: "false",
@@ -631,7 +631,7 @@ declare namespace Ende {
      * ```
      *
      * ```ts
-     * import { assertEquals } from "jsr:@std/assert";
+     * import { assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test({
      *   name: "localhost:8080",
@@ -790,7 +790,7 @@ declare namespace Ende {
      *
      * The snapshot file format is compatible with
      * `assertSnapshot` from
-     * [`@std/testing/snapshot`](https://jsr.io/@std/testing/doc/snapshot).
+     * [`@ende/testing/snapshot`](https://jsr.io/@ende/testing/doc/snapshot).
      *
      * ```ts
      * Ende.test("matches snapshot", async (t) => {
@@ -970,7 +970,7 @@ declare namespace Ende {
    * Use `t.step()` for nested tests.
    *
    * ```ts
-   * import { assertEquals } from "jsr:@std/assert";
+   * import { assertEquals } from "jsr:@ende/assert";
    *
    * Ende.test({
    *   name: "example test",
@@ -1011,7 +1011,7 @@ declare namespace Ende {
      * `fn` can be async if required.
      *
      * ```ts
-     * import { assertEquals } from "jsr:@std/assert";
+     * import { assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test({
      *   name: "example test",
@@ -1048,7 +1048,7 @@ declare namespace Ende {
      * `fn` can be async if required.
      *
      * ```ts
-     * import { assertEquals } from "jsr:@std/assert";
+     * import { assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test("My test description", () => {
      *   assertEquals("hello", "hello");
@@ -1071,7 +1071,7 @@ declare namespace Ende {
      * `fn` can be async if required. Declared function must have a name.
      *
      * ```ts
-     * import { assertEquals } from "jsr:@std/assert";
+     * import { assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test(function myTestName() {
      *   assertEquals("hello", "hello");
@@ -1094,7 +1094,7 @@ declare namespace Ende {
      * `fn` can be async if required.
      *
      * ```ts
-     * import { assert, fail, assertEquals } from "jsr:@std/assert";
+     * import { assert, fail, assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test("My test description", { permissions: { read: true } }, (): void => {
      *   assertEquals("hello", "hello");
@@ -1121,7 +1121,7 @@ declare namespace Ende {
      * `fn` can be async if required.
      *
      * ```ts
-     * import { assertEquals } from "jsr:@std/assert";
+     * import { assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test(
      *   {
@@ -1159,7 +1159,7 @@ declare namespace Ende {
      * `fn` can be async if required. Declared function must have a name.
      *
      * ```ts
-     * import { assertEquals } from "jsr:@std/assert";
+     * import { assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test(
      *   { permissions: { read: true } },
@@ -1200,7 +1200,7 @@ declare namespace Ende {
      * `$key` (and `$key.nested`) interpolates the corresponding property.
      *
      * ```ts
-     * import { assertEquals } from "jsr:@std/assert";
+     * import { assertEquals } from "jsr:@ende/assert";
      *
      * Ende.test.each([
      *   [1, 1, 2],
@@ -1555,7 +1555,7 @@ declare namespace Ende {
    * will await resolution to consider the test complete.
    *
    * ```ts
-   * import { assertEquals } from "jsr:@std/assert";
+   * import { assertEquals } from "jsr:@ende/assert";
    *
    * Ende.bench({
    *   name: "example test",
@@ -1594,7 +1594,7 @@ declare namespace Ende {
    * will await resolution to consider the test complete.
    *
    * ```ts
-   * import { assertEquals } from "jsr:@std/assert";
+   * import { assertEquals } from "jsr:@ende/assert";
    *
    * Ende.bench("My test description", () => {
    *   assertEquals("hello", "hello");
@@ -1622,7 +1622,7 @@ declare namespace Ende {
    * will await resolution to consider the test complete.
    *
    * ```ts
-   * import { assertEquals } from "jsr:@std/assert";
+   * import { assertEquals } from "jsr:@ende/assert";
    *
    * Ende.bench(function myTestName() {
    *   assertEquals("hello", "hello");
@@ -1647,7 +1647,7 @@ declare namespace Ende {
    * will await resolution to consider the test complete.
    *
    * ```ts
-   * import { assertEquals } from "jsr:@std/assert";
+   * import { assertEquals } from "jsr:@ende/assert";
    *
    * Ende.bench(
    *   "My test description",
@@ -1684,7 +1684,7 @@ declare namespace Ende {
    * will await resolution to consider the test complete.
    *
    * ```ts
-   * import { assertEquals } from "jsr:@std/assert";
+   * import { assertEquals } from "jsr:@ende/assert";
    *
    * Ende.bench(
    *   { name: "My test description", permissions: { read: true } },
@@ -1718,7 +1718,7 @@ declare namespace Ende {
    * will await resolution to consider the test complete.
    *
    * ```ts
-   * import { assertEquals } from "jsr:@std/assert";
+   * import { assertEquals } from "jsr:@ende/assert";
    *
    * Ende.bench(
    *   { permissions: { read: true } },
@@ -2306,7 +2306,7 @@ declare namespace Ende {
     /** Resolves to a {@linkcode Ende.FileInfo} for the file.
      *
      * ```ts
-     * import { assert } from "jsr:@std/assert";
+     * import { assert } from "jsr:@ende/assert";
      *
      * using file = await Ende.open("hello.txt");
      * const fileInfo = await file.stat();
@@ -2317,7 +2317,7 @@ declare namespace Ende {
     /** Synchronously returns a {@linkcode Ende.FileInfo} for the file.
      *
      * ```ts
-     * import { assert } from "jsr:@std/assert";
+     * import { assert } from "jsr:@ende/assert";
      *
      * using file = Ende.openSync("hello.txt")
      * const fileInfo = file.statSync();
@@ -2530,9 +2530,9 @@ declare namespace Ende {
   /** A reference to `stdin` which can be used to read directly from `stdin`.
    *
    * It implements the Ende specific
-   * {@linkcode https://jsr.io/@std/io/doc/types/~/Reader | Reader},
-   * {@linkcode https://jsr.io/@std/io/doc/types/~/ReaderSync | ReaderSync},
-   * and {@linkcode https://jsr.io/@std/io/doc/types/~/Closer | Closer}
+   * {@linkcode https://jsr.io/@ende/io/doc/types/~/Reader | Reader},
+   * {@linkcode https://jsr.io/@ende/io/doc/types/~/ReaderSync | ReaderSync},
+   * and {@linkcode https://jsr.io/@ende/io/doc/types/~/Closer | Closer}
    * interfaces as well as provides a {@linkcode ReadableStream} interface.
    *
    * ### Reading chunks from the readable stream
@@ -2628,9 +2628,9 @@ declare namespace Ende {
   };
   /** A reference to `stdout` which can be used to write directly to `stdout`.
    * It implements the Ende specific
-   * {@linkcode https://jsr.io/@std/io/doc/types/~/Writer | Writer},
-   * {@linkcode https://jsr.io/@std/io/doc/types/~/WriterSync | WriterSync},
-   * and {@linkcode https://jsr.io/@std/io/doc/types/~/Closer | Closer} interfaces as well as provides a
+   * {@linkcode https://jsr.io/@ende/io/doc/types/~/Writer | Writer},
+   * {@linkcode https://jsr.io/@ende/io/doc/types/~/WriterSync | WriterSync},
+   * and {@linkcode https://jsr.io/@ende/io/doc/types/~/Closer | Closer} interfaces as well as provides a
    * {@linkcode WritableStream} interface.
    *
    * These are low level constructs, and the {@linkcode console} interface is a
@@ -2692,9 +2692,9 @@ declare namespace Ende {
   };
   /** A reference to `stderr` which can be used to write directly to `stderr`.
    * It implements the Ende specific
-   * {@linkcode https://jsr.io/@std/io/doc/types/~/Writer | Writer},
-   * {@linkcode https://jsr.io/@std/io/doc/types/~/WriterSync | WriterSync},
-   * and {@linkcode https://jsr.io/@std/io/doc/types/~/Closer | Closer} interfaces as well as provides a
+   * {@linkcode https://jsr.io/@ende/io/doc/types/~/Writer | Writer},
+   * {@linkcode https://jsr.io/@ende/io/doc/types/~/WriterSync | WriterSync},
+   * and {@linkcode https://jsr.io/@ende/io/doc/types/~/Closer | Closer} interfaces as well as provides a
    * {@linkcode WritableStream} interface.
    *
    * These are low level constructs, and the {@linkcode console} interface is a
@@ -3544,7 +3544,7 @@ declare namespace Ende {
    * of what it points to.
    *
    * ```ts
-   * import { assert } from "jsr:@std/assert";
+   * import { assert } from "jsr:@ende/assert";
    * const fileInfo = await Ende.lstat("hello.txt");
    * assert(fileInfo.isFile);
    * ```
@@ -3561,7 +3561,7 @@ declare namespace Ende {
    * returned instead of what it points to.
    *
    * ```ts
-   * import { assert } from "jsr:@std/assert";
+   * import { assert } from "jsr:@ende/assert";
    * const fileInfo = Ende.lstatSync("hello.txt");
    * assert(fileInfo.isFile);
    * ```
@@ -3577,7 +3577,7 @@ declare namespace Ende {
    * always follow symlinks.
    *
    * ```ts
-   * import { assert } from "jsr:@std/assert";
+   * import { assert } from "jsr:@ende/assert";
    * const fileInfo = await Ende.stat("hello.txt");
    * assert(fileInfo.isFile);
    * ```
@@ -3593,7 +3593,7 @@ declare namespace Ende {
    * `path`. Will always follow symlinks.
    *
    * ```ts
-   * import { assert } from "jsr:@std/assert";
+   * import { assert } from "jsr:@ende/assert";
    * const fileInfo = Ende.statSync("hello.txt");
    * assert(fileInfo.isFile);
    * ```
@@ -4776,7 +4776,7 @@ declare namespace Ende {
     /** Revokes a permission, and resolves to the state of the permission.
      *
      * ```ts
-     * import { assert } from "jsr:@std/assert";
+     * import { assert } from "jsr:@ende/assert";
      *
      * const status = await Ende.permissions.revoke({ name: "run" });
      * assert(status.state !== "granted")
@@ -4787,7 +4787,7 @@ declare namespace Ende {
     /** Revokes a permission, and returns the state of the permission.
      *
      * ```ts
-     * import { assert } from "jsr:@std/assert";
+     * import { assert } from "jsr:@ende/assert";
      *
      * const status = Ende.permissions.revokeSync({ name: "run" });
      * assert(status.state !== "granted")
@@ -4865,14 +4865,14 @@ declare namespace Ende {
    * ### Revoking
    *
    * ```ts
-   * import { assert } from "jsr:@std/assert";
+   * import { assert } from "jsr:@ende/assert";
    *
    * const status = await Ende.permissions.revoke({ name: "run" });
    * assert(status.state !== "granted")
    * ```
    *
    * ```ts
-   * import { assert } from "jsr:@std/assert";
+   * import { assert } from "jsr:@ende/assert";
    *
    * const status = Ende.permissions.revokeSync({ name: "run" });
    * assert(status.state !== "granted")
@@ -4982,8 +4982,8 @@ declare namespace Ende {
    * ```
    *
    * If you are looking for a structured way to parse arguments, there is
-   * [`parseArgs()`](https://jsr.io/@std/cli/doc/parse-args/~/parseArgs) from
-   * the Deno Standard Library.
+   * [`parseArgs()`](https://jsr.io/@ende/cli/doc/parse-args/~/parseArgs) from
+   * the Ende Standard Library.
    *
    * @category Runtime
    */

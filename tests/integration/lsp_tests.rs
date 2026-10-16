@@ -1803,7 +1803,7 @@ fn lsp_hover() {
     json!({
       "contents": {
         "kind": "markdown",
-        "value": "```tsx\nconst Ende.args: string[]\n```\nReturns the script arguments to the program.\n\nGive the following command line invocation of Ende:\n\n```sh\nende eval \"console.log(Ende.args)\" Sushi Maguro Hamachi\n```\n\nThen `Ende.args` will contain:\n\n```ts\n[ \"Sushi\", \"Maguro\", \"Hamachi\" ]\n```\n\nIf you are looking for a structured way to parse arguments, there is\n[`parseArgs()`](https://jsr.io/@std/cli/doc/parse-args/~/parseArgs) from\nthe Deno Standard Library.\n\n*@category* — Runtime\n",
+        "value": "```tsx\nconst Ende.args: string[]\n```\nReturns the script arguments to the program.\n\nGive the following command line invocation of Ende:\n\n```sh\nende eval \"console.log(Ende.args)\" Sushi Maguro Hamachi\n```\n\nThen `Ende.args` will contain:\n\n```ts\n[ \"Sushi\", \"Maguro\", \"Hamachi\" ]\n```\n\nIf you are looking for a structured way to parse arguments, there is\n[`parseArgs()`](https://jsr.io/@ende/cli/doc/parse-args/~/parseArgs) from\nthe Ende Standard Library.\n\n*@category* — Runtime\n",
       },
       "range": {
         "start": { "line": 0, "character": 17 },

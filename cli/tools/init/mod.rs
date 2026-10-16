@@ -71,7 +71,7 @@ pub async fn init_project(
     create_file(
       &dir,
       "main.ts",
-      r#"import { serveDir } from "@std/http";
+      r#"import { serveDir } from "@ende/http";
 
 const userPagePattern = new URLPattern({ pathname: "/users/:id" });
 const staticPathPattern = new URLPattern({ pathname: "/static/*" });
@@ -101,7 +101,7 @@ export default {
     create_file(
       &dir,
       "main_test.ts",
-      r#"import { assertEquals } from "@std/assert";
+      r#"import { assertEquals } from "@ende/assert";
 import server from "./main.ts";
 
 Ende.test(async function serverFetch() {
@@ -148,8 +148,8 @@ Ende.test(async function serverFetchStatic() {
           "dev": "ende serve --watch -R main.ts",
         },
         "imports": {
-          "@std/assert": "jsr:@std/assert@1",
-          "@std/http": "jsr:@std/http@1",
+          "@ende/assert": "jsr:@ende/assert@^2026.10.15",
+          "@ende/http": "jsr:@ende/http@^2026.10.15",
         }
       }),
     )?;
@@ -172,7 +172,7 @@ Ende.test(async function serverFetchStatic() {
     create_file(
       &dir,
       "mod_test.ts",
-      r#"import { assertEquals } from "@std/assert";
+      r#"import { assertEquals } from "@ende/assert";
 import { add } from "./mod.ts";
 
 Ende.test(function addTest() {
@@ -193,7 +193,7 @@ Ende.test(function addTest() {
         },
         "license": "MIT",
         "imports": {
-          "@std/assert": "jsr:@std/assert@1"
+          "@ende/assert": "jsr:@ende/assert@^2026.10.15"
         },
       }),
     )?;
@@ -224,7 +224,7 @@ if (import.meta.main) {
     create_file(
       &dir,
       "main_test.ts",
-      r#"import { assertEquals } from "@std/assert";
+      r#"import { assertEquals } from "@ende/assert";
 import { handler } from "./main.ts";
 
 Ende.test("returns html on /", async () => {
@@ -251,7 +251,7 @@ Ende.test("returns json on /api", async () => {
           "dev": "ende run --watch --allow-net main.ts"
         },
         "imports": {
-          "@std/assert": "jsr:@std/assert@1"
+          "@ende/assert": "jsr:@ende/assert@^2026.10.15"
         }
       }),
     )?;

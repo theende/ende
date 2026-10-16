@@ -293,7 +293,7 @@ pub fn get_jsr_alternative(imported: &Url) -> Option<String> {
       .filter(|s| *s != "mod.ts")
       .map(|s| s.strip_suffix(".ts").unwrap_or(s).replace("_", "-"));
     Some(format!(
-      "\"jsr:@std/{}@1{}\"",
+      "\"jsr:@ende/{}@^2026.10.15{}\"",
       module,
       export.map(|s| format!("/{}", s)).unwrap_or_default()
     ))
@@ -318,19 +318,19 @@ mod test {
     run_test("https://esm.sh/ts-morph", None);
     run_test(
       "https://deno.land/std/path/mod.ts",
-      Some("\"jsr:@std/path@1\""),
+      Some("\"jsr:@ende/path@^2026.10.15\""),
     );
     run_test(
       "https://deno.land/std/path/join.ts",
-      Some("\"jsr:@std/path@1/join\""),
+      Some("\"jsr:@ende/path@^2026.10.15/join\""),
     );
     run_test(
       "https://deno.land/std@0.229.0/path/join.ts",
-      Some("\"jsr:@std/path@1/join\""),
+      Some("\"jsr:@ende/path@^2026.10.15/join\""),
     );
     run_test(
       "https://deno.land/std@0.229.0/path/something_underscore.ts",
-      Some("\"jsr:@std/path@1/something-underscore\""),
+      Some("\"jsr:@ende/path@^2026.10.15/something-underscore\""),
     );
   }
 

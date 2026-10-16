@@ -2195,7 +2195,7 @@ fn install_parse(
         return Err(CliError::new(
           CliErrorKind::InvalidValue,
           "Note: Permission flags can only be used in a global setting\n\
-             Use `ende install -g --allow-net jsr:@std/fs` instead",
+             Use `ende install -g --allow-net jsr:@ende/fs` instead",
         ));
       }
     }

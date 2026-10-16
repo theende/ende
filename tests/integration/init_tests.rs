@@ -163,7 +163,7 @@ fn init_subcommand_empty() {
   assert!(ende_json_path.exists());
 
   let ende_json_content = ende_json_path.read_to_string();
-  assert!(!ende_json_content.contains("@std/assert"));
+  assert!(!ende_json_content.contains("@ende/assert"));
 
   assert!(cwd.join("main.ts").exists());
   assert!(!cwd.join("main_test.ts").exists());

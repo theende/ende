@@ -741,12 +741,12 @@ interface Crypto {
    *
    * The `randomUUID` method generates a version 4 UUID, which is purely
    * random. If you require other versions of UUIDs, such as time-based (v1) or
-   * name-based (v3 and v5), consider using the `@std/uuid` package available
-   * at {@link https://jsr.io/@std/uuid}.
+   * name-based (v3 and v5), consider using the `@ende/uuid` package available
+   * at {@link https://jsr.io/@ende/uuid}.
    *
    * @example
    * ```ts
-   * import { v1 } from 'jsr:@std/uuid';
+   * import { v1 } from 'jsr:@ende/uuid';
    *
    * // Generate a time-based UUID (v1)
    * const uuidV1 = v1.generate();

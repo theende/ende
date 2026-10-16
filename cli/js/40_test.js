@@ -109,7 +109,7 @@ const testStates = new Map();
  * works from the right so that URL schemes (which also contain `:`) are
  * handled correctly.
  *
- * This is primarily intended for test-helper libraries (e.g. `@std/testing/bdd`)
+ * This is primarily intended for test-helper libraries (e.g. `@ende/testing/bdd`)
  * that call `Ende.test()` on behalf of the user: by setting this symbol on the
  * wrapped function they can report the location in *user* code rather than the
  * location inside the library itself.

@@ -228,7 +228,7 @@ pub static COMPILE_ARGS: &[ArgDef] = &[
     .num_args(NumArgs::ZeroOrMore)
     .require_equals()
     .value_delimiter(',')
-.help("Reload source code cache (recompile TypeScript). With no value, reloads everything. Pass a comma-separated list of specifiers to reload only those modules; jsr:@std/http/file-server,jsr:@std/assert/assert-equals reloads specific modules."),
+.help("Reload source code cache (recompile TypeScript). With no value, reloads everything. Pass a comma-separated list of specifiers to reload only those modules; jsr:@ende/http/file-server,jsr:@ende/assert/equals reloads specific modules."),
   ArgDef::new("lock")
     .long("lock")
     .action(ArgAction::Set)

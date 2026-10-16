@@ -1,1 +1,1 @@
-Provide a JSR package or a URL to run. For example: ende x jsr:@std/http/file-server
+Provide a JSR package or a URL to run. For example: ende x jsr:@ende/http/file-server
