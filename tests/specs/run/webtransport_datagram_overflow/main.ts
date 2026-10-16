@@ -3,7 +3,7 @@
 // Regression test: sending multiple datagrams that exceed the incoming
 // high-water mark (default 1) must not cause an infinite loop.
 
-import { decodeBase64 } from "@std/encoding/base64";
+import { decodeBase64 } from "@ende/encoding/base64";
 
 const cert = Deno.readTextFileSync("../../../testdata/tls/localhost.crt");
 const key = Deno.readTextFileSync("../../../testdata/tls/localhost.key");

@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@ende/assert";
 
 const permissions: Deno.PermissionName[] = [
   "read",

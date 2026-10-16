@@ -9,8 +9,8 @@ import {
   BufReader,
   BufWriter,
 } from "./test_util.ts";
-import { readAll } from "@std/io/read-all";
-import { writeAll } from "@std/io/write-all";
+import { readAll } from "@ende/io/read-all";
+import { writeAll } from "@ende/io/write-all";
 import { TextProtoReader } from "../testdata/run/textproto.ts";
 
 const encoder = new TextEncoder();

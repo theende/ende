@@ -3,7 +3,7 @@ export {};
 declare global {
   /**
    * ```ts
-   * import { assertEquals } from "@std/assert/equals";
+   * import { assertEquals } from "@ende/assert/equals";
    * import "./mod.js";
    *
    * assertEquals(myFunction(1, 2), 3);

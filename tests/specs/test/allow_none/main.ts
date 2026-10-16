@@ -1,4 +1,4 @@
-import { unreachable } from "@std/assert";
+import { unreachable } from "@ende/assert";
 
 const permissions: Deno.PermissionName[] = [
   "read",

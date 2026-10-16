@@ -4,7 +4,7 @@ import {
   assertInstanceOf,
   assertThrows,
   fail,
-} from "@std/assert";
+} from "@ende/assert";
 
 const errorConstructors = [
   Deno.errors.NotFound,

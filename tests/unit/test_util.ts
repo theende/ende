@@ -1,9 +1,9 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-import * as colors from "@std/fmt/colors";
-import { assert } from "@std/assert";
+import * as colors from "@ende/fmt/colors";
+import { assert } from "@ende/assert";
 export { colors };
-import { join, resolve } from "@std/path";
+import { join, resolve } from "@ende/path";
 export {
   assert,
   assertAlmostEquals,
@@ -22,11 +22,11 @@ export {
   fail,
   unimplemented,
   unreachable,
-} from "@std/assert";
-export { delay } from "@std/async/delay";
-export { parseArgs } from "@std/cli/parse-args";
-import { copy } from "@std/bytes/copy";
-import type { Reader, Writer, WriterSync } from "@std/io/types";
+} from "@ende/assert";
+export { delay } from "@ende/async/delay";
+export { parseArgs } from "@ende/cli/parse-args";
+import { copy } from "@ende/bytes/copy";
+import type { Reader, Writer, WriterSync } from "@ende/io/types";
 
 export function pathToAbsoluteFileUrl(path: string): URL {
   path = resolve(path);
@@ -132,8 +132,8 @@ const LF = "\n".charCodeAt(0);
  *
  * @example Usage
  * ```ts
- * import { BufWriter, BufferFullError, Writer } from "@std/io";
- * import { assert, assertEquals } from "@std/assert";
+ * import { BufWriter, BufferFullError, Writer } from "@ende/io";
+ * import { assert, assertEquals } from "@ende/assert";
  *
  * const writer: Writer = {
  *   write(p: Uint8Array): Promise<number> {
@@ -155,8 +155,8 @@ export class BufferFullError extends Error {
    *
    * @example Usage
    * ```ts
-   * import { BufferFullError } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufferFullError } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const err = new BufferFullError(new Uint8Array(2));
    * assertEquals(err.partial, new Uint8Array(2));
@@ -182,8 +182,8 @@ export class BufferFullError extends Error {
  *
  * @example Usage
  * ```ts
- * import { PartialReadError } from "@std/io";
- * import { assertEquals } from "@std/assert/equals";
+ * import { PartialReadError } from "@ende/io";
+ * import { assertEquals } from "@ende/assert/equals";
  *
  * const err = new PartialReadError(new Uint8Array(2));
  * assertEquals(err.name, "PartialReadError");
@@ -196,8 +196,8 @@ export class PartialReadError extends Error {
    *
    * @example Usage
    * ```ts
-   * import { PartialReadError } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { PartialReadError } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const err = new PartialReadError(new Uint8Array(2));
    * assertEquals(err.partial, new Uint8Array(2));
@@ -232,8 +232,8 @@ export interface ReadLineResult {
  *
  * @example Usage
  * ```ts
- * import { BufReader, Buffer } from "@std/io";
- * import { assertEquals } from "@std/assert/equals";
+ * import { BufReader, Buffer } from "@ende/io";
+ * import { assertEquals } from "@ende/assert/equals";
  *
  * const encoder = new TextEncoder();
  * const decoder = new TextDecoder();
@@ -256,8 +256,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assert } from "@std/assert/assert";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assert } from "@ende/assert/assert";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello world"));
    * const bufReader = BufReader.create(reader);
@@ -290,8 +290,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello world"));
    * const bufReader = new BufReader(reader);
@@ -310,8 +310,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello world"));
    * const bufReader = new BufReader(reader);
@@ -362,8 +362,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello world"));
    * const bufReader = new BufReader(reader);
@@ -395,8 +395,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello world"));
    * const bufReader = new BufReader(reader);
@@ -458,8 +458,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello world"));
    * const bufReader = new BufReader(reader);
@@ -493,8 +493,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello world"));
    * const bufReader = new BufReader(reader);
@@ -526,8 +526,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello world"));
    * const bufReader = new BufReader(reader);
@@ -571,8 +571,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello\nworld"));
    * const bufReader = new BufReader(reader);
@@ -655,8 +655,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello world"));
    * const bufReader = new BufReader(reader);
@@ -731,8 +731,8 @@ export class BufReader implements Reader {
    *
    * @example Usage
    * ```ts
-   * import { BufReader, Buffer } from "@std/io";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufReader, Buffer } from "@ende/io";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const reader = new Buffer(new TextEncoder().encode("hello world"));
    * const bufReader = new BufReader(reader);
@@ -774,8 +774,8 @@ export class BufReader implements Reader {
  *
  * @example Usage
  * ```ts no-assert
- * import { AbstractBufBase } from "@std/io/buf-writer";
- * import { Reader } from "@std/io/types";
+ * import { AbstractBufBase } from "@ende/io/buf-writer";
+ * import { Reader } from "@ende/io/types";
  *
  * class MyBufReader extends AbstractBufBase {
  *   constructor(buf: Uint8Array) {
@@ -792,8 +792,8 @@ export abstract class AbstractBufBase {
    *
    * @example Usage
    * ```ts
-   * import { AbstractBufBase } from "@std/io/buf-writer";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { AbstractBufBase } from "@ende/io/buf-writer";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * class MyBuffer extends AbstractBufBase {}
    *
@@ -809,8 +809,8 @@ export abstract class AbstractBufBase {
    *
    * @example Usage
    * ```ts
-   * import { AbstractBufBase } from "@std/io/buf-writer";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { AbstractBufBase } from "@ende/io/buf-writer";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * class MyBuffer extends AbstractBufBase {}
    *
@@ -826,8 +826,8 @@ export abstract class AbstractBufBase {
    *
    * @example Usage
    * ```ts
-   * import { AbstractBufBase } from "@std/io/buf-writer";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { AbstractBufBase } from "@ende/io/buf-writer";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * class MyBuffer extends AbstractBufBase {}
    *
@@ -853,8 +853,8 @@ export abstract class AbstractBufBase {
    *
    * @example Usage
    * ```ts
-   * import { AbstractBufBase } from "@std/io/buf-writer";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { AbstractBufBase } from "@ende/io/buf-writer";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * class MyBuffer extends AbstractBufBase {}
    *
@@ -875,8 +875,8 @@ export abstract class AbstractBufBase {
    *
    * @example Usage
    * ```ts
-   * import { AbstractBufBase } from "@std/io/buf-writer";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { AbstractBufBase } from "@ende/io/buf-writer";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * class MyBuffer extends AbstractBufBase {}
    *
@@ -898,8 +898,8 @@ export abstract class AbstractBufBase {
    *
    * @example Usage
    * ```ts
-   * import { AbstractBufBase } from "@std/io/buf-writer";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { AbstractBufBase } from "@ende/io/buf-writer";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * class MyBuffer extends AbstractBufBase {}
    *
@@ -926,8 +926,8 @@ export abstract class AbstractBufBase {
  *
  * @example Usage
  * ```ts
- * import { BufWriter } from "@std/io/buf-writer";
- * import { assertEquals } from "@std/assert/equals";
+ * import { BufWriter } from "@ende/io/buf-writer";
+ * import { assertEquals } from "@ende/assert/equals";
  *
  * const writer = {
  *   write(p: Uint8Array): Promise<number> {
@@ -952,9 +952,9 @@ export class BufWriter extends AbstractBufBase implements Writer {
    *
    * @example Usage
    * ```ts
-   * import { BufWriter } from "@std/io/buf-writer";
-   * import { Writer } from "@std/io/types";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufWriter } from "@ende/io/buf-writer";
+   * import { Writer } from "@ende/io/types";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const writer: Writer = {
    *   write(p: Uint8Array): Promise<number> {
@@ -996,9 +996,9 @@ export class BufWriter extends AbstractBufBase implements Writer {
    *
    * @example Usage
    * ```ts
-   * import { BufWriter } from "@std/io/buf-writer";
-   * import { Writer } from "@std/io/types";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufWriter } from "@ende/io/buf-writer";
+   * import { Writer } from "@ende/io/types";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const writer: Writer = {
    *   write(p: Uint8Array): Promise<number> {
@@ -1031,9 +1031,9 @@ export class BufWriter extends AbstractBufBase implements Writer {
    *
    * @example Usage
    * ```ts
-   * import { BufWriter } from "@std/io/buf-writer";
-   * import { Writer } from "@std/io/types";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufWriter } from "@ende/io/buf-writer";
+   * import { Writer } from "@ende/io/types";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const writer: Writer = {
    *   write(p: Uint8Array): Promise<number> {
@@ -1078,9 +1078,9 @@ export class BufWriter extends AbstractBufBase implements Writer {
    *
    * @example Usage
    * ```ts
-   * import { BufWriter } from "@std/io/buf-writer";
-   * import { Writer } from "@std/io/types";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufWriter } from "@ende/io/buf-writer";
+   * import { Writer } from "@ende/io/types";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const writer: Writer = {
    *   write(p: Uint8Array): Promise<number> {
@@ -1143,8 +1143,8 @@ export class BufWriter extends AbstractBufBase implements Writer {
  *
  * @example Usage
  * ```ts
- * import { BufWriterSync } from "@std/io/buf-writer";
- * import { assertEquals } from "@std/assert/equals";
+ * import { BufWriterSync } from "@ende/io/buf-writer";
+ * import { assertEquals } from "@ende/assert/equals";
  *
  * const writer = {
  *   writeSync(p: Uint8Array): number {
@@ -1169,9 +1169,9 @@ export class BufWriterSync extends AbstractBufBase implements WriterSync {
    *
    * @example Usage
    * ```ts
-   * import { BufWriterSync } from "@std/io/buf-writer";
-   * import { WriterSync } from "@std/io/types";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufWriterSync } from "@ende/io/buf-writer";
+   * import { WriterSync } from "@ende/io/types";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const writer: WriterSync = {
    *   writeSync(p: Uint8Array): number {
@@ -1217,9 +1217,9 @@ export class BufWriterSync extends AbstractBufBase implements WriterSync {
    *
    * @example Usage
    * ```ts
-   * import { BufWriterSync } from "@std/io/buf-writer";
-   * import { WriterSync } from "@std/io/types";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufWriterSync } from "@ende/io/buf-writer";
+   * import { WriterSync } from "@ende/io/types";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const writer: WriterSync = {
    *   writeSync(p: Uint8Array): number {
@@ -1249,9 +1249,9 @@ export class BufWriterSync extends AbstractBufBase implements WriterSync {
    *
    * @example Usage
    * ```ts
-   * import { BufWriterSync } from "@std/io/buf-writer";
-   * import { WriterSync } from "@std/io/types";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufWriterSync } from "@ende/io/buf-writer";
+   * import { WriterSync } from "@ende/io/types";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const writer: WriterSync = {
    *   writeSync(p: Uint8Array): number {
@@ -1296,9 +1296,9 @@ export class BufWriterSync extends AbstractBufBase implements WriterSync {
    *
    * @example Usage
    * ```ts
-   * import { BufWriterSync } from "@std/io/buf-writer";
-   * import { WriterSync } from "@std/io/types";
-   * import { assertEquals } from "@std/assert/equals";
+   * import { BufWriterSync } from "@ende/io/buf-writer";
+   * import { WriterSync } from "@ende/io/types";
+   * import { assertEquals } from "@ende/assert/equals";
    *
    * const writer: WriterSync = {
    *   writeSync(p: Uint8Array): number {

@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-import { assertEquals } from "@std/assert/equals";
+import { assertEquals } from "@ende/assert/equals";
 import {
   ATTR_BIN_NODE,
   ATTR_EXISTS_NODE,
@@ -19,7 +19,7 @@ import {
   splitSelectors,
   Token,
 } from "../../cli/js/40_lint_selector.js";
-import { assertThrows } from "@std/assert";
+import { assertThrows } from "@ende/assert";
 
 Deno.test("splitSelectors", () => {
   assertEquals(splitSelectors("*"), ["*"]);

@@ -1,6 +1,6 @@
 [submodule "tests/util/std"]
 	path = tests/util/std
-	url = https://github.com/denoland/deno_std
+	url = https://github.com/theende/std
 	shallow = true
 [submodule "tests/wpt/suite"]
 	path = tests/wpt/suite

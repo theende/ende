@@ -14,7 +14,7 @@ import {
   tmpUnixSocketPath,
   unimplemented,
 } from "./test_util.ts";
-import { Buffer } from "@std/io/buffer";
+import { Buffer } from "@ende/io/buffer";
 
 const listenPort = 4506;
 

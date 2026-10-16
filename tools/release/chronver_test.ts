@@ -2,7 +2,7 @@
 
 // Run with: deno test --config tools/deno.json tools/release/chronver_test.ts
 
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@ende/assert";
 import {
   compareChronVer,
   isNewerRelease,

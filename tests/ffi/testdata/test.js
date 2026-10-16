@@ -11,7 +11,7 @@ import {
   assertInstanceOf,
   assertEquals,
   assertFalse,
-} from "@std/assert";
+} from "@ende/assert";
 
 const targetDir = Deno.execPath().replace(/[^\/\\]+$/, "");
 const [libPrefix, libSuffix] = {

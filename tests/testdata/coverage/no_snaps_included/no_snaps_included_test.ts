@@ -1,4 +1,4 @@
-import { assertSnapshot } from "@std/testing/snapshot";
+import { assertSnapshot } from "@ende/testing/snapshot";
 import { truth } from "./no_snaps_included.ts";
 
 Deno.test("the truth", () => {

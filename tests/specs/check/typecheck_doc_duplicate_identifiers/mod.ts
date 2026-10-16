@@ -1,6 +1,6 @@
 /**
  * ```ts
- * import { assertEquals } from "@std/assert/equals";
+ * import { assertEquals } from "@ende/assert/equals";
  *
  * const foo = createFoo(3);
  * assertEquals(foo, 9);

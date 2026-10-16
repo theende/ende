@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@ende/assert";
 import { BufReader, BufWriter } from "../../../unit/test_util.ts";
 import { TextProtoReader } from "../../../testdata/run/textproto.ts";
 

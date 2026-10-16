@@ -1,4 +1,4 @@
-import { assert } from "@std/assert";
+import { assert } from "@ende/assert";
 
 onmessage = function (e) {
   if (typeof self.Deno === "undefined") {

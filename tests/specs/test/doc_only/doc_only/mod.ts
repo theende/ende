@@ -1,6 +1,6 @@
 /**
  * ```ts
- * import { assertEquals } from "@std/assert/equals";
+ * import { assertEquals } from "@ende/assert/equals";
  *
  * assertEquals(42, 40 + 2);
  * ```

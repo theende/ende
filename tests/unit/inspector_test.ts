@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 import { assert, assertEquals, assertStringIncludes } from "./test_util.ts";
-import { fromFileUrl } from "@std/path";
+import { fromFileUrl } from "@ende/path";
 
 const testdataPath = fromFileUrl(
   new URL("../testdata/inspector/", import.meta.url),

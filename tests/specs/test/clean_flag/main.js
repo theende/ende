@@ -1,4 +1,4 @@
-import { emptyDir } from "@std/fs/empty-dir";
+import { emptyDir } from "@ende/fs/empty-dir";
 
 const DIR = "./coverage";
 const COMMAND = new Deno.Command(Deno.execPath(), {

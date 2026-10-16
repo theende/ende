@@ -1,5 +1,5 @@
-import { assertEquals } from "@std/assert";
-import { join } from "@std/path";
+import { assertEquals } from "@ende/assert";
+import { join } from "@ende/path";
 
 const tmpDir = Deno.makeTempDirSync();
 

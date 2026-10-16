@@ -1,6 +1,6 @@
 /**
  * ```ts
- * import { assertAlmostEquals } from "@std/assert/almost-equals";
+ * import { assertAlmostEquals } from "@ende/assert/almost-equals";
  *
  * const x = sub(3, 1);
  * const y = div(5, x);
@@ -11,7 +11,7 @@
 
 /**
  * ```ts
- * import { assertEquals } from "@std/assert/equals";
+ * import { assertEquals } from "@ende/assert/equals";
  *
  * assertEquals(div(6, 2), 4); // throws
  * ```
@@ -22,7 +22,7 @@ export function div(a: number, b: number): number {
 
 /**
  * ```ts
- * import { assertEquals } from "@std/assert/equals";
+ * import { assertEquals } from "@ende/assert/equals";
  *
  * assertEquals(sub(6, 2), 3); // throws
  * ```

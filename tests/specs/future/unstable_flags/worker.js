@@ -1,4 +1,4 @@
-import { delay } from "@std/async/delay";
+import { delay } from "@ende/async/delay";
 
 const worker = new Worker(import.meta.resolve("./main.js"), { type: "module" });
 await delay(1_000);

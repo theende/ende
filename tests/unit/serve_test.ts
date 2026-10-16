@@ -2,9 +2,9 @@
 
 // deno-lint-ignore-file no-console
 
-import { assertIsError, assertMatch, assertRejects } from "@std/assert";
-import { Buffer, type Reader } from "@std/io";
-import { delay } from "@std/async/delay";
+import { assertIsError, assertMatch, assertRejects } from "@ende/assert";
+import { Buffer, type Reader } from "@ende/io";
+import { delay } from "@ende/async/delay";
 import { TextProtoReader } from "../testdata/run/textproto.ts";
 import {
   assert,

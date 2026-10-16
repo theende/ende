@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-prototype-builtins
-import { assert } from "@std/assert";
+import { assert } from "@ende/assert";
 import "./imported.ts";
 
 assert(globalThis.hasOwnProperty("onload"));

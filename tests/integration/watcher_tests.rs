@@ -1729,7 +1729,7 @@ async fn test_watch_doc() {
     r#"
     /**
      * ```ts
-     * import { assertEquals } from "@std/assert/equals";
+     * import { assertEquals } from "@ende/assert/equals";
      *
      * assertEquals(add(1, 2), 4);
      * ```
@@ -1763,7 +1763,7 @@ async fn test_watch_doc() {
     r#"
     /**
      * ```ts
-     * import { assertEquals } from "@std/assert/equals";
+     * import { assertEquals } from "@ende/assert/equals";
      *
      * assertEquals(add(1, 2), 3);
      * ```
@@ -1829,7 +1829,7 @@ console.log("Hello world");
 ## Example
 
 ```ts
-import { assertEquals } from "@std/assert/equals";
+import { assertEquals } from "@ende/assert/equals";
 
 assertEquals(1, 2);
 ```
@@ -1848,7 +1848,7 @@ assertEquals(1, 2);
 ## Example
 
 ```ts
-import { assertEquals } from "@std/assert/equals";
+import { assertEquals } from "@ende/assert/equals";
 
 assertEquals(1, 1);
 ```

@@ -1,4 +1,4 @@
-import { join } from "@std/path";
+import { join } from "@ende/path";
 
 const testDir = new URL(".", import.meta.url).pathname;
 const tempDir = Deno.makeTempDirSync();

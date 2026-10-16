@@ -1,4 +1,4 @@
-import { assert } from "@std/assert";
+import { assert } from "@ende/assert";
 
 const handler = (e: Event) => {
   assert(e.type === "beforeunload" ? e.cancelable : !e.cancelable);

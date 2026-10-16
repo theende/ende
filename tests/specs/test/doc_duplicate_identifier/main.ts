@@ -9,7 +9,7 @@
 
 /**
  * ```ts
- * import { assertEquals } from "@std/assert/equals";
+ * import { assertEquals } from "@ende/assert/equals";
  * import { getModuleName, createFoo } from "./mod.ts";
  *
  * const foo = createFoo();
@@ -23,7 +23,7 @@ export function add(a: number, b: number): number {
 
 /**
  * ```ts
- * import { assertEquals } from "@std/assert/equals";
+ * import { assertEquals } from "@ende/assert/equals";
  *
  * assertEquals(getModuleName(), "main.ts");
  * ```

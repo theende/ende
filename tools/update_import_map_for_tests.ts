@@ -9,16 +9,22 @@
  * Run this script when you updated the git submodule at `tests/util/std`.
  */
 
-import denoConfig from "../tests/util/std/deno.json" with { type: "json" };
-import { join } from "jsr:@std/path@1/posix/join";
+import endeConfig from "../tests/util/std/ende.json" with { type: "json" };
+import { join } from "jsr:@ende/path@^2026.10.15/posix/join";
 
 const rootImportMap: { imports: Record<string, string> } = { imports: {} };
 const coreImportMap: { imports: Record<string, string> } = JSON.parse(
   Deno.readTextFileSync("./tools/core_import_map.json"),
 );
-for (const workspace of denoConfig.workspace) {
-  const { default: pkgDenoConfig } = await import(
-    `../tests/util/std/${workspace}/deno.json`,
+// Drop entries from a previous run so removed or renamed packages go away.
+for (const [specifier, path] of Object.entries(coreImportMap.imports)) {
+  if (path.startsWith("../tests/util/std/")) {
+    delete coreImportMap.imports[specifier];
+  }
+}
+for (const workspace of endeConfig.workspace) {
+  const { default: pkgEndeConfig } = await import(
+    `../tests/util/std/${workspace}/ende.json`,
     {
       with: { type: "json" },
     }
@@ -26,12 +32,12 @@ for (const workspace of denoConfig.workspace) {
 
   for (
     const [moduleName, modulePath] of Object.entries(
-      pkgDenoConfig.exports as Record<string, string>,
+      pkgEndeConfig.exports as Record<string, string>,
     )
   ) {
-    rootImportMap.imports[join(pkgDenoConfig.name, moduleName)] =
+    rootImportMap.imports[join(pkgEndeConfig.name, moduleName)] =
       `./tests/util/std/${join(workspace, modulePath)}`;
-    coreImportMap.imports[join(pkgDenoConfig.name, moduleName)] =
+    coreImportMap.imports[join(pkgEndeConfig.name, moduleName)] =
       `../tests/util/std/${join(workspace, modulePath)}`;
   }
 }

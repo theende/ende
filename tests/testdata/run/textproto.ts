@@ -15,7 +15,7 @@
  */
 
 import type { BufReader, ReadLineResult } from "../../unit/test_util.ts";
-import { concat } from "@std/bytes/concat";
+import { concat } from "@ende/bytes/concat";
 
 // Constants created for DRY
 const CHAR_SPACE: number = " ".charCodeAt(0);

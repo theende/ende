@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@ende/assert";
 
 const errorDeferred = Promise.withResolvers<void>();
 const closeDeferred = Promise.withResolvers<void>();

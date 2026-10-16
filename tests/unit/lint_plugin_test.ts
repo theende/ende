@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 import { assert, assertEquals, assertStringIncludes } from "./test_util.ts";
-import { assertSnapshot } from "@std/testing/snapshot";
+import { assertSnapshot } from "@ende/testing/snapshot";
 
 // TODO(@marvinhagemeister) Remove once we land "official" types
 // deno-lint-ignore no-explicit-any
@@ -72,7 +72,7 @@ async function testSnapshot(
 
       for (const s of selectors) {
         visitor[s] = (node) => {
-          log.push(node[Symbol.for("Deno.lint.toJsValue")]());
+          log.push(node[Symbol.for("Ende.lint.toJsValue")]());
         };
       }
 

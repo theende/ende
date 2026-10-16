@@ -10,13 +10,13 @@ import {
   resolve,
   SEPARATOR,
   toFileUrl,
-} from "@std/path";
-import { existsSync } from "@std/fs";
+} from "jsr:@std/path@^1";
+import { existsSync } from "jsr:@std/fs@^1";
 export { dirname, extname, fromFileUrl, join, resolve, SEPARATOR, toFileUrl };
-export { existsSync, expandGlobSync, walk } from "@std/fs";
-export { TextLineStream } from "@std/streams/text-line-stream";
-export { delay } from "@std/async/delay";
-export { parse as parseJSONC } from "@std/jsonc/parse";
+export { existsSync, expandGlobSync, walk } from "jsr:@std/fs@^1";
+export { TextLineStream } from "jsr:@std/streams@^1/text-line-stream";
+export { delay } from "jsr:@std/async@^1/delay";
+export { parse as parseJSONC } from "jsr:@std/jsonc@^1/parse";
 import { createHash } from "node:crypto";
 
 const compressed = new Set(["ld64.lld", "rcodesign"]);

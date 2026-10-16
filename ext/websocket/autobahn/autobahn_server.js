@@ -1,5 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-import { parseArgs } from "@std/cli/parse-args";
+import { parseArgs } from "@ende/cli/parse-args";
 
 const { port } = parseArgs(Deno.args, {
   number: ["port"],

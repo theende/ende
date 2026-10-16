@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { assert, assertEquals, assertThrows } from "./test_util.ts";
-import { assertType, IsExact } from "@std/testing/types";
+import { assertType, IsExact } from "@ende/testing/types";
 
 Deno.test(function urlPatternFromString() {
   const pattern = new URLPattern("https://deno.land/foo/:bar");

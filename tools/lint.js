@@ -14,7 +14,7 @@ import {
   SEPARATOR,
   walk,
 } from "./util.js";
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "jsr:@std/assert@^1";
 import { checkCopyright } from "./copyright_checker.js";
 
 const promises = [];

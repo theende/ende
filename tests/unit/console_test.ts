@@ -16,7 +16,7 @@ import {
   assertStringIncludes,
   assertThrows,
 } from "./test_util.ts";
-import { stripAnsiCode } from "@std/fmt/colors";
+import { stripAnsiCode } from "@ende/fmt/colors";
 
 const customInspect = Symbol.for("Deno.customInspect");
 const {

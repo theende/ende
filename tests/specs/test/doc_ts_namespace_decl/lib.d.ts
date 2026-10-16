@@ -1,7 +1,7 @@
 declare namespace MyNamespace {
   /**
    * ```ts
-   * import { assertEquals } from "@std/assert/equals";
+   * import { assertEquals } from "@ende/assert/equals";
    * import "./mod.js";
    *
    * assertEquals(MyNamespace.add(1, 2), 3);

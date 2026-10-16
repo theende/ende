@@ -1,4 +1,4 @@
-import { assert } from "@std/assert";
+import { assert } from "@ende/assert";
 import "./nest_imported.ts";
 
 const handler = (e: Event) => {

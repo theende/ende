@@ -1,4 +1,4 @@
-import { assertRejects } from "@std/assert";
+import { assertRejects } from "@ende/assert";
 
 const listener = Deno.listenTls({
   port: Number(Deno.args[0]),

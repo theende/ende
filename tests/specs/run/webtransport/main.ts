@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. All rights reserved. MIT license.
 
-import { decodeBase64 } from "@std/encoding/base64";
-import { assertEquals } from "@std/assert";
+import { decodeBase64 } from "@ende/encoding/base64";
+import { assertEquals } from "@ende/assert";
 
 const cert = Deno.readTextFileSync("../../../testdata/tls/localhost.crt");
 const certHash = await crypto.subtle.digest(

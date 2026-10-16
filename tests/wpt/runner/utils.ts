@@ -1,7 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 /// FLAGS
 
-import { parseArgs } from "@std/cli/parse-args";
+import { parseArgs } from "@ende/cli/parse-args";
 import { checkCiHash, join, resolve, ROOT_PATH } from "../../../tools/util.js";
 
 export const {

@@ -1,5 +1,5 @@
 // deno-fmt-ignore-file
-import { toFileUrl } from "@std/path/to-file-url";
+import { toFileUrl } from "@ende/path/to-file-url";
 
 function tryGetCwd() {
   // will throw in one test but not the other

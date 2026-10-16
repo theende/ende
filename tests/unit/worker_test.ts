@@ -4,8 +4,8 @@
 
 // Requires to be run with `--allow-net` flag
 
-import { assert, assertEquals, assertMatch, assertThrows } from "@std/assert";
-import { toFileUrl } from "@std/path/to-file-url";
+import { assert, assertEquals, assertMatch, assertThrows } from "@ende/assert";
+import { toFileUrl } from "@ende/path/to-file-url";
 
 function resolveWorker(worker: string): string {
   return import.meta.resolve(`../testdata/workers/${worker}`);

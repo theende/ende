@@ -5,7 +5,7 @@ import {
   assertRejects,
   assertThrows,
 } from "./test_util.ts";
-import { join } from "@std/path";
+import { join } from "@ende/path";
 
 Deno.test(
   { permissions: { read: true, write: true } },

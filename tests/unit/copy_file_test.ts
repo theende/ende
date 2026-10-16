@@ -1,6 +1,6 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { assertEquals, assertRejects, assertThrows } from "./test_util.ts";
-import { join } from "@std/path";
+import { join } from "@ende/path";
 
 function readFileString(filename: string | URL): string {
   const dataRead = Deno.readFileSync(filename);
