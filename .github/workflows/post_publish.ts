@@ -40,6 +40,13 @@ const workflow = createWorkflow({
       step({
         name: "Clone repository",
         uses: "actions/checkout@v6",
+        with: {
+          // the release's tag, so the version check below reads its
+          // cli/lib/version.txt
+          ref:
+            "${{ inputs.version && format('refs/tags/{0}', inputs.version) || github.ref }}",
+          "fetch-depth": 1,
+        },
       }),
       step({
         uses: "denoland/setup-deno@v2",
@@ -60,6 +67,10 @@ const workflow = createWorkflow({
           "  v[0-9]*) ;;",
           '  *) echo "Not a release tag: $VERSION" >&2; exit 1 ;;',
           "esac",
+          "# A release published from a tag that skipped version_bump has no",
+          "# assets (the release workflow refuses to build it), so never point",
+          "# `ende upgrade` at it.",
+          './tools/release/verify_release_tag.ts "$VERSION"',
           'deno run --allow-net --allow-write tools/release/update_versions_json.ts "$VERSION"',
           'aws s3 cp versions.json "s3://$DL_S3_BUCKET/versions.json" --content-type application/json',
           'LATEST_FILE=$(deno run --allow-net --allow-write tools/release/upload_version_file.ts "$VERSION" || exit 0)',
