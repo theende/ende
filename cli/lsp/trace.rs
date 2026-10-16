@@ -137,7 +137,7 @@ mod real_tracing {
 #[cfg(not(feature = "lsp-tracing"))]
 mod stub_tracing {
   pub trait SpanExt {
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "only called with the lsp-tracing feature")]
     fn set_parent(&self, _context: Context);
 
     fn context(&self) -> Context;
@@ -146,7 +146,7 @@ mod stub_tracing {
   pub struct Span {}
 
   impl SpanExt for Span {
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "only called with the lsp-tracing feature")]
     fn set_parent(&self, _context: Context) {}
 
     fn context(&self) -> Context {

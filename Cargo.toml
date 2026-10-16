@@ -64,7 +64,6 @@ members = [
   "tests/util/test_macro",
   "tools/bsdiff_helper",
 ]
-exclude = ["tests/util/std/hash/_wasm"]
 
 [workspace.package]
 authors = ["the Ende authors", "the Deno authors"]
