@@ -1607,8 +1607,6 @@ fn ring_bell() {
 mod tests {
   use std::collections::HashMap;
 
-  use deno_ast::ModuleSpecifier;
-
   use super::has_license_file;
   use super::tar::PublishableTarball;
   use super::tar::PublishableTarballFile;
