@@ -6,6 +6,10 @@ https://github.com/denoland/deno/releases
 We also have one-line install commands at:
 https://github.com/denoland/deno_install
 
+### 2026.10.17 / 2026.10.17
+
+- fix(publish): only count a license file at the package root
+
 ### 2.9.7 / 2026.09.16
 
 - fix(audit): honor configured CA stores (#36728)
