@@ -556,7 +556,9 @@ impl PublishPreparer {
         );
 
         if !has_license_field
-          && !has_license_file(publish_paths.iter().map(|p| &p.specifier))
+          && !has_license_file(
+            publish_paths.iter().map(|p| p.relative_path.as_str()),
+          )
         {
           if let Some(license_path) =
             resolve_license_file(&root_dir, cli_options.workspace())
@@ -1544,18 +1546,21 @@ fn resolve_license_file(
   None
 }
 
+/// Whether a license file sits at the package root. `relative_paths` are
+/// tarball paths such as `/LICENSE`; JSR ignores licenses in subdirectories
+/// (e.g. a vendored dependency's `/vendor/LICENSE`).
 fn has_license_file<'a>(
-  mut specifiers: impl Iterator<Item = &'a ModuleSpecifier>,
+  mut relative_paths: impl Iterator<Item = &'a str>,
 ) -> bool {
   let supported_license_files = SUPPORTED_LICENSE_FILE_NAMES
     .iter()
     .map(|s| s.to_lowercase())
     .collect::<HashSet<_>>();
-  specifiers.any(|specifier| {
-    specifier
-      .path()
-      .rsplit_once('/')
-      .map(|(_, file)| {
+  relative_paths.any(|relative_path| {
+    relative_path
+      .strip_prefix('/')
+      .filter(|file| !file.contains('/'))
+      .map(|file| {
         supported_license_files.contains(file.to_lowercase().as_str())
       })
       .unwrap_or(false)
@@ -1708,28 +1713,33 @@ mod tests {
 
   #[test]
   fn test_has_license_files() {
-    fn has_license_file_str(expected: &[&str]) -> bool {
-      let specifiers = expected
-        .iter()
-        .map(|s| ModuleSpecifier::parse(s).unwrap())
-        .collect::<Vec<_>>();
-      has_license_file(specifiers.iter())
+    fn has_license_file_str(relative_paths: &[&str]) -> bool {
+      has_license_file(relative_paths.iter().copied())
     }
 
-    assert!(has_license_file_str(&["file:///LICENSE"]));
-    assert!(has_license_file_str(&["file:///license"]));
-    assert!(has_license_file_str(&["file:///LICENSE.txt"]));
-    assert!(has_license_file_str(&["file:///LICENSE.md"]));
-    assert!(has_license_file_str(&["file:///LICENCE"]));
-    assert!(has_license_file_str(&["file:///LICENCE.txt"]));
-    assert!(has_license_file_str(&["file:///LICENCE.md"]));
-    assert!(has_license_file_str(&[
-      "file:///other",
-      "file:///test/LICENCE.md"
-    ]),);
-    assert!(!has_license_file_str(&[
-      "file:///other",
-      "file:///test/tLICENSE"
-    ]),);
+    assert!(has_license_file_str(&["/LICENSE"]));
+    assert!(has_license_file_str(&["/license"]));
+    assert!(has_license_file_str(&["/LICENSE.txt"]));
+    assert!(has_license_file_str(&["/LICENSE.md"]));
+    assert!(has_license_file_str(&["/LICENCE"]));
+    assert!(has_license_file_str(&["/LICENCE.txt"]));
+    assert!(has_license_file_str(&["/LICENCE.md"]));
+    assert!(has_license_file_str(&["/other", "/LICENCE.md"]));
+    assert!(!has_license_file_str(&["/other", "/tLICENSE"]));
+  }
+
+  #[test]
+  fn test_has_license_files_ignores_nested() {
+    // JSR only accepts a license at the package root, so a vendored
+    // dependency's license must not stand in for the package's own.
+    assert!(!has_license_file(
+      ["/other", "/test/LICENCE.md"].into_iter()
+    ));
+    assert!(!has_license_file(
+      ["/mod.ts", "/vendor/LICENSE"].into_iter()
+    ));
+    assert!(has_license_file(
+      ["/vendor/LICENSE", "/LICENSE"].into_iter()
+    ));
   }
 }
