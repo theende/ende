@@ -616,8 +616,10 @@ async function ensureDisallowedMethodsEnforced() {
   for await (
     const entry of Deno.readDir(join(ROOT_PATH, "libs"))
   ) {
-    if (entry.name === "core_testing") {
-      continue; // skip only test crates
+    // skip test crates, and vendored upstream crates, which aren't workspace
+    // members and keep upstream's lints (see libs/deno_lint/README.md)
+    if (entry.name === "core_testing" || entry.name === "deno_lint") {
+      continue;
     }
     if (!entry.isDirectory) continue;
     const crateDir = join(ROOT_PATH, "libs", entry.name);
