@@ -116,6 +116,17 @@ and optionally the variable `DL_S3_REGION` (default `auto`, which R2 expects).
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID` are set, purges the edge cache
 for the files it changed.
 
+## Install scripts
+
+`curl -fsSL https://ende.sh/install.sh | sh` and
+`irm https://ende.sh/install.ps1 | iex` run `tools/install/install.sh` and
+`tools/install/install.ps1` from `primary`; ende.sh redirects both paths to
+their raw GitHub URLs. They read the version from `release-latest.txt` (or take
+one as an argument, or `$v` in PowerShell), download the archive from the GitHub
+release, check its `.sha256sum`, and install to `~/.ende/bin`
+(`$ENDE_INSTALL_ROOT/bin`). They need no change per release; the `install_test`
+workflow runs them on every OS when they change.
+
 ## Checking the packaging locally
 
 `tools/release/package_release.sh <target> <bin-dir> <out-dir>` produces the
