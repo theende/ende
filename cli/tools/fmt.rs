@@ -197,9 +197,10 @@ fn resolve_paths_with_options_batches(
     Vec::with_capacity(members_fmt_options.len());
   for (_ctx, member_fmt_options) in members_fmt_options {
     // Report invalid dprint options once, rather than once per file.
-    get_resolved_typescript_config(&member_fmt_options.options)?;
-    get_resolved_json_config(&member_fmt_options.options)?;
-    get_resolved_markdown_config(&member_fmt_options.options)?;
+    let options = &member_fmt_options.options;
+    get_resolved_typescript_config(options, IGNORE_DIRECTIVE)?;
+    get_resolved_json_config(options, IGNORE_DIRECTIVE)?;
+    get_resolved_markdown_config(options, IGNORE_DIRECTIVE)?;
     let files =
       collect_fmt_files(cli_options, member_fmt_options.files.clone());
     if !files.is_empty() {
@@ -308,6 +309,32 @@ fn collect_fmt_files(
   .collect_file_patterns(&CliSys::default(), &files)
 }
 
+/// The directive that keeps code from being formatted (`ende-fmt-ignore`), with
+/// `-file`, `-start` and `-end` variants. The older `deno-fmt-ignore` spelling
+/// still works.
+const IGNORE_DIRECTIVE: &str = "ende-fmt-ignore";
+const DENO_IGNORE_DIRECTIVE: &str = "deno-fmt-ignore";
+
+/// The ignore directive to format `text` with. Each formatter matches a single
+/// directive, so a text is formatted with the spelling it uses: the older
+/// `deno-fmt-ignore` when that's the only one in it, otherwise
+/// `ende-fmt-ignore`. Code blocks and embedded code are texts of their own.
+fn ignore_directive(text: &str) -> &'static str {
+  if text.contains(DENO_IGNORE_DIRECTIVE) && !text.contains(IGNORE_DIRECTIVE) {
+    DENO_IGNORE_DIRECTIVE
+  } else {
+    IGNORE_DIRECTIVE
+  }
+}
+
+/// Switches a dprint ignore option from the Deno preset's spelling to
+/// `directive`, keeping any other value set in the fmt config.
+fn use_ignore_directive(option: &mut String, directive: &str) {
+  if let Some(variant) = option.strip_prefix(DENO_IGNORE_DIRECTIVE) {
+    *option = format!("{directive}{variant}");
+  }
+}
+
 /// Formats markdown (using <https://github.com/dprint/dprint-plugin-markdown>) and its code blocks
 /// (ts/tsx, js/jsx).
 fn format_markdown(
@@ -315,7 +342,8 @@ fn format_markdown(
   fmt_options: &FmtOptionsConfig,
   unstable_options: &UnstableFmtOptions,
 ) -> Result<Option<String>, AnyError> {
-  let markdown_config = get_resolved_markdown_config(fmt_options)?;
+  let markdown_config =
+    get_resolved_markdown_config(fmt_options, ignore_directive(file_text))?;
   dprint_plugin_markdown::format_text(
     file_text,
     &markdown_config,
@@ -360,7 +388,8 @@ fn format_markdown(
           PathBuf::from(format!("ende_fmt_stdin.{extension}"));
         match extension {
           "json" | "jsonc" => {
-            let mut json_config = get_resolved_json_config(fmt_options)?;
+            let mut json_config =
+              get_resolved_json_config(fmt_options, ignore_directive(text))?;
             json_config.line_width = line_width;
             dprint_plugin_json::format_text(&fake_filename, text, &json_config)
           }
@@ -386,8 +415,10 @@ fn format_markdown(
             }
           }
           _ => {
-            let mut codeblock_config =
-              get_resolved_typescript_config(fmt_options)?;
+            let mut codeblock_config = get_resolved_typescript_config(
+              fmt_options,
+              ignore_directive(text),
+            )?;
             codeblock_config.line_width = line_width;
             dprint_plugin_typescript::format_text(
               dprint_plugin_typescript::FormatTextOptions {
@@ -417,7 +448,8 @@ pub fn format_json(
   file_text: &str,
   fmt_options: &FmtOptionsConfig,
 ) -> Result<Option<String>, AnyError> {
-  let config = get_resolved_json_config(fmt_options)?;
+  let config =
+    get_resolved_json_config(fmt_options, ignore_directive(file_text))?;
   dprint_plugin_json::format_text(file_path, file_text, &config)
 }
 
@@ -429,20 +461,21 @@ pub fn format_css(
   lax_css::format_text(
     file_path,
     file_text,
-    &get_resolved_lax_css_config(fmt_options),
+    &get_resolved_lax_css_config(fmt_options, ignore_directive(file_text)),
   )
 }
 
 fn get_resolved_lax_css_config(
   options: &FmtOptionsConfig,
+  ignore_directive: &str,
 ) -> lax_css::configuration::Configuration {
   lax_css::configuration::Configuration {
     line_width: options.line_width.unwrap_or(80),
     use_tabs: options.use_tabs.unwrap_or_default(),
     indent_width: options.indent_width.unwrap_or(2),
     new_line_kind: dprint_core::configuration::NewLineKind::LineFeed,
-    ignore_node_comment_text: "deno-fmt-ignore".to_string(),
-    ignore_file_comment_text: "deno-fmt-ignore-file".to_string(),
+    ignore_node_comment_text: ignore_directive.to_string(),
+    ignore_file_comment_text: format!("{ignore_directive}-file"),
     single_line: false,
   }
 }
@@ -451,6 +484,8 @@ fn format_yaml(
   file_text: &str,
   fmt_options: &FmtOptionsConfig,
 ) -> Result<Option<String>, AnyError> {
+  let directive = ignore_directive(file_text);
+  let ignore_file_directive = format!("{directive}-file");
   let ignore_file = file_text
     .lines()
     .take_while(|line| line.starts_with('#'))
@@ -459,16 +494,18 @@ fn format_yaml(
         .strip_prefix('#')
         .unwrap()
         .trim()
-        .starts_with("deno-fmt-ignore-file")
+        .starts_with(&ignore_file_directive)
     });
 
   if ignore_file {
     return Ok(None);
   }
 
-  let formatted_str =
-    pretty_yaml::format_text(file_text, &get_resolved_yaml_config(fmt_options))
-      .map_err(AnyError::from)?;
+  let formatted_str = pretty_yaml::format_text(
+    file_text,
+    &get_resolved_yaml_config(fmt_options, directive),
+  )
+  .map_err(AnyError::from)?;
 
   Ok(if formatted_str == file_text {
     None
@@ -483,7 +520,8 @@ pub fn format_html(
   fmt_options: &FmtOptionsConfig,
   unstable_options: &UnstableFmtOptions,
 ) -> Result<Option<String>, AnyError> {
-  let config = get_resolved_lax_markup_config(fmt_options);
+  let config =
+    get_resolved_lax_markup_config(fmt_options, ignore_directive(file_text));
   let external = move |lang: &str, text: &str, print_width: u32| {
     format_markup_embedded(
       lang,
@@ -518,7 +556,8 @@ fn format_markup_embedded(
         "less" => "less",
         _ => "css",
       };
-      let mut lax_css_config = get_resolved_lax_css_config(fmt_options);
+      let mut lax_css_config =
+        get_resolved_lax_css_config(fmt_options, ignore_directive(text));
       lax_css_config.line_width = print_width;
       lax_css::format_text(
         &file_path.with_extension(ext),
@@ -531,7 +570,8 @@ fn format_markup_embedded(
     | "application/json"
     | "application/ld+json"
     | "importmap" => {
-      let mut json_config = get_resolved_json_config(fmt_options)?;
+      let mut json_config =
+        get_resolved_json_config(fmt_options, ignore_directive(text))?;
       json_config.line_width = print_width;
       let path = file_path.with_extension("json");
       dprint_plugin_json::format_text(&path, text, &json_config)
@@ -562,7 +602,8 @@ fn format_markup_embedded(
         _ => "js",
       };
       let path = file_path.with_extension(ext);
-      let mut typescript_config = get_resolved_typescript_config(fmt_options)?;
+      let mut typescript_config =
+        get_resolved_typescript_config(fmt_options, ignore_directive(text))?;
       typescript_config.line_width = print_width;
       dprint_plugin_typescript::format_text(
         dprint_plugin_typescript::FormatTextOptions {
@@ -619,13 +660,14 @@ fn format_embedded_css(
   text: &str,
   config: &dprint_plugin_typescript::configuration::Configuration,
 ) -> ende_core::anyhow::Result<Option<String>> {
+  let directive = ignore_directive(text);
   let lax_css_config = lax_css::configuration::Configuration {
     line_width: config.line_width,
     use_tabs: config.use_tabs,
     indent_width: config.indent_width,
     new_line_kind: dprint_core::configuration::NewLineKind::LineFeed,
-    ignore_node_comment_text: "deno-fmt-ignore".to_string(),
-    ignore_file_comment_text: "deno-fmt-ignore-file".to_string(),
+    ignore_node_comment_text: directive.to_string(),
+    ignore_file_comment_text: format!("{directive}-file"),
     single_line: false,
   };
   // lax-css prints custom property values verbatim, keeping the leading
@@ -660,13 +702,14 @@ fn format_embedded_html(
   text: &str,
   config: &dprint_plugin_typescript::configuration::Configuration,
 ) -> ende_core::anyhow::Result<Option<String>> {
+  let directive = ignore_directive(text);
   let markup_config = lax_markup::configuration::Configuration {
     line_width: config.line_width,
     use_tabs: config.use_tabs,
     indent_width: config.indent_width,
     new_line_kind: dprint_core::configuration::NewLineKind::LineFeed,
-    ignore_node_comment_text: "deno-fmt-ignore".to_string(),
-    ignore_file_comment_text: "deno-fmt-ignore-file".to_string(),
+    ignore_node_comment_text: directive.to_string(),
+    ignore_file_comment_text: format!("{directive}-file"),
   };
   // code inside markup that is itself inside a tagged template is kept as
   // written
@@ -739,6 +782,7 @@ fn format_embedded_sql(
     config.line_width,
     config.use_tabs,
     config.indent_width,
+    ignore_directive(text),
   );
   let Some(formatted) =
     lax_sql::format_text(Path::new("embedded.sql"), text, &sql_config)?
@@ -757,6 +801,7 @@ fn get_resolved_lax_sql_config(
   line_width: u32,
   use_tabs: bool,
   indent_width: u8,
+  ignore_directive: &str,
 ) -> lax_sql::configuration::Configuration {
   lax_sql::configuration::Configuration {
     line_width,
@@ -766,8 +811,8 @@ fn get_resolved_lax_sql_config(
     // matches the previous sqlformat behavior of uppercasing keywords
     keyword_case: lax_sql::configuration::KeywordCase::Upper,
     clause_style: lax_sql::configuration::ClauseStyle::Fill,
-    ignore_node_comment_text: "deno-fmt-ignore".to_string(),
-    ignore_file_comment_text: "deno-fmt-ignore-file".to_string(),
+    ignore_node_comment_text: ignore_directive.to_string(),
+    ignore_file_comment_text: format!("{ignore_directive}-file"),
   }
 }
 
@@ -782,6 +827,7 @@ pub fn format_sql(
       fmt_options.line_width.unwrap_or(80),
       fmt_options.use_tabs.unwrap_or_default(),
       fmt_options.indent_width.unwrap_or(2),
+      ignore_directive(file_text),
     ),
   )
 }
@@ -833,7 +879,10 @@ pub fn format_file(
       }
     }
     _ => {
-      let config = get_resolved_typescript_config(fmt_options)?;
+      let config = get_resolved_typescript_config(
+        fmt_options,
+        ignore_directive(&file.text),
+      )?;
       dprint_plugin_typescript::format_text(
         dprint_plugin_typescript::FormatTextOptions {
           path: file_path,
@@ -865,7 +914,10 @@ pub fn format_parsed_source(
 ) -> Result<Option<String>, AnyError> {
   dprint_plugin_typescript::format_parsed_source(
     parsed_source,
-    &get_resolved_typescript_config(fmt_options)?,
+    &get_resolved_typescript_config(
+      fmt_options,
+      ignore_directive(parsed_source.text()),
+    )?,
     Some(&create_external_formatter_for_typescript(unstable_options)),
   )
 }
@@ -1335,6 +1387,7 @@ fn resolve_dprint_config<T: Clone + serde::Serialize>(
 
 fn get_resolved_typescript_config(
   options: &FmtOptionsConfig,
+  ignore_directive: &str,
 ) -> Result<dprint_plugin_typescript::configuration::Configuration, AnyError> {
   use dprint_plugin_typescript::configuration as dprint_config;
   use ende_config::ende_json::*;
@@ -1613,16 +1666,20 @@ fn get_resolved_typescript_config(
     );
   }
 
-  resolve_dprint_config(
+  let mut config = resolve_dprint_config(
     "typescript",
     config,
     options.typescript.as_ref(),
     dprint_config::resolve_config,
-  )
+  )?;
+  use_ignore_directive(&mut config.ignore_node_comment_text, ignore_directive);
+  use_ignore_directive(&mut config.ignore_file_comment_text, ignore_directive);
+  Ok(config)
 }
 
 fn get_resolved_markdown_config(
   options: &FmtOptionsConfig,
+  ignore_directive: &str,
 ) -> Result<dprint_plugin_markdown::configuration::Configuration, AnyError> {
   let mut config = ConfigKeyMap::new();
 
@@ -1673,16 +1730,22 @@ fn get_resolved_markdown_config(
     );
   }
 
-  resolve_dprint_config(
+  let mut config = resolve_dprint_config(
     "markdown",
     config,
     options.markdown.as_ref(),
     dprint_plugin_markdown::configuration::resolve_config,
-  )
+  )?;
+  use_ignore_directive(&mut config.ignore_directive, ignore_directive);
+  use_ignore_directive(&mut config.ignore_file_directive, ignore_directive);
+  use_ignore_directive(&mut config.ignore_start_directive, ignore_directive);
+  use_ignore_directive(&mut config.ignore_end_directive, ignore_directive);
+  Ok(config)
 }
 
 fn get_resolved_json_config(
   options: &FmtOptionsConfig,
+  ignore_directive: &str,
 ) -> Result<dprint_plugin_json::configuration::Configuration, AnyError> {
   use dprint_plugin_json::configuration::TrailingCommaKind;
   use ende_config::ende_json::JsonTrailingCommaKind;
@@ -1739,29 +1802,33 @@ fn get_resolved_json_config(
     );
   }
 
-  resolve_dprint_config(
+  let mut config = resolve_dprint_config(
     "json",
     config,
     options.json.as_ref(),
     dprint_plugin_json::configuration::resolve_config,
-  )
+  )?;
+  use_ignore_directive(&mut config.ignore_node_comment_text, ignore_directive);
+  Ok(config)
 }
 
 fn get_resolved_lax_markup_config(
   options: &FmtOptionsConfig,
+  ignore_directive: &str,
 ) -> lax_markup::configuration::Configuration {
   lax_markup::configuration::Configuration {
     line_width: options.line_width.unwrap_or(80),
     use_tabs: options.use_tabs.unwrap_or_default(),
     indent_width: options.indent_width.unwrap_or(2),
     new_line_kind: dprint_core::configuration::NewLineKind::LineFeed,
-    ignore_node_comment_text: "deno-fmt-ignore".to_string(),
-    ignore_file_comment_text: "deno-fmt-ignore-file".to_string(),
+    ignore_node_comment_text: ignore_directive.to_string(),
+    ignore_file_comment_text: format!("{ignore_directive}-file"),
   }
 }
 
 fn get_resolved_yaml_config(
   options: &FmtOptionsConfig,
+  ignore_directive: &str,
 ) -> pretty_yaml::config::FormatOptions {
   use pretty_yaml::config::*;
 
@@ -1788,7 +1855,7 @@ fn get_resolved_yaml_config(
     flow_map_prefer_single_line: None,
     trim_trailing_whitespaces: true,
     trim_trailing_zero: false,
-    ignore_comment_directive: "deno-fmt-ignore".into(),
+    ignore_comment_directive: ignore_directive.into(),
   };
 
   FormatOptions {
@@ -2313,12 +2380,51 @@ mod test {
   }
 
   #[test]
+  fn test_ignore_directive_follows_the_spelling_a_text_uses() {
+    assert_eq!(ignore_directive("const a = 1;"), "ende-fmt-ignore");
+    assert_eq!(ignore_directive("// ende-fmt-ignore\na"), "ende-fmt-ignore");
+    assert_eq!(ignore_directive("// deno-fmt-ignore\na"), "deno-fmt-ignore");
+    assert_eq!(
+      ignore_directive("// deno-fmt-ignore\n// ende-fmt-ignore\na"),
+      "ende-fmt-ignore"
+    );
+  }
+
+  #[test]
+  fn test_ignore_directive_switches_preset_options_but_keeps_configured_ones() {
+    let config = get_resolved_markdown_config(
+      &FmtOptionsConfig::default(),
+      IGNORE_DIRECTIVE,
+    )
+    .unwrap();
+    assert_eq!(config.ignore_directive, "ende-fmt-ignore");
+    assert_eq!(config.ignore_file_directive, "ende-fmt-ignore-file");
+    assert_eq!(config.ignore_start_directive, "ende-fmt-ignore-start");
+    assert_eq!(config.ignore_end_directive, "ende-fmt-ignore-end");
+
+    let options = FmtOptionsConfig {
+      typescript: Some(serde_json::Map::from_iter([(
+        "ignoreNodeCommentText".to_string(),
+        serde_json::Value::from("keep-as-is"),
+      )])),
+      ..Default::default()
+    };
+    let config =
+      get_resolved_typescript_config(&options, IGNORE_DIRECTIVE).unwrap();
+    assert_eq!(config.ignore_node_comment_text, "keep-as-is");
+    assert_eq!(config.ignore_file_comment_text, "ende-fmt-ignore-file");
+  }
+
+  #[test]
   fn test_default_configs_match_dprint_deno_presets() {
     // Without any options, Ende's configuration is dprint's Deno preset.
     let options = FmtOptionsConfig::default();
     assert_eq!(
-      serde_json::to_value(get_resolved_typescript_config(&options).unwrap())
-        .unwrap(),
+      serde_json::to_value(
+        get_resolved_typescript_config(&options, DENO_IGNORE_DIRECTIVE)
+          .unwrap()
+      )
+      .unwrap(),
       serde_json::to_value(
         dprint_plugin_typescript::configuration::ConfigurationBuilder::new()
           .deno()
@@ -2327,8 +2433,10 @@ mod test {
       .unwrap()
     );
     assert_eq!(
-      serde_json::to_value(get_resolved_json_config(&options).unwrap())
-        .unwrap(),
+      serde_json::to_value(
+        get_resolved_json_config(&options, DENO_IGNORE_DIRECTIVE).unwrap()
+      )
+      .unwrap(),
       serde_json::to_value(
         dprint_plugin_json::configuration::ConfigurationBuilder::new()
           .deno()
@@ -2337,8 +2445,10 @@ mod test {
       .unwrap()
     );
     assert_eq!(
-      serde_json::to_value(get_resolved_markdown_config(&options).unwrap())
-        .unwrap(),
+      serde_json::to_value(
+        get_resolved_markdown_config(&options, DENO_IGNORE_DIRECTIVE).unwrap()
+      )
+      .unwrap(),
       serde_json::to_value(
         dprint_plugin_markdown::configuration::ConfigurationBuilder::new()
           .deno()

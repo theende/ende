@@ -1,0 +1,113 @@
+{
+  "tempDir": true,
+  "tests": {
+    "ts_node_ende": {
+      "args": "fmt --check ts_node_ende.ts",
+      "output": "Checked 1 file\n"
+    },
+    "ts_node_deno": {
+      "args": "fmt --check ts_node_deno.ts",
+      "output": "Checked 1 file\n"
+    },
+    "ts_file_ende": {
+      "args": "fmt --check ts_file_ende.ts",
+      "output": "Checked 1 file\n"
+    },
+    "ts_file_deno": {
+      "args": "fmt --check ts_file_deno.ts",
+      "output": "Checked 1 file\n"
+    },
+    "jsonc_node_ende": {
+      "args": "fmt --check jsonc_node_ende.jsonc",
+      "output": "Checked 1 file\n"
+    },
+    "jsonc_node_deno": {
+      "args": "fmt --check jsonc_node_deno.jsonc",
+      "output": "Checked 1 file\n"
+    },
+    "md_node_ende": {
+      "args": "fmt --check md_node_ende.md",
+      "output": "Checked 1 file\n"
+    },
+    "md_node_deno": {
+      "args": "fmt --check md_node_deno.md",
+      "output": "Checked 1 file\n"
+    },
+    "md_file_ende": {
+      "args": "fmt --check md_file_ende.md",
+      "output": "Checked 1 file\n"
+    },
+    "md_file_deno": {
+      "args": "fmt --check md_file_deno.md",
+      "output": "Checked 1 file\n"
+    },
+    "md_range_ende": {
+      "args": "fmt --check md_range_ende.md",
+      "output": "Checked 1 file\n"
+    },
+    "md_range_deno": {
+      "args": "fmt --check md_range_deno.md",
+      "output": "Checked 1 file\n"
+    },
+    "css_node_ende": {
+      "args": "fmt --check css_node_ende.css",
+      "output": "Checked 1 file\n"
+    },
+    "css_node_deno": {
+      "args": "fmt --check css_node_deno.css",
+      "output": "Checked 1 file\n"
+    },
+    "css_file_ende": {
+      "args": "fmt --check css_file_ende.css",
+      "output": "Checked 1 file\n"
+    },
+    "css_file_deno": {
+      "args": "fmt --check css_file_deno.css",
+      "output": "Checked 1 file\n"
+    },
+    "html_node_ende": {
+      "args": "fmt --check html_node_ende.html",
+      "output": "Checked 1 file\n"
+    },
+    "html_node_deno": {
+      "args": "fmt --check html_node_deno.html",
+      "output": "Checked 1 file\n"
+    },
+    "html_file_ende": {
+      "args": "fmt --check html_file_ende.html",
+      "output": "Checked 1 file\n"
+    },
+    "html_file_deno": {
+      "args": "fmt --check html_file_deno.html",
+      "output": "Checked 1 file\n"
+    },
+    "yaml_node_ende": {
+      "args": "fmt --check yaml_node_ende.yml",
+      "output": "Checked 1 file\n"
+    },
+    "yaml_node_deno": {
+      "args": "fmt --check yaml_node_deno.yml",
+      "output": "Checked 1 file\n"
+    },
+    "yaml_file_ende": {
+      "args": "fmt --check yaml_file_ende.yaml",
+      "output": "Checked 1 file\n"
+    },
+    "yaml_file_deno": {
+      "args": "fmt --check yaml_file_deno.yaml",
+      "output": "Checked 1 file\n"
+    },
+    "sql_file_ende": {
+      "args": "fmt --check --unstable-sql sql_file_ende.sql",
+      "output": "Checked 1 file\n"
+    },
+    "sql_file_deno": {
+      "args": "fmt --check --unstable-sql sql_file_deno.sql",
+      "output": "Checked 1 file\n"
+    },
+    "md_mixed": {
+      "args": "fmt --check md_mixed.md",
+      "output": "Checked 1 file\n"
+    }
+  }
+}
