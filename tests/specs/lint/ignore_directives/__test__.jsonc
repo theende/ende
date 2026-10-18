@@ -1,0 +1,53 @@
+{
+  "tempDir": true,
+  "tests": {
+    "line_ende": {
+      "args": "lint line_ende.ts",
+      "output": "Checked 1 file\n"
+    },
+    "line_deno": {
+      "args": "lint line_deno.ts",
+      "output": "Checked 1 file\n"
+    },
+    "file_ende": {
+      "args": "lint file_ende.ts",
+      "output": "Checked 1 file\n"
+    },
+    "file_deno": {
+      "args": "lint file_deno.ts",
+      "output": "Checked 1 file\n"
+    },
+    "file_all_ende": {
+      "args": "lint file_all_ende.ts",
+      "output": "Checked 1 file\n"
+    },
+    "file_all_deno": {
+      "args": "lint file_all_deno.ts",
+      "output": "Checked 1 file\n"
+    },
+    // Both spellings work in the same file.
+    "mixed": {
+      "args": "lint mixed.ts",
+      "output": "Checked 1 file\n"
+    },
+    "mixed_file": {
+      "args": "lint mixed_file.ts",
+      "output": "Checked 1 file\n"
+    },
+    "unused_ende": {
+      "args": "lint unused_ende.ts",
+      "output": "unused_ende.out",
+      "exitCode": 1
+    },
+    "unused_deno": {
+      "args": "lint unused_deno.ts",
+      "output": "unused_deno.out",
+      "exitCode": 1
+    },
+    "untagged_ende": {
+      "args": "lint untagged_ende.ts",
+      "output": "untagged_ende.out",
+      "exitCode": 1
+    }
+  }
+}

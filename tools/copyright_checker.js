@@ -42,6 +42,7 @@ export async function checkCopyright() {
     ":!:tests/testdata/**",
     ":!:tests/wpt/suite/**",
     ":!:libs/config/testdata/**",
+    ":!:libs/deno_lint/**",
     ":!:libs/eszip/testdata/**",
 
     // rust

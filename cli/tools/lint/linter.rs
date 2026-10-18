@@ -73,8 +73,10 @@ impl CliLinter {
       linter: DenoLintLinter::new(LinterOptions {
         rules: deno_lint_rules,
         all_rule_codes: options.configured_rules.all_rule_codes,
-        custom_ignore_file_directive: None,
-        custom_ignore_diagnostic_directive: None,
+        // The deno_lint defaults, `deno-lint-ignore-file` and
+        // `deno-lint-ignore`, keep working alongside these.
+        custom_ignore_file_directive: Some("ende-lint-ignore-file"),
+        custom_ignore_diagnostic_directive: Some("ende-lint-ignore"),
       }),
       deno_lint_config: options.deno_lint_config,
       maybe_plugin_runner: options.maybe_plugin_runner,

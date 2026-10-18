@@ -64,6 +64,9 @@ members = [
   "tests/util/test_macro",
   "tools/bsdiff_helper",
 ]
+# Vendored upstream crates, patched in below. They keep upstream's code and
+# lints, so they're not workspace members (and not held to Ende's clippy rules).
+exclude = ["libs/deno_lint"]
 
 [workspace.package]
 authors = ["the Ende authors", "the Deno authors"]
@@ -543,3 +546,8 @@ opt-level = 3
 opt-level = 3
 [profile.release.package.twox-hash]
 opt-level = 3
+
+# deno_lint 0.84.1 with a fix so `ende-lint-ignore` works; see
+# libs/deno_lint/README.md.
+[patch.crates-io]
+deno_lint = { path = "libs/deno_lint" }

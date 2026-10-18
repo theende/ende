@@ -1,0 +1,75 @@
+# Vendored from deno_lint 0.84.1 (crates.io); see README.md.
+
+[package]
+edition = "2021"
+name = "deno_lint"
+version = "0.84.1"
+authors = ["the Deno authors"]
+build = false
+publish = false
+exclude = ["benchmarks/*"]
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
+description = "lint for deno"
+readme = "README.md"
+keywords = [
+    "deno",
+    "lint",
+]
+categories = ["development-tools"]
+license = "MIT"
+repository = "https://github.com/denoland/deno_lint"
+
+[features]
+default = []
+
+[lib]
+name = "deno_lint"
+path = "src/lib.rs"
+
+[dependencies.anyhow]
+version = "1.0.79"
+
+[dependencies.deno_ast]
+version = "0.53.2"
+features = [
+    "scopes",
+    "transforms",
+    "utils",
+    "visit",
+    "view",
+    "react",
+]
+
+[dependencies.deno_semver]
+version = "0.10.0"
+
+[dependencies.derive_more]
+version = "0.99.17"
+features = ["display"]
+
+[dependencies.if_chain]
+version = "1.0.2"
+
+[dependencies.log]
+version = "0.4.20"
+
+[dependencies.once_cell]
+version = "1.19.0"
+
+[dependencies.phf]
+version = "0.11.2"
+features = ["macros"]
+
+[dependencies.regex]
+version = "1.10.2"
+
+[dependencies.serde]
+version = "1.0.195"
+features = ["derive"]
+
+[dependencies.serde_json]
+version = "1.0.111"

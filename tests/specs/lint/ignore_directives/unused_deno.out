@@ -1,0 +1,11 @@
+error[ban-unused-ignore]: Ignore for code "no-var" was not used.
+ --> [WILDCARD]unused_deno.ts:1:1
+  | 
+1 | // deno-lint-ignore no-var
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  docs: https://docs.ende.sh/lint/rules/ban-unused-ignore
+
+
+Found 1 problem
+Checked 1 file

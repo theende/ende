@@ -12257,7 +12257,7 @@ fn lsp_code_actions_ignore_lint() {
               "start": { "line": 1, "character": 0 },
               "end": { "line": 1, "character": 0 }
             },
-            "newText": "// deno-lint-ignore prefer-const\n"
+            "newText": "// ende-lint-ignore prefer-const\n"
           }]
         }
       }
@@ -12282,7 +12282,7 @@ fn lsp_code_actions_ignore_lint() {
               "start": { "line": 0, "character": 0 },
               "end": { "line": 0, "character": 0 }
             },
-            "newText": "// deno-lint-ignore-file prefer-const\n"
+            "newText": "// ende-lint-ignore-file prefer-const\n"
           }]
         }
       }
@@ -12307,7 +12307,7 @@ fn lsp_code_actions_ignore_lint() {
               "start": { "line": 0, "character": 0 },
               "end": { "line": 0, "character": 0 }
             },
-            "newText": "// deno-lint-ignore-file\n"
+            "newText": "// ende-lint-ignore-file\n"
           }]
         }
       }
@@ -12384,7 +12384,7 @@ console.log(snake_case);
               "start": { "line": 3, "character": 0 },
               "end": { "line": 3, "character": 0 }
             },
-            "newText": "// deno-lint-ignore prefer-const\n"
+            "newText": "// ende-lint-ignore prefer-const\n"
           }]
         }
       }
@@ -12434,7 +12434,134 @@ console.log(snake_case);
               "start": { "line": 2, "character": 0 },
               "end": { "line": 2, "character": 0 }
             },
-            "newText": "// deno-lint-ignore-file\n"
+            "newText": "// ende-lint-ignore-file\n"
+          }]
+        }
+      }
+    }])
+  );
+  client.shutdown();
+}
+
+/// This test exercises updating an existing ende-lint-ignore-file comment.
+#[test(timeout = 300)]
+fn lsp_code_actions_update_ende_ignore_lint() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let mut client = context.new_lsp_command().build();
+  client.initialize_default();
+  client.did_open(json!({
+    "textDocument": {
+      "uri": "file:///a/file.ts",
+      "languageId": "typescript",
+      "version": 1,
+      "text":
+"#!/usr/bin/env -S deno run
+// ende-lint-ignore-file camelcase
+let snake_case = 'Hello, Deno!';
+console.log(snake_case);
+",
+    }
+  }));
+  let res = client.write_request(
+    "textDocument/codeAction",
+    json!({
+      "textDocument": {
+        "uri": "file:///a/file.ts"
+      },
+      "range": {
+        "start": { "line": 3, "character": 5 },
+        "end": { "line": 3, "character": 15 }
+      },
+      "context": {
+        "diagnostics": [{
+          "range": {
+            "start": { "line": 3, "character": 5 },
+            "end": { "line": 3, "character": 15 }
+          },
+          "severity": 1,
+          "code": "prefer-const",
+          "source": "ende-lint",
+          "message": "'snake_case' is never reassigned\nUse 'const' instead",
+          "relatedInformation": []
+        }],
+        "only": ["quickfix"]
+      }
+    }),
+  );
+  assert_eq!(
+    res,
+    json!([{
+      "title": "Disable prefer-const for this line",
+      "kind": "quickfix",
+      "diagnostics": [{
+        "range": {
+          "start": { "line": 3, "character": 5 },
+          "end": { "line": 3, "character": 15 }
+        },
+        "severity": 1,
+        "code": "prefer-const",
+        "source": "ende-lint",
+        "message": "'snake_case' is never reassigned\nUse 'const' instead",
+        "relatedInformation": []
+      }],
+      "edit": {
+        "changes": {
+          "file:///a/file.ts": [{
+            "range": {
+              "start": { "line": 3, "character": 0 },
+              "end": { "line": 3, "character": 0 }
+            },
+            "newText": "// ende-lint-ignore prefer-const\n"
+          }]
+        }
+      }
+    }, {
+      "title": "Disable prefer-const for the entire file",
+      "kind": "quickfix",
+      "diagnostics": [{
+        "range": {
+          "start": { "line": 3, "character": 5 },
+          "end": { "line": 3, "character": 15 }
+        },
+        "severity": 1,
+        "code": "prefer-const",
+        "source": "ende-lint",
+        "message": "'snake_case' is never reassigned\nUse 'const' instead",
+        "relatedInformation": []
+      }],
+      "edit": {
+        "changes": {
+          "file:///a/file.ts": [{
+            "range": {
+              "start": { "line": 1, "character": 34 },
+              "end": { "line": 1, "character": 34 }
+            },
+            "newText": " prefer-const"
+          }]
+        }
+      }
+    }, {
+      "title": "Ignore lint errors for the entire file",
+      "kind": "quickfix",
+      "diagnostics": [{
+        "range": {
+          "start": { "line": 3, "character": 5 },
+          "end": { "line": 3, "character": 15 }
+        },
+        "severity": 1,
+        "code": "prefer-const",
+        "source": "ende-lint",
+        "message": "'snake_case' is never reassigned\nUse 'const' instead",
+        "relatedInformation": []
+      }],
+      "edit": {
+        "changes": {
+          "file:///a/file.ts": [{
+            "range": {
+              "start": { "line": 2, "character": 0 },
+              "end": { "line": 2, "character": 0 }
+            },
+            "newText": "// ende-lint-ignore-file\n"
           }]
         }
       }
@@ -12496,7 +12623,7 @@ fn lsp_code_actions_lint_fixes() {
               "start": { "line": 1, "character": 0 },
               "end": { "line": 1, "character": 0 },
             },
-            "newText": "// deno-lint-ignore no-window\n",
+            "newText": "// ende-lint-ignore no-window\n",
           }],
         },
       },
@@ -12511,7 +12638,7 @@ fn lsp_code_actions_lint_fixes() {
               "start": { "line": 1, "character": 0 },
               "end": { "line": 1, "character": 0 },
             },
-            "newText": "// deno-lint-ignore-file no-window\n",
+            "newText": "// ende-lint-ignore-file no-window\n",
           }],
         },
       },
@@ -12526,7 +12653,7 @@ fn lsp_code_actions_lint_fixes() {
               "start": { "line": 1, "character": 0 },
               "end": { "line": 1, "character": 0 },
             },
-            "newText": "// deno-lint-ignore-file\n",
+            "newText": "// ende-lint-ignore-file\n",
           }],
         },
       },

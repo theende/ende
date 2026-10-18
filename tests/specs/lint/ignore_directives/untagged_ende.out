@@ -1,0 +1,21 @@
+error[ban-untagged-ignore]: Ignore directive requires lint rule name(s)
+ --> [WILDCARD]untagged_ende.ts:1:1
+  | 
+1 | // ende-lint-ignore
+  | ^^^^^^^^^^^^^^^^^^^
+  = hint: Add one or more lint rule names.  E.g. // ende-lint-ignore adjacent-overload-signatures
+
+  docs: https://docs.ende.sh/lint/rules/ban-untagged-ignore
+
+
+error[no-var]: `var` keyword is not allowed.
+ --> [WILDCARD]untagged_ende.ts:2:1
+  | 
+2 | var a = 1;
+  | ^^^
+
+  docs: https://docs.ende.sh/lint/rules/no-var
+
+
+Found 2 problems
+Checked 1 file

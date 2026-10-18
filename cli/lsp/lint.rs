@@ -267,7 +267,7 @@ pub fn get_deno_lint_code_actions(
     }
   }
 
-  // Add deno-lint-ignore actions
+  // Add ende-lint-ignore actions
 
   let code = diagnostic
     .code
@@ -288,7 +288,7 @@ pub fn get_deno_lint_code_actions(
     uri.clone(),
     vec![lsp::TextEdit {
       new_text: prepend_whitespace(
-        format!("// deno-lint-ignore {code}\n"),
+        format!("// ende-lint-ignore {code}\n"),
         Some(line_content),
       ),
       range: lsp::Range {
@@ -344,7 +344,9 @@ pub fn get_deno_lint_code_actions(
     ps.comments().get_vec().iter().find_map(|c| {
       let comment_text = c.text.trim();
       comment_text.split_whitespace().next().and_then(|prefix| {
-        if prefix == "deno-lint-ignore-file" {
+        if prefix == "ende-lint-ignore-file"
+          || prefix == "deno-lint-ignore-file"
+        {
           Some(c.clone())
         } else {
           None
@@ -370,7 +372,7 @@ pub fn get_deno_lint_code_actions(
       end: position,
     };
   } else {
-    new_text = format!("// deno-lint-ignore-file {code}\n");
+    new_text = format!("// ende-lint-ignore-file {code}\n");
     range = next_leading_comment_range;
   }
 
@@ -396,7 +398,7 @@ pub fn get_deno_lint_code_actions(
   changes.insert(
     uri.clone(),
     vec![lsp::TextEdit {
-      new_text: "// deno-lint-ignore-file\n".to_string(),
+      new_text: "// ende-lint-ignore-file\n".to_string(),
       range: next_leading_comment_range,
     }],
   );

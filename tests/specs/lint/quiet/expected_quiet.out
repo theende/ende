@@ -3,7 +3,7 @@ error[ban-untagged-ignore]: Ignore directive requires lint rule name(s)
   | 
 1 | // deno-lint-ignore
   | ^^^^^^^^^^^^^^^^^^^
-  = hint: Add one or more lint rule names.  E.g. // deno-lint-ignore adjacent-overload-signatures
+  = hint: Add one or more lint rule names.  E.g. // ende-lint-ignore adjacent-overload-signatures
 
   docs: https://docs.ende.sh/lint/rules/ban-untagged-ignore
 
