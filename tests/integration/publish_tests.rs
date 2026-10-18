@@ -153,6 +153,30 @@ fn provenance_rejected_by_registry() {
   );
 }
 
+/// GitHub OIDC tokens expire minutes after they're issued, and the registry
+/// can take longer than that to process a large package, so the attestation
+/// must be sent with a freshly requested token rather than the upload's.
+#[test]
+fn provenance_submitted_with_fresh_oidc_token() {
+  let output = TestContextBuilder::new()
+    .use_http_server()
+    .envs(env_vars_for_jsr_provenance_tests())
+    .cwd("publish/provenance_fresh_token")
+    .build()
+    .new_command()
+    .args("publish")
+    .run();
+  output.assert_exit_code(0);
+  assert_contains!(
+    output.combined_output(),
+    "Provenance transparency log available at"
+  );
+  assert_not_contains!(
+    output.combined_output(),
+    "did not accept the provenance attestation"
+  );
+}
+
 #[test]
 fn ignores_gitignore() {
   let context = publish_context_builder().build();

@@ -2,10 +2,13 @@
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD_NO_PAD;
@@ -54,6 +57,23 @@ pub async fn provenance_mock_server(port: u16) {
   .await
 }
 
+// Every mock GitHub OIDC token is distinct, like real ones, so the registry
+// mock can tell a token reused from the upload from a fresh one.
+static OIDC_TOKEN_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+// The authorizations used to upload the `provenance-fresh-token` fixture.
+static PUBLISH_AUTHORIZATIONS: Lazy<Mutex<HashSet<String>>> =
+  Lazy::new(|| Mutex::new(HashSet::new()));
+
+fn authorization_header(req: &Request<Incoming>) -> String {
+  req
+    .headers()
+    .get("authorization")
+    .and_then(|value| value.to_str().ok())
+    .unwrap_or_default()
+    .to_string()
+}
+
 async fn provenance_mock_server_handler(
   req: Request<Incoming>,
 ) -> Result<Response<UnsyncBoxBody<Bytes, Infallible>>, anyhow::Error> {
@@ -65,6 +85,7 @@ async fn provenance_mock_server_handler(
       "sub": "divy",
       "email": "divy@deno.com",
       "iss": "https://github.com",
+      "jti": OIDC_TOKEN_COUNT.fetch_add(1, Ordering::Relaxed),
     });
     let token = format!(
       "AAA.{}.",
@@ -152,6 +173,30 @@ async fn registry_server_handler(
     // Consumers of this simulation (rename these fixtures and this match
     // together):
     //   - tests/testdata/publish/provenance_rejected
+    // A GitHub OIDC token expires minutes after it's issued, and processing a
+    // large package can take longer than that, so JSR rejects an attestation
+    // sent with the token the upload used. The "provenance-fresh-token"
+    // package simulates that by rejecting any token used for its upload.
+    //
+    // Consumers of this simulation (rename these fixtures and this match
+    // together):
+    //   - tests/testdata/publish/provenance_fresh_token
+    if path.contains("/packages/provenance-fresh-token")
+      && PUBLISH_AUTHORIZATIONS
+        .lock()
+        .unwrap()
+        .contains(&authorization_header(&req))
+    {
+      let body = serde_json::to_string_pretty(&json!({
+        "code": "invalidOidcToken",
+        "message": "The provided OIDC token is invalid: ExpiredSignature",
+      }))
+      .unwrap();
+      let res = Response::builder()
+        .status(StatusCode::UNAUTHORIZED)
+        .body(UnsyncBoxBody::new(Full::from(body)))?;
+      return Ok(res);
+    }
     if path.contains("/packages/provenance-fails") {
       let body = serde_json::to_string_pretty(&json!({
         "code": "internalServerError",
@@ -176,6 +221,12 @@ async fn registry_server_handler(
     // together):
     //   - tests/specs/publish/workspace_continue_on_error
     //   - tests/specs/publish/workspace_continue_blocked_dependent
+    if path.contains("/packages/provenance-fresh-token") {
+      PUBLISH_AUTHORIZATIONS
+        .lock()
+        .unwrap()
+        .insert(authorization_header(&req));
+    }
     let body = if path.contains("/packages/publish-fails") {
       serde_json::to_string_pretty(&json!({
         "id": "sdfwqer-sffg-qwerasdf",

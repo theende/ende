@@ -1,0 +1,7 @@
+{
+  "name": "@foo/provenance-fresh-token",
+  "version": "1.0.0",
+  "exports": {
+    ".": "./mod.ts"
+  }
+}

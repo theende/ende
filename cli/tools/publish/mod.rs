@@ -71,6 +71,7 @@ mod unfurl;
 mod wasm;
 
 use auth::AuthMethod;
+use auth::OidcConfig;
 use auth::get_auth_method;
 use publish_order::PublishOrderGraph;
 use unfurl::SpecifierUnfurler;
@@ -633,20 +634,68 @@ pub enum Permission<'s> {
   },
 }
 
+fn publish_permission(package: &PreparedPublishPackage) -> Permission<'_> {
+  Permission::VersionPublish {
+    scope: &package.scope,
+    package: &package.package,
+    version: &package.version,
+    tarball_hash: &package.tarball.hash,
+  }
+}
+
+/// Requests a GitHub OIDC token for `permissions`, as a JSR authorization.
+async fn get_oidc_authorization(
+  client: &HttpClient,
+  oidc_config: &OidcConfig,
+  permissions: &[Permission<'_>],
+) -> Result<Rc<str>, AnyError> {
+  let audience = json!({ "permissions": permissions }).to_string();
+  let url = format!(
+    "{}&audience={}",
+    oidc_config.url,
+    percent_encoding::percent_encode(
+      audience.as_bytes(),
+      percent_encoding::NON_ALPHANUMERIC
+    )
+  );
+
+  let response = client
+    .get(url.parse()?)?
+    .header(
+      http::header::AUTHORIZATION,
+      format!("Bearer {}", oidc_config.token).parse()?,
+    )
+    .send()
+    .await
+    .context("Failed to get OIDC token")?;
+  let status = response.status();
+  let text = crate::http_util::body_to_string(response)
+    .await
+    .with_context(|| format!("Failed to get OIDC token: status {}", status))?;
+  if !status.is_success() {
+    bail!(
+      "Failed to get OIDC token: status {}, response: '{}'",
+      status,
+      text
+    );
+  }
+  let registry::OidcTokenResponse { value } = serde_json::from_str(&text)
+    .with_context(|| {
+      format!("Failed to parse OIDC token: '{}' (status {})", text, status)
+    })?;
+
+  Ok(format!("githuboidc {}", value).into())
+}
+
 async fn get_auth_headers(
   client: &HttpClient,
   registry_url: &Url,
   packages: &[Rc<PreparedPublishPackage>],
-  auth_method: AuthMethod,
+  auth_method: &AuthMethod,
 ) -> Result<HashMap<(String, String, String), Rc<str>>, AnyError> {
   let permissions = packages
     .iter()
-    .map(|package| Permission::VersionPublish {
-      scope: &package.scope,
-      package: &package.package,
-      version: &package.version,
-      tarball_hash: &package.tarball.hash,
-    })
+    .map(|package| publish_permission(package))
     .collect::<Vec<_>>();
 
   let mut authorizations = HashMap::with_capacity(packages.len());
@@ -747,47 +796,8 @@ async fn get_auth_headers(
     AuthMethod::Oidc(oidc_config) => {
       let mut chunked_packages = packages.chunks(16);
       for permissions in permissions.chunks(16) {
-        let audience = json!({ "permissions": permissions }).to_string();
-        let url = format!(
-          "{}&audience={}",
-          oidc_config.url,
-          percent_encoding::percent_encode(
-            audience.as_bytes(),
-            percent_encoding::NON_ALPHANUMERIC
-          )
-        );
-
-        let response = client
-          .get(url.parse()?)?
-          .header(
-            http::header::AUTHORIZATION,
-            format!("Bearer {}", oidc_config.token).parse()?,
-          )
-          .send()
-          .await
-          .context("Failed to get OIDC token")?;
-        let status = response.status();
-        let text = crate::http_util::body_to_string(response)
-          .await
-          .with_context(|| {
-            format!("Failed to get OIDC token: status {}", status)
-          })?;
-        if !status.is_success() {
-          bail!(
-            "Failed to get OIDC token: status {}, response: '{}'",
-            status,
-            text
-          );
-        }
-        let registry::OidcTokenResponse { value } = serde_json::from_str(&text)
-          .with_context(|| {
-            format!(
-              "Failed to parse OIDC token: '{}' (status {})",
-              text, status
-            )
-          })?;
-
-        let authorization: Rc<str> = format!("githuboidc {}", value).into();
+        let authorization =
+          get_oidc_authorization(client, oidc_config, permissions).await?;
         for pkg in chunked_packages.next().unwrap() {
           authorizations.insert(
             (pkg.scope.clone(), pkg.package.clone(), pkg.version.clone()),
@@ -955,8 +965,12 @@ async fn perform_publish(
   // existence check must be able to send the authorization the publish will
   // use.
   let mut authorizations =
-    get_auth_headers(http_client, registry_api_url, &packages, auth_method)
+    get_auth_headers(http_client, registry_api_url, &packages, &auth_method)
       .await?;
+  let oidc_config = match &auth_method {
+    AuthMethod::Oidc(oidc_config) => Some(oidc_config),
+    AuthMethod::Interactive | AuthMethod::Token(_) => None,
+  };
 
   assert_eq!(prepared_package_by_name.len(), authorizations.len());
 
@@ -1008,6 +1022,7 @@ async fn perform_publish(
             registry_api_url,
             registry_url,
             &authorization,
+            oidc_config,
             provenance,
           ))
           .await
@@ -1089,6 +1104,7 @@ async fn publish_package(
   registry_api_url: &Url,
   registry_url: &Url,
   authorization: &str,
+  oidc_config: Option<&OidcConfig>,
   provenance: bool,
 ) -> Result<(), AnyError> {
   log::info!(
@@ -1242,14 +1258,41 @@ async fn publish_package(
       &package.package,
       &package.version,
     )?;
-    match submit_provenance_bundle(
-      http_client,
-      &provenance_url,
-      authorization,
-      &bundle,
-    )
-    .await
-    {
+    // A GitHub OIDC token expires minutes after it's issued, and the registry
+    // can take longer than that to process a large package, so the attestation
+    // goes with a fresh token rather than the one the upload used.
+    let submitted = match oidc_config {
+      Some(oidc_config) => {
+        match get_oidc_authorization(
+          http_client,
+          oidc_config,
+          &[publish_permission(&package)],
+        )
+        .await
+        {
+          Ok(authorization) => {
+            submit_provenance_bundle(
+              http_client,
+              &provenance_url,
+              &authorization,
+              &bundle,
+            )
+            .await
+          }
+          Err(err) => Err(err),
+        }
+      }
+      None => {
+        submit_provenance_bundle(
+          http_client,
+          &provenance_url,
+          authorization,
+          &bundle,
+        )
+        .await
+      }
+    };
+    match submitted {
       Ok(()) => log::info!(
         "{}",
         colors::green(format!(
