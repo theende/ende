@@ -6,6 +6,13 @@ https://github.com/denoland/deno/releases
 We also have one-line install commands at:
 https://github.com/denoland/deno_install
 
+### 2026.10.20 / 2026.10.20
+
+- feat(install): add the ende.sh install scripts
+- fix(fmt): accept ende-fmt-ignore directives
+- fix(lint): accept ende-lint-ignore directives
+- fix(publish): send the provenance attestation with a fresh OIDC token
+
 ### 2026.10.17 / 2026.10.17
 
 - fix(publish): only count a license file at the package root
