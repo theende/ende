@@ -561,6 +561,25 @@
         }
       ]
     },
+    // tsc also emits declarations for the remote modules jsr: specifiers
+    // resolve to; only the local ones are written, and they keep the jsr:
+    // specifiers of the sources.
+    "declaration_remote": {
+      "steps": [
+        {
+          "args": "transpile --declaration remote/main.ts remote/describe.ts --outdir dist",
+          "output": "declaration_remote.out"
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "dist/describe.d.ts\ndist/describe.js\ndist/main.d.ts\ndist/main.js\n"
+        },
+        {
+          "args": "run --allow-read remote/print_declarations.ts",
+          "output": "declaration_remote_content.out"
+        }
+      ]
+    },
     "config_flag_missing": {
       "args": "transpile --config missing.json compile_args/component.tsx",
       "output": "config_flag_missing.out",

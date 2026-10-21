@@ -192,12 +192,16 @@ function exec({ config, debug: debugFlag, rootNames, localOnly }) {
       sourceFile.moduleName = undefined;
     }
     try {
-      program.emit(
-        /* targetSourceFile */ undefined,
-        host.writeFile,
-        /* cancellationToken */ undefined,
-        /* emitOnlyDtsFiles */ true,
-      );
+      // Only local modules get a .d.ts; remote ones (including what jsr:
+      // specifiers resolve to) have nowhere to be written.
+      for (const [sourceFile] of localFiles) {
+        program.emit(
+          sourceFile,
+          host.writeFile,
+          /* cancellationToken */ undefined,
+          /* emitOnlyDtsFiles */ true,
+        );
+      }
     } finally {
       for (const [sourceFile, moduleName] of localFiles) {
         sourceFile.moduleName = moduleName;

@@ -1,0 +1,4 @@
+[WILDCARD]Emit [WILDLINE]main.js
+Emit [WILDLINE]describe.js
+Emit [WILDLINE]describe.d.ts
+Emit [WILDLINE]main.d.ts

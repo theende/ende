@@ -1,0 +1,8 @@
+== main.d.ts
+import { Foo } from "jsr:@endetest/subset-type-graph@0.1.0";
+export declare const foo: Foo;
+export declare function make(): Foo;
+export declare const value: number;
+== describe.d.ts
+import type { Foo } from "jsr:@endetest/subset-type-graph@0.1.0";
+export declare function describe(foo: Foo): number;
