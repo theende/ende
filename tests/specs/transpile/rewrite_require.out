@@ -1,0 +1,4 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+const helper = require("./helper.cjs");
+const lazy = import("./lazy.cjs");
+console.log(helper, lazy);

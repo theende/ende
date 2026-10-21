@@ -1,0 +1,31 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+import { a } from "./a.js";
+import b from "../b.js";
+import "./side.mjs";
+import c from "./c.cjs";
+import d from "./d.js";
+import { e } from "./e.js?v=1#top";
+import { f } from "./f.d.ts";
+import g from "./g.js";
+import h from "./h.json" with {
+  type: "json"
+};
+import { join } from "jsr:@std/path@1/join.ts";
+import i from "npm:pkg/i.ts";
+import j from "https://example.com/j.ts";
+import k from "bare/k.ts";
+import l from "/abs/l.ts";
+import m from "file:///abs/m.ts";
+export * from "./reexport_all.js";
+export * as ns from "./reexport_ns.js";
+export { n } from "../reexport_named.mjs";
+const dyn = await import("./dyn.js");
+const dynWith = await import("./dyn_with.js", {
+  with: {}
+});
+const name = "./not_an_import.ts";
+const nonLiteral = await import(name);
+const template = await import(`./template.ts`);
+const t = undefined;
+console.log(a, b, c, d, e, f, g, h, join, i, j, k, l, m, t);
+console.log(dyn, dynWith, nonLiteral, template);

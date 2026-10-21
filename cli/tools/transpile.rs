@@ -7,7 +7,13 @@ use std::sync::Arc;
 use deno_ast::EmitOptions;
 use deno_ast::MediaType;
 use deno_ast::SourceMapOption;
+use deno_ast::SourceRange;
+use deno_ast::SourceRangedForSpanned;
+use deno_ast::TextChange;
 use deno_ast::TranspileModuleOptions;
+use deno_ast::swc::ast;
+use deno_ast::swc::ecma_visit::VisitMut;
+use deno_ast::swc::ecma_visit::VisitMutWith;
 use deno_graph::GraphKind;
 use deno_graph::ModuleGraph;
 use deno_terminal::colors;
@@ -112,14 +118,22 @@ pub async fn transpile(
     let source_code = String::from_utf8(source_bytes.into_owned())
       .with_context(|| format!("{} is not valid UTF-8", file_path.display()))?;
 
-    let parsed_source = deno_ast::parse_module(deno_ast::ParseParams {
-      specifier: specifier.clone(),
-      text: source_code.into(),
-      media_type: *media_type,
-      capture_tokens: false,
-      scope_analysis: false,
-      maybe_syntax: None,
-    })?;
+    // Rewrite relative specifiers in the AST rather than the output text so
+    // the literals keep their spans and source maps stay accurate.
+    let parsed_source = deno_ast::parse_module_with_post_process(
+      deno_ast::ParseParams {
+        specifier: specifier.clone(),
+        text: source_code.into(),
+        media_type: *media_type,
+        capture_tokens: false,
+        scope_analysis: false,
+        maybe_syntax: None,
+      },
+      |mut module, _| {
+        module.visit_mut_with(&mut RelativeSpecifierRewriter::default());
+        module
+      },
+    )?;
 
     // Use transpile options from ende.json, with source map overridden by CLI flag
     let transpile_and_emit_options = compiler_options_resolver
@@ -324,6 +338,12 @@ async fn emit_declarations(
       })?;
     }
 
+    let content = if MediaType::from_path(&output_path).is_declaration() {
+      rewrite_declaration_specifiers(&output_path, content)?
+    } else {
+      content.clone()
+    };
+
     sys
       .fs_write(&output_path, content.as_bytes())
       .with_context(|| format!("Failed to write {}", output_path.display()))?;
@@ -523,6 +543,127 @@ fn restore_block_comment_newlines(input: &str) -> String {
   String::from_utf8(out).expect("post-processed text must remain valid UTF-8")
 }
 
+/// Applies the JS emit's specifier rewrite to a declaration file tsc
+/// emitted. Only the literals are replaced, so tsc's formatting is kept.
+fn rewrite_declaration_specifiers(
+  path: &Path,
+  text: &str,
+) -> Result<String, AnyError> {
+  let specifier = ModuleSpecifier::from_file_path(path)
+    .map_err(|_| anyhow::anyhow!("Invalid file path: {}", path.display()))?;
+  let mut rewriter = RelativeSpecifierRewriter::default();
+  let parsed_source = deno_ast::parse_module_with_post_process(
+    deno_ast::ParseParams {
+      specifier,
+      text: text.into(),
+      media_type: MediaType::from_path(path),
+      capture_tokens: false,
+      scope_analysis: false,
+      maybe_syntax: None,
+    },
+    |mut module, _| {
+      module.visit_mut_with(&mut rewriter);
+      module
+    },
+  )?;
+  let start = parsed_source.range().start;
+  let changes = rewriter
+    .rewritten
+    .into_iter()
+    .map(|(range, new_text)| TextChange {
+      range: range.as_byte_range(start),
+      new_text,
+    })
+    .collect();
+  Ok(deno_ast::apply_text_changes(text, changes))
+}
+
+/// Points relative import specifiers at the files `ende transpile` emits
+/// (`./util.ts` -> `./util.js`) so the output runs without the sources.
+#[derive(Default)]
+struct RelativeSpecifierRewriter {
+  /// Original range and new source text of every rewritten literal.
+  rewritten: Vec<(SourceRange, String)>,
+}
+
+impl RelativeSpecifierRewriter {
+  fn rewrite(&mut self, str_lit: &mut ast::Str) {
+    let Some(value) = str_lit.value.as_str() else {
+      return;
+    };
+    let Some(new_value) = rewrite_relative_specifier(value) else {
+      return;
+    };
+    // Keep the original quote style when the literal has no escapes.
+    let raw = match &str_lit.raw {
+      Some(raw) if &raw[1..raw.len() - 1] == value => {
+        let quote = &raw[..1];
+        format!("{quote}{new_value}{quote}")
+      }
+      _ => ende_core::serde_json::Value::from(new_value.as_str()).to_string(),
+    };
+    self.rewritten.push((str_lit.range(), raw.clone()));
+    str_lit.raw = Some(raw.into());
+    str_lit.value = new_value.into();
+  }
+}
+
+impl VisitMut for RelativeSpecifierRewriter {
+  fn visit_mut_import_decl(&mut self, node: &mut ast::ImportDecl) {
+    self.rewrite(&mut node.src);
+  }
+
+  fn visit_mut_export_all(&mut self, node: &mut ast::ExportAll) {
+    self.rewrite(&mut node.src);
+  }
+
+  fn visit_mut_named_export(&mut self, node: &mut ast::NamedExport) {
+    if let Some(src) = &mut node.src {
+      self.rewrite(src);
+    }
+  }
+
+  fn visit_mut_ts_import_type(&mut self, node: &mut ast::TsImportType) {
+    node.visit_mut_children_with(self);
+    self.rewrite(&mut node.arg);
+  }
+
+  fn visit_mut_ts_external_module_ref(
+    &mut self,
+    node: &mut ast::TsExternalModuleRef,
+  ) {
+    self.rewrite(&mut node.expr);
+  }
+
+  fn visit_mut_call_expr(&mut self, node: &mut ast::CallExpr) {
+    node.visit_mut_children_with(self);
+    if matches!(node.callee, ast::Callee::Import(_))
+      && let Some(arg) = node.args.first_mut()
+      && let ast::Expr::Lit(ast::Lit::Str(str_lit)) = &mut *arg.expr
+    {
+      self.rewrite(str_lit);
+    }
+  }
+}
+
+/// Maps a `./` or `../` specifier for an emittable file to the name it is
+/// emitted under, keeping any query string or fragment. Returns `None` for
+/// anything else, including `.d.ts` files.
+fn rewrite_relative_specifier(specifier: &str) -> Option<String> {
+  if !specifier.starts_with("./") && !specifier.starts_with("../") {
+    return None;
+  }
+  let path_end = specifier.find(['?', '#']).unwrap_or(specifier.len());
+  let (path, suffix) = specifier.split_at(path_end);
+  let media_type = MediaType::from_str(path);
+  if !media_type.is_emittable() {
+    return None;
+  }
+  let stem = &path[..path.rfind('.')?];
+  let ext = js_extension_for_media_type(media_type);
+  Some(format!("{stem}.{ext}{suffix}"))
+}
+
 fn js_extension_for_media_type(media_type: MediaType) -> &'static str {
   match media_type {
     MediaType::Mts => "mjs",
@@ -560,5 +701,76 @@ fn compute_output_path(
   } else {
     // Write alongside source file
     Ok(js_filename)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn transpile_rewrite_relative_specifier() {
+    let cases = [
+      ("./util.ts", Some("./util.js")),
+      ("../component.tsx", Some("../component.js")),
+      ("./view.jsx", Some("./view.js")),
+      ("./lib.mts", Some("./lib.mjs")),
+      ("./lib.cts", Some("./lib.cjs")),
+      ("./dir/UPPER.TS", Some("./dir/UPPER.js")),
+      ("./util.ts?v=1#top", Some("./util.js?v=1#top")),
+      ("./util.ts#top", Some("./util.js#top")),
+      ("./types.d.ts", None),
+      ("./types.d.mts", None),
+      ("./styles.d.css.ts", None),
+      ("./util.js", None),
+      ("./data.json", None),
+      ("./dir", None),
+      (".", None),
+      ("util.ts", None),
+      ("/abs/util.ts", None),
+      ("file:///abs/util.ts", None),
+      ("jsr:@std/path/join.ts", None),
+      ("npm:pkg/util.ts", None),
+      ("https://example.com/util.ts", None),
+      ("data:text/typescript,export {}", None),
+    ];
+    for (specifier, expected) in cases {
+      assert_eq!(
+        rewrite_relative_specifier(specifier).as_deref(),
+        expected,
+        "{specifier}"
+      );
+    }
+  }
+
+  #[test]
+  fn transpile_rewrite_declaration_specifiers() {
+    let text = concat!(
+      "/// <reference path=\"./ref.ts\" />\n",
+      "export type { A } from \"./a.ts\";\n",
+      "export * from './b.mts';\n",
+      "export { c } from \"./\\u0063.cts\";\n",
+      "export declare const d: typeof import(\"./d.tsx\").d;\n",
+      "export type { E } from \"./e.d.ts\";\n",
+      "export type { F } from \"jsr:@scope/f\";\n",
+    );
+    let expected = concat!(
+      "/// <reference path=\"./ref.ts\" />\n",
+      "export type { A } from \"./a.js\";\n",
+      "export * from './b.mjs';\n",
+      "export { c } from \"./c.cjs\";\n",
+      "export declare const d: typeof import(\"./d.js\").d;\n",
+      "export type { E } from \"./e.d.ts\";\n",
+      "export type { F } from \"jsr:@scope/f\";\n",
+    );
+    let path = if cfg!(windows) {
+      Path::new("C:\\out\\main.d.ts")
+    } else {
+      Path::new("/out/main.d.ts")
+    };
+    assert_eq!(
+      rewrite_declaration_specifiers(path, text).unwrap(),
+      expected
+    );
   }
 }

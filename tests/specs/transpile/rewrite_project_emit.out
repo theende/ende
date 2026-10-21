@@ -1,0 +1,5 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+Emit [WILDCARD]dist[WILDCARD]main.js
+Emit [WILDCARD]dist[WILDCARD]util.js
+Emit [WILDCARD]dist[WILDCARD]types.js
+Emit [WILDCARD]dist[WILDCARD]dynamic.js

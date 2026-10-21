@@ -1,0 +1,10 @@
+== main.d.ts
+/// <amd-module name="file:///[WILDCARD]/rewrite/decl/main.ts" />
+export type { Point } from "./lib/types.js";
+export * from './lib/consts.mjs';
+export { LEGACY } from "./lib/legacy.cjs";
+export declare const sum: typeof import("./lib/util.js").add;
+== lib/consts.d.mts
+/// <amd-module name="file:///[WILDCARD]/rewrite/decl/lib/consts.mts" />
+export { add as plus } from "./util.js";
+export declare const ONE = 1;

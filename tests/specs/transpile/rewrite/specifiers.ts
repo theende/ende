@@ -1,0 +1,31 @@
+import { a } from "./a.ts";
+import b from "../b.tsx";
+import "./side.mts";
+import c from "./c.cts";
+import d from "./d.jsx";
+import { e } from "./e.ts?v=1#top";
+import type { T } from "./types.ts";
+import { type U } from "./types_inline.ts";
+import { f } from "./f.d.ts";
+import g from "./g.js";
+import h from "./h.json" with { type: "json" };
+import { join } from "jsr:@std/path@1/join.ts";
+import i from "npm:pkg/i.ts";
+import j from "https://example.com/j.ts";
+import k from "bare/k.ts";
+import l from "/abs/l.ts";
+import m from "file:///abs/m.ts";
+export * from "./reexport_all.ts";
+export * as ns from "./reexport_ns.tsx";
+export { n } from "../reexport_named.mts";
+export type { V } from "./reexport_type.ts";
+
+const dyn = await import("./dyn.ts");
+const dynWith = await import("./dyn_with.ts", { with: {} });
+const name = "./not_an_import.ts";
+const nonLiteral = await import(name);
+const template = await import(`./template.ts`);
+
+const t: T | U | undefined = undefined;
+console.log(a, b, c, d, e, f, g, h, join, i, j, k, l, m, t);
+console.log(dyn, dynWith, nonLiteral, template);

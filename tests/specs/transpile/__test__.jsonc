@@ -161,6 +161,54 @@
           "output": "3\nout.mjs\n"
         }
       ]
+    },
+    "rewrite_specifiers": {
+      "args": "transpile rewrite/specifiers.ts",
+      "output": "rewrite_specifiers.out"
+    },
+    "rewrite_require_cts": {
+      "args": "transpile rewrite/require.cts",
+      "output": "rewrite_require.out"
+    },
+    "rewrite_project": {
+      "steps": [
+        {
+          "args": "transpile rewrite/app/main.ts rewrite/app/util.ts rewrite/app/types.ts rewrite/app/dynamic.ts --outdir dist",
+          "output": "rewrite_project_emit.out"
+        },
+        {
+          "args": "run dist/rewrite/app/main.js",
+          "output": "3\n42\n"
+        },
+        {
+          "args": "run rewrite/check_reexport.js",
+          "output": "3\n42\n{ x: 0, y: 0 }\n"
+        }
+      ]
+    },
+    "rewrite_declarations": {
+      "steps": [
+        {
+          "args": "transpile rewrite/decl/main.ts rewrite/decl/lib/types.ts rewrite/decl/lib/consts.mts rewrite/decl/lib/util.tsx rewrite/decl/lib/legacy.cts --outdir dist --declaration",
+          "output": "[WILDCARD]Emit [WILDCARD]main.d.ts\n"
+        },
+        {
+          "args": "run --allow-read rewrite/print_declarations.ts",
+          "output": "rewrite_declarations.out"
+        }
+      ]
+    },
+    "rewrite_source_map": {
+      "steps": [
+        {
+          "args": "transpile rewrite/sourcemap.ts -o out.js --source-map separate",
+          "output": "source_map_separate_emit.out"
+        },
+        {
+          "args": "run --allow-read rewrite/check_sourcemap.ts",
+          "output": "import(\"./dynamic.js\").then((m)=>console.log(add(m.value, 1)));\ntrue\ntrue\n"
+        }
+      ]
     }
   }
 }
