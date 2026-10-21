@@ -209,6 +209,55 @@
           "output": "import(\"./dynamic.js\").then((m)=>console.log(add(m.value, 1)));\ntrue\ntrue\n"
         }
       ]
+    },
+    "skip_declaration_arguments": {
+      "steps": [
+        {
+          "args": "transpile declaration_inputs/main.ts declaration_inputs/types.d.ts declaration_inputs/consts.d.mts declaration_inputs/legacy.d.cts declaration_inputs/styles.d.css.ts --outdir dist",
+          "output": "skip_declaration_arguments.out"
+        },
+        {
+          "args": "run --allow-read declaration_inputs/list_dist.ts",
+          "output": "dist/declaration_inputs/main.js\n"
+        },
+        {
+          "args": "run dist/declaration_inputs/main.js",
+          "output": "{ x: 0, y: 0 }\n"
+        }
+      ]
+    },
+    "skip_declaration_output_flag": {
+      "steps": [
+        {
+          "args": "transpile declaration_inputs/main.ts declaration_inputs/types.d.ts -o out.js",
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nSkip [WILDLINE]types.d.ts (declaration file)\nEmit [WILDLINE]out.js\n"
+        },
+        {
+          "args": "run out.js",
+          "output": "{ x: 0, y: 0 }\n"
+        }
+      ]
+    },
+    "skip_declaration_stdout": {
+      "args": "transpile declaration_inputs/types.d.ts declaration_inputs/main.ts",
+      "output": "skip_declaration_stdout.out"
+    },
+    "skip_declaration_only": {
+      "args": "transpile declaration_inputs/types.d.ts declaration_inputs/globals.d.ts",
+      "output": "skip_declaration_only.out",
+      "exitCode": 1
+    },
+    "skip_declaration_type_check": {
+      "steps": [
+        {
+          "args": "transpile declaration_inputs/main.ts declaration_inputs/version.ts declaration_inputs/globals.d.ts --outdir dist --declaration",
+          "output": "skip_declaration_type_check.out"
+        },
+        {
+          "args": "run --allow-read declaration_inputs/list_dist.ts",
+          "output": "dist/declaration_inputs/main.d.ts\ndist/declaration_inputs/main.js\ndist/declaration_inputs/version.d.ts\ndist/declaration_inputs/version.js\n"
+        }
+      ]
     }
   }
 }

@@ -1,0 +1,4 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+Skip [WILDLINE]types.d.ts (declaration file)
+Skip [WILDLINE]globals.d.ts (declaration file)
+error: No emittable files found. Only TypeScript/JSX/TSX files can be transpiled.

@@ -1,0 +1,7 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+Skip [WILDLINE]types.d.ts (declaration file)
+export const origin = {
+  x: 0,
+  y: 0
+};
+console.log(origin);

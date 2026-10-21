@@ -39,7 +39,13 @@ pub async fn transpile(
     anyhow::bail!("No input files specified");
   }
 
-  if files.len() > 1 && transpile_flags.output.is_some() {
+  // Declaration files are skipped below, so they don't count as inputs.
+  let input_count = files
+    .iter()
+    .filter(|file| !MediaType::from_path(Path::new(file)).is_declaration())
+    .count();
+
+  if input_count > 1 && transpile_flags.output.is_some() {
     anyhow::bail!(
       "Cannot use --output with multiple input files. Use --outdir instead."
     );
@@ -54,7 +60,7 @@ pub async fn transpile(
     );
   }
 
-  let is_stdout_mode = files.len() == 1
+  let is_stdout_mode = input_count == 1
     && transpile_flags.output.is_none()
     && transpile_flags.output_dir.is_none();
 
@@ -83,11 +89,14 @@ pub async fn transpile(
 
   // Collect file paths and specifiers
   let mut file_entries = Vec::new();
+  // Declaration files have nothing to emit, but stay in the program that
+  // --declaration type-checks so the ambient types they declare resolve.
+  let mut declaration_entries = Vec::new();
   for file_path_str in files {
     let file_path = cwd.join(file_path_str);
 
     let media_type = MediaType::from_path(&file_path);
-    if !media_type.is_emittable() {
+    if !media_type.is_emittable() && !media_type.is_declaration() {
       log::warn!(
         "{} Skipping {} (not a TypeScript/JSX/TSX file)",
         colors::yellow("Warning"),
@@ -101,7 +110,16 @@ pub async fn transpile(
         anyhow::anyhow!("Invalid file path: {}", file_path.display())
       })?;
 
-    file_entries.push((file_path, specifier, media_type));
+    if media_type.is_declaration() {
+      log::info!(
+        "{} {} (declaration file)",
+        colors::green("Skip"),
+        file_path.display()
+      );
+      declaration_entries.push((specifier, media_type));
+    } else {
+      file_entries.push((file_path, specifier, media_type));
+    }
   }
 
   if file_entries.is_empty() {
@@ -241,7 +259,14 @@ pub async fn transpile(
 
   // Generate .d.ts declaration files if requested
   if transpile_flags.declaration && !file_entries.is_empty() {
-    emit_declarations(&factory, &transpile_flags, &file_entries, cwd).await?;
+    emit_declarations(
+      &factory,
+      &transpile_flags,
+      &file_entries,
+      declaration_entries,
+      cwd,
+    )
+    .await?;
   }
 
   Ok(())
@@ -251,6 +276,7 @@ async fn emit_declarations(
   factory: &CliFactory,
   transpile_flags: &TranspileFlags,
   file_entries: &[(PathBuf, ModuleSpecifier, MediaType)],
+  declaration_entries: Vec<(ModuleSpecifier, MediaType)>,
   cwd: &Path,
 ) -> Result<(), AnyError> {
   let cli_options = factory.cli_options()?;
@@ -261,6 +287,7 @@ async fn emit_declarations(
   let root_names: Vec<(ModuleSpecifier, MediaType)> = file_entries
     .iter()
     .map(|(_, specifier, media_type)| (specifier.clone(), *media_type))
+    .chain(declaration_entries)
     .collect();
 
   let specifiers: Vec<ModuleSpecifier> =

@@ -1,0 +1,6 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+Skip [WILDLINE]types.d.ts (declaration file)
+Skip [WILDLINE]consts.d.mts (declaration file)
+Skip [WILDLINE]legacy.d.cts (declaration file)
+Skip [WILDLINE]styles.d.css.ts (declaration file)
+Emit [WILDLINE]main.js
