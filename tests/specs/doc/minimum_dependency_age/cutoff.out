@@ -1,0 +1,7 @@
+Download http://127.0.0.1:4250/@endetest/add/meta.json
+Download http://127.0.0.1:4250/@endetest/add/0.2.0_meta.json
+Download http://127.0.0.1:4250/@endetest/add/0.2.0/mod.ts
+Defined in http://127.0.0.1:4250/@endetest/add/0.2.0/mod.ts:1:1
+
+function sum(a: number, b: number): number
+

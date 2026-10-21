@@ -2796,6 +2796,43 @@ fn doc_import_map() {
 }
 
 #[test]
+fn doc_compile_args() {
+  let flags = flags_from_vec(svec![
+    "ende",
+    "doc",
+    "--config=ende.jsonc",
+    "--vendor",
+    "--cert=example.crt",
+    "--unsafely-ignore-certificate-errors=example.com",
+    "script.ts"
+  ])
+  .unwrap();
+  assert_eq!(flags.config_flag, ConfigFlag::Path("ende.jsonc".to_owned()));
+  assert_eq!(flags.vendor, Some(true));
+  assert_eq!(flags.ca_data, Some(CaData::File("example.crt".to_owned())));
+  assert_eq!(
+    flags.unsafely_ignore_certificate_errors,
+    Some(vec!["example.com".to_owned()])
+  );
+
+  let flags =
+    flags_from_vec(svec!["ende", "doc", "--no-config", "script.ts"]).unwrap();
+  assert_eq!(flags.config_flag, ConfigFlag::Disabled);
+}
+
+#[test]
+fn doc_minimum_dependency_age() {
+  for flag in ["--minimum-dependency-age=0", "--min-dep-age=0"] {
+    let flags =
+      flags_from_vec(svec!["ende", "doc", flag, "script.ts"]).unwrap();
+    assert_eq!(
+      flags.minimum_dependency_age,
+      Some(NewestDependencyDate::Disabled)
+    );
+  }
+}
+
+#[test]
 fn run_env_default() {
   let r = flags_from_vec(svec!["ende", "run", "--env", "script.ts"]);
   assert_eq!(

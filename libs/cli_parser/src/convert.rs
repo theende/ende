@@ -1824,10 +1824,7 @@ fn info_parse(result: &ParseResult, flags: &mut Flags) {
 }
 
 fn doc_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
-  import_map_arg_parse(result, flags);
-  reload_arg_parse(result, flags);
-  lock_args_parse(result, flags);
-  no_remote_arg_parse(result, flags);
+  compile_args_without_check_parse(result, flags);
   allow_and_deny_import_parse(result, flags);
 
   let has_builtin = result.get_bool("builtin");

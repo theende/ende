@@ -1,0 +1,23 @@
+{
+  "tempDir": true,
+  "tests": {
+    "flag": {
+      // The cutoff sits between 0.2.0 (2025-01-20) and 0.2.1 (2025-05-20), so
+      // 0.2.0 is documented instead of the newest 1.0.0.
+      "args": "doc --minimum-dependency-age=2025-05-01T20:00:00.000Z jsr:@endetest/add",
+      "output": "cutoff.out"
+    },
+    "config": {
+      // Same cutoff, set by `minimumDependencyAge` in ende.json.
+      "cwd": "config",
+      "args": "doc jsr:@endetest/add",
+      "output": "cutoff.out"
+    },
+    "flag_overrides_config": {
+      // `--minimum-dependency-age=0` disables the ende.json cutoff.
+      "cwd": "config",
+      "args": "doc --minimum-dependency-age=0 jsr:@endetest/add",
+      "output": "latest.out"
+    }
+  }
+}

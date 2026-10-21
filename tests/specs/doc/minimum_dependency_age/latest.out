@@ -1,0 +1,7 @@
+Download http://127.0.0.1:4250/@endetest/add/meta.json
+Download http://127.0.0.1:4250/@endetest/add/1.0.0_meta.json
+Download http://127.0.0.1:4250/@endetest/add/1.0.0/mod.ts
+Defined in http://127.0.0.1:4250/@endetest/add/1.0.0/mod.ts:0:1
+
+function add(a: number, b: number): number
+
