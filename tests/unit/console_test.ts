@@ -1179,6 +1179,64 @@ Deno.test(function consoleTestWithCustomInspectFunction() {
   assertEquals(stringify(a), "b");
 });
 
+Deno.test(function consoleTestWithEndeCustomInspector() {
+  class A {
+    [Symbol.for("Ende.customInspect")](
+      inspect: unknown,
+      options: Deno.InspectOptions,
+    ): string {
+      assertEquals(typeof inspect, "function");
+      assertEquals(typeof options, "object");
+      return "b";
+    }
+  }
+
+  assertEquals(stringify(new A()), "b");
+  assertEquals(Deno.inspect(new A()), "b");
+});
+
+Deno.test(function consoleTestWithEndeAndDenoCustomInspector() {
+  class A {
+    [Symbol.for("Ende.customInspect")]() {
+      return "ende";
+    }
+    [customInspect]() {
+      return "deno";
+    }
+  }
+
+  assertEquals(stringify(new A()), "ende");
+  assertEquals(Deno.inspect(new A()), "ende");
+});
+
+Deno.test(function consoleTestWithPrivateCustomInspector() {
+  class EndeOnly {
+    [Symbol.for("Ende.privateCustomInspect")]() {
+      return "ende";
+    }
+  }
+  class DenoOnly {
+    [Symbol.for("Deno.privateCustomInspect")]() {
+      return "deno";
+    }
+  }
+  class Both {
+    [Symbol.for("Ende.privateCustomInspect")]() {
+      return "ende";
+    }
+    [Symbol.for("Deno.privateCustomInspect")]() {
+      return "deno";
+    }
+  }
+
+  assertEquals(stringify(new EndeOnly()), "ende");
+  assertEquals(Deno.inspect(new EndeOnly()), "ende");
+  assertEquals(stringify(new DenoOnly()), "deno");
+  assertEquals(Deno.inspect(new DenoOnly()), "deno");
+  assertEquals(stringify(new Both()), "ende");
+  assertEquals(Deno.inspect(new Both()), "ende");
+});
+
 Deno.test(function consoleTestWithIntegerFormatSpecifier() {
   assertEquals(stringify("%i"), "%i");
   assertEquals(stringify("%i", 42.0), "42");
@@ -2823,7 +2881,9 @@ Deno.test(function inspectProxyDoesNotTriggerGetTrap() {
 
   const inspectSymbols = [
     Symbol.for("nodejs.util.inspect.custom"),
+    Symbol.for("Ende.customInspect"),
     Symbol.for("Deno.customInspect"),
+    Symbol.for("Ende.privateCustomInspect"),
     Symbol.for("Deno.privateCustomInspect"),
   ];
   for (const sym of inspectSymbols) {

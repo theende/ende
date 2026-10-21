@@ -4472,14 +4472,14 @@ declare namespace Ende {
    * ```
    *
    * A custom inspect functions can be registered on objects, via the symbol
-   * `Symbol.for("Deno.customInspect")`, to control and customize the output
+   * `Symbol.for("Ende.customInspect")`, to control and customize the output
    * of `inspect()` or when using `console` logging:
    *
    * ```ts
    * class A {
    *   x = 10;
    *   y = "hello";
-   *   [Symbol.for("Deno.customInspect")]() {
+   *   [Symbol.for("Ende.customInspect")]() {
    *     return `x=${this.x}, y=${this.y}`;
    *   }
    * }
@@ -4487,6 +4487,9 @@ declare namespace Ende {
    * const inStringFormat = Ende.inspect(new A()); // "x=10, y=hello"
    * console.log(inStringFormat);  // prints "x=10, y=hello"
    * ```
+   *
+   * `Symbol.for("Deno.customInspect")` still works. If an object has both,
+   * the `Ende` one is used.
    *
    * A depth can be specified by using the `depth` option:
    *

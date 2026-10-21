@@ -696,12 +696,20 @@ fn try_custom_inspect<'s, 'i>(
     return Ok(None);
   };
 
+  // The Ende keys win over the Deno keys, which stay supported for std and
+  // third-party code.
+  let ende_custom_inspect = symbol_for(scope, "Ende.customInspect");
   let custom_inspect = symbol_for(scope, "Deno.customInspect");
+  let ende_private_custom_inspect =
+    symbol_for(scope, "Ende.privateCustomInspect");
   let private_custom_inspect = symbol_for(scope, "Deno.privateCustomInspect");
 
-  for (sym, _private) in
-    [(custom_inspect, false), (private_custom_inspect, true)]
-  {
+  for (sym, _private) in [
+    (ende_custom_inspect, false),
+    (custom_inspect, false),
+    (ende_private_custom_inspect, true),
+    (private_custom_inspect, true),
+  ] {
     // ReflectHas walks the prototype chain.
     let has = {
       v8::tc_scope!(tc, scope);
