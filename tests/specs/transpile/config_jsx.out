@@ -1,0 +1,5 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+import { jsx as _jsx } from "preact/jsx-runtime";
+export default /*#__PURE__*/ _jsx("div", {
+  children: "Hello"
+});

@@ -504,6 +504,50 @@
           "output": "no dist\n"
         }
       ]
+    },
+    "config_flag_missing": {
+      "args": "transpile --config missing.json compile_args/component.tsx",
+      "output": "config_flag_missing.out",
+      "exitCode": 1
+    },
+    // The compilerOptions of the --config file apply to the emit, also for
+    // inputs outside the config's directory.
+    "config_flag_jsx": {
+      "args": "transpile --config compile_args/cfg/ende.json compile_args/component.tsx",
+      "output": "config_jsx.out"
+    },
+    "no_config": {
+      "steps": [
+        {
+          "cwd": "compile_args/discovered",
+          "args": "transpile component.tsx",
+          "output": "config_jsx.out"
+        },
+        {
+          "cwd": "compile_args/discovered",
+          "args": "transpile --no-config component.tsx",
+          "output": "no_config_jsx.out"
+        }
+      ]
+    },
+    "import_map_flag": {
+      "steps": [
+        {
+          "args": "transpile --check compile_args/import_map/main.ts --outdir dist",
+          "output": "[WILDCARD]Import \"greet\" not a dependency[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "transpile --check --import-map compile_args/import_map/map.json compile_args/import_map/main.ts --outdir dist",
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nCheck [WILDLINE]main.ts\nEmit [WILDLINE]main.js\n"
+        }
+      ]
+    },
+    // The cutoff sits between 0.2.0 (2025-01-20) and 0.2.1 (2025-05-20), so
+    // 0.2.0 is type-checked instead of the newest 1.0.0, which has no sum().
+    "minimum_dependency_age_flag": {
+      "args": "transpile --check --minimum-dependency-age=2025-05-01T20:00:00.000Z compile_args/min_dep_age/main.ts --outdir dist",
+      "output": "minimum_dependency_age.out"
     }
   }
 }

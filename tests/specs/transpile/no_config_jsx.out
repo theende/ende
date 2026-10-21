@@ -1,0 +1,2 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+export default /*#__PURE__*/ React.createElement("div", null, "Hello");

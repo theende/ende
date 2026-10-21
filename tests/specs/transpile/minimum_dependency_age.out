@@ -1,0 +1,6 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+Download http://127.0.0.1:4250/@endetest/add/meta.json
+Download http://127.0.0.1:4250/@endetest/add/0.2.0_meta.json
+Download http://127.0.0.1:4250/@endetest/add/0.2.0/mod.ts
+Check [WILDLINE]main.ts
+Emit [WILDLINE]main.js

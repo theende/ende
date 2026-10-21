@@ -2565,8 +2565,7 @@ fn transpile_parse(result: &ParseResult, flags: &mut Flags) {
   if declaration {
     flags.type_check_mode = TypeCheckMode::Local;
   }
-  no_check_arg_parse(result, flags);
-  check_arg_parse(result, flags);
+  compile_args_parse(result, flags);
   let files = result
     .get_many("file")
     .map(|v| v.iter().map(|s| s.to_string()).collect())

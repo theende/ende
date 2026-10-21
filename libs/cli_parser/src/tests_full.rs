@@ -8087,6 +8087,55 @@ fn transpile_all_flags() {
   );
 }
 
+#[test]
+fn transpile_compile_args() {
+  let flags = flags_from_vec(svec![
+    "ende",
+    "transpile",
+    "--config=ende.jsonc",
+    "--import-map=import_map.json",
+    "--no-remote",
+    "--vendor",
+    "--reload",
+    "--lock=ende.lock",
+    "--frozen",
+    "--cert=example.crt",
+    "--unsafely-ignore-certificate-errors=example.com",
+    "--minimum-dependency-age=0",
+    "--check",
+    "main.ts"
+  ])
+  .unwrap();
+  assert_eq!(flags.config_flag, ConfigFlag::Path("ende.jsonc".to_owned()));
+  assert_eq!(flags.import_map_path, Some("import_map.json".to_owned()));
+  assert!(flags.no_remote);
+  assert_eq!(flags.vendor, Some(true));
+  assert!(flags.reload);
+  assert_eq!(flags.lock, Some("ende.lock".to_owned()));
+  assert_eq!(flags.frozen_lockfile, Some(true));
+  assert_eq!(flags.ca_data, Some(CaData::File("example.crt".to_owned())));
+  assert_eq!(
+    flags.unsafely_ignore_certificate_errors,
+    Some(vec!["example.com".to_owned()])
+  );
+  assert_eq!(
+    flags.minimum_dependency_age,
+    Some(NewestDependencyDate::Disabled)
+  );
+  assert_eq!(flags.type_check_mode, TypeCheckMode::Local);
+
+  let flags = flags_from_vec(svec![
+    "ende",
+    "transpile",
+    "--no-config",
+    "--no-lock",
+    "main.ts"
+  ])
+  .unwrap();
+  assert_eq!(flags.config_flag, ConfigFlag::Disabled);
+  assert!(flags.no_lock);
+}
+
 // ---------------------------------------------------------------------------
 // Tier-1 functionality-parity tests: flags that existed in clap but were
 // missing/unreachable in the new parser (see the parity audit).
