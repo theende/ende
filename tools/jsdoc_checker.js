@@ -91,8 +91,106 @@ for (const file of project.getSourceFiles()) {
   }
 }
 
+// Every unstable API names the flag that enables it, as a sentence of the form
+// "Requires the `--unstable-cron` flag, or `"unstable": ["cron"]` in
+// `ende.json`." This applies to each `@experimental` JSDoc whose enclosing
+// declarations aren't `@experimental` themselves; members of an unstable
+// namespace, class or interface are covered by their parent's sentence.
+const unstableFlagSentence =
+  /Requires the `--unstable-([a-z0-9-]+)` flag, or `"unstable": \["([a-z0-9-]+)"\]` in `ende\.json`\./;
+const unstableFeatureNames = new Set(
+  Deno.readTextFileSync(join(ROOT_PATH, "runtime/features/data.rs"))
+    .matchAll(/^\s*name: "([a-z0-9-]+)",$/gm)
+    .map((match) => match[1]),
+);
+
+// `@experimental` symbols that are available without any `--unstable-*` flag.
+const geometryReason =
+  "Geometry Interfaces are always exposed (runtime/js/98_global_scope_shared.js)";
+const spawnReason =
+  "always defined on the Ende namespace (runtime/js/90_ende_ns.js)";
+const v8Reason = "V8 built-in, available without a flag";
+const noUnstableFlag = {
+  "Ende.spawn": spawnReason,
+  "Ende.spawnAndWait": spawnReason,
+  "Ende.spawnAndWaitSync": spawnReason,
+  "Ende.lint":
+    "types for `ende lint` plugins; `runPlugin` works under `ende test`",
+  "WebSocketOptions.client":
+    "accepted by `new WebSocket()` without a flag (ext/websocket/01_websocket.js)",
+  "Intl": v8Reason,
+  "RegExpConstructor": v8Reason,
+  "Uint8Array": v8Reason,
+  "Uint8ArrayConstructor": v8Reason,
+  "DOMMatrix2DInit": geometryReason,
+  "DOMMatrixInit": geometryReason,
+  "DOMMatrix": geometryReason,
+  "DOMMatrixReadOnly": geometryReason,
+  "DOMPointInit": geometryReason,
+  "DOMPoint": geometryReason,
+  "DOMPointReadOnly": geometryReason,
+  "DOMQuadInit": geometryReason,
+  "DOMQuad": geometryReason,
+  "DOMRectInit": geometryReason,
+  "DOMRect": geometryReason,
+  "DOMRectReadOnly": geometryReason,
+};
+
+for (const file of project.getSourceFiles()) {
+  for (const jsDoc of file.getDescendantsOfKind(ts.SyntaxKind.JSDoc)) {
+    if (!isExperimental(jsDoc)) {
+      continue;
+    }
+    const node = jsDoc.getParent();
+    const coveredByParent = node.getAncestors().some((ancestor) =>
+      Node.isJSDocable(ancestor) && ancestor.getJsDocs().some(isExperimental)
+    );
+    const name = getQualifiedName(node);
+    if (coveredByParent || Object.hasOwn(noUnstableFlag, name)) {
+      continue;
+    }
+
+    const text = jsDoc.getText().replace(/\s*\n\s*\*\s*/g, " ");
+    const match = unstableFlagSentence.exec(text);
+    const line = node.getStartLineNumber();
+    const prefix = `Symbol ${name} at file://${file.getFilePath()}:${line} `;
+    if (!match) {
+      errors.push(
+        prefix +
+          'is @experimental but is missing a "Requires the `--unstable-<name>` flag, ' +
+          'or `"unstable": ["<name>"]` in `ende.json`." sentence (or an entry in ' +
+          "noUnstableFlag in tools/jsdoc_checker.js if no flag is needed)",
+      );
+    } else if (match[1] !== match[2] || !unstableFeatureNames.has(match[1])) {
+      errors.push(
+        prefix +
+          `names an unknown unstable feature "${match[1]}"/"${match[2]}" ` +
+          "(see runtime/features/data.rs)",
+      );
+    }
+  }
+}
+
 if (errors.length > 0) {
   throw new AggregateError(errors);
+}
+
+function isExperimental(jsDoc) {
+  return jsDoc.getTags().some((tag) => tag.getTagName() === "experimental");
+}
+
+function getQualifiedName(node) {
+  return [...node.getAncestors().reverse(), node]
+    .filter((n) =>
+      n === node || Node.isModuleDeclaration(n) ||
+      Node.isInterfaceDeclaration(n) || Node.isClassDeclaration(n)
+    )
+    .map((n) => {
+      if (Node.isVariableStatement(n)) return n.getDeclarations()[0].getName();
+      if (Node.isConstructorDeclaration(n)) return "constructor";
+      return n.getName();
+    })
+    .join(".");
 }
 
 function isBrandVarStmt(node) {

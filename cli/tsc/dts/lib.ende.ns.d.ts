@@ -5810,6 +5810,9 @@ declare namespace Ende {
    * Options that can be passed to `Ende.serve` to create a server listening on
    * a VSOCK socket.
    *
+   * Requires the `--unstable-vsock` flag, or `"unstable": ["vsock"]` in
+   * `ende.json`.
+   *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
    * @category HTTP Server
@@ -5927,6 +5930,9 @@ declare namespace Ende {
     handler: ServeHandler<Ende.UnixAddr>,
   ): HttpServer<Ende.UnixAddr>;
   /** Serves HTTP requests with the given option bag and handler.
+   *
+   * Requires the `--unstable-vsock` flag, or `"unstable": ["vsock"]` in
+   * `ende.json`.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
@@ -6070,6 +6076,9 @@ declare namespace Ende {
   /** Serves HTTP requests with the given option bag.
    *
    * The VSOCK address family facilitates communication between virtual machines and the host they are running on: https://man7.org/linux/man-pages/man7/vsock.7.html
+   *
+   * Requires the `--unstable-vsock` flag, or `"unstable": ["vsock"]` in
+   * `ende.json`.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *

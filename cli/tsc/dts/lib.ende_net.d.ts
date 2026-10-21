@@ -32,6 +32,9 @@ declare namespace Ende {
   /** The address of a network connection or listener using the VSOCK transport
    * for communication between a virtual machine and its host.
    *
+   * Requires the `--unstable-vsock` flag, or `"unstable": ["vsock"]` in
+   * `ende.json`.
+   *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    * @category Network
    */
@@ -104,6 +107,9 @@ declare namespace Ende {
   export type UnixListener = Listener<UnixConn, UnixAddr>;
 
   /** Specialized listener that accepts VSOCK connections.
+   *
+   * Requires the `--unstable-vsock` flag, or `"unstable": ["vsock"]` in
+   * `ende.json`.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
@@ -299,6 +305,9 @@ declare namespace Ende {
   /** Options which can be set when opening a VSOCK listener via
    * {@linkcode Ende.listen}.
    *
+   * Requires the `--unstable-vsock` flag, or `"unstable": ["vsock"]` in
+   * `ende.json`.
+   *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
    * @category Network
@@ -312,6 +321,9 @@ declare namespace Ende {
   }
 
   /** Listen announces on the local transport address.
+   *
+   * Requires the `--unstable-vsock` flag, or `"unstable": ["vsock"]` in
+   * `ende.json`.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
@@ -511,6 +523,9 @@ declare namespace Ende {
   /** Options which can be set when connecting over VSOCK via
    * {@linkcode Ende.connect}.
    *
+   * Requires the `--unstable-vsock` flag, or `"unstable": ["vsock"]` in
+   * `ende.json`.
+   *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    * @category Network
    */
@@ -530,6 +545,9 @@ declare namespace Ende {
 
   /** Connects to the hostname (default is "127.0.0.1") and port on the named
    * transport (default is "tcp"), and resolves to the connection (`Conn`).
+   *
+   * Requires the `--unstable-vsock` flag, or `"unstable": ["vsock"]` in
+   * `ende.json`.
    *
    * @experimental **UNSTABLE**: New API, yet to be vetted.
    *
@@ -692,6 +710,10 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @category Network
    */
@@ -710,6 +732,10 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @category Network
    */
@@ -746,6 +772,10 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @category Network
    */
@@ -781,6 +811,10 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @category Network
    */
@@ -803,6 +837,10 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @category Network
    */
@@ -819,6 +857,10 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @category Network
    */
@@ -838,6 +880,10 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @category Network
    */
@@ -850,6 +896,9 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
    *
    * @experimental
    * @category Network
@@ -868,6 +917,10 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @category Network
    */
@@ -906,6 +959,9 @@ declare namespace Ende {
    * **UNSTABLE**: New API, yet to be vetted.
    * Specialized listener that accepts QUIC connections.
    *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @category Network
    */
@@ -930,6 +986,9 @@ declare namespace Ende {
    * **UNSTABLE**: New API, yet to be vetted.
    * An incoming connection for which the server has not yet begun its part of
    * the handshake.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
    *
    * @experimental
    * @category Network
@@ -972,6 +1031,9 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
    *
    * @experimental
    * @category Network
@@ -1025,6 +1087,9 @@ declare namespace Ende {
   /**
    * **UNSTABLE**: New API, yet to be vetted.
    *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @category Network
    */
@@ -1037,6 +1102,9 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
    *
    * @experimental
    * @category Network
@@ -1055,6 +1123,9 @@ declare namespace Ende {
 
   /**
    * **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
    *
    * @experimental
    * @category Network
@@ -1086,6 +1157,9 @@ declare namespace Ende {
    *
    * Requires `allow-net` permission.
    *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @experimental
    * @tags allow-net
    * @category Network
@@ -1098,6 +1172,9 @@ declare namespace Ende {
    * **UNSTABLE**: New API, yet to be vetted.
    *
    * Upgrade a QUIC connection into a WebTransport instance.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
    *
    * @category Network
    * @experimental

@@ -22,6 +22,9 @@ declare namespace Ende {
    *  | "x11" (Linux)     | Xlib `Window` | Xlib `Display*` |
    *  | "wayland" (Linux) | `wl_surface*` | `wl_display*`   |
    *
+   * Requires the `--unstable-webgpu` flag, or `"unstable": ["webgpu"]` in
+   * `ende.json`.
+   *
    * @category GPU
    * @experimental
    */
@@ -53,6 +56,9 @@ declare namespace Ende {
    *
    * Represents membership of a IPv4 multicast group.
    *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @category Network
    * @experimental
    */
@@ -69,6 +75,9 @@ declare namespace Ende {
    *
    * Represents membership of a IPv6 multicast group.
    *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @category Network
    * @experimental
    */
@@ -82,6 +91,9 @@ declare namespace Ende {
   /** **UNSTABLE**: New API, yet to be vetted.
    *
    * A generic transport listener for message-oriented protocols.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
    *
    * @category Network
    * @experimental
@@ -120,6 +132,9 @@ declare namespace Ende {
   }
 
   /**
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @category Network
    * @experimental
    */
@@ -142,6 +157,9 @@ declare namespace Ende {
    *
    * Unstable options which can be set when opening a datagram listener via
    * {@linkcode Ende.listenDatagram}.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
    *
    * @category Network
    * @experimental
@@ -178,6 +196,9 @@ declare namespace Ende {
    *
    * Requires `allow-net` permission.
    *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @tags allow-net
    * @category Network
    * @experimental
@@ -190,6 +211,9 @@ declare namespace Ende {
    *
    * Unstable options which can be set when opening a `unixpacket` datagram
    * listener via {@linkcode Ende.listenDatagram}.
+   *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
    *
    * @category Network
    * @experimental
@@ -215,6 +239,9 @@ declare namespace Ende {
    * `allow-net` grant may be scoped to the socket path with
    * `--allow-net=unix:<absolute-path>`.
    *
+   * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in
+   * `ende.json`.
+   *
    * @tags allow-read, allow-write, allow-net
    * @category Network
    * @experimental
@@ -227,6 +254,10 @@ declare namespace Ende {
    *
    * CronScheduleExpression is used as the type of `minute`, `hour`,
    * `dayOfMonth`, `month`, and `dayOfWeek` in {@linkcode CronSchedule}.
+   *
+   * Requires the `--unstable-cron` flag, or `"unstable": ["cron"]` in
+   * `ende.json`.
+   *
    * @category Cloud
    * @experimental
    */
@@ -240,6 +271,10 @@ declare namespace Ende {
    *
    * CronSchedule is the interface used for JSON format
    * cron `schedule`.
+   *
+   * Requires the `--unstable-cron` flag, or `"unstable": ["cron"]` in
+   * `ende.json`.
+   *
    * @category Cloud
    * @experimental
    */
@@ -256,8 +291,8 @@ declare namespace Ende {
    * Create a cron job that will periodically execute the provided handler
    * callback based on the specified schedule.
    *
-   * This is an unstable API and requires the `--unstable-cron` flag to be
-   * passed when running Ende.
+   * Requires the `--unstable-cron` flag, or `"unstable": ["cron"]` in
+   * `ende.json`.
    *
    * ```ts
    * Ende.cron("sample cron", "20 * * * *", () => {
@@ -329,6 +364,9 @@ declare namespace Ende {
    * // Later, stop the cron job from running again.
    * ac.abort();
    * ```
+   *
+   * Requires the `--unstable-cron` flag, or `"unstable": ["cron"]` in
+   * `ende.json`.
    *
    * @category Cloud
    * @experimental
@@ -3445,6 +3483,9 @@ declare namespace Ende {
    * The webgpu namespace provides additional APIs that the WebGPU specification
    * does not specify.
    *
+   * Requires the `--unstable-webgpu` flag, or `"unstable": ["webgpu"]` in
+   * `ende.json`.
+   *
    * @category GPU
    * @experimental
    */
@@ -3479,6 +3520,9 @@ declare namespace Ende {
 }
 
 /** **UNSTABLE**: New API, yet to be vetted.
+ *
+ * Requires the `--unstable-worker-options` flag, or
+ * `"unstable": ["worker-options"]` in `ende.json`.
  *
  * @category Workers
  * @experimental
@@ -3530,6 +3574,8 @@ interface WorkerOptions {
 
 /** **UNSTABLE**: New API, yet to be vetted.
  *
+ * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in `ende.json`.
+ *
  * @category WebSockets
  * @experimental
  */
@@ -3540,6 +3586,8 @@ interface WebSocketStreamOptions {
 }
 
 /** **UNSTABLE**: New API, yet to be vetted.
+ *
+ * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in `ende.json`.
  *
  * @category WebSockets
  * @experimental
@@ -3553,6 +3601,8 @@ interface WebSocketConnection {
 
 /** **UNSTABLE**: New API, yet to be vetted.
  *
+ * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in `ende.json`.
+ *
  * @category WebSockets
  * @experimental
  */
@@ -3562,6 +3612,8 @@ interface WebSocketCloseInfo {
 }
 
 /** **UNSTABLE**: New API, yet to be vetted.
+ *
+ * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in `ende.json`.
  *
  * @tags allow-net
  * @category WebSockets
@@ -3576,6 +3628,8 @@ interface WebSocketStream {
 
 /** **UNSTABLE**: New API, yet to be vetted.
  *
+ * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in `ende.json`.
+ *
  * @tags allow-net
  * @category WebSockets
  * @experimental
@@ -3587,6 +3641,8 @@ declare var WebSocketStream: {
 
 /** **UNSTABLE**: New API, yet to be vetted.
  *
+ * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in `ende.json`.
+ *
  * @tags allow-net
  * @category WebSockets
  * @experimental
@@ -3597,6 +3653,8 @@ interface WebSocketError extends DOMException {
 }
 
 /** **UNSTABLE**: New API, yet to be vetted.
+ *
+ * Requires the `--unstable-net` flag, or `"unstable": ["net"]` in `ende.json`.
  *
  * @tags allow-net
  * @category WebSockets
@@ -3873,8 +3931,8 @@ interface Uint8ArrayConstructor {
 /** **UNSTABLE**: New API, yet to be vetted.
  *
  * A single CSS rule of a {@linkcode CSSStyleSheet}, as returned from its
- * `cssRules` property. Available only when the `--unstable-raw-imports` flag
- * is enabled.
+ * `cssRules` property. Requires the `--unstable-raw-imports` flag, or
+ * `"unstable": ["raw-imports"]` in `ende.json`.
  *
  * Note: `cssText` is the verbatim text of one top-level rule of the style
  * sheet; Ende does not implement a full CSS object model.
@@ -3888,6 +3946,9 @@ interface CSSRule {
 
 /** **UNSTABLE**: New API, yet to be vetted.
  *
+ * Requires the `--unstable-raw-imports` flag, or `"unstable": ["raw-imports"]`
+ * in `ende.json`.
+ *
  * @category Platform
  * @experimental
  */
@@ -3900,7 +3961,8 @@ declare var CSSRule: {
  *
  * A style sheet backing a CSS module script. This is what a
  * `import sheet from "./styles.css" with { type: "css" }` import evaluates
- * to. Available only when the `--unstable-raw-imports` flag is enabled.
+ * to. Requires the `--unstable-raw-imports` flag, or
+ * `"unstable": ["raw-imports"]` in `ende.json`.
  *
  * Ende has no DOM, so a sheet can't be adopted anywhere; the implementation
  * is backed by the raw CSS text.
@@ -3918,6 +3980,9 @@ interface CSSStyleSheet {
 }
 
 /** **UNSTABLE**: New API, yet to be vetted.
+ *
+ * Requires the `--unstable-raw-imports` flag, or `"unstable": ["raw-imports"]`
+ * in `ende.json`.
  *
  * @category Platform
  * @experimental
