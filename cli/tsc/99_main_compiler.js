@@ -179,12 +179,30 @@ function exec({ config, debug: debugFlag, rootNames, localOnly }) {
 
   // When declaration or emitDeclarationOnly is enabled, emit .d.ts files
   if (options.declaration || options.emitDeclarationOnly) {
-    program.emit(
-      /* targetSourceFile */ undefined,
-      host.writeFile,
-      /* cancellationToken */ undefined,
-      /* emitOnlyDtsFiles */ true,
-    );
+    // The host sets each source file's `moduleName` to its specifier so
+    // diagnostics name modules the way Ende resolves them. Declaration emit
+    // would write that out as `/// <amd-module name="file:///..." />` and in
+    // inferred `import("file:///...")` types, leaking absolute paths, so hide
+    // it for `file:` modules while emitting (as the LSP does for display) and
+    // let tsc compute relative specifiers instead.
+    const localFiles = program.getSourceFiles()
+      .filter((s) => s.moduleName?.startsWith("file:"))
+      .map((s) => [s, s.moduleName]);
+    for (const [sourceFile] of localFiles) {
+      sourceFile.moduleName = undefined;
+    }
+    try {
+      program.emit(
+        /* targetSourceFile */ undefined,
+        host.writeFile,
+        /* cancellationToken */ undefined,
+        /* emitOnlyDtsFiles */ true,
+      );
+    } finally {
+      for (const [sourceFile, moduleName] of localFiles) {
+        sourceFile.moduleName = moduleName;
+      }
+    }
   }
 
   performanceProgram({ program });
