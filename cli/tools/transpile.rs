@@ -30,6 +30,7 @@ use crate::args::TranspileFlags;
 use crate::args::TypeCheckMode;
 use crate::factory::CliFactory;
 use crate::util::fs::canonicalize_path;
+use crate::util::fs::canonicalize_path_maybe_not_exists;
 
 pub async fn transpile(
   flags: Arc<Flags>,
@@ -245,12 +246,27 @@ pub async fn transpile(
         .into_owned()
     };
 
+    // Make the map's `sources` relative to where it is read from: the
+    // emitted file's directory (a separate map sits next to it), or the cwd
+    // for stdout.
+    let source_map_base = if matches!(source_map_option, SourceMapOption::None)
+    {
+      None
+    } else {
+      let map_dir = maybe_output_path
+        .as_deref()
+        .and_then(Path::parent)
+        .unwrap_or(cwd);
+      source_map_base(map_dir, file_path)?
+    };
+
     // Always apply the CLI source map mode. The built-in emit defaults
     // have inlineSourceMap: true (for the runtime), but `ende transpile`
     // should produce clean output by default. Users must pass --source-map
     // explicitly to enable source maps.
     let emit_options = EmitOptions {
       source_map: source_map_option,
+      source_map_base,
       source_map_file: Some(source_map_filename),
       ..transpile_and_emit_options.emit.clone()
     };
@@ -779,6 +795,26 @@ fn common_parent_dir(paths: &[&Path]) -> Result<PathBuf, AnyError> {
   Ok(common)
 }
 
+/// Returns the URL a source map's `sources` are made relative to: the
+/// directory the map is read from. `None` when `source` is on another
+/// Windows drive, which only its absolute URL can reach.
+fn source_map_base(
+  map_dir: &Path,
+  source: &Path,
+) -> Result<Option<ModuleSpecifier>, AnyError> {
+  // Inputs are canonicalized, so the relative path is between real
+  // locations.
+  let map_dir = canonicalize_path_maybe_not_exists(map_dir)
+    .with_context(|| format!("Failed to resolve {}", map_dir.display()))?;
+  if map_dir.components().next() != source.components().next() {
+    return Ok(None);
+  }
+  let base = ModuleSpecifier::from_directory_path(&map_dir).map_err(|_| {
+    anyhow::anyhow!("Invalid directory path: {}", map_dir.display())
+  })?;
+  Ok(Some(base))
+}
+
 fn compute_output_path(
   input_path: &Path,
   cwd: &Path,
@@ -871,6 +907,14 @@ mod tests {
     let paths = [Path::new("C:\\p\\main.ts"), Path::new("D:\\p\\x.ts")];
     let err = common_parent_dir(&paths).unwrap_err().to_string();
     assert!(err.contains("no common parent directory"), "{err}");
+  }
+
+  #[cfg(windows)]
+  #[test]
+  fn transpile_source_map_base_other_drive() {
+    let base =
+      source_map_base(Path::new("C:\\out"), Path::new("D:\\src\\x.ts"));
+    assert_eq!(base.unwrap(), None);
   }
 
   #[test]

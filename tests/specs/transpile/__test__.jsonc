@@ -368,8 +368,13 @@
         },
         {
           "cwd": "common_root/work",
-          "args": "run --allow-read check_maps.ts",
-          "output": "main.js true\ngreet.js true\n"
+          "args": "run --allow-read check_map.ts dist/main.js.map ../src/main.ts",
+          "output": "main.js ../../src/main.ts false true\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read check_map.ts dist/lib/greet.js.map ../src/lib/greet.ts",
+          "output": "greet.js ../../../src/lib/greet.ts false true\n"
         },
         {
           "cwd": "common_root/work",
@@ -377,6 +382,57 @@
           "output": "Hello, Ende!\n"
         }
       ]
+    },
+    // Source map `sources` are relative to the map's location (the emitted
+    // file's, for inline maps), so they don't leak the build machine's paths.
+    "common_root_source_map_inline": {
+      "steps": [
+        {
+          "cwd": "common_root/work",
+          "args": "transpile ../src/main.ts ../src/config.ts ../src/lib/greet.ts --outdir dist --source-map inline",
+          "output": "[WILDCARD]greet.js\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read check_map.ts dist/main.js ../src/main.ts",
+          "output": "main.js ../../src/main.ts false true\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read check_map.ts dist/lib/greet.js ../src/lib/greet.ts",
+          "output": "greet.js ../../../src/lib/greet.ts false true\n"
+        }
+      ]
+    },
+    "common_root_source_map_output_flag": {
+      "steps": [
+        {
+          "cwd": "common_root/work",
+          "args": "transpile ../hello.ts -o out/hello.js --source-map separate",
+          "output": "[WILDCARD]hello.js.map\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read check_map.ts out/hello.js.map ../hello.ts",
+          "output": "hello.js ../../hello.ts false true\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "transpile ../hello.ts -o inline.js --source-map inline",
+          "output": "[WILDCARD]inline.js\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read check_map.ts inline.js ../hello.ts",
+          "output": "inline.js ../hello.ts false true\n"
+        }
+      ]
+    },
+    // stdout has no location, so the map is relative to the cwd.
+    "common_root_source_map_stdout": {
+      "cwd": "common_root/work",
+      "args": "run --allow-read --allow-run check_map.ts - ../hello.ts",
+      "output": "hello.js ../hello.ts false true\n"
     },
     // --check type-checks before anything is written, so a failed check
     // leaves no output behind.
