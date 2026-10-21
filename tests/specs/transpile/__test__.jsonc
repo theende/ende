@@ -376,6 +376,27 @@
           "args": "run --allow-read check_map.ts dist/lib/greet.js.map ../src/lib/greet.ts",
           "output": "greet.js ../../../src/lib/greet.ts false true\n"
         },
+        // The emitted JS links its map, which sits next to it.
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read last_line.ts dist/main.js",
+          "output": "//# sourceMappingURL=main.js.map\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read last_line.ts dist/lib/greet.js",
+          "output": "//# sourceMappingURL=greet.js.map\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read check_map.ts dist/main.js ../src/main.ts",
+          "output": "main.js ../../src/main.ts false true\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read check_map.ts dist/lib/greet.js ../src/lib/greet.ts",
+          "output": "greet.js ../../../src/lib/greet.ts false true\n"
+        },
         {
           "cwd": "common_root/work",
           "args": "run dist/main.js",
@@ -418,6 +439,16 @@
         },
         {
           "cwd": "common_root/work",
+          "args": "run --allow-read last_line.ts out/hello.js",
+          "output": "//# sourceMappingURL=hello.js.map\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read check_map.ts out/hello.js ../hello.ts",
+          "output": "hello.js ../../hello.ts false true\n"
+        },
+        {
+          "cwd": "common_root/work",
           "args": "transpile ../hello.ts -o inline.js --source-map inline",
           "output": "[WILDCARD]inline.js\n"
         },
@@ -425,6 +456,54 @@
           "cwd": "common_root/work",
           "args": "run --allow-read check_map.ts inline.js ../hello.ts",
           "output": "inline.js ../hello.ts false true\n"
+        }
+      ]
+    },
+    // The link is a URL, so a file name that isn't URL-safe is encoded.
+    "common_root_source_map_link_encoded": {
+      "steps": [
+        {
+          "cwd": "common_root/work",
+          "args": [
+            "transpile",
+            "../hello.ts",
+            "-o",
+            "out/my file#1.js",
+            "--source-map",
+            "separate"
+          ],
+          "output": "[WILDCARD]my file#1.js.map\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": ["run", "--allow-read", "last_line.ts", "out/my file#1.js"],
+          "output": "//# sourceMappingURL=my%20file%231.js.map\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": [
+            "run",
+            "--allow-read",
+            "check_map.ts",
+            "out/my file#1.js",
+            "../hello.ts"
+          ],
+          "output": "my file#1.js ../../hello.ts false true\n"
+        }
+      ]
+    },
+    // A stack trace from the emitted JS points at the .ts source through the
+    // linked map, on the line before type erasure.
+    "source_map_separate_stack_trace": {
+      "steps": [
+        {
+          "args": "transpile source_map_trace/throws.ts --outdir dist --source-map separate",
+          "output": "[WILDCARD]throws.js.map\n"
+        },
+        {
+          "args": "run dist/throws.js",
+          "output": "source_map_separate_stack_trace.out",
+          "exitCode": 1
         }
       ]
     },

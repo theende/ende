@@ -298,6 +298,30 @@ pub async fn transpile(
     } else {
       let output_path = maybe_output_path.unwrap();
 
+      // A separate map sits next to the emitted file, which links it by name
+      // (as tsc does) so runtimes and debuggers find it.
+      let maybe_map = source_map_text
+        .as_ref()
+        .filter(|_| {
+          matches!(transpile_flags.source_map, SourceMapMode::Separate)
+        })
+        .map(|sm| {
+          let ext = output_path
+            .extension()
+            .unwrap_or_default()
+            .to_string_lossy();
+          (output_path.with_extension(format!("{ext}.map")), sm)
+        });
+      let linked_text;
+      let js_text = if let Some((map_path, _)) = &maybe_map {
+        let map_file_name = map_path.file_name().unwrap_or_default();
+        linked_text =
+          link_source_map(js_text, &map_file_name.to_string_lossy());
+        &linked_text
+      } else {
+        js_text
+      };
+
       // Ensure parent directory exists
       if let Some(parent) = output_path.parent() {
         sys.fs_create_dir_all(parent).with_context(|| {
@@ -313,14 +337,7 @@ pub async fn transpile(
       log::info!("{} {}", colors::green("Emit"), output_path.display());
 
       // Write separate source map file
-      if let Some(sm) = source_map_text
-        && matches!(transpile_flags.source_map, SourceMapMode::Separate)
-      {
-        let ext = output_path
-          .extension()
-          .unwrap_or_default()
-          .to_string_lossy();
-        let map_path = output_path.with_extension(format!("{ext}.map"));
+      if let Some((map_path, sm)) = maybe_map {
         sys
           .fs_write(&map_path, sm.as_bytes())
           .with_context(|| format!("Failed to write {}", map_path.display()))?;
@@ -818,6 +835,41 @@ fn source_map_base(
   Ok(Some(base))
 }
 
+/// Characters a source map's file name is percent-encoded for in the
+/// `sourceMappingURL` comment, so it reads back as the same relative URL:
+/// URL path syntax, `%` and backslash.
+const SOURCE_MAP_URL: &percent_encoding::AsciiSet = &percent_encoding::CONTROLS
+  .add(b' ')
+  .add(b'"')
+  .add(b'#')
+  .add(b'%')
+  .add(b'<')
+  .add(b'>')
+  .add(b'?')
+  .add(b'\\')
+  .add(b'`')
+  .add(b'{')
+  .add(b'}');
+
+/// Appends the comment linking the emitted JS to a separate source map
+/// next to it, in the form deno_ast writes inline maps: on its own line, at
+/// the end, with no trailing newline.
+fn link_source_map(js: &str, map_file_name: &str) -> String {
+  let comment = format!(
+    "//# sourceMappingURL={}",
+    percent_encoding::utf8_percent_encode(map_file_name, SOURCE_MAP_URL)
+  );
+  if js.ends_with(&comment) {
+    return js.to_string();
+  }
+  let mut text = js.to_string();
+  if !text.ends_with('\n') {
+    text.push('\n');
+  }
+  text.push_str(&comment);
+  text
+}
+
 fn compute_output_path(
   input_path: &Path,
   cwd: &Path,
@@ -918,6 +970,28 @@ mod tests {
     let base =
       source_map_base(Path::new("C:\\out"), Path::new("D:\\src\\x.ts"));
     assert_eq!(base.unwrap(), None);
+  }
+
+  #[test]
+  fn transpile_link_source_map() {
+    let cases = [
+      ("a;\n", "x.js.map", "a;\n//# sourceMappingURL=x.js.map"),
+      ("a;", "x.js.map", "a;\n//# sourceMappingURL=x.js.map"),
+      (
+        "a;\n",
+        "my file#1.js.map",
+        "a;\n//# sourceMappingURL=my%20file%231.js.map",
+      ),
+      ("a;\n", "ü.js.map", "a;\n//# sourceMappingURL=%C3%BC.js.map"),
+      (
+        "a;\n//# sourceMappingURL=x.js.map",
+        "x.js.map",
+        "a;\n//# sourceMappingURL=x.js.map",
+      ),
+    ];
+    for (js, map_file_name, expected) in cases {
+      assert_eq!(link_source_map(js, map_file_name), expected, "{js:?}");
+    }
   }
 
   #[test]

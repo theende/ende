@@ -1,0 +1,5 @@
+error: Uncaught (in promise) Error: boom at 1,2
+  throw new Error(`${label} at ${point.x},${point.y}`);
+        ^
+    at fail (file:///[WILDCARD]/source_map_trace/throws.ts:9:9)
+    at file:///[WILDCARD]/source_map_trace/throws.ts:12:1
