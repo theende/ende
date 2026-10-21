@@ -138,11 +138,14 @@ impl TypeChecker {
   ///
   /// This runs the TypeScript compiler with `emitDeclarationOnly: true` and
   /// returns the emitted `.d.ts` file contents keyed by their specifier paths.
+  /// tsc emits them despite type errors; the returned diagnostics are the ones
+  /// `type_check_mode` reports.
   pub fn emit_declarations(
     &self,
     graph: Arc<ModuleGraph>,
     root_names: Vec<(ModuleSpecifier, MediaType)>,
     lib: TsTypeLib,
+    type_check_mode: TypeCheckMode,
   ) -> Result<EmitDeclarationsResult, CheckError> {
     let first_specifier = &root_names[0].0;
     let compiler_options_data = self
@@ -209,9 +212,17 @@ impl TypeChecker {
     // ones. Either way the user gets errors in a file they can't edit.
     // `ende check` never surfaces these, so neither should declaration emit.
     let diagnostics = response.diagnostics.filter(|d| {
-      !d.file_name
-        .as_deref()
-        .is_some_and(|f| f.starts_with("asset:///"))
+      let file_name = d.file_name.as_deref().unwrap_or_default();
+      if file_name.starts_with("asset:///") {
+        return false;
+      }
+      // Like `ende check`, report remote modules' diagnostics only for
+      // `TypeCheckMode::All`.
+      if file_name.starts_with("https://") || file_name.starts_with("http://") {
+        return type_check_mode == TypeCheckMode::All
+          && d.include_when_remote();
+      }
+      type_check_mode.is_true()
     });
 
     Ok(EmitDeclarationsResult {

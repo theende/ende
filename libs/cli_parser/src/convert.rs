@@ -2559,6 +2559,14 @@ fn bump_version_parse(
 }
 
 fn transpile_parse(result: &ParseResult, flags: &mut Flags) {
+  let declaration = result.get_bool("declaration");
+  // Declaration emit runs tsc, which type-checks local modules unless told
+  // otherwise.
+  if declaration {
+    flags.type_check_mode = TypeCheckMode::Local;
+  }
+  no_check_arg_parse(result, flags);
+  check_arg_parse(result, flags);
   let files = result
     .get_many("file")
     .map(|v| v.iter().map(|s| s.to_string()).collect())
@@ -2572,7 +2580,7 @@ fn transpile_parse(result: &ParseResult, flags: &mut Flags) {
     files,
     output: result.get_one("output").map(|s| s.to_string()),
     output_dir: result.get_one("outdir").map(|s| s.to_string()),
-    declaration: result.get_bool("declaration"),
+    declaration,
     source_map,
   });
 }

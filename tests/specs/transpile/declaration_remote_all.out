@@ -1,0 +1,5 @@
+[WILDCARD]error: Type checking failed:
+TS2322 [ERROR]: Type 'string' is not assignable to type 'number'.
+const invalidTypeCheck: number = "";
+      ~~~~~~~~~~~~~~~~
+    at http://127.0.0.1:4250/@endetest/subset-type-graph-invalid/0.1.0/mod.ts:11:7

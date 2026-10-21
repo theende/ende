@@ -377,6 +377,133 @@
           "output": "Hello, Ende!\n"
         }
       ]
+    },
+    // --check type-checks before anything is written, so a failed check
+    // leaves no output behind.
+    "check_type_error": {
+      "steps": [
+        {
+          "args": "transpile --check check/bad.ts --outdir dist",
+          "output": "check_type_error.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "no dist\n"
+        },
+        {
+          "args": "transpile --check check/bad.ts",
+          "output": "check_type_error.out",
+          "exitCode": 1
+        }
+      ]
+    },
+    "check_ok": {
+      "steps": [
+        {
+          "args": "transpile --check check/good.ts --outdir dist",
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nCheck [WILDLINE]good.ts\nEmit [WILDLINE]good.js\n"
+        },
+        {
+          "args": "run dist/good.js",
+          "output": "1\n"
+        }
+      ]
+    },
+    "check_off_by_default": {
+      "steps": [
+        {
+          "args": "transpile check/bad.ts --outdir dist",
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nEmit [WILDLINE]bad.js\n"
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "dist/bad.js\n"
+        }
+      ]
+    },
+    // --declaration type-checks too, also before anything is written.
+    "declaration_type_error": {
+      "steps": [
+        {
+          "args": "transpile --declaration check/bad.ts --outdir dist",
+          "output": "declaration_type_error.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "no dist\n"
+        },
+        // The declaration pass is the type check, so the error is reported
+        // once.
+        {
+          "args": "transpile --check --declaration check/bad.ts --outdir dist",
+          "output": "declaration_type_error.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "no dist\n"
+        }
+      ]
+    },
+    "declaration_no_check": {
+      "steps": [
+        {
+          "args": "transpile --declaration --no-check check/bad.ts --outdir dist",
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nEmit [WILDLINE]bad.js\nEmit [WILDLINE]bad.d.ts\n"
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "dist/bad.d.ts\ndist/bad.js\n"
+        }
+      ]
+    },
+    // Like `ende check`, diagnostics from remote modules are only reported
+    // with --check=all.
+    "check_remote": {
+      "steps": [
+        {
+          "args": "transpile --check=all check/remote.ts --outdir dist",
+          "output": "check_remote_all.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "no dist\n"
+        },
+        {
+          "args": "transpile --check check/remote.ts --outdir dist",
+          "output": "[WILDCARD]Check [WILDLINE]remote.ts\nEmit [WILDLINE]remote.js\n"
+        }
+      ]
+    },
+    // As with `ende run`, --no-check=remote still checks local modules.
+    "no_check_remote": {
+      "steps": [
+        {
+          "args": "transpile --no-check=remote check/remote.ts --outdir dist",
+          "output": "[WILDCARD]Emit [WILDLINE]remote.js\n"
+        },
+        {
+          "args": "transpile --no-check=remote check/bad.ts --outdir dist",
+          "output": "check_type_error.out",
+          "exitCode": 1
+        }
+      ]
+    },
+    "declaration_check_all_remote": {
+      "steps": [
+        {
+          "args": "transpile --declaration --check=all check/remote.ts --outdir dist",
+          "output": "declaration_remote_all.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "no dist\n"
+        }
+      ]
     }
   }
 }

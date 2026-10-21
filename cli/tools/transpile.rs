@@ -27,6 +27,7 @@ use sys_traits::PathsInErrorsExt;
 use crate::args::Flags;
 use crate::args::SourceMapMode;
 use crate::args::TranspileFlags;
+use crate::args::TypeCheckMode;
 use crate::factory::CliFactory;
 use crate::util::fs::canonicalize_path;
 
@@ -147,6 +148,40 @@ pub async fn transpile(
       })
     }
     None => None,
+  };
+
+  // Type-check before writing anything, so a failed check leaves no output
+  // behind. Declaration emit type-checks, so it needs no separate pass.
+  let type_check_mode = cli_options.type_check_mode();
+  let declarations = if transpile_flags.declaration {
+    emit_declarations(
+      &factory,
+      &transpile_flags,
+      &file_entries,
+      declaration_entries,
+      out_dir.as_ref(),
+      cwd,
+      type_check_mode,
+    )
+    .await?
+  } else {
+    if type_check_mode.is_true() {
+      let roots = file_entries
+        .iter()
+        .map(|(_, specifier, _)| specifier.clone())
+        .chain(
+          declaration_entries
+            .into_iter()
+            .map(|(specifier, _)| specifier),
+        )
+        .collect();
+      factory
+        .module_graph_creator()
+        .await?
+        .create_graph_and_maybe_check(roots)
+        .await?;
+    }
+    Vec::new()
   };
 
   // Transpile each file (TS -> JS)
@@ -278,22 +313,25 @@ pub async fn transpile(
     }
   }
 
-  // Generate .d.ts declaration files if requested
-  if transpile_flags.declaration && !file_entries.is_empty() {
-    emit_declarations(
-      &factory,
-      &transpile_flags,
-      &file_entries,
-      declaration_entries,
-      out_dir.as_ref(),
-      cwd,
-    )
-    .await?;
+  // Write .d.ts declaration files if requested
+  for (output_path, content) in &declarations {
+    if let Some(parent) = output_path.parent() {
+      sys.fs_create_dir_all(parent).with_context(|| {
+        format!("Failed to create directory {}", parent.display())
+      })?;
+    }
+
+    sys
+      .fs_write(output_path, content.as_bytes())
+      .with_context(|| format!("Failed to write {}", output_path.display()))?;
+    log::info!("{} {}", colors::green("Emit"), output_path.display());
   }
 
   Ok(())
 }
 
+/// Runs tsc on the inputs and returns the declaration files to write with
+/// their output paths. Fails on the type errors `type_check_mode` reports.
 async fn emit_declarations(
   factory: &CliFactory,
   transpile_flags: &TranspileFlags,
@@ -301,10 +339,9 @@ async fn emit_declarations(
   declaration_entries: Vec<(ModuleSpecifier, MediaType)>,
   out_dir: Option<&OutDir>,
   cwd: &Path,
-) -> Result<(), AnyError> {
+  type_check_mode: TypeCheckMode,
+) -> Result<Vec<(PathBuf, String)>, AnyError> {
   let cli_options = factory.cli_options()?;
-  let real_sys = factory.sys();
-  let sys = real_sys.with_paths_in_errors();
 
   // Build a module graph for the input files
   let root_names: Vec<(ModuleSpecifier, MediaType)> = file_entries
@@ -355,6 +392,7 @@ async fn emit_declarations(
     Arc::new(graph),
     root_names,
     cli_options.ts_type_lib_window(),
+    type_check_mode,
   )?;
 
   if result.diagnostics.has_diagnostic() {
@@ -372,17 +410,11 @@ async fn emit_declarations(
     None
   };
 
-  // Write emitted .d.ts files
+  let mut declarations = Vec::with_capacity(result.emitted_files.len());
   for (file_name, content) in &result.emitted_files {
     // The file names from TSC are specifier-based, convert to output paths
     let output_path =
       resolve_dts_output_path(file_name, out_dir, output_base_dir.as_deref())?;
-
-    if let Some(parent) = output_path.parent() {
-      sys.fs_create_dir_all(parent).with_context(|| {
-        format!("Failed to create directory {}", parent.display())
-      })?;
-    }
 
     let content = if MediaType::from_path(&output_path).is_declaration() {
       rewrite_declaration_specifiers(&output_path, content)?
@@ -390,10 +422,7 @@ async fn emit_declarations(
       content.clone()
     };
 
-    sys
-      .fs_write(&output_path, content.as_bytes())
-      .with_context(|| format!("Failed to write {}", output_path.display()))?;
-    log::info!("{} {}", colors::green("Emit"), output_path.display());
+    declarations.push((output_path, content));
   }
 
   if result.emitted_files.is_empty() {
@@ -403,7 +432,7 @@ async fn emit_declarations(
     );
   }
 
-  Ok(())
+  Ok(declarations)
 }
 
 fn resolve_dts_output_path(

@@ -8002,9 +8002,61 @@ fn transpile_with_declaration() {
         declaration: true,
         source_map: SourceMapMode::None,
       }),
+      type_check_mode: TypeCheckMode::Local,
       ..Flags::default()
     }
   );
+}
+
+#[test]
+fn transpile_with_check() {
+  let r = flags_from_vec(svec!["ende", "transpile", "main.ts", "--check"]);
+  assert_eq!(r.unwrap().type_check_mode, TypeCheckMode::Local);
+
+  let r = flags_from_vec(svec!["ende", "transpile", "main.ts", "--check=all"]);
+  assert_eq!(r.unwrap().type_check_mode, TypeCheckMode::All);
+
+  let r = flags_from_vec(svec![
+    "ende",
+    "transpile",
+    "main.ts",
+    "--declaration",
+    "--check=all"
+  ]);
+  assert_eq!(r.unwrap().type_check_mode, TypeCheckMode::All);
+}
+
+#[test]
+fn transpile_declaration_with_no_check() {
+  let r = flags_from_vec(svec![
+    "ende",
+    "transpile",
+    "main.ts",
+    "--declaration",
+    "--no-check"
+  ]);
+  assert_eq!(r.unwrap().type_check_mode, TypeCheckMode::None);
+
+  let r = flags_from_vec(svec![
+    "ende",
+    "transpile",
+    "main.ts",
+    "--declaration",
+    "--no-check=remote"
+  ]);
+  assert_eq!(r.unwrap().type_check_mode, TypeCheckMode::Local);
+}
+
+#[test]
+fn transpile_check_conflicts_with_no_check() {
+  let r = flags_from_vec(svec![
+    "ende",
+    "transpile",
+    "main.ts",
+    "--check",
+    "--no-check"
+  ]);
+  assert!(r.is_err());
 }
 
 #[test]
@@ -8029,6 +8081,7 @@ fn transpile_all_flags() {
         declaration: true,
         source_map: SourceMapMode::Separate,
       }),
+      type_check_mode: TypeCheckMode::Local,
       ..Flags::default()
     }
   );

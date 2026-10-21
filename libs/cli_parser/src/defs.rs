@@ -2757,6 +2757,12 @@ pub static TRANSPILE_SUBCOMMAND: CommandDef = CommandDef {
       .help(
         "Generate .d.ts declaration files (requires type-checking via tsc)",
       ),
+    ArgDef::new("check")
+      .long("check")
+      .action(ArgAction::Set)
+      .num_args(NumArgs::Optional)
+      .require_equals()
+.help("Type-check before writing any output. This subcommand does not type-check by default (--declaration does); pass --check=all to also type-check remote modules."),
   ],
   arg_groups: &[UNSTABLE_DEPRECATED_ARG, UNSTABLE_FEATURE_ARGS, COMPILE_ARGS],
   subcommands: &[],
