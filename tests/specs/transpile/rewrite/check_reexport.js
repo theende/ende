@@ -1,2 +1,2 @@
-const { ORIGIN } = await import("../dist/rewrite/app/main.js");
+const { ORIGIN } = await import("../dist/main.js");
 console.log(ORIGIN);

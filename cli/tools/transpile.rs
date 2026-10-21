@@ -28,6 +28,7 @@ use crate::args::Flags;
 use crate::args::SourceMapMode;
 use crate::args::TranspileFlags;
 use crate::factory::CliFactory;
+use crate::util::fs::canonicalize_path;
 
 pub async fn transpile(
   flags: Arc<Flags>,
@@ -105,6 +106,11 @@ pub async fn transpile(
       continue;
     }
 
+    // Resolve `..` and symlinks so a file names one output however it's
+    // spelled on the command line.
+    let file_path = canonicalize_path(&file_path)
+      .with_context(|| format!("Failed to read {}", file_path.display()))?;
+
     let specifier =
       ModuleSpecifier::from_file_path(&file_path).map_err(|_| {
         anyhow::anyhow!("Invalid file path: {}", file_path.display())
@@ -127,6 +133,21 @@ pub async fn transpile(
       "No emittable files found. Only TypeScript/JSX/TSX files can be transpiled."
     );
   }
+
+  // Declaration inputs aren't emitted, so they don't widen the root.
+  let out_dir = match &transpile_flags.output_dir {
+    Some(dir) => {
+      let inputs: Vec<&Path> = file_entries
+        .iter()
+        .map(|(path, _, _)| path.as_path())
+        .collect();
+      Some(OutDir {
+        dir: cwd.join(dir),
+        root: common_parent_dir(&inputs)?,
+      })
+    }
+    None => None,
+  };
 
   // Transpile each file (TS -> JS)
   for (file_path, specifier, media_type) in &file_entries {
@@ -166,9 +187,9 @@ pub async fn transpile(
         file_path,
         cwd,
         transpile_flags.output.as_deref(),
-        transpile_flags.output_dir.as_deref(),
+        out_dir.as_ref(),
         *media_type,
-      )?)
+      ))
     } else {
       None
     };
@@ -264,6 +285,7 @@ pub async fn transpile(
       &transpile_flags,
       &file_entries,
       declaration_entries,
+      out_dir.as_ref(),
       cwd,
     )
     .await?;
@@ -277,6 +299,7 @@ async fn emit_declarations(
   transpile_flags: &TranspileFlags,
   file_entries: &[(PathBuf, ModuleSpecifier, MediaType)],
   declaration_entries: Vec<(ModuleSpecifier, MediaType)>,
+  out_dir: Option<&OutDir>,
   cwd: &Path,
 ) -> Result<(), AnyError> {
   let cli_options = factory.cli_options()?;
@@ -352,12 +375,8 @@ async fn emit_declarations(
   // Write emitted .d.ts files
   for (file_name, content) in &result.emitted_files {
     // The file names from TSC are specifier-based, convert to output paths
-    let output_path = resolve_dts_output_path(
-      file_name,
-      transpile_flags.output_dir.as_deref(),
-      output_base_dir.as_deref(),
-      cwd,
-    )?;
+    let output_path =
+      resolve_dts_output_path(file_name, out_dir, output_base_dir.as_deref())?;
 
     if let Some(parent) = output_path.parent() {
       sys.fs_create_dir_all(parent).with_context(|| {
@@ -389,9 +408,8 @@ async fn emit_declarations(
 
 fn resolve_dts_output_path(
   tsc_file_name: &str,
-  output_dir: Option<&str>,
+  out_dir: Option<&OutDir>,
   output_base_dir: Option<&Path>,
-  cwd: &Path,
 ) -> Result<PathBuf, AnyError> {
   // TSC emits file names like "file:///path/to/file.d.ts"
   let path = if let Ok(specifier) = ModuleSpecifier::parse(tsc_file_name) {
@@ -402,16 +420,15 @@ fn resolve_dts_output_path(
     PathBuf::from(tsc_file_name)
   };
 
-  if let Some(outdir) = output_dir {
-    // --outdir: preserve relative directory structure
-    let outdir = cwd.join(outdir);
-    let relative = path.strip_prefix(cwd).map_err(|_| {
+  if let Some(out_dir) = out_dir {
+    // tsc also emits declarations for local files the inputs import.
+    out_dir.output_path(&path).ok_or_else(|| {
       anyhow::anyhow!(
-        "Declaration file {} is not under the current directory",
-        path.display()
+        "Declaration file {} is outside {}, the common parent directory of the input files. Pass its source file as an input too.",
+        path.display(),
+        out_dir.root.display()
       )
-    })?;
-    Ok(outdir.join(relative))
+    })
   } else if let Some(base_dir) = output_base_dir {
     // -o: place .d.ts next to the output file
     let file_name = path
@@ -699,35 +716,62 @@ fn js_extension_for_media_type(media_type: MediaType) -> &'static str {
   }
 }
 
+/// Where `--outdir` writes: each file's path relative to `root`, the
+/// inputs' common parent directory (like tsc's inferred `rootDir`), is
+/// mirrored under `dir`.
+struct OutDir {
+  dir: PathBuf,
+  root: PathBuf,
+}
+
+impl OutDir {
+  /// Returns `None` when `path` isn't under `root`.
+  fn output_path(&self, path: &Path) -> Option<PathBuf> {
+    let relative = path.strip_prefix(&self.root).ok()?;
+    Some(self.dir.join(relative))
+  }
+}
+
+/// Returns the deepest directory containing every path in `paths`.
+fn common_parent_dir(paths: &[&Path]) -> Result<PathBuf, AnyError> {
+  let first = paths[0];
+  let mut common = first.parent().unwrap_or(first).to_path_buf();
+  for path in &paths[1..] {
+    while !path.starts_with(&common) {
+      if !common.pop() {
+        anyhow::bail!(
+          "Input files {} and {} have no common parent directory (they are on different drives). Transpile them separately.",
+          first.display(),
+          path.display()
+        );
+      }
+    }
+  }
+  Ok(common)
+}
+
 fn compute_output_path(
   input_path: &Path,
   cwd: &Path,
   output: Option<&str>,
-  output_dir: Option<&str>,
+  out_dir: Option<&OutDir>,
   media_type: MediaType,
-) -> Result<PathBuf, AnyError> {
+) -> PathBuf {
   if let Some(output) = output {
     // Explicit output file
-    return Ok(cwd.join(output));
+    return cwd.join(output);
   }
 
   let ext = js_extension_for_media_type(media_type);
   let js_filename = input_path.with_extension(ext);
 
-  if let Some(outdir) = output_dir {
-    let outdir = cwd.join(outdir);
-    let relative = js_filename
-      .strip_prefix(cwd)
-      .map_err(|_| {
-        anyhow::anyhow!(
-          "Input file {} is not under the current directory. Use --output instead.",
-          input_path.display()
-        )
-      })?;
-    Ok(outdir.join(relative))
+  if let Some(out_dir) = out_dir {
+    out_dir
+      .output_path(&js_filename)
+      .expect("inputs are under their common parent directory")
   } else {
     // Write alongside source file
-    Ok(js_filename)
+    js_filename
   }
 }
 
@@ -768,6 +812,36 @@ mod tests {
         "{specifier}"
       );
     }
+  }
+
+  #[cfg(not(windows))]
+  #[test]
+  fn transpile_common_parent_dir() {
+    let cases: [(&[&str], &str); 5] = [
+      (&["/p/src/main.ts"], "/p/src"),
+      (&["/p/src/main.ts", "/p/src/lib/x.ts"], "/p/src"),
+      (&["/p/src/lib/x.ts", "/p/src/main.ts"], "/p/src"),
+      (&["/p/src/a/x.ts", "/p/src/ab/y.ts"], "/p/src"),
+      (&["/p/x.ts", "/q/y.ts"], "/"),
+    ];
+    for (paths, expected) in cases {
+      let paths: Vec<&Path> = paths.iter().map(Path::new).collect();
+      assert_eq!(
+        common_parent_dir(&paths).unwrap(),
+        PathBuf::from(expected),
+        "{paths:?}"
+      );
+    }
+  }
+
+  #[cfg(windows)]
+  #[test]
+  fn transpile_common_parent_dir() {
+    let paths = [Path::new("C:\\p\\main.ts"), Path::new("C:\\p\\lib\\x.ts")];
+    assert_eq!(common_parent_dir(&paths).unwrap(), PathBuf::from("C:\\p"));
+    let paths = [Path::new("C:\\p\\main.ts"), Path::new("D:\\p\\x.ts")];
+    let err = common_parent_dir(&paths).unwrap_err().to_string();
+    assert!(err.contains("no common parent directory"), "{err}");
   }
 
   #[test]

@@ -177,7 +177,7 @@
           "output": "rewrite_project_emit.out"
         },
         {
-          "args": "run dist/rewrite/app/main.js",
+          "args": "run dist/main.js",
           "output": "3\n42\n"
         },
         {
@@ -218,10 +218,10 @@
         },
         {
           "args": "run --allow-read declaration_inputs/list_dist.ts",
-          "output": "dist/declaration_inputs/main.js\n"
+          "output": "dist/main.js\n"
         },
         {
-          "args": "run dist/declaration_inputs/main.js",
+          "args": "run dist/main.js",
           "output": "{ x: 0, y: 0 }\n"
         }
       ]
@@ -255,7 +255,126 @@
         },
         {
           "args": "run --allow-read declaration_inputs/list_dist.ts",
-          "output": "dist/declaration_inputs/main.d.ts\ndist/declaration_inputs/main.js\ndist/declaration_inputs/version.d.ts\ndist/declaration_inputs/version.js\n"
+          "output": "dist/main.d.ts\ndist/main.js\ndist/version.d.ts\ndist/version.js\n"
+        }
+      ]
+    },
+    // With --outdir, outputs mirror the inputs' layout below their common
+    // parent directory, so inputs can live outside the cwd.
+    "common_root_outdir": {
+      "steps": [
+        {
+          "cwd": "common_root/work",
+          "args": "transpile ../src/main.ts ../src/config.ts ../src/lib/greet.ts ../ambient.d.ts --outdir dist",
+          "output": "common_root_outdir.out"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read ../../declaration_inputs/list_dist.ts",
+          "output": "dist/config.js\ndist/lib/greet.js\ndist/main.js\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run dist/main.js",
+          "output": "Hello, Ende!\n"
+        }
+      ]
+    },
+    "common_root_canonical_paths": {
+      "steps": [
+        {
+          "cwd": "common_root/work",
+          "args": "transpile ../src/lib/../main.ts ../work/../src/config.ts ../src/lib/greet.ts --outdir dist",
+          "output": "[WILDCARD]greet.js\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read ../../declaration_inputs/list_dist.ts",
+          "output": "dist/config.js\ndist/lib/greet.js\ndist/main.js\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run dist/main.js",
+          "output": "Hello, Ende!\n"
+        }
+      ]
+    },
+    "common_root_single_input": {
+      "steps": [
+        {
+          "cwd": "common_root/work",
+          "args": "transpile ../src/lib/greet.ts --outdir dist",
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nEmit [WILDLINE]greet.js\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read ../../declaration_inputs/list_dist.ts",
+          "output": "dist/greet.js\n"
+        }
+      ]
+    },
+    "common_root_output_flag": {
+      "steps": [
+        {
+          "cwd": "common_root/work",
+          "args": "transpile ../hello.ts -o out.js",
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nEmit [WILDLINE]out.js\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run out.js",
+          "output": "Hello from outside the cwd\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "transpile ../hello.ts",
+          "output": "[WILDCARD]const where = \"outside the cwd\";\nconsole.log(`Hello from ${where}`);\n"
+        }
+      ]
+    },
+    "common_root_declaration": {
+      "steps": [
+        {
+          "cwd": "common_root/work",
+          "args": "transpile ../src/main.ts ../src/config.ts ../src/lib/greet.ts --outdir dist --declaration",
+          "output": "[WILDCARD]main.d.ts\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read ../../declaration_inputs/list_dist.ts",
+          "output": "dist/config.d.ts\ndist/config.js\ndist/lib/greet.d.ts\ndist/lib/greet.js\ndist/main.d.ts\ndist/main.js\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read print_declarations.ts",
+          "output": "common_root_declarations.out"
+        }
+      ]
+    },
+    // tsc also emits declarations for imported local files, which have to
+    // fit under the inputs' common parent directory too.
+    "common_root_declaration_outside_root": {
+      "cwd": "common_root/work",
+      "args": "transpile ../src/lib/greet.ts --outdir dist --declaration",
+      "output": "common_root_declaration_outside_root.out",
+      "exitCode": 1
+    },
+    "common_root_source_map": {
+      "steps": [
+        {
+          "cwd": "common_root/work",
+          "args": "transpile ../src/main.ts ../src/config.ts ../src/lib/greet.ts --outdir dist --source-map separate",
+          "output": "[WILDCARD]greet.js.map\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run --allow-read check_maps.ts",
+          "output": "main.js true\ngreet.js true\n"
+        },
+        {
+          "cwd": "common_root/work",
+          "args": "run dist/main.js",
+          "output": "Hello, Ende!\n"
         }
       ]
     }

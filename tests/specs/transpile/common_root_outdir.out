@@ -1,0 +1,5 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+Skip [WILDLINE]ambient.d.ts (declaration file)
+Emit [WILDLINE]main.js
+Emit [WILDLINE]config.js
+Emit [WILDLINE]greet.js

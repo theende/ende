@@ -1,0 +1,3 @@
+import { PUNCT } from "../config.js";
+export { PUNCT };
+export declare function greet(name: string): string;
