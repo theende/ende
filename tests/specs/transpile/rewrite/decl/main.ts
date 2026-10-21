@@ -1,7 +1,7 @@
 import { add, makeCounter } from "./lib/util.tsx";
 export type { Point } from "./lib/types.ts";
 // Single quotes survive the rewrite.
-// ende-fmt-ignore
+// deno-fmt-ignore
 export * from './lib/consts.mts';
 
 export const sum: typeof import("./lib/util.tsx").add = add;
