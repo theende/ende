@@ -1,7 +1,6 @@
 == main.d.ts
 export type { Point } from "./lib/types.js";
 export * from './lib/consts.mjs';
-export { LEGACY } from "./lib/legacy.cjs";
 export declare const sum: typeof import("./lib/util.js").add;
 export declare const counter: import("./lib/util.js").Counter;
 == lib/consts.d.mts

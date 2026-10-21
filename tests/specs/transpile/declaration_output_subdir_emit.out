@@ -1,3 +1,4 @@
 [WILDCARD]ende transpile is experimental and subject to changes
+Check [WILDLINE]main.ts
 Emit [WILDCARD]dist[WILDCARD]out.js
 Emit [WILDCARD]dist[WILDCARD]main.d.ts

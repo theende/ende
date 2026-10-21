@@ -1,2 +1,3 @@
 [WILDCARD]ende transpile is experimental and subject to changes
+Check [WILDLINE]greet.ts
 error: Declaration file [WILDLINE]config.d.ts is outside [WILDLINE]lib, the common parent directory of the input files. Pass its source file as an input too.

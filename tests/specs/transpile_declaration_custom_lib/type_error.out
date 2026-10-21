@@ -1,4 +1,5 @@
 [WILDCARD]ende transpile is experimental and subject to changes
+Check [WILDLINE]type_error.ts
 error: Type checking failed:
 TS2322 [ERROR]: Type 'string' is not assignable to type 'number'.
 export const x: number = "not a number";

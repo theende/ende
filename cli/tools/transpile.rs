@@ -381,6 +381,9 @@ async fn emit_declarations(
       },
     )
     .await?;
+  // Fail on imports that don't resolve, as `ende check` and `ende run` do.
+  // When type-checking, a missing module is reported as a type error instead.
+  module_graph_builder.graph_valid(&graph)?;
 
   // Validate that all files share the same compiler options scope, since
   // TSC type-checks all files in a single pass.

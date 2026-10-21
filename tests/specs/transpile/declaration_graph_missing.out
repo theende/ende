@@ -1,0 +1,5 @@
+[WILDCARD]ende transpile is experimental and subject to changes
+Check [WILDLINE]missing.ts
+error: Type checking failed:
+TS2307 [ERROR]: Cannot find module '[WILDLINE]nope.ts'.
+    at [WILDLINE]missing.ts:1:21

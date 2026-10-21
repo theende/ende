@@ -1,4 +1,6 @@
 [WILDCARD]ende transpile is experimental and subject to changes
+Check [WILDLINE]main.ts
+Check [WILDLINE]helpers.ts
 Emit [WILDCARD]dist[WILDCARD]main.js
 Emit [WILDCARD]dist[WILDCARD]helpers.js
 [UNORDERED_START]

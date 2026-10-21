@@ -1,5 +1,8 @@
 [WILDCARD]ende transpile is experimental and subject to changes
 Skip [WILDLINE]globals.d.ts (declaration file)
+Check [WILDLINE]main.ts
+Check [WILDLINE]version.ts
+Check [WILDLINE]globals.d.ts
 Emit [WILDLINE]main.js
 Emit [WILDLINE]version.js
 [UNORDERED_START]

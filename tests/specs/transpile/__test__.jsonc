@@ -189,7 +189,7 @@
     "rewrite_declarations": {
       "steps": [
         {
-          "args": "transpile rewrite/decl/main.ts rewrite/decl/lib/types.ts rewrite/decl/lib/consts.mts rewrite/decl/lib/util.tsx rewrite/decl/lib/legacy.cts --outdir dist --declaration",
+          "args": "transpile rewrite/decl/main.ts rewrite/decl/lib/types.ts rewrite/decl/lib/consts.mts rewrite/decl/lib/util.tsx --outdir dist --declaration",
           "output": "[WILDCARD]Emit [WILDCARD]main.d.ts\n"
         },
         {
@@ -577,6 +577,99 @@
         {
           "args": "run --allow-read remote/print_declarations.ts",
           "output": "declaration_remote_content.out"
+        }
+      ]
+    },
+    // Like `ende check`, --declaration fails on imports that don't resolve
+    // instead of typing them as `any`, and writes nothing.
+    "declaration_graph_missing": {
+      "steps": [
+        {
+          "args": "transpile --declaration graph/missing.ts --outdir dist",
+          "output": "declaration_graph_missing.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "no dist\n"
+        },
+        {
+          "args": "transpile --check --declaration graph/missing.ts --outdir dist",
+          "output": "declaration_graph_missing.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "no dist\n"
+        }
+      ]
+    },
+    "declaration_graph_jsr_version": {
+      "steps": [
+        {
+          "args": "transpile --declaration graph/missing_jsr.ts --outdir dist",
+          "output": "[WILDCARD]error: Could not find version of '@endetest/add' that matches specified version constraint '^9'\n    at [WILDLINE]missing_jsr.ts:2:28\n",
+          "exitCode": 1
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "no dist\n"
+        }
+      ]
+    },
+    "declaration_graph_import_permission": {
+      "steps": [
+        {
+          "args": "transpile --declaration graph/remote_http.ts --outdir dist",
+          "output": "[WILDCARD]error: Requires import access to \"localhost:4545\", run again with the --allow-import flag\n    at [WILDLINE]remote_http.ts:2:27\n",
+          "exitCode": 1
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "no dist\n"
+        }
+      ]
+    },
+    // Like --check, which rejects CommonJS modules as `ende check` does.
+    "declaration_graph_commonjs": {
+      "args": "transpile --declaration rewrite/decl/lib/legacy.cts --outdir dist",
+      "output": "[WILDCARD]error: \"[WILDLINE]legacy.cts\" — CommonJS modules are not supported in Ende.\n",
+      "exitCode": 1
+    },
+    // As with `ende run --no-check`, a missing module still fails, but a
+    // missing type-only import doesn't.
+    "declaration_graph_no_check": {
+      "steps": [
+        {
+          "args": "transpile --declaration --no-check graph/missing.ts --outdir dist",
+          "output": "declaration_graph_no_check.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "no dist\n"
+        },
+        {
+          "args": "transpile --declaration --no-check graph/missing_type.ts --outdir dist",
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nEmit [WILDLINE]missing_type.js\nEmit [WILDLINE]missing_type.d.ts\n"
+        }
+      ]
+    },
+    // Like --check, --declaration prints a Check line per input, once even
+    // with both flags.
+    "declaration_check_line": {
+      "steps": [
+        {
+          "args": "transpile --declaration check/good.ts --outdir dist",
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nCheck [WILDLINE]good.ts\nEmit [WILDLINE]good.js\nEmit [WILDLINE]good.d.ts\n"
+        },
+        {
+          "args": "transpile --check --declaration check/good.ts --outdir dist",
+          "output": "[WILDCARD]ende transpile is experimental and subject to changes\nCheck [WILDLINE]good.ts\nEmit [WILDLINE]good.js\nEmit [WILDLINE]good.d.ts\n"
+        },
+        {
+          "args": "run --allow-read check/list_dist.ts",
+          "output": "dist/good.d.ts\ndist/good.js\n"
         }
       ]
     },

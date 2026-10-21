@@ -183,11 +183,55 @@ impl TypeChecker {
       )?,
     );
 
+    // tsc types an import the graph couldn't resolve as `any` without an
+    // error, so like `ende check`, walk the graph for those (TS2307).
+    let mut missing_diagnostics = Diagnostics::default();
+    let mut used_ts_expect_error_directives = HashSet::new();
+    if type_check_mode.is_true() {
+      let bare_importable_pkg_names = self
+        .cli_options
+        .workspace()
+        .resolver_jsr_pkgs()
+        .map(|pkg| pkg.name)
+        .collect::<Vec<_>>();
+      let imports = resolve_graph_imports_for_compiler_options_data(
+        &graph,
+        compiler_options_data,
+      );
+      let mut graph_walker = GraphWalker::new(
+        &graph,
+        &self.sys,
+        &self.compiler_options_resolver,
+        &bare_importable_pkg_names,
+        &compiler_options,
+        type_check_mode,
+      );
+      for import in &imports {
+        graph_walker.add_config_import(import);
+      }
+      for (root, _) in &root_names {
+        graph_walker.add_root(root);
+      }
+      let tsc_roots = graph_walker.into_tsc_roots();
+      missing_diagnostics = tsc_roots.missing_diagnostics;
+      used_ts_expect_error_directives =
+        tsc_roots.used_ts_expect_error_directives;
+
+      let current_dir =
+        deno_path_util::url_from_directory_path(self.cli_options.initial_cwd())
+          .map_err(|e| CheckErrorKind::Other(JsErrorBox::from_err(e)))?;
+      let roots = root_names
+        .iter()
+        .map(|(root, _)| root.clone())
+        .collect::<Vec<_>>();
+      log_provided_roots(&roots, &current_dir);
+    }
+
     let response = tsc::exec(
       tsc::Request {
         config: compiler_options,
         debug: self.cli_options.log_level() == Some(log::Level::Debug),
-        graph,
+        graph: graph.clone(),
         jsx_import_source_config_resolver,
         hash_data,
         maybe_tsbuildinfo: None,
@@ -211,7 +255,7 @@ impl TypeChecker {
     // adding `"node"` instead collides the bundled node types with the web
     // ones. Either way the user gets errors in a file they can't edit.
     // `ende check` never surfaces these, so neither should declaration emit.
-    let diagnostics = response.diagnostics.filter(|d| {
+    let include = |d: &tsc::Diagnostic| {
       let file_name = d.file_name.as_deref().unwrap_or_default();
       if file_name.starts_with("asset:///") {
         return false;
@@ -223,7 +267,18 @@ impl TypeChecker {
           && d.include_when_remote();
       }
       type_check_mode.is_true()
+    };
+    let mut response_diagnostics = response.diagnostics.filter(include);
+    response_diagnostics.retain(|d| {
+      !is_used_ts_expect_error_diagnostic(d, &used_ts_expect_error_directives)
     });
+    let mut diagnostics = filter_ambient_missing_diagnostics(
+      missing_diagnostics.filter(|d| {
+        include(d) && !is_untagged_jsdoc_dynamic_import_diagnostic(&graph, d)
+      }),
+      &response.ambient_modules,
+    );
+    diagnostics.extend(response_diagnostics);
 
     Ok(EmitDeclarationsResult {
       diagnostics,
@@ -507,6 +562,72 @@ impl Iterator for DiagnosticsByFolderRealIterator<'_> {
   }
 }
 
+/// Drops the missing module diagnostics for specifiers that an ambient module
+/// declaration (`declare module "..."`) covers.
+fn filter_ambient_missing_diagnostics(
+  missing_diagnostics: Diagnostics,
+  ambient_modules: &[String],
+) -> Diagnostics {
+  let ambient_modules_regex = if ambient_modules.is_empty() {
+    None
+  } else {
+    regex::Regex::new(&ambient_modules_to_regex_string(ambient_modules))
+      .inspect_err(|e| {
+        log::warn!("Failed to create regex for ambient modules: {}", e);
+      })
+      .ok()
+  };
+  missing_diagnostics.filter(|d| {
+    if let Some(ambient_modules_regex) = &ambient_modules_regex
+      && let Some(missing_specifier) = &d.missing_specifier
+    {
+      return !ambient_modules_regex.is_match(missing_specifier);
+    }
+    true
+  })
+}
+
+fn is_untagged_jsdoc_dynamic_import_diagnostic(
+  graph: &ModuleGraph,
+  d: &tsc::Diagnostic,
+) -> bool {
+  if d.code != 2307 {
+    return false;
+  }
+  let Some(file_name) = &d.file_name else {
+    return false;
+  };
+  let Ok(specifier) = ModuleSpecifier::parse(file_name) else {
+    return false;
+  };
+  let Ok(Some(Module::Js(module))) = graph.try_get(&specifier) else {
+    return false;
+  };
+  if !matches!(
+    module.media_type,
+    MediaType::JavaScript | MediaType::Mjs | MediaType::Cjs | MediaType::Jsx
+  ) {
+    return false;
+  }
+  let Some(start) = &d.start else {
+    return false;
+  };
+  is_untagged_jsdoc_dynamic_import_position(
+    &module.source.text,
+    deno_graph::Position::new(start.line as usize, start.character as usize),
+  )
+}
+
+fn log_provided_roots(provided_roots: &[Url], current_dir: &Url) {
+  for root in provided_roots {
+    log::info!(
+      "{} {}",
+      colors::green("Check"),
+      crate::util::path::relative_specifier_path_for_display(current_dir, root),
+    );
+  }
+}
+
 /// Converts the list of ambient module names to regex string
 pub fn ambient_modules_to_regex_string(ambient_modules: &[String]) -> String {
   let mut regex_string = String::with_capacity(ambient_modules.len() * 8);
@@ -530,19 +651,6 @@ impl DiagnosticsByFolderRealIterator<'_> {
     &self,
     check_group: &CheckGroup,
   ) -> Result<Diagnostics, CheckError> {
-    fn log_provided_roots(provided_roots: &[Url], current_dir: &Url) {
-      for root in provided_roots {
-        log::info!(
-          "{} {}",
-          colors::green("Check"),
-          crate::util::path::relative_specifier_path_for_display(
-            current_dir,
-            root
-          ),
-        );
-      }
-    }
-
     // walk the graph
     let mut graph_walker = GraphWalker::new(
       &self.graph,
@@ -569,7 +677,7 @@ impl DiagnosticsByFolderRealIterator<'_> {
 
     let mut missing_diagnostics = missing_diagnostics.filter(|d| {
       self.should_include_diagnostic(self.options.type_check_mode, d)
-        && !self.is_untagged_jsdoc_dynamic_import_diagnostic(d)
+        && !is_untagged_jsdoc_dynamic_import_diagnostic(&self.graph, d)
     });
     missing_diagnostics.apply_fast_check_source_maps(&self.graph);
 
@@ -641,32 +749,16 @@ impl DiagnosticsByFolderRealIterator<'_> {
     let ambient_modules = response.ambient_modules;
     log::debug!("Ambient Modules: {:?}", ambient_modules);
 
-    let ambient_modules_regex = if ambient_modules.is_empty() {
-      None
-    } else {
-      regex::Regex::new(&ambient_modules_to_regex_string(&ambient_modules))
-        .inspect_err(|e| {
-          log::warn!("Failed to create regex for ambient modules: {}", e);
-        })
-        .ok()
-    };
-
     let mut response_diagnostics = response.diagnostics.filter(|d| {
       self.should_include_diagnostic(self.options.type_check_mode, d)
-        && !self.is_untagged_jsdoc_dynamic_import_diagnostic(d)
+        && !is_untagged_jsdoc_dynamic_import_diagnostic(&self.graph, d)
     });
     response_diagnostics.apply_fast_check_source_maps(&self.graph);
     response_diagnostics.retain(|d| {
       !is_used_ts_expect_error_diagnostic(d, &used_ts_expect_error_directives)
     });
-    let mut diagnostics = missing_diagnostics.filter(|d| {
-      if let Some(ambient_modules_regex) = &ambient_modules_regex
-        && let Some(missing_specifier) = &d.missing_specifier
-      {
-        return !ambient_modules_regex.is_match(missing_specifier);
-      }
-      true
-    });
+    let mut diagnostics =
+      filter_ambient_missing_diagnostics(missing_diagnostics, &ambient_modules);
     diagnostics.extend(response_diagnostics);
 
     if let Some(tsbuildinfo) = response.maybe_tsbuildinfo {
@@ -699,37 +791,6 @@ impl DiagnosticsByFolderRealIterator<'_> {
     } else {
       true
     }
-  }
-
-  fn is_untagged_jsdoc_dynamic_import_diagnostic(
-    &self,
-    d: &tsc::Diagnostic,
-  ) -> bool {
-    if d.code != 2307 {
-      return false;
-    }
-    let Some(file_name) = &d.file_name else {
-      return false;
-    };
-    let Ok(specifier) = ModuleSpecifier::parse(file_name) else {
-      return false;
-    };
-    let Ok(Some(Module::Js(module))) = self.graph.try_get(&specifier) else {
-      return false;
-    };
-    if !matches!(
-      module.media_type,
-      MediaType::JavaScript | MediaType::Mjs | MediaType::Cjs | MediaType::Jsx
-    ) {
-      return false;
-    }
-    let Some(start) = &d.start else {
-      return false;
-    };
-    is_untagged_jsdoc_dynamic_import_position(
-      &module.source.text,
-      deno_graph::Position::new(start.line as usize, start.character as usize),
-    )
   }
 
   fn is_remote_diagnostic(&self, d: &tsc::Diagnostic) -> bool {
