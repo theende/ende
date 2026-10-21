@@ -2747,7 +2747,7 @@ fn lsp_hover_unstable_always_enabled() {
     json!({
       "contents": {
         "kind": "markdown",
-        "value": "```tsx\ninterface Ende.DatagramConn\n```\n**UNSTABLE**: New API, yet to be vetted.\n\nA generic transport listener for message-oriented protocols.\n\n*@category* — Network\n\n\n*@experimental*",
+        "value": "```tsx\ninterface Ende.DatagramConn\n```\n**UNSTABLE**: New API, yet to be vetted.\n\nA generic transport listener for message-oriented protocols.\n\nRequires the `--unstable-net` flag, or `\"unstable\": [\"net\"]` in\n`ende.json`.\n\n*@category* — Network\n\n\n*@experimental*",
       },
       "range":{
         "start":{ "line":0, "character":14 },
@@ -2788,7 +2788,7 @@ fn lsp_hover_unstable_enabled() {
     json!({
       "contents": {
         "kind": "markdown",
-        "value": "```tsx\ninterface Ende.DatagramConn\n```\n**UNSTABLE**: New API, yet to be vetted.\n\nA generic transport listener for message-oriented protocols.\n\n*@category* — Network\n\n\n*@experimental*",
+        "value": "```tsx\ninterface Ende.DatagramConn\n```\n**UNSTABLE**: New API, yet to be vetted.\n\nA generic transport listener for message-oriented protocols.\n\nRequires the `--unstable-net` flag, or `\"unstable\": [\"net\"]` in\n`ende.json`.\n\n*@category* — Network\n\n\n*@experimental*",
       },
       "range":{
         "start":{ "line":0, "character":14 },
