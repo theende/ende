@@ -165,6 +165,9 @@ Following ops are provided, which can be accessed through `Ende.ops`:
 - op_compression_new
 - op_compression_write
 - op_compression_finish
+- op_zlib_inflater_new
+- op_zlib_inflater_push
+- op_zlib_deflate
 - op_now
 - op_time_origin
 - op_defer

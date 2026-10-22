@@ -589,6 +589,7 @@
     "ext:ende_web/15_performance.js": "../ext/web/15_performance.js",
     "ext:ende_web/16_image_data.js": "../ext/web/16_image_data.js",
     "ext:ende_web/17_geometry.js": "../ext/web/17_geometry.js",
+    "ext:ende_web/19_zlib.js": "../ext/web/19_zlib.js",
     "ext:ende_web/locks.js": "../ext/web/locks.js",
     "ext:ende_web/webtransport.js": "../ext/web/webtransport.js",
     "ext:ende_webidl/00_webidl.js": "../ext/webidl/00_webidl.js",

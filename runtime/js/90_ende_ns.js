@@ -48,6 +48,12 @@ function lazyProcess() {
   return _processImpl ??
     (_processImpl = core.loadExtScript("ext:ende_process/40_process.js"));
 }
+// Ende.Inflater / Ende.deflateSync: defer until first use.
+let _zlibImpl;
+function lazyZlib() {
+  return _zlibImpl ??
+    (_zlibImpl = core.loadExtScript("ext:ende_web/19_zlib.js"));
+}
 const signals = core.loadExtScript("ext:ende_os/40_signals.js");
 const tty = core.loadExtScript("ext:runtime/40_tty.js");
 // `Ende.cron`, `Ende.UnsafeWindowSurface`, `Ende.telemetry` are rarely used
@@ -262,6 +268,8 @@ const endeNs = {
   umask: fs.umask,
   HttpClient: httpClient.HttpClient,
   createHttpClient: httpClient.createHttpClient,
+  Inflater: undefined,
+  deflateSync: undefined,
   get telemetry() {
     return lazyTelemetry().telemetry;
   },
@@ -296,6 +304,11 @@ core.defineGlobalProperties(endeNs, {
   spawnAndWaitSync: core.propWritableLazyLoaded(
     (process) => process.spawnAndWaitSync,
     lazyProcess,
+  ),
+  Inflater: core.propWritableLazyLoaded((zlib) => zlib.Inflater, lazyZlib),
+  deflateSync: core.propWritableLazyLoaded(
+    (zlib) => zlib.deflateSync,
+    lazyZlib,
   ),
 });
 
