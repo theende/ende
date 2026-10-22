@@ -6,6 +6,27 @@ https://github.com/denoland/deno/releases
 We also have one-line install commands at:
 https://github.com/denoland/deno_install
 
+### 2026.10.22 / 2026.10.22
+
+- Merge pull request #3 from theende/fix/macos-new-sdk-linker
+- Merge pull request #4 from theende/feat/zlib-inflater
+- feat(console): accept Symbol.for("Ende.customInspect")
+- feat(transpile)!: lay out --outdir from the inputs' common parent
+- feat(transpile): add --check and type-check before writing output
+- feat(transpile): rewrite relative .ts imports to the emitted .js names
+- feat(web): add Ende.Inflater and Ende.deflateSync
+- fix(build): link with Apple ld when the macOS SDK is newer than the bundled
+  LLD
+- fix(doc): apply --minimum-dependency-age, --config and the other graph flags
+- fix(transpile): apply --config, --import-map and the other compile flags
+- fix(transpile): emit declarations only for local modules
+- fix(transpile): fail --declaration on imports that don't resolve
+- fix(transpile): keep absolute paths out of --declaration output
+- fix(transpile): link separate source maps from the emitted JS
+- fix(transpile): skip declaration file inputs without breaking the rest
+- fix(transpile): write source map sources relative to the map
+- fix(web): accept shared buffers in Ende.Inflater and Ende.deflateSync
+
 ### 2026.10.20 / 2026.10.20
 
 - feat(install): add the ende.sh install scripts
