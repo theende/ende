@@ -7,16 +7,28 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const {
+  isDataView,
+  isSharedArrayBuffer,
+  isTypedArray,
+} = core;
+const {
   op_zlib_deflate,
   op_zlib_inflater_new,
   op_zlib_inflater_push,
 } = core.ops;
 const {
+  DataViewPrototypeGetBuffer,
+  DataViewPrototypeGetByteLength,
+  DataViewPrototypeGetByteOffset,
   Float64Array,
   NumberIsInteger,
   NumberIsSafeInteger,
   NumberMAX_SAFE_INTEGER,
   RangeError,
+  TypedArrayPrototypeGetBuffer,
+  TypedArrayPrototypeGetByteLength,
+  TypedArrayPrototypeGetByteOffset,
+  Uint8Array,
 } = primordials;
 
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
@@ -29,6 +41,34 @@ const convertFormat = webidl.createEnumConverter("ZlibFormat", [
 
 // [consumed, done], written by op_zlib_inflater_push.
 const pushResult = new Float64Array(2);
+
+// Converts AllowSharedBufferSource arguments.
+const allowSharedOpts = { __proto__: null, allowShared: true };
+
+// Copies the bytes of a SharedArrayBuffer, or of a view on one, into a private
+// ArrayBuffer. Ops can't take a bare SharedArrayBuffer, and another thread
+// could change shared bytes while an op reads them.
+function unshare(source) {
+  if (isSharedArrayBuffer(source)) {
+    return new Uint8Array(new Uint8Array(source));
+  }
+  let buffer, offset, length;
+  if (isTypedArray(source)) {
+    buffer = TypedArrayPrototypeGetBuffer(source);
+    offset = TypedArrayPrototypeGetByteOffset(source);
+    length = TypedArrayPrototypeGetByteLength(source);
+  } else if (isDataView(source)) {
+    buffer = DataViewPrototypeGetBuffer(source);
+    offset = DataViewPrototypeGetByteOffset(source);
+    length = DataViewPrototypeGetByteLength(source);
+  } else {
+    return source;
+  }
+  if (!isSharedArrayBuffer(buffer)) {
+    return source;
+  }
+  return new Uint8Array(new Uint8Array(buffer, offset, length));
+}
 
 class Inflater {
   #inflater;
@@ -58,7 +98,9 @@ class Inflater {
       chunk,
       "Failed to execute 'push' on 'Inflater'",
       "Argument 1",
+      allowSharedOpts,
     );
+    chunk = unshare(chunk);
     const data = op_zlib_inflater_push(this.#inflater, chunk, pushResult);
     return { consumed: pushResult[0], data, done: pushResult[1] === 1 };
   }
@@ -66,7 +108,13 @@ class Inflater {
 
 function deflateSync(data, options = { __proto__: null }) {
   const prefix = "Failed to execute 'deflateSync'";
-  data = webidl.converters.BufferSource(data, prefix, "Argument 1");
+  data = webidl.converters.BufferSource(
+    data,
+    prefix,
+    "Argument 1",
+    allowSharedOpts,
+  );
+  data = unshare(data);
   const format = options.format === undefined
     ? "deflate"
     : convertFormat(options.format, prefix, "format");

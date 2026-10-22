@@ -7030,7 +7030,7 @@ declare namespace Ende {
      * Until it has, `consumed` is the whole chunk.
      */
     push(
-      chunk: BufferSource,
+      chunk: AllowSharedBufferSource,
     ): { consumed: number; data: Uint8Array<ArrayBuffer>; done: boolean };
   }
 
@@ -7051,7 +7051,7 @@ declare namespace Ende {
    * @category Compression
    */
   export function deflateSync(
-    data: BufferSource,
+    data: AllowSharedBufferSource,
     options?: { format?: ZlibFormat; level?: number },
   ): Uint8Array<ArrayBuffer>;
 

@@ -378,6 +378,39 @@ Deno.test(function zlibBufferSourceInputs() {
   assertEquals(Ende.deflateSync(words), compressed);
 });
 
+Deno.test(function zlibSharedArrayBufferInputs() {
+  const input = sampleData(4000);
+  const compressed = Ende.deflateSync(input);
+  const sharedInput = new Uint8Array(new SharedArrayBuffer(input.length));
+  sharedInput.set(input);
+  const sharedCompressed = new Uint8Array(
+    new SharedArrayBuffer(compressed.length),
+  );
+  sharedCompressed.set(compressed);
+
+  assertEquals(Ende.deflateSync(sharedInput), compressed);
+  assertEquals(Ende.deflateSync(sharedInput.buffer), compressed);
+
+  const fromView = new Ende.Inflater().push(sharedCompressed);
+  assertEquals(fromView.consumed, compressed.length);
+  assertEquals(fromView.done, true);
+  assertEquals(fromView.data, input);
+  const fromBuffer = new Ende.Inflater().push(sharedCompressed.buffer);
+  assertEquals(fromBuffer.data, input);
+  const fromDataView = new Ende.Inflater().push(
+    new DataView(sharedCompressed.buffer),
+  );
+  assertEquals(fromDataView.data, input);
+});
+
+Deno.test(function zlibAcceptsUint8ArrayOfArrayBufferLike() {
+  // `Uint8Array` is `Uint8Array<ArrayBufferLike>`, which is not a
+  // `BufferSource`; this type-checks only if the inputs allow shared buffers.
+  const input: Uint8Array = sampleData(1000);
+  const compressed: Uint8Array = Ende.deflateSync(input);
+  assertEquals(new Ende.Inflater().push(compressed).data, input);
+});
+
 Deno.test(async function zlibInteropWithCompressionStreams() {
   const input = sampleData(60_000);
   for (const format of FORMATS) {
