@@ -6978,6 +6978,83 @@ declare namespace Ende {
       | (CreateHttpClientOptions & TlsCertifiedKeyPem),
   ): HttpClient;
 
+  /** The framing of a compressed stream: `"deflate"` is zlib (RFC 1950),
+   * `"deflate-raw"` is bare deflate (RFC 1951) and `"gzip"` is one gzip
+   * member (RFC 1952). These are the formats of the same names that
+   * `CompressionStream` takes.
+   *
+   * @category Compression
+   */
+  export type ZlibFormat = "deflate" | "deflate-raw" | "gzip";
+
+  /** Inflates one compressed stream, synchronously, from chunks of input.
+   *
+   * Unlike `DecompressionStream`, an `Inflater` stops at the end of the
+   * stream and reports how many bytes of each chunk it used, so the stream
+   * can be followed by other data, as entries are in a git pack file.
+   *
+   * ```ts
+   * const stream = Ende.deflateSync(new TextEncoder().encode("hello"));
+   * const input = new Uint8Array([...stream, 1, 2, 3]);
+   *
+   * const { consumed, data, done } = new Ende.Inflater().push(input);
+   * console.log(new TextDecoder().decode(data)); // "hello"
+   * console.log(done); // true
+   * console.log(input.subarray(consumed)); // Uint8Array(3) [ 1, 2, 3 ]
+   * ```
+   *
+   * @category Compression
+   */
+  export class Inflater {
+    /** Creates an inflater for one stream.
+     *
+     * @param options.format The stream's format. Defaults to `"deflate"`.
+     * @param options.maxOutputBytes The most bytes the stream may inflate
+     * to, across all pushes. Once the output would pass it, `push()` throws a
+     * `RangeError`, without producing more than one byte beyond it. Guards
+     * against data that inflates to far more than expected. Unlimited by
+     * default.
+     */
+    constructor(options?: { format?: ZlibFormat; maxOutputBytes?: number });
+
+    /** Inflates `chunk`, the next part of the stream.
+     *
+     * Inflates ONE stream; bytes after its end are not consumed. Once the
+     * stream has ended, further pushes consume nothing and return no data.
+     *
+     * Throws a `TypeError` if the data is not a valid stream (including a
+     * checksum that doesn't match), after which the inflater is unusable.
+     *
+     * @returns `consumed`, how many bytes of `chunk` were used; `data`, the
+     * bytes inflated from them; and `done`, whether the stream has ended.
+     * Until it has, `consumed` is the whole chunk.
+     */
+    push(
+      chunk: BufferSource,
+    ): { consumed: number; data: Uint8Array<ArrayBuffer>; done: boolean };
+  }
+
+  /** Compresses `data` into one stream, synchronously.
+   *
+   * ```ts
+   * const input = new TextEncoder().encode("hello hello hello");
+   * const gzipped = Ende.deflateSync(input, { format: "gzip", level: 9 });
+   * const { data } = new Ende.Inflater({ format: "gzip" }).push(gzipped);
+   * console.log(new TextDecoder().decode(data)); // "hello hello hello"
+   * ```
+   *
+   * @param options.format The stream's format. Defaults to `"deflate"`.
+   * @param options.level The compression level, an integer from 0 (no
+   * compression) to 9 (smallest output). Defaults to 6. Throws a
+   * `RangeError` otherwise.
+   *
+   * @category Compression
+   */
+  export function deflateSync(
+    data: BufferSource,
+    options?: { format?: ZlibFormat; level?: number },
+  ): Uint8Array<ArrayBuffer>;
+
   /**
    * APIs for working with the OpenTelemetry observability framework. Ende can
    * export traces, metrics, and logs to OpenTelemetry compatible backends via

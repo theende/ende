@@ -15,6 +15,7 @@ mod stream_resource;
 mod timers;
 mod url;
 mod urlpattern;
+mod zlib;
 
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -35,6 +36,7 @@ use ende_core::url::Url;
 use ende_core::v8;
 pub use message_port::MessagePortError;
 pub use stream_resource::StreamResourceError;
+pub use zlib::ZlibError;
 
 pub use crate::blob::Blob;
 pub use crate::blob::BlobPart;
@@ -103,6 +105,9 @@ ende_core::extension!(ende_web,
     compression::op_compression_new,
     compression::op_compression_write,
     compression::op_compression_finish,
+    zlib::op_zlib_inflater_new,
+    zlib::op_zlib_inflater_push,
+    zlib::op_zlib_deflate,
     op_now,
     op_time_origin,
     op_defer,
@@ -192,6 +197,7 @@ ende_core::extension!(ende_web,
     "16_image_data.js",
     "17_geometry.js",
     "18_css_stylesheet.js",
+    "19_zlib.js",
   ],
   options = {
     blob_store: Arc<dyn BlobStoreTrait>,
