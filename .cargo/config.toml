@@ -46,7 +46,16 @@ rustflags = [
   "link-args=-Wl,-fixup_chains -weak_framework Metal -weak_framework MetalPerformanceShaders -weak_framework QuartzCore -weak_framework CoreGraphics",
 ]
 
+# aarch64 links with the bundled ld64.lld (LLD 20, third_party/prebuilt/mac) via
+# -fuse-ld=lld. tools/macos_linker.sh puts it on PATH, as CI does, and falls
+# back to Apple's ld (dropping the LLD-only --icf=safe) when that LLD can't read
+# the macOS SDK: LLD 20 rejects the macOS 27 SDK's libSystem.tbd ("unknown
+# architecture arm64e.x1-macos"). It decides by probing LLD against the SDK
+# before linking, not by retrying failed links. CI's SDKs are read fine, so CI
+# links with LLD. Keep "-fuse-ld=lld " spelled as is: the release job in
+# .github/workflows/ci.ts seds it to lzld.
 [target.aarch64-apple-darwin]
+linker = "tools/macos_linker.sh"
 rustflags = [
   "-C",
   # --icf=safe folds identical (address-insignificant) functions; ~6MB (~10%) idle RSS win, measured on release.
