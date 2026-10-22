@@ -26,7 +26,7 @@ import {
 // Bump this number when you want to purge the cache.
 // Note: the tools/release/01_bump_crate_versions.ts script will update this version
 // automatically via regex, so ensure that this line maintains this format.
-const cacheVersion = 127;
+const cacheVersion = 128;
 
 // Lean CI. While `fullMatrix` is false, CI only runs on pushes to and PRs
 // against `primary` (plus the weekly schedule and manual dispatch), and only
