@@ -147,6 +147,11 @@ impl ConfiguredRules {
 const FRESH_RULE_CODES: [&str; 2] =
   ["fresh-handler-export", "fresh-server-event-handlers"];
 
+/// Rule codes Ende renamed, as `(old, new)`. The old codes still work in
+/// `include`/`exclude`, with a warning.
+const RENAMED_RULE_CODES: [(&str, &str); 1] =
+  [("no-deprecated-deno-api", "no-deprecated-ende-api")];
+
 pub struct LintRuleProvider {
   workspace_resolver: Option<Arc<WorkspaceResolver<CliSys>>>,
 }
@@ -194,6 +199,7 @@ impl LintRuleProvider {
     rules: LintRulesConfig,
     maybe_workspace_dir: Option<&WorkspaceDirectory>,
   ) -> ConfiguredRules {
+    let rules = rename_rule_codes(rules);
     let all_rules = self.all_rules();
     let mut all_rule_names = HashSet::with_capacity(all_rules.len());
     let mut all_tags = HashSet::new();
@@ -215,6 +221,34 @@ impl LintRuleProvider {
       all_rule_codes: all_rule_names,
     }
   }
+}
+
+/// Replaces renamed rule codes in `include`/`exclude` with their new names,
+/// warning once per old code.
+fn rename_rule_codes(mut rules: LintRulesConfig) -> LintRulesConfig {
+  static WARNED: LazyLock<Mutex<HashSet<&'static str>>> =
+    LazyLock::new(Default::default);
+
+  for code in rules
+    .include
+    .iter_mut()
+    .chain(rules.exclude.iter_mut())
+    .flatten()
+  {
+    let Some((old, new)) =
+      RENAMED_RULE_CODES.iter().find(|(old, _)| code == old)
+    else {
+      continue;
+    };
+    if WARNED.lock().insert(old) {
+      log::warn!(
+        "{}: Lint rule \"{old}\" is deprecated. Rename it to \"{new}\".",
+        colors::yellow("warn"),
+      );
+    }
+    *code = new.to_string();
+  }
+  rules
 }
 
 /// Warns once per tag or rule code in the config or flags that doesn't exist.
@@ -351,6 +385,24 @@ mod test {
       !rules
         .iter()
         .any(|r| r.tags().iter().any(|t| t.display() == "fresh"))
+    );
+  }
+
+  #[test]
+  fn renamed_rule_codes_still_apply() {
+    let rules = LintRuleProvider::new(None).resolve_lint_rules(
+      LintRulesConfig {
+        exclude: Some(vec!["no-deprecated-deno-api".to_string()]),
+        include: None,
+        tags: None,
+      },
+      None,
+    );
+    assert!(
+      !rules
+        .rules
+        .iter()
+        .any(|r| r.code() == "no-deprecated-ende-api")
     );
   }
 
