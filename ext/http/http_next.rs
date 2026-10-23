@@ -726,6 +726,18 @@ struct RawResponseParts {
   content_type: Option<Vec<u8>>,
 }
 
+impl RawResponseParts {
+  fn connection_close(&self) -> bool {
+    self.headers.iter().any(|header| {
+      header.name.eq_ignore_ascii_case(b"connection")
+        && header
+          .value
+          .split(|byte| *byte == b',')
+          .any(|token| token.trim_ascii().eq_ignore_ascii_case(b"close"))
+    })
+  }
+}
+
 enum RawResponseBody {
   Flat(FlatResponseBody),
   Stream(ResponseBytesInner),
@@ -4491,11 +4503,11 @@ async fn serve_http11_raw(
       return Ok(());
     };
 
-    let keep_alive = parsed.keep_alive;
+    let mut keep_alive = parsed.keep_alive;
     let expect_continue = parsed.expect_continue;
     let has_body = parsed.has_body;
     let head = parsed.method.is_head();
-    let response_context = RawH1ResponseContext {
+    let mut response_context = RawH1ResponseContext {
       version: parsed.version,
       keep_alive,
       head,
@@ -4533,6 +4545,8 @@ async fn serve_http11_raw(
       if let Some(response) = direct_response {
         let (response_parts, body) =
           raw_response_from_direct_response(&record, response);
+        keep_alive &= !response_parts.connection_close();
+        response_context.keep_alive = keep_alive;
         let response_status = response_parts.status;
         match body {
           RawResponseBody::Flat(body) => {
@@ -4587,6 +4601,8 @@ async fn serve_http11_raw(
       else {
         return Ok(());
       };
+      keep_alive &= !response_parts.connection_close();
+      response_context.keep_alive = keep_alive;
       let response_status = response_parts.status;
       match body {
         RawResponseBody::Flat(body) => {
@@ -4668,6 +4684,8 @@ async fn serve_http11_raw(
       if let Some(response) = direct_response {
         let (response_parts, body) =
           raw_response_from_direct_response(&record, response);
+        keep_alive &= !response_parts.connection_close();
+        response_context.keep_alive = keep_alive;
         let response_status = response_parts.status;
         // The handler produced its response synchronously, but a JS reader may
         // still own the request body -- and with it the shared connection. When
@@ -4763,6 +4781,8 @@ async fn serve_http11_raw(
       else {
         return Ok(());
       };
+      keep_alive &= !response_parts.connection_close();
+      response_context.keep_alive = keep_alive;
       let response_status = response_parts.status;
       if record.request_body_taken_full() {
         let state = { body_conn.borrow_mut().take() };
@@ -4907,6 +4927,8 @@ async fn serve_http11_raw(
     if let Some(response) = direct_response {
       let (response_parts, body) =
         raw_response_from_direct_response(&record, response);
+      keep_alive &= !response_parts.connection_close();
+      response_context.keep_alive = keep_alive;
       match body {
         RawResponseBody::Flat(body) => {
           write_h1_flat_response(
@@ -4957,6 +4979,8 @@ async fn serve_http11_raw(
     else {
       return Ok(());
     };
+    keep_alive &= !response_parts.connection_close();
+    response_context.keep_alive = keep_alive;
     match body {
       RawResponseBody::Flat(body) => {
         write_h1_flat_response(
