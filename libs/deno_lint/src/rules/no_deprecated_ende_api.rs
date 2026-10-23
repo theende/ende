@@ -14,11 +14,11 @@ use if_chain::if_chain;
 use std::convert::TryFrom;
 
 #[derive(Debug)]
-pub struct NoDeprecatedDenoApi;
+pub struct NoDeprecatedEndeApi;
 
-const CODE: &str = "no-deprecated-deno-api";
+const CODE: &str = "no-deprecated-ende-api";
 
-impl LintRule for NoDeprecatedDenoApi {
+impl LintRule for NoDeprecatedEndeApi {
   fn tags(&self) -> Tags {
     &[tags::RECOMMENDED]
   }
@@ -32,7 +32,7 @@ impl LintRule for NoDeprecatedDenoApi {
     context: &mut Context,
     program: Program<'_>,
   ) {
-    NoDeprecatedDenoApiHandler.traverse(program, context);
+    NoDeprecatedEndeApiHandler.traverse(program, context);
   }
 }
 
@@ -108,7 +108,8 @@ impl TryFrom<(&str, &str)> for DeprecatedApi {
   fn try_from(
     (obj_symbol, prop_symbol): (&str, &str),
   ) -> Result<Self, Self::Error> {
-    if obj_symbol != "Deno" {
+    // `Deno` is a permanent alias of `Ende`.
+    if obj_symbol != "Ende" && obj_symbol != "Deno" {
       return Err(());
     }
 
@@ -165,7 +166,7 @@ impl DeprecatedApi {
   fn message(&self) -> String {
     let name = self.get_deprecated_api_name();
     format!(
-      "`{}` was removed in Deno 2. See the Deno 1.x to 2.x Migration Guide for further details: https://docs.deno.com/runtime/reference/migrate_deprecations/",
+      "`{}` was removed. See the Removed and deprecated APIs guide for further details: https://docs.ende.sh/runtime/reference/migrate_deprecations/",
       name,
     )
   }
@@ -187,43 +188,43 @@ impl DeprecatedApi {
   fn get_deprecated_api_name(&self) -> &'static str {
     use DeprecatedApi::*;
     match *self {
-      Buffer => "Deno.Buffer",
-      Copy => "Deno.copy",
-      Close => "Deno.close",
-      CustomInspect => "Deno.customInspect",
-      Fdatasync => "Deno.fdatasync",
-      FdatasyncSync => "Deno.fdatasyncSync",
-      File => "Deno.File",
-      Flock => "Deno.flock",
-      FlockSync => "Deno.flockSync",
-      Fstat => "Deno.fstat",
-      FstatSync => "Deno.fstatSync",
-      Fsync => "Deno.fsync",
-      FsyncSync => "Deno.fsyncSync",
-      Ftruncate => "Deno.ftruncate",
-      FtruncateSync => "Deno.ftruncateSync",
-      Funlock => "Deno.funlock",
-      FunlockSync => "Deno.funlockSync",
-      Futime => "Deno.futime",
-      FutimeSync => "Deno.futimeSync",
-      Isatty => "Deno.isatty",
-      Iter => "Deno.iter",
-      IterSync => "Deno.iterSync",
-      Metrics => "Deno.metrics",
-      Read => "Deno.read",
-      ReadSync => "Deno.readSync",
-      ReadAll => "Deno.readAll",
-      ReadAllSync => "Deno.readAllSync",
-      Resources => "Deno.resources",
-      Run => "Deno.run",
-      Seek => "Deno.seek",
-      SeekSync => "Deno.seekSync",
-      ServeHttp => "Deno.serveHttp",
-      Shutdown => "Deno.shutdown",
-      Write => "Deno.write",
-      WriteSync => "Deno.writeSync",
-      WriteAll => "Deno.writeAll",
-      WriteAllSync => "Deno.writeAllSync",
+      Buffer => "Ende.Buffer",
+      Copy => "Ende.copy",
+      Close => "Ende.close",
+      CustomInspect => "Ende.customInspect",
+      Fdatasync => "Ende.fdatasync",
+      FdatasyncSync => "Ende.fdatasyncSync",
+      File => "Ende.File",
+      Flock => "Ende.flock",
+      FlockSync => "Ende.flockSync",
+      Fstat => "Ende.fstat",
+      FstatSync => "Ende.fstatSync",
+      Fsync => "Ende.fsync",
+      FsyncSync => "Ende.fsyncSync",
+      Ftruncate => "Ende.ftruncate",
+      FtruncateSync => "Ende.ftruncateSync",
+      Funlock => "Ende.funlock",
+      FunlockSync => "Ende.funlockSync",
+      Futime => "Ende.futime",
+      FutimeSync => "Ende.futimeSync",
+      Isatty => "Ende.isatty",
+      Iter => "Ende.iter",
+      IterSync => "Ende.iterSync",
+      Metrics => "Ende.metrics",
+      Read => "Ende.read",
+      ReadSync => "Ende.readSync",
+      ReadAll => "Ende.readAll",
+      ReadAllSync => "Ende.readAllSync",
+      Resources => "Ende.resources",
+      Run => "Ende.run",
+      Seek => "Ende.seek",
+      SeekSync => "Ende.seekSync",
+      ServeHttp => "Ende.serveHttp",
+      Shutdown => "Ende.shutdown",
+      Write => "Ende.write",
+      WriteSync => "Ende.writeSync",
+      WriteAll => "Ende.writeAll",
+      WriteAllSync => "Ende.writeAllSync",
     }
   }
 
@@ -232,14 +233,14 @@ impl DeprecatedApi {
     use Replacement::*;
     match *self {
       Buffer => {
-        NameAndUrl("Buffer", "https://jsr.io/@std/io/doc/buffer/~/Buffer")
+        NameAndUrl("Buffer", "https://jsr.io/@ende/io/doc/buffer/~/Buffer")
       }
       Close => Method(".close()"),
-      Copy => NameAndUrl("copy()", "https://jsr.io/@std/io/doc/copy/~/copy"),
-      CustomInspect => Name("Symbol.for(\"Deno.customInspect\")"),
+      Copy => NameAndUrl("copy()", "https://jsr.io/@ende/io/doc/copy/~/copy"),
+      CustomInspect => Name("Symbol.for(\"Ende.customInspect\")"),
       Fdatasync => Method(".syncData()"),
       FdatasyncSync => Method(".syncDataSync()"),
-      File => Name("Deno.FsFile"),
+      File => Name("Ende.FsFile"),
       Flock => Method(".lock()"),
       FlockSync => Method(".lockSync()"),
       Fstat => Method(".stat()"),
@@ -255,45 +256,49 @@ impl DeprecatedApi {
       Isatty => Method(".isTerminal()"),
       Iter => NameAndUrl(
         "iterateReader()",
-        "https://jsr.io/@std/io/doc/iterate-reader/~/iterateReader",
+        "https://jsr.io/@ende/io/doc/iterate-reader/~/iterateReader",
       ),
       IterSync => NameAndUrl(
         "iterateReaderSync()",
-        "https://jsr.io/@std/io/doc/iterate-reader/~/iterateReaderSync",
+        "https://jsr.io/@ende/io/doc/iterate-reader/~/iterateReaderSync",
       ),
       Metrics => None,
       Read => Method(".read()"),
       ReadSync => Method(".readSync()"),
-      ReadAll => {
-        NameAndUrl("readAll()", "https://jsr.io/@std/io/doc/read-all/~/readAll")
-      }
+      ReadAll => NameAndUrl(
+        "readAll()",
+        "https://jsr.io/@ende/io/doc/read-all/~/readAll",
+      ),
       ReadAllSync => NameAndUrl(
         "readAllSync()",
-        "https://jsr.io/@std/io/doc/read-all/~/readAllSync",
+        "https://jsr.io/@ende/io/doc/read-all/~/readAllSync",
       ),
       Resources => None,
-      Run => NameAndUrl("Deno.Command", "https://deno.land/api?s=Deno.Command"),
+      Run => NameAndUrl(
+        "Ende.Command",
+        "https://docs.ende.sh/api/ende/~/Ende.Command",
+      ),
       Seek => Method(".seek()"),
       SeekSync => Method(".seekSync()"),
-      ServeHttp => Name("Deno.serve()"),
+      ServeHttp => Name("Ende.serve()"),
       Shutdown => Method(".closeWrite()"),
       Write => Method(".write()"),
       WriteSync => Method(".writeSync()"),
       WriteAll => NameAndUrl(
         "writeAll",
-        "https://jsr.io/@std/io/doc/write-all/~/writeAllSync",
+        "https://jsr.io/@ende/io/doc/write-all/~/writeAll",
       ),
       WriteAllSync => NameAndUrl(
         "writeAllSync",
-        "https://jsr.io/@std/io/doc/write-all/~/writeAllSync",
+        "https://jsr.io/@ende/io/doc/write-all/~/writeAllSync",
       ),
     }
   }
 }
 
-struct NoDeprecatedDenoApiHandler;
+struct NoDeprecatedEndeApiHandler;
 
-impl Handler for NoDeprecatedDenoApiHandler {
+impl Handler for NoDeprecatedEndeApiHandler {
   fn member_expr(
     &mut self,
     member_expr: &ast_view::MemberExpr,
@@ -336,7 +341,7 @@ impl Handler for NoDeprecatedDenoApiHandler {
   ) {
     if_chain! {
       if let ast_view::TsEntityName::Ident(ident) = qualified_name.left;
-      if ident.sym() == "Deno";
+      if ident.sym() == "Ende" || ident.sym() == "Deno";
       if qualified_name.right.sym() == "File";
       if ctx.scope().is_global(&ident.inner.to_id());
       then {
@@ -357,9 +362,9 @@ mod tests {
   use super::*;
 
   #[test]
-  fn no_deprecated_deno_api_valid() {
+  fn no_deprecated_ende_api_valid() {
     assert_lint_ok! {
-      NoDeprecatedDenoApi,
+      NoDeprecatedEndeApi,
       "Deno.foo();",
       "Deno.foo.Buffer();",
       "Deno.foo.close();",
@@ -435,6 +440,12 @@ mod tests {
       "foo.Deno.writeSync();",
       "foo.Deno.writeAll();",
       "foo.Deno.writeAllSync();",
+
+      "Ende.foo.run();",
+      "foo.Ende.run();",
+      "const Ende = 42; const a = Ende.run(options);",
+      r#"import { Ende } from "./foo.ts"; Ende.writeAllSync(writer, data);"#,
+      r#"interface Ende {} let file: Ende.File;"#,
 
       // `Deno` is shadowed
       "const Deno = 42; const a = new Deno.Buffer();",
@@ -564,11 +575,39 @@ mod tests {
   }
 
   #[test]
-  fn no_deprecated_deno_api_invalid() {
+  fn no_deprecated_ende_api_invalid() {
     use DeprecatedApi::*;
 
     assert_lint_err! {
-      NoDeprecatedDenoApi,
+      NoDeprecatedEndeApi,
+      "new Ende.Buffer();": [
+        {
+          col: 4,
+          message: Buffer.message(),
+          hint: Buffer.hint().unwrap()
+        }
+      ],
+      "Ende.run(options);": [
+        {
+          col: 0,
+          message: Run.message(),
+          hint: Run.hint().unwrap()
+        }
+      ],
+      r#"Ende["serveHttp"]();"#: [
+        {
+          col: 0,
+          message: ServeHttp.message(),
+          hint: ServeHttp.hint().unwrap()
+        }
+      ],
+      "let file: Ende.File;": [
+        {
+          col: 10,
+          message: File.message(),
+          hint: File.hint().unwrap()
+        }
+      ],
       "new Deno.Buffer();": [
         {
           col: 4,
@@ -825,7 +864,7 @@ Deno.readAll(reader);
     let tests = vec![
       (
         "Buffer",
-        "Use `Buffer` from https://jsr.io/@std/io/doc/buffer/~/Buffer instead",
+        "Use `Buffer` from https://jsr.io/@ende/io/doc/buffer/~/Buffer instead",
       ),
       (
         "close",
@@ -833,18 +872,18 @@ Deno.readAll(reader);
       ),
       (
         "copy",
-        "Use `copy()` from https://jsr.io/@std/io/doc/copy/~/copy instead",
+        "Use `copy()` from https://jsr.io/@ende/io/doc/copy/~/copy instead",
       ),
       (
         "customInspect",
-        "Use `Symbol.for(\"Deno.customInspect\")` instead",
+        "Use `Symbol.for(\"Ende.customInspect\")` instead",
       ),
       ("fdatasync", "Use `.syncData()` from the given class instance instead"),
       (
         "fdatasyncSync",
         "Use `.syncDataSync()` from the given class instance instead",
       ),
-      ("File", "Use `Deno.FsFile` instead"),
+      ("File", "Use `Ende.FsFile` instead"),
       ("flock", "Use `.lock()` from the given class instance instead"),
       (
         "flockSync",
@@ -881,31 +920,31 @@ Deno.readAll(reader);
       ("isatty", "Use `.isTerminal()` from the given class instance instead"),
       (
         "iter",
-        "Use `iterateReader()` from https://jsr.io/@std/io/doc/iterate-reader/~/iterateReader instead",
+        "Use `iterateReader()` from https://jsr.io/@ende/io/doc/iterate-reader/~/iterateReader instead",
       ),
       (
         "iterSync",
-        "Use `iterateReaderSync()` from https://jsr.io/@std/io/doc/iterate-reader/~/iterateReaderSync instead",
+        "Use `iterateReaderSync()` from https://jsr.io/@ende/io/doc/iterate-reader/~/iterateReaderSync instead",
       ),
       ("read", "Use `.read()` from the given class instance instead"),
       ("readSync", "Use `.readSync()` from the given class instance instead"),
       (
         "readAll",
-        "Use `readAll()` from https://jsr.io/@std/io/doc/read-all/~/readAll instead",
+        "Use `readAll()` from https://jsr.io/@ende/io/doc/read-all/~/readAll instead",
       ),
       (
         "readAllSync",
-        "Use `readAllSync()` from https://jsr.io/@std/io/doc/read-all/~/readAllSync instead",
+        "Use `readAllSync()` from https://jsr.io/@ende/io/doc/read-all/~/readAllSync instead",
       ),
       (
         "run",
-        "Use `Deno.Command` from https://deno.land/api?s=Deno.Command instead",
+        "Use `Ende.Command` from https://docs.ende.sh/api/ende/~/Ende.Command instead",
       ),
       ("seek", "Use `.seek()` from the given class instance instead"),
       ("seekSync", "Use `.seekSync()` from the given class instance instead"),
       (
         "serveHttp",
-        "Use `Deno.serve()` instead",
+        "Use `Ende.serve()` instead",
       ),
       ("shutdown", "Use `.closeWrite()` from the given class instance instead"),
       ("write", "Use `.write()` from the given class instance instead"),
@@ -915,20 +954,22 @@ Deno.readAll(reader);
       ),
       (
         "writeAll",
-        "Use `writeAll` from https://jsr.io/@std/io/doc/write-all/~/writeAllSync instead",
+        "Use `writeAll` from https://jsr.io/@ende/io/doc/write-all/~/writeAll instead",
       ),
       (
         "writeAllSync",
-        "Use `writeAllSync` from https://jsr.io/@std/io/doc/write-all/~/writeAllSync instead",
+        "Use `writeAllSync` from https://jsr.io/@ende/io/doc/write-all/~/writeAllSync instead",
       ),
     ];
 
     for test in tests {
-      let hint = DeprecatedApi::try_from(("Deno", test.0))
-        .unwrap()
-        .hint()
-        .unwrap();
-      assert_eq!(hint, test.1);
+      for obj in ["Ende", "Deno"] {
+        let hint = DeprecatedApi::try_from((obj, test.0))
+          .unwrap()
+          .hint()
+          .unwrap();
+        assert_eq!(hint, test.1);
+      }
     }
   }
 }

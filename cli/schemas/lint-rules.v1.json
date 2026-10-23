@@ -50,7 +50,7 @@
         "no-control-regex",
         "no-debugger",
         "no-delete-var",
-        "no-deprecated-deno-api",
+        "no-deprecated-ende-api",
         "no-dupe-args",
         "no-dupe-class-members",
         "no-dupe-else-if",

@@ -52,7 +52,7 @@ pub mod no_constant_condition;
 pub mod no_control_regex;
 pub mod no_debugger;
 pub mod no_delete_var;
-pub mod no_deprecated_deno_api;
+pub mod no_deprecated_ende_api;
 pub mod no_dupe_args;
 pub mod no_dupe_class_members;
 pub mod no_dupe_else_if;
@@ -295,7 +295,7 @@ fn get_all_rules_raw() -> Vec<Box<dyn LintRule>> {
     Box::new(no_control_regex::NoControlRegex),
     Box::new(no_debugger::NoDebugger),
     Box::new(no_delete_var::NoDeleteVar),
-    Box::new(no_deprecated_deno_api::NoDeprecatedDenoApi),
+    Box::new(no_deprecated_ende_api::NoDeprecatedEndeApi),
     Box::new(no_dupe_args::NoDupeArgs),
     Box::new(no_dupe_class_members::NoDupeClassMembers),
     Box::new(no_dupe_else_if::NoDupeElseIf),

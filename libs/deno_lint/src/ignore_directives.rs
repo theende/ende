@@ -154,8 +154,14 @@ fn parse_ignore_comment<T: DirectiveKind>(
           if code.is_empty() {
             None
           } else {
-            let code = code.trim().to_string();
-            Some((code, CodeStatus::default()))
+            let code = code.trim();
+            // Ende renamed this rule; keep existing ignore comments working.
+            let code = if code == "no-deprecated-deno-api" {
+              "no-deprecated-ende-api"
+            } else {
+              code
+            };
+            Some((code.to_string(), CodeStatus::default()))
           }
         })
         .collect();
@@ -237,6 +243,22 @@ function foo(): any {}
         d.codes,
         code_map(["no-explicit-any", "no-empty", "no-debugger"])
       );
+    });
+  }
+
+  #[test]
+  fn test_parse_renamed_rule_code() {
+    let source_code = r#"
+// deno-lint-ignore no-deprecated-deno-api
+Deno.run();
+  "#;
+
+    test_util::parse_and_then(source_code, |program| {
+      let line_directives =
+        parse_line_ignore_directives(&["deno-lint-ignore"], program);
+
+      let d = line_directives.get(&1).unwrap();
+      assert_eq!(d.codes, code_map(["no-deprecated-ende-api"]));
     });
   }
 
