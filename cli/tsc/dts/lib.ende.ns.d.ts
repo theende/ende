@@ -4415,13 +4415,14 @@ declare namespace Ende {
      * @default {false} */
     colors?: boolean;
     /** Try to fit more than one entry of a collection on the same line.
+     * A number limits how many nested levels are grouped on one line.
      *
-     * @default {true} */
-    compact?: boolean;
-    /** Traversal depth for nested objects.
+     * @default {3} */
+    compact?: boolean | number;
+    /** Traversal depth for nested objects. Set to `null` for unlimited depth.
      *
      * @default {4} */
-    depth?: number;
+    depth?: number | null;
     /** The maximum length for an inspection to take up a single line.
      *
      * @default {80} */
@@ -4459,6 +4460,30 @@ declare namespace Ende {
     strAbbreviateSize?: number;
   }
 
+  /** Options passed to a {@linkcode Ende.CustomInspect} function.
+   *
+   * @category I/O
+   */
+  export interface CustomInspectOptions extends InspectOptions {
+    /** Traversal depth for nested objects, or `null` for unlimited depth. */
+    depth: number | null;
+    /** Current indentation level. */
+    indentLevel: number;
+  }
+
+  /** A custom inspection function registered with
+   * `Symbol.for("Ende.customInspect")`.
+   *
+   * Receives {@linkcode Ende.inspect} and the current inspection options.
+   * Pass the options to `inspect` when formatting nested values.
+   *
+   * @category I/O
+   */
+  export type CustomInspect = (
+    inspect: typeof Ende.inspect,
+    options: CustomInspectOptions,
+  ) => string;
+
   /** Converts the input into a string that has the same format as printed by
    * `console.log()`.
    *
@@ -4471,21 +4496,26 @@ declare namespace Ende {
    * console.log(obj);  // prints same value as objAsString, e.g. { a: 10, b: "hello" }
    * ```
    *
-   * A custom inspect functions can be registered on objects, via the symbol
+   * A custom inspect function can be registered on objects, via the symbol
    * `Symbol.for("Ende.customInspect")`, to control and customize the output
-   * of `inspect()` or when using `console` logging:
+   * of `inspect()` or when using `console` logging. The function receives
+   * `inspect` and the current {@linkcode Ende.CustomInspectOptions}, including
+   * the traversal depth and indentation level:
    *
    * ```ts
    * class A {
    *   x = 10;
    *   y = "hello";
-   *   [Symbol.for("Ende.customInspect")]() {
-   *     return `x=${this.x}, y=${this.y}`;
+   *   [Symbol.for("Ende.customInspect")](
+   *     inspect: typeof Ende.inspect,
+   *     options: Ende.CustomInspectOptions,
+   *   ) {
+   *     return `x=${inspect(this.x, options)}, y=${inspect(this.y, options)}`;
    *   }
    * }
    *
-   * const inStringFormat = Ende.inspect(new A()); // "x=10, y=hello"
-   * console.log(inStringFormat);  // prints "x=10, y=hello"
+   * const inStringFormat = Ende.inspect(new A()); // 'x=10, y="hello"'
+   * console.log(inStringFormat);  // prints 'x=10, y="hello"'
    * ```
    *
    * `Symbol.for("Deno.customInspect")` still works. If an object has both,
