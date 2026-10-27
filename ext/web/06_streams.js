@@ -1261,6 +1261,12 @@ function readableStreamForRid(
           tryClose();
           controller.close();
           controller.byobRequest.respond(0);
+        } else if (
+          readableStreamHasDefaultReader(stream) &&
+          bytesRead < TypedArrayPrototypeGetByteLength(v)
+        ) {
+          // Do not retain the unused part of an auto-allocated buffer.
+          controller.enqueue(TypedArrayPrototypeSlice(v, 0, bytesRead));
         } else {
           controller.byobRequest.respond(bytesRead);
         }
@@ -1322,6 +1328,11 @@ function readableStreamForRidUnrefable(rid, constructor = ReadableStream) {
           core.tryClose(rid);
           controller.close();
           controller.byobRequest.respond(0);
+        } else if (
+          readableStreamHasDefaultReader(stream) &&
+          bytesRead < TypedArrayPrototypeGetByteLength(v)
+        ) {
+          controller.enqueue(TypedArrayPrototypeSlice(v, 0, bytesRead));
         } else {
           controller.byobRequest.respond(bytesRead);
         }
