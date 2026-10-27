@@ -136,6 +136,21 @@ enum ConnectionState {
   Error(Arc<AnyError>),
 }
 
+/// The bundled SQLite's first-time initialization (`sqlite3_initialize` ->
+/// `sqlite3MutexInit`) is unsafe to enter from two threads at once: on
+/// weak-memory architectures (arm64) a thread that observes `xMutexAlloc`
+/// already set skips the vtable copy but may read a stale NULL `xMutexInit`
+/// and call through it. Run the first initialization serially here before
+/// the eager-init threads open their connections in parallel.
+/// See https://github.com/denoland/deno/issues/37045.
+fn ensure_sqlite_initialized() {
+  static SQLITE_INIT: std::sync::Once = std::sync::Once::new();
+  SQLITE_INIT.call_once(|| {
+    // Opening any connection drives `sqlite3_initialize()` to completion.
+    drop(Connection::open_in_memory());
+  });
+}
+
 /// A cache database that eagerly initializes itself off-thread, preventing initialization operations
 /// from blocking the main thread.
 #[derive(Debug, Clone)]
@@ -205,6 +220,9 @@ impl CacheDB {
       version,
     };
 
+    // Finish the process-wide SQLite init on this thread so the eager
+    // init threads below never race it.
+    ensure_sqlite_initialized();
     new.spawn_eager_init_thread();
     new
   }
@@ -250,6 +268,8 @@ impl CacheDB {
     &self,
     path: Option<&Path>,
   ) -> Result<Connection, rusqlite::Error> {
+    // In-memory caches skip from_path(), so guard the open itself too.
+    ensure_sqlite_initialized();
     match path {
       // This should never fail unless something is very wrong
       None => Connection::open_in_memory(),
@@ -756,6 +776,43 @@ mod tests {
       Ok(row.get::<_, String>(0).unwrap())
     })
     .expect_err("Should have failed");
+  }
+
+  #[tokio::test]
+  async fn from_path_initializes_sqlite_before_spawning() {
+    // Regression test for https://github.com/denoland/deno/issues/37045:
+    // `from_path()` must finish SQLite's first-time init on the calling
+    // thread, so its eager-init thread never races another one into it.
+    // SQLite initializes once per process, so check in a fresh process.
+    const CHILD_ENV: &str = "ENDE_TEST_SQLITE_INIT_CHILD";
+    if std::env::var_os(CHILD_ENV).is_none() {
+      let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+          "--exact",
+          "cache::cache_db::tests::from_path_initializes_sqlite_before_spawning",
+        ])
+        .env(CHILD_ENV, "1")
+        .output()
+        .unwrap();
+      assert!(
+        output.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+      );
+      return;
+    }
+
+    let temp_dir = TempDir::new();
+    let path = temp_dir.path().join("db").to_path_buf();
+    let _db = CacheDB::from_path(&TEST_DB, path, "1.0");
+    // SAFETY: sqlite3_config() only reads its arguments, and this process
+    // runs nothing else. It fails with SQLITE_MISUSE once SQLite is
+    // initialized.
+    let rc = unsafe {
+      rusqlite::ffi::sqlite3_config(rusqlite::ffi::SQLITE_CONFIG_MULTITHREAD)
+    };
+    assert_eq!(rc, rusqlite::ffi::SQLITE_MISUSE);
   }
 
   #[test]
