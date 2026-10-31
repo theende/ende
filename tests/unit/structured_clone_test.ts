@@ -75,6 +75,97 @@ Deno.test("structuredClone URL throws DataCloneError", () => {
   );
 });
 
+Deno.test("structuredClone rejects non-serializable platform objects", () => {
+  const channel = new MessageChannel();
+  const { port1, port2 } = channel;
+  const values = [
+    channel,
+    new Event("test"),
+    new EventTarget(),
+    AbortSignal.abort(),
+    new TextEncoder(),
+    new TextDecoder(),
+    new TextEncoderStream(),
+    new TextDecoderStream(),
+    new FormData(),
+    new CompressionStream("gzip"),
+    new DecompressionStream("gzip"),
+    new ByteLengthQueuingStrategy({ highWaterMark: 1 }),
+    new CountQueuingStrategy({ highWaterMark: 1 }),
+    new URLPattern("https://example.com/:id"),
+    new PerformanceMark("test"),
+    new PerformanceObserver(() => {}),
+    crypto,
+    crypto.subtle,
+    new Headers(),
+    new Request("https://example.com/"),
+    new Response(),
+    new URL("https://example.com/"),
+  ];
+
+  try {
+    for (const value of values) {
+      assertEquals(
+        assertThrows(() => structuredClone(value), DOMException).name,
+        "DataCloneError",
+      );
+      assertEquals(
+        assertThrows(() => structuredClone({ value }), DOMException).name,
+        "DataCloneError",
+      );
+      assertEquals(
+        assertThrows(() => structuredClone([value]), DOMException).name,
+        "DataCloneError",
+      );
+      assertEquals(
+        assertThrows(
+          () => structuredClone({ deep: [{ value }] }),
+          DOMException,
+        ).name,
+        "DataCloneError",
+      );
+      assertEquals(
+        assertThrows(
+          () => structuredClone(new Map([["value", value]])),
+          DOMException,
+        ).name,
+        "DataCloneError",
+      );
+      assertEquals(
+        assertThrows(() => port2.postMessage({ value }), DOMException).name,
+        "DataCloneError",
+      );
+    }
+  } finally {
+    port1.close();
+    port2.close();
+  }
+});
+
+Deno.test("structuredClone still transfers a nested MessagePort", async () => {
+  // MessagePort is an EventTarget, which isn't serializable, but a port in
+  // the transfer list must be transferred.
+  const a = new MessageChannel();
+  const cloned = structuredClone({ port: a.port1 }, { transfer: [a.port1] });
+  assert(cloned.port instanceof MessagePort);
+
+  const b = new MessageChannel();
+  const c = new MessageChannel();
+  const received = new Promise<MessageEvent>((resolve) => {
+    c.port2.onmessage = resolve;
+  });
+  c.port1.postMessage({ port: b.port1 }, [b.port1]);
+  const event = await received;
+  assert(event.data.port instanceof MessagePort);
+
+  for (
+    const port of [cloned.port, a.port2, event.data.port, b.port2, c.port1]
+  ) {
+    port.close();
+  }
+  c.port2.close();
+});
+
 Deno.test("postMessage URL throws DataCloneError", () => {
   // Posting a non-serializable value must take the same path as
   // structuredClone and throw, instead of silently delivering `{}`.

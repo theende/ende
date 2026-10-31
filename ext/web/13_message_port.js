@@ -68,6 +68,7 @@ function getCreateFilteredInspectProxy() {
 
 const {
   defineEventHandler,
+  Event,
   EventTarget,
   MessageEvent,
   setEventTargetData,
@@ -1018,8 +1019,10 @@ webidl.converters.StructuredSerializeOptions = webidl
 // Each non-serializable class installs this symbol on its prototype via
 // `markNotSerializable()`. The descriptor is non-enumerable and
 // non-configurable so it can't be hidden, deleted, or overridden on the
-// instance.
-const kNotSerializable = Symbol("[[NotSerializable]]");
+// instance. It is a registry symbol so that the serializer in
+// libs/core/ops_builtin_v8.rs can reject marked objects nested in a value.
+const kNotSerializable = SymbolFor("Deno.nonSerializable");
+markNotSerializable(MessageChannel.prototype);
 
 function markNotSerializable(target) {
   ObjectDefineProperty(target, kNotSerializable, {
@@ -1030,6 +1033,9 @@ function markNotSerializable(target) {
     configurable: false,
   });
 }
+
+markNotSerializable(Event.prototype);
+markNotSerializable(EventTarget.prototype);
 
 // Per-instance "uncloneable" marker used by `worker_threads.markAsUncloneable`.
 // Unlike `kNotSerializable`, this is settable on individual objects (not just
@@ -1130,11 +1136,9 @@ function structuredClone(value, options) {
     "Argument 2",
   );
 
-  // NOTE: This only catches non-serializable types at the top level.
-  // Nested non-serializable objects (e.g. { x: new Response() }) will
-  // still silently serialize as {} because V8's ValueSerializer doesn't
-  // know about Web API platform types. Fixing this fully requires a
-  // custom V8 serializer delegate in C++/Rust.
+  // NOTE: This only checks the top level. Nested non-serializable objects
+  // (e.g. { x: new Response() }) are rejected by the serializer, which sees
+  // the same `kNotSerializable` registry symbol.
   // Skip the check when the value itself is in the transfer list, since
   // transferring is not the same as serializing.
   if (

@@ -52,4 +52,5 @@ v8_static_strings!(
   WEBASSEMBLY = "WebAssembly",
   ESMODULE = "__esModule",
   HOST_OBJECT = "Deno.core.hostObject",
+  NON_SERIALIZABLE = "Deno.nonSerializable",
 );

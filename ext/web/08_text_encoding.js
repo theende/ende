@@ -49,6 +49,9 @@ const {
 } = primordials;
 
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
+const { markNotSerializable } = core.loadExtScript(
+  "ext:ende_web/13_message_port.js",
+);
 const { createFilteredInspectProxy } = core.loadExtScript(
   "ext:ende_web/01_console.js",
 );
@@ -621,6 +624,11 @@ function BOMSniff(bytes) {
   if (bytes[0] === 0xFF && bytes[1] === 0xFE) return "UTF-16LE";
   return null;
 }
+
+markNotSerializable(TextEncoder.prototype);
+markNotSerializable(TextDecoder.prototype);
+markNotSerializable(TextEncoderStream.prototype);
+markNotSerializable(TextDecoderStream.prototype);
 
 return {
   decode,

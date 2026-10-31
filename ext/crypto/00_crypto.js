@@ -35,12 +35,17 @@ const {
 } = primordials;
 
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
+const { markNotSerializable } = core.loadExtScript(
+  "ext:ende_web/13_message_port.js",
+);
 const { createFilteredInspectProxy } = core.loadExtScript(
   "ext:ende_web/01_console.js",
 );
 // Brand stamped on every CryptoKey (alongside `webidl.brand`) that carries
 // the key's raw material, see `ext/crypto/make_key.rs`.
 const kKeyObject = Symbol("kKeyObject");
+markNotSerializable(Crypto.prototype);
+markNotSerializable(SubtleCrypto.prototype);
 
 // op2-generated interface constructors expose the macro's internal
 // new-target signal (`_: bool`) as a formal parameter, giving the

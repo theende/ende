@@ -24,6 +24,9 @@ const {
 } = primordials;
 
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
+const { markNotSerializable } = core.loadExtScript(
+  "ext:ende_web/13_message_port.js",
+);
 
 // Lazy-load structuredClone from 02_structured_clone
 let _structuredClone;
@@ -255,6 +258,7 @@ class PerformanceEntry {
 }
 webidl.configureInterface(PerformanceEntry);
 const PerformanceEntryPrototype = PerformanceEntry.prototype;
+markNotSerializable(PerformanceEntryPrototype);
 
 const _detail = Symbol("[[detail]]");
 class PerformanceMark extends PerformanceEntry {
@@ -468,6 +472,7 @@ class PerformanceObserverEntryList {
 webidl.configureInterface(PerformanceObserverEntryList);
 const PerformanceObserverEntryListPrototype =
   PerformanceObserverEntryList.prototype;
+markNotSerializable(PerformanceObserverEntryListPrototype);
 
 const _callback = Symbol("[[callback]]");
 const _entryTypes = Symbol("[[entryTypes]]");
@@ -586,6 +591,7 @@ class PerformanceObserver {
 }
 webidl.configureInterface(PerformanceObserver);
 const PerformanceObserverPrototype = PerformanceObserver.prototype;
+markNotSerializable(PerformanceObserverPrototype);
 
 class Performance extends EventTarget {
   constructor(key = null) {
