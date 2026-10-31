@@ -37,21 +37,18 @@ pub static PERMISSION_ARGS: &[ArgDef] = &[
     .action(ArgAction::Append)
     .num_args(NumArgs::ZeroOrMore)
     .require_equals()
-    .value_delimiter(',')
 .hidden(),
   ArgDef::new("deny-read")
     .long("deny-read")
     .action(ArgAction::Append)
     .num_args(NumArgs::ZeroOrMore)
     .require_equals()
-    .value_delimiter(',')
 .hidden(),
   ArgDef::new("ignore-read")
     .long("ignore-read")
     .action(ArgAction::Append)
     .num_args(NumArgs::ZeroOrMore)
     .require_equals()
-    .value_delimiter(',')
 .hidden(),
   ArgDef::new("allow-write")
     .short('W')
@@ -59,14 +56,12 @@ pub static PERMISSION_ARGS: &[ArgDef] = &[
     .action(ArgAction::Append)
     .num_args(NumArgs::ZeroOrMore)
     .require_equals()
-    .value_delimiter(',')
 .hidden(),
   ArgDef::new("deny-write")
     .long("deny-write")
     .action(ArgAction::Append)
     .num_args(NumArgs::ZeroOrMore)
     .require_equals()
-    .value_delimiter(',')
 .hidden(),
   ArgDef::new("allow-net")
     .short('N')
@@ -139,14 +134,12 @@ pub static PERMISSION_ARGS: &[ArgDef] = &[
     .action(ArgAction::Append)
     .num_args(NumArgs::ZeroOrMore)
     .require_equals()
-    .value_delimiter(',')
 .hidden(),
   ArgDef::new("deny-ffi")
     .long("deny-ffi")
     .action(ArgAction::Append)
     .num_args(NumArgs::ZeroOrMore)
     .require_equals()
-    .value_delimiter(',')
 .hidden(),
   ArgDef::new("allow-import")
     .short('I')

@@ -45,10 +45,12 @@ pub static UPGRADE_USAGE: &str = cstr!(
   <bold>ende upgrade</> <p(245)>pr 12345</>"
 );
 
+/// Join paths for a path permission flag, doubling each comma in a path so
+/// the parser reads it back as one path.
 fn join_paths(allowlist: &[String], d: &str) -> String {
   allowlist
     .iter()
-    .map(|path| path.to_string())
+    .map(|path| path.replace(',', ",,"))
     .collect::<Vec<String>>()
     .join(d)
 }
@@ -229,7 +231,7 @@ impl FlagsExt for Flags {
         args.push("--ignore-read".to_string());
       }
       Some(ignorelist) => {
-        let s = format!("--ignore-read={}", ignorelist.join(","));
+        let s = format!("--ignore-read={}", join_paths(ignorelist, ","));
         args.push(s);
       }
       _ => {}
@@ -933,6 +935,31 @@ mod tests {
         "{args:?}"
       );
     }
+  }
+
+  /// `ende install` and `ende x` re-serialize the permission flags, so a path
+  /// containing a comma must be escaped again, or it reparses as two paths.
+  #[test]
+  fn to_permission_args_escapes_commas_in_paths() {
+    let flags = flags_from_vec(svec![
+      "ende",
+      "run",
+      "--allow-read=a,,b,c",
+      "--deny-read=d,,e",
+      "--ignore-read=f,,g",
+      "--allow-write=h,,i",
+      "--deny-write=j,,k",
+      "--allow-ffi=l,,m",
+      "--deny-ffi=n,,o",
+      "script.ts"
+    ])
+    .unwrap();
+    let mut args = svec!["ende", "run"];
+    args.extend(flags.to_permission_args().into_iter().map(OsString::from));
+    args.push("script.ts".into());
+    let reparsed = flags_from_vec(args).unwrap();
+    assert_eq!(reparsed.permissions, flags.permissions);
+    assert_eq!(flags.permissions.allow_read, Some(svec!["a,b", "c"]));
   }
 
   #[test]
