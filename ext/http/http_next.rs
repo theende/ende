@@ -1157,6 +1157,7 @@ struct RawHttpRecordInner {
   response_ready: bool,
   response_ready_waker: Option<std::task::Waker>,
   response_body_finished: bool,
+  response_body_failed: bool,
   response_body_waker: Option<std::task::Waker>,
   otel_info: Option<OtelInfo>,
   automatic_compression: bool,
@@ -1211,6 +1212,7 @@ impl RawHttpRecord {
       response_ready: false,
       response_ready_waker: None,
       response_body_finished: false,
+      response_body_failed: false,
       response_body_waker: None,
       otel_info,
       automatic_compression: options.automatic_compression,
@@ -1495,10 +1497,13 @@ impl RawHttpRecord {
       ) -> Poll<Self::Output> {
         let mut inner = self.0.0.borrow_mut();
         if inner.response_body_finished {
-          return Poll::Ready(matches!(
-            inner.response_body,
-            Some(RawResponseBody::Flat(FlatResponseBody::Empty)) | None
-          ));
+          return Poll::Ready(
+            !inner.response_body_failed
+              && matches!(
+                inner.response_body,
+                Some(RawResponseBody::Flat(FlatResponseBody::Empty)) | None
+              ),
+          );
         }
         inner.response_body_waker = Some(cx.waker().clone());
         Poll::Pending
@@ -4138,6 +4143,7 @@ impl RawResponseBodyFinishGuard {
   }
 
   fn finish(mut self, complete: bool) {
+    self.record.0.borrow_mut().response_body_failed = !complete;
     self.record.finish_response_body(complete);
     self.active = false;
   }
@@ -4146,6 +4152,7 @@ impl RawResponseBodyFinishGuard {
 impl Drop for RawResponseBodyFinishGuard {
   fn drop(&mut self) {
     if self.active {
+      self.record.0.borrow_mut().response_body_failed = true;
       self.record.finish_response_body(false);
     }
   }
@@ -4205,7 +4212,8 @@ where
       .await
       .inspect_err(|_| abort_raw_response_body(&mut body))?;
     abort_raw_response_body(&mut body);
-    finish.finish(false);
+    // A HEAD response never sends its body: it is complete once the head is.
+    finish.finish(true);
     return Ok(());
   }
   let response_head = h1::ResponseHead {
@@ -4361,7 +4369,8 @@ where
     .await
     .inspect_err(|_| abort_raw_response_body(&mut body))?;
     abort_raw_response_body(&mut body);
-    finish.finish(false);
+    // A HEAD response never sends its body: it is complete once the head is.
+    finish.finish(true);
     return Ok(());
   }
   let response_head = h1::ResponseHead {
