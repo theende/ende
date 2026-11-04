@@ -16,6 +16,7 @@ const {
   ArrayPrototypeJoin,
   Error,
   JSONStringify,
+  ObjectDefineProperty,
   ObjectPrototypeIsPrototypeOf,
   Promise,
   queueMicrotask,
@@ -392,11 +393,16 @@ class Worker extends EventTarget {
       inspectOptions,
     );
   }
-
-  [SymbolToStringTag] = "Worker";
 }
 
 const WorkerPrototype = Worker.prototype;
+ObjectDefineProperty(WorkerPrototype, SymbolToStringTag, {
+  __proto__: null,
+  value: "Worker",
+  writable: false,
+  enumerable: false,
+  configurable: true,
+});
 
 defineEventHandler(Worker.prototype, "error");
 defineEventHandler(Worker.prototype, "message");
