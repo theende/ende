@@ -746,11 +746,18 @@ fn filter_coverages(
         // feature. These are third-party dependencies replacing a registry
         // version, so they shouldn't show up in the user's coverage report.
         || link_dir_urls.iter().any(|dir| e.url.starts_with(dir));
+      if is_internal {
+        return false;
+      }
 
-      let is_included = include.iter().any(|p| p.is_match(&e.url));
-      let is_excluded = exclude.iter().any(|p| p.is_match(&e.url));
-
-      (include.is_empty() || is_included) && !is_excluded && !is_internal
+      // Script URLs are percent-encoded, so a file whose path holds a space
+      // or a non-ASCII character appears in the URL as escapes. A pattern
+      // matches when it matches either the URL or its decoded form.
+      let decoded_url =
+        percent_encoding::percent_decode_str(&e.url).decode_utf8_lossy();
+      let matches = |p: &Regex| p.is_match(&e.url) || p.is_match(&decoded_url);
+      (include.is_empty() || include.iter().any(matches))
+        && !exclude.iter().any(matches)
     })
     .collect::<Vec<cdp::ScriptCoverage>>()
 }
