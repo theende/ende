@@ -108,7 +108,7 @@ const windowsX86Runner = "windows-2022";
 const windowsX86XlRunner = "windows-2022-xl";
 const windowsArmRunner = "windows-11-arm";
 const macosX86Runner = "macos-15-intel";
-const macosArmRunner = "macos-14";
+const macosArmRunner = "macos-15";
 
 // shared conditions
 // Steps gated on `isDenoland` publish to or sign with Deno-company

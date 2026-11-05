@@ -69,7 +69,7 @@ const matrix = defineMatrix({
   include: [
     {
       target: "aarch64-apple-darwin",
-      runner: "macos-14",
+      runner: "macos-15",
       os: "macos",
       arch: "aarch64",
     },
