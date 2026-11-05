@@ -6,6 +6,15 @@ https://github.com/denoland/deno/releases
 We also have one-line install commands at:
 https://github.com/denoland/deno_install
 
+### 2026.11.05 / 2026.11.05
+
+- feat(compile): narrow a compiled binary's permissions with ENDE_ALLOW_*
+- feat(fetch): add denyAddresses option to Ende.createHttpClient
+- feat(lint)!: rename no-deprecated-deno-api to no-deprecated-ende-api
+- feat(lint): accept the old no-deprecated-deno-api code in lint config
+- fix(compile): don't log unresolved --allow-run programs at startup
+- fix(install): warn instead of failing on JSR exports Ende can't load
+
 ### 2026.10.22 / 2026.10.22
 
 - Merge pull request #3 from theende/fix/macos-new-sdk-linker
