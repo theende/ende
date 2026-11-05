@@ -1,0 +1,6 @@
+{
+  "exports": {
+    ".": "./mod.ts",
+    "./node": "./node.ts"
+  }
+}

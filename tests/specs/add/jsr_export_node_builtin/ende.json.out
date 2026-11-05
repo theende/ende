@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@endetest/node-builtin-export": "jsr:@endetest/node-builtin-export@^1.0.0"
+  }
+}

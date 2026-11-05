@@ -1,0 +1,2 @@
+error: "node:fs" — Node built-in modules are not supported in Ende.
+    at http://127.0.0.1:4250/@endetest/node-builtin-export/1.0.0/node.ts:1:30

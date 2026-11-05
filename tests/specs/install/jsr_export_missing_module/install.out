@@ -1,0 +1,3 @@
+[WILDCARD]
+error: Module not found "http://127.0.0.1:4250/@endetest/missing-module-export/1.0.0/missing.ts".
+    at http://127.0.0.1:4250/@endetest/missing-module-export/1.0.0/broken.ts:1:15

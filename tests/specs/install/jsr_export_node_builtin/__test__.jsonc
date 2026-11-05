@@ -1,0 +1,22 @@
+{
+  "tests": {
+    "install_then_frozen_run": {
+      "tempDir": true,
+      "steps": [
+        { "args": "install", "output": "install.out" },
+        { "args": "run --frozen main.ts", "output": "main.out" }
+      ]
+    },
+    "run_skipped_export_still_fails": {
+      "tempDir": true,
+      "steps": [
+        { "args": "install", "output": "install.out" },
+        {
+          "args": "run --frozen node_main.ts",
+          "output": "node_main.out",
+          "exitCode": 1
+        }
+      ]
+    }
+  }
+}

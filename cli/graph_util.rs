@@ -1040,6 +1040,47 @@ impl ModuleGraphBuilder {
     )
   }
 
+  /// Every module graph error `graph_roots_valid` looks for in `roots`,
+  /// where it stops at the first. Doesn't check the roots themselves or exit
+  /// on integrity errors.
+  pub fn graph_roots_errors(
+    &self,
+    graph: &ModuleGraph,
+    roots: &[ModuleSpecifier],
+    allow_unknown_media_types: bool,
+    allow_unknown_jsr_exports: bool,
+  ) -> Vec<EnhancedGraphError> {
+    let will_type_check = self.cli_options.type_check_mode().is_true();
+    let collect_bare_importable_pkg_names = || {
+      self
+        .cli_options
+        .workspace()
+        .resolver_jsr_pkgs()
+        .map(|pkg| pkg.name)
+        .collect::<Vec<_>>()
+    };
+    graph_walk_errors(
+      graph,
+      &self.sys,
+      roots,
+      GraphWalkErrorsOptions {
+        check_js: CheckJsOption::Custom(
+          self.compiler_options_resolver.as_ref(),
+        ),
+        kind: if will_type_check {
+          GraphKind::All
+        } else {
+          GraphKind::CodeOnly
+        },
+        will_type_check,
+        allow_unknown_media_types,
+        allow_unknown_jsr_exports,
+        collect_bare_importable_pkg_names: &collect_bare_importable_pkg_names,
+      },
+    )
+    .collect()
+  }
+
   fn resolve_compiler_options_types_imports(
     &self,
     graph_kind: GraphKind,

@@ -1,0 +1,6 @@
+{
+  "exports": {
+    ".": "./mod.ts",
+    "./broken": "./broken.ts"
+  }
+}

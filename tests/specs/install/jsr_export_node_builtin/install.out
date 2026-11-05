@@ -1,0 +1,7 @@
+[UNORDERED_START]
+Download http://127.0.0.1:4250/@endetest/node-builtin-export/meta.json
+Download http://127.0.0.1:4250/@endetest/node-builtin-export/1.0.0_meta.json
+Download http://127.0.0.1:4250/@endetest/node-builtin-export/1.0.0/mod.ts
+Download http://127.0.0.1:4250/@endetest/node-builtin-export/1.0.0/node.ts
+[UNORDERED_END]
+Warning jsr:@endetest/node-builtin-export@1.0.0/node can't be used in Ende: "node:fs" — Node built-in modules are not supported in Ende.

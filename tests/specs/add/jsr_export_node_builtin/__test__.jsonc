@@ -1,0 +1,13 @@
+{
+  "tempDir": true,
+  "steps": [{
+    "args": "add jsr:@endetest/node-builtin-export",
+    "output": "add.out"
+  }, {
+    "args": [
+      "eval",
+      "console.log(Deno.readTextFileSync('ende.json').trim())"
+    ],
+    "output": "ende.json.out"
+  }]
+}

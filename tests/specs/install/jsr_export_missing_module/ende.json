@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@endetest/missing-module-export": "jsr:@endetest/missing-module-export@^1.0.0"
+  }
+}

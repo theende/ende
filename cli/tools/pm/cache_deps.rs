@@ -4,13 +4,21 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use deno_error::JsErrorBox;
+use deno_error::JsErrorClass;
 use deno_graph::JsrPackageReqNotFoundError;
+use deno_graph::ModuleGraphError;
+use deno_graph::ResolutionError;
 use deno_graph::packages::JsrPackageVersionInfo;
+use deno_graph::source::ResolveError;
 use deno_semver::jsr::JsrPackageReqReference;
+use deno_semver::package::PackageNv;
 use ende_core::error::AnyError;
 use ende_core::futures::StreamExt;
 use ende_core::futures::stream::FuturesUnordered;
 use ende_core::url::Url;
+use ende_resolver::EndeResolveErrorKind;
+use ende_resolver::UnsupportedSpecifierError;
 
 use crate::factory::CliFactory;
 use crate::graph_container::ModuleGraphContainer;
@@ -62,6 +70,9 @@ pub async fn cache_top_level_deps(
     }
 
     let mut roots = Vec::new();
+    // Roots added only because they're an export of a JSR package in the
+    // config, with the name to show for them.
+    let mut export_roots = Vec::new();
 
     let mut info_futures = FuturesUnordered::new();
 
@@ -156,12 +167,12 @@ pub async fn cache_top_level_deps(
               Cow::Owned(nv)
             } else {
               return Result::<
-                Option<(Url, Arc<JsrPackageVersionInfo>)>,
+                Option<(Url, PackageNv, Arc<JsrPackageVersionInfo>)>,
                 JsrPackageReqNotFoundError,
               >::Ok(None);
             };
             if let Some(info) = jsr_resolver.package_version_info(&nv).await {
-              return Ok(Some((specifier.clone(), info)));
+              return Ok(Some((specifier.clone(), nv.into_owned(), info)));
             }
             Ok(None)
           });
@@ -184,11 +195,13 @@ pub async fn cache_top_level_deps(
     }
 
     while let Some(info_future) = info_futures.next().await {
-      if let Some((specifier, info)) = info_future? {
+      if let Some((specifier, nv, info)) = info_future? {
         let exports = info.exports();
         for (k, _) in exports {
           if let Ok(spec) = specifier.join(k) {
-            roots.push(spec);
+            let name =
+              format!("jsr:{}{}", nv, k.strip_prefix('.').unwrap_or(k));
+            export_roots.push((spec, name));
           }
         }
       }
@@ -202,18 +215,76 @@ pub async fn cache_top_level_deps(
     graph_builder
       .build_graph_roots(
         graph,
-        roots.clone(),
+        roots
+          .iter()
+          .chain(export_roots.iter().map(|(spec, _)| spec))
+          .cloned()
+          .collect(),
         BuildGraphOptions {
           loader: None,
           is_dynamic: false,
         },
       )
       .await?;
-    maybe_graph_error =
-      graph_builder.graph_roots_valid(graph, &roots, true, true);
+    maybe_graph_error = graph_builder
+      .graph_roots_valid(graph, &roots, true, true)
+      .and_then(|()| {
+        // An export the app may never import shouldn't fail the whole
+        // command just because it uses something Ende doesn't support.
+        // Importing it still fails at run time.
+        for (spec, name) in &export_roots {
+          let mut unsupported_reason = None;
+          for error in graph_builder.graph_roots_errors(
+            graph,
+            std::slice::from_ref(spec),
+            true,
+            true,
+          ) {
+            match as_unsupported_specifier_error(error.original()) {
+              Some(err) => {
+                unsupported_reason.get_or_insert_with(|| err.to_string());
+              }
+              None => return Err(JsErrorBox::from_err(error)),
+            }
+          }
+          if let Some(reason) = unsupported_reason {
+            log::warn!(
+              "{} {} can't be used in Ende: {}",
+              deno_terminal::colors::yellow("Warning"),
+              name,
+              reason,
+            );
+          }
+        }
+        Ok(())
+      });
   }
 
   maybe_graph_error?;
 
   Ok(())
+}
+
+/// The Ende unsupported-specifier error (a Node built-in, npm package or
+/// CommonJS module) behind `error`, if that's what it is.
+fn as_unsupported_specifier_error(
+  error: &ModuleGraphError,
+) -> Option<&UnsupportedSpecifierError> {
+  let (ModuleGraphError::ResolutionError(ResolutionError::ResolverError {
+    error,
+    ..
+  })
+  | ModuleGraphError::TypesResolutionError(
+    ResolutionError::ResolverError { error, .. },
+  )) = error
+  else {
+    return None;
+  };
+  let ResolveError::Other(error) = error.as_ref() else {
+    return None;
+  };
+  match error.get_ref().downcast_ref::<EndeResolveErrorKind>()? {
+    EndeResolveErrorKind::UnsupportedSpecifier(err) => Some(err),
+    _ => None,
+  }
 }
