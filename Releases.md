@@ -3,8 +3,7 @@
 Binary releases can be downloaded manually at:
 https://github.com/theende/ende/releases
 
-We also have one-line install commands at:
-https://ende.sh
+We also have one-line install commands at: https://ende.sh
 
 ### 2026.11.05
 
