@@ -10,6 +10,11 @@ pub struct EnvVar {
 
 pub static ENV_VARS: &[EnvVar] = &[
   EnvVar {
+    name: "ENDE_ALLOW_<KIND>",
+    description: "Narrow a binary built with `ende compile` to a subset of its --allow-<kind>\nlist (KIND: NET, READ, WRITE, ENV, RUN, SYS, FFI, IMPORT). Same syntax as the\nflag; empty means no access. Entries it wasn't compiled with are an error.",
+    example: Some("(e.g. ENDE_ALLOW_READ=/var/lib/app)"),
+  },
+  EnvVar {
     name: "ENDE_AUTH_TOKENS",
     description: "A semi-colon separated list of bearer tokens and hostnames\nto use when fetching remote modules from private repositories",
     example: Some(r#"(e.g. "abcde12345@deno.land;54321edcba@github.com")"#),

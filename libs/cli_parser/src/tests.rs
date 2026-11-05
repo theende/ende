@@ -1589,6 +1589,19 @@ fn permission_help_section_is_rendered() {
   assert!(!fmt.contains("Permission options:"));
 }
 
+/// `ENDE_ALLOW_*` only applies to compiled binaries, so only `ende compile`
+/// and the root env var list document it.
+#[test]
+fn narrow_permissions_env_vars_are_documented() {
+  let compile =
+    help::render_subcommand_help(&defs::ENDE_ROOT, "compile").unwrap();
+  assert!(compile.contains("ENDE_ALLOW_<KIND>"));
+  let run = help::render_subcommand_help(&defs::ENDE_ROOT, "run").unwrap();
+  assert!(!run.contains("ENDE_ALLOW_<KIND>"));
+  let root = help::render_root_help(&defs::ENDE_ROOT);
+  assert!(root.contains("ENDE_ALLOW_<KIND>"));
+}
+
 /// Commands that resolve a module graph but never run it take only the
 /// import permissions — not the full permission set. These wrongly accepted
 /// every permission flag during the clap cutover.

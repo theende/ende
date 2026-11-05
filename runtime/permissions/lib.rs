@@ -3761,6 +3761,211 @@ pub enum PermissionsFromOptionsError {
   RunEmptyCommandName,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum NarrowPermissionsError {
+  #[error(
+    "{var} entry \"{entry}\" is not granted by the permissions this binary was compiled with"
+  )]
+  NotGranted { var: &'static str, entry: String },
+  #[error("{var} entry \"{entry}\" is invalid: {message}")]
+  InvalidEntry {
+    var: &'static str,
+    entry: String,
+    message: String,
+  },
+  #[error("{var} is not valid unicode")]
+  NotUnicode { var: &'static str },
+  #[error(transparent)]
+  Compiled(#[from] PermissionsFromOptionsError),
+}
+
+#[derive(Clone, Copy)]
+enum NarrowKind {
+  Net,
+  Read,
+  Write,
+  Env,
+  Run,
+  Sys,
+  Ffi,
+  Import,
+}
+
+impl NarrowKind {
+  const ALL: [NarrowKind; 8] = [
+    NarrowKind::Net,
+    NarrowKind::Read,
+    NarrowKind::Write,
+    NarrowKind::Env,
+    NarrowKind::Run,
+    NarrowKind::Sys,
+    NarrowKind::Ffi,
+    NarrowKind::Import,
+  ];
+
+  fn var(self) -> &'static str {
+    match self {
+      NarrowKind::Net => "ENDE_ALLOW_NET",
+      NarrowKind::Read => "ENDE_ALLOW_READ",
+      NarrowKind::Write => "ENDE_ALLOW_WRITE",
+      NarrowKind::Env => "ENDE_ALLOW_ENV",
+      NarrowKind::Run => "ENDE_ALLOW_RUN",
+      NarrowKind::Sys => "ENDE_ALLOW_SYS",
+      NarrowKind::Ffi => "ENDE_ALLOW_FFI",
+      NarrowKind::Import => "ENDE_ALLOW_IMPORT",
+    }
+  }
+
+  fn allow_list(
+    self,
+    opts: &mut PermissionsOptions,
+  ) -> &mut Option<Vec<String>> {
+    match self {
+      NarrowKind::Net => &mut opts.allow_net,
+      NarrowKind::Read => &mut opts.allow_read,
+      NarrowKind::Write => &mut opts.allow_write,
+      NarrowKind::Env => &mut opts.allow_env,
+      NarrowKind::Run => &mut opts.allow_run,
+      NarrowKind::Sys => &mut opts.allow_sys,
+      NarrowKind::Ffi => &mut opts.allow_ffi,
+      NarrowKind::Import => &mut opts.allow_import,
+    }
+  }
+
+  /// Queries `compiled` for `entry`, parsed the same way as an allow list
+  /// entry of this kind.
+  fn query(
+    self,
+    compiled: &Permissions,
+    parser: &dyn PermissionDescriptorParser,
+    entry: &str,
+  ) -> Result<PermissionState, String> {
+    fn msg(err: impl fmt::Display) -> String {
+      err.to_string()
+    }
+    if entry.is_empty() {
+      return Err("empty entries are not allowed".to_string());
+    }
+    let path = || parser.parse_path_query(Cow::Borrowed(Path::new(entry)));
+    Ok(match self {
+      NarrowKind::Net => compiled
+        .net
+        .query(Some(&parser.parse_net_descriptor(entry).map_err(msg)?)),
+      NarrowKind::Read => {
+        compiled.read.query(Some(&path().map_err(msg)?.into_read()))
+      }
+      NarrowKind::Write => compiled
+        .write
+        .query(Some(&path().map_err(msg)?.into_write())),
+      NarrowKind::Env => {
+        parser.parse_env_descriptor(entry).map_err(msg)?;
+        compiled.env.query(Some(entry))
+      }
+      NarrowKind::Run => match parser.parse_run_query(entry).map_err(msg)? {
+        // Not found on this host's PATH: the entry is dropped when the
+        // permissions are built, so it grants nothing and can't widen.
+        RunQueryDescriptor::Name(_) => PermissionState::Granted,
+        desc => compiled.run.query(Some(&desc)),
+      },
+      NarrowKind::Sys => compiled
+        .sys
+        .query(Some(&parser.parse_sys_descriptor(entry).map_err(msg)?)),
+      NarrowKind::Ffi => {
+        compiled.ffi.query(Some(&path().map_err(msg)?.into_ffi()))
+      }
+      NarrowKind::Import => compiled
+        .import
+        .query(Some(&parser.parse_import_descriptor(entry).map_err(msg)?)),
+    })
+  }
+}
+
+impl PermissionsOptions {
+  /// Narrows the allow lists of a compiled binary's permissions with the
+  /// `ENDE_ALLOW_*` environment variables, read through `get_env`.
+  ///
+  /// An unset variable keeps that kind's allow list. A set variable replaces
+  /// it with its comma-separated entries, or with no access when empty. Every
+  /// entry must already be granted by `self`, so access is never widened.
+  pub fn narrow_from_env(
+    &mut self,
+    parser: &dyn PermissionDescriptorParser,
+    get_env: impl Fn(&str) -> Option<std::ffi::OsString>,
+  ) -> Result<(), NarrowPermissionsError> {
+    let mut values = Vec::new();
+    for kind in NarrowKind::ALL {
+      if let Some(value) = get_env(kind.var()) {
+        let value = value.into_string().map_err(|_| {
+          NarrowPermissionsError::NotUnicode { var: kind.var() }
+        })?;
+        values.push((kind, value));
+      }
+    }
+    if values.is_empty() {
+      return Ok(());
+    }
+
+    let compiled =
+      Permissions::from_options_without_unresolved_run_log(parser, self)?;
+    let mut narrowed = Vec::with_capacity(values.len());
+    for (kind, value) in values {
+      // In `PermissionsOptions`, `None` is no access and `Some(vec![])` is
+      // all access, so an empty value must map to `None`.
+      if value.is_empty() {
+        narrowed.push((kind, None));
+        continue;
+      }
+      let mut entries: Vec<String> =
+        value.split(',').map(ToString::to_string).collect();
+      if matches!(kind, NarrowKind::Net) {
+        entries = expand_bare_net_ports(entries);
+      }
+      for entry in &entries {
+        let state =
+          kind.query(&compiled, parser, entry).map_err(|message| {
+            NarrowPermissionsError::InvalidEntry {
+              var: kind.var(),
+              entry: entry.clone(),
+              message,
+            }
+          })?;
+        if !matches!(
+          state,
+          PermissionState::Granted | PermissionState::GrantedPartial
+        ) {
+          return Err(NarrowPermissionsError::NotGranted {
+            var: kind.var(),
+            entry: entry.clone(),
+          });
+        }
+      }
+      narrowed.push((kind, Some(entries)));
+    }
+    // Only apply once every variable checked out.
+    for (kind, allow_list) in narrowed {
+      *kind.allow_list(self) = allow_list;
+    }
+    Ok(())
+  }
+}
+
+/// Expands a bare port such as `:8080` like `--allow-net` does.
+fn expand_bare_net_ports(entries: Vec<String>) -> Vec<String> {
+  let mut out = Vec::with_capacity(entries.len());
+  for entry in entries {
+    if let Some(port) = entry.strip_prefix(':')
+      && port.parse::<u16>().is_ok()
+    {
+      for host in ["0.0.0.0", "127.0.0.1", "localhost"] {
+        out.push(format!("{host}:{port}"));
+      }
+    } else {
+      out.push(entry);
+    }
+  }
+  out
+}
+
 impl Permissions {
   pub fn new_unary_with_ignore<TAllow: AllowDescriptor>(
     allow_list: Option<Vec<TAllow>>,
@@ -5988,6 +6193,176 @@ mod tests {
         canonicalized: false,
       })
     }
+  }
+
+  fn narrow(
+    opts: &mut PermissionsOptions,
+    env: &[(&str, &str)],
+  ) -> Result<(), NarrowPermissionsError> {
+    opts.narrow_from_env(&TestPermissionDescriptorParser, |name| {
+      env
+        .iter()
+        .find(|(key, _)| *key == name)
+        .map(|(_, value)| value.into())
+    })
+  }
+
+  #[test]
+  fn narrow_from_env_unset_keeps_compiled() {
+    let compiled = PermissionsOptions {
+      allow_read: Some(svec!["/srv"]),
+      allow_env: Some(vec![]),
+      ..Default::default()
+    };
+    let mut opts = compiled.clone();
+    narrow(&mut opts, &[]).unwrap();
+    assert_eq!(opts, compiled);
+  }
+
+  #[test]
+  fn narrow_from_env_replaces_allow_list() {
+    let mut opts = PermissionsOptions {
+      allow_read: Some(svec!["/srv"]),
+      deny_read: Some(svec!["/srv/secret"]),
+      allow_net: Some(vec![]),
+      ..Default::default()
+    };
+    narrow(
+      &mut opts,
+      &[
+        ("ENDE_ALLOW_READ", "/srv/work,/srv/data"),
+        ("ENDE_ALLOW_NET", "eol.example.com:443"),
+      ],
+    )
+    .unwrap();
+    assert_eq!(opts.allow_read, Some(svec!["/srv/work", "/srv/data"]));
+    assert_eq!(opts.deny_read, Some(svec!["/srv/secret"]));
+    assert_eq!(opts.allow_net, Some(svec!["eol.example.com:443"]));
+  }
+
+  #[test]
+  fn narrow_from_env_empty_value_means_no_access() {
+    // `Some(vec![])` would mean all access, so this must become `None`.
+    let mut opts = PermissionsOptions {
+      allow_env: Some(vec![]),
+      allow_read: Some(svec!["/srv"]),
+      ..Default::default()
+    };
+    narrow(
+      &mut opts,
+      &[
+        ("ENDE_ALLOW_ENV", ""),
+        ("ENDE_ALLOW_READ", ""),
+        ("ENDE_ALLOW_NET", ""),
+      ],
+    )
+    .unwrap();
+    assert_eq!(opts.allow_env, None);
+    assert_eq!(opts.allow_read, None);
+    assert_eq!(opts.allow_net, None);
+  }
+
+  #[test]
+  fn narrow_from_env_refuses_widening() {
+    let compiled = PermissionsOptions {
+      allow_read: Some(svec!["/srv"]),
+      allow_net: Some(svec!["eol.example.com:443"]),
+      allow_env: Some(svec!["PORT"]),
+      allow_sys: Some(svec!["hostname"]),
+      allow_write: Some(vec![]),
+      deny_write: Some(svec!["/etc"]),
+      ..Default::default()
+    };
+    let cases = [
+      ("ENDE_ALLOW_READ", "/srv/work,/etc", "/etc"),
+      ("ENDE_ALLOW_READ", "/", "/"),
+      ("ENDE_ALLOW_NET", "eol.example.com", "eol.example.com"),
+      ("ENDE_ALLOW_NET", "eol.example.com:80", "eol.example.com:80"),
+      ("ENDE_ALLOW_ENV", "HOME", "HOME"),
+      ("ENDE_ALLOW_SYS", "osRelease", "osRelease"),
+      ("ENDE_ALLOW_WRITE", "/etc/passwd", "/etc/passwd"),
+      ("ENDE_ALLOW_FFI", "/lib/foo.so", "/lib/foo.so"),
+      ("ENDE_ALLOW_IMPORT", "jsr.io:443", "jsr.io:443"),
+    ];
+    for (var, value, bad_entry) in cases {
+      let mut opts = compiled.clone();
+      let err = narrow(&mut opts, &[(var, value)]).unwrap_err();
+      assert_eq!(
+        err.to_string(),
+        format!(
+          "{var} entry \"{bad_entry}\" is not granted by the permissions this binary was compiled with"
+        )
+      );
+      assert_eq!(opts, compiled);
+    }
+  }
+
+  #[test]
+  fn narrow_from_env_allow_all_can_be_narrowed() {
+    let mut opts = PermissionsOptions {
+      allow_read: Some(vec![]),
+      allow_net: Some(vec![]),
+      allow_run: Some(vec![]),
+      allow_sys: Some(vec![]),
+      ..Default::default()
+    };
+    narrow(
+      &mut opts,
+      &[
+        ("ENDE_ALLOW_READ", "/var/lib/app"),
+        ("ENDE_ALLOW_NET", "*.example.com,10.0.0.1"),
+        ("ENDE_ALLOW_SYS", "hostname"),
+      ],
+    )
+    .unwrap();
+    assert_eq!(opts.allow_read, Some(svec!["/var/lib/app"]));
+    assert_eq!(opts.allow_net, Some(svec!["*.example.com", "10.0.0.1"]));
+    assert_eq!(opts.allow_sys, Some(svec!["hostname"]));
+  }
+
+  #[test]
+  fn narrow_from_env_expands_bare_net_port() {
+    let mut opts = PermissionsOptions {
+      allow_net: Some(vec![]),
+      ..Default::default()
+    };
+    narrow(&mut opts, &[("ENDE_ALLOW_NET", ":8080")]).unwrap();
+    assert_eq!(
+      opts.allow_net,
+      Some(svec!["0.0.0.0:8080", "127.0.0.1:8080", "localhost:8080"])
+    );
+  }
+
+  #[test]
+  fn narrow_from_env_rejects_empty_entry() {
+    let mut opts = PermissionsOptions {
+      allow_env: Some(vec![]),
+      ..Default::default()
+    };
+    let err = narrow(&mut opts, &[("ENDE_ALLOW_ENV", "PORT,")]).unwrap_err();
+    assert!(
+      matches!(
+        err,
+        NarrowPermissionsError::InvalidEntry {
+          var: "ENDE_ALLOW_ENV",
+          ..
+        }
+      ),
+      "{err}"
+    );
+    assert_eq!(opts.allow_env, Some(vec![]));
+  }
+
+  #[test]
+  fn narrow_from_env_skips_unresolved_run_entries() {
+    // An entry missing from PATH grants nothing, so it can't widen access.
+    let mut opts = PermissionsOptions {
+      allow_run: Some(svec!["/bin/sh"]),
+      ..Default::default()
+    };
+    narrow(&mut opts, &[("ENDE_ALLOW_RUN", "ende_test_missing_binary")])
+      .unwrap();
+    assert_eq!(opts.allow_run, Some(svec!["ende_test_missing_binary"]));
   }
 
   #[test]

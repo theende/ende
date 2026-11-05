@@ -785,6 +785,13 @@ pub async fn run_with_options(
   let has_desktop = op_state_init.is_some();
   let permissions = {
     let mut permissions = metadata.permissions;
+    let desc_parser =
+      Arc::new(RuntimePermissionDescriptorParser::new(sys.clone()));
+    // `ENDE_ALLOW_*` narrows the compiled-in allow lists for this host. This
+    // runs first so the grants below still apply.
+    permissions
+      .narrow_from_env(desc_parser.as_ref(), |name| std::env::var_os(name))?;
+
     // grant read access to the vfs
     grant_vfs_read_access(&mut permissions, &root_path);
 
@@ -792,8 +799,6 @@ pub async fn run_with_options(
       apply_desktop_permission_defaults(&mut permissions);
     }
 
-    let desc_parser =
-      Arc::new(RuntimePermissionDescriptorParser::new(sys.clone()));
     let permissions = Permissions::from_options_without_unresolved_run_log(
       desc_parser.as_ref(),
       &permissions,

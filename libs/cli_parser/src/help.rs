@@ -126,6 +126,9 @@ pub fn render_help(cmd: &CommandDef) -> String {
   if has_permission_args(cmd) {
     out.push('\n');
     out.push_str(crate::permission_help::PERMISSION_HELP);
+    if cmd.name == "compile" {
+      out.push_str(crate::permission_help::COMPILE_PERMISSION_HELP);
+    }
   }
 
   // Environment variables (root help only), mirroring clap's after-help.

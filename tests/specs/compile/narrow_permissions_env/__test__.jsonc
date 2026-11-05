@@ -1,0 +1,68 @@
+{
+  // A compiled binary narrows its compiled-in allow lists through
+  // `ENDE_ALLOW_*` environment variables, and refuses to widen them.
+  "tempDir": true,
+  "tests": {
+    // ENDE_ALLOW_READ narrows read access; ENDE_ALLOW_ENV is unset, so the
+    // compiled --allow-env is kept.
+    "narrowed_kind_enforced": {
+      "steps": [{
+        "args": "compile --allow-read --allow-env --output main main.ts",
+        "output": "[WILDCARD]"
+      }, {
+        "commandName": "./main",
+        "args": [],
+        "envs": { "ENDE_ALLOW_READ": "inside" },
+        "output": "read inside: ok\nread outside: NotCapable\nenv: ok\n"
+      }]
+    },
+    "widening_refused": {
+      "steps": [{
+        "args": "compile --allow-read=inside --output main main.ts",
+        "output": "[WILDCARD]"
+      }, {
+        "commandName": "./main",
+        "args": [],
+        "envs": { "ENDE_ALLOW_READ": "outside" },
+        "exitCode": 1,
+        "output": "error: ENDE_ALLOW_READ entry \"outside\" is not granted by the permissions this binary was compiled with\n"
+      }]
+    },
+    // An empty value narrows the kind to no access.
+    "empty_value_means_none": {
+      "steps": [{
+        "args": "compile --allow-read --allow-env --output main main.ts",
+        "output": "[WILDCARD]"
+      }, {
+        "commandName": "./main",
+        "args": [],
+        "envs": { "ENDE_ALLOW_ENV": "" },
+        "output": "read inside: ok\nread outside: ok\nenv: NotCapable\n"
+      }]
+    },
+    // Without ENDE_ALLOW_* set, the compiled grants apply unchanged.
+    "unset_keeps_compiled": {
+      "steps": [{
+        "args": "compile --allow-read=inside --allow-env --output main main.ts",
+        "output": "[WILDCARD]"
+      }, {
+        "commandName": "./main",
+        "args": [],
+        "output": "read inside: ok\nread outside: NotCapable\nenv: ok\n"
+      }]
+    },
+    // A kind the binary was compiled without can't be granted.
+    "uncompiled_kind_refused": {
+      "steps": [{
+        "args": "compile --allow-read --allow-env --output main main.ts",
+        "output": "[WILDCARD]"
+      }, {
+        "commandName": "./main",
+        "args": [],
+        "envs": { "ENDE_ALLOW_NET": "example.com" },
+        "exitCode": 1,
+        "output": "error: ENDE_ALLOW_NET entry \"example.com\" is not granted by the permissions this binary was compiled with\n"
+      }]
+    }
+  }
+}

@@ -56,3 +56,10 @@ Docs: https://docs.ende.sh/go/permissions
                                             ENDE_AUDIT_PERMISSIONS=./audit.jsonl ende run main.ts
                                             ENDE_AUDIT_PERMISSIONS=otel ende run main.ts
 ";
+
+/// Appended to the "Permission options" section of `ende compile` only.
+pub static COMPILE_PERMISSION_HELP: &str = "  ENDE_ALLOW_<KIND>                         Set when running the compiled binary to narrow its --allow-<kind> list for that host.
+                                            KIND is NET, READ, WRITE, ENV, RUN, SYS, FFI or IMPORT. Same syntax as the flag; an empty
+                                            value means no access. An entry the binary wasn't compiled with is an error.
+                                            ENDE_ALLOW_READ=/var/lib/app ./app
+";
