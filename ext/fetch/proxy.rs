@@ -51,6 +51,10 @@ use crate::dns::CheckDst;
 #[derive(Debug, Clone)]
 pub(crate) struct ProxyConnector<C> {
   pub(crate) http: C,
+  /// Whether the proxies in use were configured on this client (rather than
+  /// taken from the environment). The connection to such a proxy is made
+  /// with [`CheckDst::for_configured_proxy`].
+  pub(crate) configured_proxy: bool,
   pub(crate) proxies: Arc<Proxies>,
   /// TLS config when destination is not a proxy
   pub(crate) tls: Arc<TlsConfig>,
@@ -62,6 +66,18 @@ pub(crate) struct ProxyConnector<C> {
 }
 
 impl<C> ProxyConnector<C> {
+  /// The connector to open the connection to an HTTP or TCP proxy with.
+  fn proxy_http(&self) -> C
+  where
+    C: CheckDst + Clone,
+  {
+    if self.configured_proxy {
+      self.http.for_configured_proxy()
+    } else {
+      self.http.clone()
+    }
+  }
+
   pub(crate) fn h1_only(self) -> Option<ProxyConnector<C>>
   where
     C: Service<Uri>,
@@ -73,6 +89,7 @@ impl<C> ProxyConnector<C> {
     tls.alpn_protocols = vec![b"http/1.1".to_vec()];
     Some(ProxyConnector {
       http: self.http,
+      configured_proxy: self.configured_proxy,
       proxies: self.proxies,
       tls: Arc::new(tls),
       tls_proxy: self.tls_proxy,
@@ -92,6 +109,7 @@ impl<C> ProxyConnector<C> {
     tls.alpn_protocols = vec![b"h2".to_vec()];
     Some(ProxyConnector {
       http: self.http,
+      configured_proxy: self.configured_proxy,
       proxies: self.proxies,
       tls: Arc::new(tls),
       tls_proxy: self.tls_proxy,
@@ -612,7 +630,7 @@ where
           auth,
         } => {
           let mut connector =
-            HttpsConnector::from((self.http.clone(), self.tls_proxy.clone()));
+            HttpsConnector::from((self.proxy_http(), self.tls_proxy.clone()));
           let connecting = connector.call(proxy_dst);
           let tls = TlsConnector::from(self.tls.clone());
           Box::pin(async move {
@@ -691,7 +709,7 @@ where
           port,
         } => {
           let mut connector =
-            HttpsConnector::from((self.http.clone(), self.tls_proxy.clone()));
+            HttpsConnector::from((self.proxy_http(), self.tls_proxy.clone()));
           let Ok(uri) = format!("http://{}:{}", host, port).parse() else {
             return Box::pin(async {
               Err("failed to parse tcp proxy uri".into())

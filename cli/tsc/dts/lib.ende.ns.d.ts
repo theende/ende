@@ -6877,6 +6877,31 @@ declare namespace Ende {
      *
      * If not set, the default value from the underlying HTTP library is used. */
     http2MaxHeaderListSize?: number;
+    /** IP addresses and CIDR subnets (IPv4 or IPv6) this client refuses to
+     * connect to. Hostnames and ports are not accepted.
+     *
+     * Every address the client connects to is checked right before the
+     * connection is opened, after DNS resolution, so a hostname that resolves
+     * (or later re-resolves) to a denied address is refused, including on
+     * redirects. An IPv4-mapped IPv6 address such as `::ffff:10.0.0.1`
+     * matches IPv4 rules. This applies in addition to `--deny-net`.
+     *
+     * The connection to the `proxy` configured on this client is exempt
+     * from this list (`--deny-net` still applies to it). Through a proxy, the
+     * destination is checked only against the addresses it resolves to
+     * locally. The proxy resolves the destination itself and may reach a
+     * different address, so this cannot be relied on through a proxy.
+     *
+     * ```ts
+     * const client = Ende.createHttpClient({
+     *   denyAddresses: ["10.0.0.0/8", "127.0.0.0/8", "::1", "fc00::/7"],
+     * });
+     * // Rejects with a TypeError if hook.example.com resolves to a denied
+     * // address.
+     * await fetch("https://hook.example.com/", { client });
+     * ```
+     */
+    denyAddresses?: string[];
   }
 
   /**

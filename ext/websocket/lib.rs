@@ -428,6 +428,7 @@ fn create_client_from_websocket_options(
       dns_resolver: options.resolver.clone(),
       permissions: Some(permissions),
       resolved_deny_check_kind: Default::default(),
+      deny_addresses: vec![],
       unsafely_ignore_certificate_errors: unsafely_ignore_certificate_errors
         .then_some(vec![]),
       client_cert_chain_and_key: options

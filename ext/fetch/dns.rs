@@ -18,6 +18,7 @@ use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::connect::dns::GaiResolver;
 use hyper_util::client::legacy::connect::dns::Name;
 use hyper_util::rt::TokioIo;
+use ipnet::IpNet;
 use tokio::net::TcpStream;
 use tokio::task::JoinHandle;
 use tower::Service;
@@ -169,12 +170,16 @@ impl Service<Name> for Resolver {
 /// addresses to the inner connector through a pre-resolved resolver, so the
 /// connection goes to exactly the addresses that were checked and no second
 /// DNS query can race with a record change.
+///
+/// The same check also enforces the client's own `deny_addresses` list
+/// (`Ende.createHttpClient({ denyAddresses })`), on top of the permissions.
 #[derive(Clone, Debug)]
 pub struct PermissionedHttpConnector {
   resolver: Resolver,
   local_address: Option<IpAddr>,
   permissions: Option<PermissionsContainer>,
   deny_check_kind: ResolvedDenyCheckKind,
+  deny_addresses: Arc<[IpNet]>,
 }
 
 impl PermissionedHttpConnector {
@@ -183,13 +188,28 @@ impl PermissionedHttpConnector {
     local_address: Option<IpAddr>,
     permissions: Option<PermissionsContainer>,
     deny_check_kind: ResolvedDenyCheckKind,
+    deny_addresses: Vec<IpNet>,
   ) -> Self {
     Self {
       resolver,
       local_address,
       permissions,
       deny_check_kind,
+      deny_addresses: deny_addresses.into(),
     }
+  }
+
+  /// Whether connections have to be checked address by address at all.
+  fn checks_addresses(&self) -> bool {
+    self.permissions.is_some() || !self.deny_addresses.is_empty()
+  }
+
+  /// Runs every deny check that applies to connecting to `ip:port`.
+  fn check_addr(&self, ip: &IpAddr, port: u16) -> Result<(), BoxError> {
+    if let Some(permissions) = &self.permissions {
+      check_resolved(permissions, self.deny_check_kind, ip, port)?;
+    }
+    check_deny_addresses(&self.deny_addresses, ip, port)
   }
 
   fn http_connector(&self, resolver: Resolver) -> HttpConnector<Resolver> {
@@ -263,6 +283,32 @@ fn check_resolved(
   })
 }
 
+/// Checks an address against a client's `deny_addresses`. An IPv4-mapped IPv6
+/// address reaches the IPv4 host it embeds, so it is matched as that host too.
+fn check_deny_addresses(
+  deny_addresses: &[IpNet],
+  ip: &IpAddr,
+  port: u16,
+) -> Result<(), BoxError> {
+  let canonical = ip.to_canonical();
+  if deny_addresses
+    .iter()
+    .any(|net| net.contains(ip) || net.contains(&canonical))
+  {
+    return Err(
+      io::Error::new(
+        io::ErrorKind::PermissionDenied,
+        format!(
+          "Connection to \"{}\" is blocked by the HTTP client's denyAddresses",
+          SocketAddr::new(*ip, port)
+        ),
+      )
+      .into(),
+    );
+  }
+  Ok(())
+}
+
 /// Extracts the connection host (with IPv6 brackets stripped) and the
 /// effective destination port from a `Uri`, defaulting the port from the
 /// scheme. Returns `None` if the `Uri` has no host.
@@ -298,10 +344,10 @@ impl Service<Uri> for PermissionedHttpConnector {
   fn call(&mut self, uri: Uri) -> Self::Future {
     let this = self.clone();
     Box::pin(async move {
-      let Some(permissions) = &this.permissions else {
+      if !this.checks_addresses() {
         let mut connector = this.http_connector(this.resolver.clone());
         return connector.call(uri).await.map_err(Into::into);
-      };
+      }
 
       let Some((bare_host, port)) = bare_host_and_port(&uri) else {
         return Err(
@@ -312,7 +358,7 @@ impl Service<Uri> for PermissionedHttpConnector {
       if let Ok(ip) = bare_host.parse::<IpAddr>() {
         // IP literal: `HttpConnector` connects to it directly without
         // consulting the resolver.
-        check_resolved(permissions, this.deny_check_kind, &ip, port)?;
+        this.check_addr(&ip, port)?;
         let mut connector = this.http_connector(this.resolver.clone());
         return connector.call(uri).await.map_err(Into::into);
       }
@@ -328,7 +374,7 @@ impl Service<Uri> for PermissionedHttpConnector {
         .map_err(|e| -> BoxError { DnsError(e).into() })?
         .collect();
       for addr in &addrs {
-        check_resolved(permissions, this.deny_check_kind, &addr.ip(), port)?;
+        this.check_addr(&addr.ip(), port)?;
       }
 
       let mut connector =
@@ -355,23 +401,37 @@ pub trait CheckDst {
     &self,
     uri: Uri,
   ) -> Pin<Box<dyn Future<Output = Result<(), BoxError>> + Send>>;
+
+  /// The connector to connect to a proxy configured on the client itself.
+  /// The caller chose that proxy, so the client's own `deny_addresses` don't
+  /// apply to it; the permission checks still do.
+  fn for_configured_proxy(&self) -> Self
+  where
+    Self: Sized;
 }
 
 impl CheckDst for PermissionedHttpConnector {
+  fn for_configured_proxy(&self) -> Self {
+    Self {
+      deny_addresses: Arc::new([]),
+      ..self.clone()
+    }
+  }
+
   fn check_dst(
     &self,
     uri: Uri,
   ) -> Pin<Box<dyn Future<Output = Result<(), BoxError>> + Send>> {
     let this = self.clone();
     Box::pin(async move {
-      let Some(permissions) = &this.permissions else {
+      if !this.checks_addresses() {
         return Ok(());
-      };
+      }
       let Some((bare_host, port)) = bare_host_and_port(&uri) else {
         return Ok(());
       };
       if let Ok(ip) = bare_host.parse::<IpAddr>() {
-        return check_resolved(permissions, this.deny_check_kind, &ip, port);
+        return this.check_addr(&ip, port);
       }
       let Ok(name) = Name::from_str(bare_host) else {
         return Ok(());
@@ -382,7 +442,7 @@ impl CheckDst for PermissionedHttpConnector {
         return Ok(());
       };
       for addr in addrs {
-        check_resolved(permissions, this.deny_check_kind, &addr.ip(), port)?;
+        this.check_addr(&addr.ip(), port)?;
       }
       Ok(())
     })

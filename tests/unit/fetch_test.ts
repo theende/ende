@@ -1400,6 +1400,85 @@ Deno.test(function createHttpClientDoesNotMutateOptions() {
 });
 
 Deno.test(
+  { permissions: { net: true } },
+  async function createHttpClientDenyAddressesBlocksResolvedAddress() {
+    // `localhost` goes through DNS, so this exercises the check on the
+    // resolved address rather than on the URL.
+    using denied = Deno.createHttpClient({
+      denyAddresses: ["127.0.0.0/8", "::1"],
+    });
+    const err = await assertRejects(
+      () =>
+        fetch("http://localhost:4545/assets/fixture.json", { client: denied }),
+      TypeError,
+      "fetch failed",
+    );
+    assert(err.cause instanceof Error, `err.cause was ${err.cause}`);
+    assertStringIncludes(err.cause.message, "denyAddresses");
+
+    // The same fetch through a client without the list goes through.
+    using allowed = Deno.createHttpClient({});
+    const response = await fetch("http://localhost:4545/assets/fixture.json", {
+      client: allowed,
+    });
+    assertEquals(response.status, 200);
+    await response.body?.cancel();
+  },
+);
+
+Deno.test(
+  { permissions: { net: true } },
+  async function createHttpClientDenyAddressesOpensNoSocket() {
+    // A raw listener sees even a bare TCP handshake with no request bytes.
+    const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
+    let connected = false;
+    const accepted = listener.accept().then(
+      (conn) => {
+        connected = true;
+        conn.close();
+      },
+      () => {}, // rejects with BadResource when the listener closes
+    );
+    using client = Deno.createHttpClient({
+      denyAddresses: ["127.0.0.0/8", "::1"],
+    });
+    await assertRejects(
+      () => fetch(`http://localhost:${listener.addr.port}/`, { client }),
+      TypeError,
+      "fetch failed",
+    );
+    await delay(100);
+    listener.close();
+    await accepted;
+    assert(!connected, "a connection reached the denied address");
+  },
+);
+
+Deno.test(
+  { permissions: { net: true } },
+  async function createHttpClientDenyAddressesMatchesIpv4MappedIpv6() {
+    using client = Deno.createHttpClient({ denyAddresses: ["127.0.0.0/8"] });
+    const err = await assertRejects(
+      () => fetch("http://[::ffff:127.0.0.1]:4545/", { client }),
+      TypeError,
+      "fetch failed",
+    );
+    assert(err.cause instanceof Error, `err.cause was ${err.cause}`);
+    assertStringIncludes(err.cause.message, "denyAddresses");
+  },
+);
+
+Deno.test(function createHttpClientDenyAddressesRejectsInvalidEntries() {
+  for (const entry of ["example.com", "127.0.0.1:80", "10.0.0.0/33", "[::1]"]) {
+    assertThrows(
+      () => Deno.createHttpClient({ denyAddresses: ["10.0.0.0/8", entry] }),
+      TypeError,
+      `"${entry}"`,
+    );
+  }
+});
+
+Deno.test(
   {
     permissions: { net: true },
   },

@@ -173,6 +173,7 @@ async fn run_test_client_with_resolver(
       dns_resolver: resolver,
       permissions: None,
       resolved_deny_check_kind: Default::default(),
+      deny_addresses: vec![],
       http1: true,
       http2: true,
       local_address: None,
@@ -276,6 +277,7 @@ async fn test_import_client_denies_host_resolving_to_denied_ip() {
       dns_resolver: resolver,
       permissions: Some(deny_import_permissions(&[denied_ip])),
       resolved_deny_check_kind: dns::ResolvedDenyCheckKind::Import,
+      deny_addresses: vec![],
       http1: true,
       http2: true,
       local_address: None,
@@ -331,6 +333,7 @@ async fn test_http_proxy_denies_destination_resolving_to_denied_ip() {
       dns_resolver: resolver,
       permissions: Some(deny_net_permissions(&[denied_ip])),
       resolved_deny_check_kind: Default::default(),
+      deny_addresses: vec![],
       http1: true,
       http2: true,
       local_address: None,
@@ -350,6 +353,187 @@ async fn test_http_proxy_denies_destination_resolving_to_denied_ip() {
     msg.contains("net access") && msg.contains(denied_ip),
     "expected a net-deny error for the destination IP, got: {err}"
   );
+}
+
+fn deny_addresses_client(
+  deny_addresses: &[&str],
+  resolver: dns::Resolver,
+  permissions: Option<PermissionsContainer>,
+  proxy: Option<ende_tls::Proxy>,
+) -> crate::Client {
+  install_default_crypto_provider();
+  create_http_client(
+    "fetch/test",
+    CreateHttpClientOptions {
+      proxy,
+      dns_resolver: resolver,
+      permissions,
+      deny_addresses: deny_addresses
+        .iter()
+        .map(|s| s.parse().unwrap())
+        .collect(),
+      unsafely_ignore_certificate_errors: Some(vec![]),
+      ..Default::default()
+    },
+  )
+  .unwrap()
+}
+
+/// Sends a GET to `uri` and returns the error it fails with. Bounded, so a
+/// request that is wrongly let through to a silent or unroutable address
+/// fails the test instead of hanging it.
+async fn send_expecting_err(client: &crate::Client, uri: &str) -> String {
+  let req = http::Request::builder()
+    .uri(uri)
+    .body(crate::ReqBody::empty())
+    .unwrap();
+  let res = tokio::time::timeout(
+    std::time::Duration::from_secs(5),
+    client.clone().send(req),
+  )
+  .await
+  .expect("request was not denied before connecting");
+  res.unwrap_err().to_string()
+}
+
+fn assert_denied_by_deny_addresses(msg: &str, ip: &str) {
+  assert!(
+    msg.contains("denyAddresses") && msg.contains(ip),
+    "expected a denyAddresses error for {ip}, got: {msg}"
+  );
+}
+
+// `denyAddresses` is checked against the address a hostname resolves to, and
+// the denial happens before a socket is opened: the listener below must never
+// see a connection.
+#[tokio::test]
+async fn test_deny_addresses_denies_host_resolving_to_denied_ip() {
+  let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+  let listen_addr = listener.local_addr().unwrap();
+  let resolver = dns::Resolver::custom(Arc::new(FixedResolver(listen_addr)));
+  let client = deny_addresses_client(&["127.0.0.0/8"], resolver, None, None);
+
+  let uri = format!("http://denied.example:{}/", listen_addr.port());
+  let err = send_expecting_err(&client, &uri).await;
+  assert_denied_by_deny_addresses(&err, "127.0.0.1");
+
+  let accepted = tokio::time::timeout(
+    std::time::Duration::from_millis(100),
+    listener.accept(),
+  )
+  .await;
+  assert!(accepted.is_err(), "a connection reached the denied address");
+}
+
+// An IPv4-mapped IPv6 address reaches the IPv4 host it embeds, so it must
+// match the IPv4 rule.
+#[tokio::test]
+async fn test_deny_addresses_matches_ipv4_mapped_ipv6() {
+  // RFC 5737 TEST-NET-1: never routed, and never connected to here since the
+  // deny check fails first.
+  let resolver = dns::Resolver::custom(Arc::new(FixedResolver(
+    "[::ffff:192.0.2.1]:0".parse().unwrap(),
+  )));
+  let client = deny_addresses_client(&["192.0.2.0/24"], resolver, None, None);
+
+  let err = send_expecting_err(&client, "http://denied.example/").await;
+  assert_denied_by_deny_addresses(&err, "192.0.2.1");
+}
+
+// IP-literal URLs skip the resolver, so they need their own check.
+#[tokio::test]
+async fn test_deny_addresses_denies_ip_literal() {
+  let client = deny_addresses_client(
+    &["::1/128", "192.0.2.0/24"],
+    Default::default(),
+    None,
+    None,
+  );
+
+  for (uri, ip) in [
+    ("http://192.0.2.1/", "192.0.2.1"),
+    ("http://[::1]:1/", "::1"),
+  ] {
+    let err = send_expecting_err(&client, uri).await;
+    assert_denied_by_deny_addresses(&err, ip);
+  }
+}
+
+// `denyAddresses` adds to `--deny-net`; it never replaces it.
+#[tokio::test]
+async fn test_deny_addresses_keeps_deny_net() {
+  let denied_ip = "192.0.2.1";
+  let resolver = dns::Resolver::custom(Arc::new(FixedResolver(
+    format!("{denied_ip}:0").parse().unwrap(),
+  )));
+  let client = deny_addresses_client(
+    &["10.0.0.0/8"],
+    resolver,
+    Some(deny_net_permissions(&[denied_ip])),
+    None,
+  );
+
+  let err = send_expecting_err(&client, "http://denied.example/").await;
+  assert!(
+    err.to_lowercase().contains("net access") && err.contains(denied_ip),
+    "expected a net-deny error for the destination IP, got: {err}"
+  );
+}
+
+// Through a proxy, the destination is checked (best-effort) against the
+// addresses it resolves to locally, like `--deny-net`.
+#[tokio::test]
+async fn test_deny_addresses_checks_proxy_destination() {
+  let src_addr = create_https_server(false, Ipv4Addr::LOCALHOST.into()).await;
+  let prx_addr = create_http_proxy(src_addr).await;
+  let resolver = dns::Resolver::custom(Arc::new(FixedResolver(
+    "192.0.2.1:0".parse().unwrap(),
+  )));
+  let client = deny_addresses_client(
+    &["192.0.2.0/24"],
+    resolver,
+    None,
+    Some(ende_tls::Proxy::Http {
+      url: format!("http://{}", prx_addr),
+      basic_auth: None,
+    }),
+  );
+
+  let err = send_expecting_err(&client, "https://denied.example/foo").await;
+  assert_denied_by_deny_addresses(&err, "192.0.2.1");
+}
+
+// The proxy configured on the client is exempt from its `denyAddresses`: the
+// caller chose it, and an egress proxy on loopback is a common setup. The
+// destination resolves to an address outside the list, so the best-effort
+// destination check passes; the test proxy ignores the CONNECT target and
+// tunnels to the local server.
+#[tokio::test]
+async fn test_deny_addresses_exempts_configured_proxy() {
+  let src_addr = create_https_server(false, Ipv4Addr::LOCALHOST.into()).await;
+  let prx_addr = create_http_proxy(src_addr).await;
+  // RFC 5737 TEST-NET-1: never connected to, the proxy tunnels elsewhere.
+  let resolver = dns::Resolver::custom(Arc::new(FixedResolver(
+    "192.0.2.1:0".parse().unwrap(),
+  )));
+  let client = deny_addresses_client(
+    &["127.0.0.0/8"],
+    resolver,
+    None,
+    Some(ende_tls::Proxy::Http {
+      url: format!("http://{}", prx_addr),
+      basic_auth: None,
+    }),
+  );
+
+  let req = http::Request::builder()
+    .uri("https://allowed.example/foo")
+    .body(crate::ReqBody::empty())
+    .unwrap();
+  let resp = client.send(req).await.unwrap();
+  assert_eq!(resp.status(), http::StatusCode::OK);
+  let hello = resp.collect().await.unwrap().to_bytes();
+  assert_eq!(hello, "hello from server");
 }
 
 #[tokio::test]
@@ -673,6 +857,7 @@ fn create_http_test_client() -> crate::Client {
       http2_max_header_list_size: None,
       permissions: None,
       resolved_deny_check_kind: Default::default(),
+      deny_addresses: vec![],
     },
   )
   .unwrap()

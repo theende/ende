@@ -99,6 +99,7 @@ use hyper_util::client::legacy::connect::capture_connection;
 use hyper_util::rt::TokioExecutor;
 use hyper_util::rt::TokioIo;
 use hyper_util::rt::TokioTimer;
+use ipnet::IpNet;
 pub use proxy::basic_auth;
 use tokio_util::io::ReaderStream;
 use tokio_util::io::StreamReader;
@@ -342,6 +343,7 @@ pub fn create_client_from_options(
       dns_resolver: options.resolver.clone(),
       permissions,
       resolved_deny_check_kind: dns::ResolvedDenyCheckKind::Net,
+      deny_addresses: vec![],
       unsafely_ignore_certificate_errors: options
         .unsafely_ignore_certificate_errors
         .clone(),
@@ -863,6 +865,15 @@ pub struct CreateHttpClientArgs {
   allow_host: bool,
   local_address: Option<String>,
   http2_max_header_list_size: Option<u32>,
+  deny_addresses: Option<Vec<String>>,
+}
+
+/// Parses one `denyAddresses` entry: an IP address or a CIDR subnet.
+fn parse_deny_address(entry: String) -> Result<IpNet, HttpClientCreateError> {
+  entry
+    .parse::<IpNet>()
+    .or_else(|_| entry.parse::<IpAddr>().map(IpNet::from))
+    .map_err(|_| HttpClientCreateError::InvalidDenyAddress(entry))
 }
 
 #[op2(stack_trace)]
@@ -873,6 +884,13 @@ pub fn op_fetch_custom_client(
   #[scoped] mut args: CreateHttpClientArgs,
   #[cppgc] tls_keys: &TlsKeysHolder,
 ) -> Result<ResourceId, FetchError> {
+  let deny_addresses = args
+    .deny_addresses
+    .unwrap_or_default()
+    .into_iter()
+    .map(parse_deny_address)
+    .collect::<Result<Vec<_>, _>>()?;
+
   if let Some(proxy) = &mut args.proxy {
     let permissions = state.borrow_mut::<PermissionsContainer>();
     match proxy {
@@ -936,6 +954,7 @@ pub fn op_fetch_custom_client(
       dns_resolver: dns::Resolver::default(),
       permissions: Some(permissions),
       resolved_deny_check_kind: dns::ResolvedDenyCheckKind::Net,
+      deny_addresses,
       unsafely_ignore_certificate_errors: options
         .unsafely_ignore_certificate_errors
         .clone(),
@@ -977,6 +996,9 @@ pub struct CreateHttpClientOptions {
   /// Which deny list `permissions` is checked against. Clients that load
   /// modules use `Import`; everything else uses `Net`.
   pub resolved_deny_check_kind: dns::ResolvedDenyCheckKind,
+  /// Addresses this client refuses to connect to, checked against every
+  /// address it actually connects to, in addition to `permissions`.
+  pub deny_addresses: Vec<IpNet>,
   pub unsafely_ignore_certificate_errors: Option<Vec<String>>,
   pub client_cert_chain_and_key: Option<TlsKey>,
   pub pool_max_idle_per_host: Option<usize>,
@@ -997,6 +1019,7 @@ impl Default for CreateHttpClientOptions {
       dns_resolver: dns::Resolver::default(),
       permissions: None,
       resolved_deny_check_kind: dns::ResolvedDenyCheckKind::default(),
+      deny_addresses: vec![],
       unsafely_ignore_certificate_errors: None,
       client_cert_chain_and_key: None,
       pool_max_idle_per_host: None,
@@ -1019,6 +1042,10 @@ pub enum HttpClientCreateError {
   InvalidUserAgent(String),
   #[error("Invalid address: {0}")]
   InvalidAddress(String),
+  #[error(
+    "Invalid entry in 'denyAddresses': \"{0}\" is not an IP address or CIDR subnet"
+  )]
+  InvalidDenyAddress(String),
   #[error("invalid proxy url")]
   InvalidProxyUrl,
   #[error(
@@ -1081,11 +1108,15 @@ pub fn create_http_client(
     })
     .transpose()?;
   let permissions = options.permissions.clone();
+  // A configured proxy is prepended with a match-all filter below, so it is
+  // the only proxy this client ever connects to.
+  let configured_proxy = options.proxy.is_some();
   let http_connector = dns::PermissionedHttpConnector::new(
     options.dns_resolver.clone(),
     local_address,
     options.permissions,
     options.resolved_deny_check_kind,
+    options.deny_addresses,
   );
 
   let user_agent = user_agent.parse::<HeaderValue>().map_err(|_| {
@@ -1164,6 +1195,7 @@ pub fn create_http_client(
   let proxies = Arc::new(proxies);
   let connector = proxy::ProxyConnector {
     http: http_connector,
+    configured_proxy,
     proxies,
     tls: tls_config,
     tls_proxy: proxy_tls_config,
