@@ -3817,9 +3817,31 @@ impl Permissions {
     parser: &dyn PermissionDescriptorParser,
     opts: &PermissionsOptions,
   ) -> Result<Self, PermissionsFromOptionsError> {
+    Self::from_options_inner(parser, opts, true)
+  }
+
+  /// Like [`Permissions::from_options`], but drops `allow_run` entries that
+  /// cannot be resolved without logging them.
+  ///
+  /// For compiled binaries: their `--allow-run` list was chosen at compile
+  /// time, so a program missing from the host's PATH is not a typo the user
+  /// can fix, and the line would only be noise before the program's output.
+  pub fn from_options_without_unresolved_run_log(
+    parser: &dyn PermissionDescriptorParser,
+    opts: &PermissionsOptions,
+  ) -> Result<Self, PermissionsFromOptionsError> {
+    Self::from_options_inner(parser, opts, false)
+  }
+
+  fn from_options_inner(
+    parser: &dyn PermissionDescriptorParser,
+    opts: &PermissionsOptions,
+    log_unresolved_run: bool,
+  ) -> Result<Self, PermissionsFromOptionsError> {
     fn resolve_allow_run(
       parser: &dyn PermissionDescriptorParser,
       allow_run: &[String],
+      log_unresolved_run: bool,
     ) -> Result<Vec<AllowRunDescriptor>, PermissionsFromOptionsError> {
       let mut new_allow_run = Vec::with_capacity(allow_run.len());
       for unresolved in allow_run {
@@ -3831,6 +3853,9 @@ impl Permissions {
             new_allow_run.push(descriptor);
           }
           AllowRunDescriptorParseResult::Unresolved(err) => {
+            if !log_unresolved_run {
+              continue;
+            }
             log::info!(
               "{} Failed to resolve '{}' for allow-run: {}",
               colors::gray("Info"),
@@ -3868,7 +3893,7 @@ impl Permissions {
       .allow_run
       .as_ref()
       .and_then(|raw_allow_run| {
-        match resolve_allow_run(parser, raw_allow_run) {
+        match resolve_allow_run(parser, raw_allow_run, log_unresolved_run) {
           Ok(resolved_allow_run) => {
             if resolved_allow_run.is_empty() && !raw_allow_run.is_empty() {
               None // convert to no permissions if now empty

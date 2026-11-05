@@ -794,8 +794,10 @@ pub async fn run_with_options(
 
     let desc_parser =
       Arc::new(RuntimePermissionDescriptorParser::new(sys.clone()));
-    let permissions =
-      Permissions::from_options(desc_parser.as_ref(), &permissions)?;
+    let permissions = Permissions::from_options_without_unresolved_run_log(
+      desc_parser.as_ref(),
+      &permissions,
+    )?;
     PermissionsContainer::new(desc_parser, permissions)
   };
   let feature_checker = Arc::new({

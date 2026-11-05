@@ -1,0 +1,24 @@
+{
+  // A compiled binary must not log an `Info` line at startup for each
+  // `--allow-run` program missing from PATH on the host it runs on.
+  "tempDir": true,
+  "steps": [{
+    "if": "unix",
+    "args": "compile --allow-run=ende_test_missing_binary --output main main.ts",
+    "output": "[WILDCARD]"
+  }, {
+    "if": "unix",
+    "commandName": "./main",
+    "args": [],
+    "output": "main.out"
+  }, {
+    "if": "windows",
+    "args": "compile --allow-run=ende_test_missing_binary --output main.exe main.ts",
+    "output": "[WILDCARD]"
+  }, {
+    "if": "windows",
+    "commandName": "./main.exe",
+    "args": [],
+    "output": "main.out"
+  }]
+}
