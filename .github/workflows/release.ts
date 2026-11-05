@@ -351,7 +351,7 @@ const buildJob = job("build", {
 
 const downloadAssetsStep = step({
   name: "Download release assets",
-  uses: "actions/download-artifact@v6",
+  uses: "actions/download-artifact@v7",
   with: {
     pattern: "release-*",
     path: "dist",

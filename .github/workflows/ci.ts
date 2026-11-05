@@ -278,7 +278,7 @@ function createRestoreAndSaveCacheSteps(m: {
   const path = m.path.join("\n");
   const restoreCacheStep = step({
     name: `Restore cache ${m.name}`,
-    uses: "actions/cache/restore@v4",
+    uses: "actions/cache/restore@v5",
     with: {
       path,
       key: "never_saved",
@@ -287,7 +287,7 @@ function createRestoreAndSaveCacheSteps(m: {
   });
   const saveCacheStep = step({
     name: `Cache ${m.name}`,
-    uses: "actions/cache/save@v4",
+    uses: "actions/cache/save@v5",
     with: {
       path,
       // We force saving a new cache on every main run so that PRs can
@@ -564,6 +564,8 @@ const buildJobs = buildItems.map((rawBuildItem) => {
     const artifact = defineArtifact(
       `${profileName}-${name.replaceAll("_", "-")}`,
       {
+        // gagen defaults to v6, whose download-artifact runs on Node 20.
+        version: "v7",
         retentionDays: 3,
       },
     );
@@ -798,7 +800,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             // authentication must be done right before signing.
             name: "Authenticate with Azure (windows)",
             if: isWindows.and(isDenoland).and(isMainOrTag),
-            uses: "azure/login@v2",
+            uses: "azure/login@v3",
             with: {
               "client-id": "${{ secrets.AZURE_CLIENT_ID }}",
               "tenant-id": "${{ secrets.AZURE_TENANT_ID }}",
@@ -809,7 +811,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           {
             name: "Code sign ende.exe (windows)",
             if: isWindows.and(isDenoland).and(isMainOrTag),
-            uses: "Azure/artifact-signing-action@v0",
+            uses: "Azure/artifact-signing-action@v1",
             with: {
               "endpoint": "https://eus.codesigning.azure.net/",
               "trusted-signing-account-name": "deno-cli-code-signing",
@@ -1143,7 +1145,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           },
           {
             name: "Upload release to GitHub",
-            uses: "softprops/action-gh-release@v2",
+            uses: "softprops/action-gh-release@v3",
             env: {
               GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
             },

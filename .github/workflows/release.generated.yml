@@ -366,7 +366,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Download release assets
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           pattern: release-*
           path: dist
@@ -397,7 +397,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Download release assets
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           pattern: release-*
           path: dist
@@ -414,7 +414,7 @@ jobs:
         run: 'aws s3 cp dist/ "s3://$DL_S3_BUCKET/release/$RELEASE_TAG/" --recursive --exclude "*" --include "endert-*" --include "libendert-*"'
 
 # gagen:pin actions/checkout@v6 = d23441a48e516b6c34aea4fa41551a30e30af803
-# gagen:pin actions/download-artifact@v6 = 018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+# gagen:pin actions/download-artifact@v7 = 37930b1c2abaa49bbe596cd826c3c89aef350131
 # gagen:pin actions/setup-python@v6 = ece7cb06caefa5fff74198d8649806c4678c61a1
 # gagen:pin actions/upload-artifact@v6 = b7c566a772e6b6bfb58ed0dc250532a479d7789f
 # gagen:pin denoland/setup-deno@v2 = 22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
