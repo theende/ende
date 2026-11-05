@@ -1,12 +1,12 @@
 # Releases
 
 Binary releases can be downloaded manually at:
-https://github.com/denoland/deno/releases
+https://github.com/theende/ende/releases
 
 We also have one-line install commands at:
-https://github.com/denoland/deno_install
+https://ende.sh
 
-### 2026.11.05 / 2026.11.05
+### 2026.11.05
 
 - feat(compile): narrow a compiled binary's permissions with ENDE_ALLOW_*
 - feat(fetch): add denyAddresses option to Ende.createHttpClient
@@ -15,7 +15,7 @@ https://github.com/denoland/deno_install
 - fix(compile): don't log unresolved --allow-run programs at startup
 - fix(install): warn instead of failing on JSR exports Ende can't load
 
-### 2026.10.22 / 2026.10.22
+### 2026.10.22
 
 - Merge pull request #3 from theende/fix/macos-new-sdk-linker
 - Merge pull request #4 from theende/feat/zlib-inflater
@@ -36,14 +36,14 @@ https://github.com/denoland/deno_install
 - fix(transpile): write source map sources relative to the map
 - fix(web): accept shared buffers in Ende.Inflater and Ende.deflateSync
 
-### 2026.10.20 / 2026.10.20
+### 2026.10.20
 
 - feat(install): add the ende.sh install scripts
 - fix(fmt): accept ende-fmt-ignore directives
 - fix(lint): accept ende-lint-ignore directives
 - fix(publish): send the provenance attestation with a fresh OIDC token
 
-### 2026.10.17 / 2026.10.17
+### 2026.10.17
 
 - fix(publish): only count a license file at the package root
 
