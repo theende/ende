@@ -5113,34 +5113,28 @@ fn compile_and_desktop_engine() {
 }
 
 #[test]
-fn compile_target_aarch64_windows() {
-  // The endert runtime for Windows arm64 is built and published by CI, so
-  // `--target aarch64-pc-windows-msvc` must be accepted. This is the
-  // regression guard for the clap -> ende_cli_parser cutover: the new parser
-  // validates `--target` against its own SUPPORTED_OS list, so the triple has
-  // to be present here too (not just in clap's list).
-  let r = flags_from_vec(svec![
-    "ende",
-    "compile",
-    "--target=aarch64-pc-windows-msvc",
-    "main.ts"
-  ]);
-  let EndeSubcommand::Compile(c) = r.unwrap().subcommand else {
-    panic!("expected compile subcommand");
-  };
-  assert_eq!(c.target, Some("aarch64-pc-windows-msvc".to_string()));
-
-  // An unsupported triple is still rejected, proving the validator is active
-  // (and this test isn't passing just because validation was dropped).
-  assert!(
-    flags_from_vec(svec![
-      "ende",
-      "compile",
-      "--target=riscv64gc-unknown-linux-gnu",
-      "main.ts"
-    ])
-    .is_err()
-  );
+fn compile_and_desktop_reject_unreleased_targets() {
+  // Ende releases build no endert for these triples, so `--target` must
+  // reject them for both compile and desktop. A released triple is still
+  // accepted, so the rejections aren't coming from some other parse error.
+  for (subcommand, entry) in [("compile", "main.ts"), ("desktop", "main.tsx")] {
+    assert!(
+      flags_from_vec(svec![
+        "ende",
+        subcommand,
+        "--target=aarch64-apple-darwin",
+        entry
+      ])
+      .is_ok()
+    );
+    for target in ["x86_64-apple-darwin", "aarch64-pc-windows-msvc"] {
+      let target_arg = format!("--target={target}");
+      assert!(
+        flags_from_vec(svec!["ende", subcommand, target_arg, entry]).is_err(),
+        "{subcommand} accepted {target}"
+      );
+    }
+  }
 }
 
 #[test]

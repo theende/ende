@@ -11,13 +11,12 @@ use crate::types::*;
 const EXECUTABLE_EXTS: &[&str] =
   &["ts", "tsx", "js", "jsx", "mts", "mjs", "cts", "cjs"];
 
-/// Supported `--target` triples for `compile`/`desktop` (clap's `SUPPORTED_OS`).
+/// Supported `--target` triples for `compile`/`desktop`. Matches the targets
+/// Ende releases build (.github/workflows/release.ts).
 const SUPPORTED_OS: &[&str] = &[
   "x86_64-unknown-linux-gnu",
   "aarch64-unknown-linux-gnu",
   "x86_64-pc-windows-msvc",
-  "aarch64-pc-windows-msvc",
-  "x86_64-apple-darwin",
   "aarch64-apple-darwin",
 ];
 

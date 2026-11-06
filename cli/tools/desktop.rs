@@ -66,7 +66,6 @@ pub async fn desktop(
 
   if all_targets {
     let targets = [
-      "x86_64-apple-darwin",
       "aarch64-apple-darwin",
       "x86_64-unknown-linux-gnu",
       "aarch64-unknown-linux-gnu",
