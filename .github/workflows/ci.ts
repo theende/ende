@@ -4,7 +4,6 @@ import { parse as parseToml } from "jsr:@std/toml@1";
 import {
   Condition,
   conditions,
-  type ConfigValue,
   createWorkflow,
   defineArtifact,
   defineExprObj,
@@ -33,9 +32,8 @@ const cacheVersion = 129;
 // runs: pre-build, lint (linux), the debug build/test/libs jobs for
 // linux-x86_64 and macos-aarch64, and the ci-status gate. The macOS jobs only
 // run on the schedule and on manual dispatch, not on push/PR. Turned off:
-// Windows, release builds and publishing (tag builds), WPT,
-// benchmarks, ende_core nextest/miri. Steps that need denoland-only secrets or infrastructure stay
-// gated on `isDenoland` either way.
+// Windows, release builds (tag builds), WPT,
+// benchmarks, ende_core nextest/miri.
 // Restore the full matrix once Ende is fully operational by setting this to
 // true and regenerating.
 const fullMatrix = false;
@@ -103,19 +101,12 @@ function runTestsToleratingKnownFailures(command: string, report: string) {
 
 const ubuntuX86Runner = "ubuntu-24.04";
 const ubuntuARMRunner = "ubuntu-24.04-arm";
-const ubuntuARMXlRunner = "ubuntu-24.04-arm64-xl";
 const windowsX86Runner = "windows-2022";
-const windowsX86XlRunner = "windows-2022-xl";
 const windowsArmRunner = "windows-11-arm";
 const macosX86Runner = "macos-15-intel";
 const macosArmRunner = "macos-15";
 
 // shared conditions
-// Steps gated on `isDenoland` publish to or sign with Deno-company
-// infrastructure (dl.deno.land buckets, Azure code signing, benchmark data,
-// wpt.fyi, larger runners). They only run on denoland/deno and are skipped on
-// theende/ende until Ende has its own equivalents.
-const isDenoland = conditions.isRepository("denoland/deno");
 const isMainBranch = conditions.isBranch(primaryBranch);
 const isTag = conditions.isTag();
 const isNotTag = isTag.not();
@@ -134,23 +125,10 @@ const Runners = {
     arch: "x86_64",
     runner: ubuntuX86Runner,
   },
-  linuxX86Xl: {
-    os: "linux",
-    arch: "x86_64",
-    runner: ubuntuX86Runner,
-  },
   linuxArm: {
     os: "linux",
     arch: "aarch64",
     runner: ubuntuARMRunner,
-  },
-  linuxArmXl: {
-    os: "linux",
-    arch: "aarch64",
-    runner: isDenoland.and(isMainOrTag.or(hasCiFullLabel)).then(
-      ubuntuARMXlRunner,
-    ).else(ubuntuARMRunner),
-    testRunner: ubuntuARMRunner,
   },
   macosX86: {
     os: "macos",
@@ -162,21 +140,10 @@ const Runners = {
     arch: "aarch64",
     runner: macosArmRunner,
   },
-  macosArmSelfHosted: {
-    os: "macos",
-    arch: "aarch64",
-    runner: macosArmRunner,
-  },
   windowsX86: {
     os: "windows",
     arch: "x86_64",
     runner: windowsX86Runner,
-  },
-  windowsX86Xl: {
-    os: "windows",
-    arch: "x86_64",
-    runner: isDenoland.then(windowsX86XlRunner).else(windowsX86Runner),
-    testRunner: windowsX86Runner,
   },
   windowsArm: {
     os: "windows",
@@ -201,13 +168,6 @@ const { testCrates, testPackageMembers } = resolveTestCrateTests();
 const { binCrates, libCrates } = resolveWorkspaceCrates(
   testPackageMembers,
 );
-
-const S3Envs: Readonly<Record<string, ConfigValue>> = {
-  AWS_ACCESS_KEY_ID: "${{ vars.S3_ACCESS_KEY_ID }}",
-  AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRET_ACCESS_KEY }}",
-  AWS_ENDPOINT_URL_S3: "${{ vars.S3_ENDPOINT }}",
-  AWS_DEFAULT_REGION: "${{ vars.S3_REGION }}",
-};
 
 function handleBuildItems(items: {
   skip_pr?: Condition | true;
@@ -475,14 +435,14 @@ const allBuildItems = handleBuildItems([{
   ...Runners.macosArm,
   profile: "debug",
 }, {
-  ...Runners.macosArmSelfHosted,
+  ...Runners.macosArm,
   profile: "release",
   skip_pr: true,
 }, {
   ...Runners.windowsX86,
   profile: "debug",
 }, {
-  ...Runners.windowsX86Xl,
+  ...Runners.windowsX86,
   profile: "release",
   skip_pr: true,
 }, {
@@ -493,7 +453,7 @@ const allBuildItems = handleBuildItems([{
   profile: "release",
   skip_pr: true,
 }, {
-  ...Runners.linuxX86Xl,
+  ...Runners.linuxX86,
   profile: "release",
   use_sysroot: true,
   // Because CI is so slow on for OSX and Windows, we
@@ -507,7 +467,7 @@ const allBuildItems = handleBuildItems([{
   ...Runners.linuxArm,
   profile: "debug",
 }, {
-  ...Runners.linuxArmXl,
+  ...Runners.linuxArm,
   profile: "release",
   use_sysroot: true,
   skip_pr: true,
@@ -610,7 +570,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
 
   const {
     installPythonStep,
-    setupPrebuiltMacStep,
     installLldStep,
   } = getOsSpecificSteps({
     isWindows,
@@ -656,11 +615,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
       if: preBuildJob.outputs.skip_build.notEquals("true").and(notDocsOnly)
         .and(runOnThisEvent),
       runsOn: buildItem.runner,
-      // This is required to successfully authenticate with Azure using OIDC for
-      // code signing, which only runs on denoland/deno.
-      environment: {
-        name: isDenoland.and(isMainOrTag).then("build").else(""),
-      },
       timeoutMinutes: 240,
       defaults,
       env,
@@ -674,258 +628,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           saveTarget: true,
           saveCargoHome: true,
         });
-        const tarSourcePublishStep = step({
-          name: "Create source tarballs (release, linux)",
-          if: buildItem.os.equals("linux")
-            .and(buildItem.arch.equals("x86_64")),
-          run: [
-            "mkdir -p target/release",
-            'tar --exclude=".git*" --exclude=target --exclude=third_party/prebuilt \\',
-            "    -czvf target/release/ende_src.tar.gz -C .. ende",
-          ],
-        });
-
-        const preRelease = step(
-          {
-            name: "Pre-release (linux)",
-            if: isLinux.and(isDenoland),
-            run: [
-              "cd target/release",
-              `./ende -A ../../tools/release/create_symcache.ts ende-${buildItem.arch}-unknown-linux-gnu.symcache`,
-              "strip --remove-section=.eh_frame --remove-section=.eh_frame_hdr ./ende",
-              "if readelf -SW ./ende | grep -Eq '\\.eh_frame(_hdr)?'; then echo 'unwind sections remain in ende'; exit 1; fi",
-              "if readelf -lW ./ende | grep -q GNU_EH_FRAME; then echo 'PT_GNU_EH_FRAME remains in ende'; exit 1; fi",
-              `shasum -a 256 ende > ende-${buildItem.arch}-unknown-linux-gnu.sha256sum`,
-              `zip -r ende-${buildItem.arch}-unknown-linux-gnu.zip ende`,
-              `shasum -a 256 ende-${buildItem.arch}-unknown-linux-gnu.zip > ende-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              // endert is the `ende compile` base binary: libsui rewrites its
-              // ELF to embed user code, and that rewrite drops `.relr.dyn`
-              // relative relocations when the symbol table is gone, producing a
-              // compiled binary whose C++ static-init guards deadlock
-              // (`__cxa_guard_acquire failed to acquire mutex`). Keep .symtab
-              // (strip only debug info) so the relocations survive.
-              "strip --strip-debug --remove-section=.eh_frame --remove-section=.eh_frame_hdr ./endert",
-              "if readelf -SW ./endert | grep -Eq '\\.eh_frame(_hdr)?'; then echo 'unwind sections remain in endert'; exit 1; fi",
-              "if readelf -lW ./endert | grep -q GNU_EH_FRAME; then echo 'PT_GNU_EH_FRAME remains in endert'; exit 1; fi",
-              `zip -r endert-${buildItem.arch}-unknown-linux-gnu.zip endert`,
-              `shasum -a 256 endert-${buildItem.arch}-unknown-linux-gnu.zip > endert-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              "strip --remove-section=.eh_frame --remove-section=.eh_frame_hdr ./libendert.so",
-              "if readelf -SW ./libendert.so | grep -Eq '\\.eh_frame(_hdr)?'; then echo 'unwind sections remain in libendert.so'; exit 1; fi",
-              "if readelf -lW ./libendert.so | grep -q GNU_EH_FRAME; then echo 'PT_GNU_EH_FRAME remains in libendert.so'; exit 1; fi",
-              `zip -r libendert-${buildItem.arch}-unknown-linux-gnu.zip libendert.so`,
-              `shasum -a 256 libendert-${buildItem.arch}-unknown-linux-gnu.zip > libendert-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              // QuickJS endert/libendert for `ende compile --engine quickjs`.
-              // Reuse the same target dir (a second one would exceed runner
-              // disk). Back up the v8 binaries and restore them even if the
-              // QuickJS build fails so later release steps never see a partial
-              // or wrong-engine runtime.
-              "restore_v8_runtimes() {",
-              "  test ! -e endert.v8 || mv -f endert.v8 endert",
-              "  test ! -e libendert.v8.so || mv -f libendert.v8.so libendert.so",
-              "}",
-              "trap restore_v8_runtimes EXIT",
-              "mv endert endert.v8",
-              "mv libendert.so libendert.v8.so",
-              `(cd ../.. && cargo build --release --locked -p endert -p endert_desktop --no-default-features --features quickjs)`,
-              "strip --strip-debug ./endert",
-              `zip -r endert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip endert`,
-              `shasum -a 256 endert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip > endert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              "strip ./libendert.so",
-              `zip -r libendert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip libendert.so`,
-              `shasum -a 256 libendert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip > libendert-quickjs-${buildItem.arch}-unknown-linux-gnu.zip.sha256sum`,
-              "restore_v8_runtimes",
-              "trap - EXIT",
-              "./ende types > lib.ende.d.ts",
-            ],
-          },
-          step.dependsOn(setupPrebuiltMacStep, installDenoStep)({
-            name: "Install rust-codesign",
-            if: buildItem.os.equals("macos").and(isDenoland),
-            env: {
-              GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
-            },
-            run: "./tools/install_prebuilt.js rcodesign",
-          }),
-          {
-            name: "Pre-release (mac)",
-            if: isMacos.and(isDenoland),
-            env: {
-              "APPLE_CODESIGN_KEY": "${{ secrets.APPLE_CODESIGN_KEY }}",
-              "APPLE_CODESIGN_PASSWORD":
-                "${{ secrets.APPLE_CODESIGN_PASSWORD }}",
-            },
-            run: [
-              `target/release/ende -A tools/release/create_symcache.ts target/release/ende-${buildItem.arch}-apple-darwin.symcache`,
-              "strip -x -S target/release/ende",
-              `if [[ "$GITHUB_REF" == "refs/heads/${primaryBranch}" || "$GITHUB_REF" == refs/tags/* ]]; then`,
-              '  echo "Key is $(echo $APPLE_CODESIGN_KEY | base64 -d | wc -c) bytes"',
-              "  rcodesign sign target/release/ende " +
-              "--code-signature-flags=runtime " +
-              '--p12-password="$APPLE_CODESIGN_PASSWORD" ' +
-              "--p12-file=<(echo $APPLE_CODESIGN_KEY | base64 -d) " +
-              "--entitlements-xml-file=cli/entitlements.plist",
-              "fi",
-              "cd target/release",
-              `shasum -a 256 ende > ende-${buildItem.arch}-apple-darwin.sha256sum`,
-              `zip -r ende-${buildItem.arch}-apple-darwin.zip ende`,
-              `shasum -a 256 ende-${buildItem.arch}-apple-darwin.zip > ende-${buildItem.arch}-apple-darwin.zip.sha256sum`,
-              "strip -x -S ./endert",
-              `zip -r endert-${buildItem.arch}-apple-darwin.zip endert`,
-              `shasum -a 256 endert-${buildItem.arch}-apple-darwin.zip > endert-${buildItem.arch}-apple-darwin.zip.sha256sum`,
-              "strip -x -S ./libendert.dylib",
-              `zip -r libendert-${buildItem.arch}-apple-darwin.zip libendert.dylib`,
-              `shasum -a 256 libendert-${buildItem.arch}-apple-darwin.zip > libendert-${buildItem.arch}-apple-darwin.zip.sha256sum`,
-              // QuickJS endert/libendert for `ende compile --engine quickjs`
-              // (see the linux note).
-              "restore_v8_runtimes() {",
-              "  test ! -e endert.v8 || mv -f endert.v8 endert",
-              "  test ! -e libendert.v8.dylib || mv -f libendert.v8.dylib libendert.dylib",
-              "}",
-              "trap restore_v8_runtimes EXIT",
-              "mv endert endert.v8",
-              "mv libendert.dylib libendert.v8.dylib",
-              `(cd ../.. && cargo build --release --locked -p endert -p endert_desktop --no-default-features --features quickjs)`,
-              "strip -x -S ./endert",
-              `zip -r endert-quickjs-${buildItem.arch}-apple-darwin.zip endert`,
-              `shasum -a 256 endert-quickjs-${buildItem.arch}-apple-darwin.zip > endert-quickjs-${buildItem.arch}-apple-darwin.zip.sha256sum`,
-              "strip -x -S ./libendert.dylib",
-              `zip -r libendert-quickjs-${buildItem.arch}-apple-darwin.zip libendert.dylib`,
-              `shasum -a 256 libendert-quickjs-${buildItem.arch}-apple-darwin.zip > libendert-quickjs-${buildItem.arch}-apple-darwin.zip.sha256sum`,
-              "restore_v8_runtimes",
-              "trap - EXIT",
-            ],
-          },
-          {
-            // Note: Azure OIDC credentials are only valid for 5 minutes, so
-            // authentication must be done right before signing.
-            name: "Authenticate with Azure (windows)",
-            if: isWindows.and(isDenoland).and(isMainOrTag),
-            uses: "azure/login@v3",
-            with: {
-              "client-id": "${{ secrets.AZURE_CLIENT_ID }}",
-              "tenant-id": "${{ secrets.AZURE_TENANT_ID }}",
-              "subscription-id": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
-              "enable-AzPSSession": true,
-            },
-          },
-          {
-            name: "Code sign ende.exe (windows)",
-            if: isWindows.and(isDenoland).and(isMainOrTag),
-            uses: "Azure/artifact-signing-action@v1",
-            with: {
-              "endpoint": "https://eus.codesigning.azure.net/",
-              "trusted-signing-account-name": "deno-cli-code-signing",
-              "certificate-profile-name": "deno-cli-code-signing-cert",
-              "files-folder": "target/release",
-              "files-folder-filter": "ende.exe",
-              "file-digest": "SHA256",
-              "timestamp-rfc3161": "http://timestamp.acs.microsoft.com",
-              "timestamp-digest": "SHA256",
-              "exclude-environment-credential": true,
-              "exclude-workload-identity-credential": true,
-              "exclude-managed-identity-credential": true,
-              "exclude-shared-token-cache-credential": true,
-              "exclude-visual-studio-credential": true,
-              "exclude-visual-studio-code-credential": true,
-              "exclude-azure-cli-credential": false,
-            },
-          },
-          {
-            name: "Verify signature (windows)",
-            if: isWindows.and(isDenoland).and(isMainOrTag),
-            shell: "pwsh",
-            run: [
-              '$SignTool = Get-ChildItem -Path "C:\\Program Files*\\Windows Kits\\*\\bin\\*\\x64\\signtool.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1',
-              "$SignToolPath = $SignTool.FullName",
-              "& $SignToolPath verify /pa /v target\\release\\ende.exe",
-            ],
-          },
-          {
-            name: "Pre-release (windows)",
-            if: isWindows.and(isDenoland),
-            shell: "pwsh",
-            run: [
-              `Get-FileHash target/release/ende.exe -Algorithm SHA256 | Format-List > target/release/ende-${buildItem.arch}-pc-windows-msvc.sha256sum`,
-              `Compress-Archive -CompressionLevel Optimal -Force -Path target/release/ende.exe -DestinationPath target/release/ende-${buildItem.arch}-pc-windows-msvc.zip`,
-              `Get-FileHash target/release/ende-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/ende-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
-              `Compress-Archive -CompressionLevel Optimal -Force -Path target/release/endert.exe -DestinationPath target/release/endert-${buildItem.arch}-pc-windows-msvc.zip`,
-              `Get-FileHash target/release/endert-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/endert-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
-              `Compress-Archive -CompressionLevel Optimal -Force -Path target/release/endert.dll -DestinationPath target/release/libendert-${buildItem.arch}-pc-windows-msvc.zip`,
-              `Get-FileHash target/release/libendert-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/libendert-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
-              // QuickJS endert/libendert for `ende compile --engine quickjs`
-              // (see the linux note).
-              "try {",
-              "  Move-Item target/release/endert.exe target/release/endert.v8.exe",
-              "  Move-Item target/release/endert.dll target/release/endert.v8.dll",
-              // Both packages produce endert.pdb on Windows. Building them in
-              // one Cargo invocation lets their linkers race to write it.
-              `  cargo build --release --locked -p endert --no-default-features --features quickjs`,
-              '  if ($LASTEXITCODE -ne 0) { throw "QuickJS endert build failed" }',
-              `  cargo build --release --locked -p endert_desktop --no-default-features --features quickjs`,
-              '  if ($LASTEXITCODE -ne 0) { throw "QuickJS endert_desktop build failed" }',
-              `  Compress-Archive -CompressionLevel Optimal -Force -Path target/release/endert.exe -DestinationPath target/release/endert-quickjs-${buildItem.arch}-pc-windows-msvc.zip`,
-              `  Get-FileHash target/release/endert-quickjs-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/endert-quickjs-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
-              `  Compress-Archive -CompressionLevel Optimal -Force -Path target/release/endert.dll -DestinationPath target/release/libendert-quickjs-${buildItem.arch}-pc-windows-msvc.zip`,
-              `  Get-FileHash target/release/libendert-quickjs-${buildItem.arch}-pc-windows-msvc.zip -Algorithm SHA256 | Format-List > target/release/libendert-quickjs-${buildItem.arch}-pc-windows-msvc.zip.sha256sum`,
-              "} finally {",
-              "  if (Test-Path target/release/endert.v8.exe) { Move-Item -Force target/release/endert.v8.exe target/release/endert.exe }",
-              "  if (Test-Path target/release/endert.v8.dll) { Move-Item -Force target/release/endert.v8.dll target/release/endert.dll }",
-              "}",
-              `target/release/ende.exe -A tools/release/create_symcache.ts target/release/ende-${buildItem.arch}-pc-windows-msvc.symcache`,
-            ],
-          },
-          {
-            name: "Build bsdiff helper",
-            if: isDenoland.and(isTag),
-            run: [
-              "cargo build --release -p bsdiff_helper",
-            ],
-          },
-          {
-            name: "Generate delta patch (linux)",
-            if: isLinux.and(isDenoland).and(isTag),
-            run: [
-              `TARGET="${buildItem.arch}-unknown-linux-gnu"`,
-              'PREV_VERSION=$(curl -sf https://dl.ende.sh/release-latest.txt | tr -d "v\\n") || true',
-              'if [ -z "$PREV_VERSION" ]; then echo "No previous version found, skipping delta"; exit 0; fi',
-              'echo "Generating delta from $PREV_VERSION for $TARGET"',
-              'curl -fSL -o prev.zip "https://github.com/theende/ende/releases/download/v${PREV_VERSION}/ende-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }',
-              "unzip -o prev.zip -d prev/",
-              './target/release/bsdiff_helper prev/ende target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"',
-              'cd target/release && shasum -a 256 "ende-${TARGET}.from-${PREV_VERSION}.bsdiff" > "ende-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"',
-            ],
-          },
-          {
-            name: "Generate delta patch (mac)",
-            if: isMacos.and(isDenoland).and(isTag),
-            run: [
-              `TARGET="${buildItem.arch}-apple-darwin"`,
-              'PREV_VERSION=$(curl -sf https://dl.ende.sh/release-latest.txt | tr -d "v\\n") || true',
-              'if [ -z "$PREV_VERSION" ]; then echo "No previous version found, skipping delta"; exit 0; fi',
-              'echo "Generating delta from $PREV_VERSION for $TARGET"',
-              'curl -fSL -o prev.zip "https://github.com/theende/ende/releases/download/v${PREV_VERSION}/ende-${TARGET}.zip" || { echo "Previous release not found, skipping delta"; exit 0; }',
-              "unzip -o prev.zip -d prev/",
-              './target/release/bsdiff_helper prev/ende target/release/ende "target/release/ende-${TARGET}.from-${PREV_VERSION}.bsdiff"',
-              'cd target/release && shasum -a 256 "ende-${TARGET}.from-${PREV_VERSION}.bsdiff" > "ende-${TARGET}.from-${PREV_VERSION}.bsdiff.sha256sum"',
-            ],
-          },
-          {
-            name: "Generate delta patch (windows)",
-            if: isWindows.and(isDenoland).and(isTag),
-            shell: "pwsh",
-            run: [
-              `$Target = "${buildItem.arch}-pc-windows-msvc"`,
-              '$PrevVersion = (Invoke-RestMethod https://dl.ende.sh/release-latest.txt).Trim() -replace "^v", ""',
-              'if (-not $PrevVersion) { Write-Host "No previous version found, skipping delta"; exit 0 }',
-              'Write-Host "Generating delta from $PrevVersion for $Target"',
-              'try { Invoke-WebRequest -Uri "https://github.com/theende/ende/releases/download/v$PrevVersion/ende-$Target.zip" -OutFile prev.zip } catch { Write-Host "Previous release not found, skipping delta"; exit 0 }',
-              "Remove-Item -Recurse -Force prev -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path prev | Out-Null",
-              "Expand-Archive -Force -Path prev.zip -DestinationPath prev",
-              '& .\\target\\release\\bsdiff_helper.exe "prev\\ende.exe" "target\\release\\ende.exe" "target\\release\\ende-$Target.from-$PrevVersion.bsdiff"',
-              'Get-FileHash "target\\release\\ende-$Target.from-$PrevVersion.bsdiff" -Algorithm SHA256 | Format-List > "target\\release\\ende-$Target.from-$PrevVersion.bsdiff.sha256sum"',
-            ],
-          },
-        );
         const packagesToBuild = ["ende", "endert", "test_server"]
           .map((name) => `-p ${name}`).join(" ");
         const binsToBuild = ["ende", "endert", "test_server"]
@@ -934,7 +636,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           `cargo build${buildStdArgs} --release --locked ${packagesToBuild} ${binsToBuild} --features=${panicTraceFeatures}`;
         const cargoBuildReleaseStep = step
           .if(
-            isRelease.and(isDenoland.or(buildItem.use_sysroot)),
+            isRelease.and(buildItem.use_sysroot),
           )
           .dependsOn(
             installLldStep,
@@ -970,18 +672,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
                 ENDE_SNAPSHOT_MINIFY_SOURCES: "1",
               },
               run: [
-                // On macOS aarch64, link through lzld so system frameworks
-                // (CoreFoundation/Foundation/Security/CoreServices/Metal/...) are
-                // dlopen'd on first use instead of loaded at launch, cutting dyld
-                // startup cost. lzld needs an absolute -fuse-ld path (Apple clang
-                // rejects relative ones), so patch it in here rather than in the
-                // committed .cargo/config.toml. See tools/lzld.
-                'if [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ]; then',
-                "  git submodule update --init tools/lzld",
-                "  make -C tools/lzld",
-                "  sed -i '' \"s#-fuse-ld=lld #-fuse-ld=$GITHUB_WORKSPACE/tools/lzld/lzld -L$GITHUB_WORKSPACE/tools/lzld -llzld_arm64 #\" .cargo/config.toml",
-                "  grep -n fuse-ld .cargo/config.toml",
-                "fi",
                 // output fs space before and after building
                 "df -h",
                 cargoBuildReleaseCommand,
@@ -1074,7 +764,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               ],
               env: { NO_COLOR: 1 },
             },
-            preRelease,
             {
               name: "Build product size info",
               if: isMainOrTag,
@@ -1091,8 +780,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             restoreCacheStep,
             installRustStep,
             sysRootStep,
-          )
-          .comesAfter(tarSourcePublishStep)(
+          )(
             {
               name: "Build debug",
               if: isDebug,
@@ -1123,92 +811,9 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             testServerArtifact.upload(),
           );
 
-        const shouldPublishCondition = isRelease.and(isDenoland)
-          .and(isTag);
-        const publishStep = step.if(shouldPublishCondition)(
-          {
-            name: "Upload release to dl.deno.land",
-            env: S3Envs,
-            run: [
-              'aws s3 sync ./target/release/ s3://dl-deno-land/release/${GITHUB_REF#refs/*/}/ --exclude "*" --include "*.zip"',
-              'aws s3 sync ./target/release/ s3://dl-deno-land/release/${GITHUB_REF#refs/*/}/ --exclude "*" --include "*.sha256sum"',
-              'aws s3 sync ./target/release/ s3://dl-deno-land/release/${GITHUB_REF#refs/*/}/ --exclude "*" --include "*.symcache"',
-              'aws s3 sync ./target/release/ s3://dl-deno-land/release/${GITHUB_REF#refs/*/}/ --exclude "*" --include "*.bsdiff"',
-            ],
-          },
-          {
-            name: "Create release notes",
-            run: [
-              "export PATH=$PATH:$(pwd)/target/release",
-              "./tools/release/05_create_release_notes.ts",
-            ],
-          },
-          {
-            name: "Upload release to GitHub",
-            uses: "softprops/action-gh-release@v3",
-            env: {
-              GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
-            },
-            with: {
-              files: [
-                "target/release/ende-x86_64-pc-windows-msvc.zip",
-                "target/release/ende-x86_64-pc-windows-msvc.zip.sha256sum",
-                "target/release/ende-x86_64-pc-windows-msvc.sha256sum",
-                "target/release/endert-x86_64-pc-windows-msvc.zip",
-                "target/release/endert-x86_64-pc-windows-msvc.zip.sha256sum",
-                "target/release/libendert-x86_64-pc-windows-msvc.zip",
-                "target/release/libendert-x86_64-pc-windows-msvc.zip.sha256sum",
-                "target/release/ende-aarch64-pc-windows-msvc.zip",
-                "target/release/ende-aarch64-pc-windows-msvc.zip.sha256sum",
-                "target/release/ende-aarch64-pc-windows-msvc.sha256sum",
-                "target/release/endert-aarch64-pc-windows-msvc.zip",
-                "target/release/endert-aarch64-pc-windows-msvc.zip.sha256sum",
-                "target/release/libendert-aarch64-pc-windows-msvc.zip",
-                "target/release/libendert-aarch64-pc-windows-msvc.zip.sha256sum",
-                "target/release/ende-x86_64-unknown-linux-gnu.zip",
-                "target/release/ende-x86_64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/ende-x86_64-unknown-linux-gnu.sha256sum",
-                "target/release/endert-x86_64-unknown-linux-gnu.zip",
-                "target/release/endert-x86_64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/libendert-x86_64-unknown-linux-gnu.zip",
-                "target/release/libendert-x86_64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/ende-x86_64-apple-darwin.zip",
-                "target/release/ende-x86_64-apple-darwin.zip.sha256sum",
-                "target/release/ende-x86_64-apple-darwin.sha256sum",
-                "target/release/endert-x86_64-apple-darwin.zip",
-                "target/release/endert-x86_64-apple-darwin.zip.sha256sum",
-                "target/release/libendert-x86_64-apple-darwin.zip",
-                "target/release/libendert-x86_64-apple-darwin.zip.sha256sum",
-                "target/release/ende-aarch64-unknown-linux-gnu.zip",
-                "target/release/ende-aarch64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/ende-aarch64-unknown-linux-gnu.sha256sum",
-                "target/release/endert-aarch64-unknown-linux-gnu.zip",
-                "target/release/endert-aarch64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/libendert-aarch64-unknown-linux-gnu.zip",
-                "target/release/libendert-aarch64-unknown-linux-gnu.zip.sha256sum",
-                "target/release/ende-aarch64-apple-darwin.zip",
-                "target/release/ende-aarch64-apple-darwin.zip.sha256sum",
-                "target/release/ende-aarch64-apple-darwin.sha256sum",
-                "target/release/endert-aarch64-apple-darwin.zip",
-                "target/release/endert-aarch64-apple-darwin.zip.sha256sum",
-                "target/release/libendert-aarch64-apple-darwin.zip",
-                "target/release/libendert-aarch64-apple-darwin.zip.sha256sum",
-                "target/release/ende_src.tar.gz",
-                "target/release/lib.ende.d.ts",
-                "target/release/ende-*.bsdiff",
-                "target/release/ende-*.bsdiff.sha256sum",
-              ].join("\n"),
-              body_path: "target/release/release-notes.md",
-              draft: true,
-            },
-          },
-        );
-
         return step.if(buildItem.skip.not())(
           cloneRepoStep,
           cloneStdSubmoduleStep,
-          // ensure this happens right after cloning
-          tarSourcePublishStep.if(shouldPublishCondition),
           {
             name: "Remove macOS cURL --ipv4 flag",
             run: [
@@ -1240,7 +845,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             installRustStep,
           ),
           cargoBuildStep,
-          publishStep,
           saveCacheStep!.if(buildItem.save_cache),
         );
       })(),
@@ -1372,9 +976,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           },
           {
             name: "Test (release)",
-            if: isRelease.and(
-              isDenoland.or(buildItem.use_sysroot),
-            ),
+            if: isRelease.and(buildItem.use_sysroot),
             run: runTestsToleratingKnownFailures(
               `cargo test -p ${testMatrix.test_package} --test ${testMatrix.test_crate} --release`,
               `target/test_results_${testMatrix.test_crate}.json`,
@@ -1554,37 +1156,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
             run:
               "target/release/ende run -A --config tests/config/ende.json ext/websocket/autobahn/fuzzingclient.js",
           },
-          step({
-            name: "Upload wpt results to dl.deno.land",
-            continueOnError: true,
-            if: isRelease.and(isLinux).and(isDenoland).and(isMainBranch).and(
-              isNotTag,
-            ),
-            env: S3Envs,
-            run: [
-              "gzip ./wptreport.json",
-              "aws s3 cp ./wpt.json s3://dl-deno-land/wpt/$(git rev-parse HEAD).json",
-              "aws s3 cp ./wptreport.json.gz s3://dl-deno-land/wpt/$(git rev-parse HEAD)-wptreport.json.gz",
-              "echo $(git rev-parse HEAD) > wpt-latest.txt",
-              "aws s3 cp wpt-latest.txt s3://dl-deno-land/wpt-latest.txt",
-            ],
-          }),
-          {
-            name: "Upload wpt results to wpt.fyi",
-            continueOnError: true,
-            if: isRelease.and(isLinux).and(isDenoland).and(isMainBranch).and(
-              isNotTag,
-            ),
-            env: {
-              WPT_FYI_USER: "deno",
-              WPT_FYI_PW: "${{ secrets.WPT_FYI_PW }}",
-              GITHUB_TOKEN: "${{ secrets.ENDE_RELEASE_PAT }}",
-            },
-            run: [
-              "./target/release/ende run --allow-all --lock=tools/deno.lock.json \\",
-              "    ./tools/upload_wptfyi.js $(git rev-parse HEAD) --ghstatus",
-            ],
-          },
           buildCacheSteps.saveCacheStep.if(isMainBranch.and(isNotTag)),
         ),
       },
@@ -1599,7 +1170,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
 
 // === bench job ===
 
-const benchProfile = defineExprObj(Runners.linuxX86Xl);
+const benchProfile = defineExprObj(Runners.linuxX86);
 const benchCacheSteps = createCargoCacheHomeStep({
   ...benchProfile,
   cachePrefix: "bench",
@@ -1649,25 +1220,6 @@ const benchJob = job(
         {
           name: "Run benchmarks",
           run: "cargo bench -p bench_tests --bench ende_bench --locked",
-        },
-        {
-          name: "Post benchmarks",
-          if: isDenoland.and(isMainBranch),
-          env: {
-            ENDE_RELEASE_PAT: "${{ secrets.ENDE_RELEASE_PAT }}",
-          },
-          run: [
-            "git clone --depth 1 --branch gh-pages                             \\",
-            "    https://${ENDE_RELEASE_PAT}@github.com/denoland/benchmark_data.git \\",
-            "    gh-pages",
-            "./target/release/ende run --allow-all ./tools/build_benchmark_jsons.js --release",
-            "cd gh-pages",
-            'git config user.email "propelml@gmail.com"',
-            'git config user.name "denobot"',
-            "git add .",
-            'git commit --message "Update benchmarks"',
-            "git push origin gh-pages",
-          ],
         },
         {
           name: "Worker info",
@@ -1766,7 +1318,7 @@ const endeCorePackageNames = [
   "ende_core_testing",
 ];
 const endeCoreTestProfile = defineExprObj({
-  ...Runners.linuxX86Xl,
+  ...Runners.linuxX86,
   profile: "release",
 });
 const endeCoreTestCacheSteps = createCacheSteps({
@@ -1861,7 +1413,7 @@ const endeCoreMiriJob = job("ende-core-miri", {
   name: "ende_core miri linux-x86_64",
   needs: [preBuildJob],
   if: preBuildJob.outputs.skip_build.notEquals("true").and(notDocsOnly),
-  runsOn: Runners.linuxX86Xl.runner,
+  runsOn: Runners.linuxX86.runner,
   timeoutMinutes: 60,
   defaults: {
     run: {
@@ -1947,12 +1499,14 @@ const workflow = createWorkflow({
   name: "ci",
   permissions: {
     contents: "write",
-    "id-token": "write", // Required for GitHub OIDC with Azure for code signing
+    // Uncomment for Azure Trusted Signing, which authenticates with GitHub
+    // OIDC (see windowsSignStep in release.ts).
+    // "id-token": "write",
   },
   on: {
     push: {
       branches: [primaryBranch],
-      // tag pushes run the release build and publish jobs (GitHub does not
+      // tag pushes run the release build jobs (GitHub does not
       // evaluate path filters for tag pushes)
       ...(fullMatrix ? { tags: ["*"] } : {}),
       paths: ciPaths,

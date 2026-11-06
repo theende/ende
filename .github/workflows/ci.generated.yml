@@ -32,7 +32,6 @@ on:
   workflow_dispatch: {}
 permissions:
   contents: write
-  id-token: write
 concurrency:
   group: '${{ github.workflow }}-${{ !contains(github.event.pull_request.labels.*.name, ''ci-test-flaky'') && github.head_ref || github.run_id }}'
   cancel-in-progress: true
@@ -81,8 +80,6 @@ jobs:
       - pre_build
     if: needs.pre_build.outputs.skip_build != 'true' && needs.pre_build.outputs.docs_only != 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: macos-15
-    environment:
-      name: '${{ github.repository == ''denoland/deno'' && (github.ref == ''refs/heads/primary'' || startsWith(github.ref, ''refs/tags/'')) && ''build'' || '''' }}'
     timeout-minutes: 240
     defaults:
       run:
@@ -109,13 +106,13 @@ jobs:
           which curl
           cat /etc/hosts
           rm ~/.curlrc || true
-      - env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        run: echo $GITHUB_WORKSPACE/third_party/prebuilt/mac >> $GITHUB_PATH
       - name: Install Deno
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
         with:
           deno-version: v2.x
+      - env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        run: echo $GITHUB_WORKSPACE/third_party/prebuilt/mac >> $GITHUB_PATH
       - name: Install macOS aarch64 lld
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -566,8 +563,6 @@ jobs:
       - pre_build
     if: needs.pre_build.outputs.skip_build != 'true' && needs.pre_build.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
-    environment:
-      name: '${{ github.repository == ''denoland/deno'' && (github.ref == ''refs/heads/primary'' || startsWith(github.ref, ''refs/tags/'')) && ''build'' || '''' }}'
     timeout-minutes: 240
     defaults:
       run:

@@ -52,8 +52,7 @@ rustflags = [
 # the macOS SDK: LLD 20 rejects the macOS 27 SDK's libSystem.tbd ("unknown
 # architecture arm64e.x1-macos"). It decides by probing LLD against the SDK
 # before linking, not by retrying failed links. CI's SDKs are read fine, so CI
-# links with LLD. Keep "-fuse-ld=lld " spelled as is: the release job in
-# .github/workflows/ci.ts seds it to lzld.
+# links with LLD.
 [target.aarch64-apple-darwin]
 linker = "tools/macos_linker.sh"
 rustflags = [
