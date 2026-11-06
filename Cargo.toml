@@ -299,7 +299,7 @@ walkdir = "=2.5.0"
 web-transport-proto = "0.2.7"
 webpki-roots = "1.0.10"
 which = { version = "8.0.0", default-features = false }
-zip = { version = "2.4.1", default-features = false, features = ["flate2"] }
+zip = { version = "9.0.5", default-features = false, features = ["deflate-flate2"] }
 
 opentelemetry = "0.32.0"
 opentelemetry-http = "0.32.0"
