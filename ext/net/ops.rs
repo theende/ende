@@ -1054,6 +1054,17 @@ pub struct NameServer {
   port: u16,
 }
 
+/// Reads the OS resolver configuration. hickory returns `NetError` (our
+/// `ResolveError`) on Unix but `ProtoError` on Apple, Windows and Android, so
+/// the conversion is a no-op only on some targets.
+#[allow(
+  clippy::useless_conversion,
+  reason = "read_system_conf's error type differs per platform"
+)]
+fn read_system_conf() -> Result<(ResolverConfig, ResolverOpts), ResolveError> {
+  system_conf::read_system_conf().map_err(ResolveError::from)
+}
+
 #[op2(stack_trace)]
 pub async fn op_dns_resolve(
   state: Rc<RefCell<OpState>>,
@@ -1093,7 +1104,7 @@ pub async fn op_dns_resolve(
       opts
     })
   } else {
-    system_conf::read_system_conf().map_err(ResolveError::from)?
+    read_system_conf()?
   };
 
   // When a cancel handle is provided, use a short resolver timeout so
