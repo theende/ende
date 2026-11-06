@@ -711,7 +711,7 @@ Deno.test(async function decompressionStreamInvalidGzipStillReported() {
       await new DecompressionStream("gzip").writable.close();
     },
     TypeError,
-    "corrupt gzip stream does not have a matching checksum",
+    "incomplete deflate stream",
   );
 });
 
