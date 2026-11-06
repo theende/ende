@@ -5,6 +5,33 @@ https://github.com/theende/ende/releases
 
 We also have one-line install commands at: https://ende.sh
 
+### 2026.11.06 / 2026.11.06
+
+- fix(cli): enforce worker import permissions for static remote imports
+- fix(compile): check read permission for dynamically imported local files
+- fix(compile): drop the x86_64-apple-darwin and aarch64-pc-windows-msvc targets
+- fix(deps): bump anyhow to 1.0.103
+- fix(deps): bump crossbeam-epoch to 0.9.20
+- fix(deps): bump crypto-bigint 0.7, ctutils and block-buffer
+- fix(deps): bump faster-hex to 0.10.1
+- fix(deps): bump h2 to 0.4.16
+- fix(deps): bump hickory DNS crates to 0.26.3
+- fix(deps): bump memmap2 to 0.9.11
+- fix(deps): bump plist to 1.10.0 for quick-xml 0.41
+- fix(deps): bump quinn-proto to 0.11.19
+- fix(deps): bump rand 0.8 to 0.8.6
+- fix(deps): bump rand 0.9 to 0.9.3
+- fix(deps): bump rustls to 0.23.46
+- fix(deps): bump tokio to 1.51.6
+- fix(deps): bump xxhash-rust to 0.8.16
+- fix(deps): bump zip to 9.0.5
+- fix(deps): bump zstd to 0.13.4, zstd-safe to 7.4.0, zstd-sys to 2.1.2
+- fix(deps): restore windows-sys 0.61 for is-terminal, rustix and socket2
+- fix(ext/crypto): reject EC public keys not on the curve at import
+- fix(ext/net): keep the system DNS config conversion lint-clean on Linux
+- fix(ext/web): reject CR/LF in header values with surrounding whitespace
+- fix(tls): distrust compromised eMudhra certificate authorities
+
 ### 2026.11.05
 
 - feat(compile): narrow a compiled binary's permissions with ENDE_ALLOW_*
