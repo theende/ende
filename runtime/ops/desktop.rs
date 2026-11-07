@@ -1528,39 +1528,78 @@ fn dylib_magic_ok(bytes: &[u8]) -> bool {
   ) || m.starts_with(b"MZ")
 }
 
-#[allow(
-  clippy::disallowed_methods,
-  reason = "privileged auto-update op writes the live dylib outside any user's sandbox by design"
-)]
 #[op2(fast)]
 pub fn op_desktop_apply_patch(
   state: &mut OpState,
   #[buffer] patch_bytes: &[u8],
   #[string] expected_sha256: &str,
+  #[string] expected_target_sha256: &str,
 ) -> Result<(), deno_error::JsErrorBox> {
   let update_state =
     state.try_borrow::<AutoUpdateState>().ok_or_else(|| {
       deno_error::JsErrorBox::generic("Auto-update state not initialized")
     })?;
-  let dylib_path = &update_state.dylib_path;
+  let update_path = stage_patch(
+    &update_state.dylib_path,
+    patch_bytes,
+    expected_sha256,
+    expected_target_sha256,
+  )?;
+  log::info!(
+    "Update written to {}. Will be applied on next launch.",
+    update_path.display()
+  );
+  Ok(())
+}
 
+/// A manifest SHA-256, checked and lowercased.
+fn manifest_sha256(
+  hex: &str,
+  what: &str,
+) -> Result<String, deno_error::JsErrorBox> {
+  let hex = hex.trim().to_ascii_lowercase();
+  if hex.len() != SHA256_HEX_LEN || !hex.chars().all(|c| c.is_ascii_hexdigit())
+  {
+    return Err(deno_error::JsErrorBox::generic(format!(
+      "Auto-update: manifest is missing a valid SHA-256 {what}"
+    )));
+  }
+  Ok(hex)
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+  use sha2::Digest;
+  faster_hex::hex_string(&sha2::Sha256::digest(bytes)).to_lowercase()
+}
+
+/// Applies `patch_bytes` to the dylib at `dylib_path` and writes the result to
+/// `<dylib>.update`, which the next launch swaps in. Returns that path.
+///
+/// Both the patch and the patched library must match the manifest's SHA-256s
+/// (`sha256` and `targetSha256` in its patch entry). The patch hash alone
+/// isn't enough: a patch applied to a dylib other than the one it was made
+/// from gives a wrong library, which bspatch doesn't notice. That happens when
+/// the code running isn't the dylib on disk, e.g. after a swapped-in update
+/// whose restart failed. Nothing is written unless both match.
+#[allow(
+  clippy::disallowed_methods,
+  reason = "privileged auto-update op writes the live dylib outside any user's sandbox by design"
+)]
+fn stage_patch(
+  dylib_path: &Path,
+  patch_bytes: &[u8],
+  expected_sha256: &str,
+  expected_target_sha256: &str,
+) -> Result<PathBuf, deno_error::JsErrorBox> {
   // Verify the patch bytes against the SHA-256 declared in the manifest before
   // we trust them with `bspatch`. Without this, anyone who can MITM the patch
   // download (or compromise the release host) could deliver arbitrary native
   // code. The hash itself is only as trustworthy as the manifest delivery
   // (TLS) and, when configured, the manifest signature checked in JS.
-  let expected_sha256 = expected_sha256.trim().to_ascii_lowercase();
-  if expected_sha256.len() != SHA256_HEX_LEN
-    || !expected_sha256.chars().all(|c| c.is_ascii_hexdigit())
-  {
-    return Err(deno_error::JsErrorBox::generic(
-      "Auto-update: manifest is missing a valid SHA-256 patch hash",
-    ));
-  }
-  let actual_sha256 = {
-    use sha2::Digest;
-    faster_hex::hex_string(&sha2::Sha256::digest(patch_bytes)).to_lowercase()
-  };
+  let expected_sha256 = manifest_sha256(expected_sha256, "patch hash")?;
+  let expected_target_sha256 =
+    manifest_sha256(expected_target_sha256, "of the patched library")?;
+  let actual_sha256 = sha256_hex(patch_bytes);
   if actual_sha256 != expected_sha256 {
     return Err(deno_error::JsErrorBox::generic(format!(
       "Auto-update: patch SHA-256 mismatch (expected {expected_sha256}, got {actual_sha256})"
@@ -1586,11 +1625,17 @@ pub fn op_desktop_apply_patch(
       deno_error::JsErrorBox::generic(format!("bspatch failed: {}", e))
     })?;
 
-  // Sanity-check the patched bytes look like a real native binary. This
-  // doesn't make the file safe to load (the hash check above does that), but
-  // it catches a malformed or empty payload before we stage the swap and
-  // shrinks the window where rename(2) into place could fail and leave the
-  // app without a working dylib.
+  let patched_sha256 = sha256_hex(&patched);
+  if patched_sha256 != expected_target_sha256 {
+    return Err(deno_error::JsErrorBox::generic(format!(
+      "Auto-update: patched library SHA-256 mismatch (expected {expected_target_sha256}, got {patched_sha256}); the patch doesn't fit the library at {}",
+      dylib_path.display()
+    )));
+  }
+
+  // Sanity-check the patched bytes look like a real native binary. The hash
+  // check above already pins them; this catches a manifest that pins an
+  // empty or malformed file.
   if !dylib_magic_ok(&patched) {
     return Err(deno_error::JsErrorBox::generic(
       "Auto-update: patched dylib does not look like a native binary",
@@ -1608,13 +1653,7 @@ pub fn op_desktop_apply_patch(
       e
     ))
   })?;
-
-  log::info!(
-    "Update written to {}. Will be applied on next launch.",
-    update_path.display()
-  );
-
-  Ok(())
+  Ok(update_path)
 }
 
 /// Verify an Ed25519 signature over `message` using the base64-encoded
@@ -2620,6 +2659,96 @@ mod tests {
     sentinel.remove_file();
     trial.confirm();
     assert!(!sentinel.exists());
+  }
+
+  // --- auto-update patch staging ---
+
+  /// Fake native libraries: ELF magic plus distinct bodies.
+  fn fake_library(body: &str) -> Vec<u8> {
+    let mut bytes = b"\x7fELF".to_vec();
+    bytes.extend(body.repeat(64).into_bytes());
+    bytes
+  }
+
+  fn make_patch(old: &[u8], new: &[u8]) -> Vec<u8> {
+    let mut patch = Vec::new();
+    qbsdiff::Bsdiff::new(old, new)
+      .compare(std::io::Cursor::new(&mut patch))
+      .unwrap();
+    patch
+  }
+
+  #[test]
+  fn stage_patch_stages_the_library_the_patch_was_made_for() {
+    let dir = test_util::TempDir::new();
+    let (v1, v2) = (fake_library("version 1;"), fake_library("version 2;"));
+    let patch = make_patch(&v1, &v2);
+    let dylib = dir.path().join("app.dylib");
+    dylib.write(&v1);
+    let staged = super::stage_patch(
+      dylib.as_path(),
+      &patch,
+      &super::sha256_hex(&patch),
+      &super::sha256_hex(&v2),
+    )
+    .unwrap();
+    assert_eq!(staged, dir.path().join("app.dylib.update").to_path_buf());
+    assert_eq!(
+      dir
+        .path()
+        .join("app.dylib.update")
+        .read_to_bytes_if_exists()
+        .unwrap(),
+      v2
+    );
+  }
+
+  #[test]
+  fn stage_patch_rejects_a_patch_applied_to_the_wrong_library() {
+    // The v1 -> v2 patch, with v2 already on disk: the running code is v1,
+    // but a swapped-in v2 is what the patch would be applied to. bspatch
+    // succeeds and gives neither version.
+    let dir = test_util::TempDir::new();
+    let (v1, v2) = (fake_library("version 1;"), fake_library("version 2;"));
+    let patch = make_patch(&v1, &v2);
+    let dylib = dir.path().join("app.dylib");
+    dylib.write(&v2);
+    let err = super::stage_patch(
+      dylib.as_path(),
+      &patch,
+      &super::sha256_hex(&patch),
+      &super::sha256_hex(&v2),
+    )
+    .unwrap_err();
+    assert!(
+      err.to_string().contains("patched library SHA-256 mismatch"),
+      "{err}"
+    );
+    assert!(
+      !dir.path().join("app.dylib.update").exists(),
+      "nothing staged"
+    );
+  }
+
+  #[test]
+  fn stage_patch_needs_the_patched_library_hash() {
+    let dir = test_util::TempDir::new();
+    let (v1, v2) = (fake_library("version 1;"), fake_library("version 2;"));
+    let patch = make_patch(&v1, &v2);
+    let dylib = dir.path().join("app.dylib");
+    dylib.write(&v1);
+    let err = super::stage_patch(
+      dylib.as_path(),
+      &patch,
+      &super::sha256_hex(&patch),
+      "",
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("patched library"), "{err}");
+    assert!(
+      !dir.path().join("app.dylib.update").exists(),
+      "nothing staged"
+    );
   }
 
   // --- printToPdf `path` permission ---

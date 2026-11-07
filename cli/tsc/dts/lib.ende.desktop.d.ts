@@ -324,8 +324,13 @@ declare namespace Ende {
    *   an unsigned or invalid manifest is rejected.
    * - If the manifest advertises a newer version and lists a patch from
    *   the currently running version (under `patches[<currentVersion>]`,
-   *   as `{ name, sha256 }`), that patch is downloaded, checked against
-   *   its declared SHA-256, applied, and staged for the next launch.
+   *   as `{ name, sha256, targetSha256 }`), that patch is downloaded and
+   *   checked against `sha256`. It is applied to the installed library, and
+   *   the result must match `targetSha256`, the SHA-256 of the new
+   *   version's native library (the file the patch was made to produce).
+   *   Only then is it staged for the next launch. An entry without
+   *   `targetSha256`, as in manifests written for older Ende versions, is
+   *   not used.
    * - `onUpdateReady` is then invoked. The new version takes effect the
    *   next time the app starts.
    *

@@ -1176,13 +1176,19 @@ pub fn desktop_auto_update_js(
             _version, "->", manifest.version);
           return;
         }}
-        // Accept either a string (legacy/unsafe) or {{ name, sha256 }}. The
-        // SHA-256 is required — Rust will reject the patch otherwise.
+        // Accept either a string (legacy/unsafe) or
+        // {{ name, sha256, targetSha256 }}. Both SHA-256s are required — Rust
+        // will reject the patch otherwise. Without `targetSha256` (manifests
+        // written for older Ende versions), nothing is downloaded: a patch
+        // applied to the wrong library would be staged unnoticed.
         const patchName = typeof patchEntry === "string"
           ? patchEntry
           : patchEntry?.name;
         const patchSha256 = typeof patchEntry === "object"
           ? patchEntry?.sha256
+          : undefined;
+        const targetSha256 = typeof patchEntry === "object"
+          ? patchEntry?.targetSha256
           : undefined;
         if (!patchName) {{
           console.error("Ende.autoUpdate: malformed patch entry");
@@ -1194,13 +1200,19 @@ pub fn desktop_auto_update_js(
           );
           return;
         }}
+        if (typeof targetSha256 !== "string" || targetSha256.length !== 64) {{
+          console.error(
+            "Ende.autoUpdate: manifest patch entry must include targetSha256, the SHA-256 of the patched library; not updating",
+          );
+          return;
+        }}
         const patchResp = await fetch(base + "/" + patchName, {{
           cache: "no-store",
           redirect: "error",
         }});
         if (!patchResp.ok) return;
         const patchBytes = new Uint8Array(await patchResp.arrayBuffer());
-        op_desktop_apply_patch(patchBytes, patchSha256);
+        op_desktop_apply_patch(patchBytes, patchSha256, targetSha256);
         if (typeof onUpdateReady === "function") {{
           try {{ onUpdateReady(manifest.version); }} catch (e) {{
             console.error("Ende.autoUpdate onUpdateReady threw:", e);
@@ -1562,6 +1574,16 @@ mod tests {
     // Confirming here, before the main module loads, kept updates whose
     // startup code throws; the runtime confirms after the load instead.
     assert!(!js.contains("op_desktop_confirm_update"));
+  }
+
+  #[test]
+  fn auto_update_js_needs_the_patched_library_hash() {
+    let js = desktop_auto_update_js(Some("1.0.0"), false, None);
+    assert!(js.contains("patchEntry?.targetSha256"));
+    assert!(js.contains("must include targetSha256"));
+    assert!(js.contains(
+      "op_desktop_apply_patch(patchBytes, patchSha256, targetSha256)"
+    ));
   }
 
   #[test]
