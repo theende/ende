@@ -97,10 +97,12 @@ App content and JS↔native calls travel on completely separate paths.
 **Bindings — mpsc events + per-call oneshot.** `Ende.desktop`/window APIs and
 webview→Ende function calls do _not_ use HTTP:
 
-- Native → runtime: a single bounded mpsc channel of `DesktopEvent`
-  (`ops/desktop.rs:119`), capacity 1024. High-frequency events (mouse move,
-  wheel) use `try_send` and are **dropped on backpressure** rather than blocking
-  or OOMing the runtime (`DesktopEventSender::try_send`, `ops/desktop.rs:244`).
+- Native → runtime: a single mpsc channel of `DesktopEvent`, sent through
+  `DesktopEventSender::send`, which never blocks the UI thread. Continuous
+  events (mouse move, wheel, window move and resize) are capped at 1024 waiting
+  in the queue and **dropped past that** rather than OOMing the runtime.
+  Discrete events (close requests, page loads, focus, keys, clicks, menu clicks,
+  bind calls) don't count toward the cap and are never dropped.
 - One JS consumer: an async loop in `DESKTOP_JS` awaiting
   `op_desktop_recv_event()` (`desktop.rs:702`), dispatching each event to the
   matching DOM-style `EventTarget`. The op promise is `unrefOpPromise`'d so the

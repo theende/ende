@@ -1314,7 +1314,6 @@ pub fn desktop_error_reporting_js(
 pub use ende_runtime::ops::desktop::DesktopEvent;
 pub use ende_runtime::ops::desktop::DesktopEventReceiver;
 pub use ende_runtime::ops::desktop::DesktopEventSender;
-pub use ende_runtime::ops::desktop::DesktopEventTx;
 pub use ende_runtime::ops::desktop::InitialWindowId;
 pub use ende_runtime::ops::desktop::PendingBindCall;
 pub use ende_runtime::ops::desktop::PendingBindResponses;

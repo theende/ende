@@ -14,6 +14,7 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU32;
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 use ende_core::FromV8;
@@ -453,42 +454,97 @@ pub enum DesktopEvent {
   NotificationError { notification_id: u32 },
 }
 
-/// Capacity of the runtime-bound event channel. A misbehaving renderer could
-/// otherwise flood mouse-move / wheel events fast enough to OOM the runtime
-/// (the channel was previously unbounded). When full, low-priority events
-/// (motion / wheel) are dropped via `try_send` and a warning is logged.
-const DESKTOP_EVENT_CHANNEL_CAPACITY: usize = 1024;
+impl DesktopEvent {
+  /// Continuous events report the latest state of something that changes
+  /// many times a second: the pointer, the wheel, the window's size and
+  /// position. A runtime that falls behind loses little by skipping some of
+  /// them. Every other event is discrete: dropping a close request, a page
+  /// load, a focus change, a key or a menu click leaves the app in the wrong
+  /// state.
+  fn is_continuous(&self) -> bool {
+    matches!(
+      self,
+      Self::MouseMove { .. }
+        | Self::Wheel { .. }
+        | Self::WindowResize { .. }
+        | Self::WindowMove { .. }
+    )
+  }
+}
 
-type DesktopEventRx =
-  tokio::sync::Mutex<tokio::sync::mpsc::Receiver<DesktopEvent>>;
-pub type DesktopEventTx = tokio::sync::mpsc::Sender<DesktopEvent>;
+/// How many continuous events may wait for the runtime at once. A
+/// misbehaving renderer could otherwise flood mouse-move or wheel events fast
+/// enough to OOM the runtime. Discrete events don't count toward the limit and
+/// are never dropped.
+const DESKTOP_CONTINUOUS_EVENT_LIMIT: usize = 1024;
 
-pub struct DesktopEventReceiver(pub Arc<DesktopEventRx>);
+/// Sends events from the backend's threads to the runtime. Never blocks: the
+/// backend calls it from its UI thread.
 #[derive(Clone)]
-pub struct DesktopEventSender(pub DesktopEventTx);
+pub struct DesktopEventSender {
+  tx: tokio::sync::mpsc::UnboundedSender<DesktopEvent>,
+  queued_continuous: Arc<AtomicUsize>,
+}
 
 impl DesktopEventSender {
-  /// Send an event, dropping it on backpressure rather than blocking or
-  /// allocating. Use this for high-frequency events (mouse move, wheel).
-  pub fn try_send(&self, event: DesktopEvent) {
-    if let Err(tokio::sync::mpsc::error::TrySendError::Full(_)) =
-      self.0.try_send(event)
+  /// Queue an event for the runtime. A discrete event is always queued. A
+  /// continuous event is dropped while [`DESKTOP_CONTINUOUS_EVENT_LIMIT`] of
+  /// them are already waiting. Returns `false` if the event wasn't queued:
+  /// it was dropped that way, or the runtime has stopped receiving.
+  pub fn send(&self, event: DesktopEvent) -> bool {
+    let continuous = event.is_continuous();
+    if continuous
+      && self.queued_continuous.fetch_add(1, Ordering::Relaxed)
+        >= DESKTOP_CONTINUOUS_EVENT_LIMIT
     {
-      // Log once per overflow burst would be ideal, but a plain warn is fine
-      // here — this only fires on pathological event rates.
-      log::warn!(
-        "desktop event channel full; dropping event (renderer producing events faster than runtime can drain)"
+      self.queued_continuous.fetch_sub(1, Ordering::Relaxed);
+      log::debug!(
+        "desktop event queue full; dropping a continuous event (the renderer is producing events faster than the runtime drains them)"
       );
+      return false;
     }
+    if self.tx.send(event).is_err() {
+      if continuous {
+        self.queued_continuous.fetch_sub(1, Ordering::Relaxed);
+      }
+      return false;
+    }
+    true
+  }
+}
+
+/// The runtime's end of the desktop event channel.
+#[derive(Clone)]
+pub struct DesktopEventReceiver {
+  rx:
+    Arc<tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<DesktopEvent>>>,
+  queued_continuous: Arc<AtomicUsize>,
+}
+
+impl DesktopEventReceiver {
+  /// The next event, or `None` once every sender is gone.
+  pub async fn recv(&self) -> Option<DesktopEvent> {
+    let event = self.rx.lock().await.recv().await?;
+    if event.is_continuous() {
+      self.queued_continuous.fetch_sub(1, Ordering::Relaxed);
+    }
+    Some(event)
   }
 }
 
 pub fn create_desktop_event_channel()
 -> (DesktopEventSender, DesktopEventReceiver) {
-  let (tx, rx) = tokio::sync::mpsc::channel(DESKTOP_EVENT_CHANNEL_CAPACITY);
+  let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+  let queued_continuous = Arc::new(AtomicUsize::new(0));
   (
-    DesktopEventSender(tx),
-    DesktopEventReceiver(Arc::new(tokio::sync::Mutex::new(rx))),
+    DesktopEventSender {
+      tx,
+      queued_continuous: queued_continuous.clone(),
+    },
+    DesktopEventReceiver {
+      rx: Arc::new(tokio::sync::Mutex::new(rx)),
+      queued_continuous,
+    },
   )
 }
 
@@ -1388,10 +1444,10 @@ async fn op_desktop_recv_event(
 ) -> Option<DesktopEvent> {
   let rx = {
     let s = state.borrow();
-    s.try_borrow::<DesktopEventReceiver>().map(|r| r.0.clone())
+    s.try_borrow::<DesktopEventReceiver>().cloned()
   };
   if let Some(rx) = rx {
-    rx.lock().await.recv().await
+    rx.recv().await
   } else {
     std::future::pending().await
   }
@@ -3218,6 +3274,126 @@ mod tests {
     drop(rx);
     resolve(&responses, id, DesktopValue::Null);
     // If we reach this line without panicking, the test passes.
+  }
+
+  // --- Event channel: discrete events are never dropped (#36950) ---
+
+  fn window_move(x: i32) -> DesktopEvent {
+    DesktopEvent::WindowMove {
+      window_id: 1,
+      x,
+      y: 0,
+    }
+  }
+
+  #[tokio::test]
+  async fn discrete_events_are_not_dropped_when_queue_is_full() {
+    let (tx, rx) = super::create_desktop_event_channel();
+    for x in 0..super::DESKTOP_CONTINUOUS_EVENT_LIMIT {
+      assert!(tx.send(window_move(x as i32)));
+    }
+    // The queue is full of continuous events: the next one is dropped.
+    assert!(!tx.send(window_move(-1)));
+
+    let discrete = [
+      DesktopEvent::CloseRequested { window_id: 1 },
+      DesktopEvent::PageLoad { window_id: 1 },
+      DesktopEvent::FocusChanged {
+        window_id: 1,
+        focused: true,
+      },
+      DesktopEvent::ContextMenuClick {
+        window_id: 1,
+        id: "copy".into(),
+      },
+      DesktopEvent::AppMenuClick {
+        window_id: 1,
+        id: "quit".into(),
+      },
+    ];
+    let discrete_kinds: Vec<String> = discrete
+      .into_iter()
+      .map(|ev| {
+        let kind = serde_json::to_value(&ev).unwrap()["kind"].to_string();
+        assert!(tx.send(ev), "discrete event {kind} was dropped");
+        kind
+      })
+      .collect();
+
+    let mut continuous = 0;
+    let mut received_kinds = Vec::new();
+    for _ in 0..super::DESKTOP_CONTINUOUS_EVENT_LIMIT + discrete_kinds.len() {
+      let ev = rx.recv().await.unwrap();
+      if ev.is_continuous() {
+        continuous += 1;
+      } else {
+        received_kinds
+          .push(serde_json::to_value(&ev).unwrap()["kind"].to_string());
+      }
+    }
+    assert_eq!(continuous, super::DESKTOP_CONTINUOUS_EVENT_LIMIT);
+    assert_eq!(received_kinds, discrete_kinds);
+  }
+
+  #[tokio::test]
+  async fn continuous_events_queue_again_once_drained() {
+    let (tx, rx) = super::create_desktop_event_channel();
+    for x in 0..super::DESKTOP_CONTINUOUS_EVENT_LIMIT {
+      tx.send(window_move(x as i32));
+    }
+    assert!(!tx.send(window_move(-1)));
+    rx.recv().await.unwrap();
+    assert!(tx.send(window_move(-2)), "a drained slot must be reusable");
+    assert!(!tx.send(window_move(-3)));
+  }
+
+  #[test]
+  fn only_pointer_wheel_and_geometry_events_are_continuous() {
+    assert!(window_move(0).is_continuous());
+    assert!(
+      DesktopEvent::WindowResize {
+        window_id: 1,
+        width: 1,
+        height: 1,
+      }
+      .is_continuous()
+    );
+    assert!(
+      DesktopEvent::MouseMove {
+        window_id: 1,
+        client_x: 0.0,
+        client_y: 0.0,
+        shift: false,
+        control: false,
+        alt: false,
+        meta: false,
+      }
+      .is_continuous()
+    );
+    assert!(!DesktopEvent::CloseRequested { window_id: 1 }.is_continuous());
+    assert!(!DesktopEvent::PageLoad { window_id: 1 }.is_continuous());
+    assert!(
+      !DesktopEvent::KeyboardEvent {
+        window_id: 1,
+        r#type: "keyup".into(),
+        key: "a".into(),
+        code: "KeyA".into(),
+        shift: false,
+        control: false,
+        alt: false,
+        meta: false,
+        repeat: false,
+      }
+      .is_continuous()
+    );
+  }
+
+  #[tokio::test]
+  async fn send_reports_a_stopped_receiver() {
+    let (tx, rx) = super::create_desktop_event_channel();
+    drop(rx);
+    assert!(!tx.send(DesktopEvent::CloseRequested { window_id: 1 }));
+    assert!(!tx.send(window_move(0)));
   }
 
   #[test]

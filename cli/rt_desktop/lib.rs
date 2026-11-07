@@ -51,7 +51,7 @@ const _: () = assert!(
 
 /// Laufey-backed implementation of [`endert::desktop::DesktopApi`].
 struct WefDesktopApi {
-  event_tx: ende_runtime::ops::desktop::DesktopEventTx,
+  event_tx: ende_runtime::ops::desktop::DesktopEventSender,
   pending_responses: ende_runtime::ops::desktop::PendingBindResponses,
   closed_windows: Arc<Mutex<HashSet<u32>>>,
   /// IDs of every window currently displayed. Shared with the HMR reload
@@ -88,8 +88,8 @@ impl WefDesktopApi {
 
     window
       .on_keyboard_event(move |ev| {
-        let _ = kb_tx.try_send(
-          ende_runtime::ops::desktop::DesktopEvent::KeyboardEvent {
+        let _ =
+          kb_tx.send(ende_runtime::ops::desktop::DesktopEvent::KeyboardEvent {
             window_id: ev.window_id,
             r#type: match ev.state {
               laufey::KeyState::Pressed => "keydown".to_string(),
@@ -102,11 +102,10 @@ impl WefDesktopApi {
             alt: ev.modifiers.alt,
             meta: ev.modifiers.meta,
             repeat: ev.repeat,
-          },
-        );
+          });
       })
       .on_mouse_click(move |ev| {
-        let _ = mouse_click_tx.try_send(
+        let _ = mouse_click_tx.send(
           ende_runtime::ops::desktop::DesktopEvent::MouseClick {
             window_id: ev.window_id,
             state: match ev.state {
@@ -132,7 +131,7 @@ impl WefDesktopApi {
         );
       })
       .on_mouse_move(move |ev| {
-        let _ = mouse_move_tx.try_send(
+        let _ = mouse_move_tx.send(
           ende_runtime::ops::desktop::DesktopEvent::MouseMove {
             window_id: ev.window_id,
             client_x: ev.x,
@@ -146,7 +145,7 @@ impl WefDesktopApi {
       })
       .on_wheel(move |ev| {
         let _ =
-          wheel_tx.try_send(ende_runtime::ops::desktop::DesktopEvent::Wheel {
+          wheel_tx.send(ende_runtime::ops::desktop::DesktopEvent::Wheel {
             window_id: ev.window_id,
             delta_x: ev.delta_x,
             delta_y: ev.delta_y,
@@ -164,7 +163,7 @@ impl WefDesktopApi {
           });
       })
       .on_cursor_enter_leave(move |ev| {
-        let _ = cursor_tx.try_send(
+        let _ = cursor_tx.send(
           ende_runtime::ops::desktop::DesktopEvent::CursorEnterLeave {
             window_id: ev.window_id,
             entered: ev.entered,
@@ -178,7 +177,7 @@ impl WefDesktopApi {
         );
       })
       .on_focused(move |ev| {
-        let _ = focus_tx.try_send(
+        let _ = focus_tx.send(
           ende_runtime::ops::desktop::DesktopEvent::FocusChanged {
             window_id: ev.window_id,
             focused: ev.focused,
@@ -186,7 +185,7 @@ impl WefDesktopApi {
         );
       })
       .on_resize(move |ev| {
-        let _ = resize_tx.try_send(
+        let _ = resize_tx.send(
           ende_runtime::ops::desktop::DesktopEvent::WindowResize {
             window_id: ev.window_id,
             width: ev.width,
@@ -195,19 +194,18 @@ impl WefDesktopApi {
         );
       })
       .on_move(move |ev| {
-        let _ = move_tx.try_send(
-          ende_runtime::ops::desktop::DesktopEvent::WindowMove {
+        let _ =
+          move_tx.send(ende_runtime::ops::desktop::DesktopEvent::WindowMove {
             window_id: ev.window_id,
             x: ev.x,
             y: ev.y,
-          },
-        );
+          });
       })
       .on_page_load(move |ev| {
         if show_on_first_load && !shown.swap(true, Ordering::AcqRel) {
           laufey::Window::from_id(ev.window_id).show();
         }
-        let _ = page_load_tx.try_send(
+        let _ = page_load_tx.send(
           ende_runtime::ops::desktop::DesktopEvent::PageLoad {
             window_id: ev.window_id,
           },
@@ -216,7 +214,7 @@ impl WefDesktopApi {
       .on_close_requested(move |ev| {
         closed_windows.lock().unwrap().insert(ev.window_id);
         open_windows_on_close.lock().unwrap().remove(&ev.window_id);
-        let _ = close_tx.try_send(
+        let _ = close_tx.send(
           ende_runtime::ops::desktop::DesktopEvent::CloseRequested {
             window_id: ev.window_id,
           },
@@ -467,16 +465,10 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
             args,
             call_id,
           };
-          if let Err(err) = tx.try_send(event) {
-            let msg = match err {
-              tokio::sync::mpsc::error::TrySendError::Full(_) => {
-                "event channel saturated".to_string()
-              }
-              tokio::sync::mpsc::error::TrySendError::Closed(_) => {
-                "event channel closed".to_string()
-              }
-            };
-            js_call.reject(laufey::Value::String(msg));
+          if !tx.send(event) {
+            js_call.reject(laufey::Value::String(
+              "event channel closed".to_string(),
+            ));
             return;
           }
           match resp_rx.await {
@@ -520,11 +512,10 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
       .collect::<Vec<_>>();
     let tx = self.event_tx.clone();
     laufey::Window::from_id(window_id).set_menu(&menu, move |id: &str| {
-      let _ =
-        tx.try_send(ende_runtime::ops::desktop::DesktopEvent::AppMenuClick {
-          window_id,
-          id: id.to_string(),
-        });
+      let _ = tx.send(ende_runtime::ops::desktop::DesktopEvent::AppMenuClick {
+        window_id,
+        id: id.to_string(),
+      });
     });
   }
 
@@ -545,12 +536,11 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
       y,
       &menu,
       move |id: &str| {
-        let _ = tx.try_send(
-          ende_runtime::ops::desktop::DesktopEvent::ContextMenuClick {
+        let _ =
+          tx.send(ende_runtime::ops::desktop::DesktopEvent::ContextMenuClick {
             window_id,
             id: id.to_string(),
-          },
-        );
+          });
       },
     );
   }
@@ -672,11 +662,10 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
           .collect::<Vec<_>>();
         let tx = self.event_tx.clone();
         laufey::set_dock_menu(&menu, move |id: &str| {
-          let _ = tx.try_send(
-            ende_runtime::ops::desktop::DesktopEvent::DockMenuClick {
+          let _ =
+            tx.send(ende_runtime::ops::desktop::DesktopEvent::DockMenuClick {
               id: id.to_string(),
-            },
-          );
+            });
         });
       }
       None => laufey::clear_dock_menu(),
@@ -695,13 +684,12 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
     }
     let click_tx = self.event_tx.clone();
     let tray = tray.on_click(move || {
-      let _ = click_tx.try_send(
-        ende_runtime::ops::desktop::DesktopEvent::TrayClick { tray_id },
-      );
+      let _ = click_tx
+        .send(ende_runtime::ops::desktop::DesktopEvent::TrayClick { tray_id });
     });
     let dblclick_tx = self.event_tx.clone();
     tray.set_double_click_handler(move || {
-      let _ = dblclick_tx.try_send(
+      let _ = dblclick_tx.send(
         ende_runtime::ops::desktop::DesktopEvent::TrayDoubleClick { tray_id },
       );
     });
@@ -748,12 +736,11 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
           .collect::<Vec<_>>();
         let tx = self.event_tx.clone();
         tray.set_menu(&menu, move |id: &str| {
-          let _ = tx.try_send(
-            ende_runtime::ops::desktop::DesktopEvent::TrayMenuClick {
+          let _ =
+            tx.send(ende_runtime::ops::desktop::DesktopEvent::TrayMenuClick {
               tray_id,
               id: id.to_string(),
-            },
-          );
+            });
         });
       }
       None => tray.clear_menu(),
@@ -831,7 +818,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
         }
       };
       let is_terminal = matches!(event, laufey::NotificationEvent::Closed);
-      let _ = tx.try_send(desktop_event);
+      let _ = tx.send(desktop_event);
       if is_terminal {
         notifications.lock().unwrap().remove(&nid);
       }
@@ -841,7 +828,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
     if id == 0 {
       // Backend doesn't support notifications. Emit a synthetic error
       // event so the user can observe the failure.
-      let _ = self.event_tx.try_send(
+      let _ = self.event_tx.send(
         ende_runtime::ops::desktop::DesktopEvent::NotificationError {
           notification_id: 0,
         },
@@ -1687,7 +1674,7 @@ async fn run_desktop(
         endert::desktop::create_desktop_event_channel();
       let pending_responses = endert::desktop::PendingBindResponses::new();
       let api = WefDesktopApi {
-        event_tx: event_tx.0.clone(),
+        event_tx: event_tx.clone(),
         pending_responses: pending_responses.clone(),
         closed_windows: Arc::new(Mutex::new(HashSet::new())),
         open_windows: open_windows_for_api.clone(),
@@ -1700,9 +1687,9 @@ async fn run_desktop(
       // no windows are visible) into the shared event channel so JS can
       // observe them as `Ende.dock` "reopen" events.
       {
-        let reopen_tx = event_tx.0.clone();
+        let reopen_tx = event_tx.clone();
         laufey::on_dock_reopen(move |has_visible_windows| {
-          let _ = reopen_tx.try_send(
+          let _ = reopen_tx.send(
             ende_runtime::ops::desktop::DesktopEvent::DockReopen {
               has_visible_windows,
             },
