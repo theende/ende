@@ -2478,6 +2478,24 @@ fn derived_desktop_id(app_name: &str) -> Option<String> {
   Some(format!("sh.ende.desktop.{label}"))
 }
 
+/// The app identifier a desktop build bakes into its metadata, where it keys
+/// the app's WebView2 user data folder on Windows: `desktop.app.identifier`
+/// when it's a valid reverse-DNS id, otherwise one derived from the app name.
+pub(crate) fn baked_app_identifier(
+  configured: Option<&str>,
+  app_name: &str,
+) -> Option<String> {
+  if let Some(id) = configured {
+    match validate_bundle_identifier(id) {
+      Ok(()) => return Some(id.to_string()),
+      Err(e) => log::warn!(
+        "not using desktop.app.identifier for the app's data folder: {e}"
+      ),
+    }
+  }
+  derived_desktop_id(app_name)
+}
+
 /// Resolve the reverse-DNS id handed to the Linux backend as `LAUFEY_APP_ID`
 /// (and used for the `.desktop` filename / `StartupWMClass`).
 ///
@@ -6292,6 +6310,25 @@ def456  other.zip
       resolve_linux_app_id(None, "my_app").as_deref(),
       Some("sh.ende.desktop.my-app")
     );
+  }
+
+  #[test]
+  fn baked_app_identifier_falls_back_to_the_derived_id() {
+    assert_eq!(
+      baked_app_identifier(Some("com.example.app"), "ignored").as_deref(),
+      Some("com.example.app")
+    );
+    // Unlike `resolve_linux_app_id`, an invalid identifier still leaves the
+    // app a data-folder key.
+    assert_eq!(
+      baked_app_identifier(Some("not reverse dns"), "My App").as_deref(),
+      Some("sh.ende.desktop.my-app")
+    );
+    assert_eq!(
+      baked_app_identifier(None, "my_app").as_deref(),
+      Some("sh.ende.desktop.my-app")
+    );
+    assert_eq!(baked_app_identifier(None, "___"), None);
   }
 
   #[test]

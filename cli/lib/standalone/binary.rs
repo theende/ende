@@ -95,6 +95,11 @@ pub struct Metadata {
   /// Auto-update release base URL from ende.json `desktop.release.baseUrl`.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub release_base_url: Option<String>,
+  /// Reverse-DNS identifier of a desktop app: ende.json
+  /// `desktop.app.identifier`, or one derived from the app name. Keys the
+  /// app's WebView2 user data folder on Windows.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub app_identifier: Option<String>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

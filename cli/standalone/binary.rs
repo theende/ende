@@ -775,6 +775,26 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       .map(|s| root_dir_url.specifier_key(&s).into_owned())
       .collect::<Vec<_>>();
 
+    let app_name = resolve_app_name(
+      compile_flags,
+      display_output_filename,
+      self.is_desktop,
+    )?;
+    let app_identifier = if self.is_desktop {
+      let configured = self
+        .cli_options
+        .start_dir
+        .to_desktop_config()
+        .ok()
+        .and_then(|c| c.app.as_ref()?.identifier.clone());
+      crate::tools::desktop::baked_app_identifier(
+        configured.as_deref(),
+        &app_name,
+      )
+    } else {
+      None
+    };
+
     let metadata = Metadata {
       argv: compile_flags.args.clone(),
       seed: self.cli_options.seed(),
@@ -852,11 +872,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       // Resolving here keeps the identity stable even if the binary is later
       // renamed. The name is already validated in `write_bin` (via
       // `resolve_app_name`).
-      app_name: Some(resolve_app_name(
-        compile_flags,
-        display_output_filename,
-        self.is_desktop,
-      )?),
+      app_name: Some(app_name),
       app_version: self
         .cli_options
         .workspace()
@@ -874,6 +890,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
         .to_desktop_config()
         .ok()
         .and_then(|c| c.release.as_ref()?.base_url.clone()),
+      app_identifier,
     };
 
     let (data_section_bytes, section_sizes) = serialize_binary_data_section(

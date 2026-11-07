@@ -1494,6 +1494,98 @@ fn attach_parent_console_in_dev_mode() {
   }
 }
 
+/// The variable WebView2 reads its user data folder from.
+#[cfg(any(windows, test))]
+const WEBVIEW2_USER_DATA_FOLDER: &str = "WEBVIEW2_USER_DATA_FOLDER";
+
+/// The folder to default `WEBVIEW2_USER_DATA_FOLDER` to, or `None` to leave it
+/// alone.
+///
+/// Without it, WebView2 keeps its data next to the exe, which a normal user
+/// can't write under Program Files: an MSI-installed app gets E_ACCESSDENIED
+/// and a blank window (#36768). The default is
+/// `%LOCALAPPDATA%\<identifier>\WebView2`: per user and not roaming (it's
+/// mostly cache), keyed by the app identifier, which is stable across renames
+/// and unique across vendors, and in a subfolder so the identifier's folder
+/// can hold other app data. WebView2 adds `EBWebView` inside it.
+///
+/// `None` when the user set the variable, in the environment or in the app's
+/// embedded env file, when `LOCALAPPDATA` is unset, or when the identifier
+/// isn't usable as a folder name.
+#[cfg(any(windows, test))]
+fn default_webview2_user_data_folder<'a>(
+  current: Option<&std::ffi::OsStr>,
+  mut env_file_keys: impl Iterator<Item = &'a str>,
+  local_app_data: Option<&std::ffi::OsStr>,
+  identifier: Option<&str>,
+) -> Option<PathBuf> {
+  let user_set = current.is_some_and(|v| !v.is_empty())
+    || env_file_keys.any(|k| k.eq_ignore_ascii_case(WEBVIEW2_USER_DATA_FOLDER));
+  if user_set {
+    return None;
+  }
+  let local_app_data = local_app_data.filter(|v| !v.is_empty())?;
+  let identifier = identifier.filter(|id| is_usable_folder_name(id))?;
+  Some(
+    PathBuf::from(local_app_data)
+      .join(identifier)
+      .join("WebView2"),
+  )
+}
+
+/// Whether a reverse-DNS app identifier works as a single Windows folder
+/// name: `[A-Za-z0-9.-]`, no leading or trailing dot (Windows drops trailing
+/// dots), and no reserved device name before the first dot (`nul.app` opens
+/// the NUL device).
+#[cfg(any(windows, test))]
+fn is_usable_folder_name(id: &str) -> bool {
+  if id.is_empty()
+    || id.len() > 155
+    || id.starts_with('.')
+    || id.ends_with('.')
+    || !id
+      .chars()
+      .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+  {
+    return false;
+  }
+  let stem = id.split('.').next().unwrap_or(id).to_ascii_lowercase();
+  let numbered = stem.len() == 4
+    && (stem.starts_with("com") || stem.starts_with("lpt"))
+    && stem.as_bytes()[3].is_ascii_digit();
+  !(numbered || matches!(stem.as_str(), "con" | "prn" | "aux" | "nul"))
+}
+
+/// Defaults `WEBVIEW2_USER_DATA_FOLDER` to the app's own folder, see
+/// [`default_webview2_user_data_folder`]. Runs before the first window, and
+/// so before the backend creates a WebView2 environment.
+#[cfg(windows)]
+fn set_default_webview2_user_data_folder(
+  metadata: &ende_lib::standalone::binary::Metadata,
+) {
+  let current = env::var_os(WEBVIEW2_USER_DATA_FOLDER);
+  let local_app_data = env::var_os("LOCALAPPDATA");
+  let Some(folder) = default_webview2_user_data_folder(
+    current.as_deref(),
+    metadata.env_vars_from_env_file.keys().map(String::as_str),
+    local_app_data.as_deref(),
+    metadata.app_identifier.as_deref(),
+  ) else {
+    return;
+  };
+  // WebView2 would create it as well. Creating it here means a failure keeps
+  // WebView2's own default instead of a window that can't start.
+  if let Err(err) = std::fs::create_dir_all(&folder) {
+    log::warn!(
+      "[desktop] could not create the WebView2 user data folder {}: {err}",
+      folder.display()
+    );
+    return;
+  }
+  // SAFETY: Rust documents `set_var` as always safe on Windows.
+  unsafe { env::set_var(WEBVIEW2_USER_DATA_FOLDER, &folder) };
+}
+
 fn runtime_main() {
   #[cfg(windows)]
   attach_parent_console_in_dev_mode();
@@ -1617,6 +1709,8 @@ fn runtime_main() {
       return;
     }
   };
+  #[cfg(windows)]
+  set_default_webview2_user_data_folder(&data.metadata);
   // Everything above must stay on this (still effectively single-threaded)
   // loader thread — see the setenv comment. The runtime itself moves to a
   // dedicated thread with a real stack; the loader thread just parks in
@@ -2160,6 +2254,136 @@ mod tests {
   use super::map_permission_status;
   use super::run_on_ui_thread;
   use super::should_show_native_error_dialog;
+
+  // --- default_webview2_user_data_folder ---
+
+  mod webview2_user_data_folder {
+    use std::ffi::OsStr;
+    use std::path::PathBuf;
+
+    use super::super::default_webview2_user_data_folder;
+    use super::super::is_usable_folder_name;
+
+    fn default_for(identifier: &str) -> Option<PathBuf> {
+      default_webview2_user_data_folder(
+        None,
+        std::iter::empty(),
+        Some(OsStr::new("LocalAppData")),
+        Some(identifier),
+      )
+    }
+
+    #[test]
+    fn defaults_to_a_folder_per_identifier() {
+      assert_eq!(
+        default_for("com.example.app"),
+        Some(
+          PathBuf::from("LocalAppData")
+            .join("com.example.app")
+            .join("WebView2")
+        )
+      );
+    }
+
+    #[test]
+    fn keeps_a_value_the_user_set() {
+      let local = Some(OsStr::new("LocalAppData"));
+      let id = Some("com.example.app");
+      assert_eq!(
+        default_webview2_user_data_folder(
+          Some(OsStr::new("D:\\wv2")),
+          std::iter::empty(),
+          local,
+          id,
+        ),
+        None
+      );
+      // The app's embedded env file sets it after this runs, and
+      // `load_env_vars` never overrides a variable that is already set.
+      // Windows variable names ignore case.
+      assert_eq!(
+        default_webview2_user_data_folder(
+          None,
+          ["OTHER", "webview2_user_data_folder"].into_iter(),
+          local,
+          id,
+        ),
+        None
+      );
+      // An empty value counts as unset.
+      assert!(
+        default_webview2_user_data_folder(
+          Some(OsStr::new("")),
+          std::iter::empty(),
+          local,
+          id,
+        )
+        .is_some()
+      );
+    }
+
+    #[test]
+    fn needs_local_app_data_and_an_identifier() {
+      let id = Some("com.example.app");
+      assert_eq!(
+        default_webview2_user_data_folder(None, std::iter::empty(), None, id),
+        None
+      );
+      assert_eq!(
+        default_webview2_user_data_folder(
+          None,
+          std::iter::empty(),
+          Some(OsStr::new("")),
+          id,
+        ),
+        None
+      );
+      assert_eq!(
+        default_webview2_user_data_folder(
+          None,
+          std::iter::empty(),
+          Some(OsStr::new("LocalAppData")),
+          None,
+        ),
+        None
+      );
+    }
+
+    #[test]
+    fn rejects_identifiers_that_are_not_one_folder_name() {
+      for id in [
+        "sh.ende.desktop.my-app",
+        "com.Example.App2",
+        "console.app",
+        "com10.app",
+        "lpt.app",
+      ] {
+        assert!(is_usable_folder_name(id), "{id:?} should be usable");
+      }
+      let long = "a".repeat(156);
+      for id in [
+        "",
+        ".hidden",
+        "trailing.",
+        "..",
+        "a/b",
+        "a\\b",
+        "a:b",
+        "a b",
+        "a_b",
+        "caf\u{e9}.app",
+        "CON.app",
+        "nul",
+        "aux.example",
+        "com1.example",
+        "LPT9.x",
+        long.as_str(),
+      ] {
+        assert!(!is_usable_folder_name(id), "{id:?} should be rejected");
+        assert_eq!(default_for(id), None);
+      }
+    }
+  }
 
   // --- should_show_native_error_dialog ---
   //
