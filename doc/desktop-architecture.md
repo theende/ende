@@ -190,6 +190,24 @@ dir so its watcher sees real files.
   permission the way `Ende.writeFile` does, before rendering, then writes the
   bytes through the runtime's `FileSystem`. The raw backend has no page and
   rejects with `NotSupported`.
+- **Auto-update** (`apply_pending_update`, `UpdateLaunch` in
+  `cli/rt_desktop/lib.rs`; unix only): `op_desktop_apply_patch` stages
+  `<dylib>.update`. The first thing `runtime_main` does is check the files
+  beside the dylib. A staged update is swapped in, with the old dylib kept as
+  `.backup`. The swap can't change the code already loaded, so libendert then
+  `execve`s the host executable with the same argv and environment plus
+  `ENDE_DESKTOP_UPDATE_REEXEC` (Ende-written, denoland/deno#36948). The new
+  image's first run is the update's trial: it writes `.update-trial`, and only
+  it may write `.update-ok` (`op_desktop_confirm_update`, before the main module
+  loads). A launch that finds `.update-trial` without `.update-ok` restores
+  `.backup` and re-execs again, so the old code runs and fires `onRollback`. A
+  re-exec'd process never swaps or re-execs, so there is no loop. Before the
+  exec every descriptor above stderr is marked `FD_CLOEXEC`: without that, the
+  new CEF image kept the old one's profile files (LevelDB `LOCK`s, caches) and
+  pipes open. If the exec fails, the old code keeps running, logs a warning, and
+  doesn't confirm; the next launch is the trial. The backend is already up at
+  that point, so a CEF window that showed at creation may flash once. A dylib
+  that can't even be loaded never reaches this code, so it can't be rolled back.
 - **Fork re-entry guard** (`lib.rs:1145`): framework dev servers fork worker
   processes that re-exec _this same dylib_. A worker is detected by the
   combination of argv shaped like `<exe> run … script.js` **and** a parent

@@ -1463,6 +1463,9 @@ pub struct AutoUpdateState {
   pub app_version: Option<String>,
   /// Whether we rolled back from a failed update on this launch.
   pub rolled_back: bool,
+  /// Whether this launch is the first run of a just-applied update, the only
+  /// launch that may confirm it (see `op_desktop_confirm_update`).
+  pub update_trial: bool,
 }
 
 /// Hex-decoded length of a SHA-256 digest.
@@ -1635,29 +1638,36 @@ async fn op_desktop_recv_event(
   }
 }
 
+#[op2(fast)]
+pub fn op_desktop_confirm_update(state: &mut OpState) {
+  if let Some(s) = state.try_borrow::<AutoUpdateState>() {
+    confirm_update(s);
+  }
+}
+
+/// Writes the `.update-ok` sentinel that confirms a just-applied update.
+///
+/// Only the update's trial launch writes it. Any other launch would confirm
+/// an update it never ran: the old code still running after a failed
+/// re-exec, or a launch after a rollback that couldn't be written. Writing it
+/// on every launch also put a stray file inside the app bundle's
+/// `Contents/MacOS/`, which invalidates the bundle's code signature and even
+/// blocks re-signing (#36418).
 #[allow(
   clippy::disallowed_methods,
   reason = "privileged auto-update sentinel write next to the dylib, outside any user sandbox"
 )]
-#[op2(fast)]
-pub fn op_desktop_confirm_update(state: &mut OpState) {
-  if let Some(s) = state.try_borrow::<AutoUpdateState>() {
-    let ext = s
-      .dylib_path
-      .extension()
-      .unwrap_or_default()
-      .to_string_lossy();
-    // The sentinel only has meaning while a freshly-applied update's
-    // `.backup` exists (backup-without-sentinel on next boot → rollback).
-    // Writing it unconditionally put a stray file inside the app bundle's
-    // `Contents/MacOS/` on every first launch, which invalidates the
-    // bundle's code signature and even blocks re-signing (#36418).
-    let backup = s.dylib_path.with_extension(format!("{}.backup", ext));
-    if backup.exists() {
-      let sentinel = s.dylib_path.with_extension(format!("{}.update-ok", ext));
-      let _ = std::fs::write(&sentinel, b"ok");
-    }
+fn confirm_update(s: &AutoUpdateState) {
+  if !s.update_trial {
+    return;
   }
+  let ext = s
+    .dylib_path
+    .extension()
+    .unwrap_or_default()
+    .to_string_lossy();
+  let sentinel = s.dylib_path.with_extension(format!("{}.update-ok", ext));
+  let _ = std::fs::write(&sentinel, b"ok");
 }
 
 #[op2]
@@ -2578,6 +2588,38 @@ mod tests {
   // fail if you change a field name or remove a `#[serde(rename_all =
   // "camelCase")]` so you find out at test time, not at runtime in the
   // packaged app.
+
+  // --- auto-update confirmation ---
+
+  fn update_state(
+    dir: &test_util::PathRef,
+    update_trial: bool,
+  ) -> super::AutoUpdateState {
+    super::AutoUpdateState {
+      dylib_path: dir.join("app.dylib").to_path_buf(),
+      app_version: None,
+      rolled_back: false,
+      update_trial,
+    }
+  }
+
+  #[test]
+  fn confirm_update_writes_the_sentinel_in_the_trial_launch() {
+    let dir = test_util::TempDir::new();
+    dir.path().join("app.dylib.backup").write("old");
+    super::confirm_update(&update_state(dir.path(), true));
+    assert!(dir.path().join("app.dylib.update-ok").exists());
+  }
+
+  #[test]
+  fn confirm_update_writes_nothing_outside_the_trial_launch() {
+    // A `.backup` alone isn't a trial: after a failed re-exec, the old code
+    // keeps running beside the swapped-in dylib's backup.
+    let dir = test_util::TempDir::new();
+    dir.path().join("app.dylib.backup").write("old");
+    super::confirm_update(&update_state(dir.path(), false));
+    assert!(!dir.path().join("app.dylib.update-ok").exists());
+  }
 
   // --- printToPdf `path` permission ---
 

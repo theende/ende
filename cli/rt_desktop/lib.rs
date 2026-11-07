@@ -1327,30 +1327,84 @@ fn replace_dylib_with(src: &Path, dylib_path: &Path, tmp_suffix: &str) -> bool {
   staged
 }
 
-/// Manages pending updates and rollback on startup.
+/// Set on the host that [`reexec_host`] starts, to [`REEXEC_AFTER_SWAP`] or
+/// [`REEXEC_AFTER_ROLLBACK`]. That process removes it at startup, so the app
+/// and its child processes never see it.
+#[cfg(unix)]
+const UPDATE_REEXEC_ENV: &str = "ENDE_DESKTOP_UPDATE_REEXEC";
+#[cfg(unix)]
+const REEXEC_AFTER_SWAP: &str = "swapped";
+#[cfg(unix)]
+const REEXEC_AFTER_ROLLBACK: &str = "rolled-back";
+
+/// What [`apply_pending_update`] made of this launch.
 ///
-/// Uses a sentinel file (`.update-ok`) to detect if the last update
-/// booted successfully:
+/// The update files live beside the dylib. `<dylib>.update` is staged by
+/// `op_desktop_apply_patch`. `<dylib>.backup` is the dylib an update replaced.
+/// `<dylib>.update-trial` is written when the new code first starts.
+/// `<dylib>.update-ok` is written by `op_desktop_confirm_update` once the new
+/// code has booted. Each launch checks them in this order:
 ///
-/// - `.update` exists → apply it (current → `.backup`, `.update` → current)
-/// - `.backup` exists but `.update-ok` doesn't → last update crashed, rollback
-/// - `.backup` exists and `.update-ok` exists → previous update succeeded, clean up
+/// 1. `.update` exists: swap it in, keeping the old dylib as `.backup`
+///    ([`Swapped`]). `runtime_main` then re-execs the host, so the new code
+///    runs in this same launch. If the swap fails, `.update` stays for the next
+///    launch ([`Normal`]). A re-exec'd process never swaps, so it never re-execs
+///    either.
+/// 2. `.backup` and `.update-ok`: the update was confirmed. Delete `.backup`,
+///    `.update-ok` and `.update-trial` ([`Normal`]).
+/// 3. `.backup` without `.update-ok` or `.update-trial`: this is the new code's
+///    first launch, its trial. Write `.update-trial` ([`Trial`]). Normally this
+///    is the re-exec'd process; it's the next launch if the re-exec failed or
+///    the process died between the swap and the exec.
+/// 4. `.backup` and `.update-trial` without `.update-ok`: the trial launch
+///    ended without confirming, so it crashed. Restore `.backup`
+///    ([`RolledBack`]). The code running is still the broken update's, so
+///    `runtime_main` re-execs the host here too, and the restored code
+///    reports the rollback. If the restore fails, keep the files so the next
+///    launch retries ([`Normal`]).
+/// 5. Anything else: nothing to do ([`Normal`]).
 ///
-/// Returns `true` if a rollback occurred (so we can dispatch an event in JS).
+/// Only a [`Trial`] launch writes `.update-ok`, so an old process that keeps
+/// running after a failed re-exec can't confirm an update it never ran. A
+/// re-exec'd process never re-execs, whatever it finds.
+///
+/// [`Swapped`]: UpdateLaunch::Swapped
+/// [`Normal`]: UpdateLaunch::Normal
+/// [`Trial`]: UpdateLaunch::Trial
+/// [`RolledBack`]: UpdateLaunch::RolledBack
+#[cfg(unix)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum UpdateLaunch {
+  Normal,
+  Swapped,
+  Trial,
+  RolledBack,
+}
+
+/// Manages pending updates and rollback on startup. See [`UpdateLaunch`] for
+/// the states. `reexeced` is true in the process [`reexec_host`] started.
 // Only invoked from the unix `runtime_main` startup path; gated to match its
 // sole call site so it isn't flagged as dead code on other platforms.
 #[cfg(unix)]
 #[allow(clippy::print_stderr, reason = "runs before logging is initialized")]
-fn apply_pending_update(dylib_path: &Path) -> bool {
+fn apply_pending_update(dylib_path: &Path, reexeced: bool) -> UpdateLaunch {
   let ext = dylib_path.extension().unwrap_or_default().to_string_lossy();
   let update_path = dylib_path.with_extension(format!("{}.update", ext));
   let backup_path = dylib_path.with_extension(format!("{}.backup", ext));
   let sentinel_path = dylib_path.with_extension(format!("{}.update-ok", ext));
+  let trial_path = dylib_path.with_extension(format!("{}.update-trial", ext));
 
-  if update_path.exists() {
+  if update_path.exists() && reexeced {
+    // The swap before the re-exec consumed `.update`, so this one was staged
+    // since, or couldn't be deleted. Swapping again here could loop.
+    eprintln!(
+      "[desktop] another staged update is waiting; it applies on the next launch"
+    );
+  } else if update_path.exists() {
     // New update pending — apply it.
-    // Remove stale sentinel so we can detect if *this* update fails.
+    // Remove stale state so we can detect if *this* update fails.
     let _ = std::fs::remove_file(&sentinel_path);
+    let _ = std::fs::remove_file(&trial_path);
     let _ = std::fs::remove_file(&backup_path);
 
     // Hard-link (or copy) the live dylib aside as a backup *without*
@@ -1362,48 +1416,199 @@ fn apply_pending_update(dylib_path: &Path) -> bool {
       || std::fs::copy(dylib_path, &backup_path).is_ok();
     if !backup_ok {
       eprintln!("[desktop] could not stage backup, skipping update");
-      return false;
+      return UpdateLaunch::Normal;
     }
 
     if replace_dylib_with(&update_path, dylib_path, "update.tmp") {
       // A successful direct rename already consumed `.update`; after a staged
       // copy it's still there, so drop it either way.
       let _ = std::fs::remove_file(&update_path);
-    } else {
-      // Couldn't apply the update by rename or copy. Leave `.update` in
-      // place so the next launch retries, and delete the unused `.backup`
-      // — otherwise the next launch would see backup-without-sentinel and
-      // trigger a spurious "rollback" even though we never swapped
-      // anything in.
-      let _ = std::fs::remove_file(&backup_path);
-      eprintln!(
-        "[desktop] failed to apply staged update; will retry on next launch"
-      );
+      return UpdateLaunch::Swapped;
     }
-    return false;
+    // Couldn't apply the update by rename or copy. Leave `.update` in
+    // place so the next launch retries, and delete the unused `.backup`
+    // — otherwise the next launch would take the old dylib for an
+    // update on trial.
+    let _ = std::fs::remove_file(&backup_path);
+    eprintln!(
+      "[desktop] failed to apply staged update; will retry on next launch"
+    );
+    return UpdateLaunch::Normal;
   }
 
-  if backup_path.exists() && !sentinel_path.exists() {
-    // Last update didn't write the sentinel → it crashed. Rollback.
-    eprintln!("[desktop] Last update failed to start, rolling back...");
-    if !replace_dylib_with(&backup_path, dylib_path, "rollback.tmp") {
-      // Report the truth rather than dispatching a "rolled back" event for a
-      // rollback that didn't happen: the broken dylib is still in place, so
-      // this launch will fail the same way. Keep `.backup` so the next launch
-      // retries instead of treating the failed update as the new baseline.
-      eprintln!("[desktop] rollback failed; keeping backup for next launch");
-      return false;
-    }
-    return true;
+  if !backup_path.exists() {
+    return UpdateLaunch::Normal;
   }
 
-  if backup_path.exists() && sentinel_path.exists() {
-    // Previous update booted fine — clean up backup and sentinel.
+  if sentinel_path.exists() {
+    // Previous update booted fine — clean up.
     let _ = std::fs::remove_file(&backup_path);
     let _ = std::fs::remove_file(&sentinel_path);
+    let _ = std::fs::remove_file(&trial_path);
+    return UpdateLaunch::Normal;
   }
 
-  false
+  if !trial_path.exists() {
+    // The new code's first launch. If it can't record that, a crash here
+    // isn't rolled back, but neither could a rollback be written.
+    if let Err(e) = std::fs::write(&trial_path, b"") {
+      eprintln!("[desktop] could not mark the update trial launch: {e}");
+    }
+    return UpdateLaunch::Trial;
+  }
+
+  // The trial launch didn't write the sentinel → it crashed. Rollback.
+  eprintln!("[desktop] Last update failed to start, rolling back...");
+  if !replace_dylib_with(&backup_path, dylib_path, "rollback.tmp") {
+    // Report the truth rather than dispatching a "rolled back" event for a
+    // rollback that didn't happen: the broken dylib is still in place, so
+    // this launch will fail the same way. Keep `.backup` so the next launch
+    // retries instead of treating the failed update as the new baseline.
+    eprintln!("[desktop] rollback failed; keeping backup for next launch");
+    return UpdateLaunch::Normal;
+  }
+  // After a copy, `.backup` is still there and would read as a new trial.
+  let _ = std::fs::remove_file(&backup_path);
+  let _ = std::fs::remove_file(&trial_path);
+  UpdateLaunch::RolledBack
+}
+
+/// Decides what `runtime_main` does after [`apply_pending_update`]: the
+/// [`UPDATE_REEXEC_ENV`] value to re-exec with, if any, and what this launch
+/// is. `reexec_reason` is the value this process was started with.
+///
+/// [`UpdateLaunch::Swapped`] and [`UpdateLaunch::RolledBack`] both leave this
+/// process running code that's no longer on disk, so both re-exec. A re-exec'd
+/// process never re-execs. After a rollback, the restored code reports it.
+#[cfg(unix)]
+fn after_update_check(
+  launch: UpdateLaunch,
+  reexec_reason: Option<&std::ffi::OsStr>,
+) -> (Option<&'static str>, UpdateLaunch) {
+  match reexec_reason {
+    None => match launch {
+      UpdateLaunch::Swapped => (Some(REEXEC_AFTER_SWAP), launch),
+      UpdateLaunch::RolledBack => (Some(REEXEC_AFTER_ROLLBACK), launch),
+      UpdateLaunch::Normal | UpdateLaunch::Trial => (None, launch),
+    },
+    Some(reason) if reason == REEXEC_AFTER_ROLLBACK => {
+      (None, UpdateLaunch::RolledBack)
+    }
+    Some(_) => (None, launch),
+  }
+}
+
+/// Replaces this process with a new run of the host executable, so the dylib
+/// now on disk runs in this same launch. Passes the same argv and environment,
+/// plus [`UPDATE_REEXEC_ENV`] set to `reason`. Only returns on failure, with
+/// the process as it was.
+///
+/// This runs before any of the app's code, but the backend is up: its UI
+/// thread is in its event loop, and CEF has started its helper processes.
+/// `execve` ends every thread, and the helpers lose their IPC channels and
+/// exit. Descriptors without `FD_CLOEXEC` would stay open in the new image,
+/// which starts its own backend and knows nothing of them (CEF's IPC sockets,
+/// a profile lock), so every descriptor above stderr is marked close-on-exec
+/// first, and restored if the exec fails. That also closes any extra
+/// descriptor a launcher passed in, which a launch from Finder or a desktop
+/// file doesn't do.
+///
+/// It calls `execve` itself because `Command::exec` resets SIGPIPE in this
+/// process before it execs, and swaps the global `environ` while the backend's
+/// threads may read it.
+#[cfg(unix)]
+fn reexec_host(reason: &str) -> std::io::Error {
+  use std::ffi::CString;
+  use std::os::unix::ffi::OsStrExt;
+  use std::os::unix::ffi::OsStringExt;
+
+  fn c_string(bytes: Vec<u8>) -> std::io::Result<CString> {
+    CString::new(bytes).map_err(std::io::Error::other)
+  }
+  let build = || -> std::io::Result<(CString, Vec<CString>, Vec<CString>)> {
+    let exe = c_string(env::current_exe()?.into_os_string().into_vec())?;
+    let argv = env::args_os()
+      .map(|arg| c_string(arg.into_vec()))
+      .collect::<std::io::Result<Vec<_>>>()?;
+    let mut envp = Vec::new();
+    for (key, value) in env::vars_os() {
+      let mut entry = key.as_bytes().to_vec();
+      entry.push(b'=');
+      entry.extend_from_slice(value.as_bytes());
+      envp.push(c_string(entry)?);
+    }
+    envp.push(c_string(
+      format!("{UPDATE_REEXEC_ENV}={reason}").into_bytes(),
+    )?);
+    Ok((exe, argv, envp))
+  };
+  let (exe, argv, envp) = match build() {
+    Ok(parts) => parts,
+    Err(e) => return e,
+  };
+  let mut argv_ptrs: Vec<*const libc::c_char> =
+    argv.iter().map(|a| a.as_ptr()).collect();
+  argv_ptrs.push(std::ptr::null());
+  let mut envp_ptrs: Vec<*const libc::c_char> =
+    envp.iter().map(|e| e.as_ptr()).collect();
+  envp_ptrs.push(std::ptr::null());
+
+  let marked = mark_fds_cloexec_above_stderr();
+  // SAFETY: `exe` and every pointer in `argv_ptrs`/`envp_ptrs` point into
+  // CStrings that outlive the call, and both arrays end in a null pointer.
+  unsafe { libc::execve(exe.as_ptr(), argv_ptrs.as_ptr(), envp_ptrs.as_ptr()) };
+  let error = std::io::Error::last_os_error();
+  clear_cloexec(&marked);
+  error
+}
+
+/// Undoes [`mark_fds_cloexec_above_stderr`].
+#[cfg(unix)]
+fn clear_cloexec(fds: &[libc::c_int]) {
+  for &fd in fds {
+    // SAFETY: plain fcntl calls on a descriptor number; one closed since
+    // fails with EBADF and is left alone.
+    unsafe {
+      let flags = libc::fcntl(fd, libc::F_GETFD);
+      if flags >= 0 {
+        libc::fcntl(fd, libc::F_SETFD, flags & !libc::FD_CLOEXEC);
+      }
+    }
+  }
+}
+
+/// Marks every open descriptor above stderr close-on-exec, and returns the
+/// ones that weren't, for [`reexec_host`] to restore.
+#[cfg(unix)]
+fn mark_fds_cloexec_above_stderr() -> Vec<libc::c_int> {
+  #[cfg(target_os = "linux")]
+  const FD_DIR: &str = "/proc/self/fd";
+  #[cfg(not(target_os = "linux"))]
+  const FD_DIR: &str = "/dev/fd";
+  // Collect first: the directory handle is itself an open descriptor (with
+  // FD_CLOEXEC, and closed by the time the loop below runs).
+  let fds: Vec<libc::c_int> = match std::fs::read_dir(FD_DIR) {
+    Ok(entries) => entries
+      .filter_map(|entry| entry.ok()?.file_name().to_str()?.parse().ok())
+      .filter(|fd| *fd > libc::STDERR_FILENO)
+      .collect(),
+    Err(_) => return Vec::new(),
+  };
+  let mut marked = Vec::new();
+  for fd in fds {
+    // SAFETY: plain fcntl calls on a descriptor number; one that isn't open
+    // fails with EBADF and is skipped.
+    unsafe {
+      let flags = libc::fcntl(fd, libc::F_GETFD);
+      if flags >= 0
+        && flags & libc::FD_CLOEXEC == 0
+        && libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC) == 0
+      {
+        marked.push(fd);
+      }
+    }
+  }
+  marked
 }
 
 /// The backend's C API table, for what laufey 0.7.0's Rust API doesn't wrap
@@ -1666,25 +1871,51 @@ fn runtime_main() {
   // Apply any pending update before anything else.
   #[cfg(unix)]
   #[allow(clippy::print_stderr, reason = "runs before logging is initialized")]
-  let update_rolled_back = {
-    match std::panic::catch_unwind(|| {
+  let update_launch = {
+    let reexec_reason = env::var_os(UPDATE_REEXEC_ENV);
+    if reexec_reason.is_some() {
+      // SAFETY: none of our threads exist yet; see the setenv comment below.
+      unsafe { env::remove_var(UPDATE_REEXEC_ENV) };
+    }
+    let launch = match std::panic::catch_unwind(|| {
       if let Some(ref dylib_path) = get_dylib_path() {
         eprintln!("[desktop] dylib path: {:?}", dylib_path);
-        apply_pending_update(dylib_path)
+        apply_pending_update(dylib_path, reexec_reason.is_some())
       } else {
         eprintln!("[desktop] could not determine dylib path");
-        false
+        UpdateLaunch::Normal
       }
     }) {
       Ok(v) => v,
       Err(e) => {
         eprintln!("[desktop] update check panicked: {:?}", e);
-        false
+        UpdateLaunch::Normal
       }
+    };
+    let (restart, launch) =
+      after_update_check(launch, reexec_reason.as_deref());
+    if let Some(reason) = restart {
+      let target = if reason == REEXEC_AFTER_SWAP {
+        "the applied update"
+      } else {
+        "the restored version"
+      };
+      eprintln!("[desktop] restarting into {target}");
+      let error = reexec_host(reason);
+      // Still this code. After a swap, the new dylib gets its trial launch
+      // next time (state 3 in `UpdateLaunch`).
+      eprintln!(
+        "[desktop] warning: could not restart into {target} ({error}); it runs on the next launch"
+      );
     }
+    launch
   };
+  #[cfg(unix)]
+  let update_rolled_back = update_launch == UpdateLaunch::RolledBack;
+  #[cfg(unix)]
+  let update_trial = update_launch == UpdateLaunch::Trial;
   #[cfg(not(unix))]
-  let update_rolled_back = false;
+  let (update_rolled_back, update_trial) = (false, false);
 
   // Set up panic hook for desktop error reporting.  The error reporting
   // URL is only known after binary metadata is parsed (in run_desktop),
@@ -1793,7 +2024,14 @@ fn runtime_main() {
 
     rt.block_on(async {
       log::debug!("[desktop] run_desktop starting");
-      match run_desktop(update_rolled_back, desktop_serve_port, data).await {
+      match run_desktop(
+        update_rolled_back,
+        update_trial,
+        desktop_serve_port,
+        data,
+      )
+      .await
+      {
         Ok(()) => log::debug!("[desktop] run_desktop completed OK"),
         Err(error) => {
           // A failure raised while the app's main module was still loading or
@@ -1968,6 +2206,7 @@ fn find_section_in_dylib() -> Result<&'static [u8], AnyError> {
 
 async fn run_desktop(
   update_rolled_back: bool,
+  update_trial: bool,
   desktop_serve_port: u16,
   data: endert::binary::StandaloneData,
 ) -> Result<(), AnyError> {
@@ -2085,13 +2324,14 @@ async fn run_desktop(
       dylib_path: p,
       app_version: data.metadata.app_version.clone(),
       rolled_back: update_rolled_back, // from runtime_main's startup check
+      update_trial,
     }
   });
   #[cfg(not(unix))]
   let auto_update_state: Option<endert::desktop::AutoUpdateState> = {
-    // Auto-update rollback is only wired up on unix; consume the flag so the
-    // parameter isn't flagged as unused on other platforms.
-    let _ = update_rolled_back;
+    // Auto-update rollback is only wired up on unix; consume the flags so the
+    // parameters aren't flagged as unused on other platforms.
+    let _ = (update_rolled_back, update_trial);
     None
   };
 
@@ -2727,18 +2967,18 @@ mod tests {
 
   // --- apply_pending_update ---
   //
-  // State machine: presence/absence of `<dylib>.update`, `.backup`, and
-  // `.update-ok` sentinel decides what apply_pending_update does next.
-  // The four combinations have non-obvious effects (commit / rollback /
-  // cleanup / no-op) and the consequences of getting them wrong are
-  // serious (booting a half-applied dylib, or boot-looping on rollback).
-  // Tests below exercise each branch using a tempdir as the live dylib
-  // location.
+  // State machine: which of `<dylib>.update`, `.backup`, `.update-trial` and
+  // the `.update-ok` sentinel exist decides what apply_pending_update does
+  // (see `UpdateLaunch`). Getting it wrong is serious: booting a half-applied
+  // dylib, adopting an update that never ran, or boot-looping on rollback.
+  // Tests below exercise each branch and the launch sequences, using a
+  // tempdir as the live dylib location.
 
   // apply_pending_update is unix-only (see its #[cfg(unix)] gate), so its
   // tests and helpers live in a unix-only submodule.
   #[cfg(unix)]
   mod pending_update_tests {
+    use super::super::UpdateLaunch;
     use super::super::apply_pending_update;
 
     fn touch(path: &std::path::Path, content: &str) {
@@ -2749,85 +2989,141 @@ mod tests {
       std::fs::read_to_string(path).unwrap()
     }
 
-    fn paths(
-      tmp: &std::path::Path,
-    ) -> (
-      std::path::PathBuf,
-      std::path::PathBuf,
-      std::path::PathBuf,
-      std::path::PathBuf,
-    ) {
-      let dylib = tmp.join("app.dylib");
-      let update = tmp.join("app.dylib.update");
-      let backup = tmp.join("app.dylib.backup");
-      let sentinel = tmp.join("app.dylib.update-ok");
-      (dylib, update, backup, sentinel)
+    struct Paths {
+      dylib: std::path::PathBuf,
+      update: std::path::PathBuf,
+      backup: std::path::PathBuf,
+      trial: std::path::PathBuf,
+      sentinel: std::path::PathBuf,
+    }
+
+    fn paths(tmp: &std::path::Path) -> Paths {
+      Paths {
+        dylib: tmp.join("app.dylib"),
+        update: tmp.join("app.dylib.update"),
+        backup: tmp.join("app.dylib.backup"),
+        trial: tmp.join("app.dylib.update-trial"),
+        sentinel: tmp.join("app.dylib.update-ok"),
+      }
+    }
+
+    /// A normal launch (not re-exec'd).
+    fn launch(p: &Paths) -> UpdateLaunch {
+      apply_pending_update(&p.dylib, false)
+    }
+
+    /// The launch `reexec_host` starts.
+    fn reexeced_launch(p: &Paths) -> UpdateLaunch {
+      apply_pending_update(&p.dylib, true)
+    }
+
+    /// What `op_desktop_confirm_update` does in a trial launch.
+    fn confirm(p: &Paths) {
+      touch(&p.sentinel, "ok");
     }
 
     #[test]
     fn pending_update_no_files_is_noop() {
       let tmp = tempfile::tempdir().unwrap();
-      let (dylib, _, _, _) = paths(tmp.path());
-      touch(&dylib, "live");
-      let rolled_back = apply_pending_update(&dylib);
-      assert!(!rolled_back, "no .update / .backup → no rollback");
-      assert_eq!(read(&dylib), "live", "dylib must be untouched");
+      let p = paths(tmp.path());
+      touch(&p.dylib, "live");
+      assert_eq!(launch(&p), UpdateLaunch::Normal);
+      assert_eq!(read(&p.dylib), "live", "dylib must be untouched");
+      assert!(!p.trial.exists());
     }
 
     #[test]
     fn pending_update_swaps_in_new_dylib_when_update_exists() {
       let tmp = tempfile::tempdir().unwrap();
-      let (dylib, update, backup, sentinel) = paths(tmp.path());
-      touch(&dylib, "old");
-      touch(&update, "new");
-      let rolled_back = apply_pending_update(&dylib);
+      let p = paths(tmp.path());
+      touch(&p.dylib, "old");
+      touch(&p.update, "new");
 
-      assert!(!rolled_back, "applying a fresh update is not a rollback");
+      assert_eq!(launch(&p), UpdateLaunch::Swapped);
       assert_eq!(
-        read(&dylib),
+        read(&p.dylib),
         "new",
         "dylib must now hold the update contents"
       );
-      assert!(backup.exists(), "live dylib must be preserved as .backup");
-      assert_eq!(read(&backup), "old", "backup must be the *previous* dylib");
-      // Stale sentinel from a prior update is cleared so the next launch
-      // can detect THIS update's success/failure.
-      assert!(!sentinel.exists());
+      assert!(p.backup.exists(), "live dylib must be preserved as .backup");
+      assert_eq!(
+        read(&p.backup),
+        "old",
+        "backup must be the *previous* dylib"
+      );
+      // Nothing marks the update as tried or confirmed yet.
+      assert!(!p.sentinel.exists());
+      assert!(!p.trial.exists());
       // The staged update file is consumed.
-      assert!(!update.exists());
+      assert!(!p.update.exists());
     }
 
     #[test]
-    fn pending_update_clears_stale_sentinel_before_swap() {
+    fn pending_update_clears_stale_state_before_swap() {
       let tmp = tempfile::tempdir().unwrap();
-      let (dylib, update, backup, sentinel) = paths(tmp.path());
-      touch(&dylib, "old");
-      touch(&update, "new");
-      touch(&sentinel, "ok"); // sentinel left over from a previous launch
-      touch(&backup, "very-old"); // and a backup, also stale
-      apply_pending_update(&dylib);
+      let p = paths(tmp.path());
+      touch(&p.dylib, "old");
+      touch(&p.update, "new");
+      touch(&p.sentinel, "ok"); // sentinel left over from a previous launch
+      touch(&p.trial, ""); // and a trial marker
+      touch(&p.backup, "very-old"); // and a backup, also stale
+      assert_eq!(launch(&p), UpdateLaunch::Swapped);
       // After applying a new update: backup is the just-replaced 'old',
-      // sentinel was cleared. The previous backup ("very-old") must not
-      // persist, or rollback would resurrect a two-version-old dylib.
-      assert_eq!(read(&backup), "old");
-      assert!(!sentinel.exists());
+      // sentinel and trial marker were cleared. The previous backup
+      // ("very-old") must not persist, or rollback would resurrect a
+      // two-version-old dylib.
+      assert_eq!(read(&p.backup), "old");
+      assert!(!p.sentinel.exists());
+      assert!(!p.trial.exists());
     }
 
     #[test]
-    fn pending_update_rolls_back_when_sentinel_missing() {
-      // .backup present + no sentinel = previous update booted but crashed
+    fn pending_update_reexeced_launch_never_swaps() {
+      // The guard against a re-exec loop: even if an `.update` is there, the
+      // re-exec'd process runs the dylib it was started for.
+      let tmp = tempfile::tempdir().unwrap();
+      let p = paths(tmp.path());
+      touch(&p.dylib, "new");
+      touch(&p.backup, "old");
+      touch(&p.update, "newer");
+      assert_eq!(reexeced_launch(&p), UpdateLaunch::Trial);
+      assert_eq!(read(&p.dylib), "new");
+      assert_eq!(read(&p.backup), "old");
+      assert_eq!(read(&p.update), "newer", "left for the next launch");
+    }
+
+    #[test]
+    fn pending_update_first_launch_after_swap_is_the_trial() {
+      // .backup without sentinel or trial marker = the swapped-in dylib
+      // hasn't run yet. This launch runs it, and records that it did.
+      let tmp = tempfile::tempdir().unwrap();
+      let p = paths(tmp.path());
+      touch(&p.dylib, "new");
+      touch(&p.backup, "old");
+      assert_eq!(launch(&p), UpdateLaunch::Trial);
+      assert!(p.trial.exists(), "the trial launch must be recorded");
+      assert_eq!(read(&p.dylib), "new", "the new dylib runs");
+      assert_eq!(read(&p.backup), "old", "backup kept for a rollback");
+    }
+
+    #[test]
+    fn pending_update_rolls_back_when_trial_ended_unconfirmed() {
+      // .backup + trial marker + no sentinel = the trial launch crashed
       // before writing the sentinel. Rollback to backup.
       let tmp = tempfile::tempdir().unwrap();
-      let (dylib, _, backup, _) = paths(tmp.path());
-      touch(&dylib, "new-but-broken");
-      touch(&backup, "old-but-known-good");
-      let rolled_back = apply_pending_update(&dylib);
-      assert!(rolled_back, "missing sentinel must trigger rollback");
+      let p = paths(tmp.path());
+      touch(&p.dylib, "new-but-broken");
+      touch(&p.backup, "old-but-known-good");
+      touch(&p.trial, "");
+      assert_eq!(launch(&p), UpdateLaunch::RolledBack);
       assert_eq!(
-        read(&dylib),
+        read(&p.dylib),
         "old-but-known-good",
         "rollback must restore the backup contents over the live dylib"
       );
+      assert!(!p.backup.exists());
+      assert!(!p.trial.exists());
+      assert_eq!(launch(&p), UpdateLaunch::Normal, "rolls back only once");
     }
 
     #[test]
@@ -2836,18 +3132,22 @@ mod tests {
       // booted at least once. Clean up; we don't need to keep the backup
       // around forever.
       let tmp = tempfile::tempdir().unwrap();
-      let (dylib, _, backup, sentinel) = paths(tmp.path());
-      touch(&dylib, "new");
-      touch(&backup, "old");
-      touch(&sentinel, "ok");
-      let rolled_back = apply_pending_update(&dylib);
-      assert!(!rolled_back);
-      assert!(!backup.exists(), "successful-boot path must delete .backup");
+      let p = paths(tmp.path());
+      touch(&p.dylib, "new");
+      touch(&p.backup, "old");
+      touch(&p.trial, "");
+      touch(&p.sentinel, "ok");
+      assert_eq!(launch(&p), UpdateLaunch::Normal);
       assert!(
-        !sentinel.exists(),
+        !p.backup.exists(),
+        "successful-boot path must delete .backup"
+      );
+      assert!(
+        !p.sentinel.exists(),
         "successful-boot path must delete sentinel"
       );
-      assert_eq!(read(&dylib), "new", "dylib untouched on cleanup path");
+      assert!(!p.trial.exists());
+      assert_eq!(read(&p.dylib), "new", "dylib untouched on cleanup path");
     }
 
     #[test]
@@ -2857,9 +3157,10 @@ mod tests {
       // dylib is still in place. The backup has to survive so the next launch
       // retries rather than adopting the failed update as the new baseline.
       let tmp = tempfile::tempdir().unwrap();
-      let (dylib, _, backup, _) = paths(tmp.path());
-      touch(&dylib, "new-but-broken");
-      touch(&backup, "old-but-known-good");
+      let p = paths(tmp.path());
+      touch(&p.dylib, "new-but-broken");
+      touch(&p.backup, "old-but-known-good");
+      touch(&p.trial, "");
 
       // Make the dylib's directory unwritable so both the rename and the
       // staged copy fail. Skipped when that doesn't actually deny writes —
@@ -2871,8 +3172,8 @@ mod tests {
       let writes_denied =
         std::fs::write(tmp.path().join("probe"), b"x").is_err();
 
-      let rolled_back = if writes_denied {
-        Some(apply_pending_update(&dylib))
+      let result = if writes_denied {
+        Some(launch(&p))
       } else {
         None
       };
@@ -2880,14 +3181,16 @@ mod tests {
       // Restore before asserting, or a failure leaves an undeletable tempdir.
       std::fs::set_permissions(tmp.path(), original).unwrap();
 
-      if let Some(rolled_back) = rolled_back {
-        assert!(
-          !rolled_back,
+      if let Some(result) = result {
+        assert_eq!(
+          result,
+          UpdateLaunch::Normal,
           "a rollback that could not be written must not report success"
         );
-        assert!(backup.exists(), "failed rollback must keep .backup");
+        assert!(p.backup.exists(), "failed rollback must keep .backup");
+        assert!(p.trial.exists(), "the next launch must retry the rollback");
         assert_eq!(
-          read(&dylib),
+          read(&p.dylib),
           "new-but-broken",
           "dylib is untouched when the rollback cannot be applied"
         );
@@ -2899,12 +3202,123 @@ mod tests {
       // Sentinel without backup or update — orphaned. Don't roll back
       // (there's nothing to roll back to) and don't touch the dylib.
       let tmp = tempfile::tempdir().unwrap();
-      let (dylib, _, _, sentinel) = paths(tmp.path());
-      touch(&dylib, "live");
-      touch(&sentinel, "ok");
-      let rolled_back = apply_pending_update(&dylib);
-      assert!(!rolled_back);
-      assert_eq!(read(&dylib), "live");
+      let p = paths(tmp.path());
+      touch(&p.dylib, "live");
+      touch(&p.sentinel, "ok");
+      assert_eq!(launch(&p), UpdateLaunch::Normal);
+      assert_eq!(read(&p.dylib), "live");
+    }
+
+    #[test]
+    fn pending_update_confirmed_trial_is_kept() {
+      // Swap, re-exec into the trial, confirm; the next launch keeps it.
+      let tmp = tempfile::tempdir().unwrap();
+      let p = paths(tmp.path());
+      touch(&p.dylib, "v1");
+      touch(&p.update, "v2");
+      assert_eq!(launch(&p), UpdateLaunch::Swapped);
+      assert_eq!(reexeced_launch(&p), UpdateLaunch::Trial);
+      confirm(&p);
+      assert_eq!(launch(&p), UpdateLaunch::Normal);
+      assert_eq!(read(&p.dylib), "v2");
+      for leftover in [&p.update, &p.backup, &p.trial, &p.sentinel] {
+        assert!(!leftover.exists(), "{} left behind", leftover.display());
+      }
+    }
+
+    #[test]
+    fn pending_update_crashed_trial_rolls_back_on_the_next_launch() {
+      // Swap, re-exec into the trial, crash before confirming. The launch
+      // after that runs the old dylib again.
+      let tmp = tempfile::tempdir().unwrap();
+      let p = paths(tmp.path());
+      touch(&p.dylib, "v1");
+      touch(&p.update, "v2-crashes");
+      assert_eq!(launch(&p), UpdateLaunch::Swapped);
+      assert_eq!(reexeced_launch(&p), UpdateLaunch::Trial);
+      assert_eq!(launch(&p), UpdateLaunch::RolledBack);
+      assert_eq!(read(&p.dylib), "v1");
+      assert_eq!(launch(&p), UpdateLaunch::Normal);
+      assert_eq!(read(&p.dylib), "v1");
+    }
+
+    #[test]
+    fn pending_update_failed_reexec_defers_the_trial() {
+      // The re-exec failed, so the old code ran on after the swap and didn't
+      // confirm. The next launch is the new dylib's trial, not a rollback.
+      let tmp = tempfile::tempdir().unwrap();
+      let p = paths(tmp.path());
+      touch(&p.dylib, "v1");
+      touch(&p.update, "v2");
+      assert_eq!(launch(&p), UpdateLaunch::Swapped);
+      assert_eq!(launch(&p), UpdateLaunch::Trial);
+      assert_eq!(read(&p.dylib), "v2");
+    }
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn reexec_happens_once_after_a_swap_or_a_rollback() {
+    use std::ffi::OsStr;
+
+    use super::REEXEC_AFTER_ROLLBACK;
+    use super::REEXEC_AFTER_SWAP;
+    use super::UpdateLaunch::*;
+    use super::after_update_check;
+
+    let swapped = Some(OsStr::new(REEXEC_AFTER_SWAP));
+    let rolled_back = Some(OsStr::new(REEXEC_AFTER_ROLLBACK));
+    // A normal launch re-execs after changing the dylib on disk.
+    assert_eq!(
+      after_update_check(Swapped, None),
+      (Some(REEXEC_AFTER_SWAP), Swapped)
+    );
+    assert_eq!(
+      after_update_check(RolledBack, None),
+      (Some(REEXEC_AFTER_ROLLBACK), RolledBack)
+    );
+    assert_eq!(after_update_check(Normal, None), (None, Normal));
+    assert_eq!(after_update_check(Trial, None), (None, Trial));
+    // The re-exec'd process doesn't, whatever it finds.
+    assert_eq!(after_update_check(Trial, swapped), (None, Trial));
+    assert_eq!(after_update_check(Swapped, swapped), (None, Swapped));
+    assert_eq!(after_update_check(RolledBack, swapped), (None, RolledBack));
+    assert_eq!(
+      after_update_check(RolledBack, rolled_back),
+      (None, RolledBack)
+    );
+    // The restored code reports the rollback that restarted it.
+    assert_eq!(after_update_check(Normal, rolled_back), (None, RolledBack));
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn reexec_marks_inheritable_fds_cloexec() {
+    use super::clear_cloexec;
+    use super::mark_fds_cloexec_above_stderr;
+    // SAFETY: plain fcntl/dup/close calls on descriptors this test owns.
+    unsafe {
+      let fd = libc::dup(libc::STDERR_FILENO);
+      assert!(fd > libc::STDERR_FILENO);
+      assert_eq!(libc::fcntl(fd, libc::F_GETFD) & libc::FD_CLOEXEC, 0);
+      let stderr_flags = libc::fcntl(libc::STDERR_FILENO, libc::F_GETFD);
+
+      let marked = mark_fds_cloexec_above_stderr();
+      // Other tests run in parallel and may hold descriptors of their own,
+      // so only check ours.
+      let flags_marked = libc::fcntl(fd, libc::F_GETFD);
+      clear_cloexec(&marked);
+      let flags_restored = libc::fcntl(fd, libc::F_GETFD);
+      libc::close(fd);
+
+      assert!(marked.contains(&fd));
+      assert_ne!(flags_marked & libc::FD_CLOEXEC, 0);
+      assert_eq!(flags_restored & libc::FD_CLOEXEC, 0, "restored on failure");
+      assert_eq!(
+        libc::fcntl(libc::STDERR_FILENO, libc::F_GETFD),
+        stderr_flags,
+        "stdio stays inheritable"
+      );
     }
   }
 

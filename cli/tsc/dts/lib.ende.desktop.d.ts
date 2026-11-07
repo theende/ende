@@ -307,9 +307,8 @@ declare namespace Ende {
     /** Called once an update has been downloaded, verified, and staged for
      * the next launch. Receives the version string being staged. */
     onUpdateReady?: (version: string) => void;
-    /** Called if the previous launch's update failed to start and was
-     * automatically rolled back to the prior version. Receives a
-     * human-readable reason. */
+    /** Called if an update failed to start and was automatically rolled
+     * back to the prior version. Receives a human-readable reason. */
     onRollback?: (reason: string) => void;
   }
 
@@ -330,10 +329,14 @@ declare namespace Ende {
    * - `onUpdateReady` is then invoked. The new version takes effect the
    *   next time the app starts.
    *
-   * The staged update is swapped in atomically on the next launch, with
-   * the previous version kept as a backup. If the updated app fails to
-   * start, it is automatically rolled back to the backup and `onRollback`
-   * is invoked shortly after the next `autoUpdate` call.
+   * On the next launch, the staged update is swapped in atomically, with
+   * the previous version kept as a backup, and the app restarts into it
+   * right away, before any of its code runs. If the new version then fails
+   * to start, the launch after that rolls back to the backup, restarts into
+   * the previous version, and `onRollback` is invoked shortly after its
+   * `autoUpdate` call. Only a failure before the app's own code runs (a
+   * crash while the runtime starts) counts; an error thrown by the app's
+   * code doesn't roll back. Updates are applied on macOS and Linux only.
    *
    * The release server URL may be passed directly, supplied via
    * {@linkcode AutoUpdateOptions.url}, or configured once in `ende.json`
