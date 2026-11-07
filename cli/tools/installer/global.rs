@@ -1994,6 +1994,7 @@ mod tests {
     }
   }
 
+  #[cfg(not(windows))]
   #[test]
   fn posix_shell_escape_matches_shim_needs() {
     assert_eq!(
