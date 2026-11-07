@@ -200,6 +200,20 @@ impl Drop for CloseRequestsDialog<'_> {
   }
 }
 
+/// Stop tracking a notification and close it, with the map unlocked: the
+/// backend can deliver the notification's `Closed` event before `close`
+/// returns, and that handler (see `show_notification`) locks the same map.
+fn close_tracked_notification<H>(
+  notifications: &Mutex<HashMap<u32, H>>,
+  notification_id: u32,
+  close: impl FnOnce(&H),
+) {
+  let handle = notifications.lock().unwrap().remove(&notification_id);
+  if let Some(handle) = handle {
+    close(&handle);
+  }
+}
+
 /// Close a window natively and record it as closed.
 fn close_native_window(
   closed_windows: &Mutex<HashSet<u32>>,
@@ -1031,11 +1045,11 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
   }
 
   fn close_notification(&self, notification_id: u32) {
-    if let Some(handle) =
-      self.notifications.lock().unwrap().get(&notification_id)
-    {
-      handle.close();
-    }
+    close_tracked_notification(
+      &self.notifications,
+      notification_id,
+      laufey::NotificationHandle::close,
+    );
   }
 
   fn request_notification_permission(
@@ -2067,6 +2081,7 @@ async fn run_desktop(
 
 #[cfg(test)]
 mod tests {
+  use std::collections::HashMap;
   use std::sync::Arc;
   use std::sync::Mutex;
   use std::time::Duration;
@@ -2075,6 +2090,7 @@ mod tests {
   use ende_runtime::ops::desktop::PermissionState;
 
   use super::CloseRequests;
+  use super::close_tracked_notification;
   use super::desktop_menu_item_to_laufey_menu_item;
   use super::desktop_value_to_laufey_value;
   use super::laufey_value_to_desktop_value;
@@ -2582,6 +2598,32 @@ mod tests {
   fn run_on_ui_thread_survives_a_panicking_task() {
     let api = fake_api(Some(post_to_other_thread));
     run_on_ui_thread(Some(&api), Box::new(|| panic!("task panicked")));
+  }
+
+  // --- close_tracked_notification (#36950) ---
+
+  #[test]
+  fn notification_close_runs_with_the_map_unlocked() {
+    // The backend can deliver the notification's Closed event before its
+    // close returns, and that handler locks the same map: closing under the
+    // lock deadlocks.
+    let notifications = Mutex::new(HashMap::from([(1u32, "handle")]));
+    let mut closed = None;
+    close_tracked_notification(&notifications, 1, |handle| {
+      assert!(
+        notifications.try_lock().is_ok(),
+        "the notifications map is still locked during close"
+      );
+      closed = Some(*handle);
+    });
+    assert_eq!(closed, Some("handle"));
+    assert!(notifications.lock().unwrap().is_empty());
+  }
+
+  #[test]
+  fn notification_close_ignores_unknown_ids() {
+    let notifications = Mutex::new(HashMap::<u32, ()>::new());
+    close_tracked_notification(&notifications, 9, |_| panic!("closed"));
   }
 
   // --- CloseRequests (denoland/deno#36973) ---
