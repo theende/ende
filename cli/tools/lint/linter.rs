@@ -232,17 +232,45 @@ impl CliLinter {
 
     if fix_iterations > 0 {
       // everything looks good and the file still parses, so write it out
-      atomic_write_file_with_retries(
-        &CliSys::default(),
-        file_path,
-        source.text().as_bytes(),
-        crate::cache::CACHE_PERM,
-      )
-      .context("Failed writing fix to file.")?;
+      write_fixed_file(file_path, source.text().as_bytes())
+        .context("Failed writing fix to file.")?;
     }
 
     Ok((source, with_ende_docs_urls(diagnostics)))
   }
+}
+
+/// Replace the file atomically, so a killed process can't leave it half
+/// written, and keep its permission bits. The new file is created with
+/// them, which the umask can only narrow, and then set exactly.
+fn write_fixed_file(file_path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+  let maybe_mode = permission_bits(file_path);
+  atomic_write_file_with_retries(
+    &CliSys::default(),
+    file_path,
+    bytes,
+    maybe_mode.unwrap_or(crate::cache::CACHE_PERM),
+  )?;
+
+  #[cfg(unix)]
+  if let Some(mode) = maybe_mode {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(file_path, std::fs::Permissions::from_mode(mode))?;
+  }
+  Ok(())
+}
+
+#[cfg(unix)]
+fn permission_bits(file_path: &Path) -> Option<u32> {
+  use std::os::unix::fs::PermissionsExt;
+  std::fs::metadata(file_path)
+    .ok()
+    .map(|metadata| metadata.permissions().mode() & 0o777)
+}
+
+#[cfg(not(unix))]
+fn permission_bits(_file_path: &Path) -> Option<u32> {
+  None
 }
 
 fn apply_lint_fixes_and_relint(
