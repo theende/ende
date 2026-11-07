@@ -1589,6 +1589,61 @@ mod tests {
     assert!(js.contains("https:"));
   }
 
+  // --- NOT_IMPORTED_OPS ---
+
+  /// The op names listed in runtime/js/99_main.js's NOT_IMPORTED_OPS.
+  fn not_imported_ops() -> Vec<String> {
+    let main_js = include_str!("../../runtime/js/99_main.js");
+    let start = main_js
+      .find("const NOT_IMPORTED_OPS = [")
+      .expect("NOT_IMPORTED_OPS not found");
+    let list = &main_js[start..];
+    let list = &list[..list.find("];").unwrap()];
+    list
+      .lines()
+      .filter_map(|line| {
+        let line = line.trim();
+        line
+          .strip_prefix('"')?
+          .split('"')
+          .next()
+          .map(str::to_string)
+      })
+      .collect()
+  }
+
+  #[test]
+  fn desktop_scripts_only_use_ops_that_survive_bootstrap() {
+    // The desktop scripts run after bootstrap's `removeImportedOps()`, which
+    // deletes every op not in NOT_IMPORTED_OPS. A missing entry makes the op
+    // `undefined`: `op_desktop_alert_async` was, so an uncaught error exited
+    // the app at once instead of showing the error dialog (#36950).
+    let kept = not_imported_ops();
+    let scripts = [
+      DESKTOP_JS.to_string(),
+      desktop_error_reporting_js(Some("https://err.example/r"), Some("1.0.0")),
+      desktop_auto_update_js(Some("1.0.0"), false, Some("https://e.example")),
+    ];
+    let mut used = std::collections::BTreeSet::new();
+    for script in &scripts {
+      let mut rest = script.as_str();
+      while let Some(i) = rest.find("op_desktop_") {
+        rest = &rest[i..];
+        let end = rest
+          .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+          .unwrap_or(rest.len());
+        used.insert(rest[..end].to_string());
+        rest = &rest[end..];
+      }
+    }
+    assert!(used.contains("op_desktop_alert_async"));
+    let missing: Vec<_> = used.iter().filter(|op| !kept.contains(op)).collect();
+    assert!(
+      missing.is_empty(),
+      "desktop ops missing from NOT_IMPORTED_OPS in runtime/js/99_main.js: {missing:?}"
+    );
+  }
+
   // --- desktop_error_reporting_js ---
 
   #[test]

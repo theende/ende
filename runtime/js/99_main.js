@@ -687,6 +687,7 @@ const NOT_IMPORTED_OPS = [
   "op_desktop_reject_bind_call",
   "op_desktop_answer_close_request",
   "op_desktop_alert",
+  "op_desktop_alert_async",
   "op_desktop_confirm",
   "op_desktop_prompt",
   "op_desktop_read_clipboard_text",
