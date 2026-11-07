@@ -2055,9 +2055,10 @@ impl Dock {
     v8::Global::new(scope, dock)
   }
 
-  #[fast]
-  fn set_badge(&self, #[string] text: &str) {
-    self.api.set_dock_badge(text);
+  /// `null` (or `undefined`) clears the badge, like `""`. A plain string
+  /// argument would stringify it, and the dock would show "null".
+  fn set_badge(&self, #[string] text: Option<String>) {
+    self.api.set_dock_badge(text.as_deref().unwrap_or(""));
   }
 
   #[fast]
