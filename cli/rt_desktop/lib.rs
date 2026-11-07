@@ -22,6 +22,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::OnceLock;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
@@ -621,6 +622,10 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
     }
   }
 
+  fn run_on_ui_thread(&self, f: Box<dyn FnOnce() + Send>) {
+    run_on_ui_thread(BACKEND_API.get().copied(), f);
+  }
+
   fn alert(&self, title: &str, message: &str) {
     laufey::alert(title, message);
   }
@@ -1066,7 +1071,7 @@ fn get_dylib_path() -> Option<PathBuf> {
 /// - `.backup` exists and `.update-ok` exists → previous update succeeded, clean up
 ///
 /// Returns `true` if a rollback occurred (so we can dispatch an event in JS).
-// Only invoked from the unix `laufey::main!` startup path; gated to match its
+// Only invoked from the unix `runtime_main` startup path; gated to match its
 // sole call site so it isn't flagged as dead code on other platforms.
 #[cfg(unix)]
 #[allow(clippy::print_stderr, reason = "runs before logging is initialized")]
@@ -1137,7 +1142,108 @@ fn apply_pending_update(dylib_path: &Path) -> bool {
   false
 }
 
-laufey::main!(|| {
+/// The backend's C API table, for what laufey 0.7.0's Rust API doesn't wrap
+/// (`post_ui_task`, see [`run_on_ui_thread`]). Set by `laufey_runtime_init`.
+static BACKEND_API: OnceLock<&'static laufey::LaufeyBackendApi> =
+  OnceLock::new();
+
+// The three Laufey C ABI exports. Ende defines them itself instead of using
+// `laufey::main!`, which hands the API pointer to laufey without keeping it.
+
+/// Called by the backend before `laufey_runtime_start`.
+///
+/// # Safety
+///
+/// `api` must be null or point to a `LaufeyBackendApi` that lives for the rest
+/// of the process.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn laufey_runtime_init(
+  api: *const laufey::LaufeyBackendApi,
+) -> std::ffi::c_int {
+  // SAFETY: forwarded from our caller, same contract.
+  let rc = unsafe { laufey::init_api(api) };
+  if rc == 0 {
+    // SAFETY: `init_api` accepted it, so it's non-null, and our caller
+    // guarantees it lives for the rest of the process.
+    let _ = BACKEND_API.set(unsafe { &*api });
+  }
+  rc
+}
+
+/// Called by the backend on its runtime-loader thread; runs the app.
+#[unsafe(no_mangle)]
+pub extern "C" fn laufey_runtime_start() -> std::ffi::c_int {
+  runtime_main();
+  0
+}
+
+/// Called by the backend when the app quits.
+#[unsafe(no_mangle)]
+pub extern "C" fn laufey_runtime_shutdown() {
+  laufey::shutdown();
+}
+
+/// Run `f` on the backend's UI thread and wait until it has run.
+///
+/// laufey 0.7.0 has no Rust wrapper for the C API's `post_ui_task`; the
+/// unreleased littledivy/laufey#79 adds `laufey::run_on_ui_thread`. So this
+/// posts through the API table that `laufey_runtime_init` keeps. If a laufey
+/// release ships `run_on_ui_thread`, switch to it.
+///
+/// Only macOS hops, because AppKit is main-thread-only. `f` runs inline
+/// elsewhere, on the main thread itself, and without a `post_ui_task`.
+///
+/// Waits for as long as the UI thread takes, e.g. while a modal dialog is up.
+/// If the backend drops the task because its event loop has ended, this never
+/// returns, but then the process is exiting.
+fn run_on_ui_thread(
+  api: Option<&laufey::LaufeyBackendApi>,
+  f: Box<dyn FnOnce() + Send>,
+) {
+  #[cfg(target_os = "macos")]
+  {
+    unsafe extern "C" {
+      fn pthread_main_np() -> std::ffi::c_int;
+    }
+    // SAFETY: libSystem function with no preconditions.
+    let on_main_thread = unsafe { pthread_main_np() } != 0;
+    if let Some(api) = api
+      && let Some(post_ui_task) = api.post_ui_task
+      && !on_main_thread
+    {
+      type Task = Box<dyn FnOnce() + Send>;
+      unsafe extern "C" fn run_task(data: *mut std::ffi::c_void) {
+        // SAFETY: `data` is the `Box<Task>` leaked below, and the backend
+        // runs each posted task once.
+        let task = unsafe { Box::from_raw(data.cast::<Task>()) };
+        // Don't unwind into the backend's C frames. A panic drops `done_tx`,
+        // which ends the wait below.
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(task));
+      }
+      let (done_tx, done_rx) = std::sync::mpsc::sync_channel(1);
+      let task: Box<Task> = Box::new(Box::new(move || {
+        f();
+        let _ = done_tx.send(());
+      }));
+      // SAFETY: `post_ui_task` comes from the backend's API table with its
+      // `backend_data`. `run_task` takes ownership of the task.
+      unsafe {
+        post_ui_task(
+          api.backend_data,
+          Some(run_task),
+          Box::into_raw(task).cast(),
+        );
+      }
+      let _ = done_rx.recv();
+      return;
+    }
+  }
+  #[cfg(not(target_os = "macos"))]
+  let _ = api;
+  f();
+}
+
+fn runtime_main() {
   // Apply any pending update before anything else.
   #[cfg(unix)]
   #[allow(clippy::print_stderr, reason = "runs before logging is initialized")]
@@ -1296,7 +1402,7 @@ laufey::main!(|| {
       }
     });
   });
-});
+}
 
 /// Decide whether the desktop shell should pop a native error dialog for a
 /// failure that propagated out of the runtime.
@@ -1502,7 +1608,7 @@ async fn run_desktop(
     log::debug!("[desktop] inspector server bound on {addr}");
   }
 
-  // ENDE_SERVE_ADDRESS is published by `laufey::main!` before the
+  // ENDE_SERVE_ADDRESS is published by `runtime_main` before the
   // tokio runtime is built — see the comment there for why we can't
   // do it from here. `desktop_serve_port` is the port we put into it.
 
@@ -1549,7 +1655,7 @@ async fn run_desktop(
     endert::desktop::AutoUpdateState {
       dylib_path: p,
       app_version: data.metadata.app_version.clone(),
-      rolled_back: update_rolled_back, // from laufey::main! startup check
+      rolled_back: update_rolled_back, // from runtime_main's startup check
     }
   });
   #[cfg(not(unix))]
@@ -1772,6 +1878,7 @@ mod tests {
   use super::desktop_value_to_laufey_value;
   use super::laufey_value_to_desktop_value;
   use super::map_permission_status;
+  use super::run_on_ui_thread;
   use super::should_show_native_error_dialog;
 
   // --- should_show_native_error_dialog ---
@@ -2197,5 +2304,82 @@ mod tests {
       },
       _ => panic!("nested must convert to Dict"),
     }
+  }
+
+  // --- run_on_ui_thread ---
+
+  /// An API table whose `post_ui_task` is `post_ui_task`, everything else
+  /// unset.
+  fn fake_api(
+    post_ui_task: Option<
+      unsafe extern "C" fn(
+        *mut std::ffi::c_void,
+        Option<unsafe extern "C" fn(*mut std::ffi::c_void)>,
+        *mut std::ffi::c_void,
+      ),
+    >,
+  ) -> laufey::LaufeyBackendApi {
+    // SAFETY: a C struct of integers, pointers and `Option<fn>`s, for which
+    // all-zero bytes are valid (0, null, `None`).
+    let mut api: laufey::LaufeyBackendApi = unsafe { std::mem::zeroed() };
+    api.post_ui_task = post_ui_task;
+    api
+  }
+
+  /// Like the backends: runs the task later, on another thread.
+  unsafe extern "C" fn post_to_other_thread(
+    _backend_data: *mut std::ffi::c_void,
+    task: Option<unsafe extern "C" fn(*mut std::ffi::c_void)>,
+    data: *mut std::ffi::c_void,
+  ) {
+    let task = task.unwrap();
+    let data = data as usize;
+    std::thread::spawn(move || {
+      std::thread::sleep(std::time::Duration::from_millis(50));
+      // SAFETY: the task and data `run_on_ui_thread` posted, run once.
+      unsafe { task(data as *mut std::ffi::c_void) };
+    });
+  }
+
+  fn thread_that_runs(api: Option<&laufey::LaufeyBackendApi>) -> bool {
+    let caller = std::thread::current().id();
+    let (tx, rx) = std::sync::mpsc::channel();
+    run_on_ui_thread(
+      api,
+      Box::new(move || tx.send(std::thread::current().id()).unwrap()),
+    );
+    // `try_recv`: the task must have run by the time the call returns.
+    rx.try_recv().unwrap() == caller
+  }
+
+  // Test threads aren't the process main thread, so on macOS these exercise
+  // the hop.
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn run_on_ui_thread_posts_and_waits_on_macos() {
+    let api = fake_api(Some(post_to_other_thread));
+    assert!(!thread_that_runs(Some(&api)), "expected a hop");
+  }
+
+  #[cfg(not(target_os = "macos"))]
+  #[test]
+  fn run_on_ui_thread_is_inline_off_macos() {
+    let api = fake_api(Some(post_to_other_thread));
+    assert!(thread_that_runs(Some(&api)));
+  }
+
+  #[test]
+  fn run_on_ui_thread_is_inline_without_post_ui_task() {
+    assert!(thread_that_runs(None));
+    assert!(thread_that_runs(Some(&fake_api(None))));
+  }
+
+  // A panicking task must not unwind into the backend's C frames (that would
+  // abort the process); the caller just stops waiting.
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn run_on_ui_thread_survives_a_panicking_task() {
+    let api = fake_api(Some(post_to_other_thread));
+    run_on_ui_thread(Some(&api), Box::new(|| panic!("task panicked")));
   }
 }
