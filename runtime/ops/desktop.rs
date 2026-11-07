@@ -880,6 +880,23 @@ unsafe fn create_surface_on_ui_thread(
     .map_err(|_| "the UI thread task did not complete".to_string())?
 }
 
+/// The desktop backend, or a clear error where there is none. Only the main
+/// thread of an `ende desktop` app has one: a Worker (or `ende run`) can
+/// reach the desktop classes through the internal ops, and used to panic.
+fn desktop_api(
+  state: &OpState,
+  class: &str,
+) -> Result<Arc<dyn DesktopApi>, deno_error::JsErrorBox> {
+  state.try_borrow::<Arc<dyn DesktopApi>>().cloned().ok_or_else(|| {
+    deno_error::JsErrorBox::new(
+      "NotSupported",
+      format!(
+        "{class} is only available on the main thread of an `ende desktop` app"
+      ),
+    )
+  })
+}
+
 // SAFETY: we're sure this can be GCed
 unsafe impl ende_core::GarbageCollected for BrowserWindow {
   fn trace(&self, _visitor: &mut ende_core::v8::cppgc::Visitor) {}
@@ -907,11 +924,8 @@ impl BrowserWindow {
     state: &OpState,
     scope: &mut v8::PinScope<'_, '_>,
     #[scoped] options: Option<BrowserWindowOptions>,
-  ) -> v8::Global<v8::Value> {
-    let api = state
-      .try_borrow::<Arc<dyn DesktopApi>>()
-      .expect("desktop mode enabled")
-      .clone();
+  ) -> Result<v8::Global<v8::Value>, deno_error::JsErrorBox> {
+    let api = desktop_api(state, "BrowserWindow")?;
 
     // Use the initial window if this is the first BrowserWindow,
     // otherwise create a new one.
@@ -996,7 +1010,7 @@ impl BrowserWindow {
     set_event_target_data.call(scope, null.into(), &[window.into()]);
     let window = window.cast::<v8::Value>();
 
-    v8::Global::new(scope, window)
+    Ok(v8::Global::new(scope, window))
   }
 
   #[getter]
@@ -2034,11 +2048,8 @@ impl Dock {
   fn new(
     state: &OpState,
     scope: &mut v8::PinScope<'_, '_>,
-  ) -> v8::Global<v8::Value> {
-    let api = state
-      .try_borrow::<Arc<dyn DesktopApi>>()
-      .expect("desktop mode enabled")
-      .clone();
+  ) -> Result<v8::Global<v8::Value>, deno_error::JsErrorBox> {
+    let api = desktop_api(state, "Dock")?;
 
     let dock = Dock { api };
     let dock = ende_core::cppgc::make_cppgc_object(scope, dock);
@@ -2052,7 +2063,7 @@ impl Dock {
     set_event_target_data.call(scope, null.into(), &[dock.into()]);
     let dock = dock.cast::<v8::Value>();
 
-    v8::Global::new(scope, dock)
+    Ok(v8::Global::new(scope, dock))
   }
 
   /// `null` (or `undefined`) clears the badge, like `""`. A plain string
@@ -2102,11 +2113,8 @@ impl Tray {
   fn new(
     state: &OpState,
     scope: &mut v8::PinScope<'_, '_>,
-  ) -> v8::Global<v8::Value> {
-    let api = state
-      .try_borrow::<Arc<dyn DesktopApi>>()
-      .expect("desktop mode enabled")
-      .clone();
+  ) -> Result<v8::Global<v8::Value>, deno_error::JsErrorBox> {
+    let api = desktop_api(state, "Tray")?;
 
     let tray_id = api.create_tray();
     let tray = Tray { api, tray_id };
@@ -2121,7 +2129,7 @@ impl Tray {
     set_event_target_data.call(scope, null.into(), &[tray.into()]);
     let tray = tray.cast::<v8::Value>();
 
-    v8::Global::new(scope, tray)
+    Ok(v8::Global::new(scope, tray))
   }
 
   #[getter]
@@ -2229,11 +2237,8 @@ impl Notification {
     #[string] title: String,
     #[scoped] options: Option<NotificationConstructorOptions>,
     #[buffer] icon_bytes: Option<&[u8]>,
-  ) -> v8::Global<v8::Value> {
-    let api = state
-      .try_borrow::<Arc<dyn DesktopApi>>()
-      .expect("desktop mode enabled")
-      .clone();
+  ) -> Result<v8::Global<v8::Value>, deno_error::JsErrorBox> {
+    let api = desktop_api(state, "Notification")?;
 
     let options = options.unwrap_or(NotificationConstructorOptions {
       body: None,
@@ -2286,7 +2291,7 @@ impl Notification {
     set_event_target_data.call(scope, null.into(), &[notification.into()]);
     let notification = notification.cast::<v8::Value>();
 
-    v8::Global::new(scope, notification)
+    Ok(v8::Global::new(scope, notification))
   }
 
   #[getter]

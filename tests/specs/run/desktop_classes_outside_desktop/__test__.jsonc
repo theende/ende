@@ -1,0 +1,7 @@
+{
+  // The desktop classes stay reachable through the internal ops outside an
+  // `ende desktop` app's main thread. Constructing one used to panic.
+  "args": "run main.js",
+  "output": "main.out",
+  "exitCode": 0
+}

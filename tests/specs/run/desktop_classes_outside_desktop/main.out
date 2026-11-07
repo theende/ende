@@ -1,0 +1,5 @@
+BrowserWindow threw NotSupported: BrowserWindow is only available on the main thread of an `ende desktop` app
+Tray threw NotSupported: Tray is only available on the main thread of an `ende desktop` app
+Dock threw NotSupported: Dock is only available on the main thread of an `ende desktop` app
+Notification threw NotSupported: Notification is only available on the main thread of an `ende desktop` app
+BrowserWindow in a Worker threw NotSupported: BrowserWindow is only available on the main thread of an `ende desktop` app
