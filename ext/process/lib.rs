@@ -799,7 +799,7 @@ fn create_command(
     let mut extra_pipe_fds: Vec<Option<i64>> =
       Vec::with_capacity(args.extra_stdio.len());
 
-    let mut handles_to_close = Vec::new();
+    let handles_to_close = Vec::new();
 
     for (i, stdio) in args.extra_stdio.into_iter().enumerate() {
       // index 0 in `extra_stdio` actually refers to fd 3
