@@ -3537,6 +3537,128 @@ Deno.test(
 
 Deno.test(
   { permissions: { net: true } },
+  async function httpServerClosesConnectionAfterEarlyResponseWithoutDrainingBody() {
+    const listeningDeferred = Promise.withResolvers<void>();
+    const ac = new AbortController();
+
+    await using server = Deno.serve({
+      handler: () => new Response("too large", { status: 413 }),
+      port: servePort,
+      signal: ac.signal,
+      onListen: onListen(listeningDeferred.resolve),
+      onError: createOnErrorCb(ac),
+    });
+
+    await listeningDeferred.promise;
+    const conn = await Deno.connect({ port: servePort });
+    const encoder = new TextEncoder();
+    await writeAll(
+      conn,
+      encoder.encode(
+        "POST / HTTP/1.1\r\nHost: example.domain\r\nContent-Length: 67108864\r\n\r\nx",
+      ),
+    );
+
+    const decoder = new TextDecoder();
+    let response = "";
+    const readToClose = (async () => {
+      const buf = new Uint8Array(1024);
+      while (true) {
+        const read = await conn.read(buf);
+        if (read === null) return;
+        response += decoder.decode(buf.subarray(0, read));
+      }
+    })();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const closed = await Promise.race([
+      readToClose.then(() => true),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), 1_000);
+      }),
+    ]);
+    clearTimeout(timer);
+
+    conn.close();
+    ac.abort();
+    await server.finished;
+
+    assertEquals(closed, true, "server kept draining an unread request body");
+    assertStringIncludes(response, "HTTP/1.1 413 Payload Too Large");
+    assertStringIncludes(response.toLowerCase(), "connection: close");
+  },
+);
+
+// Closing a socket that still holds unread request body bytes resets the
+// connection, which can destroy the response before the client reads it. The
+// server half-closes and lingers instead, so the client sees a clean EOF.
+Deno.test(
+  { permissions: { net: true } },
+  async function httpServerEarlyResponseEndsWithEofWhileClientUploads() {
+    const listeningDeferred = Promise.withResolvers<void>();
+    const ac = new AbortController();
+
+    await using server = Deno.serve({
+      handler: () => new Response("too large", { status: 413 }),
+      port: servePort,
+      signal: ac.signal,
+      onListen: onListen(listeningDeferred.resolve),
+      onError: createOnErrorCb(ac),
+    });
+
+    await listeningDeferred.promise;
+    const conn = await Deno.connect({ port: servePort });
+    const encoder = new TextEncoder();
+    // Keep uploading until the response arrives, so the server's receive
+    // buffer holds unread body bytes when it closes the connection.
+    let responded = false;
+    const upload = (async () => {
+      await writeAll(
+        conn,
+        encoder.encode(
+          "POST / HTTP/1.1\r\nHost: example.domain\r\nContent-Length: 67108864\r\n\r\n",
+        ),
+      );
+      const chunk = new Uint8Array(64 * 1024);
+      while (!responded) await conn.write(chunk);
+    })().catch(() => {});
+
+    const decoder = new TextDecoder();
+    let response = "";
+    const readToEnd = (async () => {
+      const buf = new Uint8Array(1024);
+      try {
+        while (true) {
+          const read = await conn.read(buf);
+          if (read === null) return "eof";
+          response += decoder.decode(buf.subarray(0, read));
+          responded = true;
+        }
+      } catch (error) {
+        return String(error);
+      }
+    })();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const end = await Promise.race([
+      readToEnd,
+      new Promise<string>((resolve) => {
+        timer = setTimeout(() => resolve("timeout"), 5_000);
+      }),
+    ]);
+    clearTimeout(timer);
+
+    responded = true;
+    conn.close();
+    await upload;
+    ac.abort();
+    await server.finished;
+
+    assertEquals(end, "eof");
+    assertStringIncludes(response, "HTTP/1.1 413 Payload Too Large");
+  },
+);
+
+Deno.test(
+  { permissions: { net: true } },
   async function httpServerIgnoredStreamingBodyClosesConnection() {
     const firstDeferred = Promise.withResolvers<void>();
     const listeningDeferred = Promise.withResolvers<void>();

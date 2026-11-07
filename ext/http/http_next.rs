@@ -60,6 +60,7 @@ use hyper::service::HttpService;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use smallvec::SmallVec;
+use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 
@@ -3778,6 +3779,24 @@ async fn write_direct_response_for_reader(
   Ok(())
 }
 
+/// How long `linger_close_raw_h1` discards client data before closing.
+const RAW_H1_LINGER_TIMEOUT: Duration = Duration::from_millis(500);
+
+/// Closes a connection whose request body is still unread, without reading the
+/// body to the end. Closing a socket with unread data makes the kernel send a
+/// reset, which can destroy the response before the client reads it (RFC 9112
+/// section 9.6). So half-close first, then discard what the client still
+/// sends until it closes or `RAW_H1_LINGER_TIMEOUT` passes.
+async fn linger_close_raw_h1(mut stream: RawH1Io) {
+  let _ = tokio::time::timeout(RAW_H1_LINGER_TIMEOUT, async {
+    stream.shutdown().await?;
+    let mut buf = vec![0; 16 * 1024];
+    while stream.read(&mut buf).await? != 0 {}
+    Ok::<_, io::Error>(())
+  })
+  .await;
+}
+
 async fn drain_raw_h1_request_body<I>(
   mut state: RawH1ConnectionState<I>,
 ) -> Option<RawH1ConnectionState<I>>
@@ -4899,12 +4918,13 @@ async fn serve_http11_raw(
         record_cancel_guard.disarm();
         continue;
       }
-      conn = state.conn;
-      scratch = state.scratch;
-      if parsed.has_body {
-        let _ = conn.discard_body_with_scratch(&mut scratch).await;
-      }
+      // The response cannot keep this connection alive. Close it instead of
+      // draining an unread request body, which may be arbitrarily large or
+      // never finish.
       record_cancel_guard.disarm();
+      if parsed.has_body && !request_body_finished {
+        Box::pin(linger_close_raw_h1(state.conn.into_inner())).await;
+      }
       return Ok(());
     }
 
