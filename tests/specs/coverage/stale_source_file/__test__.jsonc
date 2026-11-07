@@ -1,0 +1,20 @@
+{
+  "tempDir": true,
+  "steps": [
+    {
+      "args": "run --coverage=coverage main.js",
+      "output": "hello\n"
+    },
+    {
+      // Shorten a source file after coverage was collected, so its ranges
+      // reach past the end of the source.
+      "args": "task --eval cp helper_changed.js helper.js",
+      "output": "[WILDCARD]"
+    },
+    {
+      // Coverage should still work, warning about the stale file
+      "args": "coverage coverage",
+      "output": "stale_source.out"
+    }
+  ]
+}

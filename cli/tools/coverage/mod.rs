@@ -150,6 +150,30 @@ fn byte_offset(utf16_map: &Utf16Map, utf16_offset: usize) -> usize {
     .expect("a UTF-16 offset within the source has a byte offset")
 }
 
+/// Whether `range` fits the source `utf16_map` was built over: both offsets
+/// within it, in order, and on character boundaries. V8 only reports ranges
+/// that fit the source it ran, so one that doesn't means the coverage data is
+/// stale, e.g. the file changed after coverage was collected.
+fn range_fits_source(
+  range: &cdp::CoverageRange,
+  source: &str,
+  utf16_map: &Utf16Map,
+) -> bool {
+  let checked_byte_offset = |utf16_offset: usize| {
+    let utf16_offset = u32::try_from(utf16_offset).ok()?;
+    utf16_map
+      .utf16_to_utf8_offset(TextSize::from(utf16_offset))
+      .map(|offset| u32::from(offset) as usize)
+  };
+  let (Some(start), Some(end)) = (
+    checked_byte_offset(range.start_char_offset),
+    checked_byte_offset(range.end_char_offset),
+  ) else {
+    return false;
+  };
+  start <= end && source.is_char_boundary(start) && source.is_char_boundary(end)
+}
+
 fn generate_coverage_report(
   options: GenerateCoverageReportOptions,
 ) -> Result<CoverageReport, AnyError> {
@@ -201,6 +225,24 @@ fn generate_coverage_report(
     lex_comments(&options.script_runtime_source, MediaType::JavaScript);
   let runtime_text_lines = TextLines::new(&options.script_runtime_source);
   let utf16_map = Utf16Map::new(&options.script_runtime_source);
+  // Ranges that don't fit the source can't be mapped to its lines, and their
+  // offsets would panic below. Every other range is just as stale, so skip the
+  // whole file.
+  if !options
+    .script_coverage
+    .functions
+    .iter()
+    .flat_map(|function| &function.ranges)
+    .all(|range| {
+      range_fits_source(range, &options.script_runtime_source, &utf16_map)
+    })
+  {
+    log::warn!(
+      "Coverage data for \"{}\" doesn't match its source (was it changed after coverage was collected?). Skipping.",
+      options.script_module_specifier,
+    );
+    return Ok(coverage_report);
+  }
   for function in &options.script_coverage.functions {
     if function.function_name.is_empty() {
       continue;
@@ -1085,5 +1127,59 @@ mod tests {
       text_lines.line_index(text_lines.byte_index_from_char_index(7)),
       1,
     );
+  }
+
+  fn range(
+    start_char_offset: usize,
+    end_char_offset: usize,
+  ) -> cdp::CoverageRange {
+    cdp::CoverageRange {
+      start_char_offset,
+      end_char_offset,
+      count: 1,
+    }
+  }
+
+  #[test]
+  fn ranges_within_the_source_fit_it() {
+    let source = "const x = \"🕵🏻\";";
+    let utf16_map = Utf16Map::new(source);
+    let len = source.encode_utf16().count();
+    assert!(range_fits_source(&range(0, len), source, &utf16_map));
+    assert!(range_fits_source(&range(10, 16), source, &utf16_map));
+  }
+
+  #[test]
+  fn ranges_past_the_source_end_do_not_fit_it() {
+    let source = "const x = 1;";
+    let utf16_map = Utf16Map::new(source);
+    let len = source.encode_utf16().count();
+    assert!(!range_fits_source(&range(0, len + 1), source, &utf16_map));
+    // Would wrap to 0 if truncated to u32.
+    let wraps_to_zero = u32::MAX as usize + 1;
+    assert!(!range_fits_source(
+      &range(0, wraps_to_zero),
+      source,
+      &utf16_map
+    ));
+    assert!(!range_fits_source(
+      &range(0, usize::MAX),
+      source,
+      &utf16_map
+    ));
+  }
+
+  #[test]
+  fn reversed_ranges_do_not_fit_the_source() {
+    let source = "const x = 1;";
+    let utf16_map = Utf16Map::new(source);
+    assert!(!range_fits_source(&range(5, 2), source, &utf16_map));
+  }
+
+  #[test]
+  fn ranges_inside_a_surrogate_pair_do_not_fit_the_source() {
+    let source = "🕵🏻";
+    let utf16_map = Utf16Map::new(source);
+    assert!(!range_fits_source(&range(1, 2), source, &utf16_map));
   }
 }

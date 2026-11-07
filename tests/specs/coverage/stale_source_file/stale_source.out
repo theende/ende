@@ -1,0 +1,5 @@
+Coverage data for "[WILDCARD]helper.js" doesn't match its source (was it changed after coverage was collected?). Skipping.
+| File      | Branch % | Function % | Line % |
+| --------- | -------- | ---------- | ------ |
+| main.js   |    100.0 |      100.0 |  100.0 |
+| All files |    100.0 |      100.0 |  100.0 |
