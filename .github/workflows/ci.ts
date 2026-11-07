@@ -29,10 +29,10 @@ const cacheVersion = 130;
 
 // Lean CI. While `fullMatrix` is false, CI only runs on pushes to and PRs
 // against `primary` (plus the weekly schedule and manual dispatch), and only
-// runs: pre-build, lint (linux), the debug build/test/libs jobs for
-// linux-x86_64 and macos-aarch64, and the ci-status gate. The macOS jobs only
-// run on the schedule and on manual dispatch, not on push/PR. Turned off:
-// Windows, release builds (tag builds), WPT,
+// runs: pre-build, lint (linux and windows), the debug build/test/libs jobs
+// for linux-x86_64 and macos-aarch64, and the ci-status gate. The macOS jobs
+// only run on the schedule and on manual dispatch, not on push/PR. Turned off:
+// Windows builds and tests, release builds (tag builds), WPT,
 // benchmarks, ende_core nextest/miri.
 // Restore the full matrix once Ende is fully operational by setting this to
 // true and regenerating.
@@ -1245,7 +1245,11 @@ const lintMatrix = defineMatrix({
     ...Runners.windowsX86,
     profile: "debug",
     job: "lint",
-  }].filter((item) => fullMatrix || item.os === "linux"),
+  }].filter((item) =>
+    // Lean CI builds no Windows, so Windows lint is the only check that
+    // compiles Windows-only code before a release.
+    fullMatrix || item.os === "linux" || item.os === "windows"
+  ),
 });
 
 const lintJob = job("lint", {
@@ -1253,7 +1257,8 @@ const lintJob = job("lint", {
   needs: [preBuildJob],
   if: preBuildJob.outputs.skip_build.notEquals("true"),
   runsOn: lintMatrix.runner,
-  timeoutMinutes: 30,
+  // Windows clippy is slow, and in lean CI it has no build cache to start from.
+  timeoutMinutes: 60,
   defaults: {
     run: {
       shell: "bash",
@@ -1271,7 +1276,10 @@ const lintJob = job("lint", {
       cachePrefix: "lint",
       // clippy (check mode, all workspace features, no sysroot RUSTFLAGS)
       // shares little with the build cache, so linux lint keeps its own.
-      saveTarget: lintMatrix.os.equals("linux"),
+      // Lean CI has no Windows build cache, so Windows lint keeps its own too.
+      saveTarget: lintMatrix.os.equals("linux").or(
+        lintMatrix.os.equals("windows"),
+      ),
     });
     return step(
       cloneRepoStep,
