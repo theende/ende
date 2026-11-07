@@ -50,6 +50,7 @@ use http::StatusCode;
 use http::Uri;
 use http::header::CONNECTION;
 use http::header::HOST;
+use http::header::SEC_WEBSOCKET_ACCEPT;
 use http::header::SEC_WEBSOCKET_KEY;
 use http::header::SEC_WEBSOCKET_PROTOCOL;
 use http::header::SEC_WEBSOCKET_VERSION;
@@ -185,6 +186,9 @@ pub enum HandshakeError {
   #[error("Didn't receive h2 alpn, aborting connection")]
   NoH2Alpn,
   #[class(generic)]
+  #[error("Missing or invalid Sec-WebSocket-Accept header")]
+  InvalidAccept,
+  #[class(generic)]
   #[error(transparent)]
   Rustls(#[from] ende_tls::rustls::Error),
   #[class(inherit)]
@@ -301,16 +305,17 @@ async fn handshake_http1(
     request = request.header(HOST, host);
   }
 
+  let key = fastwebsockets::handshake::generate_key();
   request = request
     .header(UPGRADE, "websocket")
     .header(CONNECTION, "Upgrade")
-    .header(SEC_WEBSOCKET_KEY, fastwebsockets::handshake::generate_key());
+    .header(SEC_WEBSOCKET_KEY, &key);
 
   let request = request
     .body(http_body_util::Empty::new())
     .map_err(HandshakeError::Http)?;
 
-  handshake_connection(request, connection).await
+  handshake_connection(request, connection, &key).await
 }
 
 #[allow(clippy::too_many_arguments, reason = "TODO: improve")]
@@ -362,9 +367,20 @@ async fn handshake_connection<
 >(
   request: Request<http_body_util::Empty<Bytes>>,
   socket: S,
+  key: &str,
 ) -> Result<(WebSocket<WebSocketStream>, http::HeaderMap), HandshakeError> {
   let (upgraded, response) =
     fastwebsockets::handshake::client(&LocalExecutor, request, socket).await?;
+  // fastwebsockets checks the status, Upgrade and Connection, but not this.
+  // Returning the error drops the upgraded connection.
+  if response
+    .headers()
+    .get(SEC_WEBSOCKET_ACCEPT)
+    .map(|v| v.as_bytes())
+    != Some(sec_websocket_accept(key).as_bytes())
+  {
+    return Err(HandshakeError::InvalidAccept);
+  }
 
   let upgraded = upgraded.into_inner();
   let stream =
@@ -372,6 +388,18 @@ async fn handshake_connection<
   let stream = WebSocket::after_handshake(stream, Role::Client);
 
   Ok((stream, response.into_parts().0.headers))
+}
+
+/// The Sec-WebSocket-Accept value a server must send for `key` (RFC 6455
+/// section 4.2.2): base64(SHA-1(key + GUID)).
+fn sec_websocket_accept(key: &str) -> String {
+  use base64::Engine;
+  use sha1::Digest;
+
+  let mut sha1 = sha1::Sha1::new();
+  sha1.update(key.as_bytes());
+  sha1.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+  base64::engine::general_purpose::STANDARD.encode(sha1.finalize())
 }
 
 /// Headers common to both http/1.1 and h2 requests.
@@ -1142,9 +1170,19 @@ mod tests {
       }
       peer.write_all(b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n").await.unwrap();
     };
-    let (connected, ()) =
-      tokio::join!(handshake_connection(request, client), accept);
+    let (connected, ()) = tokio::join!(
+      handshake_connection(request, client, "dGhlIHNhbXBsZSBub25jZQ=="),
+      accept
+    );
     (ServerWebSocket::new(connected.unwrap().0), peer)
+  }
+
+  #[test]
+  fn sec_websocket_accept_matches_rfc_6455_example() {
+    assert_eq!(
+      sec_websocket_accept("dGhlIHNhbXBsZSBub25jZQ=="),
+      "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+    );
   }
 
   #[tokio::test]

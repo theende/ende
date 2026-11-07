@@ -3700,6 +3700,7 @@ dependencies = [
 name = "ende_websocket"
 version = "0.264.0"
 dependencies = [
+ "base64 0.22.1",
  "bytes",
  "deno_error",
  "ende_core",
@@ -3715,6 +3716,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "once_cell",
+ "sha1",
  "thiserror 2.0.12",
  "tokio",
 ]

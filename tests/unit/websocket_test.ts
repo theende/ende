@@ -5,6 +5,7 @@
 import {
   assert,
   assertEquals,
+  assertStringIncludes,
   assertThrows,
   delay,
   fail,
@@ -924,6 +925,78 @@ Deno.test(
   },
 );
 
+/**
+ * Answers one WebSocket upgrade with a 101 whose Sec-WebSocket-Accept line
+ * is `acceptLine(key)` (empty for none), and reports what the client saw.
+ */
+async function connectWithAcceptLine(
+  acceptLine: (key: string) => Promise<string>,
+): Promise<{ opened: boolean; error?: string; event: CloseEvent }> {
+  const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
+  const accepted = (async () => {
+    const conn = await listener.accept();
+    const buf = new Uint8Array(4096);
+    let request = "";
+    while (!request.includes("\r\n\r\n")) {
+      const n = await conn.read(buf);
+      if (n === null) break;
+      request += new TextDecoder().decode(buf.subarray(0, n));
+    }
+    const key = request.match(/Sec-WebSocket-Key: (.*)\r\n/i)![1].trim();
+    await conn.write(
+      new TextEncoder().encode(
+        "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n" +
+          `Connection: Upgrade\r\n${await acceptLine(key)}\r\n`,
+      ),
+    );
+    return conn;
+  })();
+
+  const { port } = listener.addr as Deno.NetAddr;
+  const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+  let opened = false;
+  let error: string | undefined;
+  const closed = Promise.withResolvers<CloseEvent>();
+  ws.onopen = () => {
+    opened = true;
+    ws.close();
+  };
+  ws.onerror = (e) => error = (e as ErrorEvent).message;
+  ws.onclose = (e) => closed.resolve(e);
+  const event = await closed.promise;
+
+  (await accepted).close();
+  listener.close();
+  return { opened, error, event };
+}
+
+// RFC 6455 section 4.1: the client must fail the connection if the
+// Sec-WebSocket-Accept header is missing or isn't
+// base64(SHA-1(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")).
+Deno.test("websocket fails on a wrong Sec-WebSocket-Accept", async () => {
+  const result = await connectWithAcceptLine(async (key) => {
+    // The accept value for a different key.
+    const digest = await crypto.subtle.digest(
+      "SHA-1",
+      new TextEncoder().encode(
+        key + "x258EAFA5-E914-47DA-95CA-C5AB0DC85B11",
+      ),
+    );
+    const accept = btoa(String.fromCharCode(...new Uint8Array(digest)));
+    return `Sec-WebSocket-Accept: ${accept}\r\n`;
+  });
+  assertEquals(result.opened, false);
+  assertStringIncludes(result.error!, "Sec-WebSocket-Accept");
+  assertEquals(result.event.wasClean, false);
+});
+
+Deno.test("websocket fails without Sec-WebSocket-Accept", async () => {
+  const result = await connectWithAcceptLine(() => Promise.resolve(""));
+  assertEquals(result.opened, false);
+  assertStringIncludes(result.error!, "Sec-WebSocket-Accept");
+  assertEquals(result.event.wasClean, false);
+});
+
 Deno.test("send to a closed socket", async () => {
   const { promise, resolve } = Promise.withResolvers<void>();
   const ws = new WebSocket("ws://localhost:4242");
@@ -1007,7 +1080,7 @@ Deno.test(
       // Compute accept key
       const hash = await crypto.subtle.digest(
         "SHA-1",
-        new TextEncoder().encode(key + "258EAFA5-E914-47DA-95CA-5AB5DF85B1E3"),
+        new TextEncoder().encode(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"),
       );
       const accept = btoa(
         String.fromCharCode(...new Uint8Array(hash)),
