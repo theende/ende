@@ -685,6 +685,7 @@ const NOT_IMPORTED_OPS = [
   "op_desktop_recv_event",
   "op_desktop_resolve_bind_call",
   "op_desktop_reject_bind_call",
+  "op_desktop_answer_close_request",
   "op_desktop_alert",
   "op_desktop_confirm",
   "op_desktop_prompt",

@@ -611,8 +611,17 @@ pub trait DesktopApi: Send + Sync + 'static {
     transparent_titlebar: bool,
     transparent: bool,
   ) -> u32;
-  /// Close a specific window.
+  /// Close a specific window. Also answers a pending native close request
+  /// for it (see `answer_close_request`).
   fn close_window(&self, window_id: u32);
+  /// JS has answered a native close request (the close button, Cmd+W) for
+  /// this window without closing it: a `close` listener called
+  /// `preventDefault()`, or the window was hidden instead. Stops the answer
+  /// timeout that would otherwise close the window anyway.
+  fn answer_close_request(&self, window_id: u32);
+  /// A WebGPU surface now holds this window's native handles. A close
+  /// request that times out hides the window instead of destroying it.
+  fn set_surface_attached(&self, window_id: u32);
   /// Returns true if the given window has been closed (either via
   /// `close_window` or because the OS window was destroyed).
   fn is_closed(&self, window_id: u32) -> bool;
@@ -1078,6 +1087,7 @@ impl BrowserWindow {
         "BrowserWindow.close(): a WebGPU surface is still attached; hiding window instead of destroying it"
       );
       self.api.hide(self.window_id);
+      self.api.answer_close_request(self.window_id);
       return;
     }
     self.api.close_window(self.window_id);
@@ -1225,6 +1235,7 @@ impl BrowserWindow {
     // Only suppress close() once the surface is actually live. If
     // surface creation failed above, the window is still safe to close.
     self.surface_taken.set(true);
+    self.api.set_surface_attached(self.window_id);
     Ok(result)
   }
 }
@@ -1488,6 +1499,24 @@ fn op_desktop_resolve_bind_call(
     && let Some(tx) = responses.0.lock().unwrap().remove(&call_id)
   {
     let _ = tx.send(Ok(result));
+  }
+}
+
+/// DESKTOP_JS's answer to a `CloseRequested` event: `close` is true when no
+/// `close` listener called `preventDefault()` and nothing else will close
+/// the window (it has no `BrowserWindow`).
+#[op2(fast)]
+fn op_desktop_answer_close_request(
+  state: &mut OpState,
+  #[smi] window_id: u32,
+  close: bool,
+) {
+  if let Some(api) = state.try_borrow::<Arc<dyn DesktopApi>>() {
+    if close {
+      api.close_window(window_id);
+    } else {
+      api.answer_close_request(window_id);
+    }
   }
 }
 
@@ -2346,6 +2375,7 @@ ende_core::extension!(
     op_desktop_recv_event,
     op_desktop_resolve_bind_call,
     op_desktop_reject_bind_call,
+    op_desktop_answer_close_request,
     op_desktop_alert,
     op_desktop_alert_async,
     op_desktop_confirm,

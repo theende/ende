@@ -158,6 +158,20 @@ dir so its watcher sees real files.
 
 ## Lifecycle edges worth knowing
 
+- **Closing a window** (`on_close_requested`, `CloseRequests` in
+  `cli/rt_desktop/lib.rs`): laufey 0.7.0 holds a window open once a
+  close-requested handler is registered, until `Window::close()`. The handler
+  sends `CloseRequested`, and DESKTOP_JS dispatches a cancelable `close` event,
+  then closes the window unless a listener called `preventDefault()` (a window
+  with no `BrowserWindow` closes right away). **Divergence from upstream**:
+  upstream's documented pattern waits for that answer forever, so a hung JS
+  thread made the window impossible to close. Ende's watchdog thread closes it
+  if JS hasn't answered within 5 s (`CLOSE_ANSWER_TIMEOUT`). The clock stops
+  while `alert`/`confirm`/`prompt` block the JS thread. A WebGPU window is
+  hidden instead of destroyed, as in `BrowserWindow.close()`. A programmatic
+  `close()` fires no `close` event, so the documented "`preventDefault()`, ask,
+  then `close()`" pattern can't loop.
+
 - **Fork re-entry guard** (`lib.rs:1145`): framework dev servers fork worker
   processes that re-exec _this same dylib_. A worker is detected by the
   combination of argv shaped like `<exe> run … script.js` **and** a parent

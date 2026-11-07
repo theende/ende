@@ -588,6 +588,21 @@ declare namespace Ende {
     move: CustomEvent<BrowserWindowMoveDetail>;
     /** Fires after a navigation finishes loading. */
     load: Event;
+    /** Fires when the user asks to close the window: its close button,
+     * Cmd+W, Alt+F4 or the window manager's close action. The event is
+     * cancelable. Call `preventDefault()` to keep the window open, for example
+     * to ask about unsaved changes, and call {@linkcode BrowserWindow.close}
+     * later to close it. Without a listener, or if no listener calls
+     * `preventDefault()`, the window closes.
+     *
+     * Listeners must run within about 5 seconds of the request, or the window
+     * closes anyway, so a busy or hung JS thread can't leave a window the user
+     * can't close. Time spent in `alert()`, `confirm()` and `prompt()` doesn't
+     * count. A late event is no longer cancelable. Once a listener has called
+     * `preventDefault()`, the window stays open for as long as it needs, for
+     * example while the page asks the user with `executeJs`.
+     *
+     * Not fired by {@linkcode BrowserWindow.close}, or when the app quits. */
     close: Event;
     menuclick: CustomEvent<MenuClickDetail>;
     contextmenuclick: CustomEvent<MenuClickDetail>;
@@ -648,6 +663,12 @@ declare namespace Ende {
     setOpacity(opacity: number): void;
 
     isClosed(): boolean;
+    /** Close the window. It closes right away and doesn't fire a `close`
+     * event, so it's safe to call from a `close` listener.
+     *
+     * A window whose WebGPU surface was taken with
+     * {@linkcode BrowserWindow.getNativeWindow} is hidden instead, because
+     * destroying it would leave the surface's native handles dangling. */
     close(): void;
 
     isVisible(): boolean;

@@ -21,10 +21,13 @@ use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::Condvar;
 use std::sync::Mutex;
 use std::sync::OnceLock;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
+use std::time::Duration;
+use std::time::Instant;
 
 use deno_terminal::colors;
 use ende_core::anyhow::Context;
@@ -49,11 +52,174 @@ const _: () = assert!(
   "LAUFEY_API_VERSION mismatch: update this assert and the prebuilt backend release pin in cli/tools/desktop.rs when laufey bumps its API version",
 );
 
+/// How long JS has to answer a native close request (the window's close
+/// button, Cmd+W, Alt+F4) before the window closes anyway.
+///
+/// JS answers by dispatching the cancelable `close` event: the window closes
+/// unless a listener calls `preventDefault()`. Upstream's documented pattern
+/// waits for that answer forever, so a hung or busy JS thread would leave a
+/// window the user can't close. Ende closes it after this long instead. Time
+/// spent in `alert`/`confirm`/`prompt` doesn't count: they block the JS
+/// thread on purpose.
+const CLOSE_ANSWER_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Native close requests that JS hasn't answered yet, and the watchdog
+/// thread that closes their windows when the answer is too late.
+struct CloseRequests {
+  state: Mutex<CloseRequestsState>,
+  wake: Condvar,
+  timeout: Duration,
+  on_timeout: Box<dyn Fn(u32) + Send + Sync>,
+}
+
+struct CloseRequestsState {
+  /// Window id → the answer time it has left, as of `settled_at`.
+  pending: HashMap<u32, Duration>,
+  /// Modal dialogs open right now. Budgets don't run while one is.
+  dialogs: usize,
+  settled_at: Instant,
+}
+
+impl CloseRequestsState {
+  /// Charge the time since the last call to every pending budget, unless a
+  /// dialog was open. Call before changing `pending` or `dialogs`.
+  fn settle(&mut self, now: Instant) {
+    if self.dialogs == 0 {
+      let elapsed = now.saturating_duration_since(self.settled_at);
+      for left in self.pending.values_mut() {
+        *left = left.saturating_sub(elapsed);
+      }
+    }
+    self.settled_at = now;
+  }
+}
+
+impl CloseRequests {
+  /// `on_timeout` runs on the watchdog thread for each window whose request
+  /// wasn't answered in time.
+  fn new(
+    timeout: Duration,
+    on_timeout: impl Fn(u32) + Send + Sync + 'static,
+  ) -> Arc<Self> {
+    let requests = Arc::new(Self {
+      state: Mutex::new(CloseRequestsState {
+        pending: HashMap::new(),
+        dialogs: 0,
+        settled_at: Instant::now(),
+      }),
+      wake: Condvar::new(),
+      timeout,
+      on_timeout: Box::new(on_timeout),
+    });
+    let watched = requests.clone();
+    std::thread::Builder::new()
+      .name("ende-desktop-close-watchdog".to_string())
+      .spawn(move || watched.watch())
+      .expect("failed to spawn the window close watchdog thread");
+    requests
+  }
+
+  /// Start the answer timeout for a close request. Returns `false` if one is
+  /// already pending for this window: JS gets one `close` event per request
+  /// it answers, not one per click.
+  fn begin(&self, window_id: u32) -> bool {
+    let mut state = self.state.lock().unwrap();
+    state.settle(Instant::now());
+    if state.pending.contains_key(&window_id) {
+      return false;
+    }
+    state.pending.insert(window_id, self.timeout);
+    self.wake.notify_one();
+    true
+  }
+
+  /// JS answered the request for this window, or the window closed: stop its
+  /// timeout. A no-op if none is pending.
+  fn answer(&self, window_id: u32) {
+    let mut state = self.state.lock().unwrap();
+    state.settle(Instant::now());
+    state.pending.remove(&window_id);
+  }
+
+  /// Pause every timeout until the returned guard drops. Hold it while a
+  /// modal dialog blocks the JS thread.
+  fn dialog(&self) -> CloseRequestsDialog<'_> {
+    let mut state = self.state.lock().unwrap();
+    state.settle(Instant::now());
+    state.dialogs += 1;
+    CloseRequestsDialog(self)
+  }
+
+  fn watch(&self) {
+    let mut state = self.state.lock().unwrap();
+    loop {
+      state.settle(Instant::now());
+      let mut wait = None;
+      let mut expired = Vec::new();
+      if state.dialogs == 0 {
+        for (&window_id, &left) in &state.pending {
+          if left.is_zero() {
+            expired.push(window_id);
+          } else {
+            wait = Some(wait.map_or(left, |w: Duration| w.min(left)));
+          }
+        }
+      }
+      if !expired.is_empty() {
+        for window_id in &expired {
+          state.pending.remove(window_id);
+        }
+        drop(state);
+        for window_id in expired {
+          log::warn!(
+            "[desktop] window {window_id}: JS didn't answer the close request within {:?}; closing it anyway",
+            self.timeout
+          );
+          (self.on_timeout)(window_id);
+        }
+        state = self.state.lock().unwrap();
+        continue;
+      }
+      state = match wait {
+        Some(wait) => self.wake.wait_timeout(state, wait).unwrap().0,
+        None => self.wake.wait(state).unwrap(),
+      };
+    }
+  }
+}
+
+/// Keeps close timeouts paused; see [`CloseRequests::dialog`].
+struct CloseRequestsDialog<'a>(&'a CloseRequests);
+
+impl Drop for CloseRequestsDialog<'_> {
+  fn drop(&mut self) {
+    let mut state = self.0.state.lock().unwrap();
+    state.settle(Instant::now());
+    state.dialogs -= 1;
+    self.0.wake.notify_one();
+  }
+}
+
+/// Close a window natively and record it as closed.
+fn close_native_window(
+  closed_windows: &Mutex<HashSet<u32>>,
+  open_windows: &Mutex<HashSet<u32>>,
+  window_id: u32,
+) {
+  closed_windows.lock().unwrap().insert(window_id);
+  open_windows.lock().unwrap().remove(&window_id);
+  laufey::Window::from_id(window_id).close();
+}
+
 /// Laufey-backed implementation of [`endert::desktop::DesktopApi`].
 struct WefDesktopApi {
   event_tx: ende_runtime::ops::desktop::DesktopEventSender,
   pending_responses: ende_runtime::ops::desktop::PendingBindResponses,
   closed_windows: Arc<Mutex<HashSet<u32>>>,
+  /// Windows whose WebGPU surface holds their native handles. A close that
+  /// times out hides them instead of destroying them under the surface.
+  surface_windows: Arc<Mutex<HashSet<u32>>>,
+  close_requests: Arc<CloseRequests>,
   /// IDs of every window currently displayed. Shared with the HMR reload
   /// callback so it can refresh all windows, not just the initial one.
   open_windows: Arc<Mutex<HashSet<u32>>>,
@@ -84,6 +250,7 @@ impl WefDesktopApi {
     let close_tx = self.event_tx.clone();
     let closed_windows = self.closed_windows.clone();
     let open_windows_on_close = self.open_windows.clone();
+    let close_requests = self.close_requests.clone();
     let shown = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
     window
@@ -212,18 +379,31 @@ impl WefDesktopApi {
         );
       })
       .on_close_requested(move |ev| {
-        closed_windows.lock().unwrap().insert(ev.window_id);
-        open_windows_on_close.lock().unwrap().remove(&ev.window_id);
-        let _ = close_tx.send(
-          ende_runtime::ops::desktop::DesktopEvent::CloseRequested {
-            window_id: ev.window_id,
-          },
-        );
         // Since laufey 0.7.0 a registered close-requested handler *defers*
         // the close: the window stays open until `Window::close()` is called.
-        // The JS "close" event is a plain notification (not cancelable), so
-        // complete the close here to keep the native close button working.
-        laufey::Window::from_id(ev.window_id).close();
+        // JS decides: DESKTOP_JS dispatches a cancelable "close" event and
+        // closes the window unless a listener calls `preventDefault()`. If
+        // JS doesn't answer in time, `close_requests` closes it anyway.
+        let window_id = ev.window_id;
+        if closed_windows.lock().unwrap().contains(&window_id)
+          || !close_requests.begin(window_id)
+        {
+          return;
+        }
+        let sent = close_tx.send(
+          ende_runtime::ops::desktop::DesktopEvent::CloseRequested {
+            window_id,
+          },
+        );
+        if !sent {
+          // The runtime is gone; nothing will answer.
+          close_requests.answer(window_id);
+          close_native_window(
+            &closed_windows,
+            &open_windows_on_close,
+            window_id,
+          );
+        }
       })
   }
 
@@ -286,9 +466,16 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
   }
 
   fn close_window(&self, window_id: u32) {
-    self.closed_windows.lock().unwrap().insert(window_id);
-    self.open_windows.lock().unwrap().remove(&window_id);
-    laufey::Window::from_id(window_id).close();
+    self.close_requests.answer(window_id);
+    close_native_window(&self.closed_windows, &self.open_windows, window_id);
+  }
+
+  fn answer_close_request(&self, window_id: u32) {
+    self.close_requests.answer(window_id);
+  }
+
+  fn set_surface_attached(&self, window_id: u32) {
+    self.surface_windows.lock().unwrap().insert(window_id);
   }
 
   fn is_closed(&self, window_id: u32) -> bool {
@@ -617,10 +804,12 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
   }
 
   fn alert(&self, title: &str, message: &str) {
+    let _dialog = self.close_requests.dialog();
     laufey::alert(title, message);
   }
 
   fn confirm(&self, title: &str, message: &str) -> bool {
+    let _dialog = self.close_requests.dialog();
     laufey::confirm(title, message)
   }
 
@@ -630,6 +819,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
     message: &str,
     default_value: &str,
   ) -> Option<String> {
+    let _dialog = self.close_requests.dialog();
     laufey::prompt(title, message, default_value)
   }
 
@@ -1673,10 +1863,28 @@ async fn run_desktop(
       let (event_tx, event_rx) =
         endert::desktop::create_desktop_event_channel();
       let pending_responses = endert::desktop::PendingBindResponses::new();
+      let closed_windows = Arc::new(Mutex::new(HashSet::new()));
+      let surface_windows = Arc::new(Mutex::new(HashSet::new()));
+      let close_requests = {
+        let closed_windows = closed_windows.clone();
+        let open_windows = open_windows_for_api.clone();
+        let surface_windows = surface_windows.clone();
+        CloseRequests::new(CLOSE_ANSWER_TIMEOUT, move |window_id| {
+          if surface_windows.lock().unwrap().contains(&window_id) {
+            // Destroying it would dangle the surface's handles; see
+            // `BrowserWindow.close()` in ende_runtime.
+            laufey::Window::from_id(window_id).hide();
+          } else {
+            close_native_window(&closed_windows, &open_windows, window_id);
+          }
+        })
+      };
       let api = WefDesktopApi {
         event_tx: event_tx.clone(),
         pending_responses: pending_responses.clone(),
-        closed_windows: Arc::new(Mutex::new(HashSet::new())),
+        closed_windows,
+        surface_windows,
+        close_requests,
         open_windows: open_windows_for_api.clone(),
         trays: Arc::new(Mutex::new(HashMap::new())),
         notifications: Arc::new(Mutex::new(HashMap::new())),
@@ -1859,8 +2067,14 @@ async fn run_desktop(
 
 #[cfg(test)]
 mod tests {
+  use std::sync::Arc;
+  use std::sync::Mutex;
+  use std::time::Duration;
+  use std::time::Instant;
+
   use ende_runtime::ops::desktop::PermissionState;
 
+  use super::CloseRequests;
   use super::desktop_menu_item_to_laufey_menu_item;
   use super::desktop_value_to_laufey_value;
   use super::laufey_value_to_desktop_value;
@@ -2368,5 +2582,97 @@ mod tests {
   fn run_on_ui_thread_survives_a_panicking_task() {
     let api = fake_api(Some(post_to_other_thread));
     run_on_ui_thread(Some(&api), Box::new(|| panic!("task panicked")));
+  }
+
+  // --- CloseRequests (denoland/deno#36973) ---
+
+  type Fired = Arc<Mutex<Vec<(u32, Instant)>>>;
+
+  fn close_requests(timeout_ms: u64) -> (Arc<CloseRequests>, Fired) {
+    let fired: Fired = Arc::new(Mutex::new(Vec::new()));
+    let sink = fired.clone();
+    let requests =
+      CloseRequests::new(Duration::from_millis(timeout_ms), move |window_id| {
+        sink.lock().unwrap().push((window_id, Instant::now()))
+      });
+    (requests, fired)
+  }
+
+  /// Wait up to 5 s for the first timeout.
+  fn first_timeout(fired: &Fired) -> Option<(u32, Instant)> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < deadline {
+      if let Some(&first) = fired.lock().unwrap().first() {
+        return Some(first);
+      }
+      std::thread::sleep(Duration::from_millis(10));
+    }
+    None
+  }
+
+  #[test]
+  fn close_request_without_answer_times_out() {
+    let (requests, fired) = close_requests(100);
+    let start = Instant::now();
+    assert!(requests.begin(7));
+    let (window_id, at) = first_timeout(&fired).expect("no timeout");
+    assert_eq!(window_id, 7);
+    assert!(at - start >= Duration::from_millis(100));
+  }
+
+  #[test]
+  fn answered_close_request_does_not_time_out() {
+    let (requests, fired) = close_requests(100);
+    assert!(requests.begin(7));
+    requests.answer(7);
+    std::thread::sleep(Duration::from_millis(400));
+    assert!(fired.lock().unwrap().is_empty());
+  }
+
+  #[test]
+  fn close_request_is_sent_once_until_answered() {
+    let (requests, _fired) = close_requests(60_000);
+    assert!(requests.begin(7));
+    assert!(!requests.begin(7), "a second click while pending");
+    assert!(requests.begin(8), "other windows are independent");
+    requests.answer(7);
+    assert!(
+      requests.begin(7),
+      "a click after the answer is a new request"
+    );
+  }
+
+  #[test]
+  fn dialog_time_does_not_count_toward_the_timeout() {
+    let (requests, fired) = close_requests(500);
+    assert!(requests.begin(7));
+    std::thread::sleep(Duration::from_millis(100));
+    let dialog = requests.dialog();
+    // A request that arrives while the dialog is up waits too.
+    assert!(requests.begin(8));
+    std::thread::sleep(Duration::from_millis(1000));
+    assert!(
+      fired.lock().unwrap().is_empty(),
+      "timed out inside a dialog"
+    );
+    let closed_at = Instant::now();
+    drop(dialog);
+    let (window_id, at) = first_timeout(&fired).expect("no timeout");
+    assert_eq!(window_id, 7);
+    // About 400 ms of window 7's budget was left when the dialog opened.
+    assert!(at - closed_at >= Duration::from_millis(250));
+  }
+
+  #[test]
+  fn nested_dialogs_pause_until_the_last_one_closes() {
+    let (requests, fired) = close_requests(100);
+    let outer = requests.dialog();
+    let inner = requests.dialog();
+    assert!(requests.begin(7));
+    drop(inner);
+    std::thread::sleep(Duration::from_millis(400));
+    assert!(fired.lock().unwrap().is_empty());
+    drop(outer);
+    assert_eq!(first_timeout(&fired).map(|(id, _)| id), Some(7));
   }
 }

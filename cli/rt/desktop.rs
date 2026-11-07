@@ -27,6 +27,7 @@ pub const DESKTOP_JS: &str = r#"
     op_desktop_recv_event,
     op_desktop_resolve_bind_call,
     op_desktop_reject_bind_call,
+    op_desktop_answer_close_request,
     op_desktop_alert,
     op_desktop_confirm,
     op_desktop_prompt,
@@ -934,9 +935,28 @@ pub const DESKTOP_JS: &str = r#"
             break;
           }
           case "closeRequested": {
+            // A native close request (close button, Cmd+W, Alt+F4). The
+            // window stays open until this answers; see CLOSE_ANSWER_TIMEOUT
+            // in cli/rt_desktop for what happens if it takes too long.
             const target = windows.get(ev.windowId);
-            if (!target) break;
-            target.dispatchEvent(new Event("close"));
+            if (!target) {
+              // No BrowserWindow (the initial window before the app adopts
+              // it, a DevTools window): nothing can cancel the close.
+              op_desktop_answer_close_request(ev.windowId, true);
+              break;
+            }
+            // Past the timeout the window is already closed, so the event
+            // only reports it.
+            const cancelable = !target.isClosed();
+            const close = target.dispatchEvent(new Event("close", { cancelable }));
+            if (!cancelable) break;
+            if (close) {
+              // close() rather than the op: it hides a WebGPU window instead
+              // of destroying it.
+              target.close();
+            } else {
+              op_desktop_answer_close_request(ev.windowId, false);
+            }
             break;
           }
           case "runtimeError": {
@@ -1467,6 +1487,25 @@ mod tests {
     ));
     assert!(DESKTOP_JS.contains("case \"pageLoad\""));
     assert!(DESKTOP_JS.contains("dispatchEvent(new Event(\"load\"))"));
+  }
+
+  #[test]
+  fn desktop_js_close_event_is_cancelable_and_answered() {
+    // denoland/deno#36973: the window stays open until JS answers a native
+    // close request. A `close` listener can cancel it; otherwise, and for a
+    // window with no BrowserWindow, JS closes the window.
+    assert!(
+      DESKTOP_JS
+        .contains("dispatchEvent(new Event(\"close\", { cancelable }))")
+    );
+    assert!(
+      DESKTOP_JS.contains("op_desktop_answer_close_request(ev.windowId, true)")
+    );
+    assert!(
+      DESKTOP_JS
+        .contains("op_desktop_answer_close_request(ev.windowId, false)")
+    );
+    assert!(DESKTOP_JS.contains("target.close();"));
   }
 
   #[test]
