@@ -198,16 +198,22 @@ dir so its watcher sees real files.
   `execve`s the host executable with the same argv and environment plus
   `ENDE_DESKTOP_UPDATE_REEXEC` (Ende-written, denoland/deno#36948). The new
   image's first run is the update's trial: it writes `.update-trial`, and only
-  it may write `.update-ok` (`op_desktop_confirm_update`, before the main module
-  loads). A launch that finds `.update-trial` without `.update-ok` restores
-  `.backup` and re-execs again, so the old code runs and fires `onRollback`. A
-  re-exec'd process never swaps or re-execs, so there is no loop. Before the
-  exec every descriptor above stderr is marked `FD_CLOEXEC`: without that, the
-  new CEF image kept the old one's profile files (LevelDB `LOCK`s, caches) and
-  pipes open. If the exec fails, the old code keeps running, logs a warning, and
-  doesn't confirm; the next launch is the trial. The backend is already up at
-  that point, so a CEF window that showed at creation may flash once. A dylib
-  that can't even be loaded never reaches this code, so it can't be rolled back.
+  it may write `.update-ok` (`UpdateTrial`, once). The trial succeeds once the
+  main module has evaluated, top-level await included, and the event loop has
+  run one more turn (`confirm_update_trial` in `cli/rt/run.rs`; that turn
+  dispatches rejections startup code left unhandled), unless an uncaught error
+  has started the desktop error exit; or when the app exits with code 0 before
+  that (an `OpExitCallbacks` hook). So an update whose startup JS throws or
+  rejects is rolled back; a crash later in the trial launch isn't. A launch that
+  finds `.update-trial` without `.update-ok` restores `.backup` and re-execs
+  again, so the old code runs and fires `onRollback`. A re-exec'd process never
+  swaps or re-execs, so there is no loop. Before the exec every descriptor above
+  stderr is marked `FD_CLOEXEC`: without that, the new CEF image kept the old
+  one's profile files (LevelDB `LOCK`s, caches) and pipes open. If the exec
+  fails, the old code keeps running, logs a warning, and doesn't confirm; the
+  next launch is the trial. The backend is already up at that point, so a CEF
+  window that showed at creation may flash once. A dylib that can't even be
+  loaded never reaches this code, so it can't be rolled back.
 - **Fork re-entry guard** (`lib.rs:1145`): framework dev servers fork worker
   processes that re-exec _this same dylib_. A worker is detected by the
   combination of argv shaped like `<exe> run … script.js` **and** a parent

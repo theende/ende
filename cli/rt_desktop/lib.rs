@@ -1342,8 +1342,8 @@ const REEXEC_AFTER_ROLLBACK: &str = "rolled-back";
 /// The update files live beside the dylib. `<dylib>.update` is staged by
 /// `op_desktop_apply_patch`. `<dylib>.backup` is the dylib an update replaced.
 /// `<dylib>.update-trial` is written when the new code first starts.
-/// `<dylib>.update-ok` is written by `op_desktop_confirm_update` once the new
-/// code has booted. Each launch checks them in this order:
+/// `<dylib>.update-ok` confirms the new code (`UpdateTrial` in ende_runtime).
+/// Each launch checks them in this order:
 ///
 /// 1. `.update` exists: swap it in, keeping the old dylib as `.backup`
 ///    ([`Swapped`]). `runtime_main` then re-execs the host, so the new code
@@ -1365,8 +1365,14 @@ const REEXEC_AFTER_ROLLBACK: &str = "rolled-back";
 /// 5. Anything else: nothing to do ([`Normal`]).
 ///
 /// Only a [`Trial`] launch writes `.update-ok`, so an old process that keeps
-/// running after a failed re-exec can't confirm an update it never ran. A
-/// re-exec'd process never re-execs, whatever it finds.
+/// running after a failed re-exec can't confirm an update it never ran. It
+/// writes it once the app's main module has evaluated (top-level await
+/// included) and the event loop has run one more turn, unless an uncaught
+/// error has started the desktop error exit by then; or when the app exits
+/// with code 0 before that. So an update whose main module throws, whose
+/// top-level await rejects, or that leaves a startup rejection unhandled, is
+/// rolled back. A crash later in the trial launch isn't. A re-exec'd process
+/// never re-execs, whatever it finds.
 ///
 /// [`Swapped`]: UpdateLaunch::Swapped
 /// [`Normal`]: UpdateLaunch::Normal
@@ -2321,10 +2327,10 @@ async fn run_desktop(
   #[cfg(unix)]
   let auto_update_state = get_dylib_path().map(|p| {
     endert::desktop::AutoUpdateState {
+      update_trial: update_trial.then(|| endert::desktop::UpdateTrial::new(&p)),
       dylib_path: p,
       app_version: data.metadata.app_version.clone(),
       rolled_back: update_rolled_back, // from runtime_main's startup check
-      update_trial,
     }
   });
   #[cfg(not(unix))]

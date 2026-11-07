@@ -43,6 +43,8 @@ use ende_runtime::WorkerExecutionMode;
 use ende_runtime::WorkerLogLevel;
 use ende_runtime::code_cache::CodeCache;
 use ende_runtime::ende_fs::FileSystem;
+use ende_runtime::ende_os::ExitCode;
+use ende_runtime::ende_os::OpExitCallbacks;
 use ende_runtime::ende_permissions::CheckSpecifierKind;
 use ende_runtime::ende_permissions::Permissions;
 use ende_runtime::ende_permissions::PermissionsContainer;
@@ -1007,6 +1009,27 @@ pub async fn run_with_options(
     worker
       .js_runtime()
       .execute_script("ext:ende_desktop/error_reporting", js)?;
+
+    // In an update's trial launch, a clean `Ende.exit(0)` confirms the update
+    // too, even before `confirm_update_trial` gets to (see `UpdateTrial`).
+    let op_state = worker.js_runtime().op_state();
+    let mut state = op_state.borrow_mut();
+    let trial = state
+      .try_borrow::<crate::desktop::AutoUpdateState>()
+      .and_then(|s| s.update_trial.clone());
+    let exit_code = state.try_borrow::<ExitCode>().cloned();
+    if let (Some(trial), Some(exit_code)) = (trial, exit_code) {
+      if !state.has::<OpExitCallbacks>() {
+        state.put(OpExitCallbacks::default());
+      }
+      state
+        .borrow_mut::<OpExitCallbacks>()
+        .push(Box::new(move || {
+          if exit_code.get() == 0 {
+            trial.confirm();
+          }
+        }));
+    }
   }
 
   if let Some(watch_dir) = hmr_watch_dir {
@@ -1022,6 +1045,7 @@ pub async fn run_with_options(
     worker.run_event_loop(false).await?;
 
     worker.execute_load_phase().await?;
+    confirm_update_trial(&mut worker).await?;
 
     loop {
       let hmr_fut = hmr_runner.run();
@@ -1057,11 +1081,44 @@ pub async fn run_with_options(
       .execute_load_phase()
       .await
       .map_err(desktop_startup_error)?;
+    confirm_update_trial(&mut worker).await?;
     Ok(worker.run_event_loop_to_completion().await?)
   } else {
     let exit_code = worker.run().await?;
     Ok(exit_code)
   }
+}
+
+/// Confirms a desktop update in its trial launch (`UpdateTrial`, and
+/// `UpdateLaunch` in cli/rt_desktop/lib.rs): called once the main module has
+/// evaluated, top-level await included. It first lets the event loop run one
+/// more turn, which is where the rejections startup code left unhandled are
+/// dispatched (after the turn's timers). Then it confirms, unless an uncaught
+/// error has started the desktop error exit (`DESKTOP_CONFIRM_UPDATE_JS`).
+/// Does nothing outside a trial launch.
+async fn confirm_update_trial(
+  worker: &mut ende_lib::worker::LibMainWorker,
+) -> Result<(), ende_core::error::CoreError> {
+  let in_trial = worker
+    .js_runtime()
+    .op_state()
+    .borrow()
+    .try_borrow::<crate::desktop::AutoUpdateState>()
+    .is_some_and(|s| s.update_trial.is_some());
+  if !in_trial {
+    return Ok(());
+  }
+  // `biased` polls the event loop once, then takes the ready branch.
+  tokio::select! {
+    biased;
+    result = worker.run_event_loop(false) => result?,
+    () = std::future::ready(()) => {}
+  }
+  worker.js_runtime().execute_script(
+    "ext:ende_desktop/confirm_update",
+    crate::desktop::DESKTOP_CONFIRM_UPDATE_JS,
+  )?;
+  Ok(())
 }
 
 /// Grant read access to the embedded VFS root so the compiled binary

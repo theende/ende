@@ -13,6 +13,7 @@ use ende_core::OpState;
 pub use ende_runtime::ops::desktop::AutoUpdateState;
 pub use ende_runtime::ops::desktop::DesktopApi;
 pub use ende_runtime::ops::desktop::MenuItem;
+pub use ende_runtime::ops::desktop::UpdateTrial;
 
 /// JS code that exposes desktop APIs via `Ende.BrowserWindow` and `Ende.desktop`.
 pub const DESKTOP_JS: &str = r#"
@@ -1040,6 +1041,14 @@ pub const DESKTOP_JS: &str = r#"
 })();
 "#;
 
+/// Confirms a just-applied update in its trial launch. The standalone runtime
+/// runs it once the main module has evaluated and the event loop has turned
+/// once more, unless an uncaught error has already started the error exit
+/// (`desktop_error_reporting_js`). Outside a trial launch the op does nothing.
+pub const DESKTOP_CONFIRM_UPDATE_JS: &str = r#"if (!Ende[Ende.internal].desktopExitingOnError) {
+  Ende[Ende.internal].core.ops.op_desktop_confirm_update();
+}"#;
+
 /// JS code that initializes auto-update APIs. Executed separately so
 /// version and rollback state can be baked in as literals.
 pub fn desktop_auto_update_js(
@@ -1052,7 +1061,6 @@ pub fn desktop_auto_update_js(
   const {{
     op_desktop_apply_patch,
     op_desktop_verify_ed25519,
-    op_desktop_confirm_update,
   }} = Ende[Ende.internal].core.ops;
   const {{ propReadOnly, propWritable }} = Ende[Ende.internal].core;
 
@@ -1061,10 +1069,6 @@ pub fn desktop_auto_update_js(
   const _releaseBaseUrl = {release_base_url};
 
   const ROLLBACK_REASON = "Update failed to start, rolled back.";
-
-  if (!_rolledBack) {{
-    op_desktop_confirm_update();
-  }}
 
   let autoUpdateTimer = null;
 
@@ -1291,6 +1295,8 @@ pub fn desktop_error_reporting_js(
     ev.preventDefault();
     if (_exiting) return;
     _exiting = true;
+    // An update on trial must not be confirmed now (DESKTOP_CONFIRM_UPDATE_JS).
+    Ende[Ende.internal].desktopExitingOnError = true;
 
     let shown;
     try {{
@@ -1553,6 +1559,19 @@ mod tests {
     );
     assert!(js.contains("const _version ="));
     assert!(js.contains("const _rolledBack = false"));
+    // Confirming here, before the main module loads, kept updates whose
+    // startup code throws; the runtime confirms after the load instead.
+    assert!(!js.contains("op_desktop_confirm_update"));
+  }
+
+  #[test]
+  fn uncaught_error_exit_blocks_the_update_confirmation() {
+    let js = desktop_error_reporting_js(None, None);
+    assert!(js.contains("Ende[Ende.internal].desktopExitingOnError = true;"));
+    assert!(
+      super::DESKTOP_CONFIRM_UPDATE_JS
+        .contains("if (!Ende[Ende.internal].desktopExitingOnError)")
+    );
   }
 
   #[test]

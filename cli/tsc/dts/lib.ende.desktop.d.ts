@@ -334,9 +334,11 @@ declare namespace Ende {
    * right away, before any of its code runs. If the new version then fails
    * to start, the launch after that rolls back to the backup, restarts into
    * the previous version, and `onRollback` is invoked shortly after its
-   * `autoUpdate` call. Only a failure before the app's own code runs (a
-   * crash while the runtime starts) counts; an error thrown by the app's
-   * code doesn't roll back. Updates are applied on macOS and Linux only.
+   * `autoUpdate` call. "Fails to start" means the process ends before the
+   * main module has finished evaluating (top-level `await` included) and
+   * the event loop has run once more, or the main module throws, rejects,
+   * or leaves a rejection unhandled in that time. Exiting with code 0 counts
+   * as a successful start. Updates are applied on macOS and Linux only.
    *
    * The release server URL may be passed directly, supplied via
    * {@linkcode AutoUpdateOptions.url}, or configured once in `ende.json`

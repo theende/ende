@@ -1463,9 +1463,48 @@ pub struct AutoUpdateState {
   pub app_version: Option<String>,
   /// Whether we rolled back from a failed update on this launch.
   pub rolled_back: bool,
-  /// Whether this launch is the first run of a just-applied update, the only
-  /// launch that may confirm it (see `op_desktop_confirm_update`).
-  pub update_trial: bool,
+  /// Set only in the first run of a just-applied update, the only launch that
+  /// may confirm it.
+  pub update_trial: Option<Arc<UpdateTrial>>,
+}
+
+/// What a just-applied update's trial launch owes: the `.update-ok` sentinel
+/// beside the dylib, which keeps the update on the next launch.
+///
+/// Only the trial launch has one. Any other launch would confirm an update it
+/// never ran: the old code still running after a failed re-exec, or a launch
+/// after a rollback that couldn't be written. Writing the sentinel on every
+/// launch also put a stray file inside the app bundle's `Contents/MacOS/`,
+/// which invalidates the bundle's code signature and even blocks re-signing
+/// (#36418).
+///
+/// The standalone runtime confirms once the main module has evaluated and the
+/// event loop has turned once more, or when the app exits with code 0 (see
+/// `UpdateLaunch` in cli/rt_desktop/lib.rs).
+pub struct UpdateTrial {
+  sentinel: PathBuf,
+  confirmed: AtomicBool,
+}
+
+impl UpdateTrial {
+  pub fn new(dylib_path: &Path) -> Arc<Self> {
+    let ext = dylib_path.extension().unwrap_or_default().to_string_lossy();
+    Arc::new(Self {
+      sentinel: dylib_path.with_extension(format!("{ext}.update-ok")),
+      confirmed: AtomicBool::new(false),
+    })
+  }
+
+  /// Writes `.update-ok`, the first time only.
+  #[allow(
+    clippy::disallowed_methods,
+    reason = "privileged auto-update sentinel write next to the dylib, outside any user sandbox"
+  )]
+  pub fn confirm(&self) {
+    if !self.confirmed.swap(true, Ordering::SeqCst) {
+      let _ = std::fs::write(&self.sentinel, b"ok");
+    }
+  }
 }
 
 /// Hex-decoded length of a SHA-256 digest.
@@ -1640,34 +1679,12 @@ async fn op_desktop_recv_event(
 
 #[op2(fast)]
 pub fn op_desktop_confirm_update(state: &mut OpState) {
-  if let Some(s) = state.try_borrow::<AutoUpdateState>() {
-    confirm_update(s);
+  if let Some(trial) = state
+    .try_borrow::<AutoUpdateState>()
+    .and_then(|s| s.update_trial.as_ref())
+  {
+    trial.confirm();
   }
-}
-
-/// Writes the `.update-ok` sentinel that confirms a just-applied update.
-///
-/// Only the update's trial launch writes it. Any other launch would confirm
-/// an update it never ran: the old code still running after a failed
-/// re-exec, or a launch after a rollback that couldn't be written. Writing it
-/// on every launch also put a stray file inside the app bundle's
-/// `Contents/MacOS/`, which invalidates the bundle's code signature and even
-/// blocks re-signing (#36418).
-#[allow(
-  clippy::disallowed_methods,
-  reason = "privileged auto-update sentinel write next to the dylib, outside any user sandbox"
-)]
-fn confirm_update(s: &AutoUpdateState) {
-  if !s.update_trial {
-    return;
-  }
-  let ext = s
-    .dylib_path
-    .extension()
-    .unwrap_or_default()
-    .to_string_lossy();
-  let sentinel = s.dylib_path.with_extension(format!("{}.update-ok", ext));
-  let _ = std::fs::write(&sentinel, b"ok");
 }
 
 #[op2]
@@ -2591,34 +2608,18 @@ mod tests {
 
   // --- auto-update confirmation ---
 
-  fn update_state(
-    dir: &test_util::PathRef,
-    update_trial: bool,
-  ) -> super::AutoUpdateState {
-    super::AutoUpdateState {
-      dylib_path: dir.join("app.dylib").to_path_buf(),
-      app_version: None,
-      rolled_back: false,
-      update_trial,
-    }
-  }
-
   #[test]
-  fn confirm_update_writes_the_sentinel_in_the_trial_launch() {
+  fn update_trial_writes_the_sentinel_once() {
     let dir = test_util::TempDir::new();
-    dir.path().join("app.dylib.backup").write("old");
-    super::confirm_update(&update_state(dir.path(), true));
-    assert!(dir.path().join("app.dylib.update-ok").exists());
-  }
-
-  #[test]
-  fn confirm_update_writes_nothing_outside_the_trial_launch() {
-    // A `.backup` alone isn't a trial: after a failed re-exec, the old code
-    // keeps running beside the swapped-in dylib's backup.
-    let dir = test_util::TempDir::new();
-    dir.path().join("app.dylib.backup").write("old");
-    super::confirm_update(&update_state(dir.path(), false));
-    assert!(!dir.path().join("app.dylib.update-ok").exists());
+    let trial = super::UpdateTrial::new(dir.path().join("app.dylib").as_path());
+    let sentinel = dir.path().join("app.dylib.update-ok");
+    trial.confirm();
+    assert!(sentinel.exists());
+    // A second confirmation (the exit hook after the post-load one) is a
+    // no-op.
+    sentinel.remove_file();
+    trial.confirm();
+    assert!(!sentinel.exists());
   }
 
   // --- printToPdf `path` permission ---
