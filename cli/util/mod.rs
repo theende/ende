@@ -10,6 +10,8 @@ pub mod extract;
 pub mod file_watcher;
 pub mod fs;
 pub mod git;
+#[cfg(windows)]
+pub mod job_object;
 pub mod panic_report;
 pub mod path;
 pub mod progress_bar;

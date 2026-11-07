@@ -1261,6 +1261,18 @@ async fn run_desktop_hmr(
           laufey_backend.display()
         )
       })?;
+    // `kill_on_drop` only reaches the backend itself. On Windows its helper
+    // processes (CEF renderers, WebView2) go in a kill-on-close job, which
+    // ends them when this block ends or when this process dies.
+    #[cfg(windows)]
+    let _job = crate::util::job_object::KillOnCloseJob::assign(&child)
+      .inspect_err(|e| {
+        log::warn!(
+          "Could not put the LAUFEY backend in a job object, so its helper \
+           processes may outlive it: {e}"
+        )
+      })
+      .ok();
     child
       .wait()
       .await
