@@ -71,7 +71,7 @@ pub static ENV_VARS: &[EnvVar] = &[
   },
   EnvVar {
     name: "ENDE_SERVE_ADDRESS",
-    description: "Override address for Ende.serve",
+    description: "Override address for the first Ende.serve (not in Workers)",
     example: Some(
       r#"("tcp:0.0.0.0:8080", "unix:/tmp/ende.sock", or "vsock:1234:5678")"#,
     ),

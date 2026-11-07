@@ -1819,8 +1819,18 @@ fn extract_network_stream<U: CanDowncastUpgrade>(
   unreachable!("unexpected stream type");
 }
 
+/// Put in a web Worker's `OpState`. `ENDE_SERVE_ADDRESS` is the address of the
+/// program's own server, so a server started in a Worker keeps the address it
+/// asked for instead of colliding with the main one.
+pub struct ServeAddressOverrideDisabled;
+
 #[op2]
-pub fn op_http_serve_address_override() -> (u8, String, u32, bool) {
+pub fn op_http_serve_address_override(
+  state: &OpState,
+) -> (u8, String, u32, bool) {
+  if state.has::<ServeAddressOverrideDisabled>() {
+    return (0, String::new(), 0, false);
+  }
   if let Ok(val) = ende_env::var("ENDE_SERVE_ADDRESS") {
     return parse_serve_address(&val);
   };

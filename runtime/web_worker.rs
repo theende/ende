@@ -616,6 +616,7 @@ impl WebWorker {
       state.put::<PermissionsContainer>(services.permissions);
       state.put(ops::TestingFeaturesEnabled(enable_testing_features));
       state.put(services.feature_checker);
+      state.put(ende_http::ServeAddressOverrideDisabled);
 
       // Put inspector handle into the op state so we can put a breakpoint when
       // executing a CJS entrypoint.
