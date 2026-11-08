@@ -1,0 +1,7 @@
+Check main.ts
+TS2322 [ERROR]: Type 'string' is not assignable to type 'number'.
+const count: number = "three";
+      ~~~~~
+    at file:///[WILDLINE]/config/main.ts:1:7
+
+error: Type checking failed.

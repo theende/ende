@@ -10,6 +10,13 @@
       "output": "local_error.out",
       "exitCode": 1
     },
+    // `"unstable": ["tsc7"]` in the config selects it too.
+    "config": {
+      "cwd": "config",
+      "args": "check main.ts",
+      "output": "config.out",
+      "exitCode": 1
+    },
     "clean": {
       "args": "check --unstable-tsc7 clean/main.ts",
       "output": "Check clean/main.ts\n"
