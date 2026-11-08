@@ -1,0 +1,7 @@
+[WILDCARD]Check extensionless.ts
+TS2322 [ERROR]: Type 'string' is not assignable to type 'number'.
+const count: number = foo;
+      ~~~~~
+    at file:///[WILDLINE]/redirects/extensionless.ts:3:7
+
+error: Type checking failed.

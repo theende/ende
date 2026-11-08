@@ -1,0 +1,7 @@
+Check ts_types.ts
+TS2322 [ERROR]: Type 'number' is not assignable to type 'string'.
+const label: string = value;
+      ~~~~~
+    at file:///[WILDLINE]/redirects/ts_types.ts:4:7
+
+error: Type checking failed.

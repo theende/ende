@@ -1,0 +1,7 @@
+Check main.ts
+TS2322 [ERROR]: Type 'number' is not assignable to type 'string'.
+const label: string = qux;
+      ~~~~~
+    at file:///[WILDLINE]/redirect_paths/main.ts:4:7
+
+error: Type checking failed.

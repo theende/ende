@@ -1,0 +1,10 @@
+{
+  "imports": {
+    "value": "./number.ts"
+  },
+  "scopes": {
+    "./sub/": {
+      "value": "./string.ts"
+    }
+  }
+}

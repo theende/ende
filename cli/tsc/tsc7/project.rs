@@ -198,9 +198,28 @@ pub fn plan(
   };
 
   // A file read in place can't have its imports rewritten, so one whose
-  // imports tsc would resolve differently on its own is copied instead. That
-  // moves it, so files importing it by path may need copying in turn.
+  // imports tsc would resolve differently on its own is copied instead: a
+  // path that doesn't lead to Ende's target, or a bare specifier that another
+  // file read in place already maps elsewhere (`paths` is global, but
+  // `@ts-types` and import map scopes apply per file). Copying moves the
+  // file, so files importing it by path may need copying in turn.
   loop {
+    let mut claims: HashMap<&str, String> = HashMap::new();
+    for source in &sources {
+      if let Some((_, false)) = disk.get(source.specifier) {
+        for (_, import, target) in source.imports() {
+          if import.kind != ImportKind::JsxImportSource
+            && raw_import_kind(import).is_none()
+            && !is_relative_or_absolute(&import.specifier)
+            // A `*` would make the key a pattern; such files are copied.
+            && !import.specifier.contains('*')
+            && let Some(target) = target_of(&disk, import, target)
+          {
+            claims.entry(import.specifier.as_str()).or_insert(target);
+          }
+        }
+      }
+    }
     let mut copied = Vec::new();
     for source in &sources {
       let Some((path, false)) = disk.get(source.specifier) else {
@@ -216,9 +235,12 @@ pub fn plan(
         if raw_import_kind(import).is_some() {
           return true;
         }
-        is_relative_or_absolute(&import.specifier)
-          && path_key(&target)
+        if is_relative_or_absolute(&import.specifier) {
+          path_key(&target)
             != path_key(&resolve_like_tsc(path, &import.specifier))
+        } else {
+          claims.get(import.specifier.as_str()) != Some(&target)
+        }
       });
       if needs_copy
         && let Some(relative) = mirror_path(source.specifier, source.media_type)
@@ -391,8 +413,9 @@ fn add_path(paths: &mut Map<String, Value>, specifier: &str, target: &str) {
       paths.insert(specifier.to_string(), Value::from(vec![target]));
     }
     Some(existing) if existing[0] != target => {
-      // The same specifier resolves differently in different files (import
-      // map scopes); tsc `paths` can only hold one target.
+      // A JSX import source that resolves differently in different files;
+      // `paths` can only hold one target. (Other specifiers that do are
+      // rewritten in copies.)
       log::debug!(
         "tsc7: '{specifier}' resolves to both {existing} and {target}; using \
          the first"

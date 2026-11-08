@@ -104,6 +104,49 @@
       "output": "lib_additions_reference.out",
       "exitCode": 1
     },
+    // tsc resolves the imports of a file it reads in place itself, so a file
+    // with an import Ende resolves its own way is copied, its specifiers
+    // rewritten.
+    "redirects_ts_types": {
+      "cwd": "redirects",
+      "args": "check --unstable-tsc7 ts_types.ts",
+      "output": "redirects_ts_types.out",
+      "exitCode": 1
+    },
+    "redirects_deno_types": {
+      "cwd": "redirects",
+      "args": "check --unstable-tsc7 deno_types.ts",
+      "output": "redirects_deno_types.out",
+      "exitCode": 1
+    },
+    // A relative import of an extensionless file, which is copied, and whose
+    // import has X-TypeScript-Types.
+    "redirects_extensionless": {
+      "cwd": "redirects",
+      "args": "check --unstable-tsc7 --allow-import extensionless.ts",
+      "output": "redirects_extensionless.out",
+      "exitCode": 1
+    },
+    // @deno-types overrules X-TypeScript-Types for its own import only.
+    "redirects_remote_types": {
+      "cwd": "redirects",
+      "args": "check --unstable-tsc7 --allow-import remote_types.ts",
+      "output": "redirects_remote_types.out",
+      "exitCode": 1
+    },
+    "redirect_paths": {
+      "cwd": "redirect_paths",
+      "args": "check --unstable-tsc7 main.ts",
+      "output": "redirect_paths.out",
+      "exitCode": 1
+    },
+    // Import map scopes: one specifier, two modules.
+    "scopes": {
+      "cwd": "scopes",
+      "args": "check --unstable-tsc7 main.ts",
+      "output": "scopes.out",
+      "exitCode": 1
+    },
     // The generated project lives in Ende's cache, not next to the code.
     "no_project_files": {
       "tempDir": true,
