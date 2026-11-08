@@ -7,6 +7,8 @@ const { core, primordials } = __bootstrap;
 const { op_webstorage_iterate_keys, Storage } = core.ops;
 const {
   SymbolFor,
+  SymbolToStringTag,
+  ObjectDefineProperty,
   ObjectFromEntries,
   ObjectEntries,
   ReflectDefineProperty,
@@ -15,6 +17,14 @@ const {
   ReflectHas,
   Proxy,
 } = primordials;
+
+ObjectDefineProperty(Storage.prototype, SymbolToStringTag, {
+  __proto__: null,
+  value: "Storage",
+  writable: false,
+  enumerable: false,
+  configurable: true,
+});
 
 function createStorage(persistent) {
   const storage = new Storage(persistent);

@@ -53,6 +53,55 @@ function checkWindowingSystem(): boolean {
   }
 }
 
+// https://webidl.spec.whatwg.org/#interface-prototype-object (no GPU needed).
+Deno.test(function webgpuInterfacePrototypesHaveToStringTag() {
+  const names = [
+    "GPU",
+    "GPUAdapter",
+    "GPUAdapterInfo",
+    "GPUBindGroup",
+    "GPUBindGroupLayout",
+    "GPUBuffer",
+    "GPUCanvasContext",
+    "GPUCommandBuffer",
+    "GPUCommandEncoder",
+    "GPUCompilationInfo",
+    "GPUCompilationMessage",
+    "GPUComputePassEncoder",
+    "GPUComputePipeline",
+    "GPUDevice",
+    "GPUDeviceLostInfo",
+    "GPUError",
+    "GPUInternalError",
+    "GPUOutOfMemoryError",
+    "GPUPipelineError",
+    "GPUPipelineLayout",
+    "GPUQuerySet",
+    "GPUQueue",
+    "GPURenderBundle",
+    "GPURenderBundleEncoder",
+    "GPURenderPassEncoder",
+    "GPURenderPipeline",
+    "GPUSampler",
+    "GPUShaderModule",
+    "GPUSupportedFeatures",
+    "GPUSupportedLimits",
+    "GPUTexture",
+    "GPUTextureView",
+    "GPUUncapturedErrorEvent",
+    "GPUValidationError",
+  ];
+  for (const name of names) {
+    // deno-lint-ignore no-explicit-any
+    const iface = (globalThis as any)[name];
+    assertEquals(
+      Object.getOwnPropertyDescriptor(iface.prototype, Symbol.toStringTag),
+      { value: name, writable: false, enumerable: false, configurable: true },
+      name,
+    );
+  }
+});
+
 Deno.test({
   permissions: { read: true, env: true },
   ignore: isWsl || isCIWithoutGPU,

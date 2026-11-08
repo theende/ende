@@ -46,8 +46,10 @@ const {
   ObjectDefineProperty,
   ObjectPrototypeIsPrototypeOf,
   ObjectSetPrototypeOf,
+  SafeArrayIterator,
   Symbol,
   SymbolFor,
+  SymbolToStringTag,
 } = primordials;
 
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
@@ -855,6 +857,56 @@ ObjectDefineProperty(GPUQuerySetPrototype, privateCustomInspect, {
     );
   },
 });
+
+// https://webidl.spec.whatwg.org/#interface-prototype-object
+for (
+  const iface of new SafeArrayIterator([
+    GPU,
+    GPUAdapter,
+    GPUAdapterInfo,
+    GPUBindGroup,
+    GPUBindGroupLayout,
+    GPUBuffer,
+    GPUCanvasContext,
+    GPUCommandBuffer,
+    GPUCommandEncoder,
+    GPUCompilationInfo,
+    GPUCompilationMessage,
+    GPUComputePassEncoder,
+    GPUComputePipeline,
+    GPUDevice,
+    GPUDeviceLostInfo,
+    GPUError,
+    GPUExternalTexture,
+    GPUInternalError,
+    GPUOutOfMemoryError,
+    GPUPipelineError,
+    GPUPipelineLayout,
+    GPUQuerySet,
+    GPUQueue,
+    GPURenderBundle,
+    GPURenderBundleEncoder,
+    GPURenderPassEncoder,
+    GPURenderPipeline,
+    GPUSampler,
+    GPUShaderModule,
+    GPUSupportedFeatures,
+    GPUSupportedLimits,
+    GPUTexture,
+    GPUTextureView,
+    GPUUncapturedErrorEvent,
+    GPUValidationError,
+    WGSLLanguageFeatures,
+  ])
+) {
+  ObjectDefineProperty(iface.prototype, SymbolToStringTag, {
+    __proto__: null,
+    value: iface.name,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+}
 
 // Converters
 

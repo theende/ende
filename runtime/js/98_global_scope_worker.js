@@ -9,10 +9,12 @@ import {
 import { selfDescriptor } from "ext:runtime/98_global_scope_shared.js";
 const {
   ObjectDefineProperties,
+  ObjectDefineProperty,
   ObjectPrototypeIsPrototypeOf,
   StringPrototypeSlice,
   StringPrototypeToUpperCase,
   SymbolFor,
+  SymbolToStringTag,
 } = primordials;
 
 const location = core.loadExtScript("ext:ende_web/12_location.js");
@@ -186,6 +188,13 @@ ObjectDefineProperties(WorkerNavigator.prototype, {
   },
 });
 const WorkerNavigatorPrototype = WorkerNavigator.prototype;
+ObjectDefineProperty(WorkerNavigatorPrototype, SymbolToStringTag, {
+  __proto__: null,
+  value: "WorkerNavigator",
+  writable: false,
+  enumerable: false,
+  configurable: true,
+});
 
 const workerRuntimeGlobalProperties = {
   WorkerLocation: location.workerLocationConstructorDescriptor,

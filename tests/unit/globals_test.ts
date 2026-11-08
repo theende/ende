@@ -70,6 +70,63 @@ Deno.test(async function selfGetterChecksReceiverInWorker() {
   worker.terminate();
 });
 
+// https://webidl.spec.whatwg.org/#interface-prototype-object
+function toStringTagDescriptors(names: string[]) {
+  return names.map((name) => [
+    name,
+    Object.getOwnPropertyDescriptor(
+      // deno-lint-ignore no-explicit-any
+      (globalThis as any)[name].prototype,
+      Symbol.toStringTag,
+    ),
+  ]);
+}
+
+function expectedToStringTagDescriptors(names: string[]) {
+  return names.map((name) => [
+    name,
+    { value: name, writable: false, enumerable: false, configurable: true },
+  ]);
+}
+
+Deno.test(function interfacePrototypesHaveToStringTag() {
+  const names = [
+    "ImageBitmap",
+    "ImageBitmapRenderingContext",
+    "NavigatorUAData",
+    "OffscreenCanvas",
+    "Storage",
+  ];
+  assertEquals(
+    toStringTagDescriptors(names),
+    expectedToStringTagDescriptors(names),
+  );
+  assertEquals(
+    Object.prototype.toString.call(localStorage),
+    "[object Storage]",
+  );
+});
+
+Deno.test(async function workerInterfacePrototypesHaveToStringTag() {
+  const names = ["NavigatorUAData", "WorkerNavigator"];
+  const source = `${toStringTagDescriptors.toString()}
+    postMessage([
+      toStringTagDescriptors(${JSON.stringify(names)}),
+      Object.prototype.toString.call(navigator),
+    ]);`;
+  const worker = new Worker(
+    `data:application/javascript,${encodeURIComponent(source)}`,
+    { type: "module" },
+  );
+  const { promise, resolve } = Promise.withResolvers<unknown>();
+  worker.onmessage = (e) => resolve(e.data);
+  assertEquals(await promise, [
+    expectedToStringTagDescriptors(names),
+    "[object WorkerNavigator]",
+  ]);
+  worker.terminate();
+});
+
 Deno.test(function globalThisWindowEqualsUndefined() {
   assert(globalThis.window === undefined);
 });

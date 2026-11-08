@@ -13,6 +13,7 @@ const {
   ObjectDefineProperty,
   ObjectPrototypeIsPrototypeOf,
   SymbolFor,
+  SymbolToStringTag,
   TypedArrayPrototypeGetBuffer,
   TypedArrayPrototypeGetByteOffset,
   TypedArrayPrototypeGetLength,
@@ -106,6 +107,13 @@ webidl.converters["ImageBitmapOptions"] = webidl.createDictionaryConverter(
 );
 
 const ImageBitmapPrototype = ImageBitmap.prototype;
+ObjectDefineProperty(ImageBitmapPrototype, SymbolToStringTag, {
+  __proto__: null,
+  value: "ImageBitmap",
+  writable: false,
+  enumerable: false,
+  configurable: true,
+});
 const privateCustomInspect = SymbolFor("Deno.privateCustomInspect");
 ObjectDefineProperty(ImageBitmapPrototype, privateCustomInspect, {
   __proto__: null,
