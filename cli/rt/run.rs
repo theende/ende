@@ -911,7 +911,7 @@ pub async fn run_with_options(
     serve_port: options.serve_port,
     serve_host: options.serve_host,
     otel_config: metadata.otel_config,
-    no_legacy_abort: false,
+    no_legacy_abort: feature_checker.check("no-legacy-abort"),
     startup_snapshot: ende_snapshots::CLI_SNAPSHOT,
     residual_lazy_js_sources: ende_snapshots::RESIDUAL_LAZY_JS,
     residual_lazy_esm_sources: ende_snapshots::RESIDUAL_LAZY_ESM,
