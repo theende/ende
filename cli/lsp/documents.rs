@@ -2167,7 +2167,7 @@ fn parse_and_analyze_module(
   (Some(parsed_source_result), Some(module_result))
 }
 
-fn parse_source(
+pub(super) fn parse_source(
   specifier: ModuleSpecifier,
   text: Arc<str>,
   media_type: MediaType,
