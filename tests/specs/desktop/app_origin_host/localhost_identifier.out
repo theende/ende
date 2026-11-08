@@ -1,0 +1,5 @@
+[WILDCARD]error: [WILDCARD]
+
+Caused by:
+    0: desktop.app.identifier "app.localhost" can't be the host of the app's origin (app://<host>)
+    1: it is a localhost name; TCP servers in the app would refuse requests to it

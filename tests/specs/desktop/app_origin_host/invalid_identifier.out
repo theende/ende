@@ -1,0 +1,5 @@
+[WILDCARD]error: [WILDCARD]
+
+Caused by:
+    0: desktop.app.identifier "com.example.2048" can't be the host of the app's origin (app://<host>)
+    1: its last label "2048" is a number, so it reads as an IP address

@@ -128,7 +128,7 @@
             },
             "identifier": {
               "type": "string",
-              "description": "Reverse-DNS application identifier (e.g. com.example.myapp)."
+              "description": "Reverse-DNS application identifier (e.g. com.example.myapp). It also names the app's renderer origin, app://<identifier> lowercased, which keys the page's storage (localStorage, IndexedDB), so it can't be an IP address or a localhost name, and each dot-separated label is 1 to 63 letters, digits or hyphens, not starting or ending with a hyphen. Defaults to sh.ende.desktop.<name>, derived from the app name: set it, or renaming the app loses its storage."
             },
             "icons": {
               "type": "object",

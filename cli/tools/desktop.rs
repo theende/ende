@@ -2489,11 +2489,99 @@ pub(crate) fn baked_app_identifier(
     match validate_bundle_identifier(id) {
       Ok(()) => return Some(id.to_string()),
       Err(e) => log::warn!(
-        "not using desktop.app.identifier for the app's data folder: {e}"
+        "not using desktop.app.identifier for the app's data folder and origin: {e}"
       ),
     }
   }
   derived_desktop_id(app_name)
+}
+
+/// The host of a desktop app's renderer origin, `app://<host>`: its app
+/// identifier, lowercased.
+///
+/// The host is also the name of the in-process memory listener that serves
+/// the app (`ENDE_SERVE_ADDRESS=memory:<host>`) and the host of each bridged
+/// `request.url` (`http://<host>/…`), so it must be a domain name that
+/// `new URL()` keeps unchanged: dot-separated labels of `[a-z0-9-]`, 1 to 63
+/// characters each, with no leading or trailing hyphen, and a last label that
+/// isn't a number (which would make it an IPv4 address). `localhost` and
+/// `*.localhost` are refused: TCP servers in the app process reject requests
+/// that name a memory listener's host, and those are the hosts local clients
+/// use.
+///
+/// Uppercase is lowercased, not rejected, so mixed-case reverse-DNS
+/// identifiers (`com.Example.App`) keep working. URL hosts are
+/// case-insensitive, but the URL parser keeps an `app:` URL's host as written,
+/// so the origin must be spelled in the form the memory listener has.
+pub(crate) fn app_origin_host(identifier: &str) -> Result<String, AnyError> {
+  let host = identifier.to_ascii_lowercase();
+  if host.is_empty() {
+    bail!("it is empty");
+  }
+  if host.len() > 253 {
+    bail!("it is longer than 253 characters");
+  }
+  for label in host.split('.') {
+    if label.is_empty() {
+      bail!("it has an empty label");
+    }
+    if let Some(c) = label
+      .chars()
+      .find(|c| !(c.is_ascii_alphanumeric() || *c == '-'))
+    {
+      bail!("it contains {c:?}; a host only has letters, digits, '-' and '.'");
+    }
+    if label.len() > 63 {
+      bail!("its label {label:?} is longer than 63 characters");
+    }
+    if label.starts_with('-') || label.ends_with('-') {
+      bail!("its label {label:?} starts or ends with '-'");
+    }
+  }
+  // The URL parser reads a host whose last label is a number (decimal, or hex
+  // with `0x`) as an IPv4 address.
+  let last = host.rsplit('.').next().unwrap_or_default();
+  let is_number = match last.strip_prefix("0x") {
+    Some(hex) => hex.chars().all(|c| c.is_ascii_hexdigit()),
+    None => last.chars().all(|c| c.is_ascii_digit()),
+  };
+  if is_number {
+    bail!("its last label {last:?} is a number, so it reads as an IP address");
+  }
+  if host == "localhost" || host.ends_with(".localhost") {
+    bail!(
+      "it is a localhost name; TCP servers in the app would refuse requests to it"
+    );
+  }
+  // Anything else the URL parser changes, such as an invalid `xn--` label.
+  let url = Url::parse(&format!("http://{host}/"));
+  if !matches!(
+    url.as_ref().map(|u| u.host()),
+    Ok(Some(ende_core::url::Host::Domain(domain))) if domain == host
+  ) {
+    bail!("it isn't a valid URL host");
+  }
+  Ok(host)
+}
+
+/// The origin host a desktop build bakes into its metadata, from the
+/// identifier [`baked_app_identifier`] chose. The error names
+/// `desktop.app.identifier` either way: setting it is the fix for a derived id.
+pub(crate) fn baked_app_origin_host(
+  configured: Option<&str>,
+  identifier: &str,
+) -> Result<String, AnyError> {
+  app_origin_host(identifier).with_context(|| {
+    if configured == Some(identifier) {
+      format!(
+        "desktop.app.identifier {identifier:?} can't be the host of the app's origin (app://<host>)"
+      )
+    } else {
+      format!(
+        "the app identifier {identifier:?}, derived from the app name, can't be the host of the app's origin (app://<host>); set desktop.app.identifier"
+      )
+    }
+  })
 }
 
 /// Resolve the reverse-DNS id handed to the Linux backend as `LAUFEY_APP_ID`
@@ -6329,6 +6417,128 @@ def456  other.zip
       Some("sh.ende.desktop.my-app")
     );
     assert_eq!(baked_app_identifier(None, "___"), None);
+  }
+
+  // --- app_origin_host ---
+
+  /// What batch A's `memory:` serve listener accepts as its name (ext/http
+  /// `is_memory_serve_host`): a host `new URL()` keeps unchanged.
+  fn is_memory_serve_host(host: &str) -> bool {
+    let Ok(url) = Url::parse(&format!("http://{host}/")) else {
+      return false;
+    };
+    matches!(url.host(), Some(ende_core::url::Host::Domain(d)) if d == host)
+  }
+
+  #[test]
+  fn app_origin_host_accepts_reverse_dns_ids() {
+    for id in [
+      "com.example.app",
+      "sh.ende.desktop.my-app",
+      "io.github.user.app2",
+      "com.example.0xg",
+      "a1.b-c.d",
+    ] {
+      let host = app_origin_host(id).unwrap();
+      assert_eq!(host, id);
+      assert!(is_memory_serve_host(&host), "{host}");
+    }
+    let label = "a".repeat(63);
+    assert!(app_origin_host(&format!("com.{label}")).is_ok());
+  }
+
+  #[test]
+  fn app_origin_host_lowercases() {
+    // The same identifier always maps to the same host, and identifiers that
+    // differ only in case share it.
+    let host = app_origin_host("com.Example.MyApp").unwrap();
+    assert_eq!(host, "com.example.myapp");
+    assert_eq!(app_origin_host("COM.EXAMPLE.MYAPP").unwrap(), host);
+    assert!(is_memory_serve_host(&host));
+  }
+
+  #[test]
+  fn app_origin_host_rejects_ip_addresses() {
+    for id in [
+      "127.0.0.1",
+      "10.0.0.1",
+      "com.example.2048",
+      "com.example.0x1F",
+    ] {
+      let err = app_origin_host(id).unwrap_err().to_string();
+      assert!(err.contains("reads as an IP address"), "{id}: {err}");
+      // The URL parser agrees.
+      assert!(!is_memory_serve_host(&id.to_ascii_lowercase()), "{id}");
+    }
+    assert!(app_origin_host("[::1]").is_err());
+  }
+
+  #[test]
+  fn app_origin_host_rejects_localhost() {
+    for id in ["localhost", "LocalHost", "app.localhost", "a.b.localhost"] {
+      let err = app_origin_host(id).unwrap_err().to_string();
+      assert!(err.contains("localhost name"), "{id}: {err}");
+    }
+    // Only a whole `localhost` label counts.
+    assert!(app_origin_host("com.mylocalhost").is_ok());
+    assert!(app_origin_host("localhost.example").is_ok());
+  }
+
+  #[test]
+  fn app_origin_host_rejects_long_labels() {
+    let label = "a".repeat(64);
+    let err = app_origin_host(&format!("com.{label}"))
+      .unwrap_err()
+      .to_string();
+    assert!(err.contains("longer than 63 characters"), "{err}");
+    let long = vec!["abcdefgh"; 30].join(".");
+    let err = app_origin_host(&long).unwrap_err().to_string();
+    assert!(err.contains("longer than 253 characters"), "{err}");
+  }
+
+  #[test]
+  fn app_origin_host_rejects_bad_chars_and_shapes() {
+    for (id, reason) in [
+      ("", "empty"),
+      ("com.example.", "empty label"),
+      ("com..example", "empty label"),
+      (".com.example", "empty label"),
+      ("com.example.my_app", "contains '_'"),
+      ("com.example.my app", "contains ' '"),
+      ("com.example:8000", "contains ':'"),
+      ("user@com.example", "contains '@'"),
+      ("com.example/app", "contains '/'"),
+      ("com.exämple", "contains 'ä'"),
+      ("com.-example", "starts or ends with '-'"),
+      ("com.example-", "starts or ends with '-'"),
+      // Valid characters, but not valid punycode.
+      ("com.xn--a", "valid URL host"),
+    ] {
+      let err = app_origin_host(id).unwrap_err().to_string();
+      assert!(err.contains(reason), "{id:?}: {err}");
+    }
+  }
+
+  #[test]
+  fn baked_app_origin_host_names_the_config_key() {
+    let err =
+      baked_app_origin_host(Some("com.example.2048"), "com.example.2048")
+        .unwrap_err();
+    assert!(
+      err
+        .to_string()
+        .starts_with("desktop.app.identifier \"com.example.2048\""),
+      "{err}"
+    );
+    // A derived id says where it came from, and what to set instead.
+    let err = baked_app_origin_host(None, "sh.ende.desktop.2048").unwrap_err();
+    let msg = err.to_string();
+    assert!(msg.contains("derived from the app name"), "{msg}");
+    assert!(msg.ends_with("set desktop.app.identifier"), "{msg}");
+    assert_eq!(
+      baked_app_origin_host(None, "sh.ende.desktop.My-App").unwrap(),
+      "sh.ende.desktop.my-app"
+    );
   }
 
   #[test]

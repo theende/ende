@@ -267,6 +267,13 @@ fn resolve_app_name(
   Ok(app_name)
 }
 
+/// See [`EndeCompileBinaryWriter::resolve_desktop_identity`].
+#[derive(Default)]
+struct DesktopIdentity {
+  app_identifier: Option<String>,
+  app_origin_host: Option<String>,
+}
+
 pub struct WriteBinOptions<'a> {
   pub writer: File,
   pub display_output_filename: &'a str,
@@ -312,6 +319,12 @@ impl<'a> EndeCompileBinaryWriter<'a> {
     &self,
     options: WriteBinOptions<'_>,
   ) -> Result<(), AnyError> {
+    // Resolve a desktop app's identity first, so an identifier that can't be
+    // the app's origin host fails before the base binary is fetched.
+    let desktop_identity = self.resolve_desktop_identity(
+      options.compile_flags,
+      options.display_output_filename,
+    )?;
     // Select base binary based on target
     let mut original_binary =
       self.get_base_binary(options.compile_flags).await?;
@@ -347,7 +360,43 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       options.display_output_filename,
       self.is_desktop,
     )?;
-    self.write_standalone_binary(options, original_binary).await
+    self
+      .write_standalone_binary(options, original_binary, desktop_identity)
+      .await
+  }
+
+  /// The identifier and origin host a desktop build bakes into its metadata.
+  /// Empty for other builds.
+  fn resolve_desktop_identity(
+    &self,
+    compile_flags: &CompileFlags,
+    display_output_filename: &str,
+  ) -> Result<DesktopIdentity, AnyError> {
+    if !self.is_desktop {
+      return Ok(DesktopIdentity::default());
+    }
+    let app_name =
+      resolve_app_name(compile_flags, display_output_filename, true)?;
+    let configured = self
+      .cli_options
+      .start_dir
+      .to_desktop_config()
+      .ok()
+      .and_then(|c| c.app.as_ref()?.identifier.clone());
+    let app_identifier = crate::tools::desktop::baked_app_identifier(
+      configured.as_deref(),
+      &app_name,
+    );
+    let app_origin_host = app_identifier
+      .as_deref()
+      .map(|id| {
+        crate::tools::desktop::baked_app_origin_host(configured.as_deref(), id)
+      })
+      .transpose()?;
+    Ok(DesktopIdentity {
+      app_identifier,
+      app_origin_host,
+    })
   }
 
   async fn get_base_binary(
@@ -523,6 +572,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
     &self,
     options: WriteBinOptions<'_>,
     original_bin: Vec<u8>,
+    desktop_identity: DesktopIdentity,
   ) -> Result<(), AnyError> {
     let WriteBinOptions {
       writer,
@@ -781,20 +831,10 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       display_output_filename,
       self.is_desktop,
     )?;
-    let app_identifier = if self.is_desktop {
-      let configured = self
-        .cli_options
-        .start_dir
-        .to_desktop_config()
-        .ok()
-        .and_then(|c| c.app.as_ref()?.identifier.clone());
-      crate::tools::desktop::baked_app_identifier(
-        configured.as_deref(),
-        &app_name,
-      )
-    } else {
-      None
-    };
+    let DesktopIdentity {
+      app_identifier,
+      app_origin_host,
+    } = desktop_identity;
     // `ende desktop` has already parsed the desktop config, but don't fall
     // back to the defaults if it's invalid.
     let initial_window = if self.is_desktop {
@@ -914,6 +954,7 @@ impl<'a> EndeCompileBinaryWriter<'a> {
         .ok()
         .and_then(|c| c.release.as_ref()?.base_url.clone()),
       app_identifier,
+      app_origin_host,
       initial_window,
     };
 

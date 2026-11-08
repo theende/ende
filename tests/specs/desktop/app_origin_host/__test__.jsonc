@@ -1,0 +1,20 @@
+// Copyright 2026 the Ende authors. MIT license.
+
+// The app identifier is the host of the app's renderer origin
+// (`app://<identifier>`), so `ende desktop` fails on one that can't be a URL
+// host.
+{
+  "tempDir": true,
+  "tests": {
+    "invalid_identifier": {
+      "args": "desktop --config invalid_identifier.json main.ts",
+      "output": "invalid_identifier.out",
+      "exitCode": 1
+    },
+    "localhost_identifier": {
+      "args": "desktop --config localhost_identifier.json main.ts",
+      "output": "localhost_identifier.out",
+      "exitCode": 1
+    }
+  }
+}

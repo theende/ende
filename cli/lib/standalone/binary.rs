@@ -100,6 +100,11 @@ pub struct Metadata {
   /// app's WebView2 user data folder on Windows.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub app_identifier: Option<String>,
+  /// Host of a desktop app's renderer origin, `app://<host>`: `app_identifier`
+  /// lowercased, checked at build time to be a domain name that is also a
+  /// valid `memory:` serve listener name.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub app_origin_host: Option<String>,
   /// Initial desktop window options from ende.json `desktop.initialWindow`.
   #[serde(default)]
   pub initial_window: InitialWindowConfig,

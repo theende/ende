@@ -870,7 +870,8 @@ struct SerializedDesktopAppConfig {
   /// Bundle/application identifier in reverse-DNS form (e.g.
   /// `com.acme.foo`). Used as the macOS `CFBundleIdentifier`, the Linux
   /// `.desktop` file identifier, and (eventually) the Windows
-  /// AppUserModelID. Optional; when omitted a synthetic
+  /// AppUserModelID. Lowercased, it is also the host of the renderer origin,
+  /// `app://<identifier>`. Optional; when omitted a synthetic
   /// `sh.ende.desktop.<slug>` is generated from the app name.
   pub identifier: Option<String>,
   /// Custom URL schemes (deep links) the app registers with the OS, e.g.
