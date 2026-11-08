@@ -10,11 +10,18 @@
 //!   place. Their non-relative specifiers (import map aliases, `jsr:`,
 //!   `https:`) become exact `paths` entries pointing at what the graph
 //!   resolved.
-//! - Every other module (remote, JSR, `data:`, extensionless, in-memory) is
-//!   copied into `remote/` or `local/` with an extension (extensionless files
-//!   crash tsc: denoland/deno#36173). Each import specifier in a copy is
-//!   rewritten to the absolute path of its target, and the column shifts are
-//!   kept so diagnostics map back to the original text.
+//! - Every other module (remote, JSR, `data:`, extensionless, in-memory, and
+//!   the declarations of a Wasm module) is copied into `remote/` or `local/`
+//!   with an extension (extensionless files crash tsc: denoland/deno#36173).
+//!   Each import specifier in a copy is rewritten to the absolute path of its
+//!   target, and the column shifts are kept so diagnostics map back to the
+//!   original text. A declaration file target goes through a `paths` entry,
+//!   as tsc rejects importing one by its path.
+//! - A local file is copied too if tsc, reading it in place, would resolve an
+//!   import of it to another file than Ende did: an import of a copy, a
+//!   bytes, text or CSS import (which gets a module in `types/raw/` declaring
+//!   the value), or a path Ende resolved its own way. Copying moves it, so
+//!   this repeats for the files that import it.
 
 use std::collections::BTreeSet;
 use std::collections::HashMap;
@@ -26,6 +33,8 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 
 use deno_ast::MediaType;
+use deno_graph::Dependency;
+use deno_graph::Import;
 use deno_graph::ImportKind;
 use deno_graph::Module;
 use deno_graph::ModuleGraph;
@@ -33,6 +42,7 @@ use ende_core::ModuleSpecifier;
 use ende_core::serde_json::Map;
 use ende_core::serde_json::Value;
 use ende_lib::util::checksum;
+use indexmap::IndexMap;
 use regex::Regex;
 
 /// A file handed to tsc, and what it stands for.
@@ -63,6 +73,84 @@ pub struct ProjectPlan {
   pub ambient_modules: Vec<String>,
 }
 
+/// A module tsc reads: its text, and the imports in it.
+struct Source<'a> {
+  specifier: &'a ModuleSpecifier,
+  text: Arc<str>,
+  media_type: MediaType,
+  dependencies: Option<&'a IndexMap<String, Dependency>>,
+  /// tsc can't read the module itself, only the declarations.
+  is_wasm: bool,
+}
+
+impl<'a> Source<'a> {
+  fn new(module: &'a Module) -> Option<Self> {
+    Some(match module {
+      Module::Js(m) => Self {
+        specifier: &m.specifier,
+        text: m.source.text.clone(),
+        media_type: m.media_type,
+        dependencies: Some(&m.dependencies),
+        is_wasm: false,
+      },
+      Module::Json(m) => Self {
+        specifier: &m.specifier,
+        text: m.source.text.clone(),
+        media_type: m.media_type,
+        dependencies: None,
+        is_wasm: false,
+      },
+      // tsc reads the declarations deno_graph generated, whose imports the
+      // dependencies' ranges refer to.
+      Module::Wasm(m) => Self {
+        specifier: &m.specifier,
+        text: m.source_dts.clone(),
+        media_type: MediaType::Dmts,
+        dependencies: Some(&m.dependencies),
+        is_wasm: true,
+      },
+      Module::Npm(_) | Module::Node(_) | Module::External(_) => return None,
+    })
+  }
+
+  /// Each import with the module the graph resolved it to.
+  fn imports(
+    &self,
+  ) -> impl Iterator<Item = (&'a str, &'a Import, Option<&'a ModuleSpecifier>)>
+  {
+    self
+      .dependencies
+      .into_iter()
+      .flatten()
+      .flat_map(|(key, dep)| {
+        let target = dep.get_type().or_else(|| dep.get_code());
+        dep
+          .imports
+          .iter()
+          .map(move |import| (key.as_str(), import, target))
+      })
+  }
+}
+
+/// The kind of a bytes, text or CSS import (`with { type: "..." }`). tsc gets
+/// a module declaring the value instead of the file, like the TS 6 checker.
+fn raw_import_kind(import: &Import) -> Option<&'static str> {
+  match import.attributes.get("type")? {
+    "bytes" => Some("bytes"),
+    "text" => Some("text"),
+    "css" => Some("css"),
+    _ => None,
+  }
+}
+
+fn raw_module_source(kind: &str) -> &'static str {
+  match kind {
+    "bytes" => crate::tsc::BYTES_IMPORT_SOURCE,
+    "text" => crate::tsc::TEXT_IMPORT_SOURCE,
+    _ => crate::tsc::CSS_IMPORT_SOURCE,
+  }
+}
+
 /// Plans the project in `project_dir` for checking `roots`. `ende_lib` maps a
 /// lowercase lib name to its `ende.*` name if Ende has that lib.
 pub fn plan(
@@ -71,71 +159,122 @@ pub fn plan(
   project_dir: &Path,
   ende_lib: impl Fn(&str) -> Option<String>,
 ) -> ProjectPlan {
-  let modules = walk(graph, roots);
+  let sources = walk(graph, roots)
+    .into_iter()
+    .filter_map(Source::new)
+    .collect::<Vec<_>>();
+  let raw_dir = project_dir.join("types").join("raw");
+  let raw_path = |kind: &str| to_tsc_path(&raw_dir.join(format!("{kind}.ts")));
 
   // Where each module is on disk for tsc, and whether it is a copy.
   let mut disk: HashMap<&ModuleSpecifier, (String, bool)> = HashMap::new();
-  for module in &modules {
-    let (specifier, media_type) = match module {
-      Module::Js(m) => (&m.specifier, m.media_type),
-      Module::Json(m) => (&m.specifier, m.media_type),
-      _ => continue,
-    };
-    if let Some(path) = in_place_path(specifier, media_type) {
-      disk.insert(specifier, (to_tsc_path(&path), false));
-    } else if let Some(relative) = mirror_path(specifier, media_type) {
+  for source in &sources {
+    let in_place = (!source.is_wasm)
+      .then(|| in_place_path(source.specifier, source.media_type))
+      .flatten();
+    if let Some(path) = in_place {
+      disk.insert(source.specifier, (to_tsc_path(&path), false));
+    } else if let Some(relative) =
+      mirror_path(source.specifier, source.media_type)
+    {
+      disk.insert(
+        source.specifier,
+        (to_tsc_path(&project_dir.join(relative)), true),
+      );
+    }
+  }
+
+  // The file an import has to lead tsc to.
+  let target_of = |disk: &HashMap<&ModuleSpecifier, (String, bool)>,
+                   import: &Import,
+                   target: Option<&ModuleSpecifier>|
+   -> Option<String> {
+    let target = target?;
+    if let Some(kind) = raw_import_kind(import) {
+      return Some(raw_path(kind));
+    }
+    let (types, _) = crate::tsc::resolve_graph_specifier_types(target, graph)?;
+    disk.get(&types).map(|(path, _)| path.clone())
+  };
+
+  // A file read in place can't have its imports rewritten, so one whose
+  // imports tsc would resolve differently on its own is copied instead. That
+  // moves it, so files importing it by path may need copying in turn.
+  loop {
+    let mut copied = Vec::new();
+    for source in &sources {
+      let Some((path, false)) = disk.get(source.specifier) else {
+        continue;
+      };
+      let needs_copy = source.imports().any(|(_, import, target)| {
+        if import.kind == ImportKind::JsxImportSource {
+          return false;
+        }
+        let Some(target) = target_of(&disk, import, target) else {
+          return false;
+        };
+        if raw_import_kind(import).is_some() {
+          return true;
+        }
+        is_relative_or_absolute(&import.specifier)
+          && path_key(&target)
+            != path_key(&resolve_like_tsc(path, &import.specifier))
+      });
+      if needs_copy
+        && let Some(relative) = mirror_path(source.specifier, source.media_type)
+      {
+        copied.push((source.specifier, relative));
+      }
+    }
+    if copied.is_empty() {
+      break;
+    }
+    for (specifier, relative) in copied {
+      log::debug!("tsc7: copying {specifier}, as tsc would resolve it");
       disk.insert(specifier, (to_tsc_path(&project_dir.join(relative)), true));
     }
   }
 
   let mut plan = ProjectPlan::default();
   let mut ambient_modules = BTreeSet::new();
-  for module in &modules {
-    let (specifier, text, js) = match module {
-      Module::Js(m) => (&m.specifier, m.source.text.clone(), Some(m)),
-      Module::Json(m) => (&m.specifier, m.source.text.clone(), None),
-      _ => continue,
-    };
-    let Some((path, is_copy)) = disk.get(specifier) else {
+  let mut raw_kinds = BTreeSet::new();
+  for source in &sources {
+    let Some((path, is_copy)) = disk.get(source.specifier) else {
       continue;
     };
     let mut edits = Vec::new();
-    if let Some(js) = js {
-      for (key, dep) in &js.dependencies {
-        let Some(target) = dep
-          .get_type()
-          .or_else(|| dep.get_code())
-          .and_then(|s| crate::tsc::resolve_graph_specifier_types(s, graph))
-          .and_then(|(s, _)| disk.get(&s).map(|(p, _)| p.clone()))
-        else {
-          continue;
-        };
-        for import in &dep.imports {
-          if import.kind == ImportKind::JsxImportSource {
-            // tsc appends `/jsx-runtime` itself, so map the module it asks
-            // for (the dependency's key) instead of rewriting the pragma.
-            add_path(&mut plan.paths, key, &target);
-          } else if *is_copy {
-            edits.push(Edit {
-              line: import.specifier_range.range.start.line,
-              character: import.specifier_range.range.start.character,
-              old: import.specifier.clone(),
-              new: target.clone(),
-            });
-          } else if !is_relative_or_absolute(&import.specifier) {
-            add_path(&mut plan.paths, &import.specifier, &target);
-          }
-        }
+    for (key, import, target) in source.imports() {
+      let Some(target) = target_of(&disk, import, target) else {
+        continue;
+      };
+      if let Some(kind) = raw_import_kind(import) {
+        raw_kinds.insert(kind);
       }
-      plan
-        .referenced_ende_libs
-        .extend(lib_references(&text).filter_map(|name| ende_lib(&name)));
-      if js.media_type.is_typed() {
-        ambient_modules.extend(declared_modules(&text));
+      if import.kind == ImportKind::JsxImportSource {
+        // tsc appends `/jsx-runtime` itself, so map the module it asks
+        // for (the dependency's key) instead of rewriting the pragma.
+        add_path(&mut plan.paths, key, &target);
+      } else if *is_copy {
+        edits.push(Edit {
+          line: import.specifier_range.range.start.line,
+          character: import.specifier_range.range.start.character,
+          old: import.specifier.clone(),
+          new: specifier_for(&mut plan.paths, &target),
+        });
+      } else if !is_relative_or_absolute(&import.specifier) {
+        add_path(&mut plan.paths, &import.specifier, &target);
+      }
+    }
+    if source.dependencies.is_some() {
+      plan.referenced_ende_libs.extend(
+        lib_references(&source.text).filter_map(|name| ende_lib(&name)),
+      );
+      if source.media_type.is_typed() {
+        ambient_modules.extend(declared_modules(&source.text));
       }
     }
     let shifts = if *is_copy {
-      let (rewritten, shifts) = apply_edits(&text, edits);
+      let (rewritten, shifts) = apply_edits(&source.text, edits);
       plan.copies.push((PathBuf::from(path), rewritten));
       shifts
     } else {
@@ -144,23 +283,58 @@ pub fn plan(
     plan.files.insert(
       path_key(path),
       MappedFile {
-        specifier: specifier.to_string(),
-        text: Some(text),
+        specifier: source.specifier.to_string(),
+        text: Some(source.text.clone()),
         shifts,
       },
     );
+  }
+  for kind in raw_kinds {
+    plan.copies.push((
+      PathBuf::from(raw_path(kind)),
+      raw_module_source(kind).to_string(),
+    ));
   }
 
   for root in roots {
     let root = graph.resolve(root);
     match disk.get(root) {
       Some((path, _)) => plan.root_files.push(path.clone()),
-      // Wasm modules aren't mirrored yet (6e).
       None => log::debug!("tsc7: no file for check root {root}"),
     }
   }
   plan.ambient_modules = ambient_modules.into_iter().collect();
   plan
+}
+
+/// What a rewritten specifier says to make tsc load `target`. A declaration
+/// file can't be imported by a path ending in `.d.ts` (TS2846, "A
+/// declaration file cannot be imported without 'import type'"), so those go
+/// through a `paths` entry with a made-up bare name.
+fn specifier_for(paths: &mut Map<String, Value>, target: &str) -> String {
+  if !is_declaration_path(target) {
+    return target.to_string();
+  }
+  let name = format!(
+    "ende-tsc7:{}",
+    &checksum::r#gen(&[path_key(target).as_str()])[..16]
+  );
+  add_path(paths, &name, target);
+  name
+}
+
+fn is_declaration_path(path: &str) -> bool {
+  MediaType::from_path(Path::new(path)).is_declaration()
+}
+
+/// The path tsc reads for the relative or absolute `specifier` in the file at
+/// `referrer` (a tsc path), without looking at the file system.
+fn resolve_like_tsc(referrer: &str, specifier: &str) -> String {
+  if specifier.starts_with('/') {
+    return specifier.to_string();
+  }
+  let dir = referrer.rsplit_once('/').map(|(dir, _)| dir).unwrap_or("");
+  format!("{dir}/{specifier}")
 }
 
 /// The modules reachable from `roots`, in breadth-first order.
@@ -182,15 +356,17 @@ fn walk<'a>(
       continue;
     };
     modules.push(module);
-    let Module::Js(js) = module else {
-      continue;
+    let (dependencies, types_dep) = match module {
+      Module::Js(js) => (
+        &js.dependencies,
+        js.maybe_types_dependency
+          .as_ref()
+          .and_then(|d| d.dependency.maybe_specifier()),
+      ),
+      Module::Wasm(wasm) => (&wasm.dependencies, None),
+      _ => continue,
     };
-    let types_dep = js
-      .maybe_types_dependency
-      .as_ref()
-      .and_then(|d| d.dependency.maybe_specifier());
-    let deps = js
-      .dependencies
+    let deps = dependencies
       .values()
       .flat_map(|d| [d.get_type(), d.get_code()])
       .chain([types_dep])
@@ -753,6 +929,46 @@ mod tests {
     assert_eq!(shifts.to_original(2, 62), 49);
     assert_eq!(shifts.to_original(2, 45), 36);
     assert_eq!(shifts.to_original(3, 4), 4);
+  }
+
+  #[test]
+  fn resolves_like_tsc() {
+    assert_eq!(
+      path_key(&resolve_like_tsc("/proj/src/main.ts", "./a.ts")),
+      "/proj/src/a.ts"
+    );
+    assert_eq!(
+      path_key(&resolve_like_tsc("/proj/src/main.ts", "../lib/b")),
+      "/proj/lib/b"
+    );
+    assert_eq!(resolve_like_tsc("/proj/main.ts", "/abs/c.ts"), "/abs/c.ts");
+    assert_eq!(
+      path_key(&resolve_like_tsc("C:/Proj/main.ts", "./A.ts")),
+      "c:/proj/a.ts"
+    );
+  }
+
+  #[test]
+  fn declaration_targets_go_through_paths() {
+    let mut paths = Map::new();
+    assert_eq!(
+      specifier_for(&mut paths, "/cache/remote/a.ts"),
+      "/cache/remote/a.ts"
+    );
+    assert!(paths.is_empty());
+    let name = specifier_for(&mut paths, "/cache/remote/a.d.ts");
+    assert!(name.starts_with("ende-tsc7:"), "{name}");
+    assert_eq!(
+      paths[&name],
+      ende_core::serde_json::json!(["/cache/remote/a.d.ts"])
+    );
+    // The same target gets the same name.
+    assert_eq!(specifier_for(&mut paths, "/cache/remote/a.d.ts"), name);
+    assert!(
+      specifier_for(&mut paths, "/cache/remote/w.wasm.1234abcd.d.mts")
+        .starts_with("ende-tsc7:")
+    );
+    assert_eq!(paths.len(), 2);
   }
 
   #[test]

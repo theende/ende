@@ -1,5 +1,16 @@
 {
-  "args": "check --unstable-raw-imports main.ts",
-  "output": "main.out",
-  "exitCode": 1
+  "tests": {
+    "check": {
+      "args": "check --unstable-raw-imports main.ts",
+      "output": "main.out",
+      "exitCode": 1
+    },
+    // TypeScript 7 gets the same types for bytes and text imports.
+    "check_tsc7": {
+      "if": "tsc7",
+      "args": "check --unstable-tsc7 --unstable-raw-imports main.ts",
+      "output": "main.out",
+      "exitCode": 1
+    }
+  }
 }

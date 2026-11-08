@@ -1,5 +1,16 @@
 {
-  "args": "check --allow-import main.ts",
-  "output": "check.out",
-  "exitCode": 1
+  "tests": {
+    "check": {
+      "args": "check --allow-import main.ts",
+      "output": "check.out",
+      "exitCode": 1
+    },
+    // TypeScript 7 gets the types of the Wasm module's exports.
+    "check_tsc7": {
+      "if": "tsc7",
+      "args": "check --unstable-tsc7 --allow-import main.ts",
+      "output": "check.out",
+      "exitCode": 1
+    }
+  }
 }

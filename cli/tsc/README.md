@@ -53,8 +53,10 @@ rather than its unstable API. The project it checks lives in
 - local files are read in place, and their non-relative specifiers (import map
   aliases, `jsr:`, `https:`) become exact tsconfig `paths` to what Ende's module
   graph resolved;
-- other modules (remote, JSR, `data:`, extensionless) are copied into `remote/`
-  or `local/` with an extension, their specifiers rewritten to absolute paths;
+- other modules (remote, JSR, `data:`, extensionless, Wasm declarations) are
+  copied into `remote/` or `local/` with an extension, their specifiers
+  rewritten to absolute paths; so are local files with an import `tsc` would
+  resolve differently, such as a bytes, text or CSS import;
 - Ende's `lib.ende.*.d.ts` files go into `types/` as root files, since `tsc`
   only accepts its own lib names;
 - `tsc7/libs.rs` copies the stock `lib.dom.d.ts` and `lib.webworker.d.ts` from

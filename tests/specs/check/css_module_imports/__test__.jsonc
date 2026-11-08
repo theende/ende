@@ -13,6 +13,18 @@
       "args": "check --unstable-raw-imports --all valid.ts",
       "output": "valid.out"
     },
+    // TypeScript 7 gets the same types for CSS imports.
+    "check_tsc7": {
+      "if": "tsc7",
+      "args": "check --unstable-tsc7 --unstable-raw-imports main.ts",
+      "output": "main.out",
+      "exitCode": 1
+    },
+    "check_valid_tsc7": {
+      "if": "tsc7",
+      "args": "check --unstable-tsc7 --unstable-raw-imports --all valid.ts",
+      "output": "valid.out"
+    },
     "missing_unstable": {
       "args": "check valid.ts",
       "output": "missing_unstable.out",
