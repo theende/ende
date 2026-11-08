@@ -1,0 +1,8 @@
+{
+  "fmt": {
+    "markdown": {
+      "heading.kind": "setext",
+      "list.unorderedMarker": "asterisks"
+    }
+  }
+}

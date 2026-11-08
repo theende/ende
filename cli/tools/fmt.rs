@@ -344,100 +344,114 @@ fn format_markdown(
 ) -> Result<Option<String>, AnyError> {
   let markdown_config =
     get_resolved_markdown_config(fmt_options, ignore_directive(file_text))?;
-  dprint_plugin_markdown::format_text(
+  Ok(dprint_plugin_markdown::format_text(
     file_text,
     &markdown_config,
-    move |tag, text, line_width| {
-      let tag = tag.to_lowercase();
-      if matches!(
-        tag.as_str(),
-        "ts"
-          | "tsx"
-          | "js"
-          | "jsx"
-          | "cjs"
-          | "cts"
-          | "mjs"
-          | "mts"
-          | "javascript"
-          | "typescript"
-          | "json"
-          | "jsonc"
-          | "css"
-          | "scss"
-          | "less"
-          | "html"
-          | "svelte"
-          | "vue"
-          | "astro"
-          | "vto"
-          | "njk"
-          | "yml"
-          | "yaml"
-          | "sql"
-      ) {
-        // It's important to tell dprint proper file extension, otherwise
-        // it might parse the file twice.
-        let extension = match tag.as_str() {
-          "javascript" => "js",
-          "typescript" => "ts",
-          rest => rest,
-        };
-
-        let fake_filename =
-          PathBuf::from(format!("ende_fmt_stdin.{extension}"));
-        match extension {
-          "json" | "jsonc" => {
-            let mut json_config =
-              get_resolved_json_config(fmt_options, ignore_directive(text))?;
-            json_config.line_width = line_width;
-            dprint_plugin_json::format_text(&fake_filename, text, &json_config)
-          }
-          "css" | "scss" | "less" => {
-            format_css(&fake_filename, text, fmt_options)
-          }
-          "html" | "svg" | "xml" => {
-            format_html(&fake_filename, text, fmt_options, unstable_options)
-          }
-          "svelte" | "vue" | "astro" | "vto" | "njk" => {
-            if unstable_options.component {
-              format_html(&fake_filename, text, fmt_options, unstable_options)
-            } else {
-              Ok(None)
-            }
-          }
-          "yml" | "yaml" => format_yaml(text, fmt_options),
-          "sql" => {
-            if unstable_options.sql {
-              format_sql(text, fmt_options)
-            } else {
-              Ok(None)
-            }
-          }
-          _ => {
-            let mut codeblock_config = get_resolved_typescript_config(
-              fmt_options,
-              ignore_directive(text),
-            )?;
-            codeblock_config.line_width = line_width;
-            dprint_plugin_typescript::format_text(
-              dprint_plugin_typescript::FormatTextOptions {
-                path: &fake_filename,
-                extension: None,
-                text: text.to_string(),
-                config: &codeblock_config,
-                external_formatter: Some(
-                  &create_external_formatter_for_typescript(unstable_options),
-                ),
-              },
-            )
-          }
-        }
-      } else {
-        Ok(None)
-      }
+    |tag, text, line_width| {
+      format_markdown_code_block(
+        tag,
+        text,
+        line_width,
+        fmt_options,
+        unstable_options,
+      )
+      .map_err(|err| dprint_plugin_markdown::FormatError::CodeBlock(err.into()))
     },
-  )
+  )?)
+}
+
+/// Formats a fenced code block in Markdown by its tag, if Ende formats that
+/// language.
+fn format_markdown_code_block(
+  tag: &str,
+  text: &str,
+  line_width: u32,
+  fmt_options: &FmtOptionsConfig,
+  unstable_options: &UnstableFmtOptions,
+) -> Result<Option<String>, AnyError> {
+  let tag = tag.to_lowercase();
+  if matches!(
+    tag.as_str(),
+    "ts"
+      | "tsx"
+      | "js"
+      | "jsx"
+      | "cjs"
+      | "cts"
+      | "mjs"
+      | "mts"
+      | "javascript"
+      | "typescript"
+      | "json"
+      | "jsonc"
+      | "css"
+      | "scss"
+      | "less"
+      | "html"
+      | "svelte"
+      | "vue"
+      | "astro"
+      | "vto"
+      | "njk"
+      | "yml"
+      | "yaml"
+      | "sql"
+  ) {
+    // It's important to tell dprint proper file extension, otherwise
+    // it might parse the file twice.
+    let extension = match tag.as_str() {
+      "javascript" => "js",
+      "typescript" => "ts",
+      rest => rest,
+    };
+
+    let fake_filename = PathBuf::from(format!("ende_fmt_stdin.{extension}"));
+    match extension {
+      "json" | "jsonc" => {
+        let mut json_config =
+          get_resolved_json_config(fmt_options, ignore_directive(text))?;
+        json_config.line_width = line_width;
+        dprint_plugin_json::format_text(&fake_filename, text, &json_config)
+      }
+      "css" | "scss" | "less" => format_css(&fake_filename, text, fmt_options),
+      "html" | "svg" | "xml" => {
+        format_html(&fake_filename, text, fmt_options, unstable_options)
+      }
+      "svelte" | "vue" | "astro" | "vto" | "njk" => {
+        if unstable_options.component {
+          format_html(&fake_filename, text, fmt_options, unstable_options)
+        } else {
+          Ok(None)
+        }
+      }
+      "yml" | "yaml" => format_yaml(text, fmt_options),
+      "sql" => {
+        if unstable_options.sql {
+          format_sql(text, fmt_options)
+        } else {
+          Ok(None)
+        }
+      }
+      _ => {
+        let mut codeblock_config =
+          get_resolved_typescript_config(fmt_options, ignore_directive(text))?;
+        codeblock_config.line_width = line_width;
+        dprint_plugin_typescript::format_text(
+          dprint_plugin_typescript::FormatTextOptions {
+            path: &fake_filename,
+            extension: None,
+            text: text.to_string(),
+            config: &codeblock_config,
+            external_formatter: Some(
+              &create_external_formatter_for_typescript(unstable_options),
+            ),
+          },
+        )
+      }
+    }
+  } else {
+    Ok(None)
+  }
 }
 
 /// Formats JSON and JSONC using the rules provided by .deno()
@@ -1693,18 +1707,59 @@ fn get_resolved_typescript_config(
   Ok(config)
 }
 
+fn set_md_config_key(
+  config: &mut dprint_core_markdown::configuration::ConfigKeyMap,
+  key: &str,
+  value: impl Into<dprint_core_markdown::configuration::ConfigKeyValue>,
+) {
+  config.insert(key.to_string(), value.into());
+}
+
+/// `resolve_dprint_config` for dprint-plugin-markdown, which is on a newer
+/// dprint-core than the other plugins, so its config types differ.
+fn resolve_markdown_dprint_config(
+  mut config: dprint_core_markdown::configuration::ConfigKeyMap,
+  section: Option<&serde_json::Map<String, serde_json::Value>>,
+) -> Result<dprint_plugin_markdown::configuration::Configuration, AnyError> {
+  set_md_config_key(&mut config, "deno", true);
+  for (key, value) in section.into_iter().flatten() {
+    let value = serde_json::from_value(value.clone()).with_context(|| {
+      format!("Invalid \"fmt.markdown\" configuration: {key}: {value}")
+    })?;
+    config.insert(key.clone(), value);
+  }
+  let result = dprint_plugin_markdown::configuration::resolve_config(
+    config,
+    &Default::default(),
+  );
+  if !result.diagnostics.is_empty() {
+    let diagnostics = result
+      .diagnostics
+      .iter()
+      .map(|d| format!("  {}: {}", d.property_name, d.message))
+      .collect::<Vec<_>>()
+      .join("\n");
+    bail!("Invalid \"fmt.markdown\" configuration:\n{diagnostics}");
+  }
+  Ok(result.config)
+}
+
 fn get_resolved_markdown_config(
   options: &FmtOptionsConfig,
   ignore_directive: &str,
 ) -> Result<dprint_plugin_markdown::configuration::Configuration, AnyError> {
-  let mut config = ConfigKeyMap::new();
+  let mut config = dprint_core_markdown::configuration::ConfigKeyMap::new();
+  // dprint-plugin-markdown 0.23+ formats HTML and splits code spans at the
+  // line width. Ende keeps both as before; `fmt.markdown` can turn them on.
+  set_md_config_key(&mut config, "html.skipFormat", true);
+  set_md_config_key(&mut config, "wrapCodeSpans", false);
 
   if let Some(line_width) = options.line_width {
-    set_config_key(&mut config, "lineWidth", line_width as i32);
+    set_md_config_key(&mut config, "lineWidth", line_width as i32);
   }
 
   if let Some(prose_wrap) = options.prose_wrap {
-    set_config_key(
+    set_md_config_key(
       &mut config,
       "textWrap",
       match prose_wrap {
@@ -1723,22 +1778,22 @@ fn get_resolved_markdown_config(
   }
 
   if let Some(new_line_kind) = options.new_line_kind {
-    set_config_key(
+    set_md_config_key(
       &mut config,
       "newLineKind",
       match new_line_kind {
-        NewLineKind::Auto => dprint_core::configuration::NewLineKind::Auto,
+        NewLineKind::Auto => dprint_core_markdown::configuration::NewLineKind::Auto,
         NewLineKind::CarriageReturnLineFeed => {
-          dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
+          dprint_core_markdown::configuration::NewLineKind::CarriageReturnLineFeed
         }
         NewLineKind::LineFeed => {
-          dprint_core::configuration::NewLineKind::LineFeed
+          dprint_core_markdown::configuration::NewLineKind::LineFeed
         }
         NewLineKind::System => {
           if cfg!(windows) {
-            dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
+            dprint_core_markdown::configuration::NewLineKind::CarriageReturnLineFeed
           } else {
-            dprint_core::configuration::NewLineKind::LineFeed
+            dprint_core_markdown::configuration::NewLineKind::LineFeed
           }
         }
       }
@@ -1746,12 +1801,8 @@ fn get_resolved_markdown_config(
     );
   }
 
-  let mut config = resolve_dprint_config(
-    "markdown",
-    config,
-    options.markdown.as_ref(),
-    dprint_plugin_markdown::configuration::resolve_config,
-  )?;
+  let mut config =
+    resolve_markdown_dprint_config(config, options.markdown.as_ref())?;
   use_ignore_directive(&mut config.ignore_directive, ignore_directive);
   use_ignore_directive(&mut config.ignore_file_directive, ignore_directive);
   use_ignore_directive(&mut config.ignore_start_directive, ignore_directive);
@@ -2485,9 +2536,13 @@ mod test {
         get_resolved_markdown_config(&options, DENO_IGNORE_DIRECTIVE).unwrap()
       )
       .unwrap(),
+      // Except for the two Markdown options that keep HTML and code spans as
+      // written, which dprint-plugin-markdown 0.23+ would reformat.
       serde_json::to_value(
         dprint_plugin_markdown::configuration::ConfigurationBuilder::new()
           .deno()
+          .html_skip_format(true)
+          .wrap_code_spans(false)
           .build()
       )
       .unwrap()

@@ -2383,6 +2383,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dprint-core"
+version = "0.75.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41d1b3e059b1b7519ef780acfa054650c095c7a6550e48f5da3a6f3ade945f6b"
+dependencies = [
+ "bumpalo",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "rustc-hash 2.1.1",
+ "serde",
+ "unicode-width 0.2.2",
+]
+
+[[package]]
 name = "dprint-core-macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2399,7 +2413,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2fe735acd073034b25ca9868f49b5265ff01a831dff89a2302dbe70178ca1db"
 dependencies = [
  "anyhow",
- "dprint-core",
+ "dprint-core 0.67.4",
  "dprint-core-macros",
  "jsonc-parser",
  "serde",
@@ -2413,7 +2427,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f703cac0273eb41521f4bd89cc4848007655cd88ee2d1dc24e08aff6fa074b00"
 dependencies = [
  "anyhow",
- "dprint-core",
+ "dprint-core 0.67.4",
  "jsonc-parser",
  "serde",
  "serde_json",
@@ -2421,17 +2435,15 @@ dependencies = [
 
 [[package]]
 name = "dprint-plugin-markdown"
-version = "0.21.1"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf049c9fa197cf1c327558f1bf28ba6a16bfce1be5ea681b0b5aeede395af951"
+checksum = "5fcedde4897c3659559444971c1d6110f79635fe2a4521e811480023c05c8fb7"
 dependencies = [
- "anyhow",
- "dprint-core",
+ "dprint-core 0.75.2",
  "dprint-core-macros",
- "pulldown-cmark",
- "regex",
  "serde",
- "unicode-width 0.1.13",
+ "thiserror 2.0.12",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -2443,7 +2455,7 @@ dependencies = [
  "anyhow",
  "capacity_builder",
  "deno_ast",
- "dprint-core",
+ "dprint-core 0.67.4",
  "dprint-core-macros",
  "percent-encoding",
  "rustc-hash 2.1.1",
@@ -2678,7 +2690,8 @@ dependencies = [
  "deno_terminal",
  "deno_tower_lsp",
  "dhat",
- "dprint-core",
+ "dprint-core 0.67.4",
+ "dprint-core 0.75.2",
  "dprint-plugin-json",
  "dprint-plugin-jupyter",
  "dprint-plugin-markdown",
@@ -5521,7 +5534,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi 0.5.2",
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5737,7 +5750,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31e9266de41ab34dbeb7b0176a6430b1091f1fa7f4dd9f7ccf3e430a9c5a6789"
 dependencies = [
- "dprint-core",
+ "dprint-core 0.67.4",
 ]
 
 [[package]]
@@ -5747,7 +5760,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c964e0b1c58e6a38762c707d7b5f7a78ab4efab65d3e6c4ab2031deb8f65229e"
 dependencies = [
  "anyhow",
- "dprint-core",
+ "dprint-core 0.67.4",
  "lax-core",
  "serde",
 ]
@@ -5759,7 +5772,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b6f67a7a729b68c4b8e6f45315b0777fdf9618cfd569d4551d14d0906b93306"
 dependencies = [
  "anyhow",
- "dprint-core",
+ "dprint-core 0.67.4",
  "lax-core",
  "serde",
 ]
@@ -5771,7 +5784,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2cca919c19f0e32e8a9fe410e087fc71e4a5ce7a843f939967c643e7881981f"
 dependencies = [
  "anyhow",
- "dprint-core",
+ "dprint-core 0.67.4",
  "lax-core",
  "serde",
 ]
@@ -7280,17 +7293,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pulldown-cmark"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb4e75767fbc9d92b90e4d0c011f61358cde9513b31ef07ea3631b15ffc3b4fd"
-dependencies = [
- "bitflags 2.9.3",
- "memchr",
- "unicase",
-]
-
-[[package]]
 name = "qbsdiff"
 version = "1.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7930,7 +7932,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -8528,7 +8530,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52d1cfed4120b4d927bf7c0f86d2087a4a7d6027c906d9f9d525a80573b9be51"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -9979,15 +9981,6 @@ name = "unarray"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eaea85b334db583fe3274d12b4cd1880032beab409c0d774be044d4480ab9a94"
-
-[[package]]
-name = "unicase"
-version = "2.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7d2d4dafb69621809a81864c9c1b864479e1235c0dd4e199924b9742439ed89"
-dependencies = [
- "version_check",
-]
 
 [[package]]
 name = "unicode-general-category"

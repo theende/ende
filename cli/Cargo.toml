@@ -115,6 +115,7 @@ crossterm.workspace = true
 dashmap.workspace = true
 dhat = { workspace = true, optional = true }
 dprint-core.workspace = true
+dprint-core-markdown.workspace = true
 dprint-plugin-json.workspace = true
 dprint-plugin-jupyter.workspace = true
 dprint-plugin-markdown.workspace = true

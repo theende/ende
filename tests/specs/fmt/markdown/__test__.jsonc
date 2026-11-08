@@ -1,0 +1,44 @@
+{
+  "tests": {
+    // denoland/deno#36874
+    "definition_lists_are_kept": {
+      "args": "fmt --no-config --ext=md -",
+      "input": "Term\n: Definition content\n\nMarkdown\n: A lightweight markup language\n: Created by John Gruber in 2004\n",
+      "output": "Term\n: Definition content\n\nMarkdown\n: A lightweight markup language\n: Created by John Gruber in 2004\n"
+    },
+    // denoland/deno#19728: dprint-plugin-markdown 0.21 failed to parse this
+    "escaped_brackets_in_image_alt": {
+      "args": "fmt --no-config --ext=md -",
+      "input": "![brackets inside brackets \\[ \\] ]()\n",
+      "output": "![brackets inside brackets \\[ \\]]()\n"
+    },
+    // dprint-plugin-markdown 0.23+ formats HTML unless `html.skipFormat`; Ende keeps it off
+    "html_is_not_formatted_by_default": {
+      "args": "fmt --no-config --ext=md -",
+      "input": "<div align=\"center\">\n<img src=\"logo.png\" width=\"100\">\n  <p>Some <b>bold</b>   text</p>\n</div>\n\n<table><tr><td>a</td></tr></table>\n",
+      "output": "<div align=\"center\">\n<img src=\"logo.png\" width=\"100\">\n  <p>Some <b>bold</b>   text</p>\n</div>\n\n<table><tr><td>a</td></tr></table>\n"
+    },
+    "html_formatting_can_be_enabled": {
+      "args": "fmt --config html_on.json --ext=md -",
+      "input": "<div align=\"center\">\n<img src=\"logo.png\" width=\"100\">\n  <p>Some <b>bold</b>   text</p>\n</div>\n\n<table><tr><td>a</td></tr></table>\n",
+      "output": "<div align=\"center\">\n  <img src=\"logo.png\" width=\"100\">\n  <p>Some <b>bold</b> text</p>\n</div>\n\n<table>\n  <tr>\n    <td>a</td>\n  </tr>\n</table>\n"
+    },
+    // Ende sets `wrapCodeSpans: false`: a code span moves to the next line whole
+    "code_spans_are_not_wrapped_by_default": {
+      "args": "fmt --no-config --ext=md -",
+      "input": "Run it with a long command line, for example `ende run --allow-net --allow-read main.ts` today.\n",
+      "output": "Run it with a long command line, for example\n`ende run --allow-net --allow-read main.ts` today.\n"
+    },
+    // Option names from before dprint-plugin-markdown 0.23 still work
+    "old_option_names": {
+      "args": "fmt --config ende.json --ext=md -",
+      "input": "# Title\n\n- a\n- b\n",
+      "output": "Title\n=====\n\n* a\n* b\n"
+    },
+    "new_option_names": {
+      "args": "fmt --config new_names.json --ext=md -",
+      "input": "# Title\n\n- a\n- b\n",
+      "output": "Title\n=====\n\n* a\n* b\n"
+    }
+  }
+}
