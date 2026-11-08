@@ -1,2 +1,3 @@
-console.log(new URLPattern({ pathname: "/:foo/:bar/c" }));
-console.log(typeof Deno.serve);
+Error.captureStackTrace(new Error());
+console.log(Error.captureStackTrace.name);
+console.log(typeof Ende.serve);
