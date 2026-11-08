@@ -31,12 +31,6 @@
       "output": "env_bin.out",
       "exitCode": 1
     },
-    "watch_unsupported": {
-      "args": "check --unstable-tsc7 --watch main.ts",
-      "envs": { "ENDE_TSC_BIN": "main.ts" },
-      "output": "error: --unstable-tsc7 doesn't support --watch yet\n",
-      "exitCode": 1
-    },
     "run_ignores_flag": {
       "args": "run --unstable-tsc7 main.ts",
       "output": "run.out"

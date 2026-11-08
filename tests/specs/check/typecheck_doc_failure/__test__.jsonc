@@ -1,5 +1,15 @@
 {
-  "args": "check --doc mod.ts",
-  "exitCode": 1,
-  "output": "mod.out"
+  "tests": {
+    "check": {
+      "args": "check --doc mod.ts",
+      "exitCode": 1,
+      "output": "mod.out"
+    },
+    "check_tsc7": {
+      "if": "tsc7",
+      "args": "check --unstable-tsc7 --doc mod.ts",
+      "exitCode": 1,
+      "output": "mod.out"
+    }
+  }
 }

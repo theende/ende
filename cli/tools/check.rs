@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use deno_terminal::colors;
-use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 
 use crate::args::CheckFlags;
@@ -21,12 +20,6 @@ pub async fn check(
 ) -> Result<(), AnyError> {
   let factory = CliFactory::from_flags(flags.clone());
   if factory.cli_options()?.unstable_tsc7() {
-    if flags.watch.is_some() {
-      bail!("--unstable-tsc7 doesn't support --watch yet");
-    }
-    if check_flags.doc || check_flags.doc_only {
-      bail!("--unstable-tsc7 doesn't support --doc or --doc-only yet");
-    }
     // Fails early if there's no TypeScript 7 compiler to run.
     tsc7::resolve_tsc7(&factory)?;
   }

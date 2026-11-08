@@ -670,6 +670,48 @@ async fn check_watch_test() {
 }
 
 #[test(flaky)]
+async fn check_watch_tsc7_test() {
+  // Runs only with a TypeScript 7 `tsc`, like the specs with "if": "tsc7".
+  let Ok(tsc) = std::env::var("ENDE_TEST_TSC7_BIN") else {
+    eprintln!("skipped: ENDE_TEST_TSC7_BIN isn't set");
+    return;
+  };
+  let t = TempDir::new();
+  // A warning only TypeScript 7 checks print.
+  t.write("ende.json", r#"{ "compilerOptions": { "baseUrl": "." } }"#);
+  let file_to_check = t.path().join("main.ts");
+  file_to_check.write("const x: number = \"hello\";\n");
+
+  let mut child = util::ende_cmd()
+    .current_dir(t.path())
+    .env("ENDE_TSC_BIN", tsc)
+    .arg("check")
+    .arg("--unstable-tsc7")
+    .arg(&file_to_check)
+    .arg("--watch")
+    .piped_output()
+    .spawn()
+    .unwrap();
+  let (_stdout_lines, mut stderr_lines) = child_lines(&mut child);
+
+  let next_line = next_line(&mut stderr_lines).await.unwrap();
+  assert_contains!(&next_line, "Check started");
+  assert_contains!(
+    wait_contains("baseUrl", &mut stderr_lines).await,
+    "has no effect in TypeScript 7"
+  );
+  assert_contains!(wait_contains("TS2322", &mut stderr_lines).await, "TS2322");
+  wait_contains("Check failed.", &mut stderr_lines).await;
+
+  // Fix the type error.
+  file_to_check.write("const x: number = 42;\nconsole.log(x);\n");
+
+  wait_contains("Check finished.", &mut stderr_lines).await;
+
+  check_alive_then_kill(child);
+}
+
+#[test(flaky)]
 async fn compile_watch_test() {
   let t = TempDir::new();
   let main = t.path().join("main.ts");

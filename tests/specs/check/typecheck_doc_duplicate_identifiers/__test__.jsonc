@@ -1,5 +1,15 @@
 {
-  "args": "check --doc --config ../../../config/ende.json mod.ts",
-  "exitCode": 0,
-  "output": "mod.out"
+  "tests": {
+    "check": {
+      "args": "check --doc --config ../../../config/ende.json mod.ts",
+      "exitCode": 0,
+      "output": "mod.out"
+    },
+    "check_tsc7": {
+      "if": "tsc7",
+      "args": "check --unstable-tsc7 --doc --config ../../../config/ende.json mod.ts",
+      "exitCode": 0,
+      "output": "mod.out"
+    }
+  }
 }

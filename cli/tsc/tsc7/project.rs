@@ -432,12 +432,17 @@ fn is_relative_or_absolute(specifier: &str) -> bool {
 }
 
 /// The path of a local module tsc can read in place: an existing file whose
-/// extension says what the graph says it is.
+/// extension says what the graph says it is. Not a URL with a query or
+/// fragment (a `--doc` snippet is `mod.ts#2-5.ts`), which isn't the file's
+/// contents.
 fn in_place_path(
   specifier: &ModuleSpecifier,
   media_type: MediaType,
 ) -> Option<PathBuf> {
-  if specifier.scheme() != "file" {
+  if specifier.scheme() != "file"
+    || specifier.query().is_some()
+    || specifier.fragment().is_some()
+  {
     return None;
   }
   let path = deno_path_util::url_to_file_path(specifier).ok()?;
@@ -952,6 +957,24 @@ mod tests {
     assert_eq!(shifts.to_original(2, 62), 49);
     assert_eq!(shifts.to_original(2, 45), 36);
     assert_eq!(shifts.to_original(3, 4), 4);
+  }
+
+  #[test]
+  fn in_place_paths() {
+    let dir = tempfile::tempdir().unwrap();
+    let ts = dir.path().join("mod.ts");
+    std::fs::write(&ts, "").unwrap();
+    let ts_url = deno_path_util::url_from_file_path(&ts).unwrap();
+    assert_eq!(in_place_path(&ts_url, MediaType::TypeScript), Some(ts));
+    // A `--doc` snippet or a query isn't the file's contents.
+    let mut snippet = ts_url.clone();
+    snippet.set_fragment(Some("2-5.ts"));
+    assert_eq!(in_place_path(&snippet, MediaType::TypeScript), None);
+    let mut query = ts_url.clone();
+    query.set_query(Some("x"));
+    assert_eq!(in_place_path(&query, MediaType::TypeScript), None);
+    // The extension has to match.
+    assert_eq!(in_place_path(&ts_url, MediaType::JavaScript), None);
   }
 
   #[test]
