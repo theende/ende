@@ -1,0 +1,24 @@
+# Pinned TypeScript 7 compiler (`tsc`) for `--unstable-tsc7`.
+#
+# This file is the trust anchor for the TypeScript 7 binaries Ende bundles.
+# Each entry pins, for one Ende target, the npm package that ships `tsc`, the
+# integrity of its tarball as published at
+#   https://registry.npmjs.org/<package>/-/<package name>-<version>.tgz
+# (npm's `dist.integrity`), and the SHA-256 of the `tsc` binary inside it
+# (`package/lib/tsc`, `tsc.exe` on Windows). `tools/tsc7_mirror.ts` checks
+# both and lays the files out for dl.ende.sh.
+#
+# To bump: change the version, take each package's `dist.integrity` from
+# https://registry.npmjs.org/<package>/<version>, check it against the
+# downloaded tarball, and fill in the SHA-256 of the `tsc` in it. Then run
+# `tools/tsc7_mirror.ts` and upload its output.
+#
+# Format: one `<target>  <package>  <tarball integrity>  <tsc sha256>` per
+# line. The `# version: X.Y.Z` directive is the TypeScript version.
+#
+# version: 7.0.2
+
+aarch64-apple-darwin  @typescript/typescript-darwin-arm64  sha512-gowzar9MwS/aRWp6f3a4KUqzRjAZjOsmGNCM6LcTgXum+dBfgsBVMN+AgvOCCbguXyick6LJhpBszxMebJ8syA==  a82f731365ad69d5c4c15f5e18fba4584bf3b7b839960172a76c3462b5114bf2
+aarch64-unknown-linux-gnu  @typescript/typescript-linux-arm64  sha512-Qh4eU4/y3yDjnfjjyPYihMj5/ODIlmt+Bzu17OI+fiSRDW57QmU5SiN63exPRNJPKUzcc1INa1NXdrJ+MqHjUQ==  f86e8070c267b12d6c119bf567cb82d8b245e9d93da1864bc7c603cea10a8b2f
+x86_64-pc-windows-msvc  @typescript/typescript-win32-x64  sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g==  f9ecfbdc93753d2c972d66a8d0d75f5bd737fd4a5f88b422d9091ea282bcb2c7
+x86_64-unknown-linux-gnu  @typescript/typescript-linux-x64  sha512-EYdf2cNg7rgCWJnxCdJ+F3V39O8ihb37eHAu1LK8oAFizgTQbPOK7zHHXbPt8rX24COqODXeI3sIf0fCXG7H/A==  4f2de678286401759b3fb4475bafe35b8f32b4b3a07d92642bbf37eadc9b34a4
