@@ -35,6 +35,7 @@ ende_core.workspace = true
 ende_env.workspace = true
 ende_http_h1.workspace = true
 ende_net.workspace = true
+ende_os.workspace = true
 ende_telemetry.workspace = true
 ende_websocket.workspace = true
 flate2.workspace = true

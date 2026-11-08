@@ -1831,7 +1831,13 @@ pub fn op_http_serve_address_override(
   if state.has::<ServeAddressOverrideDisabled>() {
     return (0, String::new(), 0, false);
   }
-  if let Ok(val) = ende_env::var("ENDE_SERVE_ADDRESS") {
+  // Through the runtime's view of the environment, which has the variables
+  // an embedder provides without `setenv`
+  // (`ende_os::set_process_local_env_var`).
+  let env = ende_os::ProcessEnvGuard::lock();
+  if let Ok(val) =
+    ende_env::var_with("ENDE_SERVE_ADDRESS", |key| env.var_os(key))
+  {
     return parse_serve_address(&val);
   };
 

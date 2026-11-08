@@ -1165,7 +1165,10 @@ fn compute_run_env(
       .map(|(k, v)| (EnvVarKey::from_str(k), OsString::from(v)))
       .collect()
   } else {
-    let mut envs = std::env::vars_os()
+    // The inherited environment, minus the variables the runtime keeps to
+    // this process (`ende_os::set_process_local_env_var`).
+    let mut envs = ende_os::env_vars_os_for_child_process()
+      .into_iter()
       .map(|(k, v)| (EnvVarKey::new(k), v))
       .collect::<HashMap<_, _>>();
     for (key, value) in arg_envs {
@@ -2219,5 +2222,24 @@ mod tests {
       ]
     );
     assert_eq!(error.raw_os_error(), Some(libc::ENOENT));
+  }
+}
+
+#[cfg(test)]
+mod run_env_tests {
+  use super::EnvVarKey;
+  use super::compute_run_env;
+
+  #[test]
+  fn child_env_leaves_out_process_local_vars() {
+    let key = "ENDE_PROCESS_TEST_LOCAL_KEY";
+    ende_os::set_process_local_env_var(key, "local");
+    let env = compute_run_env(None, &[], false, true).unwrap();
+    assert!(!env.envs.contains_key(&EnvVarKey::from_str(key)));
+    // A child given the variable explicitly still gets it.
+    let explicit = [(key.to_string(), "explicit".to_string())];
+    let env = compute_run_env(None, &explicit, false, true).unwrap();
+    assert_eq!(env.envs.get(&EnvVarKey::from_str(key)).unwrap(), "explicit");
+    ende_os::ProcessEnvGuard::lock().remove_var(key);
   }
 }

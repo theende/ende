@@ -1983,14 +1983,19 @@ fn runtime_main() {
 
   laufey::set_js_namespace("bindings");
 
-  // Allocate the desktop serve port and publish it via ENDE_SERVE_ADDRESS
-  // BEFORE the tokio runtime is built. Once the runtime spins up its
-  // mio IO thread (and, optionally, the inspector server thread),
-  // `setenv` is no longer thread-safe on glibc — Rust 1.81+ marks it
-  // unsafe for that reason. We're still single-threaded up to here:
-  // the worker-fork path has already returned, and the init calls
-  // above (init_logging, mark_standalone, rustls install_default,
-  // set_js_namespace) don't spawn threads.
+  // Allocate the desktop serve port and publish it as ENDE_SERVE_ADDRESS
+  // before the tokio runtime is built. It goes into the runtime's
+  // process-local environment (`ende_os::set_process_local_env_var`), not
+  // the process environment: it names this process's own server, so a
+  // child process the app starts must not inherit it (a child `ende` would
+  // try to serve on the same port). Any `setenv` on this path relies on the
+  // process still being single-threaded: once the runtime spins up its mio
+  // IO thread (and, optionally, the inspector server thread), `setenv` is no
+  // longer thread-safe on glibc, and Rust 1.81+ marks it unsafe for that
+  // reason. We're still single-threaded up to here: the worker-fork path has
+  // already returned, and the init calls above (init_logging,
+  // mark_standalone, rustls install_default, set_js_namespace) don't spawn
+  // threads.
   let desktop_serve_port = match allocate_random_port() {
     Ok(p) => p,
     Err(e) => {
@@ -2001,10 +2006,8 @@ fn runtime_main() {
   // Also set under the deprecated `DENO_SERVE_ADDRESS` name so user code
   // that reads it keeps working.
   let serve_address = format!("tcp:127.0.0.1:{}", desktop_serve_port);
-  // SAFETY: see the block comment above — single-threaded at this point.
-  unsafe {
-    std::env::set_var("ENDE_SERVE_ADDRESS", &serve_address);
-    std::env::set_var("DENO_SERVE_ADDRESS", &serve_address);
+  for key in ["ENDE_SERVE_ADDRESS", "DENO_SERVE_ADDRESS"] {
+    ende_runtime::ende_os::set_process_local_env_var(key, &serve_address);
   }
 
   // Read the embedded standalone section before the tokio runtime starts.

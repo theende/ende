@@ -163,6 +163,82 @@ fn op_exec_path() -> Result<String, OsError> {
 
 static PROCESS_ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(Mutex::default);
 
+/// Environment variables only this process's runtime sees. See
+/// [`set_process_local_env_var`].
+static PROCESS_LOCAL_ENV: LazyLock<Mutex<Vec<(OsString, OsString)>>> =
+  LazyLock::new(Mutex::default);
+
+fn process_local_env() -> MutexGuard<'static, Vec<(OsString, OsString)>> {
+  PROCESS_LOCAL_ENV
+    .lock()
+    .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// Environment variable names compare case-insensitively on Windows.
+fn env_key_eq(a: &std::ffi::OsStr, b: &std::ffi::OsStr) -> bool {
+  if cfg!(windows) {
+    a.eq_ignore_ascii_case(b)
+  } else {
+    a == b
+  }
+}
+
+fn process_local_env_get(key: &std::ffi::OsStr) -> Option<OsString> {
+  process_local_env()
+    .iter()
+    .find(|(k, _)| env_key_eq(k, key))
+    .map(|(_, v)| v.clone())
+}
+
+fn process_local_env_remove(key: &std::ffi::OsStr) {
+  process_local_env().retain(|(k, _)| !env_key_eq(k, key));
+}
+
+/// Provide `key=value` to the runtime's view of the environment without
+/// calling `setenv`, and without passing it to child processes.
+///
+/// `setenv` isn't thread-safe against a concurrent `getenv` on glibc (and
+/// isn't documented to be on other libcs). An embedder that starts the
+/// runtime in a process whose other threads already run (a GUI host's UI
+/// thread, a web engine's threads) can't rule out such a read. And some
+/// values only mean something inside this process: the desktop runtime's
+/// `ENDE_SERVE_ADDRESS` names its own server, so a child `ende` that
+/// inherited it would serve where nothing listens for it, or collide with
+/// the parent.
+///
+/// Everything that reads the environment through [`ProcessEnvGuard`] sees
+/// the variable, ahead of the process environment: `Ende.env.get` /
+/// `toObject` and `Ende.serve`'s address override. A child process that
+/// inherits the environment gets neither it nor a process-environment
+/// variable of the same name that it hides; a child given the variable in
+/// its explicit `env` still gets it. `Ende.env.set` / `Ende.env.delete` of
+/// the same key drop it here, then write the process environment as usual.
+/// Native code that calls `getenv` doesn't see it.
+pub fn set_process_local_env_var(
+  key: impl Into<OsString>,
+  value: impl Into<OsString>,
+) {
+  let key = key.into();
+  let value = value.into();
+  let mut env = process_local_env();
+  env.retain(|(k, _)| !env_key_eq(k, &key));
+  env.push((key, value));
+}
+
+/// What a child process that inherits the environment receives: the process
+/// environment without the names set with [`set_process_local_env_var`].
+pub fn env_vars_os_for_child_process() -> Vec<(OsString, OsString)> {
+  process_env_without(&process_local_env())
+}
+
+fn process_env_without(
+  local: &[(OsString, OsString)],
+) -> Vec<(OsString, OsString)> {
+  env::vars_os()
+    .filter(|(k, _)| !local.iter().any(|(lk, _)| env_key_eq(lk, k)))
+    .collect()
+}
+
 /// A guard for coordinated runtime access to the process environment.
 ///
 /// Runtime environment ops, Node dotenv loading, and watched dotenv reloads
@@ -182,15 +258,23 @@ impl ProcessEnvGuard {
   }
 
   pub fn var(&self, key: &str) -> Result<String, env::VarError> {
-    env::var(key)
+    match process_local_env_get(key.as_ref()) {
+      Some(value) => value.into_string().map_err(env::VarError::NotUnicode),
+      None => env::var(key),
+    }
   }
 
   pub fn var_os(&self, key: impl AsRef<std::ffi::OsStr>) -> Option<OsString> {
-    env::var_os(key)
+    process_local_env_get(key.as_ref()).or_else(|| env::var_os(key))
   }
 
+  /// The process environment with the process-local variables (see
+  /// [`set_process_local_env_var`]) in place of any of the same name.
   pub fn vars_os(&self) -> Vec<(OsString, OsString)> {
-    env::vars_os().collect()
+    let local = process_local_env();
+    let mut vars = process_env_without(&local);
+    vars.extend(local.iter().cloned());
+    vars
   }
 
   pub fn set_var(
@@ -199,6 +283,7 @@ impl ProcessEnvGuard {
     value: impl AsRef<std::ffi::OsStr>,
   ) {
     let key = key.as_ref();
+    process_local_env_remove(key);
     // SAFETY: Ende exposes process environment mutation for compatibility.
     // This guard coordinates the runtime mutation paths with the native
     // timezone refresh below, but cannot coordinate arbitrary native readers.
@@ -225,6 +310,7 @@ impl ProcessEnvGuard {
 
   pub fn remove_var(&self, key: impl AsRef<std::ffi::OsStr>) {
     let key = key.as_ref();
+    process_local_env_remove(key);
     // SAFETY: Ende exposes process environment mutation for compatibility.
     // This guard coordinates the runtime mutation paths with the native
     // timezone refresh below, but cannot coordinate arbitrary native readers.
@@ -485,6 +571,52 @@ mod tests {
 
   use super::PROCESS_ENV_LOCK;
   use super::ProcessEnvGuard;
+
+  #[test]
+  fn process_local_env_var_is_seen_without_setenv() {
+    let key = "ENDE_OS_TEST_PROCESS_LOCAL_KEY";
+    super::set_process_local_env_var(key, "local");
+    // Not written to the process environment.
+    assert!(std::env::var_os(key).is_none());
+    let env = ProcessEnvGuard::lock();
+    assert_eq!(env.var(key).unwrap(), "local");
+    assert_eq!(env.var_os(key).unwrap(), "local");
+    let matching = env
+      .vars_os()
+      .into_iter()
+      .filter(|(k, _)| k == key)
+      .collect::<Vec<_>>();
+    assert_eq!(matching, vec![(key.into(), "local".into())]);
+    // A child process doesn't inherit it.
+    assert!(
+      !super::env_vars_os_for_child_process()
+        .iter()
+        .any(|(k, _)| k == key)
+    );
+    // `Ende.env.set` replaces it for real, and children then inherit it.
+    env.set_var(key, "set");
+    assert_eq!(env.var(key).unwrap(), "set");
+    assert_eq!(std::env::var(key).unwrap(), "set");
+    assert!(
+      super::env_vars_os_for_child_process()
+        .iter()
+        .any(|(k, v)| k == key && v == "set")
+    );
+    // A process-local value hides the process environment's, from the
+    // runtime and from children...
+    super::set_process_local_env_var(key, "again");
+    assert_eq!(env.var(key).unwrap(), "again");
+    assert_eq!(env.vars_os().iter().filter(|(k, _)| k == key).count(), 1);
+    assert!(
+      !super::env_vars_os_for_child_process()
+        .iter()
+        .any(|(k, _)| k == key)
+    );
+    // ...and `Ende.env.delete` removes both.
+    env.remove_var(key);
+    assert!(env.var_os(key).is_none());
+    assert!(std::env::var_os(key).is_none());
+  }
 
   #[test]
   fn process_env_lock_is_held_through_timezone_notification() {

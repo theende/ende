@@ -3164,6 +3164,7 @@ dependencies = [
  "ende_env",
  "ende_http_h1",
  "ende_net",
+ "ende_os",
  "ende_telemetry",
  "ende_websocket",
  "flate2",

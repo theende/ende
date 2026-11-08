@@ -48,6 +48,15 @@ pub fn var(name: &str) -> Result<String, VarError> {
   into_string(var_os(name))
 }
 
+/// Like [`var`], but reads each name through `get`, e.g. a view of the
+/// environment that has variables the process environment doesn't.
+pub fn var_with(
+  name: &str,
+  get: impl Fn(&str) -> Option<OsString>,
+) -> Result<String, VarError> {
+  into_string(read(name, get))
+}
+
 fn read(
   name: &str,
   get: impl Fn(&str) -> Option<OsString>,
@@ -161,6 +170,18 @@ mod test {
     sys.env_set_var("OTEL_ENDE_TEST_BOTH", "new");
     sys.env_set_var("OTEL_DENO_TEST_BOTH", "old");
     assert_eq!(env_var(&sys, "OTEL_ENDE_TEST_BOTH").unwrap(), "new");
+  }
+
+  #[test]
+  fn var_with_reads_through_the_getter() {
+    let get = |key: &str| {
+      (key == "DENO_TEST_ONLY_GETTER").then(|| OsString::from("old"))
+    };
+    assert_eq!(var_with("ENDE_TEST_ONLY_GETTER", get).unwrap(), "old");
+    assert_eq!(
+      var_with("ENDE_TEST_ONLY_GETTER_UNSET", get),
+      Err(VarError::NotPresent)
+    );
   }
 
   #[test]
