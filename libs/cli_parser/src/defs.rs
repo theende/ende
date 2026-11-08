@@ -993,7 +993,7 @@ pub static LINT_SUBCOMMAND: CommandDef = CommandDef {
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
       .value_parser(ValueParser::Choices(EXECUTABLE_EXTS))
-.help("Specify the file extension to lint when reading from stdin.For example, use `jsx` to lint JSX files or `tsx` for TSX files.This argument is necessary because stdin input does not automatically infer the file type.Example usage: `cat file.jsx | ende lint - --ext=jsx`."),
+.help("Specify the file extension to lint when reading from stdin. For example, use `jsx` to lint JSX files or `tsx` for TSX files. This argument is necessary because stdin input does not automatically infer the file type. Example usage: `cat file.jsx | ende lint - --ext=jsx`."),
     ArgDef::new("allow-import")
       .short('I')
       .long("allow-import")

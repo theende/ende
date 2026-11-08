@@ -9139,3 +9139,47 @@ fn unknown_flags_keep_default_tip() {
     Some("a similar argument exists: '--unstable-cron'")
   );
 }
+
+#[test]
+fn help_sentences_are_separated() {
+  // A sentence that ends right before the next one ("stdin.For example")
+  // reads as a typo in `ende <cmd> --help`.
+  fn run_on_sentence(help: &str) -> Option<&str> {
+    let bytes = help.as_bytes();
+    for i in 2..bytes.len().saturating_sub(1) {
+      if bytes[i] == b'.'
+        && bytes[i - 1].is_ascii_lowercase()
+        && bytes[i - 2].is_ascii_lowercase()
+        && bytes[i + 1].is_ascii_uppercase()
+      {
+        let rest = &help[i + 1..];
+        let word_end = rest
+          .find(|c: char| !c.is_ascii_alphabetic())
+          .unwrap_or(rest.len());
+        if rest[word_end..].starts_with(' ') {
+          return Some(&help[i - 2..i + 1 + word_end]);
+        }
+      }
+    }
+    None
+  }
+
+  fn visit(cmd: &crate::types::CommandDef, found: &mut Vec<String>) {
+    let args = cmd
+      .args
+      .iter()
+      .chain(cmd.arg_groups.iter().copied().flatten());
+    for arg in args {
+      if let Some(text) = run_on_sentence(arg.help) {
+        found.push(format!("{} --{}: {text}", cmd.name, arg.name));
+      }
+    }
+    for sub in cmd.subcommands {
+      visit(sub, found);
+    }
+  }
+
+  let mut found = Vec::new();
+  visit(&crate::defs::ENDE_ROOT, &mut found);
+  assert_eq!(found, Vec::<String>::new());
+}
