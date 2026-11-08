@@ -8,15 +8,25 @@
 # (`package/lib/tsc`, `tsc.exe` on Windows). `tools/tsc7_mirror.ts` checks
 # both and lays the files out for dl.ende.sh.
 #
+# `tsc` loads its default libs from its own directory, so the files it ships
+# with (the `lib.*.d.ts` files, LICENSE and NOTICE.txt) are pinned too, by the
+# `# files-sha256:` directive: the SHA-256 of their manifest, one
+# `<sha256>  <name>\n` line per file, sorted by name in byte order. They are
+# the same on every target. tools/tsc7_mirror.ts and cli/build.rs (when
+# ENDE_TSC7_DIR is set) both check it.
+#
 # To bump: change the version, take each package's `dist.integrity` from
 # https://registry.npmjs.org/<package>/<version>, check it against the
-# downloaded tarball, and fill in the SHA-256 of the `tsc` in it. Then run
-# `tools/tsc7_mirror.ts` and upload its output.
+# downloaded tarball, and fill in the SHA-256 of the `tsc` in it and the
+# manifest SHA-256 above (in a target directory of the mirror output:
+# `ls | grep -v '^tsc' | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256`).
+# Then run `tools/tsc7_mirror.ts` and upload its output.
 #
 # Format: one `<target>  <package>  <tarball integrity>  <tsc sha256>` per
 # line. The `# version: X.Y.Z` directive is the TypeScript version.
 #
 # version: 7.0.2
+# files-sha256: b54a6e75b3ef57aca24c23da8182687c9d9ff130c38906aa00cc1d5d0ccfe30f
 
 aarch64-apple-darwin  @typescript/typescript-darwin-arm64  sha512-gowzar9MwS/aRWp6f3a4KUqzRjAZjOsmGNCM6LcTgXum+dBfgsBVMN+AgvOCCbguXyick6LJhpBszxMebJ8syA==  a82f731365ad69d5c4c15f5e18fba4584bf3b7b839960172a76c3462b5114bf2
 aarch64-unknown-linux-gnu  @typescript/typescript-linux-arm64  sha512-Qh4eU4/y3yDjnfjjyPYihMj5/ODIlmt+Bzu17OI+fiSRDW57QmU5SiN63exPRNJPKUzcc1INa1NXdrJ+MqHjUQ==  f86e8070c267b12d6c119bf567cb82d8b245e9d93da1864bc7c603cea10a8b2f

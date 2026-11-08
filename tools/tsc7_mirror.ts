@@ -8,7 +8,8 @@
 // registry.npmjs.org, checks it against the pinned sha512 integrity, extracts
 // `tsc` (`tsc.exe` on Windows), the `lib.*.d.ts` files it loads from its own
 // directory at runtime, and the package's LICENSE and NOTICE.txt, and checks
-// the SHA-256 of `tsc`. It writes:
+// the SHA-256 of `tsc` and the manifest SHA-256 of the other files (the
+// `# files-sha256:` directive). It writes:
 //
 //   <out-dir>/tsc/<version>/<target>/{tsc[.exe],lib.*.d.ts,LICENSE,NOTICE.txt}
 //   <out-dir>/tsc/<version>/tsc-<target>.zip          the same files
@@ -28,14 +29,26 @@ interface Pin {
   tscSha256: string;
 }
 
-function parseLock(text: string): { version: string; pins: Pin[] } {
+interface Lock {
+  version: string;
+  filesSha256: string;
+  pins: Pin[];
+}
+
+function parseLock(text: string): Lock {
   let version: string | undefined;
+  let filesSha256: string | undefined;
   const pins: Pin[] = [];
   for (const raw of text.split("\n")) {
     const line = raw.trim();
-    const directive = line.match(/^#\s*version:\s*(\S+)$/);
-    if (directive) {
-      version = directive[1];
+    const versionDirective = line.match(/^#\s*version:\s*(\S+)$/);
+    if (versionDirective) {
+      version = versionDirective[1];
+      continue;
+    }
+    const filesDirective = line.match(/^#\s*files-sha256:\s*(\S+)$/);
+    if (filesDirective) {
+      filesSha256 = filesDirective[1];
       continue;
     }
     if (line === "" || line.startsWith("#")) continue;
@@ -49,7 +62,10 @@ function parseLock(text: string): { version: string; pins: Pin[] } {
   if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
     throw new Error("cli/tsc7_sums.lock: missing `# version: X.Y.Z`");
   }
-  return { version, pins };
+  if (!filesSha256 || !/^[0-9a-f]{64}$/.test(filesSha256)) {
+    throw new Error("cli/tsc7_sums.lock: missing `# files-sha256: <hex>`");
+  }
+  return { version, filesSha256, pins };
 }
 
 function tarballUrl(pkg: string, version: string): string {
@@ -127,7 +143,22 @@ async function sha256sumLine(path: string, name: string): Promise<string> {
   }  ${name}\n`;
 }
 
-async function mirrorTarget(pin: Pin, version: string, versionDir: string) {
+/**
+ * SHA-256 of the manifest of the files next to `tsc`: one `<sha256>  <name>\n`
+ * line per file, sorted by name. cli/build.rs computes the same.
+ */
+async function filesManifestSha256(
+  files: Map<string, Uint8Array<ArrayBuffer>>,
+): Promise<string> {
+  let manifest = "";
+  for (const name of [...files.keys()].sort()) {
+    manifest += `${hex(await digest("SHA-256", files.get(name)!))}  ${name}\n`;
+  }
+  return hex(await digest("SHA-256", new TextEncoder().encode(manifest)));
+}
+
+async function mirrorTarget(pin: Pin, lock: Lock, versionDir: string) {
+  const version = lock.version;
   const url = tarballUrl(pin.pkg, version);
   console.error(`Downloading ${url}`);
   const response = await fetch(url);
@@ -166,18 +197,28 @@ async function mirrorTarget(pin: Pin, version: string, versionDir: string) {
     );
   }
 
-  const targetDir = `${versionDir}/${pin.target}`;
-  await Deno.mkdir(targetDir);
-  const names: string[] = [];
+  const outputs = new Map<string, Uint8Array<ArrayBuffer>>(); // name -> contents
   for (const [path, name] of wanted) {
     const contents = files.get(path);
     if (!contents) throw new Error(`${url}: no ${path}`);
+    outputs.set(name, contents);
+  }
+  const others = new Map([...outputs].filter(([name]) => name !== exe));
+  const filesSha256 = await filesManifestSha256(others);
+  if (filesSha256 !== lock.filesSha256) {
+    throw new Error(
+      `${url}: manifest SHA-256 of the files next to ${exe} is ${filesSha256}, not the pinned ${lock.filesSha256}`,
+    );
+  }
+
+  const targetDir = `${versionDir}/${pin.target}`;
+  await Deno.mkdir(targetDir);
+  for (const [name, contents] of outputs) {
     await Deno.writeFile(`${targetDir}/${name}`, contents, {
       mode: name === exe ? 0o755 : 0o644,
     });
-    names.push(name);
   }
-  names.sort();
+  const names = [...outputs.keys()].sort();
 
   const zipName = `tsc-${pin.target}.zip`;
   const zip = await new Deno.Command("zip", {
@@ -220,7 +261,8 @@ async function main() {
     console.error("Usage: tools/tsc7_mirror.ts <out-dir>");
     Deno.exit(1);
   }
-  const { version, pins } = parseLock(await Deno.readTextFile(LOCK_URL));
+  const lock = parseLock(await Deno.readTextFile(LOCK_URL));
+  const { version, pins } = lock;
   const versionDir = `${outDir}/tsc/${version}`;
   try {
     await Deno.stat(versionDir);
@@ -231,7 +273,7 @@ async function main() {
   await Deno.mkdir(versionDir, { recursive: true });
 
   for (const pin of pins) {
-    await mirrorTarget(pin, version, versionDir);
+    await mirrorTarget(pin, lock, versionDir);
   }
 
   const files = await listFiles(versionDir);
