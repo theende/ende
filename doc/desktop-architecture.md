@@ -62,12 +62,17 @@ Inside `runtime_main` everything up to the tokio runtime is deliberately
 single-threaded, because two process-global operations happen there that are
 unsafe once threads exist:
 
-1. **Port publish before runtime build** (`lib.rs:1222`): allocate a random
-   loopback port, then `set_var("ENDE_SERVE_ADDRESS", "tcp:127.0.0.1:<port>")`.
-   `setenv` is not thread-safe on glibc (Rust 1.81+ marks it `unsafe`), so it
-   must precede the mio IO thread and inspector thread. The user's `Ende.serve`
-   / `export default { fetch }` later binds this pre-set address with no
-   coordination needed.
+1. **Serve address before runtime build** (`RendererTransport::choose`,
+   `publish_env`): pick the app's transport (see
+   [Serving the page](#serving-the-page-app-or-loopback)) and publish
+   `ENDE_SERVE_ADDRESS` (`memory:<host>` or `tcp:127.0.0.1:<port>`) and
+   `ENDE_DESKTOP_WS_URL`. They're runtime-only variables
+   (`ende_os::set_process_local_env_var`), not `setenv`: child processes don't
+   inherit them. The user's `Ende.serve` / `export default { fetch }` later
+   binds this pre-set address with no coordination needed. The one real
+   `setenv`, `WEBVIEW2_USER_DATA_FOLDER` on Windows, happens just before, while
+   the process is still single-threaded (`setenv` is not thread-safe on glibc;
+   Rust 1.81+ marks it `unsafe`).
 2. **chdir into the extracted VFS** (`lib.rs:1262`): process-wide, so it must
    happen before any task resolves a relative path. Frameworks (Next `.next/`,
    Vite `dist/`) resolve build output relative to cwd.
@@ -80,10 +85,10 @@ native event loop). A third spawned task, `navigate_fut`, bridges them.
 ## Navigation: poll with a real GET, not a connect
 
 `navigate_fut` (`lib.rs:1773`) waits for the server before pointing the window
-at it. It does a full `GET / HTTP/1.1` and checks for a `2xx`/`3xx` status line
-— **not** a bare TCP connect — because dev servers like Vite accept the socket
-before they can actually serve. 60 attempts × 250ms, then
-`Window::navigate(url)` on the initial window id. Under
+at it. It does a full `GET / HTTP/1.1` (over the memory listener for `app://`)
+and checks for a `2xx`/`3xx` status line — **not** a bare TCP connect — because
+dev servers like Vite accept the socket before they can actually serve. 60
+attempts × 250ms, then `Window::navigate(url)` on the initial window id. Under
 `--inspect-brk`/`--inspect-wait` it first blocks until a DevTools client
 attaches to the mux.
 
@@ -91,8 +96,10 @@ attaches to the mux.
 
 App content and JS↔native calls travel on completely separate paths.
 
-**Content — loopback HTTP.** The WebView is a real browser pointed at
-`http://127.0.0.1:<port>/`. Nothing special.
+**Content — HTTP to `Ende.serve`.** The WebView is a real browser pointed at the
+app's server: at `app://<host>/` through a scheme handler, or at
+`http://127.0.0.1:<port>/`. See
+[Serving the page](#serving-the-page-app-or-loopback).
 
 **Bindings — mpsc events + per-call oneshot.** `Ende.desktop`/window APIs and
 webview→Ende function calls do _not_ use HTTP:
@@ -131,6 +138,73 @@ correctly.
 
 The JS namespace the webview sees is `bindings` — `set_js_namespace("bindings")`
 at `lib.rs:1212`, so calls are `window.bindings.foo()`.
+
+## Serving the page: `app://` or loopback
+
+The page's origin keys its storage (localStorage, IndexedDB), so it has to be
+the same every launch (denoland/deno#35444). `app_scheme_host` picks one of two
+transports:
+
+- **`app://<host>`: the webview backend on macOS and Windows.** `<host>` is the
+  app identifier, lowercased (`app_origin_host`, baked at build time). The app
+  serves on the in-process memory listener `<host>`, and
+  `cli/rt_desktop/scheme_bridge.rs` answers laufey's `app` scheme by forwarding
+  each request to it over HTTP/1.1. No TCP port serves the page.
+- **`http://127.0.0.1:<random port>`: everything else**, so storage still resets
+  every launch there. The Linux webview (laufey 0.7.0's WebKitGTK host drops
+  request bodies, so every POST would arrive empty), CEF (its profile is a
+  temporary directory per process, and Chromium's Local Network Access likely
+  blocks the WebSocket relay), and raw (no page).
+
+**The identifier is the storage key.** Set `desktop.app.identifier`. Without it
+the identifier is derived from the app name (`ende desktop` warns), and renaming
+the app, or changing the identifier, starts it with empty storage. The WebView2
+data folder (`%LOCALAPPDATA%\<identifier>\WebView2`) is keyed by it too.
+
+What the app sees on `app://`:
+
+- `request.url` is `http://<host>/…` (the bridge sends `Host: <host>`), and
+  `info.remoteAddr.transport` is `"memory"`. A `Location`, `Content-Location` or
+  `Refresh` URL on `http://<host>` is moved to `app://<host>` on the way out, so
+  `Response.redirect(new URL("/x", req.url))` works.
+- **WebSockets:** `new WebSocket("ws://" + location.host)` can't work, because
+  webviews never send `ws:` through a scheme handler. A relay on a random
+  loopback port forwards upgrades to the memory listener. Its URL,
+  `ws://127.0.0.1:<port>/.ende-desktop-relay/<token>`, is in
+  `ENDE_DESKTOP_WS_URL`, which only the runtime sees. Hand it to the page, for
+  example from an endpoint
+  (`Response.json({ ws: Ende.env.get("ENDE_DESKTOP_WS_URL") })`), and the page
+  appends its path. The relay admits only the app's `Origin` and this launch's
+  token. Relayed requests carry `x-ende-desktop-relay: 1`.
+- **Redirects (macOS):** WKWebView doesn't follow a scheme handler's redirect,
+  so the bridge handles one to the app origin. A navigation gets a page that
+  does `location.replace(<target>)`, so the window ends up at the target (a form
+  POST answered `303` lands on a `GET`). Everything else (`fetch`, XHR, images,
+  a `307`/`308` of a form POST) is followed in the bridge, with the Fetch method
+  rules (`303`, and `301`/`302` of a POST, become a bodiless `GET`; `307`/`308`
+  resend the body) and at most 20 hops, then a `502`. `response.url` stays the
+  first URL, `response.redirected` is `false`, and `redirect: "manual"` is
+  followed too. A redirect to another origin isn't followed: `fetch` gets the
+  3xx and a navigation stays where it was. Windows passes every 3xx through
+  (untested whether WebView2 follows).
+- **Cookies don't work on macOS:** WKWebView ignores `Set-Cookie` for the
+  scheme, and `document.cookie` stays empty.
+- **Request bodies:** at most 4 MiB (`413`). On macOS a `Blob` body arrives
+  empty (WebKit forwards `HTTPBody`, not `HTTPBodyStream`); strings and
+  `FormData` arrive.
+- **No streaming on Windows:** WebView2 gets the whole response before the page
+  sees any of it, so server-sent events and other streamed responses don't
+  arrive until they end.
+- **Cancelling:** laufey 0.7.0 doesn't report a request the webview cancelled.
+  The app's handler keeps running until it answers, or until a write fails (then
+  `request.signal` aborts).
+- **Opening the app's own pages in another window:** `navigate()` takes an
+  absolute URL, and there's no `http://127.0.0.1:<port>` to point it at. In the
+  page, build it from `location.origin`. In the app, use `app://<host>/…`, where
+  `<host>` is the name in `ENDE_SERVE_ADDRESS` (`memory:<host>`).
+- If WebView2 couldn't register the scheme for a window (laufey then retries
+  without it), the initial window shows an error page instead of staying blank
+  (`LostSchemeGuard`).
 
 ## HMR: three outcomes, decided by V8
 

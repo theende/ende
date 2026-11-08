@@ -745,6 +745,14 @@ declare namespace Ende {
     show(): void;
     hide(): void;
     focus(): void;
+    /** Load `url`, an absolute URL, in the window.
+     *
+     * To show one of the app's own pages, use the app's origin. With the
+     * `webview` backend on macOS and Windows that is `app://<host>`, where
+     * `<host>` is the app identifier, lowercased: the name in
+     * `ENDE_SERVE_ADDRESS` (`memory:<host>`). A page can use
+     * `location.origin`. Elsewhere the app is at `http://127.0.0.1:<port>`
+     * (`ENDE_SERVE_ADDRESS` is `tcp:127.0.0.1:<port>`). */
     navigate(url: string): void;
     /** Open a DevTools window.
      *
