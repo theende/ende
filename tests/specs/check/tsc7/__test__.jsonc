@@ -154,6 +154,36 @@
       "output": "pretty.out",
       "exitCode": 1
     },
+    // Like TS 6, a check that passed isn't run again until something
+    // changes; the two checkers' results are kept apart.
+    "cache": {
+      "tempDir": true,
+      "steps": [{
+        "cwd": "cache",
+        "args": "check main.ts",
+        "output": "Check main.ts\n"
+      }, {
+        "cwd": "cache",
+        "args": "check --unstable-tsc7 main.ts",
+        "output": "Check main.ts\n"
+      }, {
+        "cwd": "cache",
+        "args": "check --unstable-tsc7 main.ts",
+        "output": ""
+      }, {
+        "cwd": "cache",
+        "args": [
+          "eval",
+          "Ende.writeTextFileSync('main.ts', 'export const label: string = 1;\\n')"
+        ],
+        "output": ""
+      }, {
+        "cwd": "cache",
+        "args": "check --unstable-tsc7 main.ts",
+        "output": "cache_error.out",
+        "exitCode": 1
+      }]
+    },
     // The generated project lives in Ende's cache, not next to the code.
     "no_project_files": {
       "tempDir": true,

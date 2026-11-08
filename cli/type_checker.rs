@@ -695,11 +695,22 @@ impl DiagnosticsByFolderRealIterator<'_> {
       return Ok(missing_diagnostics);
     }
 
-    // The check cache only records TypeScript 6 results.
-    if self.tsc7.is_none()
-      && !self.options.reload
-      && !missing_diagnostics.has_diagnostic()
-    {
+    let maybe_check_hash = match &self.tsc7 {
+      Some(tsc7) => {
+        // A cache hit skips the check, but not this warning.
+        tsc7.warn_removed_options(
+          self.compiler_options_resolver.for_specifier(
+            check_group
+              .roots
+              .first()
+              .expect("must be at least one root"),
+          ),
+        );
+        maybe_check_hash.map(|hash| tsc7.check_hash(hash))
+      }
+      None => maybe_check_hash,
+    };
+    if !self.options.reload && !missing_diagnostics.has_diagnostic() {
       // do not type check if we know this is type checked
       if let Some(check_hash) = maybe_check_hash
         && self.type_check_cache.has_check_hash(check_hash)
@@ -723,10 +734,10 @@ impl DiagnosticsByFolderRealIterator<'_> {
       return self.check_with_tsc7(
         tsc7,
         check_group,
-        first_root,
         root_names,
         missing_diagnostics,
         &used_ts_expect_error_directives,
+        maybe_check_hash,
       );
     }
 
@@ -801,16 +812,20 @@ impl DiagnosticsByFolderRealIterator<'_> {
   }
 
   /// The rest of `check_diagnostics_in_folder` for TypeScript 7: runs its
-  /// `tsc` instead. Results aren't cached.
+  /// `tsc` instead.
   fn check_with_tsc7(
     &self,
     tsc7: &tsc7::Tsc7Env,
     check_group: &CheckGroup,
-    first_root: &Url,
     root_names: Vec<(ModuleSpecifier, MediaType)>,
     missing_diagnostics: Diagnostics,
     used_ts_expect_error_directives: &HashSet<TsDirective>,
+    maybe_check_hash: Option<CacheDBHash>,
   ) -> Result<Diagnostics, CheckError> {
+    let first_root = check_group
+      .roots
+      .first()
+      .expect("must be at least one root");
     let response = tsc7::exec(
       tsc7,
       tsc7::Request {
@@ -838,6 +853,11 @@ impl DiagnosticsByFolderRealIterator<'_> {
       &response.ambient_modules,
     );
     diagnostics.extend(response_diagnostics);
+    if !diagnostics.has_diagnostic()
+      && let Some(check_hash) = maybe_check_hash
+    {
+      self.type_check_cache.add_check_hash(check_hash);
+    }
     Ok(diagnostics)
   }
 

@@ -29,6 +29,7 @@ use ende_core::serde_json;
 use ende_core::serde_json::json;
 use ende_core::url::Url;
 use ende_lib::util::checksum;
+use ende_lib::util::hash::FastInsecureHasher;
 use ende_resolver::ende_json::CompilerOptionsData;
 use regex::Regex;
 
@@ -45,6 +46,7 @@ use super::project::reported_path_key;
 use super::project::to_tsc_path;
 use crate::args::CompilerOptions;
 use crate::cache::CACHE_PERM;
+use crate::cache::CacheDBHash;
 use crate::sys::CliSys;
 use crate::tsc::Diagnostic;
 use crate::tsc::DiagnosticCategory;
@@ -60,16 +62,46 @@ pub struct Tsc7Env {
   project_dir: PathBuf,
   /// Config files already warned about, so each warning prints once.
   warned: Mutex<HashSet<String>>,
+  /// Which tsc this is, for the check cache: its path, size and mtime.
+  identity: u64,
 }
 
 impl Tsc7Env {
   /// One project directory per workspace, under `<ende_dir>/tsc7_projects/`.
   pub fn new(tsc: PathBuf, ende_dir_root: &Path, workspace_root: &Url) -> Self {
     let hash = &checksum::r#gen(&[workspace_root.as_str()])[..16];
+    let metadata = std::fs::metadata(&tsc)
+      .ok()
+      .map(|m| (m.len(), m.modified().ok()));
+    let identity = FastInsecureHasher::new_ende_versioned()
+      .write_hashable(("tsc7", &tsc, metadata))
+      .finish();
     Self {
       tsc,
       project_dir: ende_dir_root.join("tsc7_projects").join(hash),
       warned: Default::default(),
+      identity,
+    }
+  }
+
+  /// The check cache key for a check whose TS 6 key is `hash`. TS 6 and
+  /// TS 7 results differ, and so can two tsc builds'.
+  pub fn check_hash(&self, hash: CacheDBHash) -> CacheDBHash {
+    CacheDBHash::from_hashable((hash, self.identity))
+  }
+
+  /// Warns, once per config file, about options TypeScript 7 removed.
+  pub fn warn_removed_options(&self, data: &CompilerOptionsData) {
+    for removed in options::removed_options(
+      data
+        .sources
+        .iter()
+        .map(|s| (s.specifier.as_ref(), s.compiler_options.as_ref())),
+    ) {
+      let key = format!("{}#{}", removed.specifier, removed.name);
+      if self.warned.lock().insert(key) {
+        log::warn!("{} {removed}", colors::yellow("Warning:"));
+      }
     }
   }
 }
@@ -91,18 +123,6 @@ pub struct Response {
 
 pub fn exec(env: &Tsc7Env, request: Request) -> Result<Response, AnyError> {
   let data = request.compiler_options_data;
-  for removed in options::removed_options(
-    data
-      .sources
-      .iter()
-      .map(|s| (s.specifier.as_ref(), s.compiler_options.as_ref())),
-  ) {
-    let key = format!("{}#{}", removed.specifier, removed.name);
-    if env.warned.lock().insert(key) {
-      log::warn!("{} {removed}", colors::yellow("Warning:"));
-    }
-  }
-
   let project_dir = &env.project_dir;
   let types_dir = project_dir.join("types");
   write_ende_libs(&types_dir)?;
@@ -763,6 +783,21 @@ mod tests {
       Some("asset:///lib.es5.d.ts")
     );
     assert_eq!(related[1].start, position(741, 19));
+  }
+
+  #[test]
+  fn check_hashes_depend_on_the_tsc() {
+    let root = Url::parse("file:///project/").unwrap();
+    let dir = Path::new("/ende_dir");
+    let a = Tsc7Env::new("/a/tsc".into(), dir, &root);
+    let b = Tsc7Env::new("/b/tsc".into(), dir, &root);
+    let hash = CacheDBHash::new(1);
+    assert_ne!(a.check_hash(hash), hash);
+    assert_ne!(a.check_hash(hash), b.check_hash(hash));
+    assert_eq!(
+      a.check_hash(hash),
+      Tsc7Env::new("/a/tsc".into(), dir, &root).check_hash(hash)
+    );
   }
 
   #[test]

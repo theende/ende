@@ -1,6 +1,6 @@
-Check main.ts
 Warning: compilerOptions.baseUrl has no effect in TypeScript 7, which removed it, so tsc doesn't get it. Ende still resolves "paths" and "rootDirs" against it.
     at file:///[WILDLINE]/base_url/ende.json
+Check main.ts
 TS2322 [ERROR]: Type 'number' is not assignable to type 'string'.
 const label: string = count;
       ~~~~~

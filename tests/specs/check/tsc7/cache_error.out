@@ -1,0 +1,7 @@
+Check main.ts
+TS2322 [ERROR]: Type 'number' is not assignable to type 'string'.
+export const label: string = 1;
+             ~~~~~
+    at file:///[WILDLINE]/main.ts:1:14
+
+error: Type checking failed.
