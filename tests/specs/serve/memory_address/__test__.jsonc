@@ -23,6 +23,16 @@
       "envs": { "ENDE_SERVE_ADDRESS": "memory:Spec.Example:80" },
       "output": "invalid_host.out",
       "exitCode": 0
+    },
+    // A TCP server in the same process never takes a request whose
+    // `request.url` names the memory listener's host (in `Host` or an
+    // absolute-form target, however it's spelled): only a memory connection
+    // produces that URL, and a handler may trust it.
+    "tcp_refuses_memory_host": {
+      "args": "run --allow-net=127.0.0.1 forged.ts",
+      "envs": { "ENDE_SERVE_ADDRESS": "memory:app.example" },
+      "output": "forged.out",
+      "exitCode": 0
     }
   }
 }

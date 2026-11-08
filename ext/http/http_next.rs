@@ -2000,13 +2000,8 @@ fn raw_request_url_v8<'scope>(
     return v8_string_from_bytes(scope, &out);
   }
 
-  let authority = inner
-    .headers
-    .get(b"host")
-    .and_then(|value| std::str::from_utf8(value).ok())
-    .filter(|host| !host.is_empty())
-    .map(|host| host.as_bytes())
-    .unwrap_or_else(|| fallback_host.as_bytes());
+  let authority =
+    raw_host_or_fallback(&inner.headers, fallback_host).as_bytes();
   let needs_slash = !matches!(path.first(), Some(b'/' | b'*'));
   let mut out = SmallVec::<[u8; 256]>::with_capacity(
     scheme_prefix.len() + authority.len() + path.len() + 1,
@@ -2021,6 +2016,37 @@ fn raw_request_url_v8<'scope>(
   }
   out.extend_from_slice(path);
   v8_string_from_bytes(scope, &out)
+}
+
+/// The `Host` header `request.url` uses for an origin-form raw request, or the
+/// listener's fallback authority when there's none (or it isn't UTF-8).
+fn raw_host_or_fallback<'a>(
+  headers: &'a RawRequestHeaders,
+  fallback_host: &'a str,
+) -> &'a str {
+  headers
+    .get(b"host")
+    .and_then(|value| std::str::from_utf8(value).ok())
+    .filter(|host| !host.is_empty())
+    .unwrap_or(fallback_host)
+}
+
+/// The authority `raw_request_url_v8` builds `request.url` from.
+fn raw_request_url_authority<'a>(
+  method: &RawMethod,
+  path: &'a str,
+  headers: &'a RawRequestHeaders,
+  fallback_host: &'a str,
+) -> &'a str {
+  if method.is_connect() {
+    return path;
+  }
+  if !matches!(path.as_bytes().first(), Some(b'/' | b'*'))
+    && let Some((_, authority, _)) = split_absolute_form_target(path)
+  {
+    return authority;
+  }
+  raw_host_or_fallback(headers, fallback_host)
 }
 
 fn split_absolute_form_target(target: &str) -> Option<(&str, &str, &str)> {
@@ -4564,6 +4590,25 @@ async fn serve_http11_raw(
     }) else {
       return Ok(());
     };
+
+    // A request on another transport may not name a memory listener's host
+    // in `request.url` (see `claims_memory_host`). The target and headers
+    // are only kept when the handler takes the request, which is also the
+    // only case in which `request.url` exists.
+    if store_request
+      && crate::request_properties::claims_memory_host(
+        raw_request_url_authority(
+          &parsed.method,
+          &parsed.path,
+          &parsed.headers,
+          &request_info.fallback_host,
+        ),
+        request_info.stream_type,
+      )
+    {
+      write_h1_bad_request(&mut conn, &mut scratch).await?;
+      return Ok(());
+    }
 
     let mut keep_alive = parsed.keep_alive;
     let expect_continue = parsed.expect_continue;

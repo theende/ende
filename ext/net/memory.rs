@@ -20,6 +20,7 @@ use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::sync::OnceLock;
 use std::sync::atomic::AtomicU32;
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::task::Context;
 use std::task::Poll;
@@ -135,7 +136,10 @@ impl Drop for MemoryListener {
     // Free the name so it can be reused; peers then see a closed channel.
     // A name is held by exactly one listener (listen_memory rejects
     // duplicates), so this entry is unambiguously ours.
-    registry_lock().remove(&self.name);
+    let mut reg = registry_lock();
+    if reg.remove(&self.name).is_some() {
+      LISTENER_COUNT.fetch_sub(1, Ordering::Relaxed);
+    }
   }
 }
 
@@ -153,6 +157,17 @@ fn registry() -> &'static Registry {
 
 fn registry_lock() -> MutexGuard<'static, HashMap<String, RegistryEntry>> {
   registry().lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Number of registered listeners, kept next to the registry (and only
+/// changed under its lock) so [`has_listeners`] doesn't need the lock.
+static LISTENER_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+/// Whether any memory listener is registered in this process. A lock-free
+/// check for hot paths (every HTTP request on other transports) before they
+/// ask [`is_listening`].
+pub fn has_listeners() -> bool {
+  LISTENER_COUNT.load(Ordering::Relaxed) > 0
 }
 
 /// Create a memory listener registered under `name`. Fails if `name` is already
@@ -173,6 +188,7 @@ pub fn listen_memory(name: &str) -> io::Result<MemoryListener> {
       next_id: Arc::new(AtomicU32::new(1)),
     },
   );
+  LISTENER_COUNT.fetch_add(1, Ordering::Relaxed);
   Ok(MemoryListener {
     name: name.to_string(),
     rx: tokio::sync::Mutex::new(rx),
@@ -181,7 +197,9 @@ pub fn listen_memory(name: &str) -> io::Result<MemoryListener> {
 
 /// Whether a memory listener is currently registered under `name`. Used to
 /// wait for an in-process server to be ready before directing traffic at it
-/// (without opening a real connection that the listener would need to accept).
+/// (without opening a real connection that the listener would need to accept),
+/// and by `ext/http` to refuse requests on other transports that claim a
+/// memory listener's host.
 pub fn is_listening(name: &str) -> bool {
   registry_lock().contains_key(name)
 }
@@ -275,6 +293,7 @@ mod tests {
     {
       let _l = listen_memory("test-drop").unwrap();
       assert!(is_listening("test-drop"));
+      assert!(has_listeners());
     }
     assert!(!is_listening("test-drop"));
     // Name is reusable after the listener drops.

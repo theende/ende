@@ -1,0 +1,8 @@
+http://app.example/x (host: other.example) -> HTTP/1.1 400 Bad Request
+HTTP://APP.EXAMPLE:8000/x (host: other.example) -> HTTP/1.1 400 Bad Request
+/x (host: app.example) -> HTTP/1.1 400 Bad Request
+/x (host: APP.Example:8000) -> HTTP/1.1 400 Bad Request
+/x (host: user@app.example) -> HTTP/1.1 400 Bad Request
+/x (host: other.example) -> HTTP/1.1 200 OK
+http://other.example/x (host: app.example) -> HTTP/1.1 200 OK
+handler saw: ["http://other.example/x","http://other.example/x"]

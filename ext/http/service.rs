@@ -688,7 +688,13 @@ pub(crate) async fn handle_request<F>(
 where
   F: FnOnce(Rc<HttpRecord>),
 {
-  if !validate_request(&request) {
+  if !validate_request(&request)
+    || crate::request_properties::request_claims_memory_host(
+      &request_info,
+      request.uri(),
+      request.headers(),
+    )
+  {
     let mut response = Response::new(HttpRecordResponse::empty());
     *response.version_mut() = request.version();
     *response.status_mut() = http::StatusCode::BAD_REQUEST;
@@ -1431,5 +1437,98 @@ mod tests {
     )?;
     assert_eq!(server_state_check.strong_count(), 1);
     Ok(())
+  }
+
+  /// Send `raw` over a duplex stream to `handle_request` for a connection of
+  /// `stream_type`, returning the raw response and whether the request was
+  /// dispatched to the handler (which then answers 200).
+  async fn raw_request(
+    stream_type: NetworkStreamType,
+    raw: &'static [u8],
+  ) -> (String, bool) {
+    use tokio::io::AsyncReadExt;
+    use tokio::io::AsyncWriteExt;
+
+    let server_state = HttpServerState::new();
+    let dispatched = Rc::new(std::cell::Cell::new(false));
+    let dispatched_in_svc = dispatched.clone();
+    let request_info = HttpConnectionProperties {
+      peer_address: "".into(),
+      peer_port: None,
+      local_port: None,
+      stream_type,
+      scheme: "http://",
+      fallback_host: "localhost".into(),
+    };
+    let svc = service_fn(move |req: hyper::Request<Incoming>| {
+      let dispatched = dispatched_in_svc.clone();
+      handle_request(
+        req,
+        request_info.clone(),
+        server_state.clone(),
+        move |record| {
+          dispatched.set(true);
+          record.set_response_body(ResponseBytesInner::from_vec(
+            Compression::None,
+            b"ok".to_vec(),
+          ));
+          record.complete();
+        },
+        true,
+        false,
+      )
+    });
+    let (mut client, server) = tokio::io::duplex(16 * 1024);
+    let conn = hyper::server::conn::http1::Builder::new()
+      .serve_connection(TokioIo::new(server), svc);
+    let client = async move {
+      client.write_all(raw).await.unwrap();
+      let mut buf = vec![0u8; 1024];
+      let n = client.read(&mut buf).await.unwrap();
+      String::from_utf8_lossy(&buf[..n]).into_owned()
+    };
+    let local = tokio::task::LocalSet::new();
+    let response = local
+      .run_until(async move {
+        tokio::select! {
+          response = client => response,
+          _ = conn => panic!("connection closed before a response"),
+        }
+      })
+      .await;
+    (response, dispatched.get())
+  }
+
+  #[tokio::test]
+  async fn memory_host_is_rejected_on_other_transports() {
+    let _listener =
+      ende_net::memory::listen_memory("service-test.example").unwrap();
+    // Over TCP, a request whose `request.url` would name the memory
+    // listener's host never reaches the handler.
+    for raw in [
+      &b"POST http://service-test.example/x HTTP/1.1\r\nhost: other\r\ncontent-length: 0\r\n\r\n"[..],
+      &b"GET /x HTTP/1.1\r\nhost: Service-Test.Example:8000\r\n\r\n"[..],
+    ] {
+      let (response, dispatched) =
+        raw_request(NetworkStreamType::Tcp, raw).await;
+      assert!(response.starts_with("HTTP/1.1 400"), "{response}");
+      assert!(!dispatched);
+    }
+    // Other hosts are unaffected.
+    let (response, dispatched) = raw_request(
+      NetworkStreamType::Tcp,
+      b"GET /x HTTP/1.1\r\nhost: other.example\r\n\r\n",
+    )
+    .await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    assert!(dispatched);
+    // On the memory transport itself the host is genuine.
+    let (response, dispatched) = raw_request(
+      NetworkStreamType::Memory,
+      b"GET /x HTTP/1.1\r\nhost: service-test.example\r\n\r\n",
+    )
+    .await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    assert!(dispatched);
   }
 }

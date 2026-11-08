@@ -304,6 +304,64 @@ fn req_host_from_addr(
   }
 }
 
+/// Whether a request that did not come over the memory transport names the
+/// host of an in-process memory listener in its `request.url`.
+///
+/// A request bridged in over the memory transport has a plain
+/// `http://<host>/…` URL (see [`req_scheme_from_stream_type`]). Without this
+/// check any client of a TCP (or other) listener in the same process could
+/// send that host in `Host` or an absolute-form target and pass a handler
+/// that trusts the URL to mean "from the desktop webview". Such a request is
+/// rejected with `400 Bad Request` before it reaches the handler.
+/// `info.remoteAddr.transport === "memory"` stays the check to rely on; this
+/// keeps the URL from contradicting it.
+///
+/// `authority` is what `request.url` is built from. It's parsed the way
+/// `new URL()` parses it, so every spelling that normalizes to the same host
+/// (case, a port, user info, percent-encoding, IDNA mappings) is caught.
+pub(crate) fn claims_memory_host(
+  authority: &str,
+  stream_type: NetworkStreamType,
+) -> bool {
+  if stream_type == NetworkStreamType::Memory
+    || !ende_net::memory::has_listeners()
+  {
+    return false;
+  }
+  let Ok(url) = ende_core::url::Url::parse(&format!("http://{authority}/"))
+  else {
+    return false;
+  };
+  url.host_str().is_some_and(ende_net::memory::is_listening)
+}
+
+/// [`claims_memory_host`] for a request served by hyper. The authority is
+/// picked the way `op_http_get_request_url` picks it.
+pub(crate) fn request_claims_memory_host(
+  request_info: &HttpConnectionProperties,
+  uri: &Uri,
+  headers: &HeaderMap,
+) -> bool {
+  if request_info.stream_type == NetworkStreamType::Memory
+    || !ende_net::memory::has_listeners()
+  {
+    return false;
+  }
+  let authority = uri
+    .authority()
+    .map(|authority| Cow::Borrowed(authority.as_str()))
+    .or_else(|| {
+      req_host(
+        uri,
+        headers,
+        request_info.stream_type,
+        request_info.local_port.unwrap_or_default(),
+      )
+    })
+    .unwrap_or_else(|| Cow::Borrowed(request_info.fallback_host.as_ref()));
+  claims_memory_host(&authority, request_info.stream_type)
+}
+
 fn req_scheme_from_stream_type(stream_type: NetworkStreamType) -> &'static str {
   match stream_type {
     NetworkStreamType::Tcp => "http://",
@@ -391,6 +449,7 @@ mod tests {
   use ende_net::raw::NetworkStreamAddress;
   use ende_net::raw::NetworkStreamType;
 
+  use super::claims_memory_host;
   use super::listener_properties;
 
   #[test]
@@ -406,5 +465,46 @@ mod tests {
     assert_eq!(properties.scheme, "http://");
     assert_eq!(properties.fallback_host, "app.example");
     assert_eq!(properties.local_port, None);
+  }
+
+  #[test]
+  fn memory_host_only_on_the_memory_transport() {
+    let _listener =
+      ende_net::memory::listen_memory("claims-test.example").unwrap();
+    for authority in [
+      "claims-test.example",
+      "CLAIMS-TEST.Example",
+      "claims-test.example:8000",
+      "user@claims-test.example",
+      "user:pass@claims-test.example:80",
+      "claims-test%2Eexample",
+      "claims-test\u{3002}example",
+    ] {
+      assert!(
+        claims_memory_host(authority, NetworkStreamType::Tcp),
+        "{authority}"
+      );
+      assert!(
+        claims_memory_host(authority, NetworkStreamType::Tls),
+        "{authority}"
+      );
+      assert!(
+        !claims_memory_host(authority, NetworkStreamType::Memory),
+        "{authority}"
+      );
+    }
+    for authority in [
+      "other.example",
+      "claims-test.example.",
+      "claims-test.example.evil",
+      "evil\\@claims-test.example",
+      "localhost:8000",
+      "",
+    ] {
+      assert!(
+        !claims_memory_host(authority, NetworkStreamType::Tcp),
+        "{authority}"
+      );
+    }
   }
 }
