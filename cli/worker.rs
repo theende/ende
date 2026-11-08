@@ -23,6 +23,7 @@ use ende_runtime::ende_os::OpExitCallbacks;
 use ende_runtime::ende_os::WatcherExitHandle;
 use ende_runtime::ende_os::WatcherExited;
 use ende_runtime::ende_permissions::PermissionsContainer;
+use ende_runtime::ende_process::KillUnrefedChildrenOnDrop;
 use ende_runtime::worker::MainWorker;
 use tokio::select;
 
@@ -267,6 +268,9 @@ impl CliMainWorker {
     // terminates this isolate instead of the whole process, allowing the file
     // watcher to survive and restart on the next change. See issue #7590.
     self.install_watcher_exit_handle();
+    // An unref'd child may outlive an ordinary parent exit, but must not leak
+    // across watcher runs while the watcher process itself remains alive.
+    self.op_state().borrow_mut().put(KillUnrefedChildrenOnDrop);
 
     /// The FileWatcherModuleExecutor provides module execution with safe dispatching of life-cycle events by tracking the
     /// state of any pending events and emitting accordingly on drop in the case of a future

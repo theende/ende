@@ -219,6 +219,16 @@ fn check_alive_then_kill(mut child: EndeChild) {
   child.kill().unwrap();
 }
 
+struct KillOnDropEndeChild(Option<EndeChild>);
+
+impl Drop for KillOnDropEndeChild {
+  fn drop(&mut self) {
+    if let Some(child) = self.0.as_mut() {
+      let _ = child.kill();
+    }
+  }
+}
+
 fn child_lines(
   child: &mut std::process::Child,
 ) -> (
@@ -2112,6 +2122,113 @@ async fn run_watch_unload_on_restart() {
   wait_contains("unload event fired", &mut stdout_lines).await;
   wait_contains("Restarting", &mut stderr_lines).await;
   check_alive_then_kill(child);
+}
+
+/// Unref'd children belong to the current run and should be killed when a
+/// watcher restart replaces that run, even though the watcher itself stays
+/// alive.
+#[cfg(unix)]
+#[test(flaky)]
+async fn run_watch_kills_unrefed_children_on_restart() {
+  let t = TempDir::new();
+  let file_to_watch = t.path().join("file_to_watch.js");
+  let marker_file = t.path().join("children.txt");
+  let marker_path = serde_json::to_string(
+    marker_file
+      .as_path()
+      .to_str()
+      .expect("temporary path should be UTF-8"),
+  )
+  .unwrap();
+
+  let make_script = |generation: &str| {
+    let make_child_code = |label: &str| {
+      let line =
+        serde_json::to_string(&format!("{generation}-{label}\n")).unwrap();
+      format!(
+        "setInterval(() => Deno.writeTextFileSync({marker_path}, {line}, {{ append: true }}), 100); setTimeout(() => Deno.exit(0), 15000);"
+      )
+    };
+    let deno_child_code =
+      serde_json::to_string(&make_child_code("deno")).unwrap();
+
+    format!(
+      r#"
+        const denoChildCode = {deno_child_code};
+        const denoChild = new Deno.Command(Deno.execPath(), {{
+          args: ["eval", "--allow-write", denoChildCode],
+          stdin: "null",
+          stdout: "null",
+          stderr: "null",
+        }}).spawn();
+        denoChild.unref();
+        setInterval(() => {{}}, 1000);
+        // {generation}
+      "#
+    )
+  };
+
+  file_to_watch.write(make_script("before"));
+
+  let watcher = util::ende_cmd()
+    .current_dir(t.path())
+    .arg("run")
+    .arg("--watch")
+    .arg("-L")
+    .arg("debug")
+    .arg("--allow-all")
+    .arg(&file_to_watch)
+    .env("NO_COLOR", "1")
+    .piped_output()
+    .spawn()
+    .unwrap();
+  let mut watcher = KillOnDropEndeChild(Some(watcher));
+  let (_stdout_lines, mut stderr_lines) =
+    child_lines(watcher.0.as_mut().unwrap());
+
+  wait_for_watcher("file_to_watch.js", &mut stderr_lines).await;
+  tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    loop {
+      let contents = std::fs::read_to_string(&marker_file).unwrap_or_default();
+      if contents.contains("before-deno") {
+        break;
+      }
+      tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+  })
+  .await
+  .expect("the unref'd child process should start");
+
+  file_to_watch.write(make_script("after"));
+  wait_contains("Restarting", &mut stderr_lines).await;
+
+  tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    loop {
+      let contents = std::fs::read_to_string(&marker_file).unwrap_or_default();
+      if contents.contains("after-deno") {
+        break;
+      }
+      tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+  })
+  .await
+  .expect("the replacement child process should start");
+
+  tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+  let contents = std::fs::read_to_string(&marker_file).unwrap();
+  let lines = contents.lines().collect::<Vec<_>>();
+  let first_replacement_line = lines
+    .iter()
+    .position(|line| line.starts_with("after-"))
+    .expect("the replacement child should write to the marker file");
+  assert!(
+    !lines[first_replacement_line..]
+      .iter()
+      .any(|line| line.starts_with("before-")),
+    "the previous run's child continued writing after the watcher restarted: {contents}"
+  );
+
+  check_alive_then_kill(watcher.0.take().unwrap());
 }
 
 /// Wait, in either order, for the watcher to both report the requested exit

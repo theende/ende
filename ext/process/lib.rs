@@ -305,6 +305,11 @@ impl StdioOrFd {
   }
 }
 
+/// Marks a runtime whose child processes must not outlive the runtime, even
+/// when JavaScript calls `unref()`. File-watcher runs use this because a
+/// restart ends the current run but keeps the watcher process alive.
+pub struct KillUnrefedChildrenOnDrop;
+
 ende_core::extension!(
   ende_process,
   ops = [
@@ -1709,7 +1714,9 @@ fn op_spawn_child_unref(
   #[smi] rid: ResourceId,
 ) -> Result<(), ende_core::error::ResourceError> {
   let resource = state.resource_table.get::<ChildResource>(rid)?;
-  resource.kill_on_drop.set(false);
+  if !state.has::<KillUnrefedChildrenOnDrop>() {
+    resource.kill_on_drop.set(false);
+  }
   Ok(())
 }
 
