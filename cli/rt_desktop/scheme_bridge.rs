@@ -117,6 +117,9 @@
 //!   `document.cookie` stays empty (macOS 27).
 
 use std::net::SocketAddr;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicU32;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use ende_runtime::ende_net::memory::connect_memory;
@@ -270,12 +273,19 @@ impl Exchange for laufey::SchemeExchange {
 /// Redirects to the app origin are handled by the bridge on macOS only
 /// (see the module docs): WKWebView doesn't follow them. Whether WebView2
 /// does is untested, so Windows passes every 3xx through as before.
-pub fn register(origin: AppOrigin) {
+///
+/// The returned [`Bridge`] tells whether any request arrived, for
+/// [`LostSchemeGuard`].
+pub fn register(origin: AppOrigin) -> std::sync::Arc<Bridge> {
   let handle = tokio::runtime::Handle::current();
   let bridge =
     std::sync::Arc::new(Bridge::new(origin, cfg!(target_os = "macos")));
+  let registered = bridge.clone();
   laufey::register_scheme_handler(APP_SCHEME, move |req| {
     log::trace!("[desktop] {} {}", req.method, req.url);
+    // Before the response can go out, so before the page can finish
+    // loading.
+    bridge.received_a_request.store(true, Ordering::Release);
     let bridge = bridge.clone();
     handle.spawn(async move {
       let exchange = req.exchange;
@@ -291,6 +301,7 @@ pub fn register(origin: AppOrigin) {
       exchange.finish();
     });
   });
+  registered
 }
 
 /// The most redirects one request follows, as in the Fetch standard. A
@@ -298,7 +309,7 @@ pub fn register(origin: AppOrigin) {
 const MAX_REDIRECTS: usize = 20;
 
 /// The `app` scheme handler's state.
-struct Bridge {
+pub struct Bridge {
   origin: AppOrigin,
   /// Whether same-origin redirects are followed (fetches) or turned into a
   /// page that navigates to the target (navigations), instead of being
@@ -307,6 +318,8 @@ struct Bridge {
   /// Per window: how many same-origin redirects its navigations got in a
   /// row, so a redirect loop stops like it would in a browser.
   navigation_redirects: std::sync::Mutex<std::collections::HashMap<u32, usize>>,
+  /// Whether the webview made any request on the scheme yet.
+  received_a_request: AtomicBool,
 }
 
 impl Bridge {
@@ -315,7 +328,13 @@ impl Bridge {
       origin,
       follow_redirects,
       navigation_redirects: Default::default(),
+      received_a_request: AtomicBool::new(false),
     }
+  }
+
+  /// Whether the webview made any request on the scheme yet.
+  pub fn received_a_request(&self) -> bool {
+    self.received_a_request.load(Ordering::Acquire)
   }
 
   /// Answer one webview request: bridged to the app, or a `502` page when
@@ -558,6 +577,80 @@ fn too_many_redirects(
   *began = true;
   let _ = exchange.write(b"too many redirects\n");
   Ok(())
+}
+
+/// Notices a window that can't load `app://` at all.
+///
+/// laufey 0.7.0's WebView2 host creates each window's environment with the
+/// `app` scheme registered and, if that fails (for example because another
+/// process uses the same user data folder with other options), creates it
+/// again without the scheme. The window opens, but navigating it to
+/// `app://` loads nothing, and laufey doesn't report the retry. The guard
+/// notices it from outside: the initial window, which the runtime navigates
+/// to the app origin, finished its first load, and the bridge never got a
+/// request (WebView2 reports every scheme request as window 0, so "any
+/// request" is what can be checked). A window the app navigated itself
+/// before that proves nothing and isn't checked.
+pub struct LostSchemeGuard {
+  bridge: std::sync::Arc<Bridge>,
+  /// The initial window, once created.
+  window_id: AtomicU32,
+  /// Whether its first page load is still to be checked.
+  armed: AtomicBool,
+}
+
+impl LostSchemeGuard {
+  pub fn new(bridge: std::sync::Arc<Bridge>) -> Self {
+    Self {
+      bridge,
+      window_id: AtomicU32::new(0),
+      armed: AtomicBool::new(false),
+    }
+  }
+
+  /// Check the first page load of `window_id`, the initial window.
+  pub fn watch(&self, window_id: u32) {
+    self.window_id.store(window_id, Ordering::Release);
+    self.armed.store(true, Ordering::Release);
+  }
+
+  /// The app navigated `window_id` itself.
+  pub fn navigated_by_app(&self, window_id: u32) {
+    if window_id == self.window_id.load(Ordering::Acquire) {
+      self.armed.store(false, Ordering::Release);
+    }
+  }
+
+  /// Whether a page load in `window_id` shows that the scheme was lost:
+  /// true at most once, for the watched window's first load when the
+  /// bridge has had no request.
+  pub fn lost_scheme_on_load(&self, window_id: u32) -> bool {
+    window_id == self.window_id.load(Ordering::Acquire)
+      && self.armed.swap(false, Ordering::AcqRel)
+      && !self.bridge.received_a_request()
+  }
+}
+
+/// What a window that lost the scheme shows instead of a blank page: a
+/// `data:` URL, since nothing on `app://` can load there.
+pub fn lost_scheme_page() -> String {
+  const PAGE: &str = "<!doctype html><meta charset=\"utf-8\">\
+    <title>The app could not start</title>\
+    <body style=\"font: 15px system-ui, sans-serif; margin: 2em\">\
+    <h1 style=\"font-size: 1.3em\">The app could not start</h1>\
+    <p>The webview could not register the <code>app://</code> scheme the app \
+    is served from. Another program may be using the same WebView2 data \
+    folder with other settings: close it and start the app again, or set \
+    <code>WEBVIEW2_USER_DATA_FOLDER</code> to a folder of the app's own.</p>";
+  let mut url = String::from("data:text/html;charset=utf-8,");
+  for byte in PAGE.bytes() {
+    if byte.is_ascii_alphanumeric() || b"-_.~".contains(&byte) {
+      url.push(char::from(byte));
+    } else {
+      url.push_str(&format!("%{byte:02X}"));
+    }
+  }
+  url
 }
 
 /// What the bridge does with an app response (see the module docs).
@@ -2057,6 +2150,47 @@ mod tests {
       );
     }
     received(&mut app, 2).await;
+  }
+
+  #[test]
+  fn lost_scheme_guard_checks_the_first_load_of_the_initial_window() {
+    let bridge = std::sync::Arc::new(Bridge::new(origin(), false));
+    let guard = LostSchemeGuard::new(bridge.clone());
+    // Nothing is watched before the initial window exists.
+    assert!(!guard.lost_scheme_on_load(0));
+    guard.watch(7);
+    // Another window's load, then the initial window's first: lost, once.
+    assert!(!guard.lost_scheme_on_load(8));
+    assert!(guard.lost_scheme_on_load(7));
+    assert!(!guard.lost_scheme_on_load(7));
+
+    // A request arrived: the scheme works.
+    let guard = LostSchemeGuard::new(bridge.clone());
+    guard.watch(7);
+    bridge.received_a_request.store(true, Ordering::Release);
+    assert!(!guard.lost_scheme_on_load(7));
+
+    // The app navigated the window itself before it loaded.
+    let bridge = std::sync::Arc::new(Bridge::new(origin(), false));
+    let guard = LostSchemeGuard::new(bridge);
+    guard.watch(7);
+    guard.navigated_by_app(8);
+    guard.navigated_by_app(7);
+    assert!(!guard.lost_scheme_on_load(7));
+  }
+
+  #[test]
+  fn lost_scheme_page_is_a_data_url() {
+    let url = lost_scheme_page();
+    let html = url.strip_prefix("data:text/html;charset=utf-8,").unwrap();
+    assert!(
+      html
+        .bytes()
+        .all(|b| b.is_ascii_alphanumeric() || b"-_.~%".contains(&b))
+    );
+    let decoded = ende_core::url::Url::parse(&url).unwrap();
+    assert_eq!(decoded.scheme(), "data");
+    assert!(html.contains("WEBVIEW2_USER_DATA_FOLDER"));
   }
 
   #[tokio::test]

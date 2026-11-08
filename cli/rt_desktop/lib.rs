@@ -253,6 +253,8 @@ struct WefDesktopApi {
   /// Singleton for the unified-mux DevTools window. Without this, every
   /// `openDevtools()` call would spawn another DevTools window.
   devtools_window: Mutex<Option<u32>>,
+  /// Set on Windows when the app is served from `app://`.
+  lost_scheme_guard: Option<Arc<scheme_bridge::LostSchemeGuard>>,
 }
 
 impl WefDesktopApi {
@@ -278,6 +280,7 @@ impl WefDesktopApi {
     let close_requests = self.close_requests.clone();
     let shown = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let hidden_by_app = self.hidden_by_app.clone();
+    let lost_scheme_guard = self.lost_scheme_guard.clone();
 
     window
       .on_keyboard_event(move |ev| {
@@ -401,6 +404,16 @@ impl WefDesktopApi {
         {
           laufey::Window::from_id(ev.window_id).show();
         }
+        if let Some(guard) = &lost_scheme_guard
+          && guard.lost_scheme_on_load(ev.window_id)
+        {
+          log::error!(
+            "[desktop] the webview couldn't register the {}:// scheme, so the app's page can't load; another program may use the same WebView2 user data folder (WEBVIEW2_USER_DATA_FOLDER) with other settings",
+            scheme_bridge::APP_SCHEME
+          );
+          laufey::Window::from_id(ev.window_id)
+            .navigate(&scheme_bridge::lost_scheme_page());
+        }
         let _ = page_load_tx.send(
           ende_runtime::ops::desktop::DesktopEvent::PageLoad {
             window_id: ev.window_id,
@@ -469,6 +482,9 @@ impl WefDesktopApi {
     );
     let window = self.setup_window_events(window, options.show_on_first_load);
     let id = window.id();
+    if let Some(guard) = &self.lost_scheme_guard {
+      guard.watch(id);
+    }
     if !options.show_on_first_load {
       // `desktop.initialWindow.showOnFirstLoad: false`: the app shows it. Keep
       // the navigate fallback from showing it too, and hide it explicitly
@@ -751,6 +767,9 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
   }
 
   fn navigate(&self, window_id: u32, url: &str) {
+    if let Some(guard) = &self.lost_scheme_guard {
+      guard.navigated_by_app(window_id);
+    }
     laufey::Window::from_id(window_id).navigate(url);
   }
 
@@ -2429,14 +2448,22 @@ async fn run_desktop(
       (Some(*port), Some("127.0.0.1".to_string()))
     }
   };
+  let mut bridge = None;
   if let RendererTransport::AppScheme { origin, ws_relay } = &mut transport {
     // Before the first window is created (in `op_state_init` below): WebKit
     // reads a web view's scheme handlers when the web view is created.
-    scheme_bridge::register(origin.clone());
+    bridge = Some(scheme_bridge::register(origin.clone()));
     if let Some(listener) = ws_relay.take() {
       scheme_bridge::spawn_ws_loopback_proxy(listener, origin.clone());
     }
   }
+
+  // laufey 0.7.0's WebView2 host can drop the `app` scheme for a window
+  // (see `LostSchemeGuard`); show why instead of a blank window.
+  let lost_scheme_guard = bridge
+    .clone()
+    .filter(|_| cfg!(windows))
+    .map(|bridge| Arc::new(scheme_bridge::LostSchemeGuard::new(bridge)));
 
   // Enable HMR if ENDE_DESKTOP_HMR is set to a directory path
   // (set by `ende compile --desktop --hmr`).
@@ -2551,6 +2578,7 @@ async fn run_desktop(
         trays: Arc::new(Mutex::new(HashMap::new())),
         notifications: Arc::new(Mutex::new(HashMap::new())),
         devtools_window: Mutex::new(None),
+        lost_scheme_guard,
       };
 
       // Forward macOS dock-reopen callbacks (clicking the dock icon while
@@ -2684,6 +2712,14 @@ async fn run_desktop(
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     if !hidden_by_app_for_navigate.lock().unwrap().contains(&id) {
       laufey::Window::from_id(id).show();
+    }
+    if let Some(bridge) = &bridge
+      && !bridge.received_a_request()
+    {
+      log::error!(
+        "[desktop] the webview made no request to {url} in 10 s; if the window stays blank, the webview couldn't register the {}:// scheme",
+        scheme_bridge::APP_SCHEME
+      );
     }
   };
 
