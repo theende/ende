@@ -75,6 +75,32 @@
 //! The bridge buffers a request body of at most [`MAX_BRIDGE_REQUEST_BODY`]
 //! bytes (`413` beyond it).
 //!
+//! # Redirects
+//!
+//! WKWebView doesn't follow a redirect a scheme handler answers with: a
+//! `fetch` gets the 3xx itself and a navigation stops at it, leaving the
+//! window on the page it was on. So on macOS the bridge handles a `301`,
+//! `302`, `303`, `307` or `308` whose `Location` resolves to the app origin
+//! ([`redirect_action`]):
+//!
+//! * A navigation ([`is_navigation`]) whose redirect is a `GET` (any
+//!   redirect of a `GET`; `301` / `302` / `303` of a form `POST`) gets a
+//!   `200` page that runs `location.replace(<target>)`, so the window ends
+//!   up at the target URL and relative links resolve against it. Each
+//!   window gets [`MAX_REDIRECTS`] such redirects in a row; then a `502`.
+//! * Anything else (`fetch`, XHR, subresources, a `307` / `308` of a form
+//!   `POST`) is followed by the bridge, with the Fetch standard's method
+//!   rules: `303`, and `301` / `302` after a `POST`, become a `GET` without
+//!   the body; `307` / `308` resend the method and the buffered body. After
+//!   [`MAX_REDIRECTS`] the request gets a `502`. The page can't tell:
+//!   `response.url` stays the URL it asked for, `response.redirected` is
+//!   false, and `redirect: "manual"` / `"error"` are followed too.
+//!
+//! A redirect elsewhere (another site, another host on the scheme) is passed
+//! through: on macOS 27 a `fetch` resolves with the 3xx and a navigation
+//! stops, neither leaves the app origin. WebView2 is untested, so Windows
+//! passes every 3xx through.
+//!
 //! # laufey 0.7.0 limits
 //!
 //! * The hosts give no cancel notification (the crate passes no `on_cancel`),
@@ -87,9 +113,8 @@
 //! * WKWebView forwards `HTTPBody`, not `HTTPBodyStream`, so a body the
 //!   engine streams arrives empty (a `Blob` body does, on macOS 27; strings
 //!   and `FormData` arrive).
-//! * WKWebView doesn't follow a redirect a scheme handler answers with: a
-//!   `fetch` gets the 3xx itself and a navigation stops at it. The bridge
-//!   still moves a `Location` on the app's host to the app origin.
+//! * WKWebView keeps no cookies for the scheme: `Set-Cookie` is ignored and
+//!   `document.cookie` stays empty (macOS 27).
 
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -99,6 +124,7 @@ use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::header::CONNECTION;
 use hyper::header::HOST;
+use hyper::header::LOCATION;
 use hyper::header::PROXY_AUTHENTICATE;
 use hyper::header::PROXY_AUTHORIZATION;
 use hyper::header::TE;
@@ -240,38 +266,273 @@ impl Exchange for laufey::SchemeExchange {
 /// request is bridged on its own task, so the backend's thread is never
 /// blocked. Call it from the runtime's tokio context, before the first
 /// window is created.
+///
+/// Redirects to the app origin are handled by the bridge on macOS only
+/// (see the module docs): WKWebView doesn't follow them. Whether WebView2
+/// does is untested, so Windows passes every 3xx through as before.
 pub fn register(origin: AppOrigin) {
   let handle = tokio::runtime::Handle::current();
+  let bridge =
+    std::sync::Arc::new(Bridge::new(origin, cfg!(target_os = "macos")));
   laufey::register_scheme_handler(APP_SCHEME, move |req| {
     log::trace!("[desktop] {} {}", req.method, req.url);
-    let origin = origin.clone();
+    let bridge = bridge.clone();
     handle.spawn(async move {
       let exchange = req.exchange;
-      respond(&req.method, &req.url, &req.headers, &origin, &exchange).await;
+      bridge
+        .respond(
+          req.window_id,
+          &req.method,
+          &req.url,
+          &req.headers,
+          &exchange,
+        )
+        .await;
       exchange.finish();
     });
   });
 }
 
-/// Answer one webview request: bridged to the app, or a `502` page when the
-/// bridge failed before a response head went out.
-async fn respond(
-  method: &str,
-  url: &str,
-  headers: &[(String, String)],
-  origin: &AppOrigin,
-  exchange: &impl Exchange,
-) {
-  let mut began = false;
-  if let Err(e) =
-    Box::pin(bridge(method, url, headers, origin, exchange, &mut began)).await
-  {
-    log::error!("[desktop] {APP_SCHEME}:// bridge error: {e}");
-    if !began {
-      begin_text(exchange, 502);
-      let _ =
-        exchange.write(format!("desktop transport error: {e}\n").as_bytes());
+/// The most redirects one request follows, as in the Fetch standard. A
+/// window's navigations get as many in a row.
+const MAX_REDIRECTS: usize = 20;
+
+/// The `app` scheme handler's state.
+struct Bridge {
+  origin: AppOrigin,
+  /// Whether same-origin redirects are followed (fetches) or turned into a
+  /// page that navigates to the target (navigations), instead of being
+  /// passed to the webview.
+  follow_redirects: bool,
+  /// Per window: how many same-origin redirects its navigations got in a
+  /// row, so a redirect loop stops like it would in a browser.
+  navigation_redirects: std::sync::Mutex<std::collections::HashMap<u32, usize>>,
+}
+
+impl Bridge {
+  fn new(origin: AppOrigin, follow_redirects: bool) -> Self {
+    Self {
+      origin,
+      follow_redirects,
+      navigation_redirects: Default::default(),
     }
+  }
+
+  /// Answer one webview request: bridged to the app, or a `502` page when
+  /// the bridge failed before a response head went out.
+  async fn respond(
+    &self,
+    window_id: u32,
+    method: &str,
+    url: &str,
+    headers: &[(String, String)],
+    exchange: &impl Exchange,
+  ) {
+    let mut began = false;
+    if let Err(e) = Box::pin(
+      self.bridge(window_id, method, url, headers, exchange, &mut began),
+    )
+    .await
+    {
+      log::error!("[desktop] {APP_SCHEME}:// bridge error: {e}");
+      if !began {
+        begin_text(exchange, 502);
+        let _ =
+          exchange.write(format!("desktop transport error: {e}\n").as_bytes());
+      }
+    }
+  }
+
+  async fn bridge(
+    &self,
+    window_id: u32,
+    method: &str,
+    url: &str,
+    headers: &[(String, String)],
+    exchange: &impl Exchange,
+    began: &mut bool,
+  ) -> Result<(), BridgeError> {
+    let origin = &self.origin;
+    // The bridge backs exactly one origin. Another host on the scheme is
+    // another origin to the browser, and serving it would run the app at an
+    // origin nobody chose.
+    if !authority_matches(url, origin) {
+      begin_text(exchange, 421);
+      *began = true;
+      let _ = exchange.write(
+        format!("misdirected request: this app is served at {origin}\n")
+          .as_bytes(),
+      );
+      return Ok(());
+    }
+
+    let body = match read_request_body(exchange, method) {
+      Ok(body) => bytes::Bytes::from(body),
+      Err(BodyError::TooLarge) => {
+        begin_text(exchange, 413);
+        *began = true;
+        let _ = exchange.write(
+          format!("request body larger than {MAX_BRIDGE_REQUEST_BODY} bytes\n")
+            .as_bytes(),
+        );
+        return Ok(());
+      }
+      Err(BodyError::Unreadable) => {
+        // Not forwarded as if it were complete: the app would act on a
+        // truncated upload or form.
+        begin_text(exchange, 400);
+        *began = true;
+        let _ = exchange.write(b"the request body could not be read\n");
+        return Ok(());
+      }
+    };
+
+    let navigation = is_navigation(headers);
+    let mut request = BridgedRequest {
+      method: method.to_string(),
+      url: url.to_string(),
+      headers,
+      body,
+      drop_body_headers: false,
+    };
+    let mut followed = 0;
+    let response = loop {
+      let response = request.send(origin).await?;
+      if !self.follow_redirects {
+        break response;
+      }
+      let location = response.headers().get(LOCATION).map(|value| {
+        response_header_value(LOCATION.as_str(), value.as_bytes(), origin)
+      });
+      let action = redirect_action(
+        response.status().as_u16(),
+        location.as_deref(),
+        &request.url,
+        &request.method,
+        navigation,
+        origin,
+      );
+      match action {
+        RedirectAction::PassThrough => break response,
+        RedirectAction::Navigate(target) => {
+          if !self.count_navigation_redirect(window_id) {
+            return too_many_redirects(exchange, began, &request.url);
+          }
+          begin_navigation_page(exchange);
+          *began = true;
+          write_all(exchange, navigation_page(&target).as_bytes()).await;
+          return Ok(());
+        }
+        RedirectAction::Follow { url, method } => {
+          followed += 1;
+          if followed > MAX_REDIRECTS {
+            return too_many_redirects(exchange, began, &request.url);
+          }
+          // 301 / 302 after a POST and 303 become a GET without a body.
+          if method != request.method {
+            request.body = bytes::Bytes::new();
+            request.drop_body_headers = true;
+          }
+          request.method = method;
+          request.url = url;
+        }
+      }
+    };
+    if navigation {
+      self.navigation_redirects.lock().unwrap().remove(&window_id);
+    }
+
+    let status = i32::from(response.status().as_u16());
+    let mut resp_headers = Vec::with_capacity(response.headers().len());
+    for (name, value) in response.headers() {
+      if is_hop_by_hop_header(name.as_str()) || is_relay_marker(name.as_str()) {
+        continue;
+      }
+      resp_headers.push((
+        name.as_str().to_string(),
+        response_header_value(name.as_str(), value.as_bytes(), origin),
+      ));
+    }
+    exchange.begin(status, &resp_headers);
+    *began = true;
+
+    // The next frame is only pulled once the webview took this one. When a
+    // write fails (the webview cancelled or went away), returning drops the
+    // response and the connection, so the app's `request.signal` aborts and
+    // its body stream is cancelled.
+    let mut body = response.into_body();
+    while let Some(frame) = body.frame().await {
+      let frame = frame?;
+      if let Some(chunk) = frame.data_ref()
+        && !write_all(exchange, chunk).await
+      {
+        break;
+      }
+    }
+    Ok(())
+  }
+
+  /// Count a same-origin redirect of a navigation in `window_id`. False
+  /// (and the count starts over) once there were more than
+  /// [`MAX_REDIRECTS`] in a row: the window is in a redirect loop.
+  fn count_navigation_redirect(&self, window_id: u32) -> bool {
+    let mut counts = self.navigation_redirects.lock().unwrap();
+    let count = counts.entry(window_id).or_default();
+    *count += 1;
+    if *count > MAX_REDIRECTS {
+      counts.remove(&window_id);
+      return false;
+    }
+    true
+  }
+}
+
+/// A request the bridge sends to the app: the webview's, or the next hop of
+/// a redirect it follows.
+struct BridgedRequest<'a> {
+  method: String,
+  /// `app://<host>/…`
+  url: String,
+  /// The webview's headers.
+  headers: &'a [(String, String)],
+  body: bytes::Bytes,
+  /// Leave out the headers that describe a body: the method was changed to
+  /// `GET` and the body dropped.
+  drop_body_headers: bool,
+}
+
+impl BridgedRequest<'_> {
+  /// Send it over a fresh in-process connection to the app's listener,
+  /// which is named after the host.
+  async fn send(
+    &self,
+    origin: &AppOrigin,
+  ) -> Result<hyper::Response<hyper::body::Incoming>, BridgeError> {
+    let stream = connect_memory(origin.host())?;
+    let (mut sender, conn) =
+      hyper::client::conn::http1::handshake(TokioIo::new(stream)).await?;
+    tokio::spawn(async move {
+      let _ = conn.await;
+    });
+
+    let mut builder = hyper::Request::builder()
+      .method(self.method.as_str())
+      .uri(path_and_query(&self.url));
+    for (name, value) in self.headers {
+      if should_skip_request_header(name)
+        || (self.drop_body_headers && is_request_body_header(name))
+      {
+        continue;
+      }
+      builder = builder.header(name.as_str(), value.as_str());
+    }
+    // `request.url` is `http://<host>/…` on the app's side.
+    builder = builder.header(HOST, origin.host());
+    if is_cross_origin_request(self.headers, origin) {
+      builder = builder.header(CROSS_ORIGIN_MARKER_HEADER, "1");
+    }
+    let request = builder.body(Full::new(self.body.clone()))?;
+    Ok(sender.send_request(request).await?)
   }
 }
 
@@ -285,102 +546,172 @@ fn begin_text(exchange: &impl Exchange, status: i32) {
   );
 }
 
-async fn bridge(
-  method: &str,
-  url: &str,
-  headers: &[(String, String)],
-  origin: &AppOrigin,
+/// The `502` for a request that was redirected more than [`MAX_REDIRECTS`]
+/// times, where a browser's `fetch` would fail with a network error.
+fn too_many_redirects(
   exchange: &impl Exchange,
   began: &mut bool,
+  url: &str,
 ) -> Result<(), BridgeError> {
-  // The bridge backs exactly one origin. Another host on the scheme is
-  // another origin to the browser, and serving it would run the app at an
-  // origin nobody chose.
-  if !authority_matches(url, origin) {
-    begin_text(exchange, 421);
-    *began = true;
-    let _ = exchange.write(
-      format!("misdirected request: this app is served at {origin}\n")
-        .as_bytes(),
-    );
-    return Ok(());
-  }
-
-  let body = match read_request_body(exchange, method) {
-    Ok(body) => body,
-    Err(BodyError::TooLarge) => {
-      begin_text(exchange, 413);
-      *began = true;
-      let _ = exchange.write(
-        format!("request body larger than {MAX_BRIDGE_REQUEST_BODY} bytes\n")
-          .as_bytes(),
-      );
-      return Ok(());
-    }
-    Err(BodyError::Unreadable) => {
-      // Not forwarded as if it were complete: the app would act on a
-      // truncated upload or form.
-      begin_text(exchange, 400);
-      *began = true;
-      let _ = exchange.write(b"the request body could not be read\n");
-      return Ok(());
-    }
-  };
-
-  // A fresh in-process connection to the app's listener, which is named
-  // after the host.
-  let stream = connect_memory(origin.host())?;
-  let (mut sender, conn) =
-    hyper::client::conn::http1::handshake(TokioIo::new(stream)).await?;
-  tokio::spawn(async move {
-    let _ = conn.await;
-  });
-
-  let mut builder = hyper::Request::builder()
-    .method(method)
-    .uri(path_and_query(url));
-  for (name, value) in headers {
-    if should_skip_request_header(name) {
-      continue;
-    }
-    builder = builder.header(name.as_str(), value.as_str());
-  }
-  // `request.url` is `http://<host>/…` on the app's side.
-  builder = builder.header(HOST, origin.host());
-  if is_cross_origin_request(headers, origin) {
-    builder = builder.header(CROSS_ORIGIN_MARKER_HEADER, "1");
-  }
-  let request = builder.body(Full::new(bytes::Bytes::from(body)))?;
-  let response = sender.send_request(request).await?;
-
-  let status = i32::from(response.status().as_u16());
-  let mut resp_headers = Vec::with_capacity(response.headers().len());
-  for (name, value) in response.headers() {
-    if is_hop_by_hop_header(name.as_str()) || is_relay_marker(name.as_str()) {
-      continue;
-    }
-    resp_headers.push((
-      name.as_str().to_string(),
-      response_header_value(name.as_str(), value.as_bytes(), origin),
-    ));
-  }
-  exchange.begin(status, &resp_headers);
+  log::warn!("[desktop] too many redirects, the last to {url}");
+  begin_text(exchange, 502);
   *began = true;
+  let _ = exchange.write(b"too many redirects\n");
+  Ok(())
+}
 
-  // The next frame is only pulled once the webview took this one. When a
-  // write fails (the webview cancelled or went away), returning drops the
-  // response and the connection, so the app's `request.signal` aborts and
-  // its body stream is cancelled.
-  let mut body = response.into_body();
-  while let Some(frame) = body.frame().await {
-    let frame = frame?;
-    if let Some(chunk) = frame.data_ref()
-      && !write_all(exchange, chunk).await
-    {
-      break;
+/// What the bridge does with an app response (see the module docs).
+#[derive(Debug, PartialEq, Eq)]
+enum RedirectAction {
+  /// Hand it to the webview as it is.
+  PassThrough,
+  /// A navigation redirected to this `app://<host>/…` URL: answer with a
+  /// page that navigates there.
+  Navigate(String),
+  /// Send the request again, to this URL with this method.
+  Follow { url: String, method: String },
+}
+
+/// The bridge's answer to a response with `status` and `location` (moved to
+/// the app origin already) to a `method` request for `url`. Only a
+/// redirect status with a `Location` that resolves to the app origin is
+/// handled; anything else, a cross-origin redirect included, is passed
+/// through.
+///
+/// The method changes as in the Fetch standard: `301` / `302` after a
+/// `POST`, and `303` after anything but `GET` / `HEAD`, become a `GET`
+/// (without the body); `307` / `308` keep the method and the body. A
+/// navigation whose redirect is a `GET` becomes [`RedirectAction::Navigate`],
+/// so the window ends up at the target URL. A `307` / `308` of a form
+/// `POST` can't be replayed by a navigation and is followed here instead.
+fn redirect_action(
+  status: u16,
+  location: Option<&str>,
+  url: &str,
+  method: &str,
+  navigation: bool,
+  origin: &AppOrigin,
+) -> RedirectAction {
+  if !matches!(status, 301 | 302 | 303 | 307 | 308) {
+    return RedirectAction::PassThrough;
+  }
+  let Some(target) = location.and_then(|location| {
+    ende_core::url::Url::parse(url).ok()?.join(location).ok()
+  }) else {
+    return RedirectAction::PassThrough;
+  };
+  let same_origin = target.scheme() == APP_SCHEME
+    && target.host_str() == Some(origin.host())
+    && target.port().is_none()
+    && target.username().is_empty()
+    && target.password().is_none();
+  if !same_origin {
+    return RedirectAction::PassThrough;
+  }
+  let to_get = match status {
+    301 | 302 => method.eq_ignore_ascii_case("POST"),
+    303 => {
+      !method.eq_ignore_ascii_case("GET")
+        && !method.eq_ignore_ascii_case("HEAD")
+    }
+    _ => false,
+  };
+  let method = if to_get { "GET" } else { method };
+  if navigation && method.eq_ignore_ascii_case("GET") {
+    return RedirectAction::Navigate(target.into());
+  }
+  RedirectAction::Follow {
+    url: target.into(),
+    method: method.to_string(),
+  }
+}
+
+/// Whether the webview loads the request as a document (a navigation, in
+/// a window or a frame) rather than for `fetch`, XHR or a subresource.
+/// laufey 0.7.0 doesn't say, and WKWebView sends no `Sec-Fetch-*` to a
+/// scheme handler, so without `Sec-Fetch-Mode` it is a request that asks
+/// for HTML and carries `Upgrade-Insecure-Requests`, which engines send
+/// with navigations only (a `fetch` that asks for HTML doesn't send it).
+fn is_navigation(headers: &[(String, String)]) -> bool {
+  let value = |name: &str| {
+    headers
+      .iter()
+      .find(|(n, _)| n.trim().eq_ignore_ascii_case(name))
+      .map(|(_, v)| v.trim_matches([' ', '\t']))
+  };
+  if let Some(mode) = value("sec-fetch-mode") {
+    return mode.eq_ignore_ascii_case("navigate");
+  }
+  value("upgrade-insecure-requests") == Some("1")
+    && value("accept")
+      .is_some_and(|accept| accept.to_ascii_lowercase().contains("text/html"))
+}
+
+/// Fetch's request-body-header names, dropped with the body when a
+/// redirect changes the method to `GET`.
+fn is_request_body_header(name: &str) -> bool {
+  let name = name.trim();
+  [
+    "content-type",
+    "content-encoding",
+    "content-language",
+    "content-location",
+  ]
+  .iter()
+  .any(|n| name.eq_ignore_ascii_case(n))
+}
+
+fn begin_navigation_page(exchange: &impl Exchange) {
+  exchange.begin(
+    200,
+    &[
+      (
+        "content-type".to_string(),
+        "text/html; charset=utf-8".to_string(),
+      ),
+      ("cache-control".to_string(), "no-store".to_string()),
+    ],
+  );
+}
+
+/// The page a redirected navigation gets instead of the redirect: it
+/// replaces itself with `target` (so it leaves no history entry, like a
+/// redirect). `target` is a serialized URL on the app origin.
+///
+/// It goes into a script as a JSON string, with `<`, `>`, `&`, U+2028 and
+/// U+2029 escaped, so no `Location` can end the script or add markup. The
+/// `<noscript>` refresh is for a webview without JavaScript; there the URL
+/// is in a double-quoted `url=` (a `"` is percent-encoded first, so it
+/// can't end that early) inside an HTML-escaped attribute.
+fn navigation_page(target: &str) -> String {
+  let json = serde_json::Value::from(target)
+    .to_string()
+    .replace('<', "\\u003c")
+    .replace('>', "\\u003e")
+    .replace('&', "\\u0026")
+    .replace('\u{2028}', "\\u2028")
+    .replace('\u{2029}', "\\u2029");
+  let refresh = html_attribute_escape(&target.replace('"', "%22"));
+  format!(
+    "<!doctype html><meta charset=\"utf-8\"><title>Redirecting</title>\
+     <script>location.replace({json});</script>\
+     <noscript><meta http-equiv=\"refresh\" content=\"0; url=&quot;{refresh}&quot;\"></noscript>\n"
+  )
+}
+
+fn html_attribute_escape(text: &str) -> String {
+  let mut escaped = String::with_capacity(text.len());
+  for c in text.chars() {
+    match c {
+      '&' => escaped.push_str("&amp;"),
+      '"' => escaped.push_str("&quot;"),
+      '\'' => escaped.push_str("&#39;"),
+      '<' => escaped.push_str("&lt;"),
+      '>' => escaped.push_str("&gt;"),
+      c => escaped.push(c),
     }
   }
-  Ok(())
+  escaped
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1138,12 +1469,34 @@ mod tests {
       .collect()
   }
 
+  /// The bridge without redirect handling, as on Windows.
+  async fn respond(
+    method: &str,
+    url: &str,
+    headers: &[(String, String)],
+    origin: &AppOrigin,
+    exchange: &impl Exchange,
+  ) {
+    Bridge::new(origin.clone(), false)
+      .respond(0, method, url, headers, exchange)
+      .await;
+  }
+
   /// A stand-in for `Ende.serve` on the memory listener `host`: it answers
   /// each request with `response` and sends what it read (head and body)
   /// down the returned channel.
   fn fake_app(
     host: &str,
     response: &'static [u8],
+  ) -> tokio::sync::mpsc::UnboundedReceiver<Vec<u8>> {
+    fake_app_with(host, move |_| response.to_vec())
+  }
+
+  /// [`fake_app`], answering each request (head and body) with what
+  /// `respond` returns for it.
+  fn fake_app_with(
+    host: &str,
+    respond: impl Fn(&[u8]) -> Vec<u8> + Send + 'static,
   ) -> tokio::sync::mpsc::UnboundedReceiver<Vec<u8>> {
     let listener = listen_memory(host).unwrap();
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
@@ -1164,7 +1517,7 @@ mod tests {
           assert_ne!(n, 0, "the body was cut short");
           got.extend_from_slice(&buf[..n]);
         }
-        stream.write_all(response).await.unwrap();
+        stream.write_all(&respond(&got)).await.unwrap();
         let _ = stream.shutdown().await;
         let _ = tx.send(got);
       }
@@ -1331,6 +1684,379 @@ mod tests {
     .await;
     assert_eq!(exchange.status.get(), Some(400));
     assert!(app.try_recv().is_err());
+  }
+
+  // --- redirects --------------------------------------------------------------
+
+  /// The request line's target, e.g. `/a?b`.
+  fn target_of(request: &[u8]) -> String {
+    let line = request.split(|&b| b == b'\r').next().unwrap();
+    let line = std::str::from_utf8(line).unwrap();
+    line.split(' ').nth(1).unwrap().to_string()
+  }
+
+  /// A navigation as WKWebView sends it.
+  fn navigation_headers() -> Vec<(String, String)> {
+    h(&[
+      (
+        "Accept",
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      ),
+      ("Upgrade-Insecure-Requests", "1"),
+    ])
+  }
+
+  /// A redirecting stand-in app: `/see-other` 303s, `/found` 302s,
+  /// `/temporary` 307s and `/permanent` 308s to `/final`; `/loop` 302s to
+  /// itself; `/away` 302s to another site; anything else is answered 200
+  /// with its request line.
+  fn redirecting_app(
+    host: &'static str,
+  ) -> tokio::sync::mpsc::UnboundedReceiver<Vec<u8>> {
+    fake_app_with(host, move |request| {
+      let target = target_of(request);
+      let redirect = |status: &str, location: &str| {
+        format!(
+          "HTTP/1.1 {status}\r\nlocation: {location}\r\ncontent-length: 0\r\n\r\n"
+        )
+      };
+      let response = match target.as_str() {
+        "/see-other" => redirect("303 See Other", "/final"),
+        "/found" => redirect("302 Found", &format!("http://{host}/final")),
+        "/temporary" => redirect("307 Temporary Redirect", "final"),
+        "/permanent" => redirect("308 Permanent Redirect", "/final?x=1"),
+        "/loop" => redirect("302 Found", "/loop"),
+        "/away" => redirect("302 Found", "https://elsewhere.example/x"),
+        _ => {
+          let line =
+            std::str::from_utf8(request.split(|&b| b == b'\r').next().unwrap())
+              .unwrap()
+              .to_string();
+          format!(
+            "HTTP/1.1 200 OK\r\ncontent-length: {}\r\n\r\n{line}",
+            line.len()
+          )
+        }
+      };
+      response.into_bytes()
+    })
+  }
+
+  /// The next `n` requests the app got, after which it got no more.
+  async fn received(
+    app: &mut tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>,
+    n: usize,
+  ) -> Vec<Vec<u8>> {
+    let mut got = vec![];
+    for _ in 0..n {
+      got.push(app.recv().await.unwrap());
+    }
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    assert!(app.try_recv().is_err(), "more than {n} requests");
+    got
+  }
+
+  #[test]
+  fn redirect_actions_follow_the_fetch_standard() {
+    use RedirectAction::*;
+    let origin = origin();
+    let base = "app://com.example.app/dir/page?q=1";
+    let action = |status, location, method, navigation| {
+      redirect_action(status, location, base, method, navigation, &origin)
+    };
+    let follow = |url: &str, method: &str| Follow {
+      url: url.to_string(),
+      method: method.to_string(),
+    };
+    // Relative, absolute-path and absolute targets on the app origin.
+    assert_eq!(
+      action(302, Some("next"), "GET", false),
+      follow("app://com.example.app/dir/next", "GET")
+    );
+    assert_eq!(
+      action(301, Some("/a?b#c"), "GET", false),
+      follow("app://com.example.app/a?b#c", "GET")
+    );
+    assert_eq!(
+      action(308, Some("app://com.example.app/x"), "PUT", false),
+      follow("app://com.example.app/x", "PUT")
+    );
+    // Method rules.
+    for (status, method, expected) in [
+      (301, "POST", "GET"),
+      (302, "POST", "GET"),
+      (301, "PUT", "PUT"),
+      (302, "DELETE", "DELETE"),
+      (303, "POST", "GET"),
+      (303, "PUT", "GET"),
+      (303, "GET", "GET"),
+      (303, "HEAD", "HEAD"),
+      (307, "POST", "POST"),
+      (308, "POST", "POST"),
+      (307, "HEAD", "HEAD"),
+    ] {
+      assert_eq!(
+        action(status, Some("/t"), method, false),
+        follow("app://com.example.app/t", expected),
+        "{status} {method}"
+      );
+    }
+    // Navigations that end in a GET get the navigation page; a 307 / 308 of
+    // a POST keeps its body, so the bridge follows it.
+    for (status, method) in
+      [(301, "GET"), (302, "POST"), (303, "POST"), (307, "GET")]
+    {
+      assert_eq!(
+        action(status, Some("/t"), method, true),
+        Navigate("app://com.example.app/t".to_string()),
+        "{status} {method}"
+      );
+    }
+    assert_eq!(
+      action(307, Some("/t"), "POST", true),
+      follow("app://com.example.app/t", "POST")
+    );
+    // Not handled: other statuses, no or a broken Location, other origins.
+    for status in [200, 300, 304, 305, 306, 400] {
+      assert_eq!(action(status, Some("/t"), "GET", false), PassThrough);
+    }
+    for location in [
+      None,
+      Some("https://elsewhere.example/"),
+      Some("http://com.example.app/t"),
+      Some("//elsewhere.example/t"),
+      Some("app://com.example.app.evil/t"),
+      Some("app://com.example.app:8080/t"),
+      Some("app://user@com.example.app/t"),
+      Some("app://COM.EXAMPLE.APP/t"),
+      Some("app://other.example/t"),
+      Some("data:text/html,hi"),
+    ] {
+      assert_eq!(
+        action(302, location, "GET", false),
+        PassThrough,
+        "{location:?}"
+      );
+      assert_eq!(
+        action(302, location, "GET", true),
+        PassThrough,
+        "{location:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn navigations_are_told_from_fetches() {
+    assert!(is_navigation(&navigation_headers()));
+    assert!(is_navigation(&h(&[("Sec-Fetch-Mode", "navigate")])));
+    // A fetch, even one asking for HTML, and a subresource.
+    assert!(!is_navigation(&h(&[("Accept", "*/*")])));
+    assert!(!is_navigation(&h(&[("Accept", "text/html")])));
+    assert!(!is_navigation(&h(&[("Upgrade-Insecure-Requests", "1")])));
+    // Sec-Fetch-Mode decides when it is there.
+    let mut headers = navigation_headers();
+    headers.push(("sec-fetch-mode".to_string(), "cors".to_string()));
+    assert!(!is_navigation(&headers));
+  }
+
+  #[test]
+  fn the_navigation_page_cannot_be_escaped() {
+    let target = "app://com.example.app/a?q=</script><script>alert(1)</script>&x=\"'\u{2028}\u{2029}<!--";
+    let page = navigation_page(target);
+    // One script element, and only the bridge's markup.
+    assert_eq!(page.matches("<script").count(), 1);
+    assert_eq!(page.matches("</script").count(), 1);
+    assert!(!page.contains("<!--"));
+    // The script navigates to exactly the target, and has no line
+    // terminators older engines end a string literal at.
+    let start =
+      page.find("location.replace(").unwrap() + "location.replace(".len();
+    let end = page.find(");</script>").unwrap();
+    assert!(!page[start..end].contains(['\u{2028}', '\u{2029}']));
+    let json: String = serde_json::from_str(&page[start..end]).unwrap();
+    assert_eq!(json, target);
+    // The refresh URL stays inside its quotes and its attribute.
+    let content = page.split("content=\"").nth(1).unwrap();
+    let content = &content[..content.find('"').unwrap()];
+    assert!(!content.contains(['<', '>', '\'']));
+    assert_eq!(content.matches("&quot;").count(), 2);
+    assert!(content.contains("%22"));
+
+    // A target the URL parser serialized has none of that left.
+    let origin = origin();
+    let RedirectAction::Navigate(target) = redirect_action(
+      303,
+      Some("/a?q=</script><b>\"x\" y"),
+      "app://com.example.app/",
+      "POST",
+      true,
+      &origin,
+    ) else {
+      panic!("not a navigation");
+    };
+    assert_eq!(
+      target,
+      "app://com.example.app/a?q=%3C/script%3E%3Cb%3E%22x%22%20y"
+    );
+  }
+
+  #[tokio::test]
+  async fn bridge_follows_same_origin_redirects_of_fetches() {
+    const HOST: &str = "bridge-follow.example";
+    let origin = AppOrigin::new(HOST);
+    let bridge = Bridge::new(origin.clone(), true);
+    let mut app = redirecting_app(HOST);
+    let headers = h(&[("Content-Type", "text/plain"), ("X-Kept", "1")]);
+
+    // 303: the next hop is a GET without the body or its headers.
+    let exchange = FakeExchange::with_body(b"payload");
+    let url = format!("app://{HOST}/see-other");
+    bridge.respond(0, "POST", &url, &headers, &exchange).await;
+    assert_eq!(exchange.status.get(), Some(200));
+    assert_eq!(exchange.text(), "GET /final HTTP/1.1");
+    let got = received(&mut app, 2).await;
+    let end = find_end_of_head(&got[0]).unwrap();
+    assert!(got[0].starts_with(b"POST /see-other "));
+    assert_eq!(&got[0][end..], b"payload");
+    let end = find_end_of_head(&got[1]).unwrap();
+    let head = &got[1][..end];
+    assert_eq!(header_values(head, b"content-type").count(), 0);
+    assert_eq!(header_values(head, b"x-kept").count(), 1);
+    assert_eq!(
+      header_values(head, b"host").collect::<Vec<_>>(),
+      vec![HOST.as_bytes()]
+    );
+    assert!(got[1][end..].is_empty());
+
+    // 302 after a POST, to an absolute `http://<host>` URL: a GET too.
+    let exchange = FakeExchange::with_body(b"payload");
+    let url = format!("app://{HOST}/found");
+    bridge.respond(0, "POST", &url, &headers, &exchange).await;
+    assert_eq!(exchange.text(), "GET /final HTTP/1.1");
+    received(&mut app, 2).await;
+
+    // 307 and 308 keep the method, the body and its headers.
+    for (path, target) in
+      [("/temporary", "/final"), ("/permanent", "/final?x=1")]
+    {
+      let exchange = FakeExchange::with_body(b"payload");
+      let url = format!("app://{HOST}{path}");
+      bridge.respond(0, "POST", &url, &headers, &exchange).await;
+      assert_eq!(exchange.status.get(), Some(200), "{path}");
+      assert_eq!(exchange.text(), format!("POST {target} HTTP/1.1"));
+      let got = received(&mut app, 2).await;
+      let end = find_end_of_head(&got[1]).unwrap();
+      assert_eq!(&got[1][end..], b"payload", "{path}");
+      assert_eq!(header_values(&got[1][..end], b"content-type").count(), 1);
+    }
+
+    // A cross-origin redirect goes to the webview as it is.
+    let exchange = FakeExchange::default();
+    let url = format!("app://{HOST}/away");
+    bridge.respond(0, "GET", &url, &[], &exchange).await;
+    assert_eq!(exchange.status.get(), Some(302));
+    assert_eq!(
+      exchange.header("location").as_deref(),
+      Some("https://elsewhere.example/x")
+    );
+    received(&mut app, 1).await;
+  }
+
+  #[tokio::test]
+  async fn bridge_stops_a_redirect_loop() {
+    const HOST: &str = "bridge-loop.example";
+    let bridge = Bridge::new(AppOrigin::new(HOST), true);
+    let mut app = redirecting_app(HOST);
+    let exchange = FakeExchange::default();
+    let url = format!("app://{HOST}/loop");
+    bridge.respond(0, "GET", &url, &[], &exchange).await;
+    assert_eq!(exchange.status.get(), Some(502));
+    assert_eq!(exchange.text(), "too many redirects\n");
+    // The first request and 20 redirects.
+    received(&mut app, MAX_REDIRECTS + 1).await;
+  }
+
+  #[tokio::test]
+  async fn bridge_turns_a_navigation_redirect_into_a_page() {
+    const HOST: &str = "bridge-navigate.example";
+    let bridge = Bridge::new(AppOrigin::new(HOST), true);
+    let mut app = redirecting_app(HOST);
+    let headers = navigation_headers();
+
+    // A form POST answered 303: the app is asked once, and the window gets
+    // a page that navigates to the target.
+    let exchange = FakeExchange::with_body(b"a=b");
+    let url = format!("app://{HOST}/see-other");
+    bridge.respond(1, "POST", &url, &headers, &exchange).await;
+    assert_eq!(exchange.status.get(), Some(200));
+    assert_eq!(
+      exchange.header("content-type").as_deref(),
+      Some("text/html; charset=utf-8")
+    );
+    assert!(
+      exchange
+        .text()
+        .contains(&format!("location.replace(\"app://{HOST}/final\")"))
+    );
+    received(&mut app, 1).await;
+    // The window then loads the target, which isn't redirected.
+    let exchange = FakeExchange::default();
+    let landing = format!("app://{HOST}/final");
+    bridge
+      .respond(1, "GET", &landing, &headers, &exchange)
+      .await;
+    assert_eq!(exchange.text(), "GET /final HTTP/1.1");
+
+    // A navigation loop stops after 20 redirects in a row in that window
+    // (each navigation is its own request)...
+    let url = format!("app://{HOST}/loop");
+    for i in 1..=MAX_REDIRECTS {
+      let exchange = FakeExchange::default();
+      bridge.respond(1, "GET", &url, &headers, &exchange).await;
+      assert_eq!(exchange.status.get(), Some(200), "redirect {i}");
+    }
+    // ...but not in another window.
+    let exchange = FakeExchange::default();
+    bridge.respond(2, "GET", &url, &headers, &exchange).await;
+    assert_eq!(exchange.status.get(), Some(200));
+    let exchange = FakeExchange::default();
+    bridge.respond(1, "GET", &url, &headers, &exchange).await;
+    assert_eq!(exchange.status.get(), Some(502));
+    assert_eq!(exchange.text(), "too many redirects\n");
+
+    // A navigation that isn't redirected starts the count over.
+    for _ in 0..MAX_REDIRECTS {
+      let exchange = FakeExchange::default();
+      bridge.respond(2, "GET", &url, &headers, &exchange).await;
+    }
+    let exchange = FakeExchange::default();
+    let landing = format!("app://{HOST}/final");
+    bridge
+      .respond(2, "GET", &landing, &headers, &exchange)
+      .await;
+    assert_eq!(exchange.status.get(), Some(200));
+    let exchange = FakeExchange::default();
+    bridge.respond(2, "GET", &url, &headers, &exchange).await;
+    assert_eq!(exchange.status.get(), Some(200));
+    assert!(exchange.text().contains("location.replace("));
+  }
+
+  #[tokio::test]
+  async fn bridge_passes_redirects_through_without_redirect_handling() {
+    const HOST: &str = "bridge-no-follow.example";
+    let bridge = Bridge::new(AppOrigin::new(HOST), false);
+    let mut app = redirecting_app(HOST);
+    for headers in [vec![], navigation_headers()] {
+      let exchange = FakeExchange::default();
+      let url = format!("app://{HOST}/found");
+      bridge.respond(0, "GET", &url, &headers, &exchange).await;
+      assert_eq!(exchange.status.get(), Some(302));
+      assert_eq!(
+        exchange.header("location").as_deref(),
+        Some(format!("app://{HOST}/final").as_str())
+      );
+    }
+    received(&mut app, 2).await;
   }
 
   #[tokio::test]
