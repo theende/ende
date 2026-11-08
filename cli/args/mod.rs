@@ -694,11 +694,18 @@ impl CliOptions {
               deno_path_util::resolve_path(&specifier, self.initial_cwd())?
             } else {
               let default_resolve = || {
-                resolve_url_or_path_normalized(
+                let mut url = resolve_url_or_path_normalized(
                   &run_flags.script,
                   self.initial_cwd(),
-                )
-                .map_err(|e| e.into())
+                )?;
+                if url.scheme() == "file"
+                  && let Ok(path) = url.to_file_path()
+                  && let Ok(real_path) = canonicalize_path(&path)
+                  && real_path != path
+                {
+                  url = deno_path_util::url_from_file_path(&real_path)?;
+                }
+                Ok(url)
               };
               self.resolve_main_module_with_resolver_if_bare(
                 &run_flags.script,

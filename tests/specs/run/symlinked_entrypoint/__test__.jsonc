@@ -1,0 +1,20 @@
+// A script symlinked into a bin directory imports its siblings relative to
+// the symlink target (denoland/deno#35545).
+{
+  "tempDir": true,
+  "if": "unix",
+  "steps": [
+    {
+      "args": "run -A setup.js",
+      "output": ""
+    },
+    {
+      "args": "run -A bin/tool",
+      "output": "ok\n"
+    },
+    {
+      "args": "run -A src/tool.js",
+      "output": "ok\n"
+    }
+  ]
+}
