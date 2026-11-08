@@ -132,6 +132,11 @@ impl Service<Name> for Resolver {
   }
 
   fn call(&mut self, name: Name) -> Self::Future {
+    let name = if ende_permissions::is_localhost_subdomain(name.as_str()) {
+      Name::from_str("localhost").unwrap()
+    } else {
+      name
+    };
     let task = match &mut self.kind {
       ResolverKind::Gai(gai_resolver) => {
         let mut resolver = gai_resolver.clone();
@@ -481,5 +486,26 @@ mod tests {
 
     let addr = addr.next().unwrap();
     assert_eq!(addr, "127.0.0.1:8080".parse().unwrap());
+  }
+
+  // A resolver that records the name it was asked to resolve.
+  #[derive(Debug, Default)]
+  struct RecordingResolver(std::sync::Mutex<Vec<String>>);
+
+  impl Resolve for RecordingResolver {
+    fn resolve(&self, name: Name) -> Resolving {
+      self.0.lock().unwrap().push(name.as_str().to_string());
+      Box::pin(async { Ok(vec![].into_iter()) })
+    }
+  }
+
+  #[tokio::test]
+  async fn localhost_subdomain_resolves_as_localhost() {
+    let recording = Arc::new(RecordingResolver::default());
+    let mut resolver = Resolver::custom(recording.clone());
+    for name in ["app.localhost", "example.com"] {
+      resolver.call(Name::from_str(name).unwrap()).await.unwrap();
+    }
+    assert_eq!(*recording.0.lock().unwrap(), ["localhost", "example.com"]);
   }
 }

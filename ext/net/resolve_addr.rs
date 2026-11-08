@@ -34,6 +34,9 @@ fn make_addr_port_pair(hostname: &str, port: u16) -> (&str, u16) {
   // If this looks like an ipv6 IP address. Example: "[2001:db8::1]"
   // Then we remove the brackets.
   let addr = hostname.trim_start_matches('[').trim_end_matches(']');
+  if ende_permissions::is_localhost_subdomain(addr) {
+    return ("localhost", port);
+  }
   (addr, port)
 }
 
@@ -153,5 +156,12 @@ mod tests {
   #[test]
   fn resolve_addr_sync_err() {
     assert!(resolve_addr_sync("INVALID ADDR", 1234).is_err());
+  }
+
+  #[test]
+  fn localhost_subdomain_resolves_as_localhost() {
+    assert_eq!(make_addr_port_pair("app.localhost", 80), ("localhost", 80));
+    assert_eq!(make_addr_port_pair("A.B.LocalHost.", 80), ("localhost", 80));
+    assert_eq!(make_addr_port_pair("example.com", 80), ("example.com", 80));
   }
 }
