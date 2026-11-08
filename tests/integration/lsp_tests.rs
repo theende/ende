@@ -17624,13 +17624,15 @@ fn lsp_import_raw_imports_goto_definition() {
       // since our tsgo integration handles it properly.
       json!([{
         "targetUri": format!("{}#endeRawImport=text.ts", text_file.uri().as_str()),
+        // Offsets in the synthetic `declare const data: string;` stub, mapped
+        // through the lines of data.txt.
         "targetRange": {
           "start": { "line": 0, "character": 0 },
-          "end": { "line": 1, "character": 5 },
+          "end": { "line": 1, "character": 13 },
         },
         "targetSelectionRange": {
-          "start": { "line": 0, "character": 6 },
-          "end": { "line": 0, "character": 10 },
+          "start": { "line": 1, "character": 0 },
+          "end": { "line": 1, "character": 4 },
         },
       }])
     },
