@@ -1115,6 +1115,51 @@ Deno.test({
   device.destroy();
 });
 
+// https://github.com/denoland/deno/issues/37042: each call used to sleep
+// 10 ms after the device poll had already run the callback, so N calls took
+// at least N * 10 ms even with an idle GPU.
+Deno.test({
+  ignore: isWsl || isCIWithoutGPU,
+}, async function webgpuMapAsyncAndWorkDoneDoNotSleep() {
+  const adapter = await navigator.gpu.requestAdapter();
+  assert(adapter);
+
+  const device = await adapter.requestDevice();
+  assert(device);
+
+  const buffer = device.createBuffer({
+    size: 256,
+    usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+  });
+  const calls = 20;
+  const minimumWithSleep = calls * 10;
+
+  let start = performance.now();
+  for (let i = 0; i < calls; i++) {
+    await buffer.mapAsync(GPUMapMode.READ);
+    buffer.unmap();
+  }
+  const mapAsyncMs = performance.now() - start;
+
+  start = performance.now();
+  for (let i = 0; i < calls; i++) {
+    device.queue.submit([device.createCommandEncoder().finish()]);
+    await device.queue.onSubmittedWorkDone();
+  }
+  const workDoneMs = performance.now() - start;
+
+  device.destroy();
+
+  assert(
+    mapAsyncMs < minimumWithSleep,
+    `${calls} mapAsync calls took ${mapAsyncMs.toFixed(1)} ms`,
+  );
+  assert(
+    workDoneMs < minimumWithSleep,
+    `${calls} onSubmittedWorkDone calls took ${workDoneMs.toFixed(1)} ms`,
+  );
+});
+
 Deno.test({
   permissions: { read: true, env: true },
   ignore: isWsl || isCIWithoutGPU,
