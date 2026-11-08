@@ -532,7 +532,9 @@ Deno.test("invalid server", async () => {
     assert("error" in e);
     err = true;
   };
-  ws.onclose = () => {
+  let closeEvent: CloseEvent | undefined;
+  ws.onclose = (e) => {
+    closeEvent = e;
     if (err) {
       resolve();
     } else {
@@ -541,6 +543,9 @@ Deno.test("invalid server", async () => {
   };
   ws.onopen = () => fail();
   await promise;
+  // https://websockets.spec.whatwg.org/#feedback-from-the-protocol
+  assertEquals(closeEvent!.code, 1006);
+  assertEquals(closeEvent!.wasClean, false);
 });
 
 Deno.test("connect & close", async () => {
@@ -564,7 +569,9 @@ Deno.test("connect & abort", async () => {
   ws.onerror = () => {
     err = true;
   };
-  ws.onclose = () => {
+  let closeEvent: CloseEvent | undefined;
+  ws.onclose = (e) => {
+    closeEvent = e;
     if (err) {
       resolve();
     } else {
@@ -573,6 +580,9 @@ Deno.test("connect & abort", async () => {
   };
   ws.onopen = () => fail();
   await promise;
+  // https://websockets.spec.whatwg.org/#feedback-from-the-protocol
+  assertEquals(closeEvent!.code, 1006);
+  assertEquals(closeEvent!.wasClean, false);
 });
 
 Deno.test("connect & close custom valid code", async () => {
@@ -931,6 +941,7 @@ Deno.test(
  */
 async function connectWithAcceptLine(
   acceptLine: (key: string) => Promise<string>,
+  { closeAfterHandshake = false } = {},
 ): Promise<{ opened: boolean; error?: string; event: CloseEvent }> {
   const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
   const accepted = (async () => {
@@ -949,6 +960,10 @@ async function connectWithAcceptLine(
           `Connection: Upgrade\r\n${await acceptLine(key)}\r\n`,
       ),
     );
+    if (closeAfterHandshake) {
+      // Drop the TCP connection without a close frame.
+      conn.close();
+    }
     return conn;
   })();
 
@@ -959,13 +974,14 @@ async function connectWithAcceptLine(
   const closed = Promise.withResolvers<CloseEvent>();
   ws.onopen = () => {
     opened = true;
-    ws.close();
+    if (!closeAfterHandshake) ws.close();
   };
   ws.onerror = (e) => error = (e as ErrorEvent).message;
   ws.onclose = (e) => closed.resolve(e);
   const event = await closed.promise;
 
-  (await accepted).close();
+  const conn = await accepted;
+  if (!closeAfterHandshake) conn.close();
   listener.close();
   return { opened, error, event };
 }
@@ -987,6 +1003,7 @@ Deno.test("websocket fails on a wrong Sec-WebSocket-Accept", async () => {
   });
   assertEquals(result.opened, false);
   assertStringIncludes(result.error!, "Sec-WebSocket-Accept");
+  assertEquals(result.event.code, 1006);
   assertEquals(result.event.wasClean, false);
 });
 
@@ -994,7 +1011,55 @@ Deno.test("websocket fails without Sec-WebSocket-Accept", async () => {
   const result = await connectWithAcceptLine(() => Promise.resolve(""));
   assertEquals(result.opened, false);
   assertStringIncludes(result.error!, "Sec-WebSocket-Accept");
+  assertEquals(result.event.code, 1006);
   assertEquals(result.event.wasClean, false);
+});
+
+Deno.test("websocket reports 1006 when the server drops the connection", async () => {
+  const result = await connectWithAcceptLine(async (key) => {
+    const digest = await crypto.subtle.digest(
+      "SHA-1",
+      new TextEncoder().encode(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"),
+    );
+    const accept = btoa(String.fromCharCode(...new Uint8Array(digest)));
+    return `Sec-WebSocket-Accept: ${accept}\r\n`;
+  }, { closeAfterHandshake: true });
+  assertEquals(result.opened, true);
+  assertEquals(result.event.code, 1006);
+  assertEquals(result.event.wasClean, false);
+});
+
+Deno.test("upgraded websocket reports 1006 when the client drops the connection", async () => {
+  const ac = new AbortController();
+  const listening = Promise.withResolvers<number>();
+  const opened = Promise.withResolvers<void>();
+  const closed = Promise.withResolvers<CloseEvent>();
+  const server = Deno.serve({
+    handler: (req) => {
+      const { socket, response } = Deno.upgradeWebSocket(req);
+      socket.onopen = () => opened.resolve();
+      socket.onclose = (e) => closed.resolve(e);
+      return response;
+    },
+    signal: ac.signal,
+    onListen: ({ port }) => listening.resolve(port),
+    hostname: "127.0.0.1",
+    port: 0,
+  });
+  const port = await listening.promise;
+  const conn = await Deno.connect({ hostname: "127.0.0.1", port });
+  await conn.write(
+    new TextEncoder().encode(
+      "GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n",
+    ),
+  );
+  await opened.promise;
+  conn.close();
+  const event = await closed.promise;
+  assertEquals(event.code, 1006);
+  assertEquals(event.wasClean, false);
+  ac.abort();
+  await server.finished;
 });
 
 Deno.test("send to a closed socket", async () => {
@@ -1016,7 +1081,7 @@ Deno.test("send to a closed socket", async () => {
 Deno.test("websocket close ongoing handshake", async () => {
   // First try to close without any delay
   {
-    const { promise, resolve } = Promise.withResolvers<void>();
+    const { promise, resolve } = Promise.withResolvers<CloseEvent>();
     let gotError1 = false;
     const ws = new WebSocket("ws://localhost:4264");
     ws.onopen = () => fail();
@@ -1024,9 +1089,9 @@ Deno.test("websocket close ongoing handshake", async () => {
       assertEquals((e as ErrorEvent).error.code, "EINTR");
       gotError1 = true;
     };
-    ws.onclose = () => resolve();
+    ws.onclose = (e) => resolve(e);
     ws.close();
-    await promise;
+    assertEquals((await promise).code, 1006);
     assert(gotError1);
   }
 
