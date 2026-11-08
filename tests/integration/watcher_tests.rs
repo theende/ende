@@ -219,8 +219,10 @@ fn check_alive_then_kill(mut child: EndeChild) {
   child.kill().unwrap();
 }
 
+#[cfg(unix)]
 struct KillOnDropEndeChild(Option<EndeChild>);
 
+#[cfg(unix)]
 impl Drop for KillOnDropEndeChild {
   fn drop(&mut self) {
     if let Some(child) = self.0.as_mut() {
