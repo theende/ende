@@ -442,6 +442,7 @@ impl CliModuleLoaderFactory {
         graph_container,
         shared: self.shared.clone(),
         loaded_files: Default::default(),
+        jsr_derived_inline_modules: Default::default(),
         maybe_main_module_blob,
       })));
     CreateModuleLoaderResult { module_loader }
@@ -500,6 +501,7 @@ struct CliModuleLoaderInner<TGraphContainer: ModuleGraphContainer> {
   shared: Arc<SharedCliModuleLoaderState>,
   graph_container: TGraphContainer,
   loaded_files: RefCell<FxHashSet<ModuleSpecifier>>,
+  jsr_derived_inline_modules: RefCell<FxHashSet<ModuleSpecifier>>,
   /// For blob/object-URL module workers, the captured root blob and its
   /// specifier. Captured synchronously at worker construction so that a
   /// subsequent `URL.revokeObjectURL` cannot race the worker's module load.
@@ -985,9 +987,9 @@ impl<TGraphContainer: ModuleGraphContainer>
   ) -> Result<ModuleSpecifier, ModuleLoaderError> {
     fn ensure_not_jsr_non_jsr_remote_import(
       specifier: &ModuleSpecifier,
-      referrer: &ModuleSpecifier,
+      is_jsr_referrer: bool,
     ) -> Result<(), JsErrorBox> {
-      if referrer.as_str().starts_with(jsr_url().as_str())
+      if is_jsr_referrer
         && !specifier.as_str().starts_with(jsr_url().as_str())
         && matches!(specifier.scheme(), "http" | "https")
       {
@@ -1044,7 +1046,15 @@ impl<TGraphContainer: ModuleGraphContainer>
 
     // only verify this for an import and not import.meta.resolve
     if !is_import_meta {
-      ensure_not_jsr_non_jsr_remote_import(&specifier, &referrer)?;
+      let is_jsr_referrer = referrer.as_str().starts_with(jsr_url().as_str())
+        || self.jsr_derived_inline_modules.borrow().contains(&referrer);
+      ensure_not_jsr_non_jsr_remote_import(&specifier, is_jsr_referrer)?;
+      if is_jsr_referrer && matches!(specifier.scheme(), "data" | "blob") {
+        self
+          .jsr_derived_inline_modules
+          .borrow_mut()
+          .insert(specifier.clone());
+      }
     }
 
     Ok(specifier)
