@@ -310,6 +310,18 @@ Deno.test(function urlSearchParamsReuse() {
   assert(sp === url.searchParams, "Search params should be reused.");
 });
 
+// https://github.com/whatwg/url/pull/932: the search setter parses the
+// resulting query into searchParams, after the URL parser has removed tabs
+// and newlines.
+Deno.test(function urlSearchSetterKeepsSearchParamsInSync() {
+  const url = new URL("https://example.com/");
+  url.search = "a=\tb\n";
+  assertEquals(url.search, "?a=b");
+  assertEquals([...url.searchParams], [["a", "b"]]);
+  url.searchParams.append("c", "d");
+  assertEquals(url.href, "https://example.com/?a=b&c=d");
+});
+
 Deno.test(function urlBackSlashes() {
   const url = new URL(
     "https:\\\\foo:bar@baz.qat:8000\\qux\\quux?foo=bar&baz=12#qat",
