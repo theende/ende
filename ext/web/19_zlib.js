@@ -24,12 +24,16 @@ const {
   NumberIsInteger,
   NumberIsSafeInteger,
   NumberMAX_SAFE_INTEGER,
+  ObjectFreeze,
+  ObjectSetPrototypeOf,
   RangeError,
   TypedArrayPrototypeGetBuffer,
   TypedArrayPrototypeGetByteLength,
   TypedArrayPrototypeGetByteOffset,
   Uint8Array,
 } = primordials;
+
+const EMPTY_OPTIONS = ObjectFreeze(ObjectSetPrototypeOf({}, null));
 
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 
@@ -73,7 +77,7 @@ function unshare(source) {
 class Inflater {
   #inflater;
 
-  constructor(options = { __proto__: null }) {
+  constructor(options = EMPTY_OPTIONS) {
     const prefix = "Failed to construct 'Inflater'";
     const format = options.format === undefined
       ? "deflate"
@@ -106,7 +110,7 @@ class Inflater {
   }
 }
 
-function deflateSync(data, options = { __proto__: null }) {
+function deflateSync(data, options = EMPTY_OPTIONS) {
   const prefix = "Failed to execute 'deflateSync'";
   data = webidl.converters.BufferSource(
     data,

@@ -1041,7 +1041,7 @@ class WebTransportError extends DOMException {
   #source;
   #streamErrorCode;
 
-  constructor(message = "", init = { __proto__: null }) {
+  constructor(message = "", init = undefined) {
     super(message, "WebTransportError");
     this[webidl.brand] = webidl.brand;
 

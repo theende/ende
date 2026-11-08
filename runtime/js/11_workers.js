@@ -17,7 +17,9 @@ const {
   Error,
   JSONStringify,
   ObjectDefineProperty,
+  ObjectFreeze,
   ObjectPrototypeIsPrototypeOf,
+  ObjectSetPrototypeOf,
   Promise,
   queueMicrotask,
   String,
@@ -28,6 +30,8 @@ const {
   SymbolToStringTag,
   TypeError,
 } = primordials;
+
+const EMPTY_OPTIONS = ObjectFreeze(ObjectSetPrototypeOf({}, null));
 
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
 const { createFilteredInspectProxy } = core.loadExtScript(
@@ -110,7 +114,7 @@ class Worker extends EventTarget {
   // still be messages left to receive.
   #status = "RUNNING";
 
-  constructor(specifier, options = { __proto__: null }) {
+  constructor(specifier, options = EMPTY_OPTIONS) {
     super();
     specifier = String(specifier);
     const {
@@ -329,7 +333,7 @@ class Worker extends EventTarget {
     }
   };
 
-  postMessage(message, transferOrOptions = { __proto__: null }) {
+  postMessage(message, transferOrOptions = undefined) {
     const prefix = "Failed to execute 'postMessage' on 'MessagePort'";
     webidl.requiredArguments(arguments.length, 1, prefix);
     if (this.#status !== "RUNNING") return;

@@ -23,6 +23,8 @@ const {
   Uint8Array,
   TypeError,
   ObjectEntries,
+  ObjectFreeze,
+  ObjectSetPrototypeOf,
   SafeArrayIterator,
   String,
   SymbolAsyncDispose,
@@ -31,6 +33,8 @@ const {
   SafePromiseAll,
   Symbol,
 } = primordials;
+
+const EMPTY_OPTIONS = ObjectFreeze(ObjectSetPrototypeOf({}, null));
 
 const { FsFile, fsFileConstructorKey } = core.loadExtScript(
   "ext:ende_fs/30_fs.js",
@@ -150,7 +154,7 @@ class Process {
 function run({
   cmd,
   cwd = undefined,
-  env = { __proto__: null },
+  env = EMPTY_OPTIONS,
   stdout = "inherit",
   stderr = "inherit",
   stdin = "inherit",
@@ -196,7 +200,7 @@ function spawnChildInner(command, apiName, {
   args = [],
   cwd = undefined,
   clearEnv = false,
-  env = { __proto__: null },
+  env = EMPTY_OPTIONS,
   uid = undefined,
   gid = undefined,
   signal = undefined,
@@ -207,7 +211,7 @@ function spawnChildInner(command, apiName, {
   detached = false,
   [kExtraStdio]: extraStdio = [],
   [kArgv0]: argv0 = undefined,
-} = { __proto__: null }) {
+} = EMPTY_OPTIONS) {
   const child = op_spawn_child({
     cmd: pathFromURL(command),
     args: ArrayPrototypeMap(args, String),
@@ -230,7 +234,7 @@ function spawnChildInner(command, apiName, {
   });
 }
 
-function spawnChild(command, options = { __proto__: null }) {
+function spawnChild(command, options = EMPTY_OPTIONS) {
   return spawnChildInner(
     command,
     "Ende.Command().spawn()",
@@ -482,7 +486,7 @@ function spawnInner(command, {
   args = [],
   cwd = undefined,
   clearEnv = false,
-  env = { __proto__: null },
+  env = EMPTY_OPTIONS,
   uid = undefined,
   gid = undefined,
   signal = undefined,
@@ -490,7 +494,7 @@ function spawnInner(command, {
   stdout = "piped",
   stderr = "piped",
   windowsRawArguments = false,
-} = { __proto__: null }) {
+} = EMPTY_OPTIONS) {
   if (stdin === "piped") {
     throw new TypeError(
       "Piped stdin is not supported for this function, use 'Ende.Command().spawn()' instead",
@@ -571,7 +575,7 @@ function spawnSyncInner(command, {
   args = [],
   cwd = undefined,
   clearEnv = false,
-  env = { __proto__: null },
+  env = EMPTY_OPTIONS,
   uid = undefined,
   gid = undefined,
   stdin = "null",
@@ -582,7 +586,7 @@ function spawnSyncInner(command, {
   [kTimeoutOption]: timeout,
   [kKillSignalOption]: killSignal,
   [kArgv0]: argv0 = undefined,
-} = { __proto__: null }) {
+} = EMPTY_OPTIONS) {
   if (stdin === "piped") {
     throw new TypeError(
       "Piped stdin is not supported for this function, use 'Ende.Command().spawn()' instead",
