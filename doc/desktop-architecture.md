@@ -208,18 +208,28 @@ What the app sees on `app://`:
     form POST sends `Origin`, cross-origin requests send their own origin. XHR,
     `<img>`, `<script>` and stylesheets send neither, from any page, and neither
     does `fetch(url, { referrer: "" })`. A request on the app origin gets every
-    cookie. Anything else only gets cookies on a navigation with a `GET` (a
-    link, `navigate()`, the first load), and then not `SameSite=Strict` ones;
-    `SameSite=None` gets no exception. Its `Set-Cookie` is only kept from a
-    navigation. **Use `fetch()` for requests that need the session:** XHR (also
-    axios's default XHR adapter), images and scripts from the app's page go
-    without cookies, and an XHR login's `Set-Cookie` is dropped. Use `Lax` (or
-    no `SameSite`) for the session cookie: `Strict` isn't sent on the first load
-    or `navigate()`. The bridge can't tell a frame from a window, so a
-    cross-site frame of an app page gets its `Lax` cookies. Pages that shouldn't
-    be framed can send `Content-Security-Policy: frame-ancestors
-    'self'`
-    (untested on `app://`).
+    cookie. A cross-origin request only gets cookies on a `GET` navigation (a
+    link from a remote page), and then not `SameSite=Strict` ones;
+    `SameSite=None` gets no exception. A request with neither header (XHR,
+    images, scripts, stylesheets, `navigate()`, the first load) gets all but
+    `Strict` cookies with `GET` / `HEAD`, and none with `POST` or any other
+    method. `Set-Cookie` is only kept from a request on the app origin or a
+    navigation.
+  - **Trade-off:** the bridge can't tell the app's header-less `GET` from a
+    remote page's, so a remote page an app window navigates to can make `app://`
+    `GET`s that carry the user's `Lax` cookies, for example include a
+    cookie-authenticated JSON endpoint as a `<script>`. That's weaker than a
+    browser's `SameSite=Lax`, accepted so XHR and authenticated images and
+    scripts work. Keep state changes off `GET`, and don't serve private data in
+    a form a `<script>` tag can run (send `X-Content-Type-Options: nosniff` with
+    JSON). `Strict` cookies only go with requests the bridge can tie to the app.
+  - What doesn't work: an XHR `POST` (also axios's default XHR adapter) goes
+    without cookies and an XHR login's `Set-Cookie` is dropped, so use `fetch()`
+    or a form for those. Use `Lax` (or no `SameSite`) for the session cookie:
+    `Strict` isn't sent with XHR, images, the first load or `navigate()`. The
+    bridge can't tell a frame from a window, so a cross-site frame of an app
+    page gets its `Lax` cookies. Pages that shouldn't be framed can send
+    `Content-Security-Policy: frame-ancestors 'self'` (untested on `app://`).
   - Windows keeps WebView2's own cookie handling (untested whether it keeps
     cookies for the scheme).
 - **Request bodies:** at most 4 MiB (`413`). On macOS a `Blob` body arrives

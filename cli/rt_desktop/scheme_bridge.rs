@@ -130,12 +130,15 @@
 //!
 //! So a request is the app's own when its `Origin` or `Referer` is on the
 //! app origin and none of those headers points elsewhere: it gets every
-//! cookie. A request with none of them can't be told from a remote page's.
-//! It, and a cross-origin one, only gets cookies when it's a navigation
-//! with a safe method, and then not the `SameSite=Strict` ones;
-//! `SameSite=None` is no exception. So same-origin XHR, images, scripts
-//! and stylesheets go without cookies, and `Set-Cookie` is only stored from
-//! a response to a same-origin request or a navigation. A navigation's
+//! cookie. A cross-origin request only gets cookies when it's a `GET` /
+//! `HEAD` navigation, and then not the `SameSite=Strict` ones;
+//! `SameSite=None` is no exception. A request with none of those headers
+//! can't be told from a remote page's: it gets all but the Strict cookies
+//! with `GET` / `HEAD` (so the app's XHR, images, scripts and stylesheets
+//! work, and a remote page's `<img>` / `<script>` get them too, weaker than
+//! a browser's `Lax`), and none with any other method (a remote page can
+//! send a header-less POST). `Set-Cookie` is only stored from a response to
+//! a same-origin request or a navigation. A navigation's
 //! redirect, which the bridge turns into a page that navigates on, passes
 //! the first request's initiator on to the target. The relay admits only
 //! the app origin, so its upgrades get every cookie.
@@ -2852,7 +2855,11 @@ mod tests {
         "-",
       ),
       ("opaque POST", "POST", h(&[("Origin", "null")]), "-"),
-      ("referrer-less subresource", "GET", vec![], "-"),
+      // A header-less GET (the app's XHR or image, or a remote page's):
+      // all but Strict. A header-less POST: nothing.
+      ("header-less GET", "GET", vec![], "sid=s3cret; lax=1"),
+      ("header-less POST", "POST", vec![], "-"),
+      ("header-less PUT", "PUT", vec![], "-"),
       (
         "one header elsewhere",
         "GET",

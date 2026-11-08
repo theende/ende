@@ -23,11 +23,15 @@
 //!   nameless cookie (`Set-Cookie: value`) is ignored.
 //! * `SameSite`, against what the bridge can tell about the document that
 //!   made the request ([`Initiator`]): every cookie goes to a request the app
-//!   origin made. Any other request gets cookies only when it's a navigation
-//!   with a safe method, and then not the `SameSite=Strict` ones, as `Lax`
-//!   allows. `SameSite=None` is treated as `Lax`, and no attribute means
-//!   `Lax`. `Set-Cookie` is only taken from a response to a same-origin
-//!   request or to a navigation.
+//!   origin made. Any other request gets cookies only with `GET` / `HEAD`,
+//!   and then not the `SameSite=Strict` ones: a cross-origin one only when
+//!   it's a navigation, as `Lax` allows, but one that tells nothing about
+//!   its document ([`Initiator::Unknown`]) for any `GET` / `HEAD`, so the
+//!   app's XHR and subresources get them (weaker than a browser's `Lax`:
+//!   a remote page's `<img>` and `<script>` get them too). A header-less
+//!   `POST` gets none. `SameSite=None` is treated as `Lax`, and no
+//!   attribute means `Lax`. `Set-Cookie` is only taken from a response to a
+//!   same-origin request or to a navigation.
 //!
 //! Persistent cookies are kept in one JSON file ([`cookie_file`]), written
 //! (owner-only, temp file and rename) at most once per [`WRITE_DELAY`] after a
@@ -98,7 +102,7 @@ pub struct RequestContext {
   pub initiator: Initiator,
   /// The webview loads it as a document.
   pub navigation: bool,
-  /// `GET`, `HEAD`, `OPTIONS` or `TRACE`.
+  /// `GET` or `HEAD`.
   pub safe_method: bool,
 }
 
@@ -107,16 +111,23 @@ impl RequestContext {
     Self {
       initiator,
       navigation,
-      safe_method: ["GET", "HEAD", "OPTIONS", "TRACE"]
+      safe_method: ["GET", "HEAD"]
         .iter()
         .any(|m| m.eq_ignore_ascii_case(method)),
     }
   }
 
-  /// Whether the request may carry a cookie with this `SameSite`.
+  /// Whether the request may carry a cookie with this `SameSite`: every
+  /// cookie for the app's own request; otherwise all but `Strict` ones for
+  /// a `GET` / `HEAD` that is a navigation or tells nothing about its
+  /// document (the app's XHR, images, scripts and stylesheets look like
+  /// that, but so do a remote page's). A header-less `POST` gets none: a
+  /// remote page can send one (`fetch(url, { referrer: "" })`).
   fn sends(&self, same_site: SameSite) -> bool {
     self.initiator == Initiator::SameOrigin
-      || (self.navigation && self.safe_method && same_site != SameSite::Strict)
+      || (same_site != SameSite::Strict
+        && self.safe_method
+        && (self.navigation || self.initiator == Initiator::Unknown))
   }
 
   /// Whether `Set-Cookie` of the response to the request is stored.
@@ -921,13 +932,44 @@ mod tests {
   }
 
   #[test]
-  fn other_requests_get_lax_cookies_on_safe_navigations_only() {
+  fn cross_site_requests_get_lax_cookies_on_safe_navigations_only() {
+    let jar = samesite_jar();
+    // A cross-site fetch or subresource gets no cookie, SameSite=None
+    // included.
+    assert_eq!(sent(&jar, Initiator::CrossSite, false, "GET"), "");
+    assert_eq!(sent(&jar, Initiator::CrossSite, false, "HEAD"), "");
+  }
+
+  #[test]
+  fn header_less_get_requests_get_lax_cookies_but_not_strict() {
+    let jar = samesite_jar();
+    // The app's XHR, images, scripts and stylesheets.
+    for method in ["GET", "HEAD", "get"] {
+      assert_eq!(
+        sent(&jar, Initiator::Unknown, false, method),
+        "lax=1; none=1; default=1",
+        "{method}"
+      );
+    }
+  }
+
+  #[test]
+  fn header_less_unsafe_requests_get_no_cookie() {
+    let jar = samesite_jar();
+    for method in ["POST", "PUT", "DELETE", "PATCH", "OPTIONS"] {
+      assert_eq!(
+        sent(&jar, Initiator::Unknown, false, method),
+        "",
+        "{method}"
+      );
+    }
+  }
+
+  #[test]
+  fn other_navigations_get_lax_cookies_with_a_safe_method_only() {
     let jar = samesite_jar();
     for initiator in [Initiator::CrossSite, Initiator::Unknown] {
-      // A cross-site (or unattributable) fetch, subresource or form POST
-      // gets no cookie, SameSite=None included.
-      assert_eq!(sent(&jar, initiator, false, "GET"), "", "{initiator:?}");
-      assert_eq!(sent(&jar, initiator, false, "POST"), "", "{initiator:?}");
+      // A form POST gets no cookie.
       assert_eq!(sent(&jar, initiator, true, "POST"), "", "{initiator:?}");
       // A navigation gets all but Strict.
       assert_eq!(
