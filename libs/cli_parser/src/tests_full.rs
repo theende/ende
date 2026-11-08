@@ -4564,6 +4564,32 @@ fn upgrade_with_ca_file() {
 }
 
 #[test]
+fn upgrade_with_unsafely_ignore_certificate_errors() {
+  // The value must be attached with `=`, so a bare flag doesn't consume the
+  // version positional that follows it.
+  let cases = [
+    ("--unsafely-ignore-certificate-errors", svec![]),
+    (
+      "--unsafely-ignore-certificate-errors=ende.sh,localhost",
+      svec!["ende.sh", "localhost"],
+    ),
+  ];
+  for (flag, expected) in cases {
+    let flags =
+      flags_from_vec(svec!["ende", "upgrade", flag, "2026.10.14"]).unwrap();
+    let EndeSubcommand::Upgrade(u) = &flags.subcommand else {
+      unreachable!()
+    };
+    assert_eq!(u.version.as_deref(), Some("2026.10.14"), "{flag}");
+    assert_eq!(
+      flags.unsafely_ignore_certificate_errors,
+      Some(expected),
+      "{flag}"
+    );
+  }
+}
+
+#[test]
 fn upgrade_version() {
   for args in [
     svec!["ende", "upgrade", "2026.10.14.1"],
