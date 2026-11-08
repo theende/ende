@@ -187,8 +187,41 @@ What the app sees on `app://`:
   followed too. A redirect to another origin isn't followed: `fetch` gets the
   3xx and a navigation stays where it was. Windows passes every 3xx through
   (untested whether WebView2 follows).
-- **Cookies don't work on macOS:** WKWebView ignores `Set-Cookie` for the
-  scheme, and `document.cookie` stays empty.
+- **Cookies (macOS):** WKWebView keeps no cookies for the scheme, so the bridge
+  keeps a cookie jar for the app (`cli/rt_desktop/cookie_jar.rs`). It stores the
+  `Set-Cookie` of the app's responses (each redirect hop it follows included)
+  and sends the matching `Cookie` on later requests and on WebSocket upgrades
+  through the relay. Rules are RFC 6265bis's for one host: `Domain` must be the
+  app host (other domains are refused), `Path`, `Expires`/`Max-Age` (400 days at
+  most; a past date or `Max-Age=0` deletes), `Secure` is kept (`app://` counts
+  as secure), at most 180 cookies of 4096 bytes. An HttpOnly session cookie set
+  at login works as in a browser. **`document.cookie` doesn't:** page JavaScript
+  can't read or set these cookies.
+  - Session cookies (no `Expires`/`Max-Age`) last until the app quits.
+    Persistent ones are kept in
+    `~/Library/Application Support/<identifier>/cookies.json` (owner-only,
+    written a second after a change and when the app exits), so a login survives
+    a relaunch. A damaged file is logged and starts an empty jar.
+  - Any page shown in an app window can make requests to `app://<host>`, so
+    cookies go by who made the request, like `SameSite=Lax`. WKWebView tells the
+    handler only through `Origin` and `Referer`: `fetch()` sends `Referer`, a
+    form POST sends `Origin`, cross-origin requests send their own origin. XHR,
+    `<img>`, `<script>` and stylesheets send neither, from any page, and neither
+    does `fetch(url, { referrer: "" })`. A request on the app origin gets every
+    cookie. Anything else only gets cookies on a navigation with a `GET` (a
+    link, `navigate()`, the first load), and then not `SameSite=Strict` ones;
+    `SameSite=None` gets no exception. Its `Set-Cookie` is only kept from a
+    navigation. **Use `fetch()` for requests that need the session:** XHR (also
+    axios's default XHR adapter), images and scripts from the app's page go
+    without cookies, and an XHR login's `Set-Cookie` is dropped. Use `Lax` (or
+    no `SameSite`) for the session cookie: `Strict` isn't sent on the first load
+    or `navigate()`. The bridge can't tell a frame from a window, so a
+    cross-site frame of an app page gets its `Lax` cookies. Pages that shouldn't
+    be framed can send `Content-Security-Policy: frame-ancestors
+    'self'`
+    (untested on `app://`).
+  - Windows keeps WebView2's own cookie handling (untested whether it keeps
+    cookies for the scheme).
 - **Request bodies:** at most 4 MiB (`413`). On macOS a `Blob` body arrives
   empty (WebKit forwards `HTTPBody`, not `HTTPBodyStream`); strings and
   `FormData` arrive.
