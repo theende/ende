@@ -459,6 +459,16 @@ network_stream!(
     tokio_vsock::OwnedReadHalf,
     tokio_vsock::OwnedWriteHalf,
   ],
+  [
+    Memory,
+    memory,
+    crate::memory::MemoryStream,
+    crate::memory::MemoryListener,
+    crate::memory::MemoryAddr,
+    crate::io::MemoryStreamResource,
+    tokio::io::ReadHalf<crate::memory::MemoryStream>,
+    tokio::io::WriteHalf<crate::memory::MemoryStream>,
+  ],
   #[cfg(windows)]
   [
     WindowsPipe,
@@ -478,6 +488,7 @@ pub enum NetworkStreamAddress {
   Unix(tokio::net::unix::SocketAddr),
   #[cfg(any(target_os = "android", target_os = "linux", target_os = "macos"))]
   Vsock(tokio_vsock::VsockAddr),
+  Memory(crate::memory::MemoryAddr),
   #[cfg(windows)]
   WindowsPipe(crate::win_pipe::WindowsPipeAddr),
 }
@@ -499,6 +510,12 @@ impl From<tokio::net::unix::SocketAddr> for NetworkStreamAddress {
 impl From<tokio_vsock::VsockAddr> for NetworkStreamAddress {
   fn from(value: tokio_vsock::VsockAddr) -> Self {
     NetworkStreamAddress::Vsock(value)
+  }
+}
+
+impl From<crate::memory::MemoryAddr> for NetworkStreamAddress {
+  fn from(value: crate::memory::MemoryAddr) -> Self {
+    NetworkStreamAddress::Memory(value)
   }
 }
 

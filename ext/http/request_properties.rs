@@ -173,6 +173,7 @@ impl HttpPropertyExtractor for DefaultHttpPropertyExtractor {
         target_os = "macos"
       ))]
       NetworkStreamAddress::Vsock(vsock) => Some(vsock.port()),
+      NetworkStreamAddress::Memory(_) => None,
       #[cfg(windows)]
       NetworkStreamAddress::WindowsPipe(_) => None,
     };
@@ -188,6 +189,7 @@ impl HttpPropertyExtractor for DefaultHttpPropertyExtractor {
       NetworkStreamAddress::Vsock(addr) => {
         Rc::from(format!("vsock:{}", addr.cid()))
       }
+      NetworkStreamAddress::Memory(_) => Rc::from("memory"),
       #[cfg(windows)]
       NetworkStreamAddress::WindowsPipe(_) => Rc::from("pipe"),
     };
@@ -238,6 +240,7 @@ fn listener_properties(
       target_os = "macos"
     ))]
     NetworkStreamAddress::Vsock(vsock) => Some(vsock.port()),
+    NetworkStreamAddress::Memory(_) => None,
     #[cfg(windows)]
     NetworkStreamAddress::WindowsPipe(_) => None,
   };
@@ -292,6 +295,10 @@ fn req_host_from_addr(
     NetworkStreamAddress::Vsock(vsock) => {
       format!("{}:{}", vsock.cid(), vsock.port())
     }
+    // The listener's name is the host its requests carry (it's checked to be
+    // a domain name when `ENDE_SERVE_ADDRESS` is parsed). The peer normally
+    // sends the same name in `Host`.
+    NetworkStreamAddress::Memory(memory) => memory.name.clone(),
     #[cfg(windows)]
     NetworkStreamAddress::WindowsPipe(_) => "localhost".to_owned(),
   }
@@ -309,6 +316,10 @@ fn req_scheme_from_stream_type(stream_type: NetworkStreamType) -> &'static str {
       target_os = "macos"
     ))]
     NetworkStreamType::Vsock => "http+vsock://",
+    // A request bridged in from the desktop webview looks like a plain HTTP
+    // request to its host. `info.remoteAddr.transport === "memory"` is what
+    // tells it apart.
+    NetworkStreamType::Memory => "http://",
     #[cfg(windows)]
     NetworkStreamType::WindowsPipe => "http://",
   }
@@ -341,6 +352,7 @@ fn req_host<'a>(
         target_os = "macos"
       ))]
       NetworkStreamType::Vsock => {}
+      NetworkStreamType::Memory => {}
       #[cfg(windows)]
       NetworkStreamType::WindowsPipe => {}
     }
@@ -371,4 +383,28 @@ fn req_host<'a>(
   }
 
   None
+}
+
+#[cfg(test)]
+mod tests {
+  use ende_net::memory::MemoryAddr;
+  use ende_net::raw::NetworkStreamAddress;
+  use ende_net::raw::NetworkStreamType;
+
+  use super::listener_properties;
+
+  #[test]
+  fn memory_listener_serves_plain_http_urls_for_its_host() {
+    let properties = listener_properties(
+      NetworkStreamType::Memory,
+      NetworkStreamAddress::Memory(MemoryAddr {
+        name: "app.example".to_string(),
+        id: 0,
+      }),
+    )
+    .unwrap();
+    assert_eq!(properties.scheme, "http://");
+    assert_eq!(properties.fallback_host, "app.example");
+    assert_eq!(properties.local_port, None);
+  }
 }

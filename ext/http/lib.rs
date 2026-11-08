@@ -1903,11 +1903,34 @@ fn parse_serve_address(input: &str) -> (u8, String, u32, bool) {
         None => (0, String::new(), 0, false),
       }
     }
+    Some(("memory", host)) => {
+      // In-process byte channel (`ende_net::memory`). The peer in this
+      // process (the desktop runtime) connects to it by this name, and it is
+      // the host of each request's `request.url`.
+      if !is_memory_serve_host(host) {
+        log::error!(
+          "ENDE_SERVE_ADDRESS: invalid memory host (expected a lowercase domain name): {}",
+          host
+        );
+        return (0, String::new(), 0, false);
+      }
+      (4, host.to_string(), 0, duplicate)
+    }
     Some((_, _)) | None => {
       log::error!("ENDE_SERVE_ADDRESS: invalid address format: {}", input);
       (0, String::new(), 0, false)
     }
   }
+}
+
+/// Whether `host` can name a `memory:` serve listener: a domain name already in
+/// the form `new URL()` gives it (ASCII, lowercase), so `request.url` carries
+/// it unchanged.
+fn is_memory_serve_host(host: &str) -> bool {
+  let Ok(url) = ende_core::url::Url::parse(&format!("http://{host}/")) else {
+    return false;
+  };
+  matches!(url.host(), Some(ende_core::url::Host::Domain(domain)) if domain == host)
 }
 
 pub static SERVE_NOTIFIER: Notify = Notify::const_new();
@@ -2001,6 +2024,32 @@ mod tests {
       parse_serve_address("duplicate,vsock:-1:5678"),
       (3, "-1".to_string(), 5678, true)
     );
+
+    // In-process memory channel (the desktop runtime's transport). The name
+    // is the host of `request.url`, so it must be a normalized domain name.
+    assert_eq!(
+      parse_serve_address("memory:app.example"),
+      (4, "app.example".to_string(), 0, false)
+    );
+    assert_eq!(
+      parse_serve_address("duplicate,memory:app.example"),
+      (4, "app.example".to_string(), 0, true)
+    );
+    for host in [
+      "",
+      "App.Example",
+      "app.example:8000",
+      "user@app.example",
+      "app.example/x",
+      "127.0.0.1",
+      "[::1]",
+    ] {
+      assert_eq!(
+        parse_serve_address(&format!("memory:{host}")),
+        (0, String::new(), 0, false),
+        "{host}"
+      );
+    }
 
     assert_eq!(parse_serve_address("tcp:"), (0, String::new(), 0, false));
     assert_eq!(parse_serve_address("unix:"), (0, String::new(), 0, false));

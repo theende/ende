@@ -21,6 +21,7 @@ const {
   op_net_join_multi_v6_udp,
   op_net_leave_multi_v4_udp,
   op_net_leave_multi_v6_udp,
+  op_net_listen_memory,
   op_net_listen_tcp,
   op_net_listen_unix,
   op_net_listen_vsock,
@@ -612,6 +613,16 @@ function listen(args) {
   }
 }
 
+// Internal: the in-process `memory:` transport is not a public `Ende.listen`
+// transport. It backs `ENDE_SERVE_ADDRESS=memory:<host>` only, so it is
+// exposed to `ext:ende_http/00_serve.js` but not reachable through
+// `Ende.listen` or `Ende.serve` options.
+function listenMemory(name) {
+  const { 0: rid, 1: resolvedName, 2: id } = op_net_listen_memory(name);
+  const addr = { transport: "memory", name: resolvedName, id };
+  return new Listener(rid, addr, "memory");
+}
+
 function validatePort(maybePort, isServer = false) {
   // A missing port means "any available port" (port 0) for servers. Clients
   // must always specify a port to connect to, so a missing port is left as-is
@@ -748,6 +759,7 @@ return {
   dropMembership,
   listen,
   Listener,
+  listenMemory,
   listenOptionApiName,
   resolveDns,
   setDatagramBroadcast,

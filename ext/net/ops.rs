@@ -979,6 +979,22 @@ pub fn op_net_accept_vsock() -> Result<(), NetError> {
   Err(NetError::VsockUnsupported)
 }
 
+/// Binds the internal in-process `memory:` transport behind
+/// `ENDE_SERVE_ADDRESS=memory:<host>` (see [`crate::memory`]). It opens no
+/// socket, so it needs no net permission; only this process can connect.
+#[op2]
+pub fn op_net_listen_memory(
+  state: &mut OpState,
+  #[string] name: String,
+) -> Result<(ResourceId, String, u32), NetError> {
+  let listener = crate::memory::listen_memory(&name)?;
+  let local_addr = listener.local_addr()?;
+  let rid = state
+    .resource_table
+    .add(crate::raw::NetworkListenerResource::new(listener));
+  Ok((rid, local_addr.name, local_addr.id))
+}
+
 #[derive(ToV8, Eq, PartialEq, Debug)]
 #[to_v8(untagged)]
 pub enum DnsRecordData {
