@@ -444,3 +444,17 @@ Deno.test(function eventTargetIgnoresSignalOnPollutedObjectPrototype() {
     delete (Object.prototype as any).signal;
   }
 });
+
+// https://html.spec.whatwg.org/#deactivate-an-event-handler
+Deno.test(function eventHandlerSetToNullRemovesListener() {
+  const signal = new AbortController().signal;
+  const calls: string[] = [];
+  signal.onabort = () => calls.push("first handler");
+  signal.addEventListener("abort", () => calls.push("listener"));
+  signal.onabort = null;
+  signal.dispatchEvent(new Event("abort"));
+  // Setting the handler again adds a new listener after the existing one.
+  signal.onabort = () => calls.push("second handler");
+  signal.dispatchEvent(new Event("abort"));
+  assertEquals(calls, ["listener", "listener", "second handler"]);
+});

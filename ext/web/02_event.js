@@ -19,6 +19,7 @@ const {
   Error,
   FunctionPrototypeCall,
   JSONStringify,
+  MapPrototypeDelete,
   MapPrototypeGet,
   MapPrototypeSet,
   ObjectCreate,
@@ -1677,17 +1678,24 @@ function defineEventHandler(
         this[_eventHandlers] = new SafeMap();
       }
       let handlerWrapper = MapPrototypeGet(this[_eventHandlers], name);
-      if (handlerWrapper) {
+      if (value === null) {
+        // Deactivate the event handler: remove its listener, so a later
+        // value gets a new listener at the end of the list.
+        if (handlerWrapper) {
+          this.removeEventListener(name, handlerWrapper);
+          MapPrototypeDelete(this[_eventHandlers], name);
+        }
+      } else if (handlerWrapper) {
         handlerWrapper.handler = value;
-      } else if (value !== null) {
+      } else {
         handlerWrapper = makeWrappedHandler(
           value,
           isSpecialErrorEventHandler,
         );
         this.addEventListener(name, handlerWrapper);
         init?.(this);
+        MapPrototypeSet(this[_eventHandlers], name, handlerWrapper);
       }
-      MapPrototypeSet(this[_eventHandlers], name, handlerWrapper);
     },
     configurable: true,
     enumerable: true,

@@ -1,0 +1,4 @@
+{
+  "args": "run main.js",
+  "output": "exited before the timeout\n"
+}
