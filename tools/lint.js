@@ -674,6 +674,7 @@ async function ensureNoNewTopLevelEntries() {
     "Cargo.lock",
     "Cargo.toml",
     "LICENSE.md",
+    "NOTICE",
     "README.md",
     "Releases.md",
     "import_map.json",
