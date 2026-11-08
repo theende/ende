@@ -1,0 +1,8 @@
+// Copyright 2026 the Ende authors. MIT license.
+// `--unstable-tsgo` drove upstream's removed typescript-go fork and did
+// nothing. It is gone; `--unstable-tsc7` replaces it.
+{
+  "args": "check --unstable-tsgo main.ts",
+  "output": "main.out",
+  "exitCode": 1
+}

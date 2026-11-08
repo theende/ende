@@ -9039,6 +9039,10 @@ fn removed_flags_not_supported_tip() {
       "--unstable-node-globals",
     ),
     (
+      svec!["ende", "check", "--unstable-tsgo", "main.ts"],
+      "--unstable-tsgo",
+    ),
+    (
       svec!["ende", "--unstable-byonm", "main.ts"],
       "--unstable-byonm",
     ),

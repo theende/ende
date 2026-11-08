@@ -18,8 +18,8 @@ export const unstableIds = {
   process: 10,
   rawImports: 11,
   temporal: 14,
-  unsafeProto: 16,
-  vsock: 17,
-  webgpu: 18,
-  workerOptions: 19,
+  unsafeProto: 15,
+  vsock: 16,
+  webgpu: 17,
+  workerOptions: 18,
 };

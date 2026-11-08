@@ -162,7 +162,6 @@ pub struct UnstableConfig {
   pub lazy_dynamic_imports: bool,
   pub raw_imports: bool,
   pub sloppy_imports: bool,
-  pub tsgo: bool,
   pub features: Vec<String>, // --unstable-cron --unstable-ffi
 }
 
@@ -179,7 +178,6 @@ impl UnstableConfig {
       &mut self.lazy_dynamic_imports,
       UNSTABLE_ENV_VAR_NAMES.lazy_dynamic_imports,
     );
-    maybe_set(sys, &mut self.tsgo, UNSTABLE_ENV_VAR_NAMES.tsgo);
     maybe_set(
       sys,
       &mut self.raw_imports,

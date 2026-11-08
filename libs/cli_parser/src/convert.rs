@@ -281,6 +281,7 @@ const REMOVED_FLAGS: &[&str] = &[
   "--unstable-detect-cjs",
   "--unstable-npm-lazy-caching",
   "--unstable-node-globals",
+  "--unstable-tsgo",
   "--tunnel",
   "--connected",
   "--node-modules-dir",
@@ -938,10 +939,6 @@ fn unstable_args_parse(result: &ParseResult, flags: &mut Flags) {
     (
       "unstable-raw-imports",
       Some(|c: &mut UnstableConfig| c.raw_imports = true),
-    ),
-    (
-      "unstable-tsgo",
-      Some(|c: &mut UnstableConfig| c.tsgo = true),
     ),
     ("unstable-ffi", None),
     ("unstable-worker-options", None),

@@ -922,7 +922,6 @@ impl<'a> EndeCompileBinaryWriter<'a> {
         lazy_dynamic_imports: self.cli_options.unstable_lazy_dynamic_imports(),
         raw_imports: self.cli_options.unstable_raw_imports(),
         sloppy_imports: self.cli_options.unstable_sloppy_imports(),
-        tsgo: self.cli_options.unstable_tsgo(),
       },
       otel_config: self.cli_options.otel_config(),
       vfs_case_sensitivity: vfs.case_sensitivity,
