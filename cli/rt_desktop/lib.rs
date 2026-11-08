@@ -15,6 +15,7 @@
 //! ([`app_scheme_host`]) it serves the app on a random loopback port and
 //! navigates the webview there.
 
+mod cookie_jar;
 mod scheme_bridge;
 
 use std::borrow::Cow;
@@ -1681,6 +1682,7 @@ pub extern "C" fn laufey_runtime_start() -> std::ffi::c_int {
 /// Called by the backend when the app quits.
 #[unsafe(no_mangle)]
 pub extern "C" fn laufey_runtime_shutdown() {
+  cookie_jar::flush_on_exit();
   laufey::shutdown();
 }
 
@@ -1918,6 +1920,27 @@ fn app_scheme_host<'a>(
     (Some("webview"), "macos" | "windows") => host,
     _ => None,
   }
+}
+
+/// The `app://<host>` bridge's cookie jar, persisted under the app
+/// identifier in the platform's data folder (see [`cookie_jar::cookie_file`])
+/// and written when the app exits. In memory only when there's no usable
+/// folder.
+fn open_cookie_jar(
+  host: &str,
+  identifier: Option<&str>,
+) -> Arc<cookie_jar::CookieJar> {
+  let file = endert::binary::get_data_local_dir()
+    .zip(identifier)
+    .and_then(|(dir, id)| cookie_jar::cookie_file(&dir, id));
+  if file.is_none() {
+    log::warn!(
+      "[desktop] no data folder for the app's cookies; they last until the app quits"
+    );
+  }
+  let jar = cookie_jar::CookieJar::open(host, file);
+  cookie_jar::flush_at_exit(&jar);
+  jar
 }
 
 /// How the renderer reaches the app's server.
@@ -2450,11 +2473,15 @@ async fn run_desktop(
   };
   let mut bridge = None;
   if let RendererTransport::AppScheme { origin, ws_relay } = &mut transport {
+    // WKWebView keeps no cookies for the scheme, so the bridge keeps them.
+    let cookies = cfg!(target_os = "macos").then(|| {
+      open_cookie_jar(origin.host(), data.metadata.app_identifier.as_deref())
+    });
     // Before the first window is created (in `op_state_init` below): WebKit
     // reads a web view's scheme handlers when the web view is created.
-    bridge = Some(scheme_bridge::register(origin.clone()));
+    bridge = Some(scheme_bridge::register(origin.clone(), cookies.clone()));
     if let Some(listener) = ws_relay.take() {
-      scheme_bridge::spawn_ws_loopback_proxy(listener, origin.clone());
+      scheme_bridge::spawn_ws_loopback_proxy(listener, origin.clone(), cookies);
     }
   }
 

@@ -101,6 +101,48 @@
 //! stops, neither leaves the app origin. WebView2 is untested, so Windows
 //! passes every 3xx through.
 //!
+//! # Cookies
+//!
+//! WKWebView keeps no cookies for the scheme: it ignores a handler's
+//! `Set-Cookie` and sends no `Cookie`. So on macOS the bridge keeps the app's
+//! cookies in a [`CookieJar`]: it stores the `Set-Cookie` of every response,
+//! redirect hops it follows included, and replaces the request's `Cookie`
+//! with the jar's for every request, each hop with the cookies as they are
+//! after the previous one. `Set-Cookie` doesn't reach the webview. The relay
+//! does the same for an upgrade and its `101`. `document.cookie` stays
+//! empty: page JavaScript can't read or set these cookies.
+//!
+//! Which cookies a request gets depends on the document that made it
+//! ([`request_initiator`]), the way `SameSite=Lax` works in a browser. Any
+//! document the webview shows can address the app origin (a remote page the
+//! window navigated to, a `data:` page, a frame), and the bridge can't tell
+//! a window from a frame. What WKWebView sends the handler (macOS 27):
+//!
+//! * `fetch()`: `Referer` (even with `referrerPolicy: "no-referrer"`), plus
+//!   `Origin` when it's a cross-origin CORS request; nothing with
+//!   `referrer: ""`, from any page, a cross-origin `no-cors` POST included.
+//! * A form POST: `Origin` (`null` from a `data:` or `no-referrer` page).
+//! * A navigation: a cross-origin page's `Referer`; nothing from the app's
+//!   own pages, `navigate()` or a `no-referrer` page.
+//! * XHR: `Origin` when cross-origin; nothing when same-origin.
+//! * `<img>`, `<script>`, stylesheets: nothing, from any page.
+//! * No `Sec-Fetch-*` (only the relay's WebSocket handshake has them).
+//!
+//! So a request is the app's own when its `Origin` or `Referer` is on the
+//! app origin and none of those headers points elsewhere: it gets every
+//! cookie. A request with none of them can't be told from a remote page's.
+//! It, and a cross-origin one, only gets cookies when it's a navigation
+//! with a safe method, and then not the `SameSite=Strict` ones;
+//! `SameSite=None` is no exception. So same-origin XHR, images, scripts
+//! and stylesheets go without cookies, and `Set-Cookie` is only stored from
+//! a response to a same-origin request or a navigation. A navigation's
+//! redirect, which the bridge turns into a page that navigates on, passes
+//! the first request's initiator on to the target. The relay admits only
+//! the app origin, so its upgrades get every cookie.
+//!
+//! Windows keeps WebView2's own cookie handling: whether it keeps cookies for
+//! the scheme is untested.
+//!
 //! # laufey 0.7.0 limits
 //!
 //! * The hosts give no cancel notification (the crate passes no `on_cancel`),
@@ -113,8 +155,8 @@
 //! * WKWebView forwards `HTTPBody`, not `HTTPBodyStream`, so a body the
 //!   engine streams arrives empty (a `Blob` body does, on macOS 27; strings
 //!   and `FormData` arrive).
-//! * WKWebView keeps no cookies for the scheme: `Set-Cookie` is ignored and
-//!   `document.cookie` stays empty (macOS 27).
+//! * WKWebView keeps no cookies for the scheme (macOS 27); the bridge's jar
+//!   stands in for them (see above), except for `document.cookie`.
 
 use std::net::SocketAddr;
 use std::sync::atomic::AtomicBool;
@@ -126,10 +168,12 @@ use ende_runtime::ende_net::memory::connect_memory;
 use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::header::CONNECTION;
+use hyper::header::COOKIE;
 use hyper::header::HOST;
 use hyper::header::LOCATION;
 use hyper::header::PROXY_AUTHENTICATE;
 use hyper::header::PROXY_AUTHORIZATION;
+use hyper::header::SET_COOKIE;
 use hyper::header::TE;
 use hyper::header::TRAILER;
 use hyper::header::TRANSFER_ENCODING;
@@ -139,6 +183,10 @@ use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
+
+use crate::cookie_jar::CookieJar;
+use crate::cookie_jar::Initiator;
+use crate::cookie_jar::RequestContext;
 
 /// The scheme the webview loads the app from. laufey 0.7.0 hard-codes it in
 /// the macOS, Windows and CEF hosts.
@@ -272,14 +320,22 @@ impl Exchange for laufey::SchemeExchange {
 ///
 /// Redirects to the app origin are handled by the bridge on macOS only
 /// (see the module docs): WKWebView doesn't follow them. Whether WebView2
-/// does is untested, so Windows passes every 3xx through as before.
+/// does is untested, so Windows passes every 3xx through as before. Cookies
+/// are kept in `cookies` when given (macOS: WKWebView keeps none for the
+/// scheme).
 ///
 /// The returned [`Bridge`] tells whether any request arrived, for
 /// [`LostSchemeGuard`].
-pub fn register(origin: AppOrigin) -> std::sync::Arc<Bridge> {
+pub fn register(
+  origin: AppOrigin,
+  cookies: Option<std::sync::Arc<CookieJar>>,
+) -> std::sync::Arc<Bridge> {
   let handle = tokio::runtime::Handle::current();
-  let bridge =
-    std::sync::Arc::new(Bridge::new(origin, cfg!(target_os = "macos")));
+  let bridge = std::sync::Arc::new(Bridge::new(
+    origin,
+    cfg!(target_os = "macos"),
+    cookies,
+  ));
   let registered = bridge.clone();
   laufey::register_scheme_handler(APP_SCHEME, move |req| {
     log::trace!("[desktop] {} {}", req.method, req.url);
@@ -320,15 +376,29 @@ pub struct Bridge {
   navigation_redirects: std::sync::Mutex<std::collections::HashMap<u32, usize>>,
   /// Whether the webview made any request on the scheme yet.
   received_a_request: AtomicBool,
+  /// The app's cookies, when the bridge keeps them instead of the webview.
+  cookies: Option<std::sync::Arc<CookieJar>>,
+  /// Per window: the target of the redirect page it was last sent, and the
+  /// initiator of the navigation that got it. The page's own navigation to
+  /// the target continues that navigation, but carries no `Origin` or
+  /// `Referer` of its own on macOS 27.
+  redirected_navigations:
+    std::sync::Mutex<std::collections::HashMap<u32, (String, Initiator)>>,
 }
 
 impl Bridge {
-  fn new(origin: AppOrigin, follow_redirects: bool) -> Self {
+  fn new(
+    origin: AppOrigin,
+    follow_redirects: bool,
+    cookies: Option<std::sync::Arc<CookieJar>>,
+  ) -> Self {
     Self {
       origin,
       follow_redirects,
       navigation_redirects: Default::default(),
       received_a_request: AtomicBool::new(false),
+      cookies,
+      redirected_navigations: Default::default(),
     }
   }
 
@@ -407,16 +477,34 @@ impl Bridge {
     };
 
     let navigation = is_navigation(headers);
+    let initiator = self.initiator(window_id, url, headers, navigation);
     let mut request = BridgedRequest {
       method: method.to_string(),
       url: url.to_string(),
       headers,
       body,
       drop_body_headers: false,
+      cookie: None,
     };
     let mut followed = 0;
     let response = loop {
+      let context = RequestContext::new(initiator, navigation, &request.method);
+      if let Some(jar) = &self.cookies {
+        request.cookie =
+          Some(jar.cookie_header(&url_path(&request.url), context));
+      }
       let response = request.send(origin).await?;
+      if let Some(jar) = &self.cookies {
+        jar.store(
+          &url_path(&request.url),
+          response
+            .headers()
+            .get_all(SET_COOKIE)
+            .iter()
+            .map(|value| value.as_bytes()),
+          context,
+        );
+      }
       if !self.follow_redirects {
         break response;
       }
@@ -437,6 +525,11 @@ impl Bridge {
           if !self.count_navigation_redirect(window_id) {
             return too_many_redirects(exchange, began, &request.url);
           }
+          self
+            .redirected_navigations
+            .lock()
+            .unwrap()
+            .insert(window_id, (target.clone(), initiator));
           begin_navigation_page(exchange);
           *began = true;
           write_all(exchange, navigation_page(&target).as_bytes()).await;
@@ -464,7 +557,10 @@ impl Bridge {
     let status = i32::from(response.status().as_u16());
     let mut resp_headers = Vec::with_capacity(response.headers().len());
     for (name, value) in response.headers() {
-      if is_hop_by_hop_header(name.as_str()) || is_relay_marker(name.as_str()) {
+      if is_hop_by_hop_header(name.as_str())
+        || is_relay_marker(name.as_str())
+        || (self.cookies.is_some() && name == SET_COOKIE)
+      {
         continue;
       }
       resp_headers.push((
@@ -489,6 +585,40 @@ impl Bridge {
       }
     }
     Ok(())
+  }
+
+  /// The initiator of a request ([`request_initiator`]). A navigation in a
+  /// window that was just sent a redirect page for `url` continues the
+  /// redirected navigation: it gets that one's initiator, or the weaker of
+  /// the two when its own headers tell one.
+  fn initiator(
+    &self,
+    window_id: u32,
+    url: &str,
+    headers: &[(String, String)],
+    navigation: bool,
+  ) -> Initiator {
+    let initiator = request_initiator(headers, &self.origin);
+    if !navigation {
+      return initiator;
+    }
+    match self
+      .redirected_navigations
+      .lock()
+      .unwrap()
+      .remove(&window_id)
+    {
+      Some((target, redirected))
+        if path_and_query(&target) == path_and_query(url) =>
+      {
+        if initiator == Initiator::Unknown {
+          redirected
+        } else {
+          initiator.min(redirected)
+        }
+      }
+      _ => initiator,
+    }
   }
 
   /// Count a same-origin redirect of a navigation in `window_id`. False
@@ -518,6 +648,10 @@ struct BridgedRequest<'a> {
   /// Leave out the headers that describe a body: the method was changed to
   /// `GET` and the body dropped.
   drop_body_headers: bool,
+  /// With a cookie jar: the jar's `Cookie` value for this request (none
+  /// sent when `None` inside), which replaces the webview's. `None`: the
+  /// webview's is forwarded.
+  cookie: Option<Option<String>>,
 }
 
 impl BridgedRequest<'_> {
@@ -540,10 +674,14 @@ impl BridgedRequest<'_> {
     for (name, value) in self.headers {
       if should_skip_request_header(name)
         || (self.drop_body_headers && is_request_body_header(name))
+        || (self.cookie.is_some() && name.trim().eq_ignore_ascii_case("cookie"))
       {
         continue;
       }
       builder = builder.header(name.as_str(), value.as_str());
+    }
+    if let Some(Some(cookie)) = &self.cookie {
+      builder = builder.header(COOKIE, cookie.as_str());
     }
     // `request.url` is `http://<host>/…` on the app's side.
     builder = builder.header(HOST, origin.host());
@@ -693,12 +831,7 @@ fn redirect_action(
   }) else {
     return RedirectAction::PassThrough;
   };
-  let same_origin = target.scheme() == APP_SCHEME
-    && target.host_str() == Some(origin.host())
-    && target.port().is_none()
-    && target.username().is_empty()
-    && target.password().is_none();
-  if !same_origin {
+  if !is_app_origin_url(&target, origin) {
     return RedirectAction::PassThrough;
   }
   let to_get = match status {
@@ -716,6 +849,60 @@ fn redirect_action(
   RedirectAction::Follow {
     url: target.into(),
     method: method.to_string(),
+  }
+}
+
+/// Whether a URL is on the app origin, `app://<host>` without a port or user
+/// info.
+fn is_app_origin_url(url: &ende_core::url::Url, origin: &AppOrigin) -> bool {
+  url.scheme() == APP_SCHEME
+    && url.host_str() == Some(origin.host())
+    && url.port().is_none()
+    && url.username().is_empty()
+    && url.password().is_none()
+}
+
+/// What the request's headers tell about the document that made it, for its
+/// cookies (see the module docs). A header that points elsewhere wins over
+/// one on the app origin:
+///
+/// * `Origin`: the app origin, or anything else (`null` included);
+/// * `Referer`: a URL on the app origin, or anything else;
+/// * `Sec-Fetch-Site`: `same-origin`, or anything but `none` (`none`, a
+///   request the user started, says nothing about a document).
+///
+/// [`Initiator::Unknown`] when none of them is there. Pages can't set these
+/// headers, so a remote page can't pass for the app.
+fn request_initiator(
+  headers: &[(String, String)],
+  origin: &AppOrigin,
+) -> Initiator {
+  let mut same_origin = false;
+  for (name, value) in headers {
+    let name = name.trim();
+    let value = value.trim_matches([' ', '\t']);
+    let this_origin = if name.eq_ignore_ascii_case("origin") {
+      origin.matches_origin_header(value)
+    } else if name.eq_ignore_ascii_case("referer") {
+      ende_core::url::Url::parse(value)
+        .is_ok_and(|referer| is_app_origin_url(&referer, origin))
+    } else if name.eq_ignore_ascii_case("sec-fetch-site") {
+      if value.eq_ignore_ascii_case("none") {
+        continue;
+      }
+      value.eq_ignore_ascii_case("same-origin")
+    } else {
+      continue;
+    };
+    if !this_origin {
+      return Initiator::CrossSite;
+    }
+    same_origin = true;
+  }
+  if same_origin {
+    Initiator::SameOrigin
+  } else {
+    Initiator::Unknown
   }
 }
 
@@ -964,6 +1151,16 @@ fn authority_matches(url: &str, origin: &AppOrigin) -> bool {
   split_authority(url).map(|(authority, _)| authority) == Some(origin.host())
 }
 
+/// The path of a `scheme://authority/path?query` URL, for cookie matching:
+/// [`path_and_query`] without the query.
+fn url_path(url: &str) -> String {
+  let mut path = path_and_query(url);
+  if let Some(query) = path.find('?') {
+    path.truncate(query);
+  }
+  path
+}
+
 /// The path and query of a `scheme://authority/path?query` URL, the form a
 /// request target needs: a bare authority is `/`, a query without a path
 /// gets a `/` before it, and a fragment is dropped.
@@ -1048,11 +1245,12 @@ pub fn bind_ws_loopback_listener() -> std::io::Result<std::net::TcpListener> {
 
 /// Start the relay's accept loop on a listener from
 /// [`bind_ws_loopback_listener`], forwarding admitted upgrades to the memory
-/// listener named after `origin`'s host. Call it from the runtime's tokio
-/// context.
+/// listener named after `origin`'s host, with the cookies in `cookies` when
+/// given. Call it from the runtime's tokio context.
 pub fn spawn_ws_loopback_proxy(
   listener: std::net::TcpListener,
   origin: AppOrigin,
+  cookies: Option<std::sync::Arc<CookieJar>>,
 ) {
   if let Err(e) = listener.set_nonblocking(true) {
     log::error!("[desktop] ws relay: set_nonblocking failed: {e}");
@@ -1068,22 +1266,30 @@ pub fn spawn_ws_loopback_proxy(
   if let Ok(addr) = listener.local_addr() {
     log::debug!("[desktop] ws relay listening on {addr} for origin {origin}");
   }
-  tokio::spawn(run_ws_loopback_proxy(listener, origin, HEAD_READ_TIMEOUT));
+  tokio::spawn(run_ws_loopback_proxy(
+    listener,
+    origin,
+    cookies,
+    HEAD_READ_TIMEOUT,
+  ));
 }
 
 /// The relay's accept loop: one task per connection.
 async fn run_ws_loopback_proxy(
   listener: TcpListener,
   origin: AppOrigin,
+  cookies: Option<std::sync::Arc<CookieJar>>,
   head_timeout: Duration,
 ) {
   loop {
     match listener.accept().await {
       Ok((stream, _peer)) => {
         let origin = origin.clone();
+        let cookies = cookies.clone();
         tokio::spawn(async move {
           if let Err(e) =
-            proxy_ws_connection(stream, &origin, head_timeout).await
+            proxy_ws_connection(stream, &origin, cookies.as_ref(), head_timeout)
+              .await
           {
             log::debug!("[desktop] ws relay connection error: {e}");
           }
@@ -1192,6 +1398,7 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 async fn proxy_ws_connection(
   mut tcp: TcpStream,
   origin: &AppOrigin,
+  cookies: Option<&std::sync::Arc<CookieJar>>,
   head_timeout: Duration,
 ) -> std::io::Result<()> {
   let Some((head, end_of_head)) =
@@ -1238,10 +1445,15 @@ async fn proxy_ws_connection(
       return Ok(());
     }
   };
+  // The upgrade passed the `Origin` check: it's the app origin's own.
+  let path = url_path(&format!("{origin}{}", String::from_utf8_lossy(&target)));
+  let context = RequestContext::new(Initiator::SameOrigin, false, "GET");
+  let cookie = cookies.map(|jar| jar.cookie_header(&path, context));
   relay_upgrade(
     &mut tcp,
     &mut upstream,
-    &relay_request_head(head, &target, origin.host()),
+    &relay_request_head(head, &target, origin.host(), cookie.as_ref()),
+    cookies.map(|jar| (jar, path.as_str(), context)),
     UPSTREAM_HEAD_TIMEOUT,
   )
   .await
@@ -1252,11 +1464,14 @@ async fn proxy_ws_connection(
 /// response. Only a `101` is passed on, after which bytes are copied both
 /// ways; any other answer, or none within `timeout`, is replaced with the
 /// relay's `502` and both sides are closed, so the client can neither read
-/// a non-upgrade response nor send a second request.
+/// a non-upgrade response nor send a second request. With a cookie jar
+/// (and the request's path and context), the `101`'s `Set-Cookie` goes into
+/// the jar instead of to the client.
 async fn relay_upgrade<C, U>(
   client: &mut C,
   upstream: &mut U,
   head: &[u8],
+  cookies: Option<(&std::sync::Arc<CookieJar>, &str, RequestContext)>,
   timeout: Duration,
 ) -> std::io::Result<()>
 where
@@ -1265,7 +1480,12 @@ where
 {
   upstream.write_all(head).await?;
   match read_request_head(upstream, timeout).await? {
-    Some((buf, end)) if is_switching_protocols(&buf[..end]) => {
+    Some((mut buf, end)) if is_switching_protocols(&buf[..end]) => {
+      if let Some((jar, path, context)) = cookies {
+        jar.store(path, header_values(&buf[..end], b"set-cookie"), context);
+        let response_head = without_header(&buf[..end], b"set-cookie");
+        buf.splice(..end, response_head);
+      }
       // The 101 head and any frames the server already sent after it.
       client.write_all(&buf).await?;
       let _ = tokio::io::copy_bidirectional(client, upstream).await;
@@ -1293,8 +1513,15 @@ where
 /// header lines without any `Host`, any [`RELAY_MARKER_HEADER`] and any line
 /// without a colon, then exactly one `host: <host>` (so `request.url` is
 /// `http://<host>/…`, as for the bridge's requests) and exactly one
-/// `x-ende-desktop-relay: 1`.
-fn relay_request_head(head: &[u8], target: &[u8], host: &str) -> Vec<u8> {
+/// `x-ende-desktop-relay: 1`. With `cookie` (a cookie jar's value for the
+/// request, `None` inside when it has none), the client's `Cookie` lines are
+/// replaced with it.
+fn relay_request_head(
+  head: &[u8],
+  target: &[u8],
+  host: &str,
+  cookie: Option<&Option<String>>,
+) -> Vec<u8> {
   let mut out = Vec::with_capacity(head.len() + 64);
   let mut lines = head
     .split(|&b| b == b'\n')
@@ -1319,10 +1546,16 @@ fn relay_request_head(head: &[u8], target: &[u8], host: &str) -> Vec<u8> {
     let name = trim_ascii(&line[..colon]);
     if name.eq_ignore_ascii_case(b"host")
       || name.eq_ignore_ascii_case(RELAY_MARKER_HEADER.as_bytes())
+      || (cookie.is_some() && name.eq_ignore_ascii_case(b"cookie"))
     {
       continue;
     }
     out.extend_from_slice(line);
+    out.extend_from_slice(b"\r\n");
+  }
+  if let Some(Some(cookie)) = cookie {
+    out.extend_from_slice(b"cookie: ");
+    out.extend_from_slice(cookie.as_bytes());
     out.extend_from_slice(b"\r\n");
   }
   out.extend_from_slice(b"host: ");
@@ -1330,6 +1563,22 @@ fn relay_request_head(head: &[u8], target: &[u8], host: &str) -> Vec<u8> {
   out.extend_from_slice(b"\r\n");
   out.extend_from_slice(RELAY_MARKER_HEADER.as_bytes());
   out.extend_from_slice(b": 1\r\n\r\n");
+  out
+}
+
+/// `head` without its `name` header lines (ASCII case-insensitive).
+fn without_header(head: &[u8], name: &[u8]) -> Vec<u8> {
+  let mut out = Vec::with_capacity(head.len());
+  for (i, line) in head.split_inclusive(|&b| b == b'\n').enumerate() {
+    let header_name = line
+      .iter()
+      .position(|&b| b == b':')
+      .map(|colon| trim_ascii(&line[..colon]));
+    if i > 0 && header_name.is_some_and(|n| n.eq_ignore_ascii_case(name)) {
+      continue;
+    }
+    out.extend_from_slice(line);
+  }
   out
 }
 
@@ -1570,7 +1819,7 @@ mod tests {
     origin: &AppOrigin,
     exchange: &impl Exchange,
   ) {
-    Bridge::new(origin.clone(), false)
+    Bridge::new(origin.clone(), false, None)
       .respond(0, method, url, headers, exchange)
       .await;
   }
@@ -1997,7 +2246,7 @@ mod tests {
   async fn bridge_follows_same_origin_redirects_of_fetches() {
     const HOST: &str = "bridge-follow.example";
     let origin = AppOrigin::new(HOST);
-    let bridge = Bridge::new(origin.clone(), true);
+    let bridge = Bridge::new(origin.clone(), true, None);
     let mut app = redirecting_app(HOST);
     let headers = h(&[("Content-Type", "text/plain"), ("X-Kept", "1")]);
 
@@ -2058,7 +2307,7 @@ mod tests {
   #[tokio::test]
   async fn bridge_stops_a_redirect_loop() {
     const HOST: &str = "bridge-loop.example";
-    let bridge = Bridge::new(AppOrigin::new(HOST), true);
+    let bridge = Bridge::new(AppOrigin::new(HOST), true, None);
     let mut app = redirecting_app(HOST);
     let exchange = FakeExchange::default();
     let url = format!("app://{HOST}/loop");
@@ -2072,7 +2321,7 @@ mod tests {
   #[tokio::test]
   async fn bridge_turns_a_navigation_redirect_into_a_page() {
     const HOST: &str = "bridge-navigate.example";
-    let bridge = Bridge::new(AppOrigin::new(HOST), true);
+    let bridge = Bridge::new(AppOrigin::new(HOST), true, None);
     let mut app = redirecting_app(HOST);
     let headers = navigation_headers();
 
@@ -2137,7 +2386,7 @@ mod tests {
   #[tokio::test]
   async fn bridge_passes_redirects_through_without_redirect_handling() {
     const HOST: &str = "bridge-no-follow.example";
-    let bridge = Bridge::new(AppOrigin::new(HOST), false);
+    let bridge = Bridge::new(AppOrigin::new(HOST), false, None);
     let mut app = redirecting_app(HOST);
     for headers in [vec![], navigation_headers()] {
       let exchange = FakeExchange::default();
@@ -2154,7 +2403,7 @@ mod tests {
 
   #[test]
   fn lost_scheme_guard_checks_the_first_load_of_the_initial_window() {
-    let bridge = std::sync::Arc::new(Bridge::new(origin(), false));
+    let bridge = std::sync::Arc::new(Bridge::new(origin(), false, None));
     let guard = LostSchemeGuard::new(bridge.clone());
     // Nothing is watched before the initial window exists.
     assert!(!guard.lost_scheme_on_load(0));
@@ -2171,7 +2420,7 @@ mod tests {
     assert!(!guard.lost_scheme_on_load(7));
 
     // The app navigated the window itself before it loaded.
-    let bridge = std::sync::Arc::new(Bridge::new(origin(), false));
+    let bridge = std::sync::Arc::new(Bridge::new(origin(), false, None));
     let guard = LostSchemeGuard::new(bridge);
     guard.watch(7);
     guard.navigated_by_app(8);
@@ -2458,6 +2707,354 @@ mod tests {
     let o = origin();
     assert_eq!(o.to_string(), "app://com.example.app");
     assert_eq!(o.root_url(), "app://com.example.app/");
+  }
+
+  // --- cookies ----------------------------------------------------------------
+
+  /// A stand-in app for cookies. `/login` sets an HttpOnly `sid` and 303s to
+  /// `/home`; `/logout` deletes it and 303s to `/home`; `/samesite` sets a
+  /// Strict and a Lax cookie; `/bounce` 302s to `/whoami`. Anything else is
+  /// answered with the `Cookie` it got (`-` for none).
+  fn cookie_app(host: &str) -> tokio::sync::mpsc::UnboundedReceiver<Vec<u8>> {
+    fake_app_with(host, move |request| {
+      let end = find_end_of_head(request).unwrap();
+      let cookie = header_values(&request[..end], b"cookie")
+        .map(|v| String::from_utf8_lossy(v).into_owned())
+        .collect::<Vec<_>>()
+        .join(" | ");
+      let see_other = |set_cookie: &str| {
+        format!(
+          "HTTP/1.1 303 See Other\r\nset-cookie: {set_cookie}\r\n\
+           location: /home\r\ncontent-length: 0\r\n\r\n"
+        )
+      };
+      let response = match target_of(request).as_str() {
+        "/login" => see_other("sid=s3cret; Path=/; HttpOnly"),
+        "/logout" => see_other("sid=; Path=/; Max-Age=0"),
+        "/samesite" => "HTTP/1.1 204 No Content\r\n\
+          set-cookie: strict=1; SameSite=Strict\r\n\
+          set-cookie: lax=1; SameSite=Lax\r\n\r\n"
+          .to_string(),
+        "/bounce" => "HTTP/1.1 302 Found\r\nlocation: /whoami\r\n\
+          content-length: 0\r\n\r\n"
+          .to_string(),
+        _ => {
+          let body = if cookie.is_empty() { "-" } else { &cookie };
+          format!(
+            "HTTP/1.1 200 OK\r\ncontent-length: {}\r\n\r\n{body}",
+            body.len()
+          )
+        }
+      };
+      response.into_bytes()
+    })
+  }
+
+  /// A bridge with redirect handling and an in-memory cookie jar, as on
+  /// macOS.
+  fn cookie_bridge(host: &str) -> Bridge {
+    Bridge::new(
+      AppOrigin::new(host),
+      true,
+      Some(CookieJar::open(host, None)),
+    )
+  }
+
+  /// What the app answered `bridge` for a request with `headers`: the
+  /// `Cookie` it got, or `-`.
+  async fn cookie_sent(
+    bridge: &Bridge,
+    window_id: u32,
+    method: &str,
+    url: &str,
+    headers: &[(String, String)],
+  ) -> String {
+    let exchange = FakeExchange::default();
+    bridge
+      .respond(window_id, method, url, headers, &exchange)
+      .await;
+    assert_eq!(exchange.header("set-cookie"), None);
+    exchange.text()
+  }
+
+  #[tokio::test]
+  async fn bridge_keeps_the_apps_cookies_across_redirect_hops() {
+    const HOST: &str = "bridge-cookies.example";
+    let bridge = cookie_bridge(HOST);
+    let mut app = cookie_app(HOST);
+    let url = |path: &str| format!("app://{HOST}{path}");
+    let fetch = h(&[("Referer", &url("/"))]);
+    let form = h(&[("Origin", &format!("app://{HOST}"))]);
+
+    // A login POST answered 303 with an HttpOnly cookie: the next hop
+    // carries it, and the webview never sees the Set-Cookie.
+    assert_eq!(
+      cookie_sent(&bridge, 0, "POST", &url("/login"), &form).await,
+      "sid=s3cret"
+    );
+    received(&mut app, 2).await;
+    // Later requests carry it, instead of the webview's own Cookie.
+    let mut forged = fetch.clone();
+    forged.extend(h(&[("Cookie", "sid=forged; other=1")]));
+    assert_eq!(
+      cookie_sent(&bridge, 0, "GET", &url("/whoami?x=1"), &forged).await,
+      "sid=s3cret"
+    );
+    // A logout deletes it before the next hop.
+    assert_eq!(
+      cookie_sent(&bridge, 0, "POST", &url("/logout"), &form).await,
+      "-"
+    );
+    assert_eq!(cookie_sent(&bridge, 0, "GET", &url("/"), &fetch).await, "-");
+
+    // A navigation's redirect: the cookie is stored before the redirect
+    // page goes out, and the page's navigation to the target carries it.
+    let exchange = FakeExchange::default();
+    let mut navigation = navigation_headers();
+    navigation.extend(form.clone());
+    bridge
+      .respond(1, "POST", &url("/login"), &navigation, &exchange)
+      .await;
+    assert!(exchange.text().contains("location.replace("));
+    let mut landing = navigation_headers();
+    landing.extend(h(&[("Referer", &url("/login"))]));
+    assert_eq!(
+      cookie_sent(&bridge, 1, "GET", &url("/home"), &landing).await,
+      "sid=s3cret"
+    );
+  }
+
+  #[tokio::test]
+  async fn bridge_sends_cookies_only_to_the_apps_own_requests() {
+    const HOST: &str = "bridge-cookie-initiator.example";
+    let bridge = cookie_bridge(HOST);
+    let _app = cookie_app(HOST);
+    let url = |path: &str| format!("app://{HOST}{path}");
+    let own = h(&[("Referer", &url("/page"))]);
+    cookie_sent(&bridge, 0, "POST", &url("/login"), &own).await;
+    cookie_sent(&bridge, 0, "GET", &url("/samesite"), &own).await;
+    let all = "sid=s3cret; strict=1; lax=1";
+    assert_eq!(cookie_sent(&bridge, 0, "GET", &url("/"), &own).await, all);
+
+    let navigation = |extra: &[(&str, &str)]| {
+      let mut headers = navigation_headers();
+      headers.extend(h(extra));
+      headers
+    };
+    let evil = "https://evil.example/";
+    for (what, method, headers, expected) in [
+      // fetch, XHR or a subresource from another page: nothing.
+      ("cross-site fetch", "GET", h(&[("Referer", evil)]), "-"),
+      (
+        "cross-site POST",
+        "POST",
+        h(&[("Origin", "https://evil.example")]),
+        "-",
+      ),
+      ("opaque POST", "POST", h(&[("Origin", "null")]), "-"),
+      ("referrer-less subresource", "GET", vec![], "-"),
+      (
+        "one header elsewhere",
+        "GET",
+        h(&[("Origin", &format!("app://{HOST}")), ("Referer", evil)]),
+        "-",
+      ),
+      (
+        "another app:// host",
+        "GET",
+        h(&[("Referer", "app://other.example/")]),
+        "-",
+      ),
+      (
+        "cross-site Sec-Fetch-Site",
+        "GET",
+        h(&[("Sec-Fetch-Site", "cross-site")]),
+        "-",
+      ),
+      // A cross-site form POST navigation: nothing.
+      (
+        "cross-site form",
+        "POST",
+        navigation(&[("Origin", "https://evil.example")]),
+        "-",
+      ),
+      // A navigation from elsewhere, or one nothing is known about: all but
+      // the Strict cookie.
+      (
+        "cross-site link",
+        "GET",
+        navigation(&[("Referer", evil)]),
+        "sid=s3cret; lax=1",
+      ),
+      ("navigate()", "GET", navigation(&[]), "sid=s3cret; lax=1"),
+      // The app's own navigations and requests: everything.
+      (
+        "own link",
+        "GET",
+        navigation(&[("Referer", &url("/page"))]),
+        all,
+      ),
+      (
+        "own form",
+        "POST",
+        navigation(&[("Origin", &format!("app://{HOST}"))]),
+        all,
+      ),
+      (
+        "same-origin Sec-Fetch-Site",
+        "GET",
+        h(&[("Sec-Fetch-Site", "same-origin")]),
+        all,
+      ),
+    ] {
+      assert_eq!(
+        cookie_sent(&bridge, 0, method, &url("/whoami"), &headers).await,
+        expected,
+        "{what}"
+      );
+    }
+  }
+
+  #[tokio::test]
+  async fn bridge_takes_no_cookies_from_a_cross_site_request() {
+    const HOST: &str = "bridge-cookie-injection.example";
+    let bridge = cookie_bridge(HOST);
+    let _app = cookie_app(HOST);
+    let url = |path: &str| format!("app://{HOST}{path}");
+    // A remote page's fetch or form POST to the login endpoint, and a
+    // referrer-less subresource: the app's Set-Cookie isn't stored.
+    for headers in [
+      h(&[("Origin", "https://evil.example")]),
+      h(&[("Referer", "https://evil.example/")]),
+      vec![],
+    ] {
+      cookie_sent(&bridge, 0, "POST", &url("/login"), &headers).await;
+    }
+    let own = h(&[("Referer", &url("/"))]);
+    assert_eq!(cookie_sent(&bridge, 0, "GET", &url("/"), &own).await, "-");
+  }
+
+  #[tokio::test]
+  async fn a_redirected_navigation_keeps_the_first_requests_initiator() {
+    const HOST: &str = "bridge-cookie-redirect.example";
+    let bridge = cookie_bridge(HOST);
+    let _app = cookie_app(HOST);
+    let url = |path: &str| format!("app://{HOST}{path}");
+    let own = h(&[("Referer", &url("/"))]);
+    cookie_sent(&bridge, 0, "GET", &url("/samesite"), &own).await;
+
+    let redirect_page = |headers: Vec<(String, String)>| {
+      let bridge = &bridge;
+      async move {
+        let exchange = FakeExchange::default();
+        bridge
+          .respond(3, "GET", &url("/bounce"), &headers, &exchange)
+          .await;
+        assert!(exchange.text().contains("location.replace("));
+      }
+    };
+    let navigation = |extra: &[(&str, &str)]| {
+      let mut headers = navigation_headers();
+      headers.extend(h(extra));
+      headers
+    };
+
+    // A remote page navigates the window to a same-origin redirect. The
+    // redirect page's navigation to the target (without a Referer, as in
+    // WKWebView, or with the app origin's) continues the cross-site
+    // navigation: no Strict cookie.
+    for follow_up in
+      [navigation(&[]), navigation(&[("Referer", &url("/bounce"))])]
+    {
+      redirect_page(navigation(&[("Referer", "https://evil.example/")])).await;
+      assert_eq!(
+        cookie_sent(&bridge, 3, "GET", &url("/whoami"), &follow_up).await,
+        "lax=1"
+      );
+    }
+    // The app's own navigation through a redirect gets them all at the
+    // target, though the target's request says nothing about it.
+    redirect_page(navigation(&[("Referer", &url("/"))])).await;
+    assert_eq!(
+      cookie_sent(&bridge, 3, "GET", &url("/whoami"), &navigation(&[])).await,
+      "strict=1; lax=1"
+    );
+    // That was the one navigation it applies to.
+    assert_eq!(
+      cookie_sent(&bridge, 3, "GET", &url("/whoami"), &navigation(&[])).await,
+      "lax=1"
+    );
+    // A navigation elsewhere in the meantime uses its own headers.
+    redirect_page(navigation(&[("Referer", &url("/"))])).await;
+    assert_eq!(
+      cookie_sent(&bridge, 3, "GET", &url("/other"), &navigation(&[])).await,
+      "lax=1"
+    );
+  }
+
+  #[tokio::test]
+  async fn bridge_without_a_jar_passes_cookies_through() {
+    const HOST: &str = "bridge-no-jar.example";
+    let bridge = Bridge::new(AppOrigin::new(HOST), true, None);
+    let _app = cookie_app(HOST);
+    let exchange = FakeExchange::default();
+    let url = format!("app://{HOST}/whoami");
+    bridge
+      .respond(0, "GET", &url, &h(&[("Cookie", "webview=1")]), &exchange)
+      .await;
+    assert_eq!(exchange.text(), "webview=1");
+    let exchange = FakeExchange::default();
+    let login = format!("app://{HOST}/login");
+    Bridge::new(AppOrigin::new(HOST), false, None)
+      .respond(0, "POST", &login, &[], &exchange)
+      .await;
+    assert_eq!(
+      exchange.header("set-cookie").as_deref(),
+      Some("sid=s3cret; Path=/; HttpOnly")
+    );
+  }
+
+  #[test]
+  fn relay_request_head_replaces_the_cookie_with_the_jars() {
+    let head = b"GET /x HTTP/1.1\r\nCookie: forged=1\r\ncookie: b=2\r\nOrigin: app://h.example\r\n\r\n";
+    let jar = Some("sid=1".to_string());
+    let out = relay_request_head(head, b"/ws", "h.example", Some(&jar));
+    assert_eq!(
+      header_values(&out, b"cookie").collect::<Vec<_>>(),
+      vec![b"sid=1".as_slice()]
+    );
+    let out = relay_request_head(head, b"/ws", "h.example", Some(&None));
+    assert_eq!(header_values(&out, b"cookie").count(), 0);
+    // Without a jar the client's are forwarded.
+    let out = relay_request_head(head, b"/ws", "h.example", None);
+    assert_eq!(header_values(&out, b"cookie").count(), 2);
+  }
+
+  #[tokio::test]
+  async fn relay_upgrades_carry_the_jars_cookies_and_store_the_101s() {
+    let jar = CookieJar::open("h.example", None);
+    let context = RequestContext::new(Initiator::SameOrigin, false, "GET");
+    jar.store("/", [b"sid=1; Path=/; SameSite=Strict".as_slice()], context);
+    let (client_got, upstream_got) = run_relay_with(
+      b"GET /x HTTP/1.1\r\nUpgrade: websocket\r\nCookie: forged=1\r\n\r\n",
+      b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\
+        Set-Cookie: ws=2; Path=/\r\nset-cookie: ws2=3\r\n\r\nframe",
+      Some(jar.clone()),
+    )
+    .await;
+    let end = find_end_of_head(&upstream_got).unwrap();
+    assert_eq!(
+      header_values(&upstream_got[..end], b"cookie").collect::<Vec<_>>(),
+      vec![b"sid=1".as_slice()]
+    );
+    assert_eq!(
+      client_got,
+      b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\nframe"
+    );
+    assert_eq!(
+      jar.cookie_header("/ws", context).as_deref(),
+      Some("sid=1; ws=2; ws2=3")
+    );
   }
 
   // --- the WebSocket relay --------------------------------------------------
@@ -2810,7 +3407,7 @@ mod tests {
       "Origin: app://com.example.app\r\nX-Ende-Desktop-Relay: 0\r\n\
        x-ende-desktop-relay : spoof\r\nHOST: evil.example\r\n",
     );
-    let out = relay_request_head(&head, b"/ws", "com.example.app");
+    let out = relay_request_head(&head, b"/ws", "com.example.app", None);
     assert_eq!(
       header_values(&out, RELAY_MARKER_HEADER.as_bytes()).collect::<Vec<_>>(),
       vec![b"1".as_slice()]
@@ -2851,16 +3448,35 @@ mod tests {
     client_sends: &[u8],
     server_answer: &'static [u8],
   ) -> (Vec<u8>, Vec<u8>) {
+    run_relay_with(client_sends, server_answer, None).await
+  }
+
+  /// [`run_relay`] with a cookie jar, as the relay runs on macOS.
+  async fn run_relay_with(
+    client_sends: &[u8],
+    server_answer: &'static [u8],
+    cookies: Option<Arc<CookieJar>>,
+  ) -> (Vec<u8>, Vec<u8>) {
     let (mut client, mut relay_client_side) = tokio::io::duplex(64 * 1024);
     let (mut relay_upstream_side, mut server) = tokio::io::duplex(64 * 1024);
     client.write_all(client_sends).await.unwrap();
     let end = find_end_of_head(client_sends).unwrap();
-    let head = relay_request_head(&client_sends[..end], b"/ws", "h.example");
+    let context = RequestContext::new(Initiator::SameOrigin, false, "GET");
+    let cookie = cookies
+      .as_ref()
+      .map(|jar| jar.cookie_header("/ws", context));
+    let head = relay_request_head(
+      &client_sends[..end],
+      b"/ws",
+      "h.example",
+      cookie.as_ref(),
+    );
     let relay = tokio::spawn(async move {
       relay_upgrade(
         &mut relay_client_side,
         &mut relay_upstream_side,
         &head,
+        cookies.as_ref().map(|jar| (jar, "/ws", context)),
         Duration::from_secs(5),
       )
       .await
@@ -3023,7 +3639,7 @@ mod tests {
 
     let listener = bind_ws_loopback_listener().unwrap();
     let addr = listener.local_addr().unwrap();
-    spawn_ws_loopback_proxy(listener, origin);
+    spawn_ws_loopback_proxy(listener, origin, None);
     let app = "Origin: app://relay-e2e.example\r\n";
 
     // Another page's Origin, a rebound page's included: refused.
@@ -3070,6 +3686,7 @@ mod tests {
     tokio::spawn(run_ws_loopback_proxy(
       listener,
       AppOrigin::new("relay-idle.example"),
+      None,
       Duration::from_millis(200),
     ));
     let mut tcp = TcpStream::connect(addr).await.unwrap();

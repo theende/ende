@@ -1213,6 +1213,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "147be55d677052dabc6b22252d5dd0fd4c29c8c27aa4f2fbef0f94aa003b406f"
 
 [[package]]
+name = "cookie"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a373e3602691c3cdea496d2f0ee5935151e6168fe87739483c463db1b2f2f87"
+dependencies = [
+ "time",
+ "version_check",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3777,11 +3787,13 @@ name = "endert_desktop"
 version = "2.7.4"
 dependencies = [
  "bytes",
+ "cookie",
  "deno_error",
  "deno_terminal",
  "ende_core",
  "ende_lib",
  "ende_runtime",
+ "ende_signals",
  "ende_snapshots",
  "ende_v8",
  "endert",
@@ -3794,6 +3806,7 @@ dependencies = [
  "log",
  "raw-window-handle",
  "rustls",
+ "serde",
  "serde_json",
  "tempfile",
  "tokio",
