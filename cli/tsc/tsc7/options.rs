@@ -9,8 +9,6 @@
 //! options both versions understand, and sets the changed defaults explicitly.
 
 use ende_config::ende_json::CompilerOptions;
-use ende_core::anyhow::bail;
-use ende_core::error::AnyError;
 use ende_core::serde_json::Map;
 use ende_core::serde_json::Value;
 use ende_core::serde_json::json;
@@ -58,10 +56,14 @@ const PASSTHROUGH_OPTIONS: &[&str] = &[
   "verbatimModuleSyntax",
 ];
 
-/// User options that TypeScript 7 removed, with what to use instead. Ende only
-/// passes a short list of user options to the checker (`parse_compiler_options`
-/// in libs/resolver/ende_json.rs), so this is the only one that can arrive.
-const REMOVED_OPTIONS: &[(&str, &str)] = &[("baseUrl", "Use 'paths' instead.")];
+/// User options that TypeScript 7 removed, with what still uses them. Ende
+/// only passes a short list of user options to the checker
+/// (`parse_compiler_options` in libs/resolver/ende_json.rs), so this is the
+/// only one that can arrive.
+const REMOVED_OPTIONS: &[(&str, &str)] = &[(
+  "baseUrl",
+  "Ende still resolves \"paths\" and \"rootDirs\" against it.",
+)];
 
 /// The translated options, plus the Ende libs that `lib` named. Those can't go
 /// in `lib` (TS 7 only knows its own lib names), so they become root files.
@@ -71,25 +73,47 @@ pub struct TranslatedOptions {
   pub ende_libs: Vec<String>,
 }
 
-/// Fails if a config file sets an option TypeScript 7 removed, naming the
-/// option and the file.
-pub fn check_removed_options<'a>(
+/// A config file setting an option TypeScript 7 removed. The option is left
+/// out of the generated config (it's never passed through), so this is only a
+/// warning.
+#[derive(Debug, PartialEq)]
+pub struct RemovedOption<'a> {
+  pub name: &'static str,
+  pub specifier: &'a Url,
+  hint: &'static str,
+}
+
+impl std::fmt::Display for RemovedOption<'_> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(
+      f,
+      "compilerOptions.{} has no effect in TypeScript 7, which removed it, so \
+       tsc doesn't get it. {}\n    at {}",
+      self.name, self.hint, self.specifier
+    )
+  }
+}
+
+/// The options TypeScript 7 removed that config files set.
+pub fn removed_options<'a>(
   sources: impl Iterator<Item = (&'a Url, Option<&'a CompilerOptions>)>,
-) -> Result<(), AnyError> {
+) -> Vec<RemovedOption<'a>> {
+  let mut removed = Vec::new();
   for (specifier, compiler_options) in sources {
     let Some(object) = compiler_options.and_then(|o| o.0.as_object()) else {
       continue;
     };
     for (name, hint) in REMOVED_OPTIONS {
       if object.contains_key(*name) {
-        bail!(
-          "Option '{name}' was removed in TypeScript 7, so it isn't supported \
-           with --unstable-tsc7. {hint}\n  at {specifier}"
-        );
+        removed.push(RemovedOption {
+          name,
+          specifier,
+          hint,
+        });
       }
     }
   }
-  Ok(())
+  removed
 }
 
 /// Translates `resolved` (Ende's resolved check options). `root_dirs` are the
@@ -279,15 +303,17 @@ mod tests {
   fn removed_option_names_the_option_and_file() {
     let config = Url::parse("file:///project/ende.json").unwrap();
     let options = CompilerOptions(json!({ "baseUrl": "." }));
-    let err = check_removed_options([(&config, Some(&options))].into_iter())
-      .unwrap_err();
+    let removed = removed_options([(&config, Some(&options))].into_iter());
+    assert_eq!(removed.len(), 1);
     assert_eq!(
-      err.to_string(),
-      "Option 'baseUrl' was removed in TypeScript 7, so it isn't supported \
-       with --unstable-tsc7. Use 'paths' instead.\n  at \
-       file:///project/ende.json"
+      removed[0].to_string(),
+      "compilerOptions.baseUrl has no effect in TypeScript 7, which removed \
+       it, so tsc doesn't get it. Ende still resolves \"paths\" and \
+       \"rootDirs\" against it.\n    at file:///project/ende.json"
     );
     let options = CompilerOptions(json!({ "strict": false }));
-    check_removed_options([(&config, Some(&options))].into_iter()).unwrap();
+    assert!(
+      removed_options([(&config, Some(&options))].into_iter()).is_empty()
+    );
   }
 }

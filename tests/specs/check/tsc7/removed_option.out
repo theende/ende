@@ -1,3 +1,0 @@
-Check main.ts
-error: Option 'baseUrl' was removed in TypeScript 7, so it isn't supported with --unstable-tsc7. Use 'paths' instead.
-  at file:///[WILDLINE]/removed_option/ende.json

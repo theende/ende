@@ -12,16 +12,19 @@
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::LazyLock;
 
 use deno_graph::ModuleGraph;
+use deno_terminal::colors;
 use ende_core::ModuleSpecifier;
 use ende_core::anyhow::Context;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
+use ende_core::parking_lot::Mutex;
 use ende_core::serde_json;
 use ende_core::serde_json::json;
 use ende_core::url::Url;
@@ -53,6 +56,8 @@ use crate::tsc::Position;
 pub struct Tsc7Env {
   tsc: PathBuf,
   project_dir: PathBuf,
+  /// Config files already warned about, so each warning prints once.
+  warned: Mutex<HashSet<String>>,
 }
 
 impl Tsc7Env {
@@ -62,6 +67,7 @@ impl Tsc7Env {
     Self {
       tsc,
       project_dir: ende_dir_root.join("tsc7_projects").join(hash),
+      warned: Default::default(),
     }
   }
 }
@@ -83,12 +89,17 @@ pub struct Response {
 
 pub fn exec(env: &Tsc7Env, request: Request) -> Result<Response, AnyError> {
   let data = request.compiler_options_data;
-  options::check_removed_options(
+  for removed in options::removed_options(
     data
       .sources
       .iter()
       .map(|s| (s.specifier.as_ref(), s.compiler_options.as_ref())),
-  )?;
+  ) {
+    let key = format!("{}#{}", removed.specifier, removed.name);
+    if env.warned.lock().insert(key) {
+      log::warn!("{} {removed}", colors::yellow("Warning:"));
+    }
+  }
 
   let project_dir = &env.project_dir;
   let types_dir = project_dir.join("types");

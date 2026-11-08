@@ -75,10 +75,12 @@
       "output": "extensionless_root.out",
       "exitCode": 1
     },
-    "removed_option": {
-      "cwd": "removed_option",
+    // TS 7 removed `baseUrl`: it's left out with a warning, and Ende's
+    // resolver still applies it to `paths`.
+    "base_url": {
+      "cwd": "base_url",
       "args": "check --unstable-tsc7 main.ts",
-      "output": "removed_option.out",
+      "output": "base_url.out",
       "exitCode": 1
     },
     // The generated project lives in Ende's cache, not next to the code.
