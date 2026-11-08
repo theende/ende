@@ -2455,6 +2455,108 @@ async fn run_watch_sigterm_on_restart() {
   check_alive_then_kill(child);
 }
 
+/// Test that a JS SIGTERM handler which unregisters itself and re-raises a
+/// real OS SIGTERM (the `signal-exit` "unload + re-raise" pattern bundled in
+/// Vite 8 / rolldown) does not kill the watcher: the process must restart on
+/// file change instead of terminating.
+/// Regression test for https://github.com/denoland/deno/issues/35942.
+#[cfg(unix)]
+#[test(flaky)]
+async fn run_watch_sigterm_reraise_on_restart() {
+  let t = TempDir::new();
+  let file_to_watch = t.path().join("file_to_watch.js");
+  let contents = r#"
+    const handler = () => {
+      console.log("SIGTERM handler");
+      // Unregister self, then re-raise a real OS SIGTERM.
+      Ende.removeSignalListener("SIGTERM", handler);
+      Ende.kill(Ende.pid, "SIGTERM");
+    };
+    Ende.addSignalListener("SIGTERM", handler);
+    setInterval(() => {}, 1000);
+  "#;
+  file_to_watch.write(contents);
+
+  let mut child = util::ende_cmd()
+    .current_dir(t.path())
+    .arg("run")
+    .arg("--watch")
+    .arg("-L")
+    .arg("debug")
+    .arg("--allow-all")
+    .arg(&file_to_watch)
+    .env("NO_COLOR", "1")
+    .piped_output()
+    .spawn()
+    .unwrap();
+  let (mut stdout_lines, mut stderr_lines) = child_lines(&mut child);
+
+  wait_for_watcher("file_to_watch.js", &mut stderr_lines).await;
+
+  // Trigger a restart; the handler fires, unregisters itself and re-raises a
+  // real SIGTERM.
+  file_to_watch.write(format!("{contents}\n// changed"));
+
+  wait_contains("SIGTERM handler", &mut stdout_lines).await;
+  // The re-raised real SIGTERM must be suppressed so the watcher restarts
+  // instead of dying.
+  wait_contains("Restarting", &mut stderr_lines).await;
+  wait_for_watcher("file_to_watch.js", &mut stderr_lines).await;
+  check_alive_then_kill(child);
+}
+
+/// A genuine external SIGTERM (e.g. `kill <pid>` from a supervisor) delivered
+/// around the graceful-restart window must still terminate the watcher.
+/// Suppression is one-shot: it swallows only the single re-raised SIGTERM, not
+/// a later external one.
+#[cfg(unix)]
+#[test(flaky)]
+async fn run_watch_external_sigterm_still_terminates() {
+  use nix::sys::signal;
+  use nix::sys::signal::Signal;
+  use nix::unistd::Pid;
+
+  let t = TempDir::new();
+  let file_to_watch = t.path().join("file_to_watch.js");
+  // Same unregister-and-re-raise pattern that opens the suppression window.
+  let contents = r#"
+    const handler = () => {
+      console.log("SIGTERM handler");
+      Ende.removeSignalListener("SIGTERM", handler);
+      Ende.kill(Ende.pid, "SIGTERM");
+    };
+    Ende.addSignalListener("SIGTERM", handler);
+    setInterval(() => {}, 1000);
+  "#;
+  file_to_watch.write(contents);
+
+  let mut child = util::ende_cmd()
+    .current_dir(t.path())
+    .arg("run")
+    .arg("--watch")
+    .arg("-L")
+    .arg("debug")
+    .arg("--allow-all")
+    .arg(&file_to_watch)
+    .env("NO_COLOR", "1")
+    .piped_output()
+    .spawn()
+    .unwrap();
+  let (mut stdout_lines, mut stderr_lines) = child_lines(&mut child);
+
+  wait_for_watcher("file_to_watch.js", &mut stderr_lines).await;
+
+  file_to_watch.write(format!("{contents}\n// changed"));
+  wait_contains("SIGTERM handler", &mut stdout_lines).await;
+
+  // The one re-raise is consumed; a second, external SIGTERM must not be
+  // suppressed and must bring the watcher down.
+  signal::kill(Pid::from_raw(child.id() as i32), Signal::SIGTERM).unwrap();
+
+  let status = child.wait().unwrap();
+  assert!(!status.success());
+}
+
 /// Test that both SIGINT and SIGTERM are dispatched on Ctrl+C in watch mode.
 #[cfg(unix)]
 #[test(flaky)]

@@ -457,6 +457,17 @@ where
         // Dispatch SIGTERM to give JS code a chance for async cleanup
         // before restarting. If handlers are registered, wait for the
         // operation to finish gracefully before restarting.
+        //
+        // Suppress the OS default action for the SIGTERM we re-raise in this
+        // window: a JS handler may unregister itself and re-raise a real
+        // SIGTERM (the `signal-exit` "unload + re-raise" pattern bundled in
+        // Vite 8 / rolldown), which would otherwise terminate the watcher
+        // instead of restarting it. Arm before `raise()`, which dispatches to
+        // the handler. The guard is one-shot and disarms on drop, so a genuine
+        // external SIGTERM (or a Ctrl+C) in this window is not swallowed. See
+        // denoland/deno#35942.
+        let _suppress_guard =
+          ende_signals::suppress_default_exit_for(ende_signals::SIGTERM);
         if ende_signals::raise(ende_signals::SIGTERM) {
           info!(
             "{} Waiting for graceful termination...",
