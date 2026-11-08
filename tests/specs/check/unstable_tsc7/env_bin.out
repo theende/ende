@@ -1,1 +1,2 @@
-error: TypeScript 7 type checking isn't available yet (tsc: main.ts)
+Check main.ts
+error: failed to run the TypeScript 7 compiler at [WILDLINE]main.ts: [WILDLINE]

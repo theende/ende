@@ -44,3 +44,22 @@ the files against the lock file and embeds them. `tsc7.rs` extracts them to
 `<ENDE_DIR>/tsc/<version>/<hash>/` on first use. Without `ENDE_TSC7_DIR` nothing
 is embedded, and `--unstable-tsc7` needs `ENDE_TSC_BIN`, the path of a
 TypeScript 7 `tsc`.
+
+`tsc7/check.rs` runs it: `tsc -p <tsconfig> --pretty false`, through the CLI
+rather than its unstable API. The project it checks lives in
+`<ENDE_DIR>/tsc7_projects/<workspace hash>/`, never in the user's project
+(`tsc7/project.rs`):
+
+- local files are read in place, and their non-relative specifiers (import map
+  aliases, `jsr:`, `https:`) become exact tsconfig `paths` to what Ende's module
+  graph resolved;
+- other modules (remote, JSR, `data:`, extensionless) are copied into `remote/`
+  or `local/` with an extension, their specifiers rewritten to absolute paths;
+- Ende's `lib.ende.*.d.ts` files go into `types/` as root files, since `tsc`
+  only accepts its own lib names.
+
+`tsc7/options.rs` turns Ende's resolved compiler options into ones TS 7 accepts
+and sets the defaults TS 7 changed, and `tsc7/output.rs` parses the diagnostics,
+which are mapped back to module specifiers and printed like TS 6's. To run the
+specs in `tests/specs/check/tsc7/`, set `ENDE_TEST_TSC7_BIN` to a `tsc`; they're
+skipped otherwise.

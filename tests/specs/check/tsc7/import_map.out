@@ -1,0 +1,19 @@
+[WILDCARD]Check main.ts
+TS2322 [ERROR]: Type 'number' is not assignable to type 'string'.
+const sum: string = add(1, 2);
+      ~~~
+    at file:///[WILDLINE]/import_map/main.ts:5:7
+
+TS2322 [ERROR]: Type 'string' is not assignable to type 'number'.
+const length: number = greeting;
+      ~~~~~~
+    at file:///[WILDLINE]/import_map/main.ts:6:7
+
+TS2322 [ERROR]: Type 'string' is not assignable to type 'number'.
+const letter: number = remote.a;
+      ~~~~~~
+    at file:///[WILDLINE]/import_map/main.ts:7:7
+
+Found 3 errors.
+
+error: Type checking failed.

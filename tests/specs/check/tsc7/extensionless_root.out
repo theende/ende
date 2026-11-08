@@ -1,0 +1,7 @@
+[WILDCARD]Check http://localhost:4545/subdir/type_error_no_ext
+TS2322 [ERROR]: Type '12' is not assignable to type '"a"'.
+export const a: "a" = 12;
+             ^
+    at http://localhost:4545/subdir/type_error_no_ext:1:14
+
+error: Type checking failed.

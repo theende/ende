@@ -1,8 +1,9 @@
 // Copyright 2026 the Ende authors. MIT license.
 // `--unstable-tsc7` (or `"unstable": ["tsc7"]`) selects the bundled
 // TypeScript 7 compiler for `ende check`, or the one `ENDE_TSC_BIN` points
-// at. Test builds bundle none, so `ende check` refuses it; type checking
-// with it doesn't exist yet either. Other subcommands ignore it.
+// at. Test builds bundle none, so `ende check` refuses it unless
+// `ENDE_TSC_BIN` is set (tsc7/ has the specs that run one). Other
+// subcommands ignore it.
 {
   "tests": {
     "check_flag": {
@@ -22,10 +23,18 @@
       "output": "env_bin_missing.out",
       "exitCode": 1
     },
+    // A relative ENDE_TSC_BIN is resolved against the working directory.
+    // `main.ts` isn't executable, so running it fails.
     "env_bin": {
       "args": "check --unstable-tsc7 main.ts",
       "envs": { "ENDE_TSC_BIN": "main.ts" },
       "output": "env_bin.out",
+      "exitCode": 1
+    },
+    "watch_unsupported": {
+      "args": "check --unstable-tsc7 --watch main.ts",
+      "envs": { "ENDE_TSC_BIN": "main.ts" },
+      "output": "error: --unstable-tsc7 doesn't support --watch yet\n",
       "exitCode": 1
     },
     "run_ignores_flag": {

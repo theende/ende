@@ -43,6 +43,7 @@ use crate::graph_util::module_error_for_tsc_diagnostic;
 use crate::sys::CliSys;
 use crate::tsc;
 use crate::tsc::Diagnostics;
+use crate::tsc::tsc7;
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
 #[class(type)]
@@ -113,6 +114,8 @@ pub struct TypeChecker {
   sys: CliSys,
   compiler_options_resolver: Arc<CompilerOptionsResolver>,
   code_cache: Option<Arc<crate::cache::CodeCache>>,
+  /// Set to check with TypeScript 7 (`ende check --unstable-tsc7`).
+  tsc7: Option<Arc<tsc7::Tsc7Env>>,
 }
 
 impl TypeChecker {
@@ -123,6 +126,7 @@ impl TypeChecker {
     sys: CliSys,
     compiler_options_resolver: Arc<CompilerOptionsResolver>,
     code_cache: Option<Arc<crate::cache::CodeCache>>,
+    tsc7: Option<Arc<tsc7::Tsc7Env>>,
   ) -> Self {
     Self {
       caches,
@@ -131,6 +135,7 @@ impl TypeChecker {
       sys,
       compiler_options_resolver,
       code_cache,
+      tsc7,
     }
   }
 
@@ -381,6 +386,7 @@ impl TypeChecker {
         options,
         seen_diagnotics: Default::default(),
         code_cache: self.code_cache.clone(),
+        tsc7: self.tsc7.clone(),
         initial_cwd: self.cli_options.initial_cwd().to_path_buf(),
         current_dir: deno_path_util::url_from_directory_path(
           self.cli_options.initial_cwd(),
@@ -526,6 +532,7 @@ struct DiagnosticsByFolderRealIterator<'a> {
   seen_diagnotics: FxHashSet<String>,
   options: CheckOptions,
   code_cache: Option<Arc<crate::cache::CodeCache>>,
+  tsc7: Option<Arc<tsc7::Tsc7Env>>,
   initial_cwd: PathBuf,
   current_dir: Url,
   /// Names of packages importable by bare specifier (workspace members and
@@ -688,7 +695,11 @@ impl DiagnosticsByFolderRealIterator<'_> {
       return Ok(missing_diagnostics);
     }
 
-    if !self.options.reload && !missing_diagnostics.has_diagnostic() {
+    // The check cache only records TypeScript 6 results.
+    if self.tsc7.is_none()
+      && !self.options.reload
+      && !missing_diagnostics.has_diagnostic()
+    {
       // do not type check if we know this is type checked
       if let Some(check_hash) = maybe_check_hash
         && self.type_check_cache.has_check_hash(check_hash)
@@ -707,6 +718,17 @@ impl DiagnosticsByFolderRealIterator<'_> {
       .roots
       .first()
       .expect("must be at least one root");
+
+    if let Some(tsc7) = &self.tsc7 {
+      return self.check_with_tsc7(
+        tsc7,
+        check_group,
+        first_root,
+        root_names,
+        missing_diagnostics,
+        &used_ts_expect_error_directives,
+      );
+    }
 
     // while there might be multiple roots, we can't "merge" the build info, so we
     // try to retrieve the build info for first root, which is the most common use
@@ -775,6 +797,47 @@ impl DiagnosticsByFolderRealIterator<'_> {
 
     log::debug!("{}", response.stats);
 
+    Ok(diagnostics)
+  }
+
+  /// The rest of `check_diagnostics_in_folder` for TypeScript 7: runs its
+  /// `tsc` instead. Results aren't cached.
+  fn check_with_tsc7(
+    &self,
+    tsc7: &tsc7::Tsc7Env,
+    check_group: &CheckGroup,
+    first_root: &Url,
+    root_names: Vec<(ModuleSpecifier, MediaType)>,
+    missing_diagnostics: Diagnostics,
+    used_ts_expect_error_directives: &HashSet<TsDirective>,
+  ) -> Result<Diagnostics, CheckError> {
+    let response = tsc7::exec(
+      tsc7,
+      tsc7::Request {
+        graph: &self.graph,
+        roots: root_names.into_iter().map(|(s, _)| s).collect(),
+        compiler_options: check_group.compiler_options,
+        compiler_options_data: self
+          .compiler_options_resolver
+          .for_specifier(first_root),
+      },
+    )
+    .map_err(|e| {
+      CheckErrorKind::Other(JsErrorBox::generic(format!("{e:#}")))
+    })?;
+
+    let mut response_diagnostics = response.diagnostics.filter(|d| {
+      self.should_include_diagnostic(self.options.type_check_mode, d)
+        && !is_untagged_jsdoc_dynamic_import_diagnostic(&self.graph, d)
+    });
+    response_diagnostics.retain(|d| {
+      !is_used_ts_expect_error_diagnostic(d, used_ts_expect_error_directives)
+    });
+    let mut diagnostics = filter_ambient_missing_diagnostics(
+      missing_diagnostics,
+      &response.ambient_modules,
+    );
+    diagnostics.extend(response_diagnostics);
     Ok(diagnostics)
   }
 

@@ -20,6 +20,15 @@ use sha2::Digest;
 
 use crate::factory::CliFactory;
 
+mod check;
+mod options;
+mod output;
+mod project;
+
+pub use check::Request;
+pub use check::Tsc7Env;
+pub use check::exec;
+
 /// The embedded compiler: a zstd-compressed tar of `tsc[.exe]`, the
 /// `lib.*.d.ts` files, LICENSE and NOTICE.txt.
 pub struct Tsc7Bundle {
@@ -44,17 +53,25 @@ const VERIFIED_MARKER: &str = ".verified";
 pub fn resolve_tsc7(factory: &CliFactory) -> Result<PathBuf, AnyError> {
   resolve(
     std::env::var_os(TSC_BIN_ENV).map(PathBuf::from),
+    factory.cli_options()?.initial_cwd(),
     BUNDLE,
     || Ok(factory.ende_dir()?.root.join("tsc")),
   )
 }
 
+/// `cwd` resolves a relative `env_bin`: tsc runs in another directory.
 fn resolve(
   env_bin: Option<PathBuf>,
+  cwd: &Path,
   bundle: Option<Tsc7Bundle>,
   cache_root: impl FnOnce() -> Result<PathBuf, AnyError>,
 ) -> Result<PathBuf, AnyError> {
   if let Some(path) = env_bin {
+    let path = if path.has_root() {
+      path
+    } else {
+      cwd.join(path)
+    };
     if !path.is_file() {
       bail!(
         "{TSC_BIN_ENV} is set to {}, which isn't a file",
@@ -324,10 +341,11 @@ mod tests {
   #[test]
   fn env_bin_must_exist() {
     let missing = PathBuf::from("/nonexistent/tsc");
-    let err = resolve(Some(missing), Some(good_bundle()), || {
-      unreachable!("ENDE_TSC_BIN skips the cache")
-    })
-    .unwrap_err();
+    let err =
+      resolve(Some(missing), Path::new("/"), Some(good_bundle()), || {
+        unreachable!("ENDE_TSC_BIN skips the cache")
+      })
+      .unwrap_err();
     assert_eq!(
       err.to_string(),
       "ENDE_TSC_BIN is set to /nonexistent/tsc, which isn't a file"
@@ -339,16 +357,32 @@ mod tests {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("tsc");
     std::fs::write(&path, "").unwrap();
-    let resolved = resolve(Some(path.clone()), Some(good_bundle()), || {
-      unreachable!("ENDE_TSC_BIN skips the cache")
-    })
+    let resolved = resolve(
+      Some(path.clone()),
+      Path::new("/"),
+      Some(good_bundle()),
+      || unreachable!("ENDE_TSC_BIN skips the cache"),
+    )
     .unwrap();
     assert_eq!(resolved, path);
   }
 
   #[test]
+  fn relative_env_bin_is_resolved_against_cwd() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("tsc"), "").unwrap();
+    let resolved =
+      resolve(Some(PathBuf::from("tsc")), dir.path(), None, || {
+        unreachable!("ENDE_TSC_BIN skips the cache")
+      })
+      .unwrap();
+    assert_eq!(resolved, dir.path().join("tsc"));
+  }
+
+  #[test]
   fn no_bundle_mentions_env_bin() {
-    let err = resolve(None, None, || unreachable!()).unwrap_err();
+    let err =
+      resolve(None, Path::new("/"), None, || unreachable!()).unwrap_err();
     let message = err.to_string();
     assert!(
       message.starts_with(
@@ -361,9 +395,10 @@ mod tests {
   #[test]
   fn uses_the_bundle_cache() {
     let root = tempfile::tempdir().unwrap();
-    let tsc =
-      resolve(None, Some(good_bundle()), || Ok(root.path().to_path_buf()))
-        .unwrap();
+    let tsc = resolve(None, Path::new("/"), Some(good_bundle()), || {
+      Ok(root.path().to_path_buf())
+    })
+    .unwrap();
     assert_eq!(tsc, root.path().join("7.0.2/0123456789abcdef/tsc"));
   }
 }

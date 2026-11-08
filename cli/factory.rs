@@ -669,6 +669,19 @@ impl CliFactory {
       .get_or_try_init_async(
         async {
           let cli_options = self.cli_options()?;
+          // Only `ende check` has a TypeScript 7 path so far.
+          let tsc7 =
+            if matches!(cli_options.sub_command(), EndeSubcommand::Check(_))
+              && cli_options.unstable_tsc7()
+            {
+              Some(Arc::new(crate::tsc::tsc7::Tsc7Env::new(
+                crate::tsc::tsc7::resolve_tsc7(self)?,
+                &self.ende_dir()?.root,
+                cli_options.workspace().root_dir_url(),
+              )))
+            } else {
+              None
+            };
           Ok(Arc::new(TypeChecker::new(
             self.caches()?.clone(),
             cli_options.clone(),
@@ -680,6 +693,7 @@ impl CliFactory {
             } else {
               None
             },
+            tsc7,
           )))
         }
         .boxed_local(),

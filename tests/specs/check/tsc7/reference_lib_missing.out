@@ -1,0 +1,7 @@
+Check without_reference.ts
+TS2339 [ERROR]: Property 'cron' does not exist on type 'typeof Ende'.
+Ende.cron("job", "* * * * *", () => {});
+     ~~~~
+    at file:///[WILDLINE]/reference_lib/without_reference.ts:1:6
+
+error: Type checking failed.

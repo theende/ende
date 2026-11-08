@@ -590,7 +590,7 @@ pub struct ResolveArgs<'a> {
   pub specifiers: Vec<(bool, String)>,
 }
 
-fn resolve_graph_specifier_types(
+pub(crate) fn resolve_graph_specifier_types(
   specifier: &ModuleSpecifier,
   graph: &ModuleGraph,
 ) -> Option<(ModuleSpecifier, MediaType)> {

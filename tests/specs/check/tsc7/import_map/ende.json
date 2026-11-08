@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "add": "jsr:@endetest/add@1",
+    "lib/": "./lib/",
+    "remote": "http://localhost:4545/subdir/type_error.ts"
+  }
+}

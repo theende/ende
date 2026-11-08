@@ -1,0 +1,94 @@
+// Copyright 2026 the Ende authors. MIT license.
+// `ende check --unstable-tsc7` type-checks with TypeScript 7's `tsc`. Test
+// builds bundle none, so these run only when ENDE_TEST_TSC7_BIN points at one
+// (the harness passes it on as ENDE_TSC_BIN), and are skipped otherwise.
+{
+  "if": "tsc7",
+  "tests": {
+    "local_error": {
+      "args": "check --unstable-tsc7 local_error/main.ts",
+      "output": "local_error.out",
+      "exitCode": 1
+    },
+    "clean": {
+      "args": "check --unstable-tsc7 clean/main.ts",
+      "output": "Check clean/main.ts\n"
+    },
+    // The Ende libs are there, typed.
+    "globals": {
+      "args": "check --unstable-tsc7 globals/main.ts",
+      "output": "globals.out",
+      "exitCode": 1
+    },
+    // Remote modules are mirrored into the cache; their diagnostics count
+    // only with --all, and name the URL.
+    "remote": {
+      "args": "check --unstable-tsc7 --allow-import remote/main.ts",
+      "output": "[WILDCARD]Check remote/main.ts\n"
+    },
+    "remote_all": {
+      "args": "check --unstable-tsc7 --allow-import --all remote/main.ts",
+      "output": "remote_all.out",
+      "exitCode": 1
+    },
+    "jsr": {
+      "args": "check --unstable-tsc7 --allow-import jsr/main.ts",
+      "output": "jsr.out",
+      "exitCode": 1
+    },
+    // Import map aliases for a JSR package, a local directory and a URL.
+    "import_map": {
+      "cwd": "import_map",
+      "args": "check --unstable-tsc7 --allow-import main.ts",
+      "output": "import_map.out",
+      "exitCode": 1
+    },
+    // `/// <reference lib="ende.*" />` keeps working: TS 7 only knows its
+    // own lib names.
+    "reference_lib": {
+      "cwd": "reference_lib",
+      "args": "check --unstable-tsc7 with_reference.ts",
+      "output": "Check with_reference.ts\n"
+    },
+    "reference_lib_missing": {
+      "cwd": "reference_lib",
+      "args": "check --unstable-tsc7 without_reference.ts",
+      "output": "reference_lib_missing.out",
+      "exitCode": 1
+    },
+    // tsc crashes on files without an extension (denoland/deno#36173), so
+    // the mirror adds one.
+    "extensionless_import": {
+      "args": "check --unstable-tsc7 --allow-import extensionless/main.ts",
+      "output": "extensionless_import.out",
+      "exitCode": 1
+    },
+    "extensionless_root": {
+      "args": "check --unstable-tsc7 --allow-import --all http://localhost:4545/subdir/type_error_no_ext",
+      "output": "extensionless_root.out",
+      "exitCode": 1
+    },
+    "removed_option": {
+      "cwd": "removed_option",
+      "args": "check --unstable-tsc7 main.ts",
+      "output": "removed_option.out",
+      "exitCode": 1
+    },
+    // The generated project lives in Ende's cache, not next to the code.
+    "no_project_files": {
+      "tempDir": true,
+      "steps": [{
+        "cwd": "no_project_files",
+        "args": "check --unstable-tsc7 --allow-import main.ts",
+        "output": "[WILDCARD]Check main.ts\n"
+      }, {
+        "cwd": "no_project_files",
+        "args": [
+          "eval",
+          "console.log([...Ende.readDirSync('.')].map((e) => e.name))"
+        ],
+        "output": "[ \"main.ts\" ]\n"
+      }]
+    }
+  }
+}

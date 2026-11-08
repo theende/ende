@@ -1,0 +1,7 @@
+[WILDCARD]Check jsr/main.ts
+TS2322 [ERROR]: Type 'number' is not assignable to type 'string'.
+const sum: string = add(1, 2);
+      ~~~
+    at file:///[WILDLINE]/jsr/main.ts:3:7
+
+error: Type checking failed.

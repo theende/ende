@@ -1,0 +1,7 @@
+[WILDCARD]Check extensionless/main.ts
+TS2322 [ERROR]: Type 'boolean' is not assignable to type 'string'.
+const name: string = loaded;
+      ~~~~
+    at file:///[WILDLINE]/extensionless/main.ts:4:7
+
+error: Type checking failed.

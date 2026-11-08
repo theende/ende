@@ -1,0 +1,8 @@
+Check globals/main.ts
+TS2322 [ERROR]: Type 'Promise<string>' is not assignable to type 'Promise<number>'.
+  Type 'string' is not assignable to type 'number'.
+const wrong: Promise<number> = Ende.readTextFile("data.txt");
+      ~~~~~
+    at file:///[WILDLINE]/globals/main.ts:4:7
+
+error: Type checking failed.
