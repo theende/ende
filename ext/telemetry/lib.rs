@@ -1606,9 +1606,7 @@ macro_rules! attr_raw {
     let name = if let Ok(name) = $name.try_cast() {
       let view = v8::ValueView::new($scope, name);
       match view.data() {
-        v8::ValueViewData::OneByte(bytes) => {
-          Some(String::from_utf8_lossy(bytes).into_owned())
-        }
+        v8::ValueViewData::OneByte(bytes) => Some(latin1_to_string(bytes)),
         v8::ValueViewData::TwoByte(bytes) => {
           Some(String::from_utf16_lossy(bytes))
         }
@@ -1621,9 +1619,7 @@ macro_rules! attr_raw {
         break 'value Some(Value::String(StringValue::from({
           let x = v8::ValueView::new($scope, string);
           match x.data() {
-            v8::ValueViewData::OneByte(bytes) => {
-              String::from_utf8_lossy(bytes).into_owned()
-            }
+            v8::ValueViewData::OneByte(bytes) => latin1_to_string(bytes),
             v8::ValueViewData::TwoByte(bytes) => {
               String::from_utf16_lossy(bytes)
             }
@@ -1657,9 +1653,7 @@ macro_rules! attr_raw {
             if let Ok(s) = element.try_cast::<v8::String>() {
               let view = v8::ValueView::new($scope, s);
               vec.push(StringValue::from(match view.data() {
-                v8::ValueViewData::OneByte(bytes) => {
-                  String::from_utf8_lossy(bytes).into_owned()
-                }
+                v8::ValueViewData::OneByte(bytes) => latin1_to_string(bytes),
                 v8::ValueViewData::TwoByte(bytes) => {
                   String::from_utf16_lossy(bytes)
                 }
@@ -1930,15 +1924,20 @@ pub fn report_event(name: &'static str, data: impl std::fmt::Display) {
   log_processor.emit(&mut log_record, builtin_instrumentation_scope);
 }
 
+/// Decodes the contents of a one-byte V8 string. V8 stores a string whose
+/// characters all fit in Latin-1 as one byte per character, so the bytes are
+/// Latin-1, not UTF-8.
+fn latin1_to_string(bytes: &[u8]) -> String {
+  bytes.iter().map(|&byte| char::from(byte)).collect()
+}
+
 fn owned_string<'s>(
   scope: &mut v8::PinScope<'s, '_>,
   string: v8::Local<'s, v8::String>,
 ) -> String {
   let x = v8::ValueView::new(scope, string);
   match x.data() {
-    v8::ValueViewData::OneByte(bytes) => {
-      String::from_utf8_lossy(bytes).into_owned()
-    }
+    v8::ValueViewData::OneByte(bytes) => latin1_to_string(bytes),
     v8::ValueViewData::TwoByte(bytes) => String::from_utf16_lossy(bytes),
   }
 }
