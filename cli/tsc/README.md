@@ -56,7 +56,11 @@ rather than its unstable API. The project it checks lives in
 - other modules (remote, JSR, `data:`, extensionless) are copied into `remote/`
   or `local/` with an extension, their specifiers rewritten to absolute paths;
 - Ende's `lib.ende.*.d.ts` files go into `types/` as root files, since `tsc`
-  only accepts its own lib names.
+  only accepts its own lib names;
+- `tsc7/libs.rs` copies the stock `lib.dom.d.ts` and `lib.webworker.d.ts` from
+  `tsc`'s directory into `types/` with Ende's additions (the differences between
+  `dts/` and TypeScript's files, such as "brotli"), and `libReplacement` with a
+  `paths` entry per stock lib makes `tsc` load those.
 
 `tsc7/options.rs` turns Ende's resolved compiler options into ones TS 7 accepts
 and sets the defaults TS 7 changed, and `tsc7/output.rs` parses the diagnostics,

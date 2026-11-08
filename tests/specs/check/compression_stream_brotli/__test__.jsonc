@@ -12,6 +12,16 @@
     "webworker_lib": {
       "args": "check --quiet --config webworker.json default.ts",
       "output": ""
+    },
+    "dom_lib_tsc7": {
+      "if": "tsc7",
+      "args": "check --quiet --unstable-tsc7 --config dom.json default.ts",
+      "output": ""
+    },
+    "webworker_lib_tsc7": {
+      "if": "tsc7",
+      "args": "check --quiet --unstable-tsc7 --config webworker.json default.ts",
+      "output": ""
     }
   }
 }

@@ -83,6 +83,27 @@
       "output": "base_url.out",
       "exitCode": 1
     },
+    // TypeScript 7's stock lib.dom.d.ts and lib.webworker.d.ts lack Ende's
+    // additions ("brotli", ReadableStream.from, Error.captureStackTrace), so
+    // Ende replaces them, however the lib is named.
+    "lib_additions_dom": {
+      "cwd": "lib_additions",
+      "args": "check --unstable-tsc7 --config dom.json dom.ts",
+      "output": "lib_additions_dom.out",
+      "exitCode": 1
+    },
+    "lib_additions_webworker": {
+      "cwd": "lib_additions",
+      "args": "check --unstable-tsc7 --config webworker.json webworker.ts",
+      "output": "lib_additions_webworker.out",
+      "exitCode": 1
+    },
+    "lib_additions_reference": {
+      "cwd": "lib_additions",
+      "args": "check --unstable-tsc7 reference.ts",
+      "output": "lib_additions_reference.out",
+      "exitCode": 1
+    },
     // The generated project lives in Ende's cache, not next to the code.
     "no_project_files": {
       "tempDir": true,

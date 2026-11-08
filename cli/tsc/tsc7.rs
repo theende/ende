@@ -21,6 +21,7 @@ use sha2::Digest;
 use crate::factory::CliFactory;
 
 mod check;
+mod libs;
 mod options;
 mod output;
 mod project;

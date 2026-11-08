@@ -32,6 +32,7 @@ use ende_lib::util::checksum;
 use ende_resolver::ende_json::CompilerOptionsData;
 use regex::Regex;
 
+use super::libs;
 use super::options;
 use super::output;
 use super::output::Category;
@@ -116,12 +117,24 @@ pub fn exec(env: &Tsc7Env, request: Request) -> Result<Response, AnyError> {
     .filter_map(|url| deno_path_util::url_to_file_path(url).ok())
     .map(|path| to_tsc_path(&path))
     .collect();
-  let translated = options::translate(
+  // The stock libs, with Ende's additions where it has some.
+  let tsc_dir = env.tsc.parent().unwrap_or(Path::new("."));
+  let lib_paths =
+    libs::write_replacements(tsc_dir, &types_dir, write_if_changed)?;
+  let mut paths = plan.paths.clone();
+  let replaces_libs = !lib_paths.is_empty();
+  paths.extend(lib_paths);
+  let mut translated = options::translate(
     &request.compiler_options.0,
     root_dirs,
-    plan.paths.clone(),
+    paths,
     ende_lib_name,
   );
+  if replaces_libs {
+    translated
+      .compiler_options
+      .insert("libReplacement".into(), true.into());
+  }
   let ende_libs: BTreeSet<&String> = translated
     .ende_libs
     .iter()

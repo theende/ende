@@ -409,7 +409,7 @@ impl fmt::Display for Stats {
 }
 
 /// Retrieve a static asset that are included in the binary.
-fn get_lazily_loaded_asset(asset: &str) -> Option<&'static str> {
+pub(crate) fn get_lazily_loaded_asset(asset: &str) -> Option<&'static str> {
   LAZILY_LOADED_STATIC_ASSETS
     .get(asset)
     .map(|s| s.source.as_str())
