@@ -36,6 +36,10 @@ endert = { path = "../rt", default-features = false }
 laufey = "0.7.0"
 libsui.workspace = true
 
+bytes.workspace = true
+http-body-util.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
 log = { workspace = true, features = ["serde"] }
 raw-window-handle.workspace = true
 rustls.workspace = true

@@ -768,6 +768,9 @@ pub struct InternalFlags {
   pub lockfile_skip_write: bool,
   /// Set when running the desktop subcommand to use desktop type libs.
   pub is_desktop: bool,
+  /// The render backend (`webview`, `cef` or `raw`) a desktop build is for,
+  /// set by the desktop subcommand. Baked into the app's metadata.
+  pub desktop_backend: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

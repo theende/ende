@@ -510,6 +510,12 @@ impl CliOptions {
     }
   }
 
+  /// The render backend of the desktop build in progress (see
+  /// `InternalFlags::desktop_backend`). `None` outside `ende desktop`.
+  pub fn desktop_backend(&self) -> Option<&str> {
+    self.flags.internal.desktop_backend.as_deref()
+  }
+
   pub fn ts_type_lib_window(&self) -> TsTypeLib {
     if self.flags.internal.is_desktop {
       TsTypeLib::EndeDesktop

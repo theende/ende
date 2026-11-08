@@ -379,6 +379,12 @@ async fn compile_desktop(
   let mut temp_flags = flags.clone();
   temp_flags.subcommand = EndeSubcommand::Compile(compile_flags.clone());
   temp_flags.internal.is_desktop = true;
+  temp_flags.internal.desktop_backend = Some(
+    desktop_flags
+      .backend
+      .clone()
+      .unwrap_or_else(|| "webview".to_string()),
+  );
 
   let output_path = super::compile::compile_binary(
     Arc::new(temp_flags),

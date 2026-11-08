@@ -105,6 +105,11 @@ pub struct Metadata {
   /// valid `memory:` serve listener name.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub app_origin_host: Option<String>,
+  /// The render backend a desktop app was built for: `webview`, `cef` or
+  /// `raw`. The desktop runtime serves the renderer at `app://<host>` only on
+  /// some backends.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub desktop_backend: Option<String>,
   /// Initial desktop window options from ende.json `desktop.initialWindow`.
   #[serde(default)]
   pub initial_window: InitialWindowConfig,

@@ -8,8 +8,14 @@
 //! shared library and provides the browser/window layer.
 //!
 //! The user's code uses `Ende.serve()` or `export default { fetch }`
-//! to serve an HTTP app. The desktop runtime starts it on a local port
-//! and navigates the webview to it.
+//! to serve an HTTP app. On the macOS and Windows webview backends the
+//! desktop runtime serves it over an in-process memory listener and loads
+//! the webview from the app's stable origin, `app://<host>`, whose requests
+//! [`scheme_bridge`] forwards to that listener. Everywhere else
+//! ([`app_scheme_host`]) it serves the app on a random loopback port and
+//! navigates the webview there.
+
+mod scheme_bridge;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -434,8 +440,9 @@ impl WefDesktopApi {
   /// JS via `BrowserWindow`, this one is created *hidden* and revealed only once
   /// its first navigation has finished loading (wired here via `on_page_load`).
   ///
-  /// The runtime navigates this window to the app's `http://127.0.0.1:PORT`
-  /// URL only after the loopback server is listening, so creating it visible
+  /// The runtime navigates this window to the app's URL (`app://<host>/` or
+  /// `http://127.0.0.1:PORT`, see [`RendererTransport`]) only after the
+  /// app's server is listening, so creating it visible
   /// up front would leave the user staring at an empty webview — which paints
   /// solid black on Wayland, where the compositor presents the pre-load frame
   /// verbatim. Deferring the reveal to load-finished means the window's first
@@ -1870,6 +1877,159 @@ fn set_default_webview2_user_data_folder(
   unsafe { env::set_var(WEBVIEW2_USER_DATA_FOLDER, &folder) };
 }
 
+/// The host of the `app://<host>` origin the renderer loads the app from,
+/// or `None` to keep the random loopback port. Only the webview backend on
+/// macOS and Windows gets `app://`, and only with a baked host:
+///
+/// - Linux webview: laufey 0.7.0's WebKitGTK host doesn't forward request
+///   bodies (`WebKitURISchemeRequest` doesn't expose them), so every POST
+///   would reach the app empty.
+/// - CEF: its profile is a per-process temporary directory, so storage
+///   wouldn't persist anyway, and Chromium's Local Network Access likely
+///   blocks an `app://` page's WebSocket to the loopback relay.
+/// - raw: no web renderer and no scheme handler.
+/// - No backend or host in the metadata: built before they were baked, or
+///   no identifier derives from the app's name.
+fn app_scheme_host<'a>(
+  backend: Option<&str>,
+  os: &str,
+  host: Option<&'a str>,
+) -> Option<&'a str> {
+  match (backend, os) {
+    (Some("webview"), "macos" | "windows") => host,
+    _ => None,
+  }
+}
+
+/// How the renderer reaches the app's server.
+enum RendererTransport {
+  /// `app://<host>/`: the app serves on the memory listener `<host>`, and
+  /// [`scheme_bridge`] forwards the webview's requests to it. The page's
+  /// WebSockets go through the loopback relay bound here, if it could be.
+  AppScheme {
+    origin: scheme_bridge::AppOrigin,
+    ws_relay: Option<std::net::TcpListener>,
+  },
+  /// `http://127.0.0.1:<port>/`: the app serves on that loopback port.
+  Loopback { port: u16 },
+}
+
+impl RendererTransport {
+  /// The transport [`app_scheme_host`] picks for this app on this OS. `None`
+  /// (logged) when no loopback port could be allocated.
+  fn choose(metadata: &ende_lib::standalone::binary::Metadata) -> Option<Self> {
+    if let Some(host) = app_scheme_host(
+      metadata.desktop_backend.as_deref(),
+      env::consts::OS,
+      metadata.app_origin_host.as_deref(),
+    ) {
+      let ws_relay = match scheme_bridge::bind_ws_loopback_listener() {
+        Ok(listener) => Some(listener),
+        Err(e) => {
+          log::error!(
+            "[desktop] failed to bind the WebSocket relay: {e}; the page can't open WebSockets to the app"
+          );
+          None
+        }
+      };
+      return Some(Self::AppScheme {
+        origin: scheme_bridge::AppOrigin::new(host),
+        ws_relay,
+      });
+    }
+    match allocate_random_port() {
+      Ok(port) => Some(Self::Loopback { port }),
+      Err(e) => {
+        log::error!("[desktop] failed to allocate serve port: {}", e);
+        None
+      }
+    }
+  }
+
+  /// The address the app's first `Ende.serve` binds.
+  fn serve_address(&self) -> String {
+    match self {
+      Self::AppScheme { origin, .. } => format!("memory:{}", origin.host()),
+      Self::Loopback { port } => format!("tcp:127.0.0.1:{port}"),
+    }
+  }
+
+  /// Publish the serve address as `ENDE_SERVE_ADDRESS` (and the deprecated
+  /// `DENO_SERVE_ADDRESS`, so user code that reads it keeps working) and the
+  /// relay URL as `ENDE_DESKTOP_WS_URL`, to the runtime only.
+  fn publish_env(&self) {
+    let serve_address = self.serve_address();
+    for key in ["ENDE_SERVE_ADDRESS", "DENO_SERVE_ADDRESS"] {
+      ende_runtime::ende_os::set_process_local_env_var(key, &serve_address);
+    }
+    if let Self::AppScheme {
+      ws_relay: Some(listener),
+      ..
+    } = self
+      && let Ok(addr) = listener.local_addr()
+      && let Some(url) = scheme_bridge::ws_relay_url(addr)
+    {
+      ende_runtime::ende_os::set_process_local_env_var(
+        scheme_bridge::WS_URL_ENV,
+        url,
+      );
+    }
+  }
+
+  /// The URL the initial window loads.
+  fn url(&self) -> String {
+    match self {
+      Self::AppScheme { origin, .. } => origin.root_url(),
+      Self::Loopback { port } => format!("http://127.0.0.1:{port}"),
+    }
+  }
+
+  /// Whether the app's server answers `GET /` with a 2xx or 3xx.
+  async fn server_ready(&self) -> bool {
+    match self {
+      Self::AppScheme { origin, .. } => {
+        match ende_runtime::ende_net::memory::connect_memory(origin.host()) {
+          Ok(stream) => answers_get_root(stream, origin.host()).await,
+          Err(_) => false,
+        }
+      }
+      Self::Loopback { port } => {
+        match tokio::net::TcpStream::connect(("127.0.0.1", *port)).await {
+          Ok(stream) => {
+            answers_get_root(stream, &format!("127.0.0.1:{port}")).await
+          }
+          Err(_) => false,
+        }
+      }
+    }
+  }
+}
+
+/// Whether a server answers `GET /` on `stream` with a 2xx or 3xx. A full
+/// request, not just a connect: frameworks like Vite accept connections
+/// before they're ready to serve.
+async fn answers_get_root(
+  mut stream: impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+  host: &str,
+) -> bool {
+  use tokio::io::AsyncReadExt;
+  use tokio::io::AsyncWriteExt;
+
+  let req =
+    format!("GET / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n");
+  if stream.write_all(req.as_bytes()).await.is_err() {
+    return false;
+  }
+  let mut buf = vec![0u8; 256];
+  let Ok(n) = stream.read(&mut buf).await else {
+    return false;
+  };
+  let response = String::from_utf8_lossy(&buf[..n]);
+  ["HTTP/1.1 2", "HTTP/1.1 3", "HTTP/1.0 2", "HTTP/1.0 3"]
+    .iter()
+    .any(|prefix| response.starts_with(prefix))
+}
+
 fn runtime_main() {
   #[cfg(windows)]
   attach_parent_console_in_dev_mode();
@@ -1983,33 +2143,6 @@ fn runtime_main() {
 
   laufey::set_js_namespace("bindings");
 
-  // Allocate the desktop serve port and publish it as ENDE_SERVE_ADDRESS
-  // before the tokio runtime is built. It goes into the runtime's
-  // process-local environment (`ende_os::set_process_local_env_var`), not
-  // the process environment: it names this process's own server, so a
-  // child process the app starts must not inherit it (a child `ende` would
-  // try to serve on the same port). Any `setenv` on this path relies on the
-  // process still being single-threaded: once the runtime spins up its mio
-  // IO thread (and, optionally, the inspector server thread), `setenv` is no
-  // longer thread-safe on glibc, and Rust 1.81+ marks it unsafe for that
-  // reason. We're still single-threaded up to here: the worker-fork path has
-  // already returned, and the init calls above (init_logging,
-  // mark_standalone, rustls install_default, set_js_namespace) don't spawn
-  // threads.
-  let desktop_serve_port = match allocate_random_port() {
-    Ok(p) => p,
-    Err(e) => {
-      log::error!("[desktop] failed to allocate serve port: {}", e);
-      return;
-    }
-  };
-  // Also set under the deprecated `DENO_SERVE_ADDRESS` name so user code
-  // that reads it keeps working.
-  let serve_address = format!("tcp:127.0.0.1:{}", desktop_serve_port);
-  for key in ["ENDE_SERVE_ADDRESS", "DENO_SERVE_ADDRESS"] {
-    ende_runtime::ende_os::set_process_local_env_var(key, &serve_address);
-  }
-
   // Read the embedded standalone section before the tokio runtime starts.
   let args: Vec<_> = env::args_os().collect();
   let data = match endert::binary::extract_standalone_with_finder(
@@ -2024,22 +2157,33 @@ fn runtime_main() {
   };
   #[cfg(windows)]
   set_default_webview2_user_data_folder(&data.metadata);
+
+  // How the renderer reaches the app, and the serve address (plus the
+  // WebSocket relay URL) published for the app's code. They go into the
+  // runtime's process-local environment (`ende_os::set_process_local_env_var`),
+  // not the process environment: they name this process's own server, so a
+  // child process the app starts must not inherit them (a child `ende` would
+  // try to serve on the same address), and the relay URL holds its secret.
+  let Some(transport) = RendererTransport::choose(&data.metadata) else {
+    return;
+  };
+  transport.publish_env();
+
   // Everything above must stay on this (still effectively single-threaded)
-  // loader thread — see the setenv comment. The runtime itself moves to a
-  // dedicated thread with a real stack; the loader thread just parks in
-  // `join` (inside `run_on_runtime_thread`) until the app exits.
+  // loader thread: `set_default_webview2_user_data_folder` calls `setenv`,
+  // which is only safe before the runtime spins up its IO thread (and,
+  // optionally, the inspector server thread). The worker-fork path has
+  // already returned, and the init calls above (init_logging,
+  // mark_standalone, rustls install_default, set_js_namespace) don't spawn
+  // threads. The runtime itself moves to a dedicated thread with a real
+  // stack; the loader thread just parks in `join` (inside
+  // `run_on_runtime_thread`) until the app exits.
   run_on_runtime_thread(move || {
     let rt = ende_runtime::tokio_util::create_basic_runtime();
 
     rt.block_on(async {
       log::debug!("[desktop] run_desktop starting");
-      match run_desktop(
-        update_rolled_back,
-        update_trial,
-        desktop_serve_port,
-        data,
-      )
-      .await
+      match run_desktop(update_rolled_back, update_trial, transport, data).await
       {
         Ok(()) => log::debug!("[desktop] run_desktop completed OK"),
         Err(error) => {
@@ -2216,7 +2360,7 @@ fn find_section_in_dylib() -> Result<&'static [u8], AnyError> {
 async fn run_desktop(
   update_rolled_back: bool,
   update_trial: bool,
-  desktop_serve_port: u16,
+  mut transport: RendererTransport,
   data: endert::binary::StandaloneData,
 ) -> Result<(), AnyError> {
   // Make the error reporting URL available to the panic hook.
@@ -2277,9 +2421,22 @@ async fn run_desktop(
     log::debug!("[desktop] inspector server bound on {addr}");
   }
 
-  // ENDE_SERVE_ADDRESS is published by `runtime_main` before the
-  // tokio runtime is built — see the comment there for why we can't
-  // do it from here. `desktop_serve_port` is the port we put into it.
+  // ENDE_SERVE_ADDRESS (and ENDE_DESKTOP_WS_URL) are published by
+  // `runtime_main` from `transport`, before any of the app's code runs.
+  let (serve_port, serve_host) = match &transport {
+    RendererTransport::AppScheme { .. } => (None, None),
+    RendererTransport::Loopback { port } => {
+      (Some(*port), Some("127.0.0.1".to_string()))
+    }
+  };
+  if let RendererTransport::AppScheme { origin, ws_relay } = &mut transport {
+    // Before the first window is created (in `op_state_init` below): WebKit
+    // reads a web view's scheme handlers when the web view is created.
+    scheme_bridge::register(origin.clone());
+    if let Some(listener) = ws_relay.take() {
+      scheme_bridge::spawn_ws_loopback_proxy(listener, origin.clone());
+    }
+  }
 
   // Enable HMR if ENDE_DESKTOP_HMR is set to a directory path
   // (set by `ende compile --desktop --hmr`).
@@ -2357,8 +2514,8 @@ async fn run_desktop(
 
   let run_opts = RunOptions {
     auto_serve: true,
-    serve_port: Some(desktop_serve_port),
-    serve_host: Some("127.0.0.1".to_string()),
+    serve_port,
+    serve_host,
     hmr_watch_dir,
     hmr_on_reload,
     op_state_init: Some(Box::new(move |state| {
@@ -2456,15 +2613,13 @@ async fn run_desktop(
   // Run the Ende runtime and Laufey event loop concurrently.
   // We spawn the runtime first, wait for the server to be ready,
   // then navigate the webview.
-  let url = format!("http://127.0.0.1:{}", desktop_serve_port);
+  let url = transport.url();
   log::debug!("[desktop] starting runtime and laufey event loop");
   let run_fut =
     endert::run::run_with_options(Arc::new(sys.clone()), sys, data, run_opts);
   let laufey_fut = laufey::run();
 
   // Wait for the server to be ready, then navigate the initial window.
-  // Do a full HTTP request instead of just a TCP connect — frameworks
-  // like Vite accept connections before they're ready to serve.
   let wait_for_debugger = inspect_brk || inspect_wait;
   let mux_addr = env::var("ENDE_DESKTOP_MUX_WS").ok();
   let navigate_fut = async move {
@@ -2503,32 +2658,14 @@ async fn run_desktop(
     let id = initial_window_id_for_navigate.load(Ordering::Acquire);
     let mut server_ready = false;
     for i in 0..60 {
-      if let Ok(mut stream) =
-        tokio::net::TcpStream::connect(("127.0.0.1", desktop_serve_port)).await
-      {
-        let req = format!(
-          "GET / HTTP/1.1\r\nHost: 127.0.0.1:{}\r\nConnection: close\r\n\r\n",
-          desktop_serve_port
+      if transport.server_ready().await {
+        log::debug!(
+          "[desktop] Server ready after {} attempts, navigating to {}",
+          i + 1,
+          &url
         );
-        if stream.write_all(req.as_bytes()).await.is_ok() {
-          let mut buf = vec![0u8; 256];
-          if let Ok(n) = stream.read(&mut buf).await {
-            let response = String::from_utf8_lossy(&buf[..n]);
-            if response.starts_with("HTTP/1.1 2")
-              || response.starts_with("HTTP/1.1 3")
-              || response.starts_with("HTTP/1.0 2")
-              || response.starts_with("HTTP/1.0 3")
-            {
-              log::debug!(
-                "[desktop] Server ready after {} attempts, navigating to {}",
-                i + 1,
-                &url
-              );
-              server_ready = true;
-              break;
-            }
-          }
-        }
+        server_ready = true;
+        break;
       }
       tokio::time::sleep(std::time::Duration::from_millis(250)).await;
     }
@@ -2754,6 +2891,103 @@ mod tests {
   fn non_js_crash_is_surfaced() {
     // A non-JS runtime crash has no JS listener to report it.
     assert!(should_show_native_error_dialog(false, false));
+  }
+
+  // --- app_scheme_host / RendererTransport ---
+
+  #[test]
+  fn app_scheme_is_only_for_the_webview_on_macos_and_windows() {
+    use super::app_scheme_host;
+    let host = Some("com.example.app");
+    assert_eq!(app_scheme_host(Some("webview"), "macos", host), host);
+    assert_eq!(app_scheme_host(Some("webview"), "windows", host), host);
+    // No host: the loopback port.
+    assert_eq!(app_scheme_host(Some("webview"), "macos", None), None);
+    assert_eq!(app_scheme_host(Some("webview"), "windows", None), None);
+    // The Linux webview drops request bodies; CEF and raw keep loopback;
+    // so does an app whose metadata names no backend.
+    for (backend, os) in [
+      (Some("webview"), "linux"),
+      (Some("cef"), "macos"),
+      (Some("cef"), "windows"),
+      (Some("cef"), "linux"),
+      (Some("raw"), "macos"),
+      (Some("raw"), "windows"),
+      (Some("raw"), "linux"),
+      (Some("WebView"), "macos"),
+      (None, "macos"),
+      (None, "windows"),
+    ] {
+      assert_eq!(app_scheme_host(backend, os, host), None, "{backend:?} {os}");
+    }
+  }
+
+  #[test]
+  fn renderer_transport_addresses() {
+    use super::RendererTransport;
+    let app = RendererTransport::AppScheme {
+      origin: super::scheme_bridge::AppOrigin::new("com.example.app"),
+      ws_relay: None,
+    };
+    assert_eq!(app.serve_address(), "memory:com.example.app");
+    assert_eq!(app.url(), "app://com.example.app/");
+    let loopback = RendererTransport::Loopback { port: 4321 };
+    assert_eq!(loopback.serve_address(), "tcp:127.0.0.1:4321");
+    assert_eq!(loopback.url(), "http://127.0.0.1:4321");
+  }
+
+  #[tokio::test]
+  async fn answers_get_root_wants_a_2xx_or_3xx() {
+    use tokio::io::AsyncReadExt;
+    use tokio::io::AsyncWriteExt;
+
+    for (answer, ready) in [
+      (&b"HTTP/1.1 200 OK\r\n\r\n"[..], true),
+      (b"HTTP/1.1 302 Found\r\n\r\n", true),
+      (b"HTTP/1.0 204 No Content\r\n\r\n", true),
+      (b"HTTP/1.1 404 Not Found\r\n\r\n", false),
+      (b"HTTP/1.1 503 Service Unavailable\r\n\r\n", false),
+      (b"", false),
+    ] {
+      let (client, mut server) = tokio::io::duplex(1024);
+      let app = tokio::spawn(async move {
+        let mut buf = vec![0u8; 1024];
+        let n = server.read(&mut buf).await.unwrap();
+        server.write_all(answer).await.unwrap();
+        String::from_utf8(buf[..n].to_vec()).unwrap()
+      });
+      assert_eq!(
+        super::answers_get_root(client, "com.example.app").await,
+        ready
+      );
+      assert_eq!(
+        app.await.unwrap(),
+        "GET / HTTP/1.1\r\nHost: com.example.app\r\nConnection: close\r\n\r\n"
+      );
+    }
+  }
+
+  #[tokio::test]
+  async fn app_scheme_readiness_asks_the_memory_listener() {
+    use tokio::io::AsyncReadExt;
+    use tokio::io::AsyncWriteExt;
+
+    let transport = super::RendererTransport::AppScheme {
+      origin: super::scheme_bridge::AppOrigin::new("readiness.example"),
+      ws_relay: None,
+    };
+    // Nothing listens yet.
+    assert!(!transport.server_ready().await);
+    let listener =
+      ende_runtime::ende_net::memory::listen_memory("readiness.example")
+        .unwrap();
+    tokio::spawn(async move {
+      let (mut stream, _) = listener.accept().await.unwrap();
+      let mut buf = vec![0u8; 1024];
+      let _ = stream.read(&mut buf).await.unwrap();
+      stream.write_all(b"HTTP/1.1 200 OK\r\n\r\n").await.unwrap();
+    });
+    assert!(transport.server_ready().await);
   }
 
   // --- map_permission_status ---

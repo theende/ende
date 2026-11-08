@@ -1146,20 +1146,25 @@ pub(crate) fn grant_vfs_read_access(
 }
 
 /// Loopback hosts a desktop runtime must be able to reach. The compiled
-/// app's renderer talks to its `Ende.serve()` over loopback HTTP, so
-/// net access here is structural, not optional.
+/// app's renderer talks to its `Ende.serve()` over loopback HTTP on the
+/// backends that don't load it from `app://<host>`, and the WebSocket relay
+/// and the DevTools mux are loopback TCP everywhere, so net access here is
+/// structural, not optional.
 const DESKTOP_LOOPBACK_HOSTS: &[&str] = &["127.0.0.1", "localhost", "[::1]"];
 
-/// Env vars the DESKTOP_JS init script reads. Granting only these
-/// (instead of blanket `allow-env`) keeps the user's shell environment
-/// off-limits to arbitrary `Ende.env.get` calls in their app code while
-/// still letting the framework boot.
+/// Env vars the DESKTOP_JS init script reads, plus `ENDE_DESKTOP_WS_URL`,
+/// which the desktop runtime publishes for the app to hand its page (the
+/// WebSocket relay on `app://` backends). Granting only these (instead of
+/// blanket `allow-env`) keeps the user's shell environment off-limits to
+/// arbitrary `Ende.env.get` calls in their app code while still letting the
+/// framework boot.
 const DESKTOP_ENV_KEYS: &[&str] = &[
   "ENDE_DESKTOP_MUX_WS",
   "ENDE_DESKTOP_HMR",
   "ENDE_DESKTOP_INSPECT_INTERNAL_PORT",
   "ENDE_DESKTOP_INSPECT_BRK",
   "ENDE_DESKTOP_INSPECT_WAIT",
+  "ENDE_DESKTOP_WS_URL",
   "LAUFEY_RUNTIME_PATH",
   "LAUFEY_REMOTE_DEBUGGING_PORT",
 ];

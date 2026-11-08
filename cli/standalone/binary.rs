@@ -963,6 +963,10 @@ impl<'a> EndeCompileBinaryWriter<'a> {
         .and_then(|c| c.release.as_ref()?.base_url.clone()),
       app_identifier,
       app_origin_host,
+      desktop_backend: self
+        .cli_options
+        .desktop_backend()
+        .map(ToString::to_string),
       initial_window,
     };
 

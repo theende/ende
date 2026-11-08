@@ -3776,6 +3776,7 @@ dependencies = [
 name = "endert_desktop"
 version = "2.7.4"
 dependencies = [
+ "bytes",
  "deno_error",
  "deno_terminal",
  "ende_core",
@@ -3784,6 +3785,9 @@ dependencies = [
  "ende_snapshots",
  "ende_v8",
  "endert",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
  "laufey",
  "libc",
  "libsui",
