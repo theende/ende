@@ -98,7 +98,11 @@ a "steps" array or "tests" object.
 - `output` - Path to use to assert the output or text (must end with an .out
   extension) _or_ text to pattern match against the output.
 - `flaky` - Step should be repeated until success a maximum of 3 times.
-- `if` (`"windows"`, `"linux"`, `"mac"`, `"unix"`) - Whether to run this step.
+- `if` (`"windows"`, `"linux"`, `"mac"`, `"unix"`, `"tsc7"`) - Whether to run
+  this step. `"tsc7"` runs it only when `ENDE_TEST_TSC7_BIN` is the path of a
+  TypeScript 7 `tsc`, which the step gets as `ENDE_TSC_BIN`; otherwise it's
+  skipped with a "skipped: no tsc7" note. In a `tests` object, a top-level `if`
+  applies to every test that doesn't set its own.
 - `exitCode` (number) - Expected exit code.
 
 ### Auto-complete

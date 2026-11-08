@@ -25,12 +25,21 @@ use serde::Deserialize;
 use test_util::IS_CI;
 use test_util::PathRef;
 use test_util::TestContextBuilder;
+use test_util::eprintln;
 use test_util::test_runner::FlakyTestTracker;
 use test_util::test_runner::Parallelism;
 use test_util::test_runner::run_maybe_flaky_test;
 use test_util::tests_path;
 
 const MANIFEST_FILE_NAME: &str = "__test__.jsonc";
+
+/// The TypeScript 7 `tsc` for specs with `"if": "tsc7"`. They're skipped
+/// when it isn't set, and get it as `ENDE_TSC_BIN` when it is.
+const TSC7_BIN_ENV: &str = "ENDE_TEST_TSC7_BIN";
+
+fn tsc7_bin() -> Option<String> {
+  std::env::var(TSC7_BIN_ENV).ok().filter(|s| !s.is_empty())
+}
 
 #[derive(Clone, Deserialize)]
 #[serde(untagged)]
@@ -60,6 +69,9 @@ struct MultiTestMetaData {
   pub tests: BTreeMap<String, JsonMap>,
   #[serde(default)]
   pub ignore: bool,
+  /// Whether to run the tests, unless a test has its own `if`.
+  #[serde(rename = "if")]
+  pub if_cond: Option<String>,
   #[serde(default)]
   pub variants: BTreeMap<String, JsonMap>,
   /// Timeout in seconds for each step. Defaults to 300 (5 minutes).
@@ -106,6 +118,11 @@ impl MultiTestMetaData {
       }
       if multi_test_meta_data.ignore && !value.contains_key("ignore") {
         value.insert("ignore".to_string(), true.into());
+      }
+      if let Some(if_cond) = &multi_test_meta_data.if_cond
+        && !value.contains_key("if")
+      {
+        value.insert("if".to_string(), if_cond.clone().into());
       }
       if !multi_test_meta_data.variants.is_empty() {
         if !value.contains_key("variants") {
@@ -531,6 +548,19 @@ fn should_run(if_cond: Option<&str>) -> bool {
         !((cfg!(target_os = "windows") && cfg!(target_arch = "aarch64"))
           || (cfg!(target_os = "macos") && cfg!(target_arch = "x86_64")))
       }
+      "tsc7" => {
+        let found = tsc7_bin().is_some();
+        if !found {
+          static NOTE: std::sync::Once = std::sync::Once::new();
+          NOTE.call_once(|| {
+            eprintln!(
+              "skipped: no tsc7 ({TSC7_BIN_ENV} isn't set, so the specs with \
+               \"if\": \"tsc7\" are ignored)"
+            );
+          });
+        }
+        found
+      }
       "notSlowCiShard" => {
         let is_linux_x86_ci =
           *IS_CI && cfg!(target_os = "linux") && cfg!(target_arch = "x86_64");
@@ -565,6 +595,16 @@ fn run_step(
       .collect::<HashMap<_, _>>();
     substitute_variants_into_envs(&substs, &mut envs);
     context.new_command().envs(envs)
+  };
+
+  let uses_tsc7 = [&metadata.if_cond, &step.if_cond]
+    .into_iter()
+    .any(|c| c.as_deref() == Some("tsc7"));
+  let sets_tsc_bin = metadata.envs.contains_key("ENDE_TSC_BIN")
+    || step.envs.contains_key("ENDE_TSC_BIN");
+  let command = match tsc7_bin() {
+    Some(bin) if uses_tsc7 && !sets_tsc_bin => command.env("ENDE_TSC_BIN", bin),
+    _ => command,
   };
 
   let command = match &step.args {
