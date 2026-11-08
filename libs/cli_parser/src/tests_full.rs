@@ -8994,6 +8994,37 @@ fn unstable_kv_flag_removed() {
 }
 
 #[test]
+fn unstable_tsc7_flag() {
+  for args in [
+    svec!["ende", "check", "--unstable-tsc7", "main.ts"],
+    svec!["ende", "run", "--unstable-tsc7", "main.ts"],
+    svec!["ende", "test", "--unstable-tsc7"],
+  ] {
+    let flags = flags_from_vec(args.clone()).unwrap();
+    assert_eq!(flags.unstable_config.features, svec!["tsc7"], "{args:?}");
+  }
+}
+
+/// Every unstable feature in runtime/features parses as a `--unstable-*`
+/// flag and lands in `unstable_config.features`.
+#[test]
+fn every_unstable_feature_has_a_flag() {
+  for feature in ende_runtime::UNSTABLE_FEATURES {
+    let flag = format!("--{}", feature.flag_name);
+    let flags = flags_from_vec(svec!["ende", "run", flag, "main.ts"])
+      .unwrap_or_else(|err| panic!("{flag}: {}", err.message));
+    assert!(
+      flags
+        .unstable_config
+        .features
+        .iter()
+        .any(|f| f == feature.name),
+      "{flag}"
+    );
+  }
+}
+
+#[test]
 fn bundle_subcommand_removed() {
   let err = flags_from_vec(svec!["ende", "bundle", "main.ts"]).unwrap_err();
   assert_eq!(err.kind, CliErrorKind::UnknownSubcommand);

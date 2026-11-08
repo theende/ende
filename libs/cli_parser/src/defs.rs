@@ -451,6 +451,11 @@ pub static UNSTABLE_FEATURE_ARGS: &[ArgDef] = &[
     .set_true()
     .hidden()
     .help("Enable unstable Temporal API"),
+  ArgDef::new("unstable-tsc7")
+    .long("unstable-tsc7")
+    .set_true()
+    .hidden()
+    .help("Type-check with the bundled TypeScript 7 compiler"),
   ArgDef::new("unstable-unsafe-proto")
     .long("unstable-unsafe-proto")
     .long_aliases(&["unsafe-proto"])

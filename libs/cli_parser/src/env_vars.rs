@@ -103,7 +103,7 @@ pub static ENV_VARS: &[EnvVar] = &[
   },
   EnvVar {
     name: "ENDE_TSC_BIN",
-    description: "Path to a prebuilt native TypeScript compiler (tsc/tsgo) for `ende check` to use instead of downloading the pinned one.",
+    description: "Path to a TypeScript 7 `tsc` to use with `--unstable-tsc7` instead of the bundled one.",
     example: None,
   },
   EnvVar {

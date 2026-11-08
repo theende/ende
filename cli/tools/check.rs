@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use deno_terminal::colors;
+use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 
 use crate::args::CheckFlags;
@@ -17,6 +18,11 @@ pub async fn check(
   flags: Arc<Flags>,
   check_flags: CheckFlags,
 ) -> Result<(), AnyError> {
+  let factory = CliFactory::from_flags(flags.clone());
+  if factory.cli_options()?.unstable_tsc7() {
+    bail!("TypeScript 7 type checking isn't available in this build yet");
+  }
+
   if let Some(watch_flags) = &flags.watch {
     let no_clear_screen = watch_flags.no_clear_screen;
     file_watcher::watch_func(
@@ -36,7 +42,6 @@ pub async fn check(
     )
     .await
   } else {
-    let factory = CliFactory::from_flags(flags);
     check_with_factory(&factory, check_flags).await
   }
 }

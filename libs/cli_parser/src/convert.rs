@@ -953,6 +953,7 @@ fn unstable_args_parse(result: &ParseResult, flags: &mut Flags) {
     ("unstable-process", None),
     ("unstable-subdomain-wildcards", None),
     ("unstable-temporal", None),
+    ("unstable-tsc7", None),
     ("unstable-unsafe-proto", None),
     ("unstable-vsock", None),
     ("unstable-webgpu", None),

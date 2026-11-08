@@ -128,11 +128,19 @@ pub static UNSTABLE_FEATURES: &[UnstableFeatureDefinition] = &[
     kind: UnstableFeatureKind::Runtime,
   },
   UnstableFeatureDefinition {
+    name: "tsc7",
+    flag_name: "unstable-tsc7",
+    help_text: "Type-check with the bundled TypeScript 7 compiler",
+    show_in_help: true,
+    id: 15,
+    kind: UnstableFeatureKind::Cli,
+  },
+  UnstableFeatureDefinition {
     name: "unsafe-proto",
     flag_name: "unstable-unsafe-proto",
     help_text: "Enable unsafe __proto__ support. This is a security risk.",
     show_in_help: true,
-    id: 15,
+    id: 16,
     kind: UnstableFeatureKind::Runtime,
   },
   UnstableFeatureDefinition {
@@ -140,7 +148,7 @@ pub static UNSTABLE_FEATURES: &[UnstableFeatureDefinition] = &[
     flag_name: "unstable-vsock",
     help_text: "Enable unstable VSOCK APIs",
     show_in_help: false,
-    id: 16,
+    id: 17,
     kind: UnstableFeatureKind::Runtime,
   },
   UnstableFeatureDefinition {
@@ -148,7 +156,7 @@ pub static UNSTABLE_FEATURES: &[UnstableFeatureDefinition] = &[
     flag_name: "unstable-webgpu",
     help_text: "Enable unstable WebGPU APIs",
     show_in_help: true,
-    id: 17,
+    id: 18,
     kind: UnstableFeatureKind::Runtime,
   },
   UnstableFeatureDefinition {
@@ -156,7 +164,7 @@ pub static UNSTABLE_FEATURES: &[UnstableFeatureDefinition] = &[
     flag_name: "unstable-worker-options",
     help_text: "Enable unstable Web Worker APIs",
     show_in_help: true,
-    id: 18,
+    id: 19,
     kind: UnstableFeatureKind::Runtime,
   },
 ];

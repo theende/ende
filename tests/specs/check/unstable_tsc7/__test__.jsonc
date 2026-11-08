@@ -1,0 +1,23 @@
+// Copyright 2026 the Ende authors. MIT license.
+// `--unstable-tsc7` (or `"unstable": ["tsc7"]`) selects the bundled
+// TypeScript 7 compiler for `ende check`. This build has no TypeScript 7
+// compiler yet, so `ende check` refuses it; other subcommands ignore it.
+{
+  "tests": {
+    "check_flag": {
+      "args": "check --unstable-tsc7 main.ts",
+      "output": "unavailable.out",
+      "exitCode": 1
+    },
+    "check_config": {
+      "cwd": "config",
+      "args": "check main.ts",
+      "output": "unavailable.out",
+      "exitCode": 1
+    },
+    "run_ignores_flag": {
+      "args": "run --unstable-tsc7 main.ts",
+      "output": "run.out"
+    }
+  }
+}

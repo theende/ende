@@ -123,6 +123,13 @@ pub static FEATURE_DESCRIPTIONS: &[UnstableFeatureDescription] = &[
     env_var: None,
   },
   UnstableFeatureDescription {
+    name: "tsc7",
+    help_text: "Type-check with the bundled TypeScript 7 compiler",
+    show_in_help: true,
+    kind: UnstableFeatureKind::Cli,
+    env_var: None,
+  },
+  UnstableFeatureDescription {
     name: "unsafe-proto",
     help_text: "Enable unsafe __proto__ support. This is a security risk.",
     show_in_help: true,

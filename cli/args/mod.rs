@@ -1242,6 +1242,18 @@ impl CliOptions {
       || self.workspace().has_unstable("lazy-dynamic-imports")
   }
 
+  /// `--unstable-tsc7` or `"unstable": ["tsc7"]`: type-check with the
+  /// bundled TypeScript 7 compiler.
+  pub fn unstable_tsc7(&self) -> bool {
+    self
+      .flags
+      .unstable_config
+      .features
+      .iter()
+      .any(|f| f == "tsc7")
+      || self.workspace().has_unstable("tsc7")
+  }
+
   pub fn unstable_sloppy_imports(&self) -> bool {
     self.flags.unstable_config.sloppy_imports
       || self.workspace().has_unstable("sloppy-imports")
