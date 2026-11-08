@@ -1,1 +1,1 @@
-error: TypeScript 7 type checking isn't available in this build yet
+error: TypeScript 7 type checking isn't available in this build yet: it has no bundled TypeScript 7 compiler (set ENDE_TSC_BIN to the path of a TypeScript 7 `tsc` to use one)

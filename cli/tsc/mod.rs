@@ -33,6 +33,7 @@ use crate::args::TypeCheckMode;
 use crate::util::path::mapped_specifier_for_tsc;
 
 mod diagnostics;
+pub mod tsc7;
 
 pub use self::diagnostics::Diagnostic;
 pub use self::diagnostics::DiagnosticCategory;

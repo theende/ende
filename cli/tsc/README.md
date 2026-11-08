@@ -33,3 +33,14 @@ npx hereby
 rsync built/local/typescript.js ~/src/ende/cli/tsc/00_typescript.js
 rsync --exclude=protocol.d.ts --exclude=tsserverlibrary.d.ts --exclude=typescriptServices.d.ts built/local/*.d.ts ~/src/ende/cli/tsc/dts/
 ```
+
+## TypeScript 7 (`--unstable-tsc7`)
+
+`ende check --unstable-tsc7` uses the native TypeScript 7 compiler, `tsc`,
+pinned in `cli/tsc7_sums.lock`. It isn't in this directory: build `ende` with
+`ENDE_TSC7_DIR` set to the directory for the build's target in the output of
+`tools/tsc7_mirror.ts` (`tsc/<version>/<target>/`), and `cli/build.rs` checks
+the files against the lock file and embeds them. `tsc7.rs` extracts them to
+`<ENDE_DIR>/tsc/<version>/<hash>/` on first use. Without `ENDE_TSC7_DIR` nothing
+is embedded, and `--unstable-tsc7` needs `ENDE_TSC_BIN`, the path of a
+TypeScript 7 `tsc`.

@@ -11,6 +11,7 @@ use crate::args::Flags;
 use crate::factory::CliFactory;
 use crate::graph_container::CheckSpecifiersOptions;
 use crate::graph_container::CollectSpecifiersOptions;
+use crate::tsc::tsc7;
 use crate::util::extract;
 use crate::util::file_watcher;
 
@@ -20,7 +21,11 @@ pub async fn check(
 ) -> Result<(), AnyError> {
   let factory = CliFactory::from_flags(flags.clone());
   if factory.cli_options()?.unstable_tsc7() {
-    bail!("TypeScript 7 type checking isn't available in this build yet");
+    let tsc = tsc7::resolve_tsc7(&factory)?;
+    bail!(
+      "TypeScript 7 type checking isn't available yet (tsc: {})",
+      tsc.display()
+    );
   }
 
   if let Some(watch_flags) = &flags.watch {

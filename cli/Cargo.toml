@@ -61,6 +61,7 @@ zstd.workspace = true
 flate2 = { workspace = true, features = ["default"] }
 deno_error.workspace = true
 sha2.workspace = true
+tar.workspace = true
 v8.workspace = true
 
 [target.'cfg(windows)'.build-dependencies]
