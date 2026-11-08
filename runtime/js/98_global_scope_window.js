@@ -6,6 +6,7 @@ import {
   op_bootstrap_numcpus,
   op_bootstrap_user_agent,
 } from "ext:core/ops";
+import { selfDescriptor } from "ext:runtime/98_global_scope_shared.js";
 const {
   ObjectDefineProperties,
   ObjectPrototypeIsPrototypeOf,
@@ -217,7 +218,7 @@ const mainRuntimeGlobalProperties = {
   Location: location.locationConstructorDescriptor,
   location: location.locationDescriptor,
   Window: globalInterfaces.windowConstructorDescriptor,
-  self: core.propGetterOnly(() => globalThis),
+  self: selfDescriptor,
   Navigator: core.propNonEnumerable(Navigator),
   navigator: core.propGetterOnly(() => navigator),
   NavigatorUAData: core.propNonEnumerable(NavigatorUAData),

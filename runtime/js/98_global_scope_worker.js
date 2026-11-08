@@ -6,6 +6,7 @@ import {
   op_bootstrap_numcpus,
   op_bootstrap_user_agent,
 } from "ext:core/ops";
+import { selfDescriptor } from "ext:runtime/98_global_scope_shared.js";
 const {
   ObjectDefineProperties,
   ObjectPrototypeIsPrototypeOf,
@@ -195,7 +196,7 @@ const workerRuntimeGlobalProperties = {
   WorkerNavigator: core.propNonEnumerable(WorkerNavigator),
   navigator: core.propGetterOnly(() => workerNavigator),
   NavigatorUAData: core.propNonEnumerable(NavigatorUAData),
-  self: core.propGetterOnly(() => globalThis),
+  self: selfDescriptor,
 };
 
 export { workerRuntimeGlobalProperties };

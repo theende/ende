@@ -18,6 +18,58 @@ Deno.test(function selfExists() {
   assert(self != null);
 });
 
+// The Web IDL attribute getter uses the global object for a nullish
+// receiver and rejects any other object that isn't the global.
+function selfGetterReceivers() {
+  const getSelf = Object.getOwnPropertyDescriptor(globalThis, "self")!.get!;
+  const results: Record<string, string> = {};
+  for (
+    const [label, receiver] of [
+      ["global", globalThis],
+      ["null", null],
+      ["undefined", undefined],
+      ["object", {}],
+      ["number", 0],
+      ["inherited", Object.create(globalThis)],
+    ]
+  ) {
+    try {
+      results[label] = getSelf.call(receiver) === globalThis
+        ? "globalThis"
+        : "other";
+    } catch (error) {
+      results[label] = (error as Error).name;
+    }
+  }
+  return results;
+}
+
+const expectedSelfGetterReceivers = {
+  global: "globalThis",
+  null: "globalThis",
+  undefined: "globalThis",
+  object: "TypeError",
+  number: "TypeError",
+  inherited: "TypeError",
+};
+
+Deno.test(function selfGetterChecksReceiver() {
+  assertEquals(selfGetterReceivers(), expectedSelfGetterReceivers);
+});
+
+Deno.test(async function selfGetterChecksReceiverInWorker() {
+  const source = `${selfGetterReceivers.toString()}
+    postMessage(selfGetterReceivers());`;
+  const worker = new Worker(
+    `data:application/javascript,${encodeURIComponent(source)}`,
+    { type: "module" },
+  );
+  const { promise, resolve } = Promise.withResolvers<unknown>();
+  worker.onmessage = (e) => resolve(e.data);
+  assertEquals(await promise, expectedSelfGetterReceivers);
+  worker.terminate();
+});
+
 Deno.test(function globalThisWindowEqualsUndefined() {
   assert(globalThis.window === undefined);
 });
