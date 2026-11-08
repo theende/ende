@@ -1,0 +1,7 @@
+[WILDCARD]ende.json `desktop.app.identifier` is not set; using "sh.ende.desktop.2048", derived from the app name.
+Renaming the app changes it, and the app loses its storage.
+error: [WILDCARD]
+
+Caused by:
+    0: the app identifier "sh.ende.desktop.2048", derived from the app name, can't be the host of the app's origin (app://<host>); set desktop.app.identifier
+    1: its last label "2048" is a number, so it reads as an IP address

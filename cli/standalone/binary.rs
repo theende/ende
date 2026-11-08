@@ -387,6 +387,14 @@ impl<'a> EndeCompileBinaryWriter<'a> {
       configured.as_deref(),
       &app_name,
     );
+    if configured.is_none()
+      && let Some(id) = &app_identifier
+    {
+      log::warn!(
+        "ende.json `desktop.app.identifier` is not set; using {id:?}, derived from the app name.\n\
+         Renaming the app changes it, and the app loses its storage."
+      );
+    }
     let app_origin_host = app_identifier
       .as_deref()
       .map(|id| {

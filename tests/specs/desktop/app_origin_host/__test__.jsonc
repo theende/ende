@@ -2,7 +2,7 @@
 
 // The app identifier is the host of the app's renderer origin
 // (`app://<identifier>`), so `ende desktop` fails on one that can't be a URL
-// host.
+// host, and warns when it's derived from the app name.
 {
   "tempDir": true,
   "tests": {
@@ -14,6 +14,11 @@
     "localhost_identifier": {
       "args": "desktop --config localhost_identifier.json main.ts",
       "output": "localhost_identifier.out",
+      "exitCode": 1
+    },
+    "derived_identifier": {
+      "args": "desktop --config no_identifier.json --output 2048 main.ts",
+      "output": "derived_identifier.out",
       "exitCode": 1
     }
   }
