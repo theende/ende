@@ -184,6 +184,29 @@
         "exitCode": 1
       }]
     },
+    // Every subcommand that type-checks uses TypeScript 7 with the flag. Its
+    // baseUrl warning shows it (TS 6 reports TS5101 instead).
+    "subcommands_run": {
+      "cwd": "subcommands",
+      "args": "run --check --unstable-tsc7 main.ts",
+      "output": "subcommands_run.out"
+    },
+    "subcommands_test": {
+      "cwd": "subcommands",
+      "args": "test --unstable-tsc7 main_test.ts",
+      "output": "subcommands_test.out"
+    },
+    "subcommands_test_error": {
+      "cwd": "subcommands",
+      "args": "test --unstable-tsc7 error_test.ts",
+      "output": "subcommands_test_error.out",
+      "exitCode": 1
+    },
+    "subcommands_bench": {
+      "cwd": "subcommands",
+      "args": "bench --unstable-tsc7 main_bench.ts",
+      "output": "subcommands_bench.out"
+    },
     // The generated project lives in Ende's cache, not next to the code.
     "no_project_files": {
       "tempDir": true,

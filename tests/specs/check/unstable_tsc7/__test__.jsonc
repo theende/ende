@@ -1,9 +1,9 @@
 // Copyright 2026 the Ende authors. MIT license.
 // `--unstable-tsc7` (or `"unstable": ["tsc7"]`) selects the bundled
-// TypeScript 7 compiler for `ende check`, or the one `ENDE_TSC_BIN` points
-// at. Test builds bundle none, so `ende check` refuses it unless
-// `ENDE_TSC_BIN` is set (tsc7/ has the specs that run one). Other
-// subcommands ignore it.
+// TypeScript 7 compiler for type checking, or the one `ENDE_TSC_BIN` points
+// at. Test builds bundle none, so type checking refuses it unless
+// `ENDE_TSC_BIN` is set (tsc7/ has the specs that run one). Subcommands
+// that don't type-check ignore it.
 {
   "tests": {
     "check_flag": {
@@ -34,6 +34,11 @@
     "run_ignores_flag": {
       "args": "run --unstable-tsc7 main.ts",
       "output": "run.out"
+    },
+    "run_check": {
+      "args": "run --check --unstable-tsc7 main.ts",
+      "output": "unavailable.out",
+      "exitCode": 1
     }
   }
 }

@@ -1,0 +1,4 @@
+Warning: compilerOptions.baseUrl has no effect in TypeScript 7[WILDLINE]
+    at file:///[WILDLINE]/subcommands/ende.json
+Check main_bench.ts
+[WILDCARD]noop[WILDCARD]

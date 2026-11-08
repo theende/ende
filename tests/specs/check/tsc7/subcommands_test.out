@@ -1,0 +1,8 @@
+Warning: compilerOptions.baseUrl has no effect in TypeScript 7[WILDLINE]
+    at file:///[WILDLINE]/subcommands/ende.json
+Check main_test.ts
+running 1 test from ./main_test.ts
+passes ... ok ([WILDCARD])
+
+ok | 1 passed | 0 failed ([WILDCARD])
+

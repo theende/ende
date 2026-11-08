@@ -1,0 +1,10 @@
+Warning: compilerOptions.baseUrl has no effect in TypeScript 7[WILDLINE]
+    at file:///[WILDLINE]/subcommands/ende.json
+Check error_test.ts
+TS2322 [ERROR]: Type 'number' is not assignable to type 'string'.
+  const label: string = 1;
+        ~~~~~
+    at file:///[WILDLINE]/subcommands/error_test.ts:2:9
+
+error: Type checking failed.
+[WILDCARD]

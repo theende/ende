@@ -48,6 +48,7 @@ use crate::args::EndeSubcommand;
 use crate::args::Flags;
 use crate::args::FlagsExt;
 use crate::args::InstallFlags;
+use crate::args::TypeCheckMode;
 use crate::cache::Caches;
 use crate::cache::CodeCache;
 use crate::cache::EndeDir;
@@ -669,19 +670,20 @@ impl CliFactory {
       .get_or_try_init_async(
         async {
           let cli_options = self.cli_options()?;
-          // Only `ende check` has a TypeScript 7 path so far.
-          let tsc7 =
-            if matches!(cli_options.sub_command(), EndeSubcommand::Check(_))
-              && cli_options.unstable_tsc7()
-            {
-              Some(Arc::new(crate::tsc::tsc7::Tsc7Env::new(
-                crate::tsc::tsc7::resolve_tsc7(self)?,
-                &self.ende_dir()?.root,
-                cli_options.workspace().root_dir_url(),
-              )))
-            } else {
-              None
-            };
+          // Every type check (check, run --check, test, bench, ...) uses
+          // TypeScript 7 with the flag. Subcommands that won't type-check
+          // don't need a tsc, and the LSP has its own TS 6 server.
+          let tsc7 = if cli_options.unstable_tsc7()
+            && cli_options.type_check_mode() != TypeCheckMode::None
+          {
+            Some(Arc::new(crate::tsc::tsc7::Tsc7Env::new(
+              crate::tsc::tsc7::resolve_tsc7(self)?,
+              &self.ende_dir()?.root,
+              cli_options.workspace().root_dir_url(),
+            )))
+          } else {
+            None
+          };
           Ok(Arc::new(TypeChecker::new(
             self.caches()?.clone(),
             cli_options.clone(),
