@@ -1,0 +1,49 @@
+Check main.ts
+TS2554 [ERROR]: Expected 2 arguments, but got 1.
+greet("Ende");
+~~~~~
+    at file:///[WILDLINE]/pretty/main.ts:4:1
+
+    An argument for 'greeting' was not provided.
+    function greet(name: string, greeting: string): string {
+                                 ~~~~~~~~~~~~~~~~
+        at file:///[WILDLINE]/pretty/main.ts:1:30
+
+TS2552 [ERROR]: Cannot find name 'knownGlobl'. Did you mean 'knownGlobal'?
+console.log(knownGlobl);
+            ~~~~~~~~~~
+    at file:///[WILDLINE]/pretty/main.ts:7:13
+
+    'knownGlobal' is declared here.
+    declare var knownGlobal: string;
+                ~~~~~~~~~~~
+        at file:///[WILDLINE]/pretty/main.ts:6:13
+
+TS2578 [ERROR]: Unused '@ts-expect-error' directive.
+// @ts-expect-error
+~~~~~~~~~~~~~~~~~~~
+    at file:///[WILDLINE]/pretty/main.ts:9:1
+
+TS2322 [ERROR]: Type 'string' is not assignable to type 'number'.
+const version: number = Ende.version.ende;
+      ~~~~~~~
+    at file:///[WILDLINE]/pretty/main.ts:12:7
+
+TS2345 [ERROR]: Argument of type 'string' is not assignable to parameter of type 'number'.
+Math.max(1, "2");
+            ~~~
+    at file:///[WILDLINE]/pretty/main.ts:13:13
+
+TS2554 [ERROR]: Expected 2 arguments, but got 1.
+console.log(fine, version, Math.pow(2));
+                                ~~~
+    at file:///[WILDLINE]/pretty/main.ts:14:33
+
+    An argument for 'y' was not provided.
+        pow(x: number, y: number): number;
+                       ~~~~~~~~~
+        at asset:///lib.es5.d.ts:742:20
+
+Found 6 errors.
+
+error: Type checking failed.

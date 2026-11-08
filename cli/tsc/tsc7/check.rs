@@ -4,7 +4,7 @@
 //!
 //! Ende drives the `tsc` binary through its CLI, not its unstable API: it
 //! writes a project into Ende's cache (see [`super::project`]), runs
-//! `tsc -p <tsconfig> --pretty false` on it, and maps the diagnostics back to
+//! `tsc -p <tsconfig> --pretty true` on it, and maps the diagnostics back to
 //! the modules they're about, so they print like the TypeScript 6 checker's.
 //!
 //! Based on denoland/deno#36104 and denoland/deno#35938.
@@ -38,6 +38,7 @@ use super::output;
 use super::output::Category;
 use super::output::RawDiagnostic;
 use super::project;
+use super::project::LineShifts;
 use super::project::MappedFile;
 use super::project::path_key;
 use super::project::reported_path_key;
@@ -243,7 +244,7 @@ fn run_tsc(
     .arg("-p")
     .arg(tsconfig)
     .arg("--pretty")
-    .arg("false")
+    .arg("true")
     .current_dir(project_dir)
     // tsc is written in Go, whose `os.Getwd` trusts `PWD` over `getcwd()`;
     // an inherited `PWD` would make it print paths relative to the wrong
@@ -433,67 +434,81 @@ struct Mapper<'a> {
 
 impl Mapper<'_> {
   /// `None` for a diagnostic in a lib file: TS 6 doesn't report those for
-  /// `ende check` either, and Ende's libs predate TS 7's stock libs.
+  /// `ende check` either, and Ende's libs predate TS 7's stock libs. Related
+  /// information in one is kept, named like TS 6 names lib files.
   fn map(&self, raw: RawDiagnostic) -> Option<Diagnostic> {
-    let category = match raw.category {
-      Category::Error => DiagnosticCategory::Error,
-      Category::Warning => DiagnosticCategory::Warning,
-      Category::Suggestion => DiagnosticCategory::Suggestion,
-      Category::Message => DiagnosticCategory::Message,
-    };
-    let mut diagnostic = Diagnostic {
-      category,
-      code: raw.code,
-      start: None,
-      end: None,
-      original_source_start: None,
-      message_text: Some(raw.message),
-      message_chain: None,
-      source: None,
-      source_line: None,
-      file_name: None,
-      related_information: None,
-      reports_deprecated: None,
-      reports_unnecessary: None,
-      other: Default::default(),
-      missing_specifier: None,
-    };
-    let Some((file, line, column)) = raw.location else {
-      return Some(diagnostic);
+    let mut diagnostic = new_diagnostic(raw.category, raw.code, raw.message);
+    match self.place(raw.location, raw.end) {
+      Place::Lib(_) => return None,
+      Place::Module(located) => located.apply(&mut diagnostic),
+      Place::None => {}
+    }
+    let related = raw
+      .related
+      .into_iter()
+      .map(|r| {
+        let mut related = new_diagnostic(r.category, r.code, r.message);
+        if let Place::Lib(located) | Place::Module(located) =
+          self.place(r.location, r.end)
+        {
+          located.apply(&mut related);
+        }
+        related
+      })
+      .collect::<Vec<_>>();
+    if !related.is_empty() {
+      diagnostic.related_information = Some(related);
+    }
+    Some(diagnostic)
+  }
+
+  /// Where a location tsc printed (1-based) is, 0-based.
+  fn place(
+    &self,
+    location: Option<(String, u64, u64)>,
+    end: Option<(u64, u64)>,
+  ) -> Place {
+    let Some((file, line, column)) = location else {
+      return Place::None;
     };
     let key = reported_path_key(&self.cwd, &file);
-    if is_in_dir(&key, &self.types_dir) || is_in_dir(&key, &self.tsc_dir) {
-      return None;
-    }
     if key == self.tsconfig {
       // An option error: the generated config means nothing to the user.
-      return Some(diagnostic);
+      return Place::None;
     }
-
-    let line = line.saturating_sub(1);
-    let (specifier, character, source_line) = match self.lookup(&key) {
-      Some(mapped) => (
-        mapped.specifier.clone(),
-        mapped.shifts.to_original(line, column.saturating_sub(1)),
-        mapped.text.as_deref().and_then(|t| nth_line(t, line)),
-      ),
-      None => {
-        let path = PathBuf::from(&key);
-        let specifier = deno_path_util::url_from_file_path(&path)
-          .map(|u| u.to_string())
-          .unwrap_or_else(|_| file.clone());
-        let source_line = self.read_line(&key, line);
-        (specifier, column.saturating_sub(1), source_line)
-      }
-    };
-    diagnostic.file_name = Some(specifier);
-    diagnostic.start = Some(Position { line, character });
-    diagnostic.end = source_line.as_deref().map(|source_line| Position {
+    let start = (line.saturating_sub(1), column.saturating_sub(1));
+    let end = end.map(|(l, c)| (l.saturating_sub(1), c.saturating_sub(1)));
+    let position = |(line, character), shifts: Option<&LineShifts>| Position {
       line,
-      character: character + output::underline_len(source_line, character),
-    });
-    diagnostic.source_line = source_line;
-    Some(diagnostic)
+      character: shifts
+        .map(|s| s.to_original(line, character))
+        .unwrap_or(character),
+    };
+    if is_in_dir(&key, &self.types_dir) || is_in_dir(&key, &self.tsc_dir) {
+      let name = key.rsplit('/').next().unwrap_or_default();
+      return Place::Lib(Located {
+        specifier: format!("asset:///{name}"),
+        start: position(start, None),
+        end: end.map(|end| position(end, None)),
+        source_line: self.read_line(&key, start.0),
+      });
+    }
+    Place::Module(match self.lookup(&key) {
+      Some(mapped) => Located {
+        specifier: mapped.specifier.clone(),
+        start: position(start, Some(&mapped.shifts)),
+        end: end.map(|end| position(end, Some(&mapped.shifts))),
+        source_line: mapped.text.as_deref().and_then(|t| nth_line(t, start.0)),
+      },
+      None => Located {
+        specifier: deno_path_util::url_from_file_path(Path::new(&key))
+          .map(|u| u.to_string())
+          .unwrap_or(file),
+        start: position(start, None),
+        end: end.map(|end| position(end, None)),
+        source_line: self.read_line(&key, start.0),
+      },
+    })
   }
 
   fn lookup(&self, key: &str) -> Option<&MappedFile> {
@@ -521,6 +536,59 @@ impl Mapper<'_> {
         .map(|text| text.lines().map(str::to_string).collect())
     });
     lines.as_ref()?.get(line as usize).cloned()
+  }
+}
+
+enum Place {
+  /// No location, or one in the generated config.
+  None,
+  /// A lib file (tsc's own, or in `types/`).
+  Lib(Located),
+  Module(Located),
+}
+
+struct Located {
+  specifier: String,
+  start: Position,
+  end: Option<Position>,
+  source_line: Option<String>,
+}
+
+impl Located {
+  fn apply(self, diagnostic: &mut Diagnostic) {
+    diagnostic.file_name = Some(self.specifier);
+    diagnostic.start = Some(self.start);
+    diagnostic.end = self.end;
+    diagnostic.source_line = self.source_line;
+  }
+}
+
+fn new_diagnostic(
+  category: Category,
+  code: u64,
+  message: String,
+) -> Diagnostic {
+  Diagnostic {
+    category: match category {
+      Category::Error => DiagnosticCategory::Error,
+      Category::Warning => DiagnosticCategory::Warning,
+      Category::Suggestion => DiagnosticCategory::Suggestion,
+      Category::Message => DiagnosticCategory::Message,
+    },
+    code,
+    start: None,
+    end: None,
+    original_source_start: None,
+    message_text: Some(message),
+    message_chain: None,
+    source: None,
+    source_line: None,
+    file_name: None,
+    related_information: None,
+    reports_deprecated: None,
+    reports_unnecessary: None,
+    other: Default::default(),
+    missing_specifier: None,
   }
 }
 
@@ -587,7 +655,9 @@ mod tests {
       category: Category::Error,
       code: 2322,
       location: file.map(|f| (f.to_string(), line, column)),
+      end: Some((line, column + 1)),
       message: "Type 'number' is not assignable to type 'string'.".into(),
+      related: Vec::new(),
     }
   }
 
@@ -635,6 +705,64 @@ mod tests {
     );
     let d = mapper.map(raw(Some("tsconfig.1.json"), 1, 1)).unwrap();
     assert_eq!((d.file_name, d.start), (None, None));
+  }
+
+  #[test]
+  fn maps_ends_and_related_information() {
+    let text = "import { a } from \"./a.ts\"; const x: string = a;\n";
+    let mut files = HashMap::new();
+    files.insert(
+      "c:/users/me/appdata/local/ende/tsc7_projects/abc/local/1/main.ts"
+        .to_string(),
+      MappedFile {
+        specifier: "file:///C:/proj/main.ts".into(),
+        text: Some(text.into()),
+        shifts: Default::default(),
+      },
+    );
+    let mapper = mapper(&files);
+    let mut d = raw(Some("local/1/main.ts"), 1, 35);
+    d.end = Some((1, 36));
+    d.related = vec![
+      RawDiagnostic {
+        category: Category::Message,
+        code: 0,
+        location: Some(("local/1/main.ts".into(), 1, 10)),
+        end: Some((1, 11)),
+        message: "'a' is declared here.".into(),
+        related: Vec::new(),
+      },
+      RawDiagnostic {
+        category: Category::Message,
+        code: 0,
+        location: Some((
+          "C:/Users/me/AppData/Local/ende/tsc/7.0.2/x/lib.es5.d.ts".into(),
+          742,
+          20,
+        )),
+        end: Some((742, 29)),
+        message: "An argument for 'y' was not provided.".into(),
+        related: Vec::new(),
+      },
+    ];
+    let d = mapper.map(d).unwrap();
+    let position = |line, character| Some(Position { line, character });
+    assert_eq!((d.start, d.end), (position(0, 34), position(0, 35)));
+    let related = d.related_information.unwrap();
+    assert_eq!(
+      related[0].file_name.as_deref(),
+      Some("file:///C:/proj/main.ts")
+    );
+    assert_eq!(
+      (related[0].start.clone(), related[0].end.clone()),
+      (position(0, 9), position(0, 10))
+    );
+    assert_eq!(related[0].category, DiagnosticCategory::Message);
+    assert_eq!(
+      related[1].file_name.as_deref(),
+      Some("asset:///lib.es5.d.ts")
+    );
+    assert_eq!(related[1].start, position(741, 19));
   }
 
   #[test]

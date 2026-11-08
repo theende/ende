@@ -147,6 +147,13 @@
       "output": "scopes.out",
       "exitCode": 1
     },
+    // Related information and exact underlines, from `--pretty true`.
+    "pretty": {
+      "cwd": "pretty",
+      "args": "check --unstable-tsc7 main.ts",
+      "output": "pretty.out",
+      "exitCode": 1
+    },
     // The generated project lives in Ende's cache, not next to the code.
     "no_project_files": {
       "tempDir": true,

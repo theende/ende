@@ -1,5 +1,16 @@
 {
-  "args": "check --quiet dts/check_dts.d.ts",
-  "output": "dts/check_dts.out",
-  "exitCode": 1
+  "tests": {
+    "check": {
+      "args": "check --quiet dts/check_dts.d.ts",
+      "output": "dts/check_dts.out",
+      "exitCode": 1
+    },
+    // A declaration file as the root, under TypeScript 7.
+    "check_tsc7": {
+      "if": "tsc7",
+      "args": "check --quiet --unstable-tsc7 dts/check_dts.d.ts",
+      "output": "dts/check_dts.out",
+      "exitCode": 1
+    }
+  }
 }
