@@ -5711,6 +5711,27 @@ fn msi_resort_stream(data: &[u8], widths: &[usize], keys: &[usize]) -> Vec<u8> {
   out
 }
 
+/// The bytes one value of a column takes in a table stream, from the column's
+/// `_Columns` Type word as stored (`ty`) and the string-reference width.
+///
+/// 0x8000 marks the stored value present (always set here); 0x0800 marks a
+/// string type, which is a Binary (stream) column when only the valid bit
+/// 0x0100 and maybe the nullable bit 0x1000 go with it (as Windows Installer
+/// and the `msi` crate read it); for integer columns the low byte is the
+/// storage size (2 or 4 bytes). A Binary column always takes 2 bytes.
+fn msi_column_width(ty: u64, str_w: usize) -> usize {
+  let t = (ty ^ 0x8000) & 0xffff;
+  if (t & !0x1000) == 0x0900 {
+    2
+  } else if (t & 0x0800) != 0 {
+    str_w
+  } else if (t & 0xff) == 4 {
+    4
+  } else {
+    2
+  }
+}
+
 /// Sort every persistent table in a freshly written `.msi` by primary key in
 /// string-pool-id order, as Windows Installer requires (see the call site for
 /// why the `msi` crate's output needs this). Operates in place on the compound
@@ -5820,19 +5841,7 @@ fn msi_sort_tables_by_string_id(msi_path: &Path) -> Result<(), AnyError> {
   let off_table = 0usize;
   let off_number = ncol * str_w;
   let off_type = off_number + ncol * 2 + ncol * str_w;
-  // A column Type word: 0x8000 marks the stored value present (always set here);
-  // 0x0800 marks a string type; 0x2000 marks a primary-key column; for integer
-  // columns the low byte is the storage size (2 or 4 bytes).
-  let width_of = |ty: u64| -> usize {
-    let t = (ty ^ 0x8000) & 0xffff;
-    if (t & 0x0800) != 0 {
-      str_w
-    } else if (t & 0xff) == 4 {
-      4
-    } else {
-      2
-    }
-  };
+  // 0x2000 in a column Type word marks a primary-key column.
   let is_key = |ty: u64| -> bool { ((ty ^ 0x8000) & 0x2000) != 0 };
   let mut table_columns: std::collections::BTreeMap<u64, Vec<(u64, u64)>> =
     std::collections::BTreeMap::new();
@@ -5866,7 +5875,10 @@ fn msi_sort_tables_by_string_id(msi_path: &Path) -> Result<(), AnyError> {
     let Some(cols) = table_columns.get(&table_id) else {
       continue;
     };
-    let widths: Vec<usize> = cols.iter().map(|&(_, ty)| width_of(ty)).collect();
+    let widths: Vec<usize> = cols
+      .iter()
+      .map(|&(_, ty)| msi_column_width(ty, str_w))
+      .collect();
     let keys: Vec<usize> = cols
       .iter()
       .enumerate()
@@ -9044,6 +9056,31 @@ def456  other.zip
       .read_to_end(&mut content)
       .unwrap();
     assert_eq!(content, b"MZfake-dll");
+  }
+
+  #[test]
+  fn msi_column_width_of_binary_is_two_bytes() {
+    // `_Columns` stores each Type word XOR 0x8000. A Binary column (the
+    // Icon table's Data) is a 2-byte stream reference whatever the string
+    // reference width; only real string columns follow it.
+    const VALID: u64 = 0x0100;
+    const NONBINARY: u64 = 0x0400;
+    const STRING: u64 = 0x0800;
+    const NULLABLE: u64 = 0x1000;
+    let stored = |ty: u64| ty ^ 0x8000;
+    for str_w in [2, 3] {
+      assert_eq!(msi_column_width(stored(STRING | VALID), str_w), 2);
+      assert_eq!(
+        msi_column_width(stored(STRING | VALID | NULLABLE), str_w),
+        2
+      );
+      assert_eq!(
+        msi_column_width(stored(STRING | NONBINARY | VALID | 72), str_w),
+        str_w
+      );
+      assert_eq!(msi_column_width(stored(VALID | 4), str_w), 4);
+      assert_eq!(msi_column_width(stored(NONBINARY | VALID | 2), str_w), 2);
+    }
   }
 
   #[test]
