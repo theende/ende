@@ -222,6 +222,27 @@
         ],
         "output": "[ \"main.ts\" ]\n"
       }]
+    },
+    // Copies of modules that left the graph are removed by the next check.
+    "prune": {
+      "tempDir": true,
+      "steps": [{
+        "cwd": "prune",
+        "args": "check --unstable-tsc7 with_copy.ts",
+        "output": "Check with_copy.ts\n"
+      }, {
+        "cwd": "prune",
+        "args": "run --allow-env --allow-read list_copies.ts",
+        "output": "[ \"remote/data/[WILDLINE].ts\" ]\n"
+      }, {
+        "cwd": "prune",
+        "args": "check --unstable-tsc7 without_copy.ts",
+        "output": "Check without_copy.ts\n"
+      }, {
+        "cwd": "prune",
+        "args": "run --allow-env --allow-read list_copies.ts",
+        "output": "[]\n"
+      }]
     }
   }
 }

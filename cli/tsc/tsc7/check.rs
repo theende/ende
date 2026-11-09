@@ -124,12 +124,22 @@ pub struct Response {
 pub fn exec(env: &Tsc7Env, request: Request) -> Result<Response, AnyError> {
   let data = request.compiler_options_data;
   let project_dir = &env.project_dir;
+  // Held until tsc is done with the project.
+  let lock = lock_project(project_dir);
   let types_dir = project_dir.join("types");
   write_ende_libs(&types_dir)?;
   let plan =
     project::plan(request.graph, &request.roots, project_dir, ende_lib_name);
   for (path, text) in &plan.copies {
     write_if_changed(path, text.as_bytes())?;
+  }
+  if lock.is_some() {
+    let keep = plan
+      .copies
+      .iter()
+      .map(|(path, _)| path_key(&to_tsc_path(path)))
+      .collect();
+    prune_copies(project_dir, &keep);
   }
 
   let root_dirs = data
@@ -253,6 +263,82 @@ pub fn exec(env: &Tsc7Env, request: Request) -> Result<Response, AnyError> {
     diagnostics: Diagnostics::from(diagnostics),
     ambient_modules: plan.ambient_modules,
   })
+}
+
+/// Locks the project directory for one check, waiting for any other check
+/// of the workspace to finish: checks of one workspace share the directory,
+/// and one could otherwise remove copies another one's tsc still reads.
+/// `None` if the file system can't lock; the check then runs unlocked and
+/// leaves old copies alone.
+fn lock_project(project_dir: &Path) -> Option<std::fs::File> {
+  let path = project_dir.join(".lock");
+  let lock = || -> std::io::Result<std::fs::File> {
+    std::fs::create_dir_all(project_dir)?;
+    let file = std::fs::OpenOptions::new()
+      .create(true)
+      .truncate(false)
+      .write(true)
+      .open(&path)?;
+    match file.try_lock() {
+      Ok(()) => {}
+      Err(std::fs::TryLockError::WouldBlock) => {
+        log::debug!("tsc7: waiting for another check of this workspace");
+        file.lock()?;
+      }
+      Err(std::fs::TryLockError::Error(err)) => return Err(err),
+    }
+    Ok(file)
+  };
+  lock()
+    .inspect_err(|err| {
+      log::debug!("tsc7: failed to lock {}: {err}", path.display())
+    })
+    .ok()
+}
+
+/// The project directories that hold copies of modules.
+const COPY_DIRS: &[&str] = &["remote", "local"];
+
+/// Removes the files in the copy directories whose [`path_key`] isn't in
+/// `keep`, and the directories that leaves empty. A copy stays useful only
+/// while its module is in the graph, so without this every module ever
+/// checked would stay in the cache.
+fn prune_copies(project_dir: &Path, keep: &HashSet<String>) {
+  for name in COPY_DIRS {
+    prune_dir(&project_dir.join(name), keep);
+  }
+}
+
+/// [`prune_copies`] for one directory. Returns whether it ends up empty.
+fn prune_dir(dir: &Path, keep: &HashSet<String>) -> bool {
+  let Ok(entries) = std::fs::read_dir(dir) else {
+    return false;
+  };
+  let mut empty = true;
+  for entry in entries {
+    let Ok(entry) = entry else {
+      empty = false;
+      continue;
+    };
+    let path = entry.path();
+    let result = if entry.file_type().is_ok_and(|t| t.is_dir()) {
+      if !prune_dir(&path, keep) {
+        empty = false;
+        continue;
+      }
+      std::fs::remove_dir(&path)
+    } else if keep.contains(&path_key(&to_tsc_path(&path))) {
+      empty = false;
+      continue;
+    } else {
+      std::fs::remove_file(&path)
+    };
+    if let Err(err) = result {
+      log::debug!("tsc7: failed to remove {}: {err}", path.display());
+      empty = false;
+    }
+  }
+  empty
 }
 
 fn run_tsc(
@@ -685,6 +771,51 @@ mod tests {
       canonical_files: OnceCell::new(),
       read_files: Default::default(),
     }
+  }
+
+  #[test]
+  fn prunes_copies_not_in_the_plan() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path();
+    let files = [
+      "remote/https/example.com/kept.ts",
+      "remote/https/example.com/gone.ts",
+      "remote/data/gone.ts",
+      "local/0123/gone.ts",
+      "types/lib.dom.d.ts",
+      "types/raw/text.ts",
+      "tsconfig.1.json",
+    ];
+    for file in files {
+      let path = project.join(file);
+      std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+      std::fs::write(path, "").unwrap();
+    }
+    let keep = HashSet::from([path_key(&to_tsc_path(
+      &project.join("remote/https/example.com/kept.ts"),
+    ))]);
+    prune_copies(project, &keep);
+    let exists = |path: &str| project.join(path).exists();
+    assert!(exists("remote/https/example.com/kept.ts"));
+    assert!(!exists("remote/https/example.com/gone.ts"));
+    assert!(!exists("remote/data"));
+    assert!(exists("local"));
+    assert!(!exists("local/0123"));
+    // Not copies.
+    assert!(exists("types/lib.dom.d.ts"));
+    assert!(exists("types/raw/text.ts"));
+    assert!(exists("tsconfig.1.json"));
+  }
+
+  #[test]
+  fn project_lock_is_exclusive() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path().join("project");
+    let lock = lock_project(&project).unwrap();
+    let other = std::fs::File::open(project.join(".lock")).unwrap();
+    assert!(other.try_lock().is_err());
+    drop(lock);
+    assert!(other.try_lock().is_ok());
   }
 
   fn raw(file: Option<&str>, line: u64, column: u64) -> RawDiagnostic {
