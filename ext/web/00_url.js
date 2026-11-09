@@ -169,7 +169,8 @@ class URLSearchParams {
             err.code = "ERR_INVALID_TUPLE";
             throw err;
           }
-          if (res.done === true) break;
+          // IteratorComplete is ToBoolean(done), not `done === true`.
+          if (res.done) break;
           const pair = res.value;
           if (
             (typeof pair !== "object" && typeof pair !== "function") ||

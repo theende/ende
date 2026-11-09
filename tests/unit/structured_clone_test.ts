@@ -1,6 +1,11 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-import { assert, assertEquals, assertThrows } from "./test_util.ts";
+import {
+  assert,
+  assertEquals,
+  assertThrows,
+  numberDoneIterable,
+} from "./test_util.ts";
 
 // Basic tests for the structured clone algorithm. Mainly tests TypeScript
 // typings. Actual functionality is tested in WPT.
@@ -383,4 +388,14 @@ Deno.test("structuredClone doesn't transfer buffers when it throws", () => {
   const cloned = structuredClone(buffer, { transfer: [buffer] });
   assertEquals(buffer.byteLength, 0);
   assertEquals(cloned.byteLength, 4);
+});
+
+// Web IDL sequence conversion (IteratorComplete) is ToBoolean(done).
+Deno.test("structuredClone transfer list iterator done is ToBoolean", () => {
+  const buffer = new ArrayBuffer(4);
+  const cloned = structuredClone(buffer, {
+    transfer: numberDoneIterable([buffer]),
+  });
+  assertEquals(cloned.byteLength, 4);
+  assertEquals(buffer.byteLength, 0);
 });

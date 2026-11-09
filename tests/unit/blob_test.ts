@@ -1,5 +1,10 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-import { assert, assertEquals, assertStringIncludes } from "./test_util.ts";
+import {
+  assert,
+  assertEquals,
+  assertStringIncludes,
+  numberDoneIterable,
+} from "./test_util.ts";
 import { concat } from "@ende/bytes/concat";
 
 Deno.test(function blobString() {
@@ -127,4 +132,13 @@ Deno.test(function blobCustomInspectFunction() {
     `Blob { size: 0, type: "" }`,
   );
   assertStringIncludes(Deno.inspect(Blob.prototype), "Blob");
+});
+
+// Web IDL sequence conversion (IteratorComplete) is ToBoolean(done).
+Deno.test(async function blobPartsIteratorDoneIsToBoolean() {
+  assertEquals(await new Blob(numberDoneIterable(["a", "b"])).text(), "ab");
+  assertEquals(
+    await new File(numberDoneIterable(["c"]), "f.txt").text(),
+    "c",
+  );
 });

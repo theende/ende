@@ -986,7 +986,8 @@ function createSequenceConverter(converter) {
           context,
         );
       }
-      if (res.done === true) break;
+      // IteratorComplete is ToBoolean(done), not `done === true`.
+      if (res.done) break;
       const val = converter(
         res.value,
         prefix,

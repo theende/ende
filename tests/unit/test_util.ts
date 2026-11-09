@@ -1386,3 +1386,31 @@ export function unindent(strings: TemplateStringsArray, ...values: unknown[]) {
   const raw = String.raw({ raw: strings }, ...values);
   return trimIndent(raw);
 }
+
+/** An iterable whose iterator results have a number `done`: 0 for each value,
+ * then 1. IteratorComplete is ToBoolean(done), so a consumer must stop at the
+ * 1. Calling `next()` after it throws, so a consumer that doesn't stop fails
+ * instead of looping forever. Typed as an array because the lib types of
+ * the APIs under test take arrays, where Web IDL takes any iterable. */
+export function numberDoneIterable<T>(values: T[]): T[] {
+  const iterable = {
+    [Symbol.iterator]() {
+      let index = 0;
+      let finished = false;
+      return {
+        next() {
+          if (finished) throw new Error("next() called after done");
+          if (index < values.length) {
+            return {
+              done: 0,
+              value: values[index++],
+            } as unknown as IteratorResult<T>;
+          }
+          finished = true;
+          return { done: 1, value: undefined } as unknown as IteratorResult<T>;
+        },
+      };
+    },
+  };
+  return iterable as unknown as T[];
+}

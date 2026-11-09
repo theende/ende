@@ -1,5 +1,10 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
-import { assert, assertEquals, assertThrows } from "./test_util.ts";
+import {
+  assert,
+  assertEquals,
+  assertThrows,
+  numberDoneIterable,
+} from "./test_util.ts";
 
 // Regression test: set/delete on a list with many entries that share a name
 // must run in linear time. A quadratic implementation would take many seconds
@@ -458,4 +463,12 @@ Deno.test(function urlSearchParamsAcceptsFunctionIteratorResult() {
     },
   };
   assertEquals(new URLSearchParams(iterable).toString(), "a=b");
+});
+
+// IteratorComplete is ToBoolean(done): a truthy number ends the iteration.
+Deno.test(function urlSearchParamsInitIteratorDoneIsToBoolean() {
+  const params = new URLSearchParams(
+    numberDoneIterable([numberDoneIterable(["a", "1"]), ["b", "2"]]),
+  );
+  assertEquals(params.toString(), "a=1&b=2");
 });

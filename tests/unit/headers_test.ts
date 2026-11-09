@@ -4,6 +4,7 @@ import {
   assertEquals,
   assertStringIncludes,
   assertThrows,
+  numberDoneIterable,
 } from "./test_util.ts";
 const {
   inspectArgs,
@@ -496,4 +497,13 @@ Deno.test(function headerValuesNormalizationAndValidation() {
 
     assertEquals(headers.get("x"), expected);
   }
+});
+
+// Web IDL sequence conversion (IteratorComplete) is ToBoolean(done): a truthy
+// number ends the iteration, for the outer and the inner sequences.
+Deno.test(function headersInitIteratorDoneIsToBoolean() {
+  const headers = new Headers(
+    numberDoneIterable([numberDoneIterable(["a", "1"]), ["b", "2"]]),
+  );
+  assertEquals([...headers], [["a", "1"], ["b", "2"]]);
 });
