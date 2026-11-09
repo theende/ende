@@ -1,4 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
+use std::cell::Cell;
 use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -6,6 +7,9 @@ use std::rc::Rc;
 use deno_error::JsErrorBox;
 use ende_core::GarbageCollected;
 use ende_core::OpState;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::TransferredResource;
 use ende_core::WebIDL;
 use ende_core::op2;
 use ende_core::v8;
@@ -33,8 +37,72 @@ pub type CreateCanvasContext =
 
 pub struct OffscreenCanvas {
   data: Rc<RefCell<DynamicImage>>,
+  detached: Cell<bool>,
 
   active_context: OnceCell<(String, v8::Global<v8::Value>)>,
+}
+
+/// The bitmap of a transferred OffscreenCanvas, moved out of the source.
+struct OffscreenCanvasTransferData(DynamicImage);
+
+impl Resource for OffscreenCanvasTransferData {
+  fn transfer(
+    self: Rc<Self>,
+  ) -> Result<Box<dyn TransferredResource>, JsErrorBox> {
+    let data = Rc::try_unwrap(self).map_err(|_| {
+      JsErrorBox::type_error("OffscreenCanvas is already being transferred")
+    })?;
+    Ok(Box::new(data))
+  }
+}
+
+impl TransferredResource for OffscreenCanvasTransferData {
+  fn receive(self: Box<Self>) -> Rc<dyn Resource> {
+    Rc::new(*self)
+  }
+}
+
+#[op2(fast)]
+#[smi]
+pub fn op_offscreen_canvas_transfer(
+  state: &mut OpState,
+  #[cppgc] canvas: &OffscreenCanvas,
+) -> Result<ResourceId, JsErrorBox> {
+  if canvas.detached.get() {
+    return Err(JsErrorBox::type_error("OffscreenCanvas is detached"));
+  }
+  // https://html.spec.whatwg.org/multipage/canvas.html#the-offscreencanvas-interface:transfer-steps
+  if canvas.active_context.get().is_some() {
+    return Err(JsErrorBox::new(
+      "DOMExceptionInvalidStateError",
+      "Cannot transfer an OffscreenCanvas with a rendering context",
+    ));
+  }
+  let image = canvas
+    .data
+    .replace(DynamicImage::new(0, 0, ColorType::Rgba8));
+  canvas.detached.set(true);
+  Ok(state.resource_table.add(OffscreenCanvasTransferData(image)))
+}
+
+#[op2]
+#[cppgc]
+pub fn op_offscreen_canvas_receive(
+  state: &mut OpState,
+  #[smi] rid: ResourceId,
+) -> Result<OffscreenCanvas, JsErrorBox> {
+  let data = state
+    .resource_table
+    .take::<OffscreenCanvasTransferData>(rid)
+    .map_err(JsErrorBox::from_err)?;
+  let data = Rc::try_unwrap(data).map_err(|_| {
+    JsErrorBox::type_error("OffscreenCanvas transfer is unavailable")
+  })?;
+  Ok(OffscreenCanvas {
+    data: Rc::new(RefCell::new(data.0)),
+    detached: Cell::new(false),
+    active_context: Default::default(),
+  })
 }
 
 // SAFETY: we're sure this can be GCed
@@ -50,6 +118,9 @@ unsafe impl GarbageCollected for OffscreenCanvas {
 impl OffscreenCanvas {
   #[getter]
   fn width(&self) -> u32 {
+    if self.detached.get() {
+      return 0;
+    }
     let data = self.data.borrow();
     data.width()
   }
@@ -59,6 +130,9 @@ impl OffscreenCanvas {
     scope: &mut v8::PinScope<'_, '_>,
     #[webidl(options(enforce_range = true))] value: u64,
   ) {
+    if self.detached.get() {
+      return;
+    }
     {
       self.data.replace_with(|data| {
         DynamicImage::new(value as u32, data.height(), ColorType::Rgba8)
@@ -75,6 +149,9 @@ impl OffscreenCanvas {
 
   #[getter]
   fn height(&self) -> u32 {
+    if self.detached.get() {
+      return 0;
+    }
     let data = self.data.borrow();
     data.height()
   }
@@ -84,6 +161,9 @@ impl OffscreenCanvas {
     scope: &mut v8::PinScope<'_, '_>,
     #[webidl(options(enforce_range = true))] value: u64,
   ) {
+    if self.detached.get() {
+      return;
+    }
     {
       self.data.replace_with(|data| {
         DynamicImage::new(data.width(), value as u32, ColorType::Rgba8)
@@ -111,6 +191,7 @@ impl OffscreenCanvas {
         height as _,
         ColorType::Rgba8,
       ))),
+      detached: Cell::new(false),
       active_context: Default::default(),
     }
   }
@@ -122,6 +203,12 @@ impl OffscreenCanvas {
     #[webidl] context_id: String,
     #[webidl] options: v8::Local<'s, v8::Value>,
   ) -> Result<Option<v8::Global<v8::Value>>, JsErrorBox> {
+    if self.detached.get() {
+      return Err(JsErrorBox::new(
+        "DOMExceptionInvalidStateError",
+        "OffscreenCanvas is detached",
+      ));
+    }
     if self.active_context.get().is_none() {
       let create_context: CreateCanvasContext = match context_id.as_str() {
         super::bitmaprenderer::CONTEXT_ID => super::bitmaprenderer::create as _,
@@ -158,6 +245,12 @@ impl OffscreenCanvas {
     &self,
     scope: &mut v8::PinScope<'_, '_>,
   ) -> Result<ImageBitmap, JsErrorBox> {
+    if self.detached.get() {
+      return Err(JsErrorBox::new(
+        "DOMExceptionInvalidStateError",
+        "OffscreenCanvas is detached",
+      ));
+    }
     let Some(active_context) = self.active_context.get() else {
       return Err(JsErrorBox::new(
         "DOMExceptionInvalidStateError",
@@ -219,6 +312,12 @@ impl OffscreenCanvas {
     scope: &mut v8::PinScope<'s, '_>,
     options: ImageEncodeOptions,
   ) -> Result<v8::Local<'s, v8::Object>, JsErrorBox> {
+    if self.detached.get() {
+      return Err(JsErrorBox::new(
+        "DOMExceptionInvalidStateError",
+        "OffscreenCanvas is detached",
+      ));
+    }
     let state = state.borrow();
 
     let Some(active_context) = self.active_context.get() else {

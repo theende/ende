@@ -422,9 +422,7 @@
           "Object ImageBitmap object, ImageBitmap 1x1 transparent non-black",
           "Serializing a non-serializable platform object fails",
           "Growable SharedArrayBuffer",
-          "ImageBitmap",
-          "OffscreenCanvas",
-          "Transferring a non-transferable platform object fails"
+          "ImageBitmap"
         ]
       },
       "shared.html": false

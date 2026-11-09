@@ -23,6 +23,7 @@ const {
   ArrayPrototypeIncludes,
   ArrayPrototypePush,
   Float64Array,
+  FunctionPrototypeCall,
   ObjectDefineProperty,
   ObjectFreeze,
   ObjectHasOwn,
@@ -600,18 +601,63 @@ function opCreateEntangledMessagePort() {
  */
 const emptyTransferables = ObjectFreeze([]);
 
-// The web-streams transferable resources (ReadableStream/WritableStream/
-// TransformStream) are registered as a side effect of evaluating
-// ext:ende_web/06_streams.js, which is lazy. A realm (e.g. a worker) that
-// receives a transferred stream may not have loaded that module yet, so on a
-// miss force-load it (loadExtScript is idempotent) before resolving.
+// The streams, ImageBitmap, OffscreenCanvas, ImageData and the geometry
+// interfaces are defined in lazily loaded modules, which register the
+// streams', ImageBitmap's and OffscreenCanvas's transfer steps. A realm (e.g. a
+// worker) that receives one may not have loaded its module yet, so it is
+// loaded on demand (the loaders are idempotent).
+const loadImage = core.createLazyLoader("ext:ende_image/01_image.js");
+const loadCanvas = core.createLazyLoader("ext:ende_canvas/01_canvas.js");
+const loadImageData = () => core.loadExtScript("ext:ende_web/16_image_data.js");
+const loadGeometry = () => core.loadExtScript("ext:ende_web/17_geometry.js");
+
 function resolveTransferableResource(type) {
   let resource = core.getTransferableResource(type);
   if (resource === undefined) {
-    core.loadExtScript("ext:ende_web/06_streams.js");
+    switch (type) {
+      case "ReadableStream":
+      case "WritableStream":
+      case "TransformStream":
+        core.loadExtScript("ext:ende_web/06_streams.js");
+        break;
+      case "ImageBitmap":
+        loadImage();
+        break;
+      case "OffscreenCanvas":
+        loadCanvas();
+        break;
+    }
     resource = core.getTransferableResource(type);
   }
   return resource;
+}
+
+// The deserializers of the [Serializable] ones are registered here, not by
+// their modules, so that a realm can receive one before loading its module.
+{
+  const geometryTypes = [
+    "DOMMatrix",
+    "DOMMatrixReadOnly",
+    "DOMPoint",
+    "DOMPointReadOnly",
+    "DOMQuad",
+    "DOMRect",
+    "DOMRectReadOnly",
+  ];
+  for (let i = 0; i < geometryTypes.length; i++) {
+    core.registerCloneableResource(
+      geometryTypes[i],
+      (data) => loadGeometry().deserializeGeometry(data),
+    );
+  }
+  core.registerCloneableResource(
+    "ImageData",
+    (data) => loadImageData().deserializeImageData(data),
+  );
+  core.registerCloneableResource(
+    "ImageBitmap",
+    (data) => loadImage().deserializeImageBitmap(data),
+  );
 }
 
 function deserializeJsMessageData(messageData) {
@@ -932,6 +978,7 @@ function serializeJsMessageData(data, transferables) {
   // `data` don't run and nothing is transferred when the list is invalid.
   // https://html.spec.whatwg.org/multipage/structured-data.html#structuredserializewithtransfer
   const hostObjects = [];
+  const transferTypes = [];
   const transferredArrayBuffers = [];
   const seenTransferables = new SafeSet();
   for (let i = 0, j = 0; i < transferables.length; i++) {
@@ -955,10 +1002,14 @@ function serializeJsMessageData(data, transferables) {
       }
       j++;
       ArrayPrototypePush(transferredArrayBuffers, t);
-    } else if (t[core.hostObjectBrand]) {
-      ArrayPrototypePush(hostObjects, t);
+      transferTypes[i] = undefined;
     } else {
-      throw new DOMException("Value not transferable", "DataCloneError");
+      const type = getHostObjectTransferType(t);
+      if (type === undefined || !core.getTransferableResource(type)) {
+        throw new DOMException("Value not transferable", "DataCloneError");
+      }
+      ArrayPrototypePush(hostObjects, t);
+      transferTypes[i] = type;
     }
   }
 
@@ -975,8 +1026,8 @@ function serializeJsMessageData(data, transferables) {
   let arrayBufferI = 0;
   for (let i = 0; i < transferables.length; ++i) {
     const transferable = transferables[i];
-    if (transferable[core.hostObjectBrand]) {
-      const type = transferable[core.hostObjectBrand];
+    const type = transferTypes[i];
+    if (type !== undefined) {
       const rid = core.getTransferableResource(type).send(transferable);
       if (typeof rid === "number") {
         ArrayPrototypePush(serializedTransferables, {
@@ -1004,6 +1055,19 @@ function serializeJsMessageData(data, transferables) {
     data: serializedData,
     transferables: serializedTransferables,
   };
+}
+
+// The transfer type of a platform object: its host object brand, or, for a
+// [Serializable] one whose brand is a function, the type that function
+// returns.
+function getHostObjectTransferType(value) {
+  if (value === null || typeof value !== "object") return undefined;
+  const brand = value[core.hostObjectBrand];
+  if (typeof brand === "function") {
+    const data = FunctionPrototypeCall(brand, value);
+    return typeof data?.type === "string" ? data.type : undefined;
+  }
+  return typeof brand === "string" ? brand : undefined;
 }
 
 webidl.converters.StructuredSerializeOptions = webidl

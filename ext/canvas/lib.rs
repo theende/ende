@@ -11,7 +11,11 @@ mod canvas;
 ende_core::extension!(
   ende_canvas,
   deps = [ende_webidl, ende_web, ende_webgpu],
-  ops = [op_init_canvas],
+  ops = [
+    op_init_canvas,
+    canvas::op_offscreen_canvas_transfer,
+    canvas::op_offscreen_canvas_receive,
+  ],
   objects = [
     bitmaprenderer::ImageBitmapRenderingContext,
     canvas::OffscreenCanvas,

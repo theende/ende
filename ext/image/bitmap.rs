@@ -5,11 +5,18 @@ use std::cell::RefCell;
 use std::io::BufReader;
 use std::io::Cursor;
 
+use deno_error::JsErrorBox;
 use ende_core::GarbageCollected;
 use ende_core::JsBuffer;
+use ende_core::OpState;
+use ende_core::Resource;
+use ende_core::ResourceId;
+use ende_core::TransferredResource;
 use ende_core::op2;
 use ende_core::webidl::WebIdlInterfaceConverter;
+use image::ColorType;
 use image::DynamicImage;
+use image::ImageBuffer;
 use image::ImageDecoder;
 use image::RgbaImage;
 use image::codecs::bmp::BmpDecoder;
@@ -538,6 +545,166 @@ pub(super) fn op_create_image_bitmap(
 pub struct ImageBitmap {
   pub detached: OnceCell<()>,
   pub data: RefCell<DynamicImage>,
+}
+
+/// The image of a transferred ImageBitmap, moved out of the source.
+struct ImageBitmapTransferData(DynamicImage);
+
+impl Resource for ImageBitmapTransferData {
+  fn transfer(
+    self: std::rc::Rc<Self>,
+  ) -> Result<Box<dyn TransferredResource>, JsErrorBox> {
+    let data = std::rc::Rc::try_unwrap(self).map_err(|_| {
+      JsErrorBox::type_error("ImageBitmap is already being transferred")
+    })?;
+    Ok(Box::new(data))
+  }
+}
+
+impl TransferredResource for ImageBitmapTransferData {
+  fn receive(self: Box<Self>) -> std::rc::Rc<dyn Resource> {
+    std::rc::Rc::new(*self)
+  }
+}
+
+/// The color types an ImageBitmap's image can have, indexed by the number
+/// that op_image_bitmap_color_type returns and
+/// op_image_bitmap_from_clone_data takes. Cloning keeps the color type, so a
+/// 16-bit image stays 16-bit.
+const CLONE_COLOR_TYPES: [ColorType; 10] = [
+  ColorType::L8,
+  ColorType::La8,
+  ColorType::Rgb8,
+  ColorType::Rgba8,
+  ColorType::L16,
+  ColorType::La16,
+  ColorType::Rgb16,
+  ColorType::Rgba16,
+  ColorType::Rgb32F,
+  ColorType::Rgba32F,
+];
+
+#[op2(fast)]
+pub fn op_image_bitmap_color_type(
+  #[cppgc] bitmap: &ImageBitmap,
+) -> Result<u32, JsErrorBox> {
+  let color = bitmap.data.borrow().color();
+  CLONE_COLOR_TYPES
+    .iter()
+    .position(|c| *c == color)
+    .map(|i| i as u32)
+    .ok_or_else(|| {
+      JsErrorBox::type_error(format!(
+        "Cannot clone an ImageBitmap of {color:?}"
+      ))
+    })
+}
+
+/// Rebuilds an image from the color type and the bytes (`as_bytes()`, in
+/// native byte order) of a cloned ImageBitmap.
+fn image_from_clone_data(
+  width: u32,
+  height: u32,
+  color_type: u32,
+  data: &[u8],
+) -> Option<DynamicImage> {
+  fn u16s(data: &[u8]) -> Vec<u16> {
+    data
+      .chunks_exact(2)
+      .map(|c| u16::from_ne_bytes([c[0], c[1]]))
+      .collect()
+  }
+  fn f32s(data: &[u8]) -> Vec<f32> {
+    data
+      .chunks_exact(4)
+      .map(|c| f32::from_ne_bytes([c[0], c[1], c[2], c[3]]))
+      .collect()
+  }
+  let (w, h) = (width, height);
+  Some(match CLONE_COLOR_TYPES.get(color_type as usize)? {
+    ColorType::L8 => {
+      DynamicImage::ImageLuma8(ImageBuffer::from_raw(w, h, data.to_vec())?)
+    }
+    ColorType::La8 => {
+      DynamicImage::ImageLumaA8(ImageBuffer::from_raw(w, h, data.to_vec())?)
+    }
+    ColorType::Rgb8 => {
+      DynamicImage::ImageRgb8(ImageBuffer::from_raw(w, h, data.to_vec())?)
+    }
+    ColorType::Rgba8 => {
+      DynamicImage::ImageRgba8(ImageBuffer::from_raw(w, h, data.to_vec())?)
+    }
+    ColorType::L16 => {
+      DynamicImage::ImageLuma16(ImageBuffer::from_raw(w, h, u16s(data))?)
+    }
+    ColorType::La16 => {
+      DynamicImage::ImageLumaA16(ImageBuffer::from_raw(w, h, u16s(data))?)
+    }
+    ColorType::Rgb16 => {
+      DynamicImage::ImageRgb16(ImageBuffer::from_raw(w, h, u16s(data))?)
+    }
+    ColorType::Rgba16 => {
+      DynamicImage::ImageRgba16(ImageBuffer::from_raw(w, h, u16s(data))?)
+    }
+    ColorType::Rgb32F => {
+      DynamicImage::ImageRgb32F(ImageBuffer::from_raw(w, h, f32s(data))?)
+    }
+    ColorType::Rgba32F => {
+      DynamicImage::ImageRgba32F(ImageBuffer::from_raw(w, h, f32s(data))?)
+    }
+    _ => return None,
+  })
+}
+
+#[op2]
+#[cppgc]
+pub fn op_image_bitmap_from_clone_data(
+  width: u32,
+  height: u32,
+  color_type: u32,
+  #[buffer] data: JsBuffer,
+) -> Result<ImageBitmap, JsErrorBox> {
+  let image = image_from_clone_data(width, height, color_type, &data)
+    .ok_or_else(|| JsErrorBox::type_error("Invalid ImageBitmap data"))?;
+  Ok(ImageBitmap {
+    detached: OnceCell::new(),
+    data: RefCell::new(image),
+  })
+}
+
+#[op2(fast)]
+#[smi]
+pub fn op_image_bitmap_transfer(
+  state: &mut OpState,
+  #[cppgc] bitmap: &ImageBitmap,
+) -> Result<ResourceId, JsErrorBox> {
+  if bitmap.detached.get().is_some() {
+    return Err(JsErrorBox::type_error("ImageBitmap is detached"));
+  }
+  let _ = bitmap.detached.set(());
+  let image = bitmap
+    .data
+    .replace(DynamicImage::new(0, 0, ColorType::Rgba8));
+  Ok(state.resource_table.add(ImageBitmapTransferData(image)))
+}
+
+#[op2]
+#[cppgc]
+pub fn op_image_bitmap_receive(
+  state: &mut OpState,
+  #[smi] rid: ResourceId,
+) -> Result<ImageBitmap, JsErrorBox> {
+  let data = state
+    .resource_table
+    .take::<ImageBitmapTransferData>(rid)
+    .map_err(JsErrorBox::from_err)?;
+  let data = std::rc::Rc::try_unwrap(data).map_err(|_| {
+    JsErrorBox::type_error("ImageBitmap transfer is unavailable")
+  })?;
+  Ok(ImageBitmap {
+    detached: OnceCell::new(),
+    data: RefCell::new(data.0),
+  })
 }
 
 // SAFETY: we're sure this can be GCed

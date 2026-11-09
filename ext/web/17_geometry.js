@@ -17,7 +17,9 @@ const {
 const {
   ObjectDefineProperty,
   ObjectPrototypeIsPrototypeOf,
+  ReflectApply,
   SymbolFor,
+  TypeError,
 } = primordials;
 
 const webidl = core.loadExtScript("ext:ende_webidl/00_webidl.js");
@@ -55,6 +57,7 @@ webidl.configureInterface(DOMPointReadOnly);
 
 const DOMRectPrototype = DOMRect.prototype;
 const DOMRectReadOnlyPrototype = DOMRectReadOnly.prototype;
+
 ObjectDefineProperty(
   DOMRectReadOnlyPrototype,
   SymbolFor("Deno.privateCustomInspect"),
@@ -151,6 +154,81 @@ ObjectDefineProperty(
   },
 );
 
+// The geometry interfaces are [Serializable]: structuredClone and postMessage
+// copy them. The value is serialized as its toJSON() result (using the
+// prototype's toJSON, so an own `toJSON` can't change it), and
+// deserializeGeometry rebuilds an object of the same interface.
+const geometryCloneTypes = [
+  [DOMPointReadOnlyPrototype, "DOMPointReadOnly"],
+  [DOMPointPrototype, "DOMPoint"],
+  [DOMRectReadOnlyPrototype, "DOMRectReadOnly"],
+  [DOMRectPrototype, "DOMRect"],
+  [DOMQuadPrototype, "DOMQuad"],
+  [DOMMatrixReadOnlyPrototype, "DOMMatrixReadOnly"],
+  [DOMMatrixPrototype, "DOMMatrix"],
+];
+
+for (let i = 0; i < geometryCloneTypes.length; i++) {
+  const { 0: prototype, 1: type } = geometryCloneTypes[i];
+  const toJSON = prototype.toJSON;
+  ObjectDefineProperty(prototype, core.hostObjectBrand, {
+    __proto__: null,
+    value: function () {
+      return { type, value: ReflectApply(toJSON, this, []) };
+    },
+  });
+}
+
+function newPoint(Constructor, p) {
+  return new Constructor(p.x, p.y, p.z, p.w);
+}
+
+function deserializeGeometry(data) {
+  const { type, value } = data;
+  switch (type) {
+    case "DOMPointReadOnly":
+      return newPoint(DOMPointReadOnly, value);
+    case "DOMPoint":
+      return newPoint(DOMPoint, value);
+    case "DOMRectReadOnly":
+      return new DOMRectReadOnly(value.x, value.y, value.width, value.height);
+    case "DOMRect":
+      return new DOMRect(value.x, value.y, value.width, value.height);
+    case "DOMQuad":
+      return new DOMQuad(
+        newPoint(DOMPoint, value.p1),
+        newPoint(DOMPoint, value.p2),
+        newPoint(DOMPoint, value.p3),
+        newPoint(DOMPoint, value.p4),
+      );
+    case "DOMMatrixReadOnly":
+    case "DOMMatrix": {
+      const Constructor = type === "DOMMatrix" ? DOMMatrix : DOMMatrixReadOnly;
+      return new Constructor(
+        value.is2D ? [value.a, value.b, value.c, value.d, value.e, value.f] : [
+          value.m11,
+          value.m12,
+          value.m13,
+          value.m14,
+          value.m21,
+          value.m22,
+          value.m23,
+          value.m24,
+          value.m31,
+          value.m32,
+          value.m33,
+          value.m34,
+          value.m41,
+          value.m42,
+          value.m43,
+          value.m44,
+        ],
+      );
+    }
+  }
+  throw new TypeError(`Unknown geometry type: ${type}`);
+}
+
 if (op_geometry_get_enable_css_parser_features()) {
   // https://drafts.csswg.org/geometry/#dommatrixreadonly-stringification-behavior
   ObjectDefineProperty(DOMMatrixReadOnlyPrototype, "toString", {
@@ -196,5 +274,6 @@ return {
   DOMRectPrototype,
   DOMRectReadOnly,
   DOMRectReadOnlyPrototype,
+  deserializeGeometry,
 };
 })();

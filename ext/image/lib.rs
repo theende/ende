@@ -44,7 +44,13 @@ impl ImageError {
 ende_core::extension!(
   ende_image,
   deps = [ende_webidl, ende_web, ende_webgpu],
-  ops = [bitmap::op_create_image_bitmap],
+  ops = [
+    bitmap::op_create_image_bitmap,
+    bitmap::op_image_bitmap_color_type,
+    bitmap::op_image_bitmap_from_clone_data,
+    bitmap::op_image_bitmap_transfer,
+    bitmap::op_image_bitmap_receive,
+  ],
   objects = [bitmap::ImageBitmap],
   lazy_loaded_esm = ["01_image.js"],
 );
