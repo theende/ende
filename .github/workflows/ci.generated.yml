@@ -1408,6 +1408,33 @@ jobs:
           key: '130-cargo-target-windows-x86_64-debug-windows-tests-${{ github.sha }}-${{ github.run_id }}'
       - name: Test libs
         run: cargo test --locked --lib -p ende -p endert_desktop -p ende_os -p ende_fs -p ende_io -p ende_ffi -p ende_runtime -p ende_permissions -p ende_config -p ende_resolver -p eszip --no-fail-fast
+      - name: Test unit (command_test)
+        if: '!cancelled() && steps.build.outcome == ''success'''
+        run: cargo test --locked -p unit_tests --test unit command_test
+      - name: Test unit (os_test)
+        if: '!cancelled() && steps.build.outcome == ''success'''
+        run: cargo test --locked -p unit_tests --test unit os_test
+      - name: Test unit (path_from_url_test)
+        if: '!cancelled() && steps.build.outcome == ''success'''
+        run: cargo test --locked -p unit_tests --test unit path_from_url_test
+      - name: Test unit (process_test)
+        if: '!cancelled() && steps.build.outcome == ''success'''
+        run: cargo test --locked -p unit_tests --test unit process_test
+      - name: Test unit (rename_test)
+        if: '!cancelled() && steps.build.outcome == ''success'''
+        run: cargo test --locked -p unit_tests --test unit rename_test
+      - name: Test unit (serve_test)
+        if: '!cancelled() && steps.build.outcome == ''success'''
+        run: cargo test --locked -p unit_tests --test unit serve_test
+      - name: Test unit (signal_test)
+        if: '!cancelled() && steps.build.outcome == ''success'''
+        run: cargo test --locked -p unit_tests --test unit signal_test
+      - name: Test unit (stat_test)
+        if: '!cancelled() && steps.build.outcome == ''success'''
+        run: cargo test --locked -p unit_tests --test unit stat_test
+      - name: Test unit (symlink_test)
+        if: '!cancelled() && steps.build.outcome == ''success'''
+        run: cargo test --locked -p unit_tests --test unit symlink_test
       - name: Test unit (utime_test)
         if: '!cancelled() && steps.build.outcome == ''success'''
         run: cargo test --locked -p unit_tests --test unit utime_test

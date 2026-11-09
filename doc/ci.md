@@ -65,16 +65,47 @@ build job's critical path.
   since lean CI builds nothing else there: `cargo test --lib --no-fail-fast` for
   the crates in `windowsTestLibCrates` (in `ci.ts`; they have `cfg(windows)`
   tests, or Windows code their tests exercise; every crate reports even when an
-  earlier one fails), then the `tests/unit` files in `windowsUnitTests` (unit
-  tests that ignore every other OS) against a debug `ende` it builds. It builds
-  everything first and saves its cache before running the tests, so a failing
-  test doesn't make the next run build cold. When a crate or unit test file
-  gains a Windows-only test, add it to those lists.
+  earlier one fails), then the `tests/unit` files in `windowsUnitTests` (files
+  with tests that ignore every other OS) against a debug `ende` it builds. Each
+  unit file runs whole, in a step of its own that runs even when an earlier step
+  failed, so every file reports. It builds everything first and saves its cache
+  before running the tests, so a failing test doesn't make the next run build
+  cold. When a crate or unit test file gains a Windows-only test, add it to
+  those lists.
 - **`ci-status`** — an aggregator that the branch protection rule keys on. It
   passes as long as none of its dependencies failed or were cancelled; skipped
   dependencies are fine.
 - Full matrix only: **`bench`**, **`wpt`**, **`ende-core-test`** and
   **`ende-core-miri`**.
+
+### `windows tests`: the unit files' first run
+
+`command`, `os`, `path_from_url`, `process`, `rename`, `serve`, `signal`, `stat`
+and `symlink` joined `utime` in `windowsUnitTests` on 2026-11-09 and hadn't run
+on Windows in Ende before. Upstream Deno runs these files on `windows-2022` with
+nothing beyond `core.symlinks` (which `cloneRepoStep` sets too); the runner's
+user is an administrator, so `symlink_test` can create symlinks. What to look at
+on the first run:
+
+- The Ende-only `serve_test` cases (not in upstream): backpressure
+  (`httpServerBackpressureWhileResponsePending`, `...WhileStreamingResponse`:
+  writes must stall before 64 MiB), early responses with an unread body
+  (`httpServerEarlyResponseEndsWithEofWhileClientUploads` expects EOF, not a
+  reset; `httpServerClosesConnectionAfterEarlyResponseWithoutDrainingBody`),
+  `httpServerResponseConnectionClose`, the finite-body shutdown cases and the
+  `completed` rejection cases. Windows TCP resets and buffering differ from
+  macOS and Linux.
+- `os_test` `envCaseInsensitive` and `command_test` `envCaseInsensitiveWindows`
+  exercise Ende's case-insensitive env key handling for child processes.
+- `command_test` `commandWindowsRawArguments` runs `ende --version` through
+  `cmd`, from the `PATH` the harness puts `target/debug` on (it ran `deno` until
+  2026-11-09).
+- Time: these files add nine steps, each starting the harness and `test_server`,
+  to a job with a 120-minute timeout. `serve_test` is the longest.
+
+A failure here is a real Windows bug or a test that never ran on Windows: fix
+it, or give the test a tracked `ignore` with a reason, rather than dropping the
+file from the list.
 
 ## How `pre-build` gates the rest
 

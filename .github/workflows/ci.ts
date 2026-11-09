@@ -1348,8 +1348,18 @@ const windowsTestLibCrates = [
   "ende_resolver", // file URL segments with drive letters
   "eszip", // relative base on another drive
 ];
-// tests/unit files whose Windows-only tests have no other home.
+// tests/unit files whose Windows-only tests have no other home. Each file runs
+// whole, in a step of its own, so every file reports.
 const windowsUnitTests = [
+  "command_test", // .bat/.cmd argument escaping, raw arguments, env key case
+  "os_test", // case-insensitive env vars in child processes
+  "path_from_url_test", // drive-letter file URLs
+  "process_test", // kill() pid and signal validation
+  "rename_test", // Windows rename errors
+  "serve_test", // unix socket listen rejected
+  "signal_test", // unsupported signals, kill() pid validation
+  "stat_test", // stat fields that are null on Windows
+  "symlink_test", // junctions
   "utime_test", // read-only files (ende_fs, denoland/deno#37078)
 ];
 const windowsTestProfile = defineExprObj({
