@@ -985,6 +985,7 @@ pub async fn run_with_options(
       options.auto_update_version.as_deref(),
       options.auto_update_rolled_back,
       options.release_base_url.as_deref(),
+      cfg!(unix),
     );
     worker
       .js_runtime()

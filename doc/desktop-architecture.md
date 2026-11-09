@@ -311,7 +311,8 @@ dir so its watcher sees real files.
   bytes through the runtime's `FileSystem`. The raw backend has no page and
   rejects with `NotSupported`.
 - **Auto-update** (`apply_pending_update`, `UpdateLaunch` in
-  `cli/rt_desktop/lib.rs`; unix only): `op_desktop_apply_patch` stages
+  `cli/rt_desktop/lib.rs`; unix only, and on Windows `Ende.autoUpdate` logs
+  that it isn't supported yet): `op_desktop_apply_patch` stages
   `<dylib>.update`. The first thing `runtime_main` does is check the files
   beside the dylib. A staged update is swapped in, with the old dylib kept as
   `.backup`. The swap can't change the code already loaded, so libendert then

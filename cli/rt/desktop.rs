@@ -1055,11 +1055,13 @@ pub const DESKTOP_CONFIRM_UPDATE_JS: &str = r#"if (!Ende[Ende.internal].desktopE
 }"#;
 
 /// JS code that initializes auto-update APIs. Executed separately so
-/// version and rollback state can be baked in as literals.
+/// version and rollback state can be baked in as literals. `supported` is
+/// false where the runtime can't apply updates (Windows).
 pub fn desktop_auto_update_js(
   version: Option<&str>,
   rolled_back: bool,
   release_base_url: Option<&str>,
+  supported: bool,
 ) -> String {
   format!(
     r#"(() => {{
@@ -1072,6 +1074,7 @@ pub fn desktop_auto_update_js(
   const _version = {version};
   const _rolledBack = {rolled_back};
   const _releaseBaseUrl = {release_base_url};
+  const _supported = {supported};
 
   const ROLLBACK_REASON = "Update failed to start, rolled back.";
 
@@ -1106,6 +1109,12 @@ pub fn desktop_auto_update_js(
       }});
     }}
 
+    if (!_supported) {{
+      console.warn(
+        "Ende.autoUpdate: auto-update isn't supported on Windows yet, skipping",
+      );
+      return;
+    }}
     if (!_version) {{
       console.warn("Ende.autoUpdate: no version in ende.json, skipping");
       return;
@@ -1247,6 +1256,7 @@ pub fn desktop_auto_update_js(
     version = serde_json::to_string(&version).unwrap(),
     rolled_back = if rolled_back { "true" } else { "false" },
     release_base_url = serde_json::to_string(&release_base_url).unwrap(),
+    supported = if supported { "true" } else { "false" },
   )
 }
 
@@ -1565,7 +1575,7 @@ mod tests {
 
   #[test]
   fn auto_update_js_inlines_version_as_json_literal() {
-    let js = desktop_auto_update_js(Some("1.2.3"), false, None);
+    let js = desktop_auto_update_js(Some("1.2.3"), false, None, true);
     // The version must be a JSON-quoted string, not a bare identifier:
     // we feed it through serde_json::to_string. A regression that
     // dropped the quoting would produce invalid JS for any non-trivial
@@ -1583,7 +1593,7 @@ mod tests {
 
   #[test]
   fn auto_update_js_needs_the_patched_library_hash() {
-    let js = desktop_auto_update_js(Some("1.0.0"), false, None);
+    let js = desktop_auto_update_js(Some("1.0.0"), false, None, true);
     assert!(js.contains("patchEntry?.targetSha256"));
     assert!(js.contains("must include targetSha256"));
     assert!(js.contains(
@@ -1603,7 +1613,7 @@ mod tests {
 
   #[test]
   fn auto_update_js_serializes_none_as_null_literal() {
-    let js = desktop_auto_update_js(None, true, None);
+    let js = desktop_auto_update_js(None, true, None, true);
     assert!(js.contains("const _version = null"));
     assert!(js.contains("const _rolledBack = true"));
     assert!(js.contains("const _releaseBaseUrl = null"));
@@ -1617,6 +1627,7 @@ mod tests {
       Some("1.0.0"),
       false,
       Some("https://releases.example/app"),
+      true,
     );
     assert!(
       js.contains(r#"const _releaseBaseUrl = "https://releases.example/app""#),
@@ -1626,11 +1637,36 @@ mod tests {
   }
 
   #[test]
+  fn auto_update_js_says_when_the_platform_has_no_auto_update() {
+    // Windows has no auto-update; an app there has no version to offer
+    // either, so saying "no version in ende.json" would send its developer
+    // looking in the wrong place.
+    let js = desktop_auto_update_js(None, false, None, false);
+    assert!(js.contains("const _supported = false"));
+    let check = js.find("if (!_supported)").expect("no platform check");
+    assert!(
+      js[check..]
+        .trim_start_matches("if (!_supported) {")
+        .trim_start()
+        .starts_with("console.warn(")
+    );
+    let message = js
+      .find("auto-update isn't supported on Windows yet")
+      .expect("no unsupported message");
+    assert!(check < message);
+    assert!(message < js.find("no version in ende.json").unwrap());
+    // The rollback report comes first, as on other platforms.
+    assert!(js.find("onRollback(ROLLBACK_REASON)").unwrap() < check);
+    let js = desktop_auto_update_js(Some("1.0.0"), false, None, true);
+    assert!(js.contains("const _supported = true"));
+  }
+
+  #[test]
   fn auto_update_js_blocks_non_https_manifest_url() {
     // Anti-downgrade defence: the auto-update path must refuse to
     // fetch its manifest over http://, gopher://, file://, etc. A
     // change that loosened this check is a security regression.
-    let js = desktop_auto_update_js(Some("1.0.0"), false, None);
+    let js = desktop_auto_update_js(Some("1.0.0"), false, None, true);
     assert!(js.contains("isHttpsUrl"));
     assert!(js.contains("https:"));
   }
@@ -1668,7 +1704,12 @@ mod tests {
     let scripts = [
       DESKTOP_JS.to_string(),
       desktop_error_reporting_js(Some("https://err.example/r"), Some("1.0.0")),
-      desktop_auto_update_js(Some("1.0.0"), false, Some("https://e.example")),
+      desktop_auto_update_js(
+        Some("1.0.0"),
+        false,
+        Some("https://e.example"),
+        true,
+      ),
     ];
     let mut used = std::collections::BTreeSet::new();
     for script in &scripts {
