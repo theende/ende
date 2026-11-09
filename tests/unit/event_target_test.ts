@@ -458,3 +458,61 @@ Deno.test(function eventHandlerSetToNullRemovesListener() {
   signal.dispatchEvent(new Event("abort"));
   assertEquals(calls, ["listener", "listener", "second handler"]);
 });
+
+// The event handler attributes of every EventTarget interface (`onabort`,
+// `onmessage`, ...) reject a receiver that doesn't implement the interface:
+// a plain object, another EventTarget, or one only inheriting the prototype.
+Deno.test(function eventHandlersCheckReceiver() {
+  const accepted: string[] = [];
+  let checked = 0;
+  for (const name of Object.getOwnPropertyNames(globalThis)) {
+    if (!/^[A-Z]/.test(name)) continue;
+    // deno-lint-ignore no-explicit-any
+    const value = (globalThis as any)[name];
+    if (typeof value !== "function" || typeof value.prototype !== "object") {
+      continue;
+    }
+    const proto = value.prototype;
+    for (const key of Object.getOwnPropertyNames(proto)) {
+      const desc = Object.getOwnPropertyDescriptor(proto, key)!;
+      if (!key.startsWith("on") || !desc.get || !desc.set) continue;
+      for (
+        const receiver of [{}, new EventTarget(), Object.create(proto)]
+      ) {
+        for (
+          const call of [
+            () => desc.get!.call(receiver),
+            () => desc.set!.call(receiver, () => {}),
+          ]
+        ) {
+          checked++;
+          try {
+            call();
+            accepted.push(`${name}.${key}`);
+          } catch (error) {
+            assertEquals((error as Error).name, "TypeError", `${name}.${key}`);
+          }
+        }
+      }
+    }
+  }
+  assertEquals(accepted, []);
+  // AbortSignal, BroadcastChannel, EventSource, FileReader, MessagePort,
+  // WebSocket, Worker, ... are all covered.
+  assertEquals(checked > 100, true);
+});
+
+Deno.test(function eventHandlersStillWorkOnInstances() {
+  const controller = new AbortController();
+  let calls = 0;
+  controller.signal.onabort = () => calls++;
+  assertEquals(typeof controller.signal.onabort, "function");
+  controller.abort();
+  assertEquals(calls, 1);
+  const channel = new BroadcastChannel("event_target_test");
+  channel.onmessage = () => {};
+  assertEquals(typeof channel.onmessage, "function");
+  channel.onmessage = null;
+  assertEquals(channel.onmessage, null);
+  channel.close();
+});

@@ -1653,6 +1653,20 @@ function makeWrappedHandler(handler, isSpecialErrorEventHandler) {
 // the property is set as its argument.
 // `isSpecialErrorEventHandler` can be set to true to opt into the special
 // behavior of event handlers for the "error" event in a global scope.
+// The receiver of an event handler IDL attribute's getter or setter. Like any
+// Web IDL attribute, one of the global object uses the global object for a
+// nullish receiver and rejects any receiver but the global object; one of an
+// interface rejects a receiver that doesn't implement it.
+function eventHandlerReceiver(emitter, receiver) {
+  if (emitter === globalThis) {
+    if (receiver === undefined || receiver === null) return globalThis;
+    if (receiver !== globalThis) throw new TypeError("Illegal invocation");
+    return receiver;
+  }
+  webidl.assertBranded(receiver, emitter);
+  return receiver;
+}
+
 function defineEventHandler(
   emitter,
   name,
@@ -1663,13 +1677,15 @@ function defineEventHandler(
   ObjectDefineProperty(emitter, `on${name}`, {
     __proto__: null,
     get() {
-      if (!this[_eventHandlers]) {
+      const self = eventHandlerReceiver(emitter, this);
+      if (!self[_eventHandlers]) {
         return null;
       }
 
-      return MapPrototypeGet(this[_eventHandlers], name)?.handler ?? null;
+      return MapPrototypeGet(self[_eventHandlers], name)?.handler ?? null;
     },
     set(value) {
+      const self = eventHandlerReceiver(emitter, this);
       // All three Web IDL event handler types are nullable callback functions
       // with the [LegacyTreatNonObjectAsNull] extended attribute, meaning
       // anything other than an object is treated as null.
@@ -1677,16 +1693,16 @@ function defineEventHandler(
         value = null;
       }
 
-      if (!this[_eventHandlers]) {
-        this[_eventHandlers] = new SafeMap();
+      if (!self[_eventHandlers]) {
+        self[_eventHandlers] = new SafeMap();
       }
-      let handlerWrapper = MapPrototypeGet(this[_eventHandlers], name);
+      let handlerWrapper = MapPrototypeGet(self[_eventHandlers], name);
       if (value === null) {
         // Deactivate the event handler: remove its listener, so a later
         // value gets a new listener at the end of the list.
         if (handlerWrapper) {
-          this.removeEventListener(name, handlerWrapper);
-          MapPrototypeDelete(this[_eventHandlers], name);
+          self.removeEventListener(name, handlerWrapper);
+          MapPrototypeDelete(self[_eventHandlers], name);
         }
       } else if (handlerWrapper) {
         handlerWrapper.handler = value;
@@ -1695,9 +1711,9 @@ function defineEventHandler(
           value,
           isSpecialErrorEventHandler,
         );
-        this.addEventListener(name, handlerWrapper);
-        init?.(this);
-        MapPrototypeSet(this[_eventHandlers], name, handlerWrapper);
+        self.addEventListener(name, handlerWrapper);
+        init?.(self);
+        MapPrototypeSet(self[_eventHandlers], name, handlerWrapper);
       }
     },
     configurable: true,

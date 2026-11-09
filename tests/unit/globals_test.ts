@@ -130,6 +130,84 @@ Deno.test(async function globalGettersCheckReceiverInWorker() {
   worker.terminate();
 });
 
+// The event handler attributes of the global object (`onerror`, `onload`,
+// ...) check their receiver like its other attributes do. For each one: what
+// its getter and setter do with foreign receivers, and whether a nullish
+// receiver means the global object.
+function globalEventHandlerReceivers() {
+  const results: Record<string, string[]> = {};
+  for (const name of Object.getOwnPropertyNames(globalThis)) {
+    const desc = Object.getOwnPropertyDescriptor(globalThis, name)!;
+    if (!name.startsWith("on") || !desc.get || !desc.set) continue;
+    results[name] = [];
+    for (const receiver of [{}, 0, Object.create(globalThis)]) {
+      for (
+        const call of [
+          () => desc.get!.call(receiver),
+          () => desc.set!.call(receiver, null),
+        ]
+      ) {
+        try {
+          call();
+          results[name].push("returned");
+        } catch (error) {
+          results[name].push((error as Error).name);
+        }
+      }
+    }
+    const handler = () => {};
+    desc.set.call(undefined, handler);
+    // deno-lint-ignore no-explicit-any
+    const viaGlobal = (globalThis as any)[name] === handler;
+    const viaNull = desc.get.call(null) === handler;
+    desc.set.call(null, null);
+    results[name].push(`nullish: ${viaGlobal && viaNull}`);
+  }
+  return results;
+}
+
+function expectedEventHandlerReceivers(names: string[]) {
+  return Object.fromEntries(
+    names.map((name) => [name, [
+      ...Array(6).fill("TypeError"),
+      "nullish: true",
+    ]]),
+  );
+}
+
+Deno.test(function globalEventHandlersCheckReceiver() {
+  assertEquals(
+    globalEventHandlerReceivers(),
+    expectedEventHandlerReceivers([
+      "onbeforeunload",
+      "onerror",
+      "onload",
+      "onunhandledrejection",
+      "onunload",
+    ]),
+  );
+});
+
+Deno.test(async function globalEventHandlersCheckReceiverInWorker() {
+  const source = `${globalEventHandlerReceivers.toString()}
+    postMessage(globalEventHandlerReceivers());`;
+  const worker = new Worker(
+    `data:application/javascript,${encodeURIComponent(source)}`,
+    { type: "module" },
+  );
+  const { promise, resolve } = Promise.withResolvers<unknown>();
+  worker.onmessage = (e) => resolve(e.data);
+  assertEquals(
+    await promise,
+    expectedEventHandlerReceivers([
+      "onerror",
+      "onmessage",
+      "onunhandledrejection",
+    ]),
+  );
+  worker.terminate();
+});
+
 // https://webidl.spec.whatwg.org/#interface-prototype-object
 function toStringTagDescriptors(names: string[]) {
   return names.map((name) => [
