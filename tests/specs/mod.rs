@@ -612,18 +612,19 @@ fn run_step(
       if substs.is_empty() {
         command.args_vec(args)
       } else {
-        let mut args_replaced = args.clone();
-        for arg in args {
-          for (from, to) in &substs {
-            let arg_replaced = arg.replace(from, to);
-            if arg_replaced.is_empty() && &arg_replaced != arg {
-              continue;
+        // an arg that a variant turns into an empty string is dropped
+        let args_replaced = args
+          .iter()
+          .filter_map(|arg| {
+            let arg_replaced = apply_substs(arg, &substs);
+            if arg_replaced.is_empty() && arg_replaced != arg.as_str() {
+              None
+            } else {
+              Some(arg_replaced.into_owned())
             }
-            args_replaced.push(arg_replaced);
-          }
-        }
-
-        command.args_vec(args)
+          })
+          .collect::<Vec<_>>();
+        command.args_vec(args_replaced)
       }
     }
     VecOrString::String(text) => {

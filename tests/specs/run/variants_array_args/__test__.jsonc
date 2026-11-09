@@ -1,0 +1,16 @@
+{
+  // Variants are substituted into array args too, and an arg that ends up
+  // empty is dropped (as an env var is).
+  "variants": {
+    "word": {
+      "arg": "word",
+      "out": "word"
+    },
+    "empty": {
+      "arg": "",
+      "out": "empty"
+    }
+  },
+  "args": ["run", "main.ts", "${arg}", "last"],
+  "output": "${out}.out"
+}
