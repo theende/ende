@@ -2177,7 +2177,7 @@ fn runtime_main() {
 
   endert::init_logging(None, None);
 
-  ende_runtime::ende_permissions::mark_standalone();
+  ende_runtime::ende_permissions::mark_desktop();
 
   rustls::crypto::aws_lc_rs::default_provider()
     .install_default()
@@ -2215,7 +2215,7 @@ fn runtime_main() {
   // loader thread: `set_default_webview2_user_data_folder` calls `setenv`,
   // which is only safe before the runtime spins up its IO thread (and,
   // optionally, the inspector server thread). The init calls above
-  // (init_logging, mark_standalone, rustls install_default,
+  // (init_logging, mark_desktop, rustls install_default,
   // set_js_namespace) don't spawn threads. The runtime itself moves to a
   // dedicated thread with a real stack; the loader thread just parks in
   // `join` (inside `run_on_runtime_thread`) until the app exits.

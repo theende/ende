@@ -546,9 +546,9 @@ impl PermissionPrompter for TtyPrompter {
         ))
       );
       writeln!(&mut output, "┠─ {}", colors::italic(&msg)).unwrap();
-      let msg = if crate::is_standalone() {
+      let msg = if let Some(subcommand) = crate::standalone_subcommand() {
         format!(
-          "Specify the required permissions during compile time using `ende compile --allow-{name}`."
+          "Specify the required permissions during compile time using `ende {subcommand} --allow-{name}`."
         )
       } else {
         format!("Run again with --allow-{name} to bypass this prompt.")

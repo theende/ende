@@ -77,12 +77,17 @@ pub struct PermissionDeniedError {
 }
 
 fn format_permission_error(name: &'static str) -> String {
-  if is_standalone() {
-    format!(
-      "specify the required permissions during compilation using `ende compile --allow-{name}`"
-    )
-  } else {
-    format!("run again with the --allow-{name} flag")
+  permission_flag_hint(name, standalone_subcommand())
+}
+
+/// What a permission error tells the user to do: run again with the flag, or,
+/// in a standalone app, build it again with the flag using `subcommand`.
+fn permission_flag_hint(name: &str, subcommand: Option<&str>) -> String {
+  match subcommand {
+    Some(subcommand) => format!(
+      "specify the required permissions during compilation using `ende {subcommand} --allow-{name}`"
+    ),
+    None => format!("run again with the --allow-{name} flag"),
   }
 }
 
@@ -6044,13 +6049,31 @@ pub trait PermissionDescriptorParser: Debug + Send + Sync {
 }
 
 static IS_STANDALONE: AtomicFlag = AtomicFlag::lowered();
+static IS_DESKTOP: AtomicFlag = AtomicFlag::lowered();
 
 pub fn mark_standalone() {
   IS_STANDALONE.raise();
 }
 
+/// Marks the process as a standalone desktop app (built by `ende desktop`),
+/// which [`mark_standalone`] implies.
+pub fn mark_desktop() {
+  IS_STANDALONE.raise();
+  IS_DESKTOP.raise();
+}
+
 pub fn is_standalone() -> bool {
   IS_STANDALONE.is_raised()
+}
+
+/// The `ende` subcommand that built the running standalone app, if this is
+/// one.
+pub(crate) fn standalone_subcommand() -> Option<&'static str> {
+  if IS_DESKTOP.is_raised() {
+    Some("desktop")
+  } else {
+    is_standalone().then_some("compile")
+  }
 }
 
 /// Whether `host` is a subdomain of `localhost`, such as `app.localhost`.
@@ -6075,6 +6098,22 @@ mod tests {
 
   use super::*;
   use crate::prompter::set_prompter;
+
+  #[test]
+  fn permission_errors_name_the_subcommand_that_built_the_app() {
+    assert_eq!(
+      permission_flag_hint("env", None),
+      "run again with the --allow-env flag"
+    );
+    assert_eq!(
+      permission_flag_hint("env", Some("compile")),
+      "specify the required permissions during compilation using `ende compile --allow-env`"
+    );
+    assert_eq!(
+      permission_flag_hint("write", Some("desktop")),
+      "specify the required permissions during compilation using `ende desktop --allow-write`"
+    );
+  }
 
   // Creates vector of strings, Vec<String>
   macro_rules! svec {
