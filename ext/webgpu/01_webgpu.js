@@ -545,7 +545,7 @@ ObjectDefineProperty(GPUSamplerPrototype, privateCustomInspect, {
 });
 
 const GPUBindGroupLayoutPrototype = GPUBindGroupLayout.prototype;
-ObjectDefineProperty(GPUBindGroupLayout, privateCustomInspect, {
+ObjectDefineProperty(GPUBindGroupLayoutPrototype, privateCustomInspect, {
   __proto__: null,
   value(inspect, inspectOptions) {
     return inspect(
@@ -618,7 +618,8 @@ ObjectDefineProperty(GPUShaderModulePrototype, privateCustomInspect, {
   },
 });
 
-ObjectDefineProperty(GPUCompilationInfo, privateCustomInspect, {
+const GPUCompilationInfoPrototype = GPUCompilationInfo.prototype;
+ObjectDefineProperty(GPUCompilationInfoPrototype, privateCustomInspect, {
   __proto__: null,
   value(inspect, inspectOptions) {
     return inspect(
@@ -636,9 +637,9 @@ ObjectDefineProperty(GPUCompilationInfo, privateCustomInspect, {
     );
   },
 });
-const GPUCompilationInfoPrototype = GPUCompilationInfo.prototype;
 
-ObjectDefineProperty(GPUCompilationMessage, privateCustomInspect, {
+const GPUCompilationMessagePrototype = GPUCompilationMessage.prototype;
+ObjectDefineProperty(GPUCompilationMessagePrototype, privateCustomInspect, {
   __proto__: null,
   value(inspect, inspectOptions) {
     return inspect(
@@ -651,8 +652,8 @@ ObjectDefineProperty(GPUCompilationMessage, privateCustomInspect, {
         keys: [
           "message",
           "type",
-          "line_num",
-          "line_pos",
+          "lineNum",
+          "linePos",
           "offset",
           "length",
         ],
@@ -661,7 +662,6 @@ ObjectDefineProperty(GPUCompilationMessage, privateCustomInspect, {
     );
   },
 });
-const GPUCompilationMessagePrototype = GPUCompilationMessage.prototype;
 
 class GPUShaderStage {
   constructor() {

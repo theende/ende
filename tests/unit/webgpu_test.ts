@@ -1296,6 +1296,41 @@ Deno.test({
   device.destroy();
 });
 
+// The inspect hooks must be on the prototype, where instances find them.
+Deno.test(function webgpuInspectHooksAreOnThePrototypes() {
+  for (
+    const [constructor, keys] of [
+      [GPUBindGroupLayout, ["label"]],
+      [GPUCompilationInfo, ["messages"]],
+      [
+        GPUCompilationMessage,
+        ["message", "type", "lineNum", "linePos", "offset", "length"],
+      ],
+    ] as const
+  ) {
+    const actual = Deno.inspect(Object.create(constructor.prototype));
+    for (const key of keys) {
+      assert(actual.includes(`${key}: [Getter`), `${actual} lacks ${key}`);
+    }
+  }
+});
+
+Deno.test({
+  ignore: isWsl || isCIWithoutGPU,
+}, async function webgpuInspectCompilationInfo() {
+  const adapter = await navigator.gpu.requestAdapter();
+  assert(adapter);
+  const device = await adapter.requestDevice();
+  const module = device.createShaderModule({ code: "not wgsl" });
+  const info = await module.getCompilationInfo();
+  const actual = Deno.inspect(info, { depth: 4 });
+  assert(actual.startsWith("GPUCompilationInfo {"), actual);
+  assert(actual.includes("GPUCompilationMessage {"), actual);
+  assert(actual.includes('type: "error"'), actual);
+  assert(/lineNum: \d+/.test(actual), actual);
+  device.destroy();
+});
+
 async function checkIsWsl() {
   return Deno.build.os === "linux" && await hasMicrosoftProcVersion();
 
