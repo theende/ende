@@ -294,7 +294,8 @@ dir so its watcher sees real files.
 - **Hidden windows** (`hidden_by_app` in `cli/rt_desktop/lib.rs`): a window the
   app hid (`{ visible: false }`, `hide()`) is recorded so neither the initial
   window's first-load reveal nor the 10 s navigate fallback shows it; `show()`
-  clears it. laufey 0.7.0's CEF backend ignores the `hidden` creation flag, so
+  clears it. The fallback only shows an initial window whose first load never
+  finished. laufey 0.7.0's CEF backend ignores the `hidden` creation flag, so
   libendert also hides such windows explicitly (CEF can flash them).
 - **Initial window** (`create_initial_window`): its size and creation-time style
   come from ende.json `desktop.initialWindow`, baked into the metadata

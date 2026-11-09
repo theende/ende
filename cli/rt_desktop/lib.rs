@@ -321,10 +321,12 @@ struct WefDesktopApi {
 impl WefDesktopApi {
   /// Set up all event handlers on a newly created window, wiring events
   /// into the shared event channel.
+  /// `loaded` is set once the window's first page load has finished.
   fn setup_window_events(
     &self,
     window: laufey::Window,
     show_on_first_load: bool,
+    loaded: Arc<std::sync::atomic::AtomicBool>,
   ) -> laufey::Window {
     let kb_tx = self.event_tx.clone();
     let mouse_click_tx = self.event_tx.clone();
@@ -339,7 +341,6 @@ impl WefDesktopApi {
     let closed_windows = self.closed_windows.clone();
     let open_windows_on_close = self.open_windows.clone();
     let close_requests = self.close_requests.clone();
-    let shown = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let hidden_by_app = self.hidden_by_app.clone();
     let lost_scheme_guard = self.lost_scheme_guard.clone();
 
@@ -459,8 +460,9 @@ impl WefDesktopApi {
           });
       })
       .on_page_load(move |ev| {
+        let first_load = !loaded.swap(true, Ordering::AcqRel);
         if show_on_first_load
-          && !shown.swap(true, Ordering::AcqRel)
+          && first_load
           && !hidden_by_app.lock().unwrap().contains(&ev.window_id)
         {
           laufey::Window::from_id(ev.window_id).show();
@@ -529,6 +531,7 @@ impl WefDesktopApi {
   fn create_initial_window(
     &self,
     options: ende_lib::standalone::binary::InitialWindowConfig,
+    loaded: Arc<std::sync::atomic::AtomicBool>,
   ) -> u32 {
     let window = laufey::Window::new_with_options(
       i32::from(options.width),
@@ -541,7 +544,8 @@ impl WefDesktopApi {
         transparent: options.transparent,
       },
     );
-    let window = self.setup_window_events(window, options.show_on_first_load);
+    let window =
+      self.setup_window_events(window, options.show_on_first_load, loaded);
     let id = window.id();
     if let Some(guard) = &self.lost_scheme_guard {
       guard.watch(id);
@@ -581,7 +585,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
         transparent,
       },
     );
-    let window = self.setup_window_events(window, false);
+    let window = self.setup_window_events(window, false, Default::default());
     let id = window.id();
     self.open_windows.lock().unwrap().insert(id);
     // A window created with `{ visible: false }` must stay hidden: record it so
@@ -698,7 +702,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
       let window = laufey::Window::new(1200, 800);
       window.set_title("Ende Desktop DevTools");
       window.navigate(&url);
-      let window = self.setup_window_events(window, false);
+      let window = self.setup_window_events(window, false, Default::default());
       let id = window.id();
       // Track for HMR reload + the singleton check above.
       self.open_windows.lock().unwrap().insert(id);
@@ -2003,6 +2007,14 @@ fn app_scheme_host<'a>(
   }
 }
 
+/// Whether the navigate fallback shows the initial window, 10 s after
+/// navigating it: only if its first load never finished (that load reveals
+/// it, and showing it again seems to replay the open animation on the macOS
+/// webview), and never a window the app hid.
+fn navigate_fallback_shows(loaded: bool, hidden_by_app: bool) -> bool {
+  !loaded && !hidden_by_app
+}
+
 /// Whether `new Notification()` can work on this backend and OS. Not on the
 /// raw backend on macOS: laufey 0.7.0's notify_rust -> mac_notification_sys
 /// runs an NSAppleScript to find the bundle identifier that never returns,
@@ -2588,6 +2600,11 @@ async fn run_desktop(
   // Shared initial window ID for navigate_fut and HMR reload.
   let initial_window_id = Arc::new(AtomicU32::new(0));
   let initial_window_id_for_navigate = initial_window_id.clone();
+  // Set when the initial window's first load has finished, for the navigate
+  // fallback.
+  let initial_window_loaded =
+    Arc::new(std::sync::atomic::AtomicBool::new(false));
+  let initial_window_loaded_for_api = initial_window_loaded.clone();
 
   // Track every live window so HMR can refresh secondary windows too,
   // not just the initial one. The same Arc is handed to WefDesktopApi
@@ -2722,7 +2739,8 @@ async fn run_desktop(
       // Create the initial window (hidden) and wire up event handlers. It is
       // revealed from its `on_page_load` handler once content has painted, so
       // the user never sees the empty pre-navigation frame (issue #35530).
-      let window_id = api.create_initial_window(initial_window);
+      let window_id = api
+        .create_initial_window(initial_window, initial_window_loaded_for_api);
       initial_window_id.store(window_id, Ordering::Release);
 
       // Title the initial window with the app name up front, so an app that
@@ -2829,12 +2847,13 @@ async fn run_desktop(
     // The window was created hidden and is normally revealed from its
     // `on_page_load` handler the moment content paints. If that load never
     // finishes (e.g. the initial navigation errors), fall back to showing it
-    // anyway so the user isn't left with no window at all. `show()` is
-    // idempotent, so racing the on_page_load reveal is harmless. Skip the
-    // fallback when the app requested `{ visible: false }` so a start-hidden
-    // window is never force-shown.
+    // anyway so the user isn't left with no window at all; see
+    // `navigate_fallback_shows`.
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-    if !hidden_by_app_for_navigate.lock().unwrap().contains(&id) {
+    if navigate_fallback_shows(
+      initial_window_loaded.load(Ordering::Acquire),
+      hidden_by_app_for_navigate.lock().unwrap().contains(&id),
+    ) {
       laufey::Window::from_id(id).show();
     }
     if let Some(bridge) = &bridge
@@ -3082,6 +3101,17 @@ mod tests {
     ] {
       assert_eq!(app_scheme_host(backend, os, host), None, "{backend:?} {os}");
     }
+  }
+
+  #[test]
+  fn navigate_fallback_shows_only_a_window_that_never_loaded() {
+    use super::navigate_fallback_shows;
+    assert!(navigate_fallback_shows(false, false));
+    // Its first load revealed it (or the app hid it before): a second show()
+    // replays the open animation.
+    assert!(!navigate_fallback_shows(true, false));
+    assert!(!navigate_fallback_shows(false, true));
+    assert!(!navigate_fallback_shows(true, true));
   }
 
   #[test]
