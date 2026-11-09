@@ -17,11 +17,13 @@
 //! when both are loaded.
 
 use std::path::Path;
+use std::path::PathBuf;
 
 use ende_core::anyhow::Context;
 use ende_core::error::AnyError;
 use ende_core::serde_json::Map;
 use ende_core::serde_json::Value;
+use ende_lib::util::checksum;
 
 use super::project::to_tsc_path;
 
@@ -65,18 +67,32 @@ const ADDITIONS: &[(&str, &[Addition])] = &[
 /// Files the additions need next to the copies.
 const EXTRA_FILES: &[&str] = &["lib.dom.extras.d.ts"];
 
+/// The copies [`write_replacements`] wrote, and the `paths` entries for every
+/// stock lib.
+pub struct Replacements {
+  pub paths: Map<String, Value>,
+  /// The files written, all in one directory under `types/libs/`.
+  pub files: Vec<PathBuf>,
+}
+
 /// Writes the copies of the stock libs in `tsc_dir` with Ende's additions to
-/// `types_dir`, and returns `paths` entries for every stock lib, pointing at
-/// the copy if there is one. Empty if `tsc_dir` has no lib files (a tsc with
-/// its libs built in): Ende's additions are then missing.
+/// a directory under `types_dir/libs/` named by their contents, and returns
+/// `paths` entries for every stock lib, pointing at the copy if there is one.
+/// Checks with different tsc builds may run at once, and the name keeps each
+/// build's copies apart; a build seen before finds its copies already there.
+/// Empty if `tsc_dir` has no lib files (a tsc with its libs built in): Ende's
+/// additions are then missing.
 pub fn write_replacements(
   tsc_dir: &Path,
   types_dir: &Path,
   write: impl Fn(&Path, &[u8]) -> Result<(), AnyError>,
-) -> Result<Map<String, Value>, AnyError> {
+) -> Result<Replacements, AnyError> {
   let entries = std::fs::read_dir(tsc_dir)
     .with_context(|| format!("failed to read {}", tsc_dir.display()))?;
-  let mut paths = Map::new();
+  // Each lib's module name, and the stock file or the name of its copy.
+  let mut libs = Vec::new();
+  // The copies' names and texts.
+  let mut copies = Vec::new();
   for entry in entries {
     let entry =
       entry.with_context(|| format!("failed to read {}", tsc_dir.display()))?;
@@ -88,26 +104,50 @@ pub fn write_replacements(
       continue;
     };
     let stock = entry.path();
-    let path = match ADDITIONS.iter().find(|(name, _)| *name == file_name) {
+    match ADDITIONS.iter().find(|(name, _)| *name == file_name) {
       Some((_, additions)) => {
         let text = std::fs::read_to_string(&stock)
           .with_context(|| format!("failed to read {}", stock.display()))?;
-        let copy = types_dir.join(file_name);
-        write(&copy, apply(file_name, &text, additions).as_bytes())?;
-        copy
+        copies
+          .push((file_name.to_string(), apply(file_name, &text, additions)));
+        libs.push((library, Err(file_name.to_string())));
       }
-      None => stock,
-    };
-    paths.insert(library, Value::from(vec![to_tsc_path(&path)]));
-  }
-  if !paths.is_empty() {
-    for name in EXTRA_FILES {
-      let text = crate::tsc::get_lazily_loaded_asset(name)
-        .with_context(|| format!("{name} isn't in this build"))?;
-      write(&types_dir.join(name), text.as_bytes())?;
+      None => libs.push((library, Ok(stock))),
     }
   }
-  Ok(paths)
+  if libs.is_empty() {
+    return Ok(Replacements {
+      paths: Map::new(),
+      files: Vec::new(),
+    });
+  }
+  for name in EXTRA_FILES {
+    let text = crate::tsc::get_lazily_loaded_asset(name)
+      .with_context(|| format!("{name} isn't in this build"))?;
+    copies.push((name.to_string(), text.to_string()));
+  }
+  copies.sort();
+  let hash = checksum::r#gen(
+    &copies
+      .iter()
+      .flat_map(|(name, text)| [name.as_bytes(), b"\0", text.as_bytes(), b"\0"])
+      .collect::<Vec<_>>(),
+  );
+  let dir = types_dir.join("libs").join(&hash[..16]);
+  let mut files = Vec::with_capacity(copies.len());
+  for (name, text) in &copies {
+    let path = dir.join(name);
+    write(&path, text.as_bytes())?;
+    files.push(path);
+  }
+  let paths = libs
+    .into_iter()
+    .map(|(library, path)| {
+      let path = path.unwrap_or_else(|name| dir.join(name));
+      (library, Value::from(vec![to_tsc_path(&path)]))
+    })
+    .collect();
+  Ok(Replacements { paths, files })
 }
 
 /// Applies `additions` to the text of the stock lib `name`. One whose text is
@@ -196,13 +236,17 @@ mod tests {
     }
   }
 
+  fn write(path: &Path, bytes: &[u8]) -> Result<(), AnyError> {
+    std::fs::create_dir_all(path.parent().unwrap())?;
+    std::fs::write(path, bytes).map_err(Into::into)
+  }
+
   #[test]
   fn writes_copies_and_paths() {
     let dir = tempfile::tempdir().unwrap();
     let tsc_dir = dir.path().join("tsc");
     let types_dir = dir.path().join("types");
     std::fs::create_dir_all(&tsc_dir).unwrap();
-    std::fs::create_dir_all(&types_dir).unwrap();
     std::fs::write(
       tsc_dir.join("lib.dom.d.ts"),
       format!("{}\n{}\n", DOM_EXTRAS.find, BROTLI.find),
@@ -210,30 +254,63 @@ mod tests {
     .unwrap();
     std::fs::write(tsc_dir.join("lib.es5.d.ts"), "").unwrap();
     std::fs::write(tsc_dir.join("tsc"), "").unwrap();
-    let paths = write_replacements(&tsc_dir, &types_dir, |path, bytes| {
-      std::fs::write(path, bytes).map_err(Into::into)
-    })
-    .unwrap();
+    let replacements = write_replacements(&tsc_dir, &types_dir, write).unwrap();
+    let [dom, extras] = replacements.files.as_slice() else {
+      panic!("{:?}", replacements.files);
+    };
     assert_eq!(
-      paths,
+      dom.parent().unwrap().parent().unwrap(),
+      types_dir.join("libs")
+    );
+    assert_eq!(dom.file_name().unwrap(), "lib.dom.d.ts");
+    assert_eq!(extras, &dom.with_file_name("lib.dom.extras.d.ts"));
+    assert_eq!(
+      replacements.paths,
       ende_core::serde_json::json!({
-        "@typescript/lib-dom": [to_tsc_path(&types_dir.join("lib.dom.d.ts"))],
+        "@typescript/lib-dom": [to_tsc_path(dom)],
         "@typescript/lib-es5": [to_tsc_path(&tsc_dir.join("lib.es5.d.ts"))],
       })
       .as_object()
       .unwrap()
       .clone()
     );
-    let copy = std::fs::read_to_string(types_dir.join("lib.dom.d.ts")).unwrap();
+    let copy = std::fs::read_to_string(dom).unwrap();
     assert!(copy.contains("\"brotli\""));
     assert!(copy.contains("./lib.dom.extras.d.ts"));
-    assert!(types_dir.join("lib.dom.extras.d.ts").is_file());
+    assert!(extras.is_file());
 
     // No lib files: nothing to replace.
     let empty = dir.path().join("empty");
     std::fs::create_dir_all(&empty).unwrap();
-    let paths =
+    let replacements =
       write_replacements(&empty, &types_dir, |_, _| unreachable!()).unwrap();
-    assert!(paths.is_empty());
+    assert!(replacements.paths.is_empty());
+    assert!(replacements.files.is_empty());
+  }
+
+  /// Checks with different tsc builds can run at once, so each build's
+  /// copies get their own files.
+  #[test]
+  fn copies_depend_on_the_tsc_build() {
+    let dir = tempfile::tempdir().unwrap();
+    let types_dir = dir.path().join("types");
+    let dom_path = |name: &str, dom: &str| {
+      let tsc_dir = dir.path().join(name);
+      std::fs::create_dir_all(&tsc_dir).unwrap();
+      std::fs::write(tsc_dir.join("lib.dom.d.ts"), dom).unwrap();
+      let replacements =
+        write_replacements(&tsc_dir, &types_dir, write).unwrap();
+      replacements.paths["@typescript/lib-dom"][0]
+        .as_str()
+        .unwrap()
+        .to_string()
+    };
+    let a = dom_path("a", BROTLI.find);
+    let b = dom_path("b", READABLE_STREAM_FROM.find);
+    let a_again = dom_path("a_again", BROTLI.find);
+    assert_ne!(a, b);
+    assert_eq!(a, a_again);
+    assert!(std::fs::read_to_string(&a).unwrap().contains("brotli"));
+    assert!(std::fs::read_to_string(&b).unwrap().contains("from<R>"));
   }
 }

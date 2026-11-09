@@ -133,11 +133,16 @@ pub fn exec(env: &Tsc7Env, request: Request) -> Result<Response, AnyError> {
   for (path, text) in &plan.copies {
     write_if_changed(path, text.as_bytes())?;
   }
+  // The stock libs, with Ende's additions where it has some.
+  let tsc_dir = env.tsc.parent().unwrap_or(Path::new("."));
+  let libs = libs::write_replacements(tsc_dir, &types_dir, write_if_changed)?;
   if lock.is_some() {
     let keep = plan
       .copies
       .iter()
-      .map(|(path, _)| path_key(&to_tsc_path(path)))
+      .map(|(path, _)| path.as_path())
+      .chain(libs.files.iter().map(PathBuf::as_path))
+      .map(|path| path_key(&to_tsc_path(path)))
       .collect();
     prune_copies(project_dir, &keep);
   }
@@ -148,13 +153,9 @@ pub fn exec(env: &Tsc7Env, request: Request) -> Result<Response, AnyError> {
     .filter_map(|url| deno_path_util::url_to_file_path(url).ok())
     .map(|path| to_tsc_path(&path))
     .collect();
-  // The stock libs, with Ende's additions where it has some.
-  let tsc_dir = env.tsc.parent().unwrap_or(Path::new("."));
-  let lib_paths =
-    libs::write_replacements(tsc_dir, &types_dir, write_if_changed)?;
   let mut paths = plan.paths.clone();
-  let replaces_libs = !lib_paths.is_empty();
-  paths.extend(lib_paths);
+  let replaces_libs = !libs.paths.is_empty();
+  paths.extend(libs.paths);
   let mut translated = options::translate(
     &request.compiler_options.0,
     root_dirs,
@@ -296,13 +297,13 @@ fn lock_project(project_dir: &Path) -> Option<std::fs::File> {
     .ok()
 }
 
-/// The project directories that hold copies of modules.
-const COPY_DIRS: &[&str] = &["remote", "local"];
+/// The project directories that hold copies: of modules, and of tsc's libs.
+const COPY_DIRS: &[&str] = &["remote", "local", "types/libs"];
 
 /// Removes the files in the copy directories whose [`path_key`] isn't in
 /// `keep`, and the directories that leaves empty. A copy stays useful only
-/// while its module is in the graph, so without this every module ever
-/// checked would stay in the cache.
+/// while its module is in the graph (or its tsc build in use), so without
+/// this every module ever checked would stay in the cache.
 fn prune_copies(project_dir: &Path, keep: &HashSet<String>) {
   for name in COPY_DIRS {
     prune_dir(&project_dir.join(name), keep);
@@ -782,7 +783,9 @@ mod tests {
       "remote/https/example.com/gone.ts",
       "remote/data/gone.ts",
       "local/0123/gone.ts",
-      "types/lib.dom.d.ts",
+      "types/libs/0123/lib.dom.d.ts",
+      "types/libs/4567/lib.dom.d.ts",
+      "types/lib.ende.ns.d.ts",
       "types/raw/text.ts",
       "tsconfig.1.json",
     ];
@@ -791,9 +794,13 @@ mod tests {
       std::fs::create_dir_all(path.parent().unwrap()).unwrap();
       std::fs::write(path, "").unwrap();
     }
-    let keep = HashSet::from([path_key(&to_tsc_path(
-      &project.join("remote/https/example.com/kept.ts"),
-    ))]);
+    let keep = [
+      "remote/https/example.com/kept.ts",
+      "types/libs/0123/lib.dom.d.ts",
+    ]
+    .into_iter()
+    .map(|path| path_key(&to_tsc_path(&project.join(path))))
+    .collect();
     prune_copies(project, &keep);
     let exists = |path: &str| project.join(path).exists();
     assert!(exists("remote/https/example.com/kept.ts"));
@@ -801,8 +808,10 @@ mod tests {
     assert!(!exists("remote/data"));
     assert!(exists("local"));
     assert!(!exists("local/0123"));
+    assert!(exists("types/libs/0123/lib.dom.d.ts"));
+    assert!(!exists("types/libs/4567"));
     // Not copies.
-    assert!(exists("types/lib.dom.d.ts"));
+    assert!(exists("types/lib.ende.ns.d.ts"));
     assert!(exists("types/raw/text.ts"));
     assert!(exists("tsconfig.1.json"));
   }
