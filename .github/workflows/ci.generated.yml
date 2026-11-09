@@ -1005,6 +1005,11 @@ jobs:
           CC=/usr/bin/clang-22
           CFLAGS=$CFLAGS
           " > $GITHUB_ENV
+      - name: Fetch TypeScript 7 compiler
+        if: '!startsWith(github.ref, ''refs/tags/'') && (matrix.test_crate == ''specs'' || matrix.test_crate == ''integration'')'
+        run: |-
+          dir="$(./tools/release/fetch_tsc7.sh x86_64-unknown-linux-gnu "$RUNNER_TEMP/tsc7")"
+          echo "ENDE_TEST_TSC7_BIN=$dir/tsc" >> "$GITHUB_ENV"
       - name: Download artifact debug-linux-x86_64-ende
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         if: '!startsWith(github.ref, ''refs/tags/'')'

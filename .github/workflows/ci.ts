@@ -925,6 +925,20 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           installRustStep,
           installLldStep,
           sysRootStep,
+          {
+            // Runs the tsc7 specs and watch test, which skip without
+            // ENDE_TEST_TSC7_BIN. Same download and checks as release builds.
+            // After sysRootStep, which overwrites $GITHUB_ENV.
+            name: "Fetch TypeScript 7 compiler",
+            if: isLinux.and(buildItem.arch.equals("x86_64")).and(
+              testCrateNameExpr.equals("specs")
+                .or(testCrateNameExpr.equals("integration")),
+            ),
+            run: [
+              'dir="$(./tools/release/fetch_tsc7.sh x86_64-unknown-linux-gnu "$RUNNER_TEMP/tsc7")"',
+              'echo "ENDE_TEST_TSC7_BIN=$dir/tsc" >> "$GITHUB_ENV"',
+            ],
+          },
           endeArtifact.download(),
           endertArtifact.download().if(
             testCrateNameExpr.equals("integration")

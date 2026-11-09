@@ -52,7 +52,10 @@ build job's critical path.
   combinations.
 - **`test`** (per platform and test crate) — the `specs`, `integration` and
   `unit` suites, run against the binaries from `build`. `specs` and
-  `integration` are split across two shards.
+  `integration` are split across two shards. On linux x86_64 they first fetch
+  the pinned TypeScript 7 `tsc` with `tools/release/fetch_tsc7.sh` and set
+  `ENDE_TEST_TSC7_BIN`, so the tsc7 specs and watch test run instead of
+  skipping.
 - **`test libs`** — `cargo test --lib` for the workspace crates.
 - **`lint`** — formatting check, jsdoc check, and `tools/lint.js` (Rust + JS).
 - **`ci-status`** — an aggregator that the branch protection rule keys on. It
