@@ -695,6 +695,7 @@ const NOT_IMPORTED_OPS = [
   "op_desktop_send_error_report",
   "op_desktop_request_notification_permission",
   "op_desktop_query_notification_permission",
+  "op_desktop_notifications_supported",
 ];
 
 // Ops from NOT_IMPORTED_OPS that stay out of worker scope.

@@ -36,6 +36,7 @@ pub const DESKTOP_JS: &str = r#"
     op_desktop_write_clipboard_text,
     op_desktop_request_notification_permission,
     op_desktop_query_notification_permission,
+    op_desktop_notifications_supported,
   } = internals.core.ops;
   const BrowserWindowPrototype = BrowserWindow.prototype;
   Object.setPrototypeOf(BrowserWindowPrototype, EventTarget.prototype);
@@ -510,8 +511,10 @@ pub const DESKTOP_JS: &str = r#"
     if (instance.notificationId !== 0) {
       notifications.set(instance.notificationId, instance);
     } else {
-      // Backend didn't show it (no support / failure). The native side
-      // already emitted a NotificationError event; nothing to track here.
+      // The backend didn't show it (no support on this backend, or it
+      // failed), so there's no id to route an event by. Fire `error` on the
+      // instance as a task, so listeners added after the constructor see it.
+      setTimeout(() => instance.dispatchEvent(new Event("error")), 0);
     }
     return instance;
   };
@@ -536,7 +539,9 @@ pub const DESKTOP_JS: &str = r#"
   // has no permission model — surfaces to JS as a thrown error from
   // requestPermission (most honest) and as "denied" from
   // permissions.query (spec doesn't have an "unsupported" state).
-  let cachedNotificationPermission = "default";
+  let cachedNotificationPermission = op_desktop_notifications_supported()
+    ? "default"
+    : "denied";
 
   function laufeyToNotificationPermission(s) {
     // "prompt" → "default" per the Notifications spec; "unsupported"

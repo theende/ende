@@ -798,6 +798,12 @@ pub trait DesktopApi: Send + Sync + 'static {
   /// No-op if the id is unknown or already dismissed.
   fn close_notification(&self, notification_id: u32);
 
+  /// Whether notifications can work at all on this backend. When they can't,
+  /// `Notification.permission` starts out "denied".
+  fn notifications_supported(&self) -> bool {
+    true
+  }
+
   /// Request OS authorization to show notifications. If the user has not
   /// yet decided, this triggers a system prompt; otherwise the cached
   /// decision is returned without a re-prompt. The callback fires on the
@@ -2198,6 +2204,13 @@ fn permission_state_to_web_string(state: PermissionState) -> &'static str {
   }
 }
 
+#[op2(fast)]
+fn op_desktop_notifications_supported(state: &OpState) -> bool {
+  state
+    .try_borrow::<Arc<dyn DesktopApi>>()
+    .is_some_and(|api| api.notifications_supported())
+}
+
 #[op2]
 #[string]
 async fn op_desktop_request_notification_permission(
@@ -2614,6 +2627,7 @@ ende_core::extension!(
     op_desktop_send_error_report,
     op_desktop_request_notification_permission,
     op_desktop_query_notification_permission,
+    op_desktop_notifications_supported,
   ],
   objects = [BrowserWindow, Dock, Tray, Notification],
 );

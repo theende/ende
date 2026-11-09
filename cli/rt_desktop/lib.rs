@@ -271,6 +271,8 @@ struct WefDesktopApi {
   hidden_by_app: Arc<Mutex<HashSet<u32>>>,
   trays: Arc<Mutex<HashMap<u32, laufey::TrayIcon>>>,
   notifications: Arc<Mutex<HashMap<u32, laufey::NotificationHandle>>>,
+  /// See [`notifications_supported`].
+  notifications_supported: bool,
   /// Singleton for the unified-mux DevTools window. Without this, every
   /// `openDevtools()` call would spawn another DevTools window.
   devtools_window: Mutex<Option<u32>>,
@@ -1061,6 +1063,10 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
     silent: Option<bool>,
     require_interaction: Option<bool>,
   ) -> u32 {
+    if !self.notifications_supported {
+      // The JS side fires `error` on the notification.
+      return 0;
+    }
     let mut builder = laufey::Notification::new(title);
     if let Some(body) = body {
       builder = builder.body(body);
@@ -1155,12 +1161,19 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
     );
   }
 
+  fn notifications_supported(&self) -> bool {
+    self.notifications_supported
+  }
+
   fn request_notification_permission(
     &self,
     cb: Box<
       dyn FnOnce(ende_runtime::ops::desktop::PermissionState) + Send + 'static,
     >,
   ) {
+    if !self.notifications_supported {
+      return cb(ende_runtime::ops::desktop::PermissionState::Denied);
+    }
     laufey::request_permission(
       laufey::PermissionKind::Notifications,
       move |status| cb(map_permission_status(status)),
@@ -1173,6 +1186,9 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
       dyn FnOnce(ende_runtime::ops::desktop::PermissionState) + Send + 'static,
     >,
   ) {
+    if !self.notifications_supported {
+      return cb(ende_runtime::ops::desktop::PermissionState::Denied);
+    }
     laufey::query_permission(
       laufey::PermissionKind::Notifications,
       move |status| cb(map_permission_status(status)),
@@ -1949,6 +1965,15 @@ fn app_scheme_host<'a>(
   }
 }
 
+/// Whether `new Notification()` can work on this backend and OS. Not on the
+/// raw backend on macOS: laufey 0.7.0's notify_rust -> mac_notification_sys
+/// runs an NSAppleScript to find the bundle identifier that never returns,
+/// which hangs the JS thread for good. Until laufey fixes it, Ende refuses
+/// notifications there instead (`Notification.permission` is "denied").
+fn notifications_supported(backend: Option<&str>, os: &str) -> bool {
+  !matches!((backend, os), (Some("raw"), "macos"))
+}
+
 /// The `app://<host>` bridge's cookie jar, persisted under the app
 /// identifier in the platform's data folder (see [`cookie_jar::cookie_file`])
 /// and written when the app exits. In memory only when there's no usable
@@ -2591,6 +2616,10 @@ async fn run_desktop(
   // the default window title. Moved into the op_state_init closure below.
   let app_name = data.metadata.app_name.clone();
   let initial_window = data.metadata.initial_window;
+  let notifications_supported = notifications_supported(
+    data.metadata.desktop_backend.as_deref(),
+    env::consts::OS,
+  );
 
   let run_opts = RunOptions {
     auto_serve: true,
@@ -2630,6 +2659,7 @@ async fn run_desktop(
         hidden_by_app: hidden_by_app_for_api.clone(),
         trays: Arc::new(Mutex::new(HashMap::new())),
         notifications: Arc::new(Mutex::new(HashMap::new())),
+        notifications_supported,
         devtools_window: Mutex::new(None),
         lost_scheme_guard,
       };
@@ -3009,6 +3039,23 @@ mod tests {
       (None, "windows"),
     ] {
       assert_eq!(app_scheme_host(backend, os, host), None, "{backend:?} {os}");
+    }
+  }
+
+  #[test]
+  fn raw_backend_on_macos_has_no_notifications() {
+    use super::notifications_supported;
+    // laufey 0.7.0's raw backend hangs the JS thread for good in
+    // `new Notification()` on macOS.
+    assert!(!notifications_supported(Some("raw"), "macos"));
+    for (backend, os) in [
+      (Some("raw"), "windows"),
+      (Some("raw"), "linux"),
+      (Some("webview"), "macos"),
+      (Some("cef"), "macos"),
+      (None, "macos"),
+    ] {
+      assert!(notifications_supported(backend, os), "{backend:?} {os}");
     }
   }
 
