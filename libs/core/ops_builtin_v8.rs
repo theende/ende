@@ -843,11 +843,23 @@ impl v8::ValueDeserializerImpl for SerializeDeserialize<'_> {
           .unwrap();
         let ty = object.get(scope, key.into())?;
         let func = deserializers.get(scope, ty)?;
+        let Ok(func) = func.try_cast::<v8::Function>() else {
+          let message = format!(
+            "Cannot deserialize an object of type \"{}\": it has no \
+             deserializer",
+            ty.to_rust_string_lossy(scope)
+          );
+          let message = v8::String::new(scope, &message).unwrap();
+          <Self as v8::ValueSerializerImpl>::throw_data_clone_error(
+            self, scope, message,
+          );
+          return None;
+        };
         let recv = v8::null(scope).into();
         let scope =
           std::pin::pin!(v8::AllowJavascriptExecutionScope::new(scope));
         let scope = &mut scope.init();
-        let res = func.cast::<v8::Function>().call(scope, recv, &[value])?;
+        let res = func.call(scope, recv, &[value])?;
         return res.to_object(scope);
       }
     } else if let Some(host_objects) = self.host_objects {
@@ -1086,7 +1098,15 @@ pub fn op_deserialize<'s, 'i>(
     }
   }
 
+  v8::tc_scope!(let scope, scope);
+
   let value = value_deserializer.read_value(scope.get_current_context());
+  if scope.has_caught() || scope.has_terminated() {
+    // The deserializer threw (a data clone error, say); keep its exception.
+    scope.rethrow();
+    // Dummy value, discarded because an error was thrown.
+    return Ok(v8::undefined(scope).into());
+  }
   match value {
     Some(deserialized) => Ok(deserialized),
     None => Err(JsErrorBox::range_error("could not deserialize value")),
@@ -1177,7 +1197,16 @@ pub fn deserialize_broadcast<'s, 'i>(
     return Err(JsErrorBox::range_error("could not deserialize value"));
   }
 
-  match value_deserializer.read_value(scope.get_current_context()) {
+  v8::tc_scope!(let scope, scope);
+
+  let value = value_deserializer.read_value(scope.get_current_context());
+  if scope.has_caught() || scope.has_terminated() {
+    // The deserializer threw (a data clone error, say); keep its exception.
+    scope.rethrow();
+    // Dummy value, discarded because an error was thrown.
+    return Ok(v8::undefined(scope).into());
+  }
+  match value {
     Some(deserialized) => Ok(deserialized),
     None => Err(JsErrorBox::range_error("could not deserialize value")),
   }
@@ -1246,6 +1275,12 @@ pub fn op_structured_clone<'s, 'i>(
   }
 
   let value = value_deserializer.read_value(scope.get_current_context());
+  if scope.has_caught() || scope.has_terminated() {
+    // The deserializer threw (a data clone error, say); keep its exception.
+    scope.rethrow();
+    // Dummy value, discarded because an error was thrown.
+    return Ok(v8::undefined(scope).into());
+  }
   match value {
     Some(deserialized) => Ok(deserialized),
     None => Err(JsErrorBox::range_error("could not deserialize value")),

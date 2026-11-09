@@ -2247,3 +2247,44 @@ fn op_ctxs_outlive_isolate() {
   );
   assert_eq!(op_ctxs.strong_count(), 0, "op contexts were leaked");
 }
+
+/// A cloned host object whose type has no registered deserializer can't be
+/// deserialized: a data clone error (a TypeError in core, which
+/// `structuredClone` turns into a "DataCloneError" DOMException).
+#[test]
+fn structured_clone_without_a_deserializer() {
+  let mut runtime = JsRuntime::new(Default::default());
+  let value_global = runtime
+    .execute_script(
+      "a.js",
+      r#"
+        const value = {
+          [Ende.core.hostObjectBrand]: () => ({ type: "NoSuchType" }),
+        };
+        const deserializers = { __proto__: null };
+        const results = [];
+        for (const clone of [
+          () => Ende.core.structuredClone(value, deserializers),
+          () =>
+            Ende.core.deserialize(Ende.core.serialize(value), { deserializers }),
+        ]) {
+          try {
+            clone();
+            results.push("cloned");
+          } catch (e) {
+            results.push(`${e.constructor.name}: ${e.message}`);
+          }
+        }
+        results.join("\n");
+      "#,
+    )
+    .unwrap();
+  ende_core::scope!(scope, runtime);
+  let value = value_global.open(scope);
+  let error = "TypeError: Cannot deserialize an object of type \"NoSuchType\": \
+               it has no deserializer";
+  assert_eq!(
+    value.to_rust_string_lossy(scope),
+    format!("{error}\n{error}")
+  );
+}

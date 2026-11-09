@@ -1022,3 +1022,20 @@ Deno.test("postMessage keeps DOMException subclasses through a worker", async ()
     worker.terminate();
   }
 });
+
+Deno.test("structuredClone throws a DataCloneError for a type it can't deserialize", () => {
+  // Serializes like a platform object of a type with no deserializer.
+  const value = {
+    [Symbol.for("Deno.core.hostObject")]: () => ({ type: "NoSuchType" }),
+  };
+  assertThrows(
+    () => structuredClone(value),
+    DOMException,
+    'Cannot deserialize an object of type "NoSuchType": it has no deserializer',
+  );
+  try {
+    structuredClone(value);
+  } catch (error) {
+    assertEquals((error as DOMException).name, "DataCloneError");
+  }
+});
