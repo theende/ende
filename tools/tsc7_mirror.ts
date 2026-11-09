@@ -221,13 +221,7 @@ async function mirrorTarget(pin: Pin, lock: Lock, versionDir: string) {
   const names = [...outputs.keys()].sort();
 
   const zipName = `tsc-${pin.target}.zip`;
-  const zip = await new Deno.Command("zip", {
-    args: ["-q", "-9", "-X", `../${zipName}`, ...names],
-    cwd: targetDir,
-  }).output();
-  if (!zip.success) {
-    throw new Error(`zip ${zipName}: ${new TextDecoder().decode(zip.stderr)}`);
-  }
+  await zipFiles(targetDir, `../${zipName}`, names);
   await Deno.writeTextFile(
     `${versionDir}/${zipName}.sha256sum`,
     await sha256sumLine(`${versionDir}/${zipName}`, zipName),
@@ -240,6 +234,30 @@ async function mirrorTarget(pin: Pin, lock: Lock, versionDir: string) {
       formatSize(tsc.length)
     }, ${libCount} lib files, ${zipName} ${formatSize(zipSize)}`,
   );
+}
+
+// The fixed mtime npm gives every file in a package tarball.
+const ZIP_MTIME = new Date("1985-10-26T08:15:00Z");
+
+/**
+ * Zips `names` into `zipPath`, both relative to `dir`, reproducibly: the same
+ * files give the same zip on every run. `-X` leaves out the extra fields
+ * (extended timestamps, uid/gid), but zip still stores each file's mtime as a
+ * DOS time in the local time zone, so the files get a fixed mtime first and
+ * zip runs in UTC.
+ */
+export async function zipFiles(dir: string, zipPath: string, names: string[]) {
+  for (const name of names) {
+    await Deno.utime(`${dir}/${name}`, ZIP_MTIME, ZIP_MTIME);
+  }
+  const zip = await new Deno.Command("zip", {
+    args: ["-q", "-9", "-X", zipPath, ...names],
+    cwd: dir,
+    env: { TZ: "UTC" },
+  }).output();
+  if (!zip.success) {
+    throw new Error(`zip ${zipPath}: ${new TextDecoder().decode(zip.stderr)}`);
+  }
 }
 
 async function listFiles(dir: string, prefix = ""): Promise<string[]> {
@@ -303,4 +321,6 @@ DL_S3_ENDPOINT, DL_S3_BUCKET):
   );
 }
 
-await main();
+if (import.meta.main) {
+  await main();
+}
