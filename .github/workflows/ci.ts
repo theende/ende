@@ -8,6 +8,7 @@ import {
   defineArtifact,
   defineExprObj,
   defineMatrix,
+  expr,
   type ExpressionValue,
   job,
   literal,
@@ -30,10 +31,11 @@ const cacheVersion = 130;
 // Lean CI. While `fullMatrix` is false, CI only runs on pushes to and PRs
 // against `primary` (plus the weekly schedule and manual dispatch), and only
 // runs: pre-build, lint (linux and windows), the debug build/test/libs jobs
-// for linux-x86_64 and macos-aarch64, and the ci-status gate. The macOS jobs
-// only run on the schedule and on manual dispatch, not on push/PR. Turned off:
-// Windows builds and tests, release builds (tag builds), WPT,
-// benchmarks, ende_core nextest/miri.
+// for linux-x86_64 and macos-aarch64, the Windows-only tests, and the
+// ci-status gate. The macOS jobs only run on the schedule and on manual
+// dispatch, and the Windows-only tests not on PRs. Turned off: Windows builds
+// and the full Windows tests, release builds (tag builds), WPT, benchmarks,
+// ende_core nextest/miri.
 // Restore the full matrix once Ende is fully operational by setting this to
 // true and regenerating.
 const fullMatrix = false;
@@ -1324,6 +1326,110 @@ const lintJob = job("lint", {
   })(),
 });
 
+// === windows tests job (lean CI only) ===
+// Lean CI builds and tests nothing on Windows, so tests that only run there
+// (`cfg(windows)` lib tests, and unit tests that ignore every other OS) would
+// never run. This job runs them on pushes to primary and on the weekly and
+// manual runs, not on PRs. The full matrix tests Windows in its own build and
+// test jobs, so it doesn't add this one.
+//
+// Crates with `cfg(windows)` lib tests, or Windows code that the listed tests
+// exercise there. Add a crate here when it gains a Windows-only test.
+const windowsTestLibCrates = [
+  "ende", // job_object, path, transpile, net flags (+ desktop's Windows code)
+  "endert_desktop", // WebView2 user data folder, dev-run console attach
+  "ende_os", // env vars kept from child processes (case-insensitive keys)
+  "ende_fs", // compiles the Windows file code; its test is the unit one below
+  "ende_io", // winpipe
+  "ende_ffi", // dlopen error formatting
+  "ende_runtime", // tty raw mode, fs_events missing-path message
+  "ende_permissions", // named pipes, case-insensitive and verbatim paths
+  "ende_config", // invalid file name errors
+  "ende_resolver", // file URL segments with drive letters
+  "eszip", // relative base on another drive
+];
+// tests/unit files whose Windows-only tests have no other home.
+const windowsUnitTests = [
+  "utime_test", // read-only files (ende_fs, denoland/deno#37078)
+];
+const windowsTestProfile = defineExprObj({
+  ...Runners.windowsX86,
+  profile: "debug",
+});
+const windowsTestJob = job("windows-tests", {
+  name:
+    `windows tests ${windowsTestProfile.profile} ${windowsTestProfile.os}-${windowsTestProfile.arch}`,
+  needs: [preBuildJob],
+  if: preBuildJob.outputs.skip_build.notEquals("true").and(notDocsOnly)
+    .and(isPr.not()),
+  runsOn: windowsTestProfile.runner,
+  // The weekly run builds cold.
+  timeoutMinutes: 120,
+  defaults: {
+    run: {
+      // GH actions does not fail fast by default on
+      // Windows, so we set bash as the default shell
+      shell: "bash",
+    },
+  },
+  env: {
+    CARGO_TERM_COLOR: "always",
+    RUST_BACKTRACE: "full",
+    // disable anyhow's library backtrace
+    RUST_LIB_BACKTRACE: 0,
+    // as in the build and test jobs
+    CARGO_PROFILE_DEV_DEBUG: 0,
+  },
+  steps: (() => {
+    const { restoreCacheStep, saveCacheStep } = createCacheSteps({
+      ...windowsTestProfile,
+      cachePrefix: "windows-tests",
+      // Lean CI has no Windows build to restore from, so this job keeps its
+      // own target/ cache. It also saves the Windows cargo home, which the
+      // Windows lint job restores.
+      saveTarget: true,
+      saveCargoHome: true,
+    });
+    const testLibsCommand = `cargo test --locked --lib ${
+      windowsTestLibCrates.map((p) => `-p ${p}`).join(" ")
+    }`;
+    const testUnitCommand = "cargo test --locked -p unit_tests --test unit";
+    return step(
+      cloneRepoStep,
+      cloneStdSubmoduleStep,
+      restoreCacheStep,
+      installRustStep,
+      {
+        // Everything is built before the cache is saved and the tests run,
+        // so a failing test doesn't leave the next run to build cold.
+        id: "build",
+        name: "Build",
+        run: [
+          `${testLibsCommand} --no-run`,
+          // the unit tests run the ende binary and need test_server
+          "cargo build --locked -p ende -p test_server --bin ende --bin test_server",
+          `${testUnitCommand} --no-run`,
+        ],
+      },
+      saveCacheStep!,
+      {
+        name: "Test libs",
+        run: testLibsCommand,
+      },
+      ...windowsUnitTests.map((name) => ({
+        name: `Test unit (${name})`,
+        // run even if the lib tests failed
+        if: conditions.status.cancelled().not().and(
+          expr("steps.build.outcome").equals("success"),
+        ),
+        run: `${testUnitCommand} ${name}`,
+      })),
+    );
+  })(),
+});
+// Jobs that only run in lean CI.
+const leanOnlyJobs = fullMatrix ? [] : [windowsTestJob];
+
 // === ende_core test job ===
 // Ported from denoland/deno_core .github/workflows/ci-test/action.yml
 // Tests the merged ende_core crates (libs/*) using cargo nextest.
@@ -1483,6 +1589,7 @@ const ciStatusJob = job("ci-status", {
     ...fullMatrixOnlyJobs,
     ...buildJobs.map((j) => [j.buildJob, ...j.additionalJobs]).flat(),
     lintJob,
+    ...leanOnlyJobs,
   ],
   if: preBuildJob.outputs.skip_build.notEquals("true")
     .and(conditions.status.always()),
@@ -1559,6 +1666,7 @@ const workflow = createWorkflow({
     preBuildJob,
     ...buildJobs.map((j) => [j.buildJob, ...j.additionalJobs]).flat(),
     lintJob,
+    ...leanOnlyJobs,
     ...fullMatrixOnlyJobs,
     ciStatusJob,
   ],

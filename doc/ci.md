@@ -34,11 +34,12 @@ the Actions tab). In lean mode:
 | Job                                      | Push / PR | Weekly / manual |
 | ---------------------------------------- | --------- | --------------- |
 | `pre-build`, `ci status`                 | yes       | yes             |
-| `lint` (linux-x86_64)                    | yes       | yes             |
+| `lint` (linux-x86_64, windows-x86_64)    | yes       | yes             |
 | `build`, `test`, `build libs` (linux)    | yes       | yes             |
+| `windows tests` (windows-x86_64)         | push only | yes             |
 | `build`, `test`, `test libs` (macOS arm) | no        | yes             |
 
-Skipped macOS jobs are fine for `ci status` (see below). The QuickJS backend
+Skipped jobs are fine for `ci status` (see below). The QuickJS backend
 `cargo check` runs in `build libs` (linux) and `test libs` (macOS), off the
 build job's critical path.
 
@@ -58,6 +59,16 @@ build job's critical path.
   skipping.
 - **`test libs`** — `cargo test --lib` for the workspace crates.
 - **`lint`** — formatting check, jsdoc check, and `tools/lint.js` (Rust + JS).
+  On Windows only `tools/lint.js`, whose clippy run is the only thing in lean CI
+  that compiles the Windows-only code (including test code).
+- **`windows tests`** (lean CI only) — runs the tests that only run on Windows,
+  since lean CI builds nothing else there: `cargo test --lib` for the crates in
+  `windowsTestLibCrates` (in `ci.ts`; they have `cfg(windows)` tests, or Windows
+  code their tests exercise), then the `tests/unit` files in `windowsUnitTests`
+  (unit tests that ignore every other OS) against a debug `ende` it builds. It
+  builds everything first and saves its cache before running the tests, so a
+  failing test doesn't make the next run build cold. When a crate or unit test
+  file gains a Windows-only test, add it to those lists.
 - **`ci-status`** — an aggregator that the branch protection rule keys on. It
   passes as long as none of its dependencies failed or were cancelled; skipped
   dependencies are fine.
@@ -122,8 +133,10 @@ one:
 
 - **`build`** saves `target/` per platform. It also saves the cargo home
   (registry and git checkouts) that every other job restores.
-- **`lint`** on linux saves its own `target/`, since clippy's check-mode output
-  shares little with a build.
+- **`lint`** saves its own `target/` on linux and on Windows, since clippy's
+  check-mode output shares little with a build.
+- **`windows tests`** saves its own `target/` (there is no Windows build to
+  restore from) and the Windows cargo home, which Windows `lint` restores.
 - **`test`** and **`test libs`** restore the `build` cache of their platform.
   **`build libs`** restores the `lint` cache (both run `cargo check` without the
   Linux sysroot flags). None of them save.
