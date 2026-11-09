@@ -6,7 +6,10 @@ import {
   op_bootstrap_numcpus,
   op_bootstrap_user_agent,
 } from "ext:core/ops";
-import { selfDescriptor } from "ext:runtime/98_global_scope_shared.js";
+import {
+  assertGlobalReceiver,
+  selfDescriptor,
+} from "ext:runtime/98_global_scope_shared.js";
 const {
   ObjectDefineProperties,
   ObjectPrototypeIsPrototypeOf,
@@ -220,7 +223,10 @@ const mainRuntimeGlobalProperties = {
   Window: globalInterfaces.windowConstructorDescriptor,
   self: selfDescriptor,
   Navigator: core.propNonEnumerable(Navigator),
-  navigator: core.propGetterOnly(() => navigator),
+  navigator: core.propGetterOnly(function () {
+    assertGlobalReceiver(this);
+    return navigator;
+  }),
   NavigatorUAData: core.propNonEnumerable(NavigatorUAData),
   alert: core.propWritableLazyLoaded((p) => p.alert, lazyPrompt),
   confirm: core.propWritableLazyLoaded((p) => p.confirm, lazyPrompt),
@@ -233,6 +239,7 @@ const mainRuntimeGlobalProperties = {
     configurable: true,
     enumerable: true,
     get() {
+      assertGlobalReceiver(this);
       return lazyWebStorage().localStorage();
     },
     set() {},
@@ -242,6 +249,7 @@ const mainRuntimeGlobalProperties = {
     configurable: true,
     enumerable: true,
     get() {
+      assertGlobalReceiver(this);
       return lazyWebStorage().sessionStorage();
     },
     set() {},

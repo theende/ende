@@ -95,13 +95,18 @@ const loadWebTransport = core.createLazyLoader(
   "ext:ende_web/webtransport.js",
 );
 
-// `self` of Window and WorkerGlobalScope. Like any Web IDL attribute getter,
-// it uses the global object for a nullish receiver and rejects a receiver that
-// isn't the global object.
-const selfDescriptor = core.propGetterOnly(function () {
-  if (this !== undefined && this !== null && this !== globalThis) {
+// Like any Web IDL attribute getter, a getter of the global object uses the
+// global object for a nullish receiver and rejects a receiver that isn't the
+// global object.
+function assertGlobalReceiver(receiver) {
+  if (receiver !== undefined && receiver !== null && receiver !== globalThis) {
     throw new TypeError("Illegal invocation");
   }
+}
+
+// `self` of Window and WorkerGlobalScope.
+const selfDescriptor = core.propGetterOnly(function () {
+  assertGlobalReceiver(this);
   return globalThis;
 });
 
@@ -285,6 +290,7 @@ const windowOrWorkerGlobalScope = {
     enumerable: true,
     configurable: true,
     get() {
+      assertGlobalReceiver(this);
       return lazyCache().cacheStorage();
     },
   },
@@ -299,7 +305,10 @@ const windowOrWorkerGlobalScope = {
   console: core.propNonEnumerable(
     new console.Console((msg, level) => core.print(msg, level > 1)),
   ),
-  crypto: core.propGetterOnly(() => crypto.crypto),
+  crypto: core.propGetterOnly(function () {
+    assertGlobalReceiver(this);
+    return crypto.crypto;
+  }),
   Crypto: core.propNonEnumerable(crypto.Crypto),
   SubtleCrypto: core.propNonEnumerable(crypto.SubtleCrypto),
   // `fetch` is installed as a plain data descriptor whose value is a lazy
@@ -557,6 +566,7 @@ unstableForWindowOrWorkerGlobalScope[unstableIds.rawImports] = {
 };
 
 export {
+  assertGlobalReceiver,
   selfDescriptor,
   unstableForWindowOrWorkerGlobalScope,
   windowOrWorkerGlobalScope,

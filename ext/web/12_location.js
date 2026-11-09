@@ -416,9 +416,18 @@ const workerLocationConstructorDescriptor = {
   writable: true,
 };
 
+// Like any Web IDL attribute getter of the global object, the `location`
+// getters reject a receiver that isn't the global object.
+function assertGlobalReceiver(receiver) {
+  if (receiver !== undefined && receiver !== null && receiver !== globalThis) {
+    throw new TypeError("Illegal invocation");
+  }
+}
+
 const locationDescriptor = {
   __proto__: null,
   get() {
+    assertGlobalReceiver(this);
     return location;
   },
   set() {
@@ -429,6 +438,7 @@ const locationDescriptor = {
 const workerLocationDescriptor = {
   __proto__: null,
   get() {
+    assertGlobalReceiver(this);
     if (workerLocation == null) {
       throw new Error(
         `Assertion: "globalThis.location" must be defined in a worker`,

@@ -70,6 +70,66 @@ Deno.test(async function selfGetterChecksReceiverInWorker() {
   worker.terminate();
 });
 
+// Every attribute getter of the global object checks its receiver like
+// `self` does: what it returns for a foreign receiver, by global name.
+function globalGetterForeignReceivers(names: string[]) {
+  const results: Record<string, string[]> = {};
+  for (const name of names) {
+    const get = Object.getOwnPropertyDescriptor(globalThis, name)!.get!;
+    results[name] = [];
+    for (const receiver of [{}, 0, Object.create(globalThis)]) {
+      try {
+        get.call(receiver);
+        results[name].push("returned");
+      } catch (error) {
+        results[name].push((error as Error).name);
+      }
+    }
+    // A nullish receiver means the global object.
+    get.call(undefined);
+  }
+  return results;
+}
+
+function expectedForeignReceivers(names: string[]) {
+  return Object.fromEntries(
+    names.map((name) => [name, ["TypeError", "TypeError", "TypeError"]]),
+  );
+}
+
+const windowGetters = [
+  "caches",
+  "closed",
+  "crypto",
+  "localStorage",
+  "location",
+  "navigator",
+  "sessionStorage",
+];
+
+Deno.test(function globalGettersCheckReceiver() {
+  assertEquals(
+    globalGetterForeignReceivers(windowGetters),
+    expectedForeignReceivers(windowGetters),
+  );
+});
+
+Deno.test(async function globalGettersCheckReceiverInWorker() {
+  const workerGetters = ["caches", "crypto", "location", "navigator"];
+  const source = `${globalGetterForeignReceivers.toString()}
+    postMessage(globalGetterForeignReceivers(${
+    JSON.stringify(workerGetters)
+  }));`;
+  const worker = new Worker(
+    `data:application/javascript,${encodeURIComponent(source)}`,
+    { type: "module" },
+  );
+  const { promise, resolve } = Promise.withResolvers<unknown>();
+  worker.onmessage = (e) => resolve(e.data);
+  assertEquals(await promise, expectedForeignReceivers(workerGetters));
+  worker.terminate();
+});
+
 // https://webidl.spec.whatwg.org/#interface-prototype-object
 function toStringTagDescriptors(names: string[]) {
   return names.map((name) => [

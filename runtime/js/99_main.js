@@ -115,6 +115,7 @@ const {
   QuotaExceededError,
 } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
 import {
+  assertGlobalReceiver,
   unstableForWindowOrWorkerGlobalScope,
   windowOrWorkerGlobalScope,
 } from "ext:runtime/98_global_scope_shared.js";
@@ -1031,7 +1032,10 @@ function bootstrapMainRuntime(runtimeOptions, warmup = false) {
       // Empty string matches what browsers do.
       name: core.propWritable(""),
       close: core.propWritable(windowClose),
-      closed: core.propGetterOnly(() => windowIsClosing),
+      closed: core.propGetterOnly(function () {
+        assertGlobalReceiver(this);
+        return windowIsClosing;
+      }),
     });
     if (disableOffscreenCanvas) {
       delete globalThis.OffscreenCanvas;

@@ -6,7 +6,10 @@ import {
   op_bootstrap_numcpus,
   op_bootstrap_user_agent,
 } from "ext:core/ops";
-import { selfDescriptor } from "ext:runtime/98_global_scope_shared.js";
+import {
+  assertGlobalReceiver,
+  selfDescriptor,
+} from "ext:runtime/98_global_scope_shared.js";
 const {
   ObjectDefineProperties,
   ObjectDefineProperty,
@@ -203,7 +206,10 @@ const workerRuntimeGlobalProperties = {
   DedicatedWorkerGlobalScope:
     globalInterfaces.dedicatedWorkerGlobalScopeConstructorDescriptor,
   WorkerNavigator: core.propNonEnumerable(WorkerNavigator),
-  navigator: core.propGetterOnly(() => workerNavigator),
+  navigator: core.propGetterOnly(function () {
+    assertGlobalReceiver(this);
+    return workerNavigator;
+  }),
   NavigatorUAData: core.propNonEnumerable(NavigatorUAData),
   self: selfDescriptor,
 };
