@@ -331,12 +331,6 @@ dir so its watcher sees real files.
   next launch is the trial. The backend is already up at that point, so a CEF
   window that showed at creation may flash once. A dylib that can't even be
   loaded never reaches this code, so it can't be rolled back.
-- **Fork re-entry guard** (`lib.rs:1145`): framework dev servers fork worker
-  processes that re-exec _this same dylib_. A worker is detected by the
-  combination of argv shaped like `<exe> run … script.js` **and** a parent
-  worker env var (`NODE_CHANNEL_FD` / `NEXT_PRIVATE_WORKER`) — the env var alone
-  was a false-positive trap when a user shell already had it set. Detected
-  workers run headless (no window).
 - **Window-handle interop** (`get_raw_window_handle`, `lib.rs:467`): laufey's
   native handle is converted to `raw-window-handle` types per platform — AppKit
   / Win32 / X11 / **Wayland** (`LAUFEY_WINDOW_HANDLE_WAYLAND`, `lib.rs:518`).

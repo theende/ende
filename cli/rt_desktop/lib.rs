@@ -2214,12 +2214,11 @@ fn runtime_main() {
   // Everything above must stay on this (still effectively single-threaded)
   // loader thread: `set_default_webview2_user_data_folder` calls `setenv`,
   // which is only safe before the runtime spins up its IO thread (and,
-  // optionally, the inspector server thread). The worker-fork path has
-  // already returned, and the init calls above (init_logging,
-  // mark_standalone, rustls install_default, set_js_namespace) don't spawn
-  // threads. The runtime itself moves to a dedicated thread with a real
-  // stack; the loader thread just parks in `join` (inside
-  // `run_on_runtime_thread`) until the app exits.
+  // optionally, the inspector server thread). The init calls above
+  // (init_logging, mark_standalone, rustls install_default,
+  // set_js_namespace) don't spawn threads. The runtime itself moves to a
+  // dedicated thread with a real stack; the loader thread just parks in
+  // `join` (inside `run_on_runtime_thread`) until the app exits.
   run_on_runtime_thread(move || {
     let rt = ende_runtime::tokio_util::create_basic_runtime();
 
