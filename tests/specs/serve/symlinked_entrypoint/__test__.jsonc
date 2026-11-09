@@ -1,0 +1,16 @@
+// `ende serve` loads a symlinked entrypoint from its target, so relative
+// imports resolve next to the target, as with `ende run`.
+{
+  "tempDir": true,
+  "if": "unix",
+  "steps": [
+    {
+      "args": "run -A setup.js",
+      "output": ""
+    },
+    {
+      "args": "serve --allow-net --host 127.0.0.1 --port 0 bin/main.ts",
+      "output": "ok\n"
+    }
+  ]
+}

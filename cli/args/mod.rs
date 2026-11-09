@@ -693,24 +693,10 @@ impl CliOptions {
               );
               deno_path_util::resolve_path(&specifier, self.initial_cwd())?
             } else {
-              let default_resolve = || {
-                let mut url = resolve_url_or_path_normalized(
-                  &run_flags.script,
-                  self.initial_cwd(),
-                )?;
-                if url.scheme() == "file"
-                  && let Ok(path) = url.to_file_path()
-                  && let Ok(real_path) = canonicalize_path(&path)
-                  && real_path != path
-                {
-                  url = deno_path_util::url_from_file_path(&real_path)?;
-                }
-                Ok(url)
-              };
               self.resolve_main_module_with_resolver_if_bare(
                 &run_flags.script,
                 resolver,
-                default_resolve,
+                || self.resolve_entrypoint_path(&run_flags.script),
               )?
             }
           }
@@ -718,13 +704,7 @@ impl CliOptions {
             .resolve_main_module_with_resolver_if_bare(
               &run_flags.script,
               resolver,
-              || {
-                resolve_url_or_path_normalized(
-                  &run_flags.script,
-                  self.initial_cwd(),
-                )
-                .map_err(|e| e.into())
-              },
+              || self.resolve_entrypoint_path(&run_flags.script),
             )?,
           _ => {
             bail!("No main module.")
@@ -733,6 +713,24 @@ impl CliOptions {
       })
       .as_ref()
       .map_err(|err| ende_core::anyhow::anyhow!("{}", err))
+  }
+
+  /// Resolves the `run` / `serve` entrypoint `script`. A local file is
+  /// resolved to its real path, so a symlinked entrypoint's relative imports
+  /// resolve next to the file it points to, as Node does for its main module.
+  fn resolve_entrypoint_path(
+    &self,
+    script: &str,
+  ) -> Result<ModuleSpecifier, AnyError> {
+    let mut url = resolve_url_or_path_normalized(script, self.initial_cwd())?;
+    if url.scheme() == "file"
+      && let Ok(path) = url.to_file_path()
+      && let Ok(real_path) = canonicalize_path(&path)
+      && real_path != path
+    {
+      url = deno_path_util::url_from_file_path(&real_path)?;
+    }
+    Ok(url)
   }
 
   pub fn resolve_main_module(&self) -> Result<&ModuleSpecifier, AnyError> {
