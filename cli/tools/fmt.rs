@@ -538,7 +538,7 @@ fn format_yaml(
 
   let formatted_str = pretty_yaml::format_text(
     file_text,
-    &get_resolved_yaml_config(fmt_options, directive),
+    &get_resolved_yaml_config(file_text, fmt_options, directive),
   )
   .map_err(AnyError::from)?;
 
@@ -1917,15 +1917,25 @@ fn get_resolved_lax_markup_config(
 }
 
 fn get_resolved_yaml_config(
+  file_text: &str,
   options: &FmtOptionsConfig,
   ignore_directive: &str,
 ) -> pretty_yaml::config::FormatOptions {
   use pretty_yaml::config::*;
 
+  // pretty_yaml has no "auto" or "system", so resolve them here.
+  let new_line = dprint_core::configuration::resolve_new_line_kind(
+    file_text,
+    resolve_lax_new_line_kind(options),
+  );
   let layout_options = LayoutOptions {
     print_width: options.line_width.unwrap_or(80) as usize,
     indent_width: options.indent_width.unwrap_or(2) as usize,
-    line_break: LineBreak::Lf,
+    line_break: if new_line == "\r\n" {
+      LineBreak::Crlf
+    } else {
+      LineBreak::Lf
+    },
   };
 
   let language_options = LanguageOptions {
@@ -2305,6 +2315,14 @@ mod test {
       "test.sql",
       "select a, b from t where x = 1;\nselect 1;\n",
     );
+  }
+
+  #[test]
+  fn test_yaml_respects_crlf_new_line_kind() {
+    let yaml = "a:   1\nb:\n  - x\n  -   y\n# c\nd: {e:  1}\n";
+    assert_crlf_matches_lf("test.yaml", yaml);
+    // In markdown, the markdown formatter sets the line endings.
+    assert_crlf_matches_lf("test.md", &format!("# a\n\n```yaml\n{yaml}```\n"));
   }
 
   #[test]
