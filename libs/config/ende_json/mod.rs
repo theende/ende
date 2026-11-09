@@ -3809,6 +3809,114 @@ mod tests {
   }
 
   #[test]
+  fn config_schema_has_every_desktop_key() {
+    // The schema sets `additionalProperties: false`, so editors flag any
+    // key the parser accepts but the schema lacks.
+    use serde_json::Value;
+
+    fn type_matches(schema: &Value, value: &Value) -> bool {
+      match schema.get("type").and_then(Value::as_str) {
+        Some("object") => value.is_object(),
+        Some("array") => value.is_array(),
+        Some("string") => value.is_string(),
+        Some("boolean") => value.is_boolean(),
+        Some("integer") => value.is_u64() || value.is_i64(),
+        Some("number") => value.is_number(),
+        _ => true,
+      }
+    }
+    fn check(defs: &Value, schema: &Value, value: &Value, path: &str) {
+      let schema = match schema.get("$ref").and_then(Value::as_str) {
+        Some(reference) => {
+          &defs[reference.strip_prefix("#/$defs/").expect(reference)]
+        }
+        None => schema,
+      };
+      let schema = match schema.get("oneOf").or_else(|| schema.get("anyOf")) {
+        Some(Value::Array(alternatives)) => alternatives
+          .iter()
+          .find(|a| type_matches(a, value))
+          .unwrap_or_else(|| {
+            panic!("{path}: no schema alternative for {value}")
+          }),
+        _ => schema,
+      };
+      assert!(
+        type_matches(schema, value),
+        "{path}: the schema's type {} doesn't take {value}",
+        schema["type"]
+      );
+      if let Some(Value::Array(options)) = schema.get("enum") {
+        assert!(options.contains(value), "{path}: {value} isn't in the enum");
+      }
+      match value {
+        Value::Object(map) => {
+          for (key, value) in map {
+            let property = schema["properties"]
+              .get(key)
+              .unwrap_or_else(|| panic!("{path}.{key} isn't in the schema"));
+            check(defs, property, value, &format!("{path}.{key}"));
+          }
+        }
+        Value::Array(items) => {
+          for (i, item) in items.iter().enumerate() {
+            check(defs, &schema["items"], item, &format!("{path}[{i}]"));
+          }
+        }
+        _ => {}
+      }
+    }
+
+    let schema: Value = serde_json::from_str(include_str!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../../cli/schemas/config-file.v1.json"
+    )))
+    .unwrap();
+    let desktop_schema = &schema["properties"]["desktop"];
+    for backend in ["webview", "cef", "raw"] {
+      let desktop = serde_json::json!({
+        "app": {
+          "name": "My App",
+          "identifier": "com.acme.app",
+          "icons": {
+            "macos": "icon.icns",
+            "windows": "icon.ico",
+            "linux": [{ "path": "icon-512.png", "size": 512 }],
+          },
+          "deepLinks": ["acme"],
+        },
+        "backend": backend,
+        "output": {
+          "macos": "dist/App.dmg",
+          "windows": "dist/App.msi",
+          "linux": "dist/App.deb",
+        },
+        "release": { "baseUrl": "https://example.com/releases" },
+        "errorReporting": { "url": "https://example.com/errors" },
+        "macos": { "codesignIdentity": "-" },
+        "initialWindow": {
+          "width": 320,
+          "height": 220,
+          "frameless": true,
+          "noActivate": true,
+          "transparentTitlebar": true,
+          "transparent": true,
+          "showOnFirstLoad": false,
+        },
+      });
+      // Everything here is accepted by the parser...
+      let config = ConfigFile::new(
+        &serde_json::json!({ "desktop": desktop }).to_string(),
+        root_url().join("ende.json").unwrap(),
+      )
+      .unwrap();
+      config.to_desktop_config().unwrap();
+      // ...so the schema must take it too.
+      check(&schema["$defs"], desktop_schema, &desktop, "desktop");
+    }
+  }
+
+  #[test]
   fn desktop_objects_null_is_unset() {
     let config = ConfigFile::new(
       r#"{ "desktop": { "app": null, "macos": null } }"#,

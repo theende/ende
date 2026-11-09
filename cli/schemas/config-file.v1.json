@@ -6,6 +6,31 @@
   "type": "object",
   "required": [],
   "$defs": {
+    "desktopIcon": {
+      "oneOf": [{
+        "type": "string",
+        "description": "Path to one icon file."
+      }, {
+        "type": "array",
+        "description": "PNG files at specific sizes, e.g. [{ \"path\": \"icon-512.png\", \"size\": 512 }].",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "size"],
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to the PNG file."
+            },
+            "size": {
+              "type": "integer",
+              "description": "Width and height of the PNG in pixels.",
+              "minimum": 0
+            }
+          }
+        }
+      }]
+    },
     "permissionConfigValue": {
       "oneOf": [{
         "type": "boolean",
@@ -136,16 +161,16 @@
               "additionalProperties": false,
               "properties": {
                 "macos": {
-                  "type": "string",
-                  "description": "Icon path for macOS (.icns or .png)."
+                  "$ref": "#/$defs/desktopIcon",
+                  "description": "Icon for macOS: an .icns or .png file, or PNG files at specific sizes."
                 },
                 "windows": {
-                  "type": "string",
-                  "description": "Icon path for Windows (.ico)."
+                  "$ref": "#/$defs/desktopIcon",
+                  "description": "Icon for Windows: an .ico file, or PNG files at specific sizes."
                 },
                 "linux": {
-                  "type": "string",
-                  "description": "Icon path for Linux (.png)."
+                  "$ref": "#/$defs/desktopIcon",
+                  "description": "Icon for Linux: a .png file, or PNG files at specific sizes (the largest is used)."
                 }
               }
             },
@@ -160,8 +185,8 @@
         },
         "backend": {
           "type": "string",
-          "description": "Backend to use for the desktop app.",
-          "enum": ["webview", "cef"]
+          "description": "Backend to use for the desktop app: webview (the system WebView), cef (a bundled Chromium) or raw (a native window with no web renderer).",
+          "enum": ["webview", "cef", "raw"]
         },
         "output": {
           "type": "object",
@@ -190,6 +215,28 @@
             "baseUrl": {
               "type": "string",
               "description": "Base URL for auto-update release artifacts."
+            }
+          }
+        },
+        "errorReporting": {
+          "type": "object",
+          "description": "Where the app reports its uncaught errors and crashes.",
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "An https:// URL the reports are posted to, or a file:// URL of a local file they're appended to."
+            }
+          }
+        },
+        "macos": {
+          "type": "object",
+          "description": "macOS-specific settings.",
+          "additionalProperties": false,
+          "properties": {
+            "codesignIdentity": {
+              "type": "string",
+              "description": "Signing identity passed to `codesign --sign`, e.g. \"Developer ID Application: Acme, Inc. (TEAMID)\" for distribution, or \"-\" for an ad-hoc signature. Without it, builds on macOS are signed ad hoc."
             }
           }
         },
