@@ -1,0 +1,8 @@
+// Copyright 2026 the Ende authors. MIT license.
+// The check honours `@ende-types` (without it `value` is a string), and the
+// published mod.ts says `@ts-types` instead, so Deno and JSR understand it:
+// 103 bytes on disk, 101 in the package.
+{
+  "args": "publish --token 'sadfasdf' --dry-run",
+  "output": "ende_types.out"
+}

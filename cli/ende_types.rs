@@ -21,6 +21,7 @@ use deno_graph::analysis::ModuleInfo;
 use deno_graph::ast::ParserModuleAnalyzer;
 
 const ENDE_TYPES: &str = "@ende-types";
+const TS_TYPES: &str = "@ts-types";
 /// `@ts-types` as long as `@ende-types`.
 const PADDED_TS_TYPES: &str = "@ts-types  ";
 
@@ -136,6 +137,14 @@ pub fn parse_module_from_ast(options: ParseModuleFromAstOptions) -> JsModule {
   module
 }
 
+/// Changes that spell each `@ende-types` `@ts-types`, for code that leaves
+/// Ende (a package published to JSR is read by JSR and Deno too).
+pub fn to_ts_types_text_changes(
+  parsed_source: &ParsedSource,
+) -> Vec<TextChange> {
+  text_changes(&find_in_source(parsed_source), TS_TYPES)
+}
+
 #[cfg(test)]
 mod tests {
   use deno_ast::MediaType;
@@ -248,6 +257,20 @@ mod tests {
     assert_eq!(
       module_info(&parsed_source),
       ParserModuleAnalyzer::module_info(&parsed_source),
+    );
+    assert!(to_ts_types_text_changes(&parsed_source).is_empty());
+  }
+
+  #[test]
+  fn to_ts_types() {
+    let text = "// @ende-types=\"./a.d.ts\"\nimport a from \"./a.js\";\n/* @ENDE-TYPES='./b.d.ts' */\nexport * from \"./b.js\";\n// @ende-types=\"./c.d.ts\" note\nimport c from \"./c.js\";\n";
+    let parsed_source = parse(text);
+    assert_eq!(
+      deno_ast::apply_text_changes(
+        text,
+        to_ts_types_text_changes(&parsed_source)
+      ),
+      "// @ts-types=\"./a.d.ts\"\nimport a from \"./a.js\";\n/* @ts-types='./b.d.ts' */\nexport * from \"./b.js\";\n// @ts-types=\"./c.d.ts\" note\nimport c from \"./c.js\";\n",
     );
   }
 

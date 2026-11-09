@@ -136,7 +136,8 @@ impl<TSys: ModuleContentProviderSys> ModuleContentProvider<TSys> {
     let text_info = parsed_source.text_info_lazy();
     let module_info =
       deno_graph::ast::ParserModuleAnalyzer::module_info(&parsed_source);
-    let mut text_changes = Vec::new();
+    let mut text_changes =
+      crate::ende_types::to_ts_types_text_changes(&parsed_source);
     if media_type.is_jsx() {
       self.add_jsx_text_changes(
         specifier,
@@ -370,6 +371,23 @@ mod test {
     ] {
       assert!(jsx_pragma("jsxImportSource", value).is_err());
     }
+  }
+
+  #[tokio::test]
+  async fn test_module_content_ende_types() {
+    // JSR and Deno don't know `@ende-types`, so packages say `@ts-types`.
+    run_test(&[
+      ("/ende.json", r#"{ "imports": { "lib/": "./lib/" } }"#, None),
+      (
+        "/mod.ts",
+        "// @ende-types=\"./a.d.ts\"\nimport { a } from \"lib/a.js\";\nconst b = await /* @Ende-Types='./b.d.ts' */ import(\"./b.js\");\n// @ts-types=\"./c.d.ts\"\nimport { c } from \"./c.js\";\n",
+        Some(
+          "// @ts-types=\"./a.d.ts\"\nimport { a } from \"./lib/a.js\";\nconst b = await /* @ts-types='./b.d.ts' */ import(\"./b.js\");\n// @ts-types=\"./c.d.ts\"\nimport { c } from \"./c.js\";\n",
+        ),
+      ),
+      ("/lib/a.js", "export const a = 1;", None),
+    ])
+    .await;
   }
 
   #[tokio::test]
