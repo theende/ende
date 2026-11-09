@@ -335,11 +335,14 @@ dir so its watcher sees real files.
   an `execve` the new image's `Ende.Tray` icons never reach the menu bar,
   however the first run was started (checked live, webview and CEF). The old
   process spawns a waiter and `_exit`s, and once it's gone the waiter runs
-  `/usr/bin/open -n <bundle> --args …` with every variable passed by `--env`, so
-  the two runs never overlap. For a `--compress` app that's the extracted
-  bundle, whose dylib was updated. The new run doesn't get the old one's
-  standard streams, working directory or pid, and a shell that started the old
-  one sees it exit 0. The new image's first run is the update's trial: it writes
+  `/usr/bin/open -n <bundle> --env ENDE_DESKTOP_UPDATE_REEXEC=<reason> --args …`,
+  so the two runs never overlap. For a `--compress` app that's the extracted
+  bundle, whose dylib was updated. Only that variable is passed: other users can
+  read `open`'s arguments with `ps`, and the waiter runs `open` with an empty
+  environment because `open` hands its own to the app. So the new run gets the
+  environment of a Finder or Dock launch, not the old one's, nor its standard
+  streams, working directory or pid, and a shell that started the old one sees
+  it exit 0. The new image's first run is the update's trial: it writes
   `.update-trial`, and only it may write `.update-ok` (`UpdateTrial`, once). The
   trial succeeds once the main module has evaluated, top-level await included,
   and the event loop has run one more turn (`confirm_update_trial` in

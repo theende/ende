@@ -1703,12 +1703,17 @@ enum Restart {
 }
 
 /// Picks how to restart the host executable `exe`, run with `args` (argv
-/// without argv\[0]) and the environment `vars`, so the new run gets
-/// [`UPDATE_REEXEC_ENV`] set to `reason`.
+/// without argv\[0]), so the new run gets [`UPDATE_REEXEC_ENV`] set to
+/// `reason`.
 ///
 /// On macOS an app bundle's host goes through LaunchServices: `open -n
-/// <bundle> --args <args>`, with every variable passed by `--env`.
-/// LaunchServices registers the process it launched, and after an `execve`
+/// <bundle> --env <UPDATE_REEXEC_ENV>=<reason> --args <args>`. No other
+/// variable is passed: other users can read `open`'s arguments (`ps`), and an
+/// app's environment may hold secrets. The new run gets LaunchServices' own
+/// environment, as a launch from Finder or the Dock does (the waiter runs
+/// `open` with an empty one, see [`spawn_after_exit`]). The desktop runtime
+/// reads nothing else from the environment that a packaged app needs at
+/// startup; the update's state is in files beside the dylib. LaunchServices registers the process it launched, and after an `execve`
 /// the new image's `NSStatusItem`s (`Ende.Tray`) never reach the menu bar,
 /// whether LaunchServices or a shell started the first one. `-n` because the
 /// old process may still be registered when `open` runs, and `open` would
@@ -1719,29 +1724,25 @@ enum Restart {
 fn restart_plan(
   exe: &Path,
   args: &[std::ffi::OsString],
-  vars: &[(std::ffi::OsString, std::ffi::OsString)],
   reason: &str,
 ) -> Restart {
   #[cfg(target_os = "macos")]
   if let Some(bundle) = app_bundle_of(exe) {
     use std::ffi::OsString;
 
-    let mut open_args = vec![OsString::from("-n")];
-    let reexec = (OsString::from(UPDATE_REEXEC_ENV), OsString::from(reason));
-    for (key, value) in vars.iter().chain([&reexec]) {
-      let mut var = key.clone();
-      var.push("=");
-      var.push(value);
-      open_args.extend([OsString::from("--env"), var]);
-    }
-    open_args.push(bundle.as_os_str().to_owned());
+    let mut open_args = vec![
+      OsString::from("-n"),
+      "--env".into(),
+      format!("{UPDATE_REEXEC_ENV}={reason}").into(),
+      bundle.as_os_str().to_owned(),
+    ];
     if !args.is_empty() {
       open_args.push("--args".into());
       open_args.extend_from_slice(args);
     }
     return Restart::LaunchServices(open_args);
   }
-  let _ = (exe, args, vars, reason);
+  let _ = (exe, args, reason);
   Restart::Exec
 }
 
@@ -1760,8 +1761,8 @@ fn app_bundle_of(exe: &Path) -> Option<&Path> {
 }
 
 /// Starts a new run of the host executable, so the dylib now on disk runs in
-/// this same launch, with the same arguments and environment, plus
-/// [`UPDATE_REEXEC_ENV`] set to `reason`. See [`restart_plan`] for how. Only
+/// this same launch, with the same arguments and [`UPDATE_REEXEC_ENV`] set to
+/// `reason`. An exec keeps the environment; on macOS see [`restart_plan`]. Only
 /// returns on failure, with the process as it was.
 #[cfg(unix)]
 fn restart_host(reason: &str) -> std::io::Error {
@@ -1770,9 +1771,11 @@ fn restart_host(reason: &str) -> std::io::Error {
     Err(e) => return e,
   };
   let argv: Vec<_> = env::args_os().collect();
-  let vars: Vec<_> = env::vars_os().collect();
-  match restart_plan(&exe, argv.get(1..).unwrap_or_default(), &vars, reason) {
-    Restart::Exec => exec_host(&exe, &argv, &vars, reason),
+  match restart_plan(&exe, argv.get(1..).unwrap_or_default(), reason) {
+    Restart::Exec => {
+      let vars: Vec<_> = env::vars_os().collect();
+      exec_host(&exe, &argv, &vars, reason)
+    }
     #[cfg(target_os = "macos")]
     Restart::LaunchServices(open_args) => open_after_exit(&open_args),
   }
@@ -1876,7 +1879,9 @@ fn open_after_exit(open_args: &[std::ffi::OsString]) -> std::io::Error {
 /// Spawns a shell that runs `program` with `args` once every copy of the
 /// returned pipe end is closed. Only this process holds it (pipes are made
 /// close-on-exec), so that's when this process has exited. The shell's stdin
-/// is the pipe's read end, and `read` returns at end of file.
+/// is the pipe's read end, and `read` returns at end of file. Its environment
+/// is empty: `open` hands its own environment to the app it launches, which
+/// then gets LaunchServices' instead.
 #[cfg(target_os = "macos")]
 fn spawn_after_exit(
   program: &Path,
@@ -1892,6 +1897,7 @@ fn spawn_after_exit(
     .arg(program)
     .args(args)
     .stdin(reader)
+    .env_clear()
     .spawn()?;
   Ok(writer)
 }
@@ -4107,32 +4113,21 @@ mod tests {
     let exe = fake_app_bundle(tmp.path(), true);
     let bundle = exe.parent().unwrap().parent().unwrap().parent().unwrap();
     let args = [OsString::from("x y"), OsString::from("--flag=1")];
-    let vars = [
-      (OsString::from("PATH"), OsString::from("/usr/bin:/bin")),
-      (OsString::from("PASS_ME"), OsString::from("a=b c")),
-    ];
-    let expected: Vec<OsString> = [
-      "-n",
-      "--env",
-      "PATH=/usr/bin:/bin",
-      "--env",
-      "PASS_ME=a=b c",
-      "--env",
-      "ENDE_DESKTOP_UPDATE_REEXEC=swapped",
-    ]
-    .iter()
-    .map(OsString::from)
-    .chain([bundle.as_os_str().to_owned()])
-    .chain(["--args", "x y", "--flag=1"].iter().map(OsString::from))
-    .collect();
+    let expected: Vec<OsString> =
+      ["-n", "--env", "ENDE_DESKTOP_UPDATE_REEXEC=swapped"]
+        .iter()
+        .map(OsString::from)
+        .chain([bundle.as_os_str().to_owned()])
+        .chain(["--args", "x y", "--flag=1"].iter().map(OsString::from))
+        .collect();
     assert_eq!(
-      restart_plan(&exe, &args, &vars, "swapped"),
+      restart_plan(&exe, &args, "swapped"),
       Restart::LaunchServices(expected)
     );
 
     // No arguments: no `--args`.
     let Restart::LaunchServices(open_args) =
-      restart_plan(&exe, &[], &[], "rolled-back")
+      restart_plan(&exe, &[], "rolled-back")
     else {
       panic!("not through LaunchServices");
     };
@@ -4145,6 +4140,78 @@ mod tests {
         bundle.as_os_str().to_owned(),
       ]
     );
+  }
+
+  /// Puts a dummy secret in this test process's environment, where an app's
+  /// API keys would be.
+  #[cfg(target_os = "macos")]
+  fn set_dummy_secret() {
+    static SET: std::sync::Once = std::sync::Once::new();
+    // SAFETY: set once, before reading it, under a name no other code or test
+    // uses; Rust's own environment access takes its lock.
+    SET.call_once(|| unsafe { std::env::set_var("ENDE7H_SECRET", "xyz") });
+  }
+
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn restart_of_an_app_bundle_passes_only_the_update_marker() {
+    use std::ffi::OsString;
+
+    use super::Restart;
+    use super::restart_plan;
+
+    set_dummy_secret();
+    let tmp = tempfile::tempdir().unwrap();
+    let exe = fake_app_bundle(tmp.path(), true);
+    let Restart::LaunchServices(open_args) =
+      restart_plan(&exe, &[OsString::from("x")], "swapped")
+    else {
+      panic!("not through LaunchServices");
+    };
+    // `open`'s arguments are visible to other users (`ps`).
+    let envs: Vec<_> = open_args
+      .windows(2)
+      .filter(|pair| pair[0] == "--env")
+      .map(|pair| pair[1].clone())
+      .collect();
+    assert_eq!(envs, [OsString::from("ENDE_DESKTOP_UPDATE_REEXEC=swapped")]);
+    for arg in &open_args {
+      let arg = arg.to_string_lossy();
+      assert!(
+        !arg.contains("ENDE7H_SECRET") && !arg.contains("xyz"),
+        "{arg}"
+      );
+    }
+  }
+
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn restart_waiter_runs_open_without_this_process_environment() {
+    use std::ffi::OsString;
+
+    use super::spawn_after_exit;
+
+    set_dummy_secret();
+    let tmp = tempfile::tempdir().unwrap();
+    let out = tmp.path().join("env.txt");
+    let script = format!(
+      "/usr/bin/env > '{0}.tmp' && /bin/mv '{0}.tmp' '{0}'",
+      out.display()
+    );
+    let alive = spawn_after_exit(
+      std::path::Path::new("/bin/sh"),
+      &[OsString::from("-c"), OsString::from(script)],
+    )
+    .unwrap();
+    drop(alive);
+    let deadline =
+      std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !out.exists() && std::time::Instant::now() < deadline {
+      std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    // `open` hands its own environment to the app it launches.
+    let env = std::fs::read_to_string(&out).unwrap();
+    assert!(!env.contains("ENDE7H_SECRET"), "{env}");
   }
 
   #[cfg(target_os = "macos")]
@@ -4184,11 +4251,11 @@ mod tests {
     // Not in a bundle at all.
     let exe = tmp.path().join("laufey_webview");
     std::fs::write(&exe, "").unwrap();
-    assert_eq!(restart_plan(&exe, &[], &[], "swapped"), Restart::Exec);
+    assert_eq!(restart_plan(&exe, &[], "swapped"), Restart::Exec);
     // A bundle's layout without an Info.plist isn't an app LaunchServices
     // can open.
     let exe = fake_app_bundle(&tmp.path().join("noplist"), false);
-    assert_eq!(restart_plan(&exe, &[], &[], "swapped"), Restart::Exec);
+    assert_eq!(restart_plan(&exe, &[], "swapped"), Restart::Exec);
   }
 
   #[cfg(all(unix, not(target_os = "macos")))]
@@ -4199,7 +4266,7 @@ mod tests {
 
     let tmp = tempfile::tempdir().unwrap();
     let exe = fake_app_bundle(tmp.path(), true);
-    assert_eq!(restart_plan(&exe, &[], &[], "swapped"), Restart::Exec);
+    assert_eq!(restart_plan(&exe, &[], "swapped"), Restart::Exec);
   }
 
   #[cfg(unix)]
