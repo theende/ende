@@ -34,3 +34,25 @@ fn lint_fix_preserves_permissions() {
     assert_eq!(actual & 0o7777, *mode, "{i}.ts");
   }
 }
+
+/// `lint --fix` on a symlink fixes the file it points to and keeps the
+/// link; the atomic rename used to replace the link with a regular file.
+#[test]
+fn lint_fix_writes_through_symlink() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let temp_dir = context.temp_dir();
+  temp_dir.write("real/mod.ts", "window.foo = 1;\n");
+  temp_dir.symlink_file("real/mod.ts", "link.ts");
+
+  let output = context.new_command().args("lint --fix link.ts").run();
+  output.assert_exit_code(0);
+  output.assert_matches_text("Checked 1 file\n");
+
+  let link_path = temp_dir.path().join("link.ts");
+  let link_metadata = std::fs::symlink_metadata(&link_path).unwrap();
+  assert!(link_metadata.file_type().is_symlink());
+  assert_eq!(
+    temp_dir.path().join("real/mod.ts").read_to_string(),
+    "globalThis.foo = 1;\n"
+  );
+}

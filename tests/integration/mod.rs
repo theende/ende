@@ -41,7 +41,7 @@ mod init;
 mod install;
 #[path = "jsr_tests.rs"]
 mod jsr;
-// `lint --fix` permission bits; only Unix has them.
+// `lint --fix` permission bits and symlinks; Unix only.
 #[cfg(unix)]
 #[path = "lint_tests.rs"]
 mod lint;

@@ -33,6 +33,7 @@ use super::plugins::PluginHostProxy;
 use super::rules::FileOrPackageLintRule;
 use super::rules::PackageLintRule;
 use crate::sys::CliSys;
+use crate::util::fs::canonicalize_path;
 use crate::util::fs::specifier_from_file_path;
 use crate::util::text_encoding::Utf16Map;
 
@@ -242,8 +243,10 @@ impl CliLinter {
 
 /// Replace the file atomically, so a killed process can't leave it half
 /// written, and keep its permission bits. The new file is created with
-/// them, which the umask can only narrow, and then set exactly.
+/// them, which the umask can only narrow, and then set exactly. A symlink
+/// is written through: the rename would replace the link itself.
 fn write_fixed_file(file_path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+  let file_path = &canonicalize_path(file_path)?;
   let maybe_mode = permission_bits(file_path);
   atomic_write_file_with_retries(
     &CliSys::default(),
