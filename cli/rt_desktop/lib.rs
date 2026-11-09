@@ -241,15 +241,53 @@ fn untrack_notification<H>(
     .is_some()
 }
 
-/// Close a window natively and record it as closed.
-fn close_native_window(
+/// Record a window as closed.
+fn record_closed_window(
   closed_windows: &Mutex<HashSet<u32>>,
   open_windows: &Mutex<HashSet<u32>>,
   window_id: u32,
 ) {
   closed_windows.lock().unwrap().insert(window_id);
   open_windows.lock().unwrap().remove(&window_id);
+}
+
+/// Close a window natively and record it as closed.
+fn close_native_window(
+  closed_windows: &Mutex<HashSet<u32>>,
+  open_windows: &Mutex<HashSet<u32>>,
+  window_id: u32,
+) {
+  record_closed_window(closed_windows, open_windows, window_id);
   laufey::Window::from_id(window_id).close();
+}
+
+/// How the close timeout closes a window JS didn't answer for.
+#[derive(Debug, PartialEq, Eq)]
+enum TimedOutClose {
+  Destroy,
+  /// A WebGPU window: destroying it would dangle the surface's handles; see
+  /// `BrowserWindow.close()` in ende_runtime.
+  Hide,
+}
+
+/// Decides how the close timeout closes `window_id`, and records it as
+/// closed. A hidden WebGPU window counts as closed too: its `isClosed()` is
+/// true, so the `close` event JS dispatches when it catches up can't be
+/// canceled, and a late listener can't keep the window around hidden.
+fn time_out_close(
+  closed_windows: &Mutex<HashSet<u32>>,
+  open_windows: &Mutex<HashSet<u32>>,
+  surface_windows: &Mutex<HashSet<u32>>,
+  hidden_by_app: &Mutex<HashSet<u32>>,
+  window_id: u32,
+) -> TimedOutClose {
+  record_closed_window(closed_windows, open_windows, window_id);
+  if surface_windows.lock().unwrap().contains(&window_id) {
+    hidden_by_app.lock().unwrap().insert(window_id);
+    TimedOutClose::Hide
+  } else {
+    TimedOutClose::Destroy
+  }
 }
 
 /// Laufey-backed implementation of [`endert::desktop::DesktopApi`].
@@ -2639,13 +2677,16 @@ async fn run_desktop(
         let surface_windows = surface_windows.clone();
         let hidden_by_app = hidden_by_app_for_api.clone();
         CloseRequests::new(CLOSE_ANSWER_TIMEOUT, move |window_id| {
-          if surface_windows.lock().unwrap().contains(&window_id) {
-            // Destroying it would dangle the surface's handles; see
-            // `BrowserWindow.close()` in ende_runtime.
-            hidden_by_app.lock().unwrap().insert(window_id);
-            laufey::Window::from_id(window_id).hide();
-          } else {
-            close_native_window(&closed_windows, &open_windows, window_id);
+          let window = laufey::Window::from_id(window_id);
+          match time_out_close(
+            &closed_windows,
+            &open_windows,
+            &surface_windows,
+            &hidden_by_app,
+            window_id,
+          ) {
+            TimedOutClose::Destroy => window.close(),
+            TimedOutClose::Hide => window.hide(),
           }
         })
       };
@@ -2837,6 +2878,7 @@ async fn run_desktop(
 #[cfg(test)]
 mod tests {
   use std::collections::HashMap;
+  use std::collections::HashSet;
   use std::sync::Arc;
   use std::sync::Mutex;
   use std::time::Duration;
@@ -3877,6 +3919,33 @@ mod tests {
       || closes += 1,
     );
     assert_eq!(closes, 1);
+  }
+
+  // --- time_out_close ---
+
+  #[test]
+  fn a_window_hidden_by_the_close_timeout_counts_as_closed() {
+    use super::TimedOutClose;
+    use super::time_out_close;
+    let closed = Mutex::new(HashSet::new());
+    let open = Mutex::new(HashSet::from([1, 2]));
+    let surfaces = Mutex::new(HashSet::from([2]));
+    let hidden = Mutex::new(HashSet::new());
+    assert_eq!(
+      time_out_close(&closed, &open, &surfaces, &hidden, 1),
+      TimedOutClose::Destroy
+    );
+    // A WebGPU window is only hidden, but it's closed as far as the app is
+    // concerned: `isClosed()` is true, so the `close` event JS dispatches
+    // when it catches up can't be canceled, and a late listener can't keep
+    // the window around hidden.
+    assert_eq!(
+      time_out_close(&closed, &open, &surfaces, &hidden, 2),
+      TimedOutClose::Hide
+    );
+    assert_eq!(*closed.lock().unwrap(), HashSet::from([1, 2]));
+    assert!(open.lock().unwrap().is_empty());
+    assert_eq!(*hidden.lock().unwrap(), HashSet::from([2]));
   }
 
   // --- CloseRequests (denoland/deno#36973) ---

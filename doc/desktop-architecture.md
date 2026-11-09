@@ -285,7 +285,9 @@ dir so its watcher sees real files.
   thread made the window impossible to close. Ende's watchdog thread closes it
   if JS hasn't answered within 5 s (`CLOSE_ANSWER_TIMEOUT`). The clock stops
   while `alert`/`confirm`/`prompt` block the JS thread. A WebGPU window is
-  hidden instead of destroyed, as in `BrowserWindow.close()`. A programmatic
+  hidden instead of destroyed, as in `BrowserWindow.close()`, but it counts as
+  closed (`isClosed()`), so the `close` event JS dispatches when it catches up
+  can't be canceled. A programmatic
   `close()` fires no `close` event, so the documented "`preventDefault()`, ask,
   then `close()`" pattern can't loop.
 
