@@ -17704,43 +17704,21 @@ fn lsp_import_raw_imports_goto_definition() {
       "position": { "line": 2, "character": 18 },
     }),
   );
+  // The start of the imported file, not the synthetic module that declares
+  // its value.
   assert_eq!(
     res,
-    if false {
-      json!([{
-        "originSelectionRange": {
-          "start": { "line": 2, "character": 18 },
-          "end": { "line": 2, "character": 22 },
-        },
-        "targetUri": text_file.uri(),
-        "targetRange": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 0, "character": 0 },
-        },
-        "targetSelectionRange": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 0, "character": 0 },
-        },
-      }])
-    } else {
-      // TODO(nayeemrmn): This URI here contains an unnecessary fragment, and
-      // the ranges target the position of the exported symbol in the synthetic
-      // types file. Both of these should be masked. There's no urgency though
-      // since our tsgo integration handles it properly.
-      json!([{
-        "targetUri": format!("{}#endeRawImport=text.ts", text_file.uri().as_str()),
-        // Offsets in the synthetic `declare const data: string;` stub, mapped
-        // through the lines of data.txt.
-        "targetRange": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 1, "character": 13 },
-        },
-        "targetSelectionRange": {
-          "start": { "line": 1, "character": 0 },
-          "end": { "line": 1, "character": 4 },
-        },
-      }])
-    },
+    json!([{
+      "targetUri": text_file.uri(),
+      "targetRange": {
+        "start": { "line": 0, "character": 0 },
+        "end": { "line": 0, "character": 0 },
+      },
+      "targetSelectionRange": {
+        "start": { "line": 0, "character": 0 },
+        "end": { "line": 0, "character": 0 },
+      },
+    }]),
   );
 }
 

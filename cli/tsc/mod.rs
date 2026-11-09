@@ -544,7 +544,7 @@ pub enum RawImportKind {
 /// like `#endeRawImport=text`. This is necessary because
 /// TypeScript can't handle different modules at the same
 /// specifier.
-fn get_specifier_raw_import(specifier: &Url) -> Option<RawImportKind> {
+pub fn get_specifier_raw_import(specifier: &Url) -> Option<RawImportKind> {
   // this is purposefully relaxed about matching in order to keep the
   // code less complex. If someone is doing something to cause this to
   // incorrectly match then they most likely deserve the bug they sought.

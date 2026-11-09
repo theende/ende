@@ -2169,6 +2169,13 @@ impl DocumentSpan {
     snapshot: &StateSnapshot,
   ) -> Option<lsp::LocationLink> {
     let target_specifier = resolve_url(&self.file_name).ok()?;
+    if crate::tsc::get_specifier_raw_import(&target_specifier).is_some() {
+      return self.to_raw_import_link(
+        target_specifier,
+        origin_module,
+        snapshot,
+      );
+    }
     let target_module = snapshot.document_modules.module_for_specifier(
       &target_specifier,
       origin_module.scope.as_deref(),
@@ -2186,22 +2193,58 @@ impl DocumentSpan {
           self.text_span.to_range(&target_module.line_index),
         )
       };
-    let origin_selection_range =
-      if let Some(original_context_span) = &self.original_context_span {
-        Some(original_context_span.to_range(&origin_module.line_index))
-      } else {
-        self.original_text_span.as_ref().map(|original_text_span| {
-          original_text_span.to_range(&origin_module.line_index)
-        })
-      };
     let link = lsp::LocationLink {
-      origin_selection_range,
+      origin_selection_range: self.origin_selection_range(origin_module),
       target_uri: target_uri_for_client(&target_module, snapshot)
         .unwrap_or_else(|| target_module.uri.as_ref().clone()),
       target_range,
       target_selection_range,
     };
     Some(link)
+  }
+
+  fn origin_selection_range(
+    &self,
+    origin_module: &DocumentModule,
+  ) -> Option<lsp::Range> {
+    if let Some(original_context_span) = &self.original_context_span {
+      Some(original_context_span.to_range(&origin_module.line_index))
+    } else {
+      self.original_text_span.as_ref().map(|original_text_span| {
+        original_text_span.to_range(&origin_module.line_index)
+      })
+    }
+  }
+
+  /// The link for a span in the module tsc gets for a bytes, text or CSS
+  /// import (`target_specifier` has `#endeRawImport=<kind>.ts`): the start of
+  /// the imported file. The span's offsets are in that module, which only
+  /// declares the imported value, so they mean nothing in the file.
+  fn to_raw_import_link(
+    &self,
+    mut target_specifier: ModuleSpecifier,
+    origin_module: &DocumentModule,
+    snapshot: &StateSnapshot,
+  ) -> Option<lsp::LocationLink> {
+    target_specifier.set_fragment(None);
+    let target_uri = snapshot
+      .document_modules
+      .module_for_specifier(
+        &target_specifier,
+        origin_module.scope.as_deref(),
+        Some(&origin_module.compiler_options_key),
+      )
+      .and_then(|module| {
+        target_uri_for_client(&module, snapshot)
+          .or_else(|| Some(module.uri.as_ref().clone()))
+      })
+      .or_else(|| url_to_uri(&target_specifier).ok())?;
+    Some(lsp::LocationLink {
+      origin_selection_range: self.origin_selection_range(origin_module),
+      target_uri,
+      target_range: lsp::Range::default(),
+      target_selection_range: lsp::Range::default(),
+    })
   }
 
   /// Convert the `DocumentSpan` into a specifier that can be sent to the client
