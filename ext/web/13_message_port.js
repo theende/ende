@@ -46,6 +46,7 @@ const {
   TypeErrorPrototype,
   Uint8Array,
   WeakMapPrototypeGet,
+  WeakMapPrototypeHas,
   WeakMapPrototypeSet,
 } = primordials;
 const {
@@ -525,6 +526,17 @@ class MessagePort extends _MessagePortBase {
     // see the matching state. Falls back to the filtered inspect proxy
     // (which produces the WHATWG-style `{ onmessage, onmessageerror }`
     // shape) for the actual rendering.
+    if (!WeakMapPrototypeHas(messagePortIds, this)) {
+      // A prototype or `Object.create(MessagePort.prototype)`: no port state.
+      return inspect(
+        getCreateFilteredInspectProxy()({
+          object: this,
+          evaluate: false,
+          keys: ["onmessage", "onmessageerror"],
+        }),
+        inspectOptions,
+      );
+    }
     return inspect(
       getCreateFilteredInspectProxy()({
         object: {

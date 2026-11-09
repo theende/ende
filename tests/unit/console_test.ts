@@ -2993,3 +2993,97 @@ Deno.test(function consoleInspectFilePrototype() {
     'Derived { name: "test.txt", size: 3, type: "text/plain" }',
   );
 });
+
+// Inspecting an interface prototype, a subclass prototype or
+// `Object.create(X.prototype)` must not throw, and must not leave a rejected
+// promise behind (a promise attribute getter rejects for such an object).
+// Sweeps every interface exposed on the global, so a new one is covered.
+// Not with `getters: true`: that option calls the getters on purpose.
+async function interfacePrototypeInspectFailures() {
+  const failures: string[] = [];
+  const onRejection = (event: PromiseRejectionEvent) => {
+    event.preventDefault();
+    failures.push(`unhandled rejection: ${event.reason}`);
+  };
+  globalThis.addEventListener("unhandledrejection", onRejection);
+  for (const name of Object.getOwnPropertyNames(globalThis)) {
+    let value;
+    try {
+      // deno-lint-ignore no-explicit-any
+      value = (globalThis as any)[name];
+    } catch {
+      continue;
+    }
+    if (typeof value !== "function" || typeof value.prototype !== "object") {
+      continue;
+    }
+    let subclassPrototype;
+    try {
+      subclassPrototype = (class extends value {}).prototype;
+    } catch {
+      subclassPrototype = Object.create(value.prototype);
+    }
+    for (
+      const [kind, object] of [
+        ["prototype", value.prototype],
+        ["subclass prototype", subclassPrototype],
+        ["Object.create", Object.create(value.prototype)],
+      ]
+    ) {
+      for (const options of [{}, { showHidden: true }]) {
+        try {
+          Deno.inspect(object, options);
+        } catch (error) {
+          failures.push(`${name} ${kind}: ${error}`);
+        }
+      }
+    }
+  }
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  globalThis.removeEventListener("unhandledrejection", onRejection);
+  return failures;
+}
+
+Deno.test(async function consoleInspectInterfacePrototypes() {
+  assertEquals(await interfacePrototypeInspectFailures(), []);
+});
+
+Deno.test(async function consoleInspectInterfacePrototypesInWorker() {
+  const source = `${interfacePrototypeInspectFailures.toString()}
+    postMessage(await interfacePrototypeInspectFailures());`;
+  const worker = new Worker(
+    `data:application/javascript,${encodeURIComponent(source)}`,
+    { type: "module" },
+  );
+  const failures = await new Promise((resolve, reject) => {
+    worker.onmessage = (event) => resolve(event.data);
+    worker.onerror = (event) => {
+      event.preventDefault();
+      reject(new Error(event.message));
+    };
+  });
+  worker.terminate();
+  assertEquals(failures, []);
+});
+
+Deno.test(function consoleInspectBrandedInstancesStillShowValues() {
+  assertEquals(
+    Deno.inspect(new URLSearchParams("a=1")),
+    'URLSearchParams { "a" => "1" }',
+  );
+  assertEquals(
+    Deno.inspect(new Headers({ a: "1" })),
+    'Headers { a: "1" }',
+  );
+  const { port1, port2 } = new MessageChannel();
+  assertStringIncludes(Deno.inspect(port1), "active: true");
+  port1.close();
+  port2.close();
+  const stream = Deno.inspect(new ReadableStream());
+  assertStringIncludes(stream, "locked: false");
+  assertStringIncludes(stream, 'state: "readable"');
+  assertStringIncludes(
+    Deno.inspect(new ReadableStream().getReader()),
+    "closed: Promise { <pending> }",
+  );
+});

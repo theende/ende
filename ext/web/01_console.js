@@ -692,10 +692,21 @@ function createFilteredInspectProxy({ object, keys, evaluate }) {
   const result = new cls();
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
-    const descriptor = evaluate
-      ? getEvaluatedDescriptor(object, key)
-      : (getDescendantPropertyDescriptor(object, key) ??
-        getEvaluatedDescriptor(object, key));
+    let descriptor;
+    if (evaluate) {
+      // `evaluate` usually means "inherits from the interface prototype",
+      // which a subclass prototype or `Object.create(X.prototype)` also
+      // does. Their getters throw a brand check error, so show the accessor
+      // instead of letting inspection throw.
+      try {
+        descriptor = getEvaluatedDescriptor(object, key);
+      } catch {
+        descriptor = getDescendantPropertyDescriptor(object, key);
+      }
+    } else {
+      descriptor = getDescendantPropertyDescriptor(object, key) ??
+        getEvaluatedDescriptor(object, key);
+    }
     ObjectDefineProperty(result, key, { __proto__: null, ...descriptor });
   }
   return result;

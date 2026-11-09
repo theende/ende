@@ -369,6 +369,10 @@ ObjectDefineProperties(WorkerLocation.prototype, {
   [SymbolFor("Deno.privateCustomInspect")]: {
     __proto__: null,
     value: function (inspect, inspectOptions) {
+      // A prototype or `Object.create(WorkerLocation.prototype)` has no URL.
+      if (WeakMapPrototypeGet(workerLocationUrls, this) == null) {
+        return `${this.constructor.name} ${inspect({}, inspectOptions)}`;
+      }
       return `${this.constructor.name} ${
         inspect({
           hash: this.hash,

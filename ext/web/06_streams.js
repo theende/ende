@@ -6427,7 +6427,7 @@ class ReadableStream {
     const isBranded = ObjectPrototypeIsPrototypeOf(
       ReadableStreamPrototype,
       this,
-    );
+    ) && this[webidl.brand] === webidl.brand;
     const view = {
       locked: isBranded ? this.locked : undefined,
       state: isBranded ? this[_state] : undefined,
@@ -6606,7 +6606,7 @@ class ReadableStreamDefaultReader {
         evaluate: ObjectPrototypeIsPrototypeOf(
           ReadableStreamDefaultReaderPrototype,
           this,
-        ),
+        ) && this[webidl.brand] === webidl.brand,
         keys: ["closed"],
       }),
       inspectOptions,
@@ -6793,7 +6793,7 @@ class ReadableStreamBYOBReader {
         evaluate: ObjectPrototypeIsPrototypeOf(
           ReadableStreamBYOBReaderPrototype,
           this,
-        ),
+        ) && this[webidl.brand] === webidl.brand,
         keys: ["closed"],
       }),
       inspectOptions,
@@ -7738,7 +7738,7 @@ class WritableStreamDefaultWriter {
         evaluate: ObjectPrototypeIsPrototypeOf(
           WritableStreamDefaultWriterPrototype,
           this,
-        ),
+        ) && this[webidl.brand] === webidl.brand,
         keys: [
           "closed",
           "desiredSize",

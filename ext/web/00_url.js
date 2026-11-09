@@ -434,7 +434,12 @@ class URLSearchParams {
   }
 
   [SymbolFor("Deno.privateCustomInspect")](inspect, inspectOptions) {
-    webidl.assertBranded(this, URLSearchParamsPrototype, "URLSearchParams");
+    if (
+      !ObjectPrototypeIsPrototypeOf(URLSearchParamsPrototype, this) ||
+      this[webidl.brand] !== webidl.brand
+    ) {
+      return "URLSearchParams {}";
+    }
     if (
       typeof inspectOptions?.depth === "number" && inspectOptions.depth < 0
     ) {

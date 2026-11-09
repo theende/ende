@@ -267,7 +267,10 @@ class FormData {
   }
 
   [SymbolFor("Deno.privateCustomInspect")](inspect, inspectOptions) {
-    if (ObjectPrototypeIsPrototypeOf(FormDataPrototype, this)) {
+    if (
+      ObjectPrototypeIsPrototypeOf(FormDataPrototype, this) &&
+      this[webidl.brand] === webidl.brand
+    ) {
       return `${this.constructor.name} ${
         inspect(ObjectFromEntries(this), inspectOptions)
       }`;

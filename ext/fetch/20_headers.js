@@ -630,7 +630,10 @@ class Headers {
   }
 
   [SymbolFor("Deno.privateCustomInspect")](inspect, inspectOptions) {
-    if (ObjectPrototypeIsPrototypeOf(HeadersPrototype, this)) {
+    if (
+      ObjectPrototypeIsPrototypeOf(HeadersPrototype, this) &&
+      this[_brand] === _brand
+    ) {
       const headers = {};
       for (const entry of new SafeArrayIterator(ArrayFrom(this))) {
         const name = entry[0];
