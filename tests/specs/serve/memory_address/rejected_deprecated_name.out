@@ -1,0 +1,3 @@
+Warning: DENO_SERVE_ADDRESS is deprecated. Use ENDE_SERVE_ADDRESS instead.
+[WILDCARD]ENDE_SERVE_ADDRESS: memory: addresses are reserved for the desktop runtime and can't be set in the environment: memory:app.example
+tcp

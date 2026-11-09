@@ -1,37 +1,26 @@
 {
   "tests": {
-    // ENDE_SERVE_ADDRESS=memory:<host> (what the desktop runtime sets) puts
-    // Ende.serve on the in-process memory transport in any `ende run`: a
-    // listener only this process's own Rust side can connect to, so it needs
-    // no net permission and opens no socket.
-    "listens_in_process": {
-      "args": "run listen.ts",
-      "envs": { "ENDE_SERVE_ADDRESS": "memory:spec-mem.example" },
-      "output": "listen.out",
-      "exitCode": 0
-    },
-    "default_log": {
-      "args": "run default_log.ts",
-      "envs": { "ENDE_SERVE_ADDRESS": "memory:spec-log.example" },
-      "output": "default_log.out",
-      "exitCode": 0
-    },
-    // The name is the host of `request.url`, so it must be a lowercase domain
-    // name. Anything else is refused and the server listens where it asked.
-    "invalid_host": {
-      "args": "run --allow-net=127.0.0.1 invalid_host.ts",
-      "envs": { "ENDE_SERVE_ADDRESS": "memory:Spec.Example:80" },
-      "output": "invalid_host.out",
-      "exitCode": 0
-    },
-    // A TCP server in the same process never takes a request whose
-    // `request.url` names the memory listener's host (in `Host` or an
-    // absolute-form target, however it's spelled): only a memory connection
-    // produces that URL, and a handler may trust it.
-    "tcp_refuses_memory_host": {
-      "args": "run --allow-net=127.0.0.1 forged.ts",
+    // ENDE_SERVE_ADDRESS=memory:<host> names a listener that only the desktop
+    // runtime in the same process connects to, so only the desktop runtime
+    // may set it (in its process-local environment, see
+    // `ende_os::set_process_local_env_var`). From the process environment it
+    // is refused, and the server listens where it asked.
+    "rejected_from_environment": {
+      "args": "run --allow-net=127.0.0.1 tcp_listen.ts",
       "envs": { "ENDE_SERVE_ADDRESS": "memory:app.example" },
-      "output": "forged.out",
+      "output": "rejected.out",
+      "exitCode": 0
+    },
+    "rejected_duplicate_from_environment": {
+      "args": "run --allow-net=127.0.0.1 tcp_listen.ts",
+      "envs": { "ENDE_SERVE_ADDRESS": "duplicate,memory:app.example" },
+      "output": "rejected.out",
+      "exitCode": 0
+    },
+    "rejected_deprecated_name_from_environment": {
+      "args": "run --allow-net=127.0.0.1 tcp_listen.ts",
+      "envs": { "DENO_SERVE_ADDRESS": "memory:app.example" },
+      "output": "rejected_deprecated_name.out",
       "exitCode": 0
     }
   }

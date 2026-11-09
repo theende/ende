@@ -1833,12 +1833,20 @@ pub fn op_http_serve_address_override(
   }
   // Through the runtime's view of the environment, which has the variables
   // an embedder provides without `setenv`
-  // (`ende_os::set_process_local_env_var`).
+  // (`ende_os::set_process_local_env_var`), ahead of the process
+  // environment. Only such a variable may ask for `memory:`: it names a
+  // listener only the embedder in this process (the desktop runtime)
+  // connects to.
   let env = ende_os::ProcessEnvGuard::lock();
+  if let Ok(val) = ende_env::var_with("ENDE_SERVE_ADDRESS", |key| {
+    env.process_local_var_os(key)
+  }) {
+    return parse_serve_address(&val, true);
+  }
   if let Ok(val) =
     ende_env::var_with("ENDE_SERVE_ADDRESS", |key| env.var_os(key))
   {
-    return parse_serve_address(&val);
+    return parse_serve_address(&val, false);
   };
 
   (0, String::new(), 0, false)
@@ -1852,7 +1860,12 @@ pub fn op_http_serve_default_compression() -> bool {
   }
 }
 
-fn parse_serve_address(input: &str) -> (u8, String, u32, bool) {
+/// `allow_memory`: whether the value may be a `memory:` address, i.e. the
+/// embedder set it (see [`op_http_serve_address_override`]).
+fn parse_serve_address(
+  input: &str,
+  allow_memory: bool,
+) -> (u8, String, u32, bool) {
   let (input, duplicate) = match input.strip_prefix("duplicate,") {
     Some(input) => (input, true),
     None => (input, false),
@@ -1913,6 +1926,13 @@ fn parse_serve_address(input: &str) -> (u8, String, u32, bool) {
       // In-process byte channel (`ende_net::memory`). The peer in this
       // process (the desktop runtime) connects to it by this name, and it is
       // the host of each request's `request.url`.
+      if !allow_memory {
+        log::error!(
+          "ENDE_SERVE_ADDRESS: memory: addresses are reserved for the desktop runtime and can't be set in the environment: memory:{}",
+          host
+        );
+        return (0, String::new(), 0, false);
+      }
       if !is_memory_serve_host(host) {
         log::error!(
           "ENDE_SERVE_ADDRESS: invalid memory host (expected a lowercase domain name): {}",
@@ -1997,50 +2017,59 @@ mod tests {
   #[test]
   fn test_parse_serve_address() {
     assert_eq!(
-      parse_serve_address("tcp:127.0.0.1:8080"),
+      parse_serve_address("tcp:127.0.0.1:8080", false),
       (1, "127.0.0.1".to_string(), 8080, false)
     );
     assert_eq!(
-      parse_serve_address("tcp:[::1]:9000"),
+      parse_serve_address("tcp:[::1]:9000", false),
       (1, "[::1]".to_string(), 9000, false)
     );
     assert_eq!(
-      parse_serve_address("duplicate,tcp:[::1]:9000"),
+      parse_serve_address("duplicate,tcp:[::1]:9000", false),
       (1, "[::1]".to_string(), 9000, true)
     );
 
     assert_eq!(
-      parse_serve_address("unix:/var/run/socket.sock"),
+      parse_serve_address("unix:/var/run/socket.sock", false),
       (2, "/var/run/socket.sock".to_string(), 0, false)
     );
     assert_eq!(
-      parse_serve_address("duplicate,unix:/var/run/socket.sock"),
+      parse_serve_address("duplicate,unix:/var/run/socket.sock", false),
       (2, "/var/run/socket.sock".to_string(), 0, true)
     );
 
     assert_eq!(
-      parse_serve_address("vsock:1234:5678"),
+      parse_serve_address("vsock:1234:5678", false),
       (3, "1234".to_string(), 5678, false)
     );
     assert_eq!(
-      parse_serve_address("vsock:-1:5678"),
+      parse_serve_address("vsock:-1:5678", false),
       (3, "-1".to_string(), 5678, false)
     );
     assert_eq!(
-      parse_serve_address("duplicate,vsock:-1:5678"),
+      parse_serve_address("duplicate,vsock:-1:5678", false),
       (3, "-1".to_string(), 5678, true)
     );
 
     // In-process memory channel (the desktop runtime's transport). The name
     // is the host of `request.url`, so it must be a normalized domain name.
     assert_eq!(
-      parse_serve_address("memory:app.example"),
+      parse_serve_address("memory:app.example", true),
       (4, "app.example".to_string(), 0, false)
     );
     assert_eq!(
-      parse_serve_address("duplicate,memory:app.example"),
+      parse_serve_address("duplicate,memory:app.example", true),
       (4, "app.example".to_string(), 0, true)
     );
+    // Only the embedder may ask for one: from the process environment it's
+    // refused.
+    for input in ["memory:app.example", "duplicate,memory:app.example"] {
+      assert_eq!(
+        parse_serve_address(input, false),
+        (0, String::new(), 0, false),
+        "{input}"
+      );
+    }
     for host in [
       "",
       "App.Example",
@@ -2051,16 +2080,31 @@ mod tests {
       "[::1]",
     ] {
       assert_eq!(
-        parse_serve_address(&format!("memory:{host}")),
+        parse_serve_address(&format!("memory:{host}"), true),
         (0, String::new(), 0, false),
         "{host}"
       );
     }
 
-    assert_eq!(parse_serve_address("tcp:"), (0, String::new(), 0, false));
-    assert_eq!(parse_serve_address("unix:"), (0, String::new(), 0, false));
-    assert_eq!(parse_serve_address("vsock:"), (0, String::new(), 0, false));
-    assert_eq!(parse_serve_address("foo:"), (0, String::new(), 0, false));
-    assert_eq!(parse_serve_address("bar"), (0, String::new(), 0, false));
+    assert_eq!(
+      parse_serve_address("tcp:", false),
+      (0, String::new(), 0, false)
+    );
+    assert_eq!(
+      parse_serve_address("unix:", false),
+      (0, String::new(), 0, false)
+    );
+    assert_eq!(
+      parse_serve_address("vsock:", false),
+      (0, String::new(), 0, false)
+    );
+    assert_eq!(
+      parse_serve_address("foo:", false),
+      (0, String::new(), 0, false)
+    );
+    assert_eq!(
+      parse_serve_address("bar", false),
+      (0, String::new(), 0, false)
+    );
   }
 }

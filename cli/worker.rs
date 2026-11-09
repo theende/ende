@@ -607,6 +607,12 @@ mod tests {
   use crate::util::env::resolve_cwd;
 
   fn create_test_worker() -> MainWorker {
+    create_test_worker_with_permissions(Permissions::none_without_prompt())
+  }
+
+  fn create_test_worker_with_permissions(
+    permissions: Permissions,
+  ) -> MainWorker {
     let main_module =
       resolve_path("./hello.js", &resolve_cwd(None).unwrap()).unwrap();
     let fs = Arc::new(RealFs);
@@ -615,6 +621,8 @@ mod tests {
     );
     let options = WorkerOptions {
       startup_snapshot: ende_snapshots::CLI_SNAPSHOT,
+      residual_lazy_js_sources: ende_snapshots::RESIDUAL_LAZY_JS,
+      residual_lazy_esm_sources: ende_snapshots::RESIDUAL_LAZY_ESM,
       ..Default::default()
     };
 
@@ -625,7 +633,7 @@ mod tests {
         module_loader: Rc::new(FsModuleLoader),
         permissions: PermissionsContainer::new(
           permission_desc_parser,
-          Permissions::none_without_prompt(),
+          permissions,
         ),
         blob_store: Arc::new(ende_runtime::ende_web::BlobStore::default())
           as Arc<dyn ende_runtime::ende_web::BlobStoreTrait>,
@@ -692,5 +700,116 @@ mod tests {
     let module_specifier = ModuleSpecifier::from_file_path(&p).unwrap();
     let result = worker.execute_main_module(&module_specifier).await;
     assert!(result.is_ok());
+  }
+
+  /// Runs `code` as the main module, failing on any error it throws.
+  async fn run_test_module(permissions: Permissions, code: &str) {
+    let temp_dir = test_util::TempDir::new();
+    let path = temp_dir.path().join("main.js");
+    path.write(code);
+    let module_specifier = ModuleSpecifier::from_file_path(&path).unwrap();
+    let mut worker = create_test_worker_with_permissions(permissions);
+    worker.execute_main_module(&module_specifier).await.unwrap();
+    worker.run_event_loop(false).await.unwrap();
+  }
+
+  /// `ENDE_SERVE_ADDRESS=memory:<host>` from the embedder (the desktop
+  /// runtime, through the process-local environment) puts the first
+  /// `Ende.serve` on the in-process memory transport.
+  #[tokio::test]
+  async fn serve_on_memory_transport_from_embedder() {
+    use ende_runtime::ende_os::ProcessEnvGuard;
+    use ende_runtime::ende_os::set_process_local_env_var;
+
+    struct RemoveOnDrop;
+    impl Drop for RemoveOnDrop {
+      fn drop(&mut self) {
+        ProcessEnvGuard::lock().remove_var("ENDE_SERVE_ADDRESS");
+      }
+    }
+    set_process_local_env_var("ENDE_SERVE_ADDRESS", "memory:worker.example");
+    let _remove = RemoveOnDrop;
+
+    // It needs no net permission and opens no socket.
+    run_test_module(
+      Permissions::none_without_prompt(),
+      r#"
+        const server = Ende.serve({ onListen() {} }, () => new Response("ok"));
+        const { transport, name } = server.addr;
+        if (transport !== "memory" || name !== "worker.example") {
+          throw new Error(JSON.stringify(server.addr));
+        }
+        await server.shutdown();
+      "#,
+    )
+    .await;
+
+    // A TCP server in the same process never takes a request whose
+    // `request.url` names the memory listener's host (in `Host` or an
+    // absolute-form target, however it's spelled): only a memory connection
+    // produces that URL, and a handler may trust it.
+    run_test_module(
+      Permissions::allow_all(),
+      r#"
+        const memory = Ende.serve({ onListen() {} }, () => new Response("memory"));
+        const seen = [];
+        const server = Ende.serve({
+          hostname: "127.0.0.1",
+          port: 0,
+          onListen() {},
+        }, (req) => {
+          seen.push(req.url);
+          return new Response("handled");
+        });
+        async function send(target, host) {
+          const conn = await Ende.connect({
+            hostname: "127.0.0.1",
+            port: server.addr.port,
+          });
+          await conn.write(new TextEncoder().encode(
+            `GET ${target} HTTP/1.1\r\nhost: ${host}\r\nconnection: close\r\n\r\n`,
+          ));
+          let text = "";
+          const buf = new Uint8Array(4096);
+          while (true) {
+            const n = await conn.read(buf);
+            if (n === null) break;
+            text += new TextDecoder().decode(buf.subarray(0, n));
+          }
+          conn.close();
+          return text.split("\r\n")[0];
+        }
+        const results = [];
+        for (const [target, host] of [
+          ["http://worker.example/x", "other.example"],
+          ["HTTP://WORKER.EXAMPLE:8000/x", "other.example"],
+          ["/x", "worker.example"],
+          ["/x", "WORKER.Example:8000"],
+          ["/x", "user@worker.example"],
+          ["/x", "other.example"],
+          ["http://other.example/x", "worker.example"],
+        ]) {
+          results.push(await send(target, host));
+        }
+        const expected = JSON.stringify([
+          ...Array(5).fill("HTTP/1.1 400 Bad Request"),
+          "HTTP/1.1 200 OK",
+          "HTTP/1.1 200 OK",
+        ]);
+        const expectedSeen = JSON.stringify([
+          "http://other.example/x",
+          "http://other.example/x",
+        ]);
+        if (
+          JSON.stringify(results) !== expected ||
+          JSON.stringify(seen) !== expectedSeen
+        ) {
+          throw new Error(JSON.stringify({ results, seen }));
+        }
+        await server.shutdown();
+        await memory.shutdown();
+      "#,
+    )
+    .await;
   }
 }

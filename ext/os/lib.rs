@@ -268,6 +268,15 @@ impl ProcessEnvGuard {
     process_local_env_get(key.as_ref()).or_else(|| env::var_os(key))
   }
 
+  /// Only a variable the embedder provided with
+  /// [`set_process_local_env_var`], never one from the process environment.
+  pub fn process_local_var_os(
+    &self,
+    key: impl AsRef<std::ffi::OsStr>,
+  ) -> Option<OsString> {
+    process_local_env_get(key.as_ref())
+  }
+
   /// The process environment with the process-local variables (see
   /// [`set_process_local_env_var`]) in place of any of the same name.
   pub fn vars_os(&self) -> Vec<(OsString, OsString)> {
