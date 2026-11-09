@@ -225,10 +225,44 @@ pub fn set_process_local_env_var(
   env.push((key, value));
 }
 
+/// Names in the process environment that child processes don't inherit. See
+/// [`keep_env_var_from_child_processes`].
+static KEPT_FROM_CHILDREN: LazyLock<Mutex<Vec<OsString>>> =
+  LazyLock::new(Mutex::default);
+
+fn kept_from_children() -> MutexGuard<'static, Vec<OsString>> {
+  KEPT_FROM_CHILDREN
+    .lock()
+    .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// Keep `key` from child processes that inherit the environment, while it
+/// stays in the process environment for native code in this process.
+///
+/// For a variable an embedder sets with `setenv` because a library in the
+/// process reads it there, and that only means something for this process.
+/// The desktop runtime's `WEBVIEW2_USER_DATA_FOLDER` is one: WebView2 reads
+/// it whenever the app creates a web view, and a WebView2 app the app starts
+/// would otherwise share its folder. `Ende.env.get` still sees it; a child
+/// given it in its explicit `env` still gets it, and `Ende.env.set` /
+/// `Ende.env.delete` of the key end this, so children inherit what the app
+/// sets.
+pub fn keep_env_var_from_child_processes(key: impl Into<OsString>) {
+  let key = key.into();
+  let mut kept = kept_from_children();
+  kept.retain(|k| !env_key_eq(k, &key));
+  kept.push(key);
+}
+
 /// What a child process that inherits the environment receives: the process
-/// environment without the names set with [`set_process_local_env_var`].
+/// environment without the names set with [`set_process_local_env_var`] or
+/// kept with [`keep_env_var_from_child_processes`].
 pub fn env_vars_os_for_child_process() -> Vec<(OsString, OsString)> {
+  let kept = kept_from_children();
   process_env_without(&process_local_env())
+    .into_iter()
+    .filter(|(k, _)| !kept.iter().any(|kept| env_key_eq(kept, k)))
+    .collect()
 }
 
 fn process_env_without(
@@ -293,6 +327,7 @@ impl ProcessEnvGuard {
   ) {
     let key = key.as_ref();
     process_local_env_remove(key);
+    kept_from_children().retain(|k| !env_key_eq(k, key));
     // SAFETY: Ende exposes process environment mutation for compatibility.
     // This guard coordinates the runtime mutation paths with the native
     // timezone refresh below, but cannot coordinate arbitrary native readers.
@@ -320,6 +355,7 @@ impl ProcessEnvGuard {
   pub fn remove_var(&self, key: impl AsRef<std::ffi::OsStr>) {
     let key = key.as_ref();
     process_local_env_remove(key);
+    kept_from_children().retain(|k| !env_key_eq(k, key));
     // SAFETY: Ende exposes process environment mutation for compatibility.
     // This guard coordinates the runtime mutation paths with the native
     // timezone refresh below, but cannot coordinate arbitrary native readers.
@@ -625,6 +661,32 @@ mod tests {
     env.remove_var(key);
     assert!(env.var_os(key).is_none());
     assert!(std::env::var_os(key).is_none());
+  }
+
+  #[test]
+  fn env_var_kept_from_children_stays_in_the_process() {
+    let key = "ENDE_OS_TEST_KEPT_FROM_CHILDREN_KEY";
+    let env = ProcessEnvGuard::lock();
+    env.set_var(key, "parent-only");
+    super::keep_env_var_from_child_processes(key);
+    let inherited = |value: &str| {
+      super::env_vars_os_for_child_process()
+        .iter()
+        .any(|(k, v)| k == key && v == value)
+    };
+    // Still in the process environment, for native code and the runtime...
+    assert_eq!(std::env::var(key).unwrap(), "parent-only");
+    assert_eq!(env.var(key).unwrap(), "parent-only");
+    // ...but a child doesn't inherit it.
+    assert!(!inherited("parent-only"));
+    // What the app sets itself, children inherit again.
+    env.set_var(key, "set");
+    assert!(inherited("set"));
+    super::keep_env_var_from_child_processes(key);
+    env.remove_var(key);
+    env.set_var(key, "after-delete");
+    assert!(inherited("after-delete"));
+    env.remove_var(key);
   }
 
   #[test]

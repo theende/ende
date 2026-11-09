@@ -1981,6 +1981,11 @@ fn set_default_webview2_user_data_folder(
   }
   // SAFETY: Rust documents `set_var` as always safe on Windows.
   unsafe { env::set_var(WEBVIEW2_USER_DATA_FOLDER, &folder) };
+  // WebView2 reads it at each environment creation, so it stays set, but a
+  // WebView2 app this app starts must not share the folder.
+  ende_runtime::ende_os::keep_env_var_from_child_processes(
+    WEBVIEW2_USER_DATA_FOLDER,
+  );
 }
 
 /// The host of the `app://<host>` origin the renderer loads the app from,
