@@ -826,7 +826,8 @@ fn payload_ext(format: &str) -> &'static str {
 /// macOS: replace `MyApp.app` with a thin `.app` whose `Resources/` holds the
 /// compressed real bundle. The `Contents/MacOS/<App>` launcher extracts it to
 /// `~/Library/Application Support/<bundle-id>/<hash>/` on first run and execs
-/// the real backend from there.
+/// the real backend (the inner bundle's CFBundleExecutable) from there. The
+/// thin Info.plist names the launcher as its executable.
 fn make_self_extracting_macos(
   bundle_path: &Path,
   format: &str,
@@ -847,8 +848,29 @@ fn make_self_extracting_macos(
   validate_bundle_identifier(&bundle_id)?;
 
   // Capture the bits we re-create in the thin bundle before moving the real
-  // one out of the way.
-  let info_plist = std::fs::read(contents.join("Info.plist"))?;
+  // one out of the way. The inner bundle's executable is the backend binary
+  // (see `package_macos_app_bundle`), which the thin bundle doesn't have, so
+  // the thin plist names the launcher instead.
+  let info_plist_path = contents.join("Info.plist");
+  let mut info_plist: plist::Dictionary = plist::from_file(&info_plist_path)
+    .with_context(|| {
+      format!("failed to parse {}", info_plist_path.display())
+    })?;
+  let inner_exe = info_plist
+    .get("CFBundleExecutable")
+    .and_then(|v| v.as_string())
+    .map(str::to_string)
+    .ok_or_else(|| {
+      ende_core::anyhow::anyhow!(
+        "{} has no CFBundleExecutable",
+        info_plist_path.display()
+      )
+    })?;
+  validate_launcher_name(&inner_exe, "bundle executable")?;
+  info_plist.insert(
+    "CFBundleExecutable".to_string(),
+    plist::Value::String(app_name.clone()),
+  );
   let icon_src = contents.join("Resources").join("AppIcon.icns");
   let icon = icon_src
     .exists()
@@ -882,11 +904,11 @@ fn make_self_extracting_macos(
      DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\n\
      DEST=\"$HOME/Library/Application Support/{bundle_id}/{hash}\"\n\
      APP=\"$DEST/{inner_name}\"\n\
-     if [ ! -x \"$APP/Contents/MacOS/{app_name}\" ]; then\n\
+     if [ ! -x \"$APP/Contents/MacOS/{inner_exe}\" ]; then\n\
      \u{20} mkdir -p \"$DEST\"\n\
      \u{20} tar -xf \"$DIR/../Resources/{payload_name}\" -C \"$DEST\"\n\
      fi\n\
-     exec \"$APP/Contents/MacOS/{app_name}\" \"$@\"\n",
+     exec \"$APP/Contents/MacOS/{inner_exe}\" \"$@\"\n",
   );
   let launcher_path = macos_dir.join(&app_name);
   std::fs::write(&launcher_path, launcher)?;
@@ -899,7 +921,9 @@ fn make_self_extracting_macos(
     )?;
   }
 
-  std::fs::write(contents.join("Info.plist"), info_plist)?;
+  plist::to_file_xml(&info_plist_path, &info_plist).with_context(|| {
+    format!("failed to write {}", info_plist_path.display())
+  })?;
   if let Some(icon) = icon {
     std::fs::write(resources_dir.join("AppIcon.icns"), icon)?;
   }
@@ -6969,6 +6993,83 @@ def456  other.zip
     let export_at = script.find("export LAUFEY_APP_ID").unwrap();
     let exec_at = script.find("exec \"$APP/MyApp\"").unwrap();
     assert!(export_at < exec_at, "export must precede exec:\n{script}");
+  }
+
+  /// A built macOS `MyApp.app` as `package_macos_app_bundle` leaves it: the
+  /// backend binary `laufey_webview` is the CFBundleExecutable (here a script
+  /// that writes its arguments to `$HOME/ran`), next to the runtime dylib.
+  #[cfg(unix)]
+  fn fake_built_macos_app(parent: &Path) -> PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+    let bundle = parent.join("MyApp.app");
+    let macos = bundle.join("Contents/MacOS");
+    std::fs::create_dir_all(&macos).unwrap();
+    std::fs::write(
+      bundle.join("Contents/Info.plist"),
+      render_macos_info_plist(
+        "MyApp",
+        "com.acme.myapp",
+        "laufey_webview",
+        false,
+        None,
+      ),
+    )
+    .unwrap();
+    let exe = macos.join("laufey_webview");
+    std::fs::write(&exe, "#!/bin/sh\necho \"$@\" > \"$HOME/ran\"\n").unwrap();
+    std::fs::set_permissions(&exe, std::fs::Permissions::from_mode(0o755))
+      .unwrap();
+    std::fs::write(macos.join("libruntime.dylib"), b"fake").unwrap();
+    bundle
+  }
+
+  #[test]
+  #[cfg(unix)]
+  fn self_extract_macos_launches_the_inner_bundle_executable() {
+    let tmp = tempfile::tempdir().unwrap();
+    let bundle = fake_built_macos_app(tmp.path());
+    make_self_extracting_macos(&bundle, "xz", &empty_desktop_flags()).unwrap();
+    // The thin bundle's executable is the launcher it actually contains.
+    assert_eq!(
+      read_plist_string(
+        &bundle.join("Contents/Info.plist"),
+        "CFBundleExecutable"
+      )
+      .as_deref(),
+      Some("MyApp"),
+    );
+    let home = tmp.path().join("home");
+    std::fs::create_dir_all(&home).unwrap();
+    let status =
+      std::process::Command::new(bundle.join("Contents/MacOS/MyApp"))
+        .args(["--flag", "x"])
+        .env("HOME", &home)
+        .status()
+        .unwrap();
+    assert!(status.success(), "launcher failed: {status}");
+    assert_eq!(
+      std::fs::read_to_string(home.join("ran")).unwrap(),
+      "--flag x\n"
+    );
+  }
+
+  #[test]
+  #[cfg(target_os = "macos")]
+  fn self_extract_macos_bundle_passes_strict_verification() {
+    let tmp = tempfile::tempdir().unwrap();
+    let bundle = fake_built_macos_app(tmp.path());
+    // On a macOS host the thin bundle is signed ad hoc.
+    make_self_extracting_macos(&bundle, "xz", &empty_desktop_flags()).unwrap();
+    let out = std::process::Command::new("codesign")
+      .args(["--verify", "--deep", "--strict", "--verbose=2"])
+      .arg(&bundle)
+      .output()
+      .unwrap();
+    assert!(
+      out.status.success(),
+      "{}",
+      String::from_utf8_lossy(&out.stderr)
+    );
   }
 
   #[test]
