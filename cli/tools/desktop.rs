@@ -2797,8 +2797,9 @@ fn codesign_macos_bundle(
     }
   }
 
-  // Sign `Contents/MacOS/laufey` (and the launcher shim, the dylib) with
-  // the bundle's id as the signed identifier. This is what UN keys
+  // Sign the laufey backend binary (the bundle's `CFBundleExecutable`, on
+  // every backend) and the runtime dylib next to it with the bundle's id as
+  // the signed identifier. This is what UN keys
   // notification permission to — without it, UN sees `laufey` requesting
   // permission for `com.example.app` and rejects with
   // `UNErrorCodeNotificationsNotAllowed`.
@@ -2809,11 +2810,9 @@ fn codesign_macos_bundle(
       if !path.is_file() {
         continue;
       }
-      // Skip non-Mach-O files: the auto-update sentinel (`*.update-ok`),
-      // staged updates (`*.update`, `*.backup`), and the POSIX shell
-      // launcher (`Contents/MacOS/<app>` is a shell script that execs
-      // laufey). codesign can't sign a text file and would fail the
-      // whole signing pass.
+      // Skip non-Mach-O files: the auto-update sentinel (`*.update-ok`)
+      // and staged updates (`*.update`, `*.backup`). codesign can't sign a
+      // text file and would fail the whole signing pass.
       if !is_macho_file(&path) {
         continue;
       }
