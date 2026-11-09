@@ -2174,6 +2174,20 @@ async fn run_watch_unload_on_restart() {
 #[cfg(unix)]
 #[test(flaky)]
 async fn run_watch_kills_unrefed_children_on_restart() {
+  watch_kills_unrefed_children_on_restart("--watch").await;
+}
+
+/// Like [`run_watch_kills_unrefed_children_on_restart`], but for HMR mode
+/// (`--watch-hmr`), which runs through `worker.run()` rather than
+/// `run_for_watcher`. Changing top-level code forces a full restart.
+#[cfg(unix)]
+#[test(flaky)]
+async fn run_watch_hmr_kills_unrefed_children_on_restart() {
+  watch_kills_unrefed_children_on_restart("--watch-hmr").await;
+}
+
+#[cfg(unix)]
+async fn watch_kills_unrefed_children_on_restart(watch_flag: &str) {
   let t = TempDir::new();
   let file_to_watch = t.path().join("file_to_watch.js");
   let marker_file = t.path().join("children.txt");
@@ -2217,7 +2231,7 @@ async fn run_watch_kills_unrefed_children_on_restart() {
   let watcher = util::ende_cmd()
     .current_dir(t.path())
     .arg("run")
-    .arg("--watch")
+    .arg(watch_flag)
     .arg("-L")
     .arg("debug")
     .arg("--allow-all")

@@ -129,11 +129,13 @@ impl CliMainWorker {
     // Under `ende run --watch-hmr` / `ende serve --watch`, install the isolate
     // handle so a script calling `Ende.exit()` terminates this isolate instead
     // of the whole process, allowing the file watcher to survive and restart on
-    // the next change. The regular `--watch` path uses `run_for_watcher`, which
-    // installs it separately. See issue #7590.
+    // the next change (see issue #7590). Unref'd children are killed with the
+    // run, so they don't survive a restart. The regular `--watch` path uses
+    // `run_for_watcher`, which does both separately.
     let under_watcher = self.shared.maybe_file_watcher_communicator.is_some();
     if under_watcher {
       self.install_watcher_exit_handle();
+      self.op_state().borrow_mut().put(KillUnrefedChildrenOnDrop);
     }
 
     // Like Node.js, allow activating the inspector on an already running
