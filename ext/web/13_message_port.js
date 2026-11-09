@@ -608,6 +608,9 @@ const emptyTransferables = ObjectFreeze([]);
 // loaded on demand (the loaders are idempotent).
 const loadImage = core.createLazyLoader("ext:ende_image/01_image.js");
 const loadCanvas = core.createLazyLoader("ext:ende_canvas/01_canvas.js");
+const loadWebSocketStream = core.createLazyLoader(
+  "ext:ende_websocket/02_websocketstream.js",
+);
 const loadImageData = () => core.loadExtScript("ext:ende_web/16_image_data.js");
 const loadGeometry = () => core.loadExtScript("ext:ende_web/17_geometry.js");
 
@@ -632,8 +635,9 @@ function resolveTransferableResource(type) {
   return resource;
 }
 
-// The deserializers of the [Serializable] ones are registered here, not by
-// their modules, so that a realm can receive one before loading its module.
+// The deserializers of the [Serializable] ones (and of WebSocketError, whose
+// module is lazily loaded too) are registered here, not by their modules, so
+// that a realm can receive one before loading its module.
 {
   const geometryTypes = [
     "DOMMatrix",
@@ -657,6 +661,10 @@ function resolveTransferableResource(type) {
   core.registerCloneableResource(
     "ImageBitmap",
     (data) => loadImage().deserializeImageBitmap(data),
+  );
+  core.registerCloneableResource(
+    "WebSocketError",
+    (data) => loadWebSocketStream().deserializeWebSocketError(data),
   );
 }
 

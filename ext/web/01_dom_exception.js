@@ -107,6 +107,12 @@ const nameToCodeMapping = ObjectCreate(null, {
   DataCloneError: { __proto__: null, value: DATA_CLONE_ERR },
 });
 
+// The serialization steps of a [Serializable] DOMException subclass, which
+// extend DOMException's: a method under this key on the subclass prototype
+// that sets `type` of the serialized data to the subclass and adds its fields.
+// The subclass registers the matching deserializer.
+const _serializeSubclass = Symbol("[[SerializeSubclass]]");
+
 // Defined in WebIDL 4.3.
 // https://webidl.spec.whatwg.org/#idl-DOMException
 class DOMException {
@@ -158,12 +164,17 @@ class DOMException {
     error[webidl.brand] = webidl.brand;
     ObjectDefineProperty(error, core.hostObjectBrand, {
       __proto__: null,
-      value: () => ({
-        type: "DOMException",
-        message,
-        name,
-        stack: error.stack,
-      }),
+      value: () => {
+        const data = {
+          type: "DOMException",
+          message,
+          name,
+          stack: error.stack,
+        };
+        // A [Serializable] subclass sets its type and adds its fields.
+        error[_serializeSubclass]?.(data);
+        return data;
+      },
       enumerable: false,
       configurable: false,
       writable: false,
@@ -248,8 +259,8 @@ for (let i = 0; i < entries.length; ++i) {
   ObjectDefineProperty(DOMException.prototype, key, desc);
 }
 
-core.registerCloneableResource("DOMException", (data) => {
-  const ex = new DOMException(data.message, data.name);
+// Gives a deserialized DOMException (or subclass) the stack of the original.
+function setClonedStack(ex, data) {
   if (data.stack !== undefined) {
     ObjectDefineProperty(ex, "stack", {
       __proto__: null,
@@ -260,7 +271,12 @@ core.registerCloneableResource("DOMException", (data) => {
     });
   }
   return ex;
-});
+}
+
+core.registerCloneableResource(
+  "DOMException",
+  (data) => setClonedStack(new DOMException(data.message, data.name), data),
+);
 
 const _quota = Symbol("quota");
 const _requested = Symbol("requested");
@@ -325,10 +341,30 @@ class QuotaExceededError extends DOMException {
 webidl.configureInterface(QuotaExceededError);
 const QuotaExceededErrorPrototype = QuotaExceededError.prototype;
 
+// https://webidl.spec.whatwg.org/#quotaexceedederror (serialization steps)
+ObjectDefineProperty(QuotaExceededErrorPrototype, _serializeSubclass, {
+  __proto__: null,
+  value(data) {
+    data.type = "QuotaExceededError";
+    data.quota = this[_quota];
+    data.requested = this[_requested];
+  },
+});
+
+core.registerCloneableResource("QuotaExceededError", (data) => {
+  // A null quota or requested is a missing member, not 0.
+  const options = { __proto__: null };
+  if (data.quota !== null) options.quota = data.quota;
+  if (data.requested !== null) options.requested = data.requested;
+  return setClonedStack(new QuotaExceededError(data.message, options), data);
+});
+
 return {
   DOMException,
   DOMExceptionPrototype,
   QuotaExceededError,
   QuotaExceededErrorPrototype,
+  serializeSubclass: _serializeSubclass,
+  setClonedStack,
 };
 })();

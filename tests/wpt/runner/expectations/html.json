@@ -1074,9 +1074,7 @@
           "ImageData object can be cloned",
           "ImageData expandos are not cloned",
           "Document objects cannot be cloned",
-          "URIError objects from other realms are treated as URIError",
-          "QuotaExceededError objects can be cloned",
-          "QuotaExceededError objects with empty quota/requested can be cloned"
+          "URIError objects from other realms are treated as URIError"
         ]
       }
     },

@@ -39,7 +39,9 @@ const { createFilteredInspectProxy } = core.loadExtScript(
 const { Deferred, writableStreamClose } = core.loadExtScript(
   "ext:ende_web/06_streams.js",
 );
-const { DOMException } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
+const { DOMException, serializeSubclass, setClonedStack } = core.loadExtScript(
+  "ext:ende_web/01_dom_exception.js",
+);
 const { add, remove } = core.loadExtScript("ext:ende_web/03_abort_signal.js");
 const {
   fillHeaders,
@@ -509,6 +511,13 @@ class WebSocketError extends DOMException {
     return this.#reason;
   }
 
+  // https://websockets.spec.whatwg.org/#websocketerror (serialization steps)
+  [serializeSubclass](data) {
+    data.type = "WebSocketError";
+    data.closeCode = this.#closeCode;
+    data.reason = this.#reason;
+  }
+
   [SymbolFor("Deno.privateCustomInspect")](inspect, inspectOptions) {
     return inspect(
       createFilteredInspectProxy({
@@ -528,6 +537,16 @@ class WebSocketError extends DOMException {
 webidl.configureInterface(WebSocketError);
 const WebSocketErrorPrototype = WebSocketError.prototype;
 
+// Registered as a cloneable resource by ext:ende_web/13_message_port.js, so a
+// realm that hasn't loaded this module can receive one.
+function deserializeWebSocketError(data) {
+  // A null closeCode is a missing member. A serialized closeCode and reason
+  // passed the constructor's validation already.
+  const init = { __proto__: null, reason: data.reason };
+  if (data.closeCode !== null) init.closeCode = data.closeCode;
+  return setClonedStack(new WebSocketError(data.message, init), data);
+}
+
 // Not [Serializable]: structuredClone throws a DataCloneError.
 {
   const { markNotSerializable } = core.loadExtScript(
@@ -536,4 +555,4 @@ const WebSocketErrorPrototype = WebSocketError.prototype;
   markNotSerializable(WebSocketStream.prototype);
 }
 
-export { WebSocketError, WebSocketStream };
+export { deserializeWebSocketError, WebSocketError, WebSocketStream };

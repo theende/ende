@@ -942,3 +942,80 @@ Deno.test("an ImageBitmap from transferToImageBitmap is serializable", async () 
     worker.terminate();
   }
 });
+
+function describeError(error: unknown) {
+  const e = error as Record<string, unknown>;
+  return [
+    Object.prototype.toString.call(error),
+    Object.getPrototypeOf(error)?.constructor?.name,
+    e.name,
+    e.message,
+    e.code,
+    e.quota,
+    e.requested,
+    e.closeCode,
+    e.reason,
+  ];
+}
+
+// QuotaExceededError and WebSocketError are [Serializable] subclasses of
+// DOMException that add fields.
+function domExceptionSubclasses() {
+  return [
+    new QuotaExceededError("over", { quota: 10, requested: 12 }),
+    new QuotaExceededError("unknown"),
+    new QuotaExceededError("zero", { quota: 0 }),
+    // lib.ende.unstable.d.ts calls closeCode `code`, unlike the spec.
+    new WebSocketError(
+      "closed",
+      { closeCode: 4000, reason: "bye" } as WebSocketCloseInfo,
+    ),
+    new WebSocketError("plain"),
+    new DOMException("still", "NotFoundError"),
+  ];
+}
+
+Deno.test("structuredClone keeps DOMException subclasses and their fields", () => {
+  for (const error of domExceptionSubclasses()) {
+    const clone = structuredClone(error);
+    assert(clone !== error);
+    assertEquals(describeError(clone), describeError(error));
+    assertEquals(clone.stack, error.stack);
+  }
+});
+
+Deno.test("postMessage keeps DOMException subclasses through a worker", async () => {
+  // A fresh worker hasn't loaded the WebSocketStream module.
+  const worker = new Worker(
+    `data:application/javascript,${
+      encodeURIComponent(`onmessage = (event) => {
+        postMessage({
+          tags: event.data.map((e) => Object.getPrototypeOf(e).constructor.name),
+          errors: event.data,
+        });
+      };`)
+    }`,
+    { type: "module" },
+  );
+  try {
+    const received = new Promise<{ tags: string[]; errors: unknown[] }>(
+      (resolve, reject) => {
+        worker.onmessage = (event) => resolve(event.data);
+        worker.onerror = (event) => {
+          event.preventDefault();
+          reject(new Error(event.message));
+        };
+      },
+    );
+    const errors = domExceptionSubclasses();
+    worker.postMessage(errors);
+    const { tags, errors: echoed } = await received;
+    assertEquals(
+      tags,
+      errors.map((e) => Object.getPrototypeOf(e).constructor.name),
+    );
+    assertEquals(echoed.map(describeError), errors.map(describeError));
+  } finally {
+    worker.terminate();
+  }
+});
