@@ -5498,6 +5498,13 @@ fn create_windows_msi(
   let product_code =
     msi_derive_guid(&identifier, &format!("product:{version}"));
   let upgrade_code = msi_derive_guid(&identifier, "upgrade");
+  if msi_icon.is_some() {
+    // The icon Apps & features (Add/Remove Programs) shows for the app.
+    package.insert_rows(Insert::into("Property").row(vec![
+      Value::Str("ARPPRODUCTICON".to_string()),
+      Value::Str(MSI_ICON_NAME.to_string()),
+    ]))?;
+  }
   package.insert_rows(Insert::into("Property").rows(vec![
     vec![
       Value::Str("ProductCode".to_string()),
@@ -9198,6 +9205,35 @@ def456  other.zip
     assert_eq!(shortcuts.len(), 1);
     assert_eq!(shortcuts[0]["Icon_"].as_str(), Some("AppIcon.ico"));
     assert_eq!(shortcuts[0]["IconIndex"].as_int(), Some(0));
+  }
+
+  #[test]
+  fn msi_names_the_app_icon_for_apps_and_features() {
+    fn arp_product_icon(icon: bool) -> Option<String> {
+      let tmp = tempfile::tempdir().unwrap();
+      let app_dir = fake_windows_app_dir(tmp.path(), "MyApp");
+      if icon {
+        std::fs::write(app_dir.join("AppIcon.ico"), b"\0\0\x01\0ico").unwrap();
+      }
+      let msi_path = tmp.path().join("MyApp.msi");
+      create_windows_msi(
+        &app_dir,
+        &msi_path,
+        &empty_desktop_flags(),
+        Some("x86_64-pc-windows-msvc"),
+        None,
+      )
+      .unwrap();
+      msi::open(&msi_path)
+        .unwrap()
+        .select_rows(msi::Select::table("Property"))
+        .unwrap()
+        .find(|r| r["Property"].as_str() == Some("ARPPRODUCTICON"))
+        .map(|r| r["Value"].as_str().unwrap().to_string())
+    }
+    // Apps & features shows the Icon table row ARPPRODUCTICON names.
+    assert_eq!(arp_product_icon(true).as_deref(), Some("AppIcon.ico"));
+    assert_eq!(arp_product_icon(false), None);
   }
 
   // --- deep links ---
