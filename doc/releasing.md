@@ -66,7 +66,8 @@ jobs, or run the workflow by hand with the `tag` input.
 
 Assets per target (`<target>` as above):
 
-- `ende-<target>.zip` — `ende` (`ende.exe` on Windows) and `NOTICE`
+- `ende-<target>.zip` — `ende` (`ende.exe` on Windows), `LICENSE.md` and
+  `NOTICE`
 - `ende-<target>.zip.sha256sum`
 - `ende-<target>.sha256sum` — SHA-256 of the extracted binary
 - `endert-<target>.zip`, `endert-<target>.zip.sha256sum`
@@ -75,10 +76,10 @@ Assets per target (`<target>` as above):
 - `ende-<target>.from-<previous version>.bsdiff` and `.bsdiff.sha256sum` — when
   there is a previous published release
 
-Every zip also holds `NOTICE`: the repository's `NOTICE` followed by the
-`NOTICE.txt` of the embedded TypeScript 7 compiler. Checksum files read
-`<sha256>  <file name>`. The QuickJS runtimes (`endert-quickjs-*`, used by
-`ende compile --engine quickjs`) are not built yet.
+Every zip also holds the repository's `LICENSE.md` and `NOTICE`: the
+repository's `NOTICE` followed by the `NOTICE.txt` of the embedded TypeScript 7
+compiler. Checksum files read `<sha256>  <file name>`. The QuickJS runtimes
+(`endert-quickjs-*`, used by `ende compile --engine quickjs`) are not built yet.
 
 ## TypeScript 7 compiler
 

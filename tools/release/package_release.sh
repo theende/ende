@@ -14,11 +14,11 @@
 #   <zip>.sha256sum                for each runtime zip
 #   <patch>.sha256sum              for each `*.bsdiff` already in <out-dir>
 #
-# Each zip holds its binary and NOTICE at its root. NOTICE is the repo's
-# NOTICE followed by <typescript-notice>, the NOTICE.txt of the TypeScript 7
-# compiler embedded in `ende` (in the directory tools/release/fetch_tsc7.sh
-# unpacks). Run it on the binaries exactly as they will ship (stripped and
-# signed).
+# Each zip holds its binary, LICENSE.md and NOTICE at its root. LICENSE.md is
+# the repo's (NOTICE refers to it). NOTICE is the repo's NOTICE followed by
+# <typescript-notice>, the NOTICE.txt of the TypeScript 7 compiler embedded in
+# `ende` (in the directory tools/release/fetch_tsc7.sh unpacks). Run it on the
+# binaries exactly as they will ship (stripped and signed).
 #
 # Usage: package_release.sh <target> <bin-dir> <out-dir> <typescript-notice>
 
@@ -33,6 +33,7 @@ bin_dir=$(cd "$2" && pwd)
 mkdir -p "$3"
 out_dir=$(cd "$3" && pwd)
 typescript_notice=$4
+repo_dir=$(cd "$(dirname "$0")/../.." && pwd)
 if [ ! -f "$typescript_notice" ]; then
   echo "Missing $typescript_notice" >&2
   exit 1
@@ -68,7 +69,7 @@ write_checksum() {
 notice_dir=$(mktemp -d)
 trap 'rm -rf "$notice_dir"' EXIT
 {
-  cat "$(dirname "$0")/../../NOTICE"
+  cat "$repo_dir/NOTICE"
   printf '\n%s\n\n' "=========================================================================="
   printf '%s\n' "TypeScript 7 compiler: NOTICE.txt" \
     "---------------------------------" "" \
@@ -89,8 +90,8 @@ add_to_zip() {
   fi
 }
 
-# zip_file <archive-name> <file-name>: zips <bin-dir>/<file-name> and NOTICE
-# into <out-dir>/<archive-name> and checksums the zip.
+# zip_file <archive-name> <file-name>: zips <bin-dir>/<file-name>, LICENSE.md
+# and NOTICE into <out-dir>/<archive-name> and checksums the zip.
 zip_file() {
   local archive=$1 file=$2
   if [ ! -f "$bin_dir/$file" ]; then
@@ -99,6 +100,7 @@ zip_file() {
   fi
   rm -f "$out_dir/$archive"
   add_to_zip "$bin_dir" "$archive" "$file"
+  add_to_zip "$repo_dir" "$archive" LICENSE.md
   add_to_zip "$notice_dir" "$archive" NOTICE
   write_checksum "$out_dir/$archive" "$archive.sha256sum"
   echo "Packaged $archive"
