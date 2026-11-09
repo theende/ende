@@ -1318,6 +1318,22 @@ async fn run_desktop_hmr(
 const APP_DIR_MARKER: &str = ".ende-desktop-app";
 /// The marker written by versions before the rename to Ende; still recognized.
 const LEGACY_APP_DIR_MARKER: &str = ".deno-desktop-app";
+/// laufey's marker for a complete backend cache dir. It's copied into a
+/// staged Linux or Windows app dir along with the backend.
+const LAUFEY_CACHE_MARKER: &str = ".downloaded";
+/// Files at the root of a staged Linux or Windows app dir that its packages
+/// (deb, rpm, AppImage, MSI) leave out: [`APP_DIR_MARKER`], which stays in
+/// the staged dir so a rebuild can replace it, and [`LAUFEY_CACHE_MARKER`].
+const UNPACKAGED_APP_DIR_FILES: &[&str] =
+  &[APP_DIR_MARKER, LAUFEY_CACHE_MARKER];
+
+/// Whether `rel`, a path relative to a staged app dir, is one of
+/// [`UNPACKAGED_APP_DIR_FILES`].
+fn is_unpackaged_app_dir_file(rel: &Path) -> bool {
+  UNPACKAGED_APP_DIR_FILES
+    .iter()
+    .any(|name| rel == Path::new(name))
+}
 
 /// Prepare `app_dir` to receive a freshly built bundle.
 ///
@@ -1839,7 +1855,7 @@ impl LaufeyBackendResolver {
     target: &str,
   ) -> Result<PathBuf, AnyError> {
     let dir = self.backend_cache_dir(backend, target);
-    let marker = dir.join(".downloaded");
+    let marker = dir.join(LAUFEY_CACHE_MARKER);
     if marker.exists() {
       return Ok(dir);
     }
@@ -1926,7 +1942,7 @@ impl LaufeyBackendResolver {
     // the rest of the contents — a SIGKILL during extraction can never
     // leave a marker-without-payload state.
     std::fs::write(
-      staging.path().join(".downloaded"),
+      staging.path().join(LAUFEY_CACHE_MARKER),
       format!("v{LAUFEY_VERSION}\n"),
     )?;
 
@@ -3909,6 +3925,9 @@ fn push_dir_contents_to_squashfs(
     for entry in entries {
       let path = entry.path();
       let rel = path.strip_prefix(fs_root)?;
+      if is_unpackaged_app_dir_file(rel) {
+        continue;
+      }
       let arc_path = Path::new("/").join(rel);
       let meta = std::fs::symlink_metadata(&path)?;
       let mode = unix_mode_of(&meta);
@@ -4474,6 +4493,9 @@ fn build_deb_data_tar(
         std::fs::read_dir(&dir)?.collect::<Result<_, _>>()?;
       entries.sort_by_key(|e| e.file_name());
       for entry in entries {
+        if is_unpackaged_app_dir_file(entry.path().strip_prefix(app_dir)?) {
+          continue;
+        }
         files.push(entry.path());
         if std::fs::symlink_metadata(entry.path())?.is_dir() {
           stack.push(entry.path());
@@ -4658,10 +4680,36 @@ fn create_linux_rpm(
 
   // Own /usr/lib/<pkg>/** (the staged app dir). Standard dirs (/usr, /usr/bin,
   // /usr/share, …) are deliberately not owned — they belong to the filesystem
-  // package.
+  // package. `with_dir` can't leave files out, so the top level is added
+  // entry by entry, without the UNPACKAGED_APP_DIR_FILES.
+  let lib_dir = format!("/usr/lib/{}", meta.package);
   builder
-    .with_dir(app_dir, format!("/usr/lib/{}", meta.package), |o| o)
+    .with_dir_entry(rpm::FileOptions::dir(&lib_dir))
     .context("failed to add app directory to rpm")?;
+  let mut entries: Vec<_> =
+    std::fs::read_dir(app_dir)?.collect::<Result<_, _>>()?;
+  entries.sort_by_key(|e| e.file_name());
+  for entry in entries {
+    let name = entry.file_name();
+    if is_unpackaged_app_dir_file(Path::new(&name)) {
+      continue;
+    }
+    let path = entry.path();
+    let dest = format!("{lib_dir}/{}", name.to_string_lossy());
+    let file_type = std::fs::symlink_metadata(&path)?.file_type();
+    if file_type.is_dir() {
+      builder.with_dir(&path, &dest, |o| o)
+    } else if file_type.is_symlink() {
+      let target = std::fs::read_link(&path)?;
+      builder.with_symlink(rpm::FileOptions::symlink(
+        &dest,
+        target.to_string_lossy(),
+      ))
+    } else {
+      builder.with_file(&path, rpm::FileOptions::new(&dest))
+    }
+    .with_context(|| format!("failed to add {} to rpm", path.display()))?;
+  }
 
   // /usr/bin/<pkg> → ../lib/<pkg>/<launcher>
   builder
@@ -8507,6 +8555,94 @@ def456  other.zip
         .iter()
         .any(|f| f == "/usr/share/applications/myapp.desktop")
     );
+  }
+
+  #[test]
+  fn linux_packages_leave_out_build_markers() {
+    // The staged app dir keeps Ende's build-output guard (so a rebuild can
+    // replace it) and laufey's download marker (copied in with the backend
+    // cache); neither belongs in an installed app.
+    let tmp = tempfile::tempdir().unwrap();
+    let app_dir = fake_linux_app_dir(tmp.path(), "MyApp");
+    std::fs::write(app_dir.join(APP_DIR_MARKER), b"").unwrap();
+    std::fs::write(app_dir.join(LAUFEY_CACHE_MARKER), b"").unwrap();
+    std::fs::create_dir_all(app_dir.join("locales")).unwrap();
+    std::fs::write(app_dir.join("locales/en-US.pak"), b"pak").unwrap();
+    let flags = empty_desktop_flags();
+    let target = Some("x86_64-unknown-linux-gnu");
+
+    let deb = tmp.path().join("MyApp.deb");
+    create_linux_deb(&app_dir, &deb, &flags, target, None).unwrap();
+    let bytes = std::fs::read(&deb).unwrap();
+    let mut data_tar_gz = Vec::new();
+    let mut pos = 8;
+    while pos + 60 <= bytes.len() {
+      let header = &bytes[pos..pos + 60];
+      let size: usize = String::from_utf8_lossy(&header[48..58])
+        .trim()
+        .parse()
+        .unwrap();
+      data_tar_gz = bytes[pos + 60..pos + 60 + size].to_vec();
+      pos += 60 + size + (size % 2);
+    }
+    let data_tar = gunzip(&data_tar_gz);
+    let deb_paths: Vec<String> = tar::Archive::new(&data_tar[..])
+      .entries()
+      .unwrap()
+      .map(|e| e.unwrap().path().unwrap().to_string_lossy().into_owned())
+      .collect();
+
+    let rpm_path = tmp.path().join("MyApp.rpm");
+    create_linux_rpm(&app_dir, &rpm_path, &flags, target, None, None).unwrap();
+    let bytes = std::fs::read(&rpm_path).unwrap();
+    let rpm_paths: Vec<String> = rpm::Package::parse(&mut &bytes[..])
+      .unwrap()
+      .metadata
+      .get_file_paths()
+      .unwrap()
+      .into_iter()
+      .map(|p| p.to_string_lossy().into_owned())
+      .collect();
+
+    let appimage_path = tmp.path().join("MyApp.AppImage");
+    create_linux_appimage(&app_dir, &appimage_path, None, target, None)
+      .unwrap();
+    let runtime_offset =
+      appimage_runtime_for_target(target).unwrap().len() as u64;
+    let appimage =
+      std::io::BufReader::new(std::fs::File::open(&appimage_path).unwrap());
+    let filesystem = backhand::FilesystemReader::from_reader_with_offset(
+      appimage,
+      runtime_offset,
+    )
+    .unwrap();
+    let appimage_paths: Vec<String> = filesystem
+      .files()
+      .map(|node| node.fullpath.to_string_lossy().into_owned())
+      .collect();
+
+    for (format, paths) in [
+      ("deb", &deb_paths),
+      ("rpm", &rpm_paths),
+      ("AppImage", &appimage_paths),
+    ] {
+      assert!(
+        !paths.iter().any(
+          |p| p.ends_with(APP_DIR_MARKER) || p.ends_with(LAUFEY_CACHE_MARKER)
+        ),
+        "{format} ships a marker: {paths:?}"
+      );
+      assert!(
+        paths
+          .iter()
+          .any(|p| p.ends_with("myapp/MyApp") || p == "/MyApp"),
+        "{format} lost the launcher: {paths:?}"
+      );
+      assert!(
+        paths.iter().any(|p| p.ends_with("locales/en-US.pak")),
+        "{format} lost a nested file: {paths:?}"
+      );
+    }
   }
 
   #[test]
