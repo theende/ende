@@ -4841,6 +4841,12 @@ fn create_linux_rpm(
 const MSI_GUID_NAMESPACE: uuid::Uuid =
   uuid::Uuid::from_u128(0x6f1d3c8a_4b2e_4f5a_9c7d_8e0f1a2b3c4d);
 
+/// The properties the MSI's Upgrade table sets when an older
+/// (`MSI_UPGRADE_DETECTED`) or a newer (`MSI_DOWNGRADE_DETECTED`) version of
+/// the app is installed.
+const MSI_UPGRADE_DETECTED: &str = "ENDE_UPGRADE_DETECTED";
+const MSI_DOWNGRADE_DETECTED: &str = "ENDE_DOWNGRADE_DETECTED";
+
 /// Format a UUID as an MSI registry-format GUID: braced, uppercase, hyphenated
 /// (e.g. `{6F1D3C8A-4B2E-4F5A-9C7D-8E0F1A2B3C4D}`). This is what the `GUID`
 /// column category requires (38 chars, no lowercase).
@@ -5473,6 +5479,53 @@ fn create_windows_msi(
       ],
     )?;
   }
+  // Major upgrades: a newer version removes an older one, and an older
+  // version won't install over a newer one (WiX's `MajorUpgrade`).
+  package.create_table(
+    "Upgrade",
+    vec![
+      Column::build("UpgradeCode")
+        .primary_key()
+        .category(msi::Category::Guid)
+        .string(38),
+      Column::build("VersionMin")
+        .primary_key()
+        .nullable()
+        .category(msi::Category::Text)
+        .string(20),
+      Column::build("VersionMax")
+        .primary_key()
+        .nullable()
+        .category(msi::Category::Text)
+        .string(20),
+      Column::build("Language")
+        .primary_key()
+        .nullable()
+        .category(msi::Category::Language)
+        .string(255),
+      Column::build("Attributes").primary_key().int32(),
+      Column::build("Remove")
+        .nullable()
+        .category(msi::Category::Formatted)
+        .string(255),
+      Column::build("ActionProperty")
+        .category(msi::Category::UpperCase)
+        .string(72),
+    ],
+  )?;
+  package.create_table(
+    "LaunchCondition",
+    vec![
+      Column::build("Condition")
+        .primary_key()
+        .category(msi::Category::Condition)
+        .string(255),
+      Column::build("Description")
+        .localizable()
+        .category(msi::Category::Formatted)
+        .string(255),
+    ],
+  )?;
   for table in ["InstallExecuteSequence", "InstallUISequence"] {
     package.create_table(
       table,
@@ -5583,21 +5636,64 @@ fn create_windows_msi(
     ],
     vec![
       Value::Str("UpgradeCode".to_string()),
-      Value::Str(upgrade_code),
+      Value::Str(upgrade_code.clone()),
     ],
     // Per-machine install (into Program Files).
     vec![
       Value::Str("ALLUSERS".to_string()),
       Value::Str("1".to_string()),
     ],
+    // FindRelatedProducts sets these on the client; a per-machine install
+    // passes only secure properties on to the elevated execute sequence.
+    vec![
+      Value::Str("SecureCustomProperties".to_string()),
+      Value::Str(format!("{MSI_UPGRADE_DETECTED};{MSI_DOWNGRADE_DETECTED}")),
+    ],
+  ]))?;
+
+  // Both rows use exclusive bounds, so reinstalling the same version (the
+  // same ProductCode, derived from it) stays a repair.
+  // msidbUpgradeAttributesOnlyDetect: a newer version is found, not removed.
+  const UPGRADE_ONLY_DETECT: i32 = 2;
+  package.insert_rows(Insert::into("Upgrade").rows(vec![
+    vec![
+      Value::Str(upgrade_code.clone()),
+      Value::Null,
+      Value::Str(version.to_string()),
+      Value::Null,
+      Value::Int(0),
+      Value::Null,
+      Value::Str(MSI_UPGRADE_DETECTED.to_string()),
+    ],
+    vec![
+      Value::Str(upgrade_code),
+      Value::Str(version.to_string()),
+      Value::Null,
+      Value::Null,
+      Value::Int(UPGRADE_ONLY_DETECT),
+      Value::Null,
+      Value::Str(MSI_DOWNGRADE_DETECTED.to_string()),
+    ],
+  ]))?;
+  package.insert_rows(Insert::into("LaunchCondition").row(vec![
+    Value::Str(format!("NOT {MSI_DOWNGRADE_DETECTED}")),
+    Value::Str(
+      "A newer version of [ProductName] is already installed.".to_string(),
+    ),
   ]))?;
 
   // Standard action sequences for a basic per-machine install + uninstall.
+  // FindRelatedProducts runs before LaunchConditions (WiX's order) so the
+  // downgrade condition sees its result. RemoveExistingProducts right after
+  // InstallValidate uninstalls the older version before this one installs.
   let mut exec_seq: Vec<(&str, i32)> = vec![
+    ("FindRelatedProducts", 25),
+    ("LaunchConditions", 100),
     ("CostInitialize", 800),
     ("FileCost", 900),
     ("CostFinalize", 1000),
     ("InstallValidate", 1400),
+    ("RemoveExistingProducts", 1401),
     ("InstallInitialize", 1500),
     ("ProcessComponents", 1600),
     ("UnpublishFeatures", 1800),
@@ -5624,6 +5720,8 @@ fn create_windows_msi(
     ),
   )?;
   let ui_seq: &[(&str, i32)] = &[
+    ("FindRelatedProducts", 25),
+    ("LaunchConditions", 100),
     ("CostInitialize", 800),
     ("FileCost", 900),
     ("CostFinalize", 1000),
@@ -9229,6 +9327,160 @@ def456  other.zip
       .read_to_end(&mut content)
       .unwrap();
     assert_eq!(content, b"MZfake-dll");
+  }
+
+  /// Build `MyApp.msi` at `version` from a fake app dir and open it.
+  fn open_test_msi(
+    parent: &Path,
+    version: &str,
+  ) -> msi::Package<std::fs::File> {
+    let dir = parent.join(version);
+    std::fs::create_dir_all(&dir).unwrap();
+    let app_dir = fake_windows_app_dir(&dir, "MyApp");
+    let msi_path = dir.join("MyApp.msi");
+    create_windows_msi(
+      &app_dir,
+      &msi_path,
+      &empty_desktop_flags(),
+      Some("x86_64-pc-windows-msvc"),
+      Some(version),
+    )
+    .unwrap();
+    msi::open(&msi_path).unwrap()
+  }
+
+  fn msi_property(
+    package: &mut msi::Package<std::fs::File>,
+    name: &str,
+  ) -> Option<String> {
+    package
+      .select_rows(msi::Select::table("Property"))
+      .unwrap()
+      .find(|r| r["Property"].as_str() == Some(name))
+      .map(|r| r["Value"].as_str().unwrap().to_string())
+  }
+
+  #[test]
+  fn msi_upgrade_code_stays_across_versions() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut v1 = open_test_msi(tmp.path(), "1.0.0");
+    let mut v2 = open_test_msi(tmp.path(), "2.0.0");
+    // Keyed on the fallback identifier, the lowercased app name: changing that
+    // would orphan every installed copy.
+    let upgrade_code = msi_derive_guid("sh.ende.desktop.myapp", "upgrade");
+    assert_eq!(msi_property(&mut v1, "UpgradeCode"), Some(upgrade_code));
+    assert_eq!(
+      msi_property(&mut v1, "UpgradeCode"),
+      msi_property(&mut v2, "UpgradeCode")
+    );
+    assert_ne!(
+      msi_property(&mut v1, "ProductCode"),
+      msi_property(&mut v2, "ProductCode")
+    );
+  }
+
+  #[test]
+  fn msi_upgrade_table_replaces_older_and_detects_newer_versions() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut package = open_test_msi(tmp.path(), "2.0.0");
+    let upgrade_code = msi_property(&mut package, "UpgradeCode").unwrap();
+    let mut rows: Vec<_> = package
+      .select_rows(msi::Select::table("Upgrade"))
+      .unwrap()
+      .map(|r| {
+        (
+          r["UpgradeCode"].as_str().map(str::to_string),
+          r["VersionMin"].as_str().map(str::to_string),
+          r["VersionMax"].as_str().map(str::to_string),
+          r["Language"].as_str().map(str::to_string),
+          r["Attributes"].as_int(),
+          r["Remove"].as_str().map(str::to_string),
+          r["ActionProperty"].as_str().map(str::to_string),
+        )
+      })
+      .collect();
+    rows.sort_by(|a, b| a.6.cmp(&b.6));
+    let some = |s: &str| Some(s.to_string());
+    assert_eq!(
+      rows,
+      vec![
+        // Anything newer is only detected, for the launch condition.
+        (
+          Some(upgrade_code.clone()),
+          some("2.0.0"),
+          None,
+          None,
+          Some(2), // msidbUpgradeAttributesOnlyDetect
+          None,
+          some("ENDE_DOWNGRADE_DETECTED"),
+        ),
+        // Anything older is removed (both bounds exclusive).
+        (
+          Some(upgrade_code),
+          None,
+          some("2.0.0"),
+          None,
+          Some(0),
+          None,
+          some("ENDE_UPGRADE_DETECTED"),
+        ),
+      ]
+    );
+    // A per-machine install only hands these to the elevated server side
+    // when they're secure.
+    assert_eq!(
+      msi_property(&mut package, "SecureCustomProperties").as_deref(),
+      Some("ENDE_UPGRADE_DETECTED;ENDE_DOWNGRADE_DETECTED")
+    );
+    let conditions: Vec<_> = package
+      .select_rows(msi::Select::table("LaunchCondition"))
+      .unwrap()
+      .map(|r| {
+        (
+          r["Condition"].as_str().unwrap().to_string(),
+          r["Description"].as_str().unwrap().to_string(),
+        )
+      })
+      .collect();
+    assert_eq!(
+      conditions,
+      vec![(
+        "NOT ENDE_DOWNGRADE_DETECTED".to_string(),
+        "A newer version of [ProductName] is already installed.".to_string()
+      )]
+    );
+  }
+
+  #[test]
+  fn msi_sequences_the_upgrade_actions() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut package = open_test_msi(tmp.path(), "2.0.0");
+    let mut sequence = |table: &str| {
+      package
+        .select_rows(msi::Select::table(table))
+        .unwrap()
+        .map(|r| {
+          (
+            r["Action"].as_str().unwrap().to_string(),
+            r["Sequence"].as_int().unwrap(),
+          )
+        })
+        .collect::<std::collections::HashMap<_, _>>()
+    };
+    let exec = sequence("InstallExecuteSequence");
+    let ui = sequence("InstallUISequence");
+    // The related products are found before the downgrade launch condition
+    // reads them, in both sequences (a quiet install runs only the execute
+    // one).
+    for seq in [&exec, &ui] {
+      assert!(
+        seq["FindRelatedProducts"] < seq["LaunchConditions"],
+        "{seq:?}"
+      );
+    }
+    // The older version is removed before this one's transaction starts.
+    assert!(exec["InstallValidate"] < exec["RemoveExistingProducts"]);
+    assert!(exec["RemoveExistingProducts"] < exec["InstallInitialize"]);
   }
 
   #[test]
