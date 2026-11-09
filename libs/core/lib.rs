@@ -283,29 +283,37 @@ mod tests {
     assert_eq!(&name[..expected.len()], expected);
   }
 
-  // If the ende command is available, we ensure the async stubs are correctly rebuilt.
+  // If the workspace's ende binary is built, we ensure the async stubs are
+  // correctly rebuilt. It sits next to this test binary's deps/ directory
+  // (target/<profile>/ende), as for the tests/ crates.
   #[test]
   #[cfg_attr(all(target_os = "windows", target_arch = "aarch64"), ignore)]
   fn test_rebuild_async_stubs() {
-    // Check for deno first
-    if let Err(e) = Command::new("deno")
-      .arg("--version")
-      .stderr(Stdio::null())
-      .stdout(Stdio::null())
-      .status()
-    {
+    let current_exe = std::env::current_exe().unwrap();
+    let ende = current_exe
+      .parent()
+      .and_then(|deps| deps.parent())
+      .unwrap()
+      .join(format!("ende{}", std::env::consts::EXE_SUFFIX));
+    #[allow(clippy::disallowed_methods, reason = "test code")]
+    let built = ende.is_file();
+    if !built {
       #[allow(
         clippy::print_stderr,
         reason = "intentional test diagnostic output"
       )]
       {
-        eprintln!("Ignoring test because we couldn't find deno: {e:?}");
+        eprintln!(
+          "Ignoring test because {} isn't built (cargo build --bin ende)",
+          ende.display()
+        );
       }
+      return;
     }
 
     let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .join("rebuild_async_stubs.js");
-    let status = Command::new("deno")
+    let status = Command::new(&ende)
       .args(["run", "-A", path.as_os_str().to_str().unwrap(), "--check"])
       .stderr(Stdio::null())
       .stdout(Stdio::null())
