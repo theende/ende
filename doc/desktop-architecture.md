@@ -159,7 +159,14 @@ transports:
 **The identifier is the storage key.** Set `desktop.app.identifier`. Without it
 the identifier is derived from the app name (`ende desktop` warns), and renaming
 the app, or changing the identifier, starts it with empty storage. The WebView2
-data folder (`%LOCALAPPDATA%\<identifier>\WebView2`) is keyed by it too.
+data folder (`%LOCALAPPDATA%\<identifier>\WebView2`) is keyed by it too, and so
+is the runtime's own origin storage (`localStorage` and `caches` of the app's
+Ende code): `<data dir>/<identifier>/storage` (`desktop_origin_data_folder` in
+`cli/rt/run.rs`; `ende compile` binaries keep `<data dir>/<app name>`). Builds
+before 2026-11-08 kept it in `<data dir>/<app name>`; that folder is renamed
+into place once, if the new one doesn't exist yet, and is used as it is if
+the rename fails. Its storage key is still `app:<app name>`, so the folders
+inside carry over, but renaming the app still starts this storage empty.
 
 What the app sees on `app://`:
 

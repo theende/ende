@@ -864,6 +864,8 @@ pub async fn run_with_options(
   // binary is a standalone app, so we store under the platform's app data
   // directory (`%LOCALAPPDATA%`, `~/Library/Application Support`,
   // `$XDG_DATA_HOME`) keyed by the app name, rather than polluting `ENDE_DIR`.
+  // A desktop app keys it by its identifier instead; see
+  // `desktop_origin_data_folder`.
   //
   // The app name is baked in at compile time (`--app-name`, otherwise the
   // output file name), so it is stable across runs and even if the binary is
@@ -883,7 +885,19 @@ pub async fn run_with_options(
   // `--app-name` is validated at compile time (see `validate_app_name`), so it
   // is safe to use directly as a single directory component here.
   let origin_data_folder_path =
-    crate::binary::get_data_local_dir().map(|dir| dir.join(&app_name));
+    crate::binary::get_data_local_dir().map(|dir| {
+      match metadata.app_identifier.as_deref().filter(|_| has_desktop) {
+        Some(identifier) => {
+          let (folder, warning) =
+            desktop_origin_data_folder(&dir, identifier, &app_name);
+          if let Some(warning) = warning {
+            log::warn!("{warning}");
+          }
+          folder
+        }
+        None => dir.join(&app_name),
+      }
+    });
   // Only enable persistent storage when we resolved a data directory. The
   // storage key resolver must stay empty otherwise, because the worker unwraps
   // `origin_data_folder_path` whenever the key resolves to a value.
@@ -1204,6 +1218,55 @@ pub(crate) fn apply_desktop_permission_defaults(
   extend(&mut permissions.allow_env, DESKTOP_ENV_KEYS);
 }
 
+/// Where a desktop app keeps its origin storage (`localStorage`, `caches`):
+/// `<data>/<identifier>/storage`, keyed like the app's other data (the
+/// `app://` cookie jar, WebView2's folder on Windows) by the identifier,
+/// which is stable across renames and unique across vendors. Returns the
+/// folder, and a warning to log if the app's old storage couldn't be moved.
+///
+/// Desktop apps built before kept it in `<data>/<app name>`. That folder is
+/// renamed to the new one once, when the new one doesn't exist yet. Nothing
+/// is merged or deleted: when both exist the new one is used and the old one
+/// is left alone, and when the rename fails the app keeps using the old
+/// folder (and tries again next launch). The storage key stays
+/// `app:<app name>`, so the hashed folders inside carry over as they are.
+fn desktop_origin_data_folder(
+  data_dir: &std::path::Path,
+  identifier: &str,
+  app_name: &str,
+) -> (PathBuf, Option<String>) {
+  let legacy = data_dir.join(app_name);
+  let usable = !identifier.is_empty()
+    && !identifier.starts_with('.')
+    && identifier
+      .chars()
+      .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+  // The old folder is the identifier's own (case-insensitive file systems
+  // included), which can't move into itself.
+  if !usable || identifier.eq_ignore_ascii_case(app_name) {
+    return (legacy, None);
+  }
+  let identifier_dir = data_dir.join(identifier);
+  let storage = identifier_dir.join("storage");
+  if storage.exists() || !legacy.exists() {
+    return (storage, None);
+  }
+  match std::fs::create_dir_all(&identifier_dir)
+    .and_then(|()| std::fs::rename(&legacy, &storage))
+  {
+    Ok(()) => (storage, None),
+    Err(err) => {
+      let warning = format!(
+        "[desktop] could not move the app's storage from {} to {}: {err}; using {} for now",
+        legacy.display(),
+        storage.display(),
+        legacy.display(),
+      );
+      (legacy, Some(warning))
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use ende_runtime::ende_permissions::PermissionsOptions;
@@ -1212,11 +1275,108 @@ mod tests {
   use super::DESKTOP_LOOPBACK_HOSTS;
   use super::DesktopStartupError;
   use super::apply_desktop_permission_defaults;
+  use super::desktop_origin_data_folder;
   use super::desktop_startup_error;
   use super::grant_vfs_read_access;
 
   fn strs(v: &[&str]) -> Vec<String> {
     v.iter().map(|s| (*s).to_string()).collect()
+  }
+
+  // --- desktop_origin_data_folder ---
+
+  const ID: &str = "com.example.notes";
+
+  /// A data dir holding `<data>/<name>/<hash>/local_storage` with `contents`.
+  fn storage_in(data: &std::path::Path, name: &str, contents: &str) {
+    let dir = data.join(name).join("0123abcd");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("local_storage"), contents).unwrap();
+  }
+
+  fn storage_of(folder: &std::path::Path) -> String {
+    std::fs::read_to_string(folder.join("0123abcd").join("local_storage"))
+      .unwrap()
+  }
+
+  #[test]
+  fn desktop_storage_is_under_the_identifier() {
+    let tmp = test_util::TempDir::new();
+    let data = tmp.path().to_path_buf();
+    let (folder, warning) = desktop_origin_data_folder(&data, ID, "Notes");
+    assert_eq!(folder, data.join(ID).join("storage"));
+    assert_eq!(warning, None);
+    assert!(
+      !data.join("Notes").exists(),
+      "nothing made for the old name"
+    );
+  }
+
+  #[test]
+  fn desktop_storage_moves_from_the_app_name_once() {
+    let tmp = test_util::TempDir::new();
+    let data = tmp.path().to_path_buf();
+    storage_in(&data, "Notes", "old notes");
+    // The identifier's folder may already hold other data (the app://
+    // cookie jar, WebView2's folder).
+    std::fs::create_dir_all(data.join(ID).join("WebView2")).unwrap();
+    let (folder, warning) = desktop_origin_data_folder(&data, ID, "Notes");
+    assert_eq!(folder, data.join(ID).join("storage"));
+    assert_eq!(warning, None);
+    assert_eq!(storage_of(&folder), "old notes");
+    assert!(!data.join("Notes").exists());
+    assert!(data.join(ID).join("WebView2").exists());
+    // Once moved, a new folder of the old name is left alone.
+    storage_in(&data, "Notes", "another app");
+    let (again, _) = desktop_origin_data_folder(&data, ID, "Notes");
+    assert_eq!(again, folder);
+    assert_eq!(storage_of(&again), "old notes");
+    assert_eq!(storage_of(&data.join("Notes")), "another app");
+  }
+
+  #[test]
+  fn desktop_storage_never_merges_into_an_existing_folder() {
+    let tmp = test_util::TempDir::new();
+    let data = tmp.path().to_path_buf();
+    storage_in(&data, "Notes", "old notes");
+    storage_in(&data.join(ID), "storage", "new notes");
+    let (folder, warning) = desktop_origin_data_folder(&data, ID, "Notes");
+    assert_eq!(folder, data.join(ID).join("storage"));
+    assert_eq!(warning, None);
+    assert_eq!(storage_of(&folder), "new notes");
+    assert_eq!(storage_of(&data.join("Notes")), "old notes", "kept as is");
+  }
+
+  #[test]
+  fn desktop_storage_stays_put_if_it_cannot_move() {
+    let tmp = test_util::TempDir::new();
+    let data = tmp.path().to_path_buf();
+    storage_in(&data, "Notes", "old notes");
+    // A file where the identifier's folder should be.
+    std::fs::write(data.join(ID), "not a folder").unwrap();
+    let (folder, warning) = desktop_origin_data_folder(&data, ID, "Notes");
+    assert_eq!(folder, data.join("Notes"), "the old folder, not lost");
+    assert_eq!(storage_of(&folder), "old notes");
+    let warning = warning.expect("the failed move is reported");
+    assert!(
+      warning.contains(&data.join("Notes").display().to_string())
+        && warning
+          .contains(&data.join(ID).join("storage").display().to_string()),
+      "{warning}"
+    );
+  }
+
+  #[test]
+  fn desktop_storage_named_like_the_identifier_stays_put() {
+    // The old folder is the identifier's own folder: it can't move into
+    // itself, so the app keeps it.
+    let tmp = test_util::TempDir::new();
+    let data = tmp.path().to_path_buf();
+    storage_in(&data, "Notes", "old notes");
+    let (folder, warning) = desktop_origin_data_folder(&data, "notes", "Notes");
+    assert_eq!(folder, data.join("Notes"));
+    assert_eq!(warning, None);
+    assert_eq!(storage_of(&folder), "old notes");
   }
 
   #[test]
