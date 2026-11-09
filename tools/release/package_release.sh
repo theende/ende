@@ -49,12 +49,15 @@ case "$target" in
     ;;
 esac
 
+# sha256 < <file>: prints the file's SHA-256. It reads stdin because GNU
+# sha256sum escapes a file name with a backslash (a Windows path) by putting
+# `\` before the hash.
 sha256() {
   if command -v sha256sum > /dev/null; then
-    sha256sum "$1" | cut -d ' ' -f 1
+    sha256sum
   else
-    shasum -a 256 "$1" | cut -d ' ' -f 1
-  fi
+    shasum -a 256
+  fi | cut -d ' ' -f 1
 }
 
 # write_checksum <path> <checksum-file>: writes `<hash>  <file-name>` (what
@@ -62,7 +65,7 @@ sha256() {
 # parses) to <out-dir>/<checksum-file>.
 write_checksum() {
   local path=$1 checksum_file=$2
-  printf '%s  %s\n' "$(sha256 "$path")" "$(basename "$path")" \
+  printf '%s  %s\n' "$(sha256 < "$path")" "$(basename "$path")" \
     > "$out_dir/$checksum_file"
 }
 

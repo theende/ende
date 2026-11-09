@@ -44,12 +44,15 @@ case "$target" in
   *) exe=tsc ;;
 esac
 
+# sha256 < <file>: prints the file's SHA-256. It reads stdin because GNU
+# sha256sum escapes a file name with a backslash (a Windows path) by putting
+# `\` before the hash.
 sha256() {
   if command -v sha256sum > /dev/null; then
-    sha256sum "$1" | cut -d ' ' -f 1
+    sha256sum
   else
-    shasum -a 256 "$1" | cut -d ' ' -f 1
-  fi
+    shasum -a 256
+  fi | cut -d ' ' -f 1
 }
 
 mkdir "$work_dir" || die "can't create $work_dir (it must not exist yet)"
@@ -63,7 +66,7 @@ curl -fsSL --retry 3 -o "$work_dir/$zip.sha256sum" "$url.sha256sum" ||
 read -r expected name < "$work_dir/$zip.sha256sum" || true
 [ "${name:-}" = "$zip" ] ||
   die "$url.sha256sum names '${name:-}', not $zip"
-actual=$(sha256 "$work_dir/$zip")
+actual=$(sha256 < "$work_dir/$zip")
 [ "$actual" = "$expected" ] ||
   die "$zip has SHA-256 $actual, but $url.sha256sum says $expected"
 
@@ -77,7 +80,7 @@ else
 fi
 
 [ -f "$dir/$exe" ] || die "$zip has no $exe"
-actual=$(sha256 "$dir/$exe")
+actual=$(sha256 < "$dir/$exe")
 [ "$actual" = "$tsc_sha256" ] ||
   die "$exe in $zip has SHA-256 $actual, but $lock pins $tsc_sha256 for $target"
 # The manifest cli/build.rs and tools/tsc7_mirror.ts compute: one
@@ -87,8 +90,8 @@ actual=$(
   LC_ALL=C # glob in byte order
   for name in *; do
     [ "$name" = "$exe" ] && continue
-    printf '%s  %s\n' "$(sha256 "$name")" "$name"
-  done | sha256 -
+    printf '%s  %s\n' "$(sha256 < "$name")" "$name"
+  done | sha256
 )
 [ "$actual" = "$files_sha256" ] ||
   die "the files next to $exe in $zip have manifest SHA-256 $actual, but $lock pins $files_sha256"
