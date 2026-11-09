@@ -9,13 +9,22 @@
 //! `tsc` is checked. A `.verified` marker written after that check lets later
 //! runs reuse the directory without hashing `tsc` again; they only compare
 //! its size.
+//!
+//! An extraction is about 26 MB, so after extracting one, Ende removes the
+//! others (other TypeScript versions and builds); an Ende that needs one
+//! again extracts it again. A process that uses one holds a shared lock on
+//! `<ende_dir>/tsc/.lock` until it exits, and removing takes the lock
+//! exclusively, so it only happens while no other Ende uses a tsc from the
+//! cache.
 
+use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
 
 use ende_core::anyhow::Context;
 use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
+use ende_core::parking_lot::Mutex;
 use sha2::Digest;
 
 use crate::factory::CliFactory;
@@ -49,24 +58,33 @@ include!(concat!(env!("OUT_DIR"), "/tsc7_bundle.rs"));
 const TSC_BIN_ENV: &str = "ENDE_TSC_BIN";
 const VERIFIED_MARKER: &str = ".verified";
 
+const CACHE_LOCK: &str = ".lock";
+
+/// Shared locks on the cache, held until the process exits.
+static CACHE_LOCKS: Mutex<Vec<File>> = Mutex::new(Vec::new());
+
 /// Returns the path of the TypeScript 7 `tsc` to run: `ENDE_TSC_BIN` if set,
 /// else the bundled one, extracted to the cache if it isn't there yet.
 pub fn resolve_tsc7(factory: &CliFactory) -> Result<PathBuf, AnyError> {
-  resolve(
+  let (path, lock) = resolve(
     std::env::var_os(TSC_BIN_ENV).map(PathBuf::from),
     factory.cli_options()?.initial_cwd(),
     BUNDLE,
     || Ok(factory.ende_dir()?.root.join("tsc")),
-  )
+  )?;
+  CACHE_LOCKS.lock().extend(lock);
+  Ok(path)
 }
 
 /// `cwd` resolves a relative `env_bin`: tsc runs in another directory.
+/// Returns the path, and for the bundled tsc, the cache lock to hold while
+/// using it.
 fn resolve(
   env_bin: Option<PathBuf>,
   cwd: &Path,
   bundle: Option<Tsc7Bundle>,
   cache_root: impl FnOnce() -> Result<PathBuf, AnyError>,
-) -> Result<PathBuf, AnyError> {
+) -> Result<(PathBuf, Option<File>), AnyError> {
   if let Some(path) = env_bin {
     let path = if path.has_root() {
       path
@@ -79,7 +97,7 @@ fn resolve(
         path.display()
       );
     }
-    return Ok(path);
+    return Ok((path, None));
   }
   let Some(bundle) = bundle else {
     bail!(
@@ -92,16 +110,109 @@ fn resolve(
 }
 
 /// Extracts `bundle` under `root` unless an earlier run already did, and
-/// returns the path of its `tsc`. Safe to run from several processes at once.
+/// returns the path of its `tsc` and the cache lock to hold while using it
+/// (`None` if the file system can't lock). Safe to run from several
+/// processes at once.
 fn ensure_extracted(
   bundle: &Tsc7Bundle,
   root: &Path,
-) -> Result<PathBuf, AnyError> {
+) -> Result<(PathBuf, Option<File>), AnyError> {
   let dir = root.join(bundle.version).join(bundle.archive_hash);
+  let tsc = dir.join(bundle.exe_name);
+  let lock = lock_cache(root);
   if is_verified(bundle, &dir) {
-    return Ok(dir.join(bundle.exe_name));
+    return Ok((tsc, lock));
   }
+  extract(bundle, &dir)?;
+  let Some(lock) = lock else {
+    return Ok((tsc, None));
+  };
+  let lock = remove_others(lock, root, &dir);
+  // Another process may have removed this one between the locks.
+  if !is_verified(bundle, &dir) {
+    extract(bundle, &dir)?;
+  }
+  Ok((tsc, lock))
+}
 
+/// Takes a shared lock on the cache. Waits while another process removes
+/// extractions.
+fn lock_cache(root: &Path) -> Option<File> {
+  let path = root.join(CACHE_LOCK);
+  let lock = || -> std::io::Result<File> {
+    std::fs::create_dir_all(root)?;
+    let file = std::fs::OpenOptions::new()
+      .create(true)
+      .truncate(false)
+      .write(true)
+      .open(&path)?;
+    file.lock_shared()?;
+    Ok(file)
+  };
+  lock()
+    .inspect_err(|err| {
+      log::debug!("tsc7: failed to lock {}: {err}", path.display())
+    })
+    .ok()
+}
+
+/// Removes the extractions under `root` other than `keep` if no other
+/// process holds the cache lock, then takes the shared lock again.
+fn remove_others(lock: File, root: &Path, keep: &Path) -> Option<File> {
+  let relock = || -> std::io::Result<File> {
+    lock.unlock()?;
+    if lock.try_lock().is_ok() {
+      remove_extractions(root, keep);
+      lock.unlock()?;
+    }
+    lock.lock_shared()?;
+    Ok(lock)
+  };
+  relock()
+    .inspect_err(|err| {
+      log::debug!("tsc7: failed to lock {}: {err}", root.display())
+    })
+    .ok()
+}
+
+/// Removes every `<root>/<version>/<entry>` but `keep`, and the version
+/// directories that leaves empty.
+fn remove_extractions(root: &Path, keep: &Path) {
+  let Ok(versions) = std::fs::read_dir(root) else {
+    return;
+  };
+  for version in versions.flatten() {
+    if !version.file_type().is_ok_and(|t| t.is_dir()) {
+      continue;
+    }
+    let version_dir = version.path();
+    let Ok(entries) = std::fs::read_dir(&version_dir) else {
+      continue;
+    };
+    for entry in entries.flatten() {
+      let path = entry.path();
+      if path == keep {
+        continue;
+      }
+      let result = if entry.file_type().is_ok_and(|t| t.is_dir()) {
+        std::fs::remove_dir_all(&path)
+      } else {
+        std::fs::remove_file(&path)
+      };
+      match result {
+        Ok(()) => log::debug!("tsc7: removed {}", path.display()),
+        Err(err) => {
+          log::debug!("tsc7: failed to remove {}: {err}", path.display())
+        }
+      }
+    }
+    // Fails, as it should, if `keep` is in it.
+    let _ = std::fs::remove_dir(&version_dir);
+  }
+}
+
+/// Extracts `bundle` to `dir`.
+fn extract(bundle: &Tsc7Bundle, dir: &Path) -> Result<(), AnyError> {
   let parent = dir.parent().unwrap();
   std::fs::create_dir_all(parent)
     .with_context(|| format!("failed to create {}", parent.display()))?;
@@ -118,8 +229,7 @@ fn ensure_extracted(
     staging.path().join(VERIFIED_MARKER),
     format!("{}\n", bundle.tsc_sha256),
   )?;
-  install(bundle, staging, &dir)?;
-  Ok(dir.join(bundle.exe_name))
+  install(bundle, staging, dir)
 }
 
 /// Whether `dir` holds a verified extraction of `bundle`. Checks the size of
@@ -237,7 +347,7 @@ mod tests {
   fn extracts_then_reuses() {
     let root = tempfile::tempdir().unwrap();
     let bundle = good_bundle();
-    let tsc = ensure_extracted(&bundle, root.path()).unwrap();
+    let tsc = ensure_extracted(&bundle, root.path()).unwrap().0;
     assert_eq!(tsc, root.path().join("7.0.2/0123456789abcdef/tsc"));
     assert_eq!(std::fs::read(&tsc).unwrap(), FAKE_TSC);
     let lib = tsc.with_file_name("lib.d.ts");
@@ -251,7 +361,7 @@ mod tests {
 
     // A second run reuses the directory instead of extracting again.
     std::fs::write(&lib, "changed").unwrap();
-    assert_eq!(ensure_extracted(&bundle, root.path()).unwrap(), tsc);
+    assert_eq!(ensure_extracted(&bundle, root.path()).unwrap().0, tsc);
     assert_eq!(std::fs::read(&lib).unwrap(), b"changed");
     assert!(staging_dirs(root.path()).is_empty());
   }
@@ -260,9 +370,9 @@ mod tests {
   fn reextracts_a_corrupted_tsc() {
     let root = tempfile::tempdir().unwrap();
     let bundle = good_bundle();
-    let tsc = ensure_extracted(&bundle, root.path()).unwrap();
+    let tsc = ensure_extracted(&bundle, root.path()).unwrap().0;
     std::fs::write(&tsc, "truncated").unwrap();
-    assert_eq!(ensure_extracted(&bundle, root.path()).unwrap(), tsc);
+    assert_eq!(ensure_extracted(&bundle, root.path()).unwrap().0, tsc);
     assert_eq!(std::fs::read(&tsc).unwrap(), FAKE_TSC);
   }
 
@@ -302,7 +412,7 @@ mod tests {
   fn keeps_the_copy_of_a_process_that_won() {
     let root = tempfile::tempdir().unwrap();
     let bundle = good_bundle();
-    let tsc = ensure_extracted(&bundle, root.path()).unwrap();
+    let tsc = ensure_extracted(&bundle, root.path()).unwrap().0;
     let lib = tsc.with_file_name("lib.d.ts");
     std::fs::write(&lib, "theirs").unwrap();
 
@@ -327,7 +437,7 @@ mod tests {
           scope.spawn(|| {
             let bundle = good_bundle();
             barrier.wait();
-            ensure_extracted(&bundle, root.path()).unwrap()
+            ensure_extracted(&bundle, root.path()).unwrap().0
           })
         })
         .collect::<Vec<_>>();
@@ -337,6 +447,58 @@ mod tests {
       }
     });
     assert!(staging_dirs(root.path()).is_empty());
+  }
+
+  /// `good_bundle` as another TypeScript version.
+  fn newer_bundle() -> Tsc7Bundle {
+    Tsc7Bundle {
+      version: "7.0.3",
+      archive_hash: "fedcba9876543210",
+      ..good_bundle()
+    }
+  }
+
+  #[test]
+  fn extracting_a_new_build_removes_the_others() {
+    let root = tempfile::tempdir().unwrap();
+    let (old, lock) = ensure_extracted(&good_bundle(), root.path()).unwrap();
+    drop(lock);
+    // Another build of the same version, left by an earlier Ende.
+    let sibling = root.path().join("7.0.2/aaaaaaaaaaaaaaaa");
+    std::fs::create_dir_all(&sibling).unwrap();
+    let new = ensure_extracted(&newer_bundle(), root.path()).unwrap().0;
+    assert_eq!(std::fs::read(&new).unwrap(), FAKE_TSC);
+    assert!(!old.exists());
+    assert!(!sibling.exists());
+    assert!(!root.path().join("7.0.2").exists());
+  }
+
+  #[test]
+  fn keeps_a_build_another_process_uses() {
+    let root = tempfile::tempdir().unwrap();
+    // Held, as a running Ende holds it.
+    let (old, _lock) = ensure_extracted(&good_bundle(), root.path()).unwrap();
+    let (new, lock) = ensure_extracted(&newer_bundle(), root.path()).unwrap();
+    assert!(old.exists());
+    assert!(new.exists());
+    // Still shared: a third process can lock it too.
+    assert!(lock.is_some());
+    let other = File::open(root.path().join(CACHE_LOCK)).unwrap();
+    assert!(other.try_lock_shared().is_ok());
+  }
+
+  #[test]
+  fn reextracts_a_build_removed_by_another_process() {
+    let root = tempfile::tempdir().unwrap();
+    let bundle = good_bundle();
+    let (tsc, lock) = ensure_extracted(&bundle, root.path()).unwrap();
+    drop(lock);
+    // Another Ende extracted a newer one and removed this one.
+    drop(ensure_extracted(&newer_bundle(), root.path()).unwrap());
+    assert!(!tsc.exists());
+    let (again, _lock) = ensure_extracted(&bundle, root.path()).unwrap();
+    assert_eq!(again, tsc);
+    assert_eq!(std::fs::read(&tsc).unwrap(), FAKE_TSC);
   }
 
   #[test]
@@ -365,7 +527,8 @@ mod tests {
       || unreachable!("ENDE_TSC_BIN skips the cache"),
     )
     .unwrap();
-    assert_eq!(resolved, path);
+    assert_eq!(resolved.0, path);
+    assert!(resolved.1.is_none());
   }
 
   #[test]
@@ -376,7 +539,8 @@ mod tests {
       resolve(Some(PathBuf::from("tsc")), dir.path(), None, || {
         unreachable!("ENDE_TSC_BIN skips the cache")
       })
-      .unwrap();
+      .unwrap()
+      .0;
     assert_eq!(resolved, dir.path().join("tsc"));
   }
 
@@ -396,10 +560,12 @@ mod tests {
   #[test]
   fn uses_the_bundle_cache() {
     let root = tempfile::tempdir().unwrap();
-    let tsc = resolve(None, Path::new("/"), Some(good_bundle()), || {
-      Ok(root.path().to_path_buf())
-    })
-    .unwrap();
+    let (tsc, lock) =
+      resolve(None, Path::new("/"), Some(good_bundle()), || {
+        Ok(root.path().to_path_buf())
+      })
+      .unwrap();
     assert_eq!(tsc, root.path().join("7.0.2/0123456789abcdef/tsc"));
+    assert!(lock.is_some());
   }
 }
