@@ -3019,13 +3019,18 @@ fn harmonize_cached_laufey_identifiers(
   install_dir: &Path,
   backend: &str,
 ) -> Result<(), AnyError> {
-  let laufey_app = locate_laufey_app_in_install(install_dir, backend)
-    .ok_or_else(|| {
-      ende_core::anyhow::anyhow!(
-        "could not find laufey.app under {} to re-sign",
-        install_dir.display()
-      )
-    })?;
+  let Some(laufey_app) = locate_laufey_app_in_install(install_dir, backend)
+  else {
+    // The raw archive ships a bare `laufey_winit` binary, no bundle, so
+    // there is nothing to re-sign (packaging wraps and signs it).
+    if backend == "raw" {
+      return Ok(());
+    }
+    bail!(
+      "could not find laufey.app under {} to re-sign",
+      install_dir.display()
+    );
+  };
   harmonize_laufey_app_identifiers(&laufey_app)
 }
 
@@ -6182,6 +6187,17 @@ mod tests {
       "plutil rejected the entitlements plist: {}",
       String::from_utf8_lossy(&output.stdout)
     );
+  }
+
+  #[test]
+  #[cfg(target_os = "macos")]
+  fn harmonize_skips_the_bundleless_raw_backend() {
+    // The raw archive is a bare `laufey_winit` binary with no `.app`, so
+    // there is nothing to re-sign, and a first download shouldn't warn.
+    let tmp = tempfile::tempdir().unwrap();
+    std::fs::write(tmp.path().join("laufey_winit"), b"\xcf\xfa\xed\xfe")
+      .unwrap();
+    harmonize_cached_laufey_identifiers(tmp.path(), "raw").unwrap();
   }
 
   // --- macOS Info.plist ---
