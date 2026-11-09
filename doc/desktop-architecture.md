@@ -228,8 +228,14 @@ What the app sees on `app://`:
     or a form for those. Use `Lax` (or no `SameSite`) for the session cookie:
     `Strict` isn't sent with XHR, images, the first load or `navigate()`. The
     bridge can't tell a frame from a window, so a cross-site frame of an app
-    page gets its `Lax` cookies. Pages that shouldn't be framed can send
-    `Content-Security-Policy: frame-ancestors 'self'` (untested on `app://`).
+    page gets its `Lax` cookies. Framing policies don't help on macOS: the
+    bridge passes `Content-Security-Policy` and `X-Frame-Options` through
+    unchanged, and WKWebView enforces the CSP's other directives (`script-src`)
+    on `app://` pages, but not `frame-ancestors 'self'` or `X-Frame-Options:
+    SAMEORIGIN`; a `data:` page and an `http://127.0.0.1` page both framed such
+    a page and ran its scripts (laufey 0.7.0, checked 2026-11-08; WebView2
+    untested). A page that mustn't be framed has to check
+    `window.top === window` itself.
   - Windows keeps WebView2's own cookie handling (untested whether it keeps
     cookies for the scheme).
 - **Request bodies:** at most 4 MiB (`413`). On macOS a `Blob` body arrives

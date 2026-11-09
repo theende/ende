@@ -1940,6 +1940,49 @@ mod tests {
   }
 
   #[tokio::test]
+  async fn bridge_passes_framing_policies_to_the_webview_unchanged() {
+    // The bridge can't tell a frame from a window, so a page that mustn't be
+    // framed by another site relies on the webview enforcing its CSP
+    // `frame-ancestors` (and `X-Frame-Options`).
+    let origin = AppOrigin::new("bridge-csp.example");
+    let _app = fake_app(
+      origin.host(),
+      b"HTTP/1.1 200 OK\r\n\
+        content-security-policy: frame-ancestors 'self'; default-src 'self' app://bridge-csp.example\r\n\
+        x-frame-options: SAMEORIGIN\r\n\
+        content-security-policy-report-only: frame-ancestors 'none'\r\n\
+        content-length: 2\r\n\r\nok",
+    );
+    let exchange = FakeExchange::default();
+    respond(
+      "GET",
+      "app://bridge-csp.example/settings",
+      &h(&[]),
+      &origin,
+      &exchange,
+    )
+    .await;
+    assert_eq!(exchange.status.get(), Some(200));
+    assert_eq!(
+      exchange.header("content-security-policy").as_deref(),
+      Some(
+        "frame-ancestors 'self'; default-src 'self' app://bridge-csp.example"
+      )
+    );
+    assert_eq!(
+      exchange.header("x-frame-options").as_deref(),
+      Some("SAMEORIGIN")
+    );
+    assert_eq!(
+      exchange
+        .header("content-security-policy-report-only")
+        .as_deref(),
+      Some("frame-ancestors 'none'")
+    );
+    assert_eq!(exchange.text(), "ok");
+  }
+
+  #[tokio::test]
   async fn bridge_marks_a_request_from_another_origin() {
     let origin = AppOrigin::new("bridge-cross-origin.example");
     let mut app = fake_app(origin.host(), b"HTTP/1.1 204 No Content\r\n\r\n");
