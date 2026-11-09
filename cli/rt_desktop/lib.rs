@@ -1604,10 +1604,14 @@ fn apply_pending_update(
   }
 
   if sentinel_path.exists() {
-    // Previous update booted fine — clean up.
+    // Previous update booted fine — clean up. The app is past any update it
+    // rolled back before, so forget those too.
     let _ = std::fs::remove_file(&backup_path);
     let _ = std::fs::remove_file(&sentinel_path);
     let _ = std::fs::remove_file(&trial_path);
+    let _ = std::fs::remove_file(
+      ende_runtime::ops::desktop::rejected_updates_path(dylib_path),
+    );
     return (UpdateLaunch::Normal, None);
   }
 
@@ -1634,6 +1638,11 @@ fn apply_pending_update(
 
   // The trial launch didn't write the sentinel → it crashed. Rollback.
   eprintln!("[desktop] Last update failed to start, rolling back...");
+  if let Err(e) = ende_runtime::ops::desktop::reject_update(dylib_path) {
+    eprintln!(
+      "[desktop] could not record the failed update, so it may be installed again: {e}"
+    );
+  }
   if !replace_dylib_with(&backup_path, dylib_path, "rollback.tmp") {
     // Report the truth rather than dispatching a "rolled back" event for a
     // rollback that didn't happen: the broken dylib is still in place, so
@@ -3536,6 +3545,7 @@ mod tests {
       backup: std::path::PathBuf,
       trial: std::path::PathBuf,
       sentinel: std::path::PathBuf,
+      rejected: std::path::PathBuf,
     }
 
     fn paths(tmp: &std::path::Path) -> Paths {
@@ -3545,6 +3555,7 @@ mod tests {
         backup: tmp.join("app.dylib.backup"),
         trial: tmp.join("app.dylib.update-trial"),
         sentinel: tmp.join("app.dylib.update-ok"),
+        rejected: tmp.join("app.dylib.update-rejected"),
       }
     }
 
@@ -3687,6 +3698,32 @@ mod tests {
       assert!(!p.backup.exists());
       assert!(!p.trial.exists());
       assert_eq!(launch(&p), UpdateLaunch::Normal, "rolls back only once");
+    }
+
+    #[test]
+    fn pending_update_rollback_rejects_the_failed_update() {
+      // Remembered so the restored app doesn't stage the same update again
+      // (see `stage_patch` in ende_runtime).
+      const BROKEN_SHA256: &str =
+        "f70cc4e9f6ceeb3df298b14b352258508f724fc8ef320008b5c246076333c075";
+      let tmp = tempfile::tempdir().unwrap();
+      let p = paths(tmp.path());
+      touch(&p.dylib, "new-but-broken");
+      touch(&p.backup, "old-but-known-good");
+      touch(&p.trial, "");
+      assert_eq!(launch(&p), UpdateLaunch::RolledBack);
+      assert_eq!(
+        read(&p.rejected).lines().collect::<Vec<_>>(),
+        [BROKEN_SHA256]
+      );
+      // A later update the app confirms moves it past the rejected one.
+      touch(&p.update, "newer");
+      assert_eq!(launch(&p), UpdateLaunch::Swapped);
+      assert!(p.rejected.exists(), "kept while the new update is on trial");
+      assert_eq!(reexeced_launch(&p), UpdateLaunch::Trial);
+      confirm(&p);
+      assert_eq!(launch(&p), UpdateLaunch::Normal);
+      assert!(!p.rejected.exists());
     }
 
     #[test]

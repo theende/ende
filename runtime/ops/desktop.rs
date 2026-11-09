@@ -1578,6 +1578,43 @@ fn sha256_hex(bytes: &[u8]) -> String {
   faster_hex::hex_string(&sha2::Sha256::digest(bytes)).to_lowercase()
 }
 
+/// `<dylib>.update-rejected`: the SHA-256 of each update whose trial launch
+/// failed and was rolled back, one per line.
+pub fn rejected_updates_path(dylib_path: &Path) -> PathBuf {
+  let ext = dylib_path.extension().unwrap_or_default().to_string_lossy();
+  dylib_path.with_extension(format!("{ext}.update-rejected"))
+}
+
+/// Records the library at `dylib_path`, an update whose trial launch failed,
+/// as rejected, so [`stage_patch`] never stages it again: the release server
+/// still offers it, and the restored app would otherwise download and stage
+/// it again, so every other launch would crash until the server changes.
+/// Call it before the rollback restores the previous library. The record
+/// goes once the app confirms a later update.
+#[allow(
+  clippy::disallowed_methods,
+  reason = "privileged auto-update bookkeeping next to the dylib, outside any user sandbox"
+)]
+pub fn reject_update(dylib_path: &Path) -> std::io::Result<()> {
+  use std::io::Write;
+  let sha256 = sha256_hex(&std::fs::read(dylib_path)?);
+  std::fs::OpenOptions::new()
+    .create(true)
+    .append(true)
+    .open(rejected_updates_path(dylib_path))?
+    .write_all(format!("{sha256}\n").as_bytes())
+}
+
+/// Whether the update whose library has SHA-256 `sha256` was rolled back.
+#[allow(
+  clippy::disallowed_methods,
+  reason = "privileged auto-update bookkeeping next to the dylib, outside any user sandbox"
+)]
+fn is_rejected_update(dylib_path: &Path, sha256: &str) -> bool {
+  std::fs::read_to_string(rejected_updates_path(dylib_path))
+    .is_ok_and(|rejected| rejected.lines().any(|line| line.trim() == sha256))
+}
+
 /// Applies `patch_bytes` to the dylib at `dylib_path` and writes the result to
 /// `<dylib>.update`, which the next launch swaps in. Returns that path.
 ///
@@ -1605,6 +1642,11 @@ fn stage_patch(
   let expected_sha256 = manifest_sha256(expected_sha256, "patch hash")?;
   let expected_target_sha256 =
     manifest_sha256(expected_target_sha256, "of the patched library")?;
+  if is_rejected_update(dylib_path, &expected_target_sha256) {
+    return Err(deno_error::JsErrorBox::generic(format!(
+      "Auto-update: the update to the library with SHA-256 {expected_target_sha256} failed to start and was rolled back; not installing it again"
+    )));
+  }
   let actual_sha256 = sha256_hex(patch_bytes);
   if actual_sha256 != expected_sha256 {
     return Err(deno_error::JsErrorBox::generic(format!(
@@ -2742,6 +2784,42 @@ mod tests {
       !dir.path().join("app.dylib.update").exists(),
       "nothing staged"
     );
+  }
+
+  #[test]
+  fn stage_patch_refuses_an_update_that_was_rolled_back() {
+    // v2 crashed in its trial launch and was rolled back to v1. The release
+    // server still offers v1 -> v2: staging it again would crash every other
+    // launch until the server changes.
+    let dir = test_util::TempDir::new();
+    let (v1, v2) = (fake_library("version 1;"), fake_library("version 2;"));
+    let patch = make_patch(&v1, &v2);
+    let dylib = dir.path().join("app.dylib");
+    dylib.write(&v2);
+    super::reject_update(dylib.as_path()).unwrap();
+    dylib.write(&v1);
+    let err = super::stage_patch(
+      dylib.as_path(),
+      &patch,
+      &super::sha256_hex(&patch),
+      &super::sha256_hex(&v2),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("was rolled back"), "{err}");
+    assert!(
+      !dir.path().join("app.dylib.update").exists(),
+      "nothing staged"
+    );
+    // A different update still goes through.
+    let v3 = fake_library("version 3;");
+    let patch = make_patch(&v1, &v3);
+    super::stage_patch(
+      dylib.as_path(),
+      &patch,
+      &super::sha256_hex(&patch),
+      &super::sha256_hex(&v3),
+    )
+    .unwrap();
   }
 
   #[test]

@@ -330,7 +330,12 @@ dir so its watcher sees real files.
   again, so the old code runs and fires `onRollback`, unless the trial launch
   is still running: it holds an exclusive lock on `.backup` (taken before it
   writes `.update-trial`), so a second instance started during the trial runs
-  the update without confirming it instead of rolling it back. A re-exec'd process never
+  the update without confirming it instead of rolling it back. A rollback
+  records the failed library's SHA-256 in `.update-rejected`, and
+  `op_desktop_apply_patch` refuses to stage a patch whose `targetSha256` is
+  there (the release server usually still offers it); the record goes once
+  the app confirms a later update. The patch is still downloaded before it's
+  refused. A re-exec'd process never
   swaps or re-execs, so there is no loop. Before the exec every descriptor above
   stderr is marked `FD_CLOEXEC`: without that, the new CEF image kept the old
   one's profile files (LevelDB `LOCK`s, caches) and pipes open. If the exec
