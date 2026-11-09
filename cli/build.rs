@@ -324,10 +324,41 @@ const APPIMAGE_RUNTIME_HASHES: &[(&str, &str)] = &[
   ),
 ];
 
+/// SHA-256 digests of the macOS `--compress` launcher, source and vendored
+/// universal binary (from `cli/tools/macos_launcher/README.md`). Pinning the
+/// source too means an edit to launcher.c fails the build until the binary is
+/// rebuilt with its build.sh and both pins are refreshed.
+const MACOS_LAUNCHER_HASHES: &[(&str, &str)] = &[
+  (
+    "tools/macos_launcher/launcher.c",
+    "9df3dbc985f4ca568562f6a17906ba3a421ba379cbe667c29f61d519339612fe",
+  ),
+  (
+    "tools/macos_launcher/launcher",
+    "ae2ee9eef9e5d492f8f18310bd48fd1e0fe9833257a45d96d9e183fca3a6be2c",
+  ),
+];
+
 fn check_appimage_runtime_hashes() {
+  check_vendored_hashes(
+    APPIMAGE_RUNTIME_HASHES,
+    "AppImage runtime stub",
+    "cli/tools/appimage_runtime/README.md",
+  );
+}
+
+fn check_macos_launcher_hashes() {
+  check_vendored_hashes(
+    MACOS_LAUNCHER_HASHES,
+    "macOS launcher file",
+    "cli/tools/macos_launcher/README.md",
+  );
+}
+
+fn check_vendored_hashes(hashes: &[(&str, &str)], what: &str, readme: &str) {
   use sha2::Digest;
   let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-  for (rel, expected) in APPIMAGE_RUNTIME_HASHES {
+  for (rel, expected) in hashes {
     let path = Path::new(&manifest_dir).join(rel);
     println!("cargo:rerun-if-changed={}", path.display());
     let bytes = match std::fs::read(&path) {
@@ -337,9 +368,9 @@ fn check_appimage_runtime_hashes() {
     let actual = format!("{:x}", sha2::Sha256::digest(&bytes));
     if actual != *expected {
       panic!(
-        "checked-in AppImage runtime stub {} does not match the SHA-256 \
-         pinned in cli/tools/appimage_runtime/README.md (expected {expected}, got {actual}). \
-         If this update is intentional, refresh both the binary and the README.",
+        "checked-in {what} {} does not match the SHA-256 \
+         pinned in {readme} (expected {expected}, got {actual}). \
+         If this update is intentional, refresh both the file and the README.",
         path.display()
       );
     }
@@ -609,6 +640,7 @@ fn main() {
   let out_dir = std::path::PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
 
   check_appimage_runtime_hashes();
+  check_macos_launcher_hashes();
   check_decls_unique();
   compress_appimage_runtimes(&out_dir);
   embed_tsc7(&out_dir);

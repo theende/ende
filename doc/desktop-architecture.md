@@ -363,3 +363,19 @@ dir so its watcher sees real files.
 - **`--inspect`**: `cli/tools/desktop_devtools.rs` runs a CDP multiplexer in the
   parent fronting both the Ende inspector and the renderer's debug port behind
   one `/unified` websocket.
+
+## Packaging
+
+- **macOS `--compress`** (`make_self_extracting_macos`): the thin `.app` holds
+  the real bundle as `Contents/Resources/payload.tar.xz` (`.tar.zst` with
+  `--compress=zstd`) and a small compiled launcher as its executable
+  (`cli/tools/macos_launcher/`, vendored universal binary). The launcher
+  extracts the payload to `~/Library/Application Support/<bundle id>/<hash>/`
+  once, then opens the extracted bundle with LaunchServices
+  (`open <App>.app --args …`) and exits. It doesn't exec the backend:
+  LaunchServices registers the process it launched, and after an exec the
+  backend's `NSStatusItem`s (`Ende.Tray`) never reach the menu bar
+  (denoland/deno#35619; a compiled `execv` launcher fails the same way). So the
+  extracted bundle runs as its own app, with one Dock icon, and opening the thin
+  app again activates it. It doesn't get the launcher's environment, standard
+  streams or exit status.
