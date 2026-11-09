@@ -106,3 +106,61 @@ fn upgrade_context() -> TestContext {
     )
     .build()
 }
+
+/// A fake `gh` for `upgrade --pr` / `--branch`: it finds PR #1 and CI run 1,
+/// and `gh run download` writes an `ende` that passes the `-V` check.
+#[cfg(unix)]
+fn write_fake_gh(dir: &util::PathRef) {
+  let gh = dir.join("gh");
+  gh.write(
+    r#"#!/bin/sh
+case "$1 $2" in
+  "--version "*) echo "gh version 0.0.0" ;;
+  "pr view") printf 'Title\tOPEN\tbranch\tabc123\n' ;;
+  "run list") echo 1 ;;
+  "run download")
+    while [ "$#" -gt 0 ]; do
+      if [ "$1" = "--dir" ]; then dir="$2"; fi
+      shift
+    done
+    printf '#!/bin/sh\nexit 0\n' > "$dir/ende"
+    ;;
+  *) exit 1 ;;
+esac
+"#,
+  );
+  gh.mark_executable();
+}
+
+/// `upgrade --pr` and `--branch` unpack and run the new binary next to the
+/// output path, not in the system temp dir, which is often mounted `noexec`
+/// (here it doesn't exist at all).
+#[cfg(unix)]
+#[test]
+fn upgrade_from_pr_or_branch_skips_system_temp_dir() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let temp_dir = context.temp_dir();
+  let bin_dir = temp_dir.path().join("bin");
+  bin_dir.create_dir_all();
+  write_fake_gh(&bin_dir);
+  let path = format!("{}:{}", bin_dir, std::env::var("PATH").unwrap());
+  let output_path = temp_dir.path().join("out/ende");
+  output_path.parent().create_dir_all();
+
+  for source in ["--pr 1", "--branch main"] {
+    let output = context
+      .new_command()
+      .args(format!("upgrade {source} --dry-run --output {output_path}"))
+      .env("PATH", &path)
+      .env("TMPDIR", temp_dir.path().join("missing").to_string())
+      .run();
+    output.assert_exit_code(0);
+    assert!(
+      output
+        .combined_output()
+        .contains("Upgraded successfully (dry run)"),
+      "{source}: {}",
+      output.combined_output()
+    );
+  }
+}

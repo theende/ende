@@ -495,11 +495,18 @@ fn upgrade_from_pr(
     );
   }
 
-  // Try each run to find one with our artifact
-  let temp_dir =
-    tempfile::TempDir::new().context("failed to create temporary directory")?;
+  let current_exe_path = std::env::current_exe()
+    .context("failed to get the path of the current executable")?;
+  let output_exe_path = if let Some(output) = &upgrade_flags.output {
+    Cow::Owned(PathBuf::from(output))
+  } else {
+    Cow::Borrowed(&current_exe_path)
+  };
+
+  let temp_dir = create_upgrade_temp_dir(&output_exe_path)?;
   let download_dir = temp_dir.path();
 
+  // Try each run to find one with our artifact
   let mut downloaded = false;
   for run_id in &all_run_ids {
     // Try release build first, then debug
@@ -578,14 +585,6 @@ fn upgrade_from_pr(
     drop(temp_dir);
     return Ok(());
   }
-
-  let current_exe_path = std::env::current_exe()
-    .context("failed to get the path of the current executable")?;
-  let output_exe_path = if let Some(output) = &upgrade_flags.output {
-    Cow::Owned(PathBuf::from(output))
-  } else {
-    Cow::Borrowed(&current_exe_path)
-  };
 
   #[cfg(windows)]
   kill_running_ende_lsp_processes();
@@ -689,8 +688,15 @@ fn upgrade_from_branch(
     );
   }
 
-  let temp_dir =
-    tempfile::TempDir::new().context("failed to create temporary directory")?;
+  let current_exe_path = std::env::current_exe()
+    .context("failed to get the path of the current executable")?;
+  let output_exe_path = if let Some(output) = &upgrade_flags.output {
+    Cow::Owned(PathBuf::from(output))
+  } else {
+    Cow::Borrowed(&current_exe_path)
+  };
+
+  let temp_dir = create_upgrade_temp_dir(&output_exe_path)?;
   let download_dir = temp_dir.path();
 
   let mut downloaded = false;
@@ -758,14 +764,6 @@ fn upgrade_from_branch(
     drop(temp_dir);
     return Ok(());
   }
-
-  let current_exe_path = std::env::current_exe()
-    .context("failed to get the path of the current executable")?;
-  let output_exe_path = if let Some(output) = &upgrade_flags.output {
-    Cow::Owned(PathBuf::from(output))
-  } else {
-    Cow::Borrowed(&current_exe_path)
-  };
 
   #[cfg(windows)]
   kill_running_ende_lsp_processes();
