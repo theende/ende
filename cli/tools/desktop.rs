@@ -2152,9 +2152,18 @@ fn extract_laufey_archive(
     // beyond the crate's own checks). Treat the archive as untrusted.
     for i in 0..archive.len() {
       let mut entry = archive.by_index(i)?;
-      // `enclosed_name` rejects drive labels, absolute paths and `..`
-      // components. Anything that fails this check is a zip-slip attempt
-      // (or a legitimately weird archive we don't want to handle).
+      // Since zip 9, `enclosed_name` drops a leading root or drive prefix
+      // (`/etc/x` comes back as `etc/x`) instead of refusing it, so refuse
+      // absolute names here: a laufey archive has no use for them.
+      if zip_entry_name_is_absolute(entry.name_raw()) {
+        bail!(
+          "refusing zip entry with unsafe path: {}",
+          String::from_utf8_lossy(entry.name_raw())
+        );
+      }
+      // `enclosed_name` rejects `..` components that climb above the root.
+      // Anything that fails this check is a zip-slip attempt (or a
+      // legitimately weird archive we don't want to handle).
       let Some(rel_path) = entry.enclosed_name() else {
         bail!(
           "refusing zip entry with unsafe path: {}",
@@ -2210,6 +2219,13 @@ fn extract_laufey_archive(
     bail!("unsupported archive format: {name}");
   }
   Ok(())
+}
+
+/// Whether a raw zip entry name is absolute: it starts with `/` or `\`, or
+/// with a drive prefix such as `C:`.
+fn zip_entry_name_is_absolute(name: &[u8]) -> bool {
+  matches!(name, [b'/' | b'\\', ..])
+    || matches!(name, [drive, b':', ..] if drive.is_ascii_alphabetic())
 }
 
 /// Resolve the backend binary path inside an extracted archive directory.
@@ -7435,6 +7451,21 @@ def456  other.zip
     );
     // /etc/escape.txt mustn't exist on the host.
     assert!(!std::path::Path::new("/etc/escape.txt").exists());
+  }
+
+  #[test]
+  fn extract_zip_rejects_drive_prefixed_path() {
+    use zip::write::SimpleFileOptions;
+    let zip = build_zip(|w| {
+      w.start_file("C:/escape.txt", SimpleFileOptions::default())
+        .unwrap();
+      w.write_all(b"oops").unwrap();
+    });
+    let tmp = tempfile::tempdir().unwrap();
+    let err = extract_laufey_archive("evil.zip", &zip, tmp.path())
+      .expect_err("a drive-prefixed path in zip must be rejected");
+    assert!(err.to_string().contains("unsafe"), "got: {err}");
+    assert!(!tmp.path().join("escape.txt").exists());
   }
 
   #[test]
