@@ -611,6 +611,8 @@ const loadCanvas = core.createLazyLoader("ext:ende_canvas/01_canvas.js");
 const loadWebSocketStream = core.createLazyLoader(
   "ext:ende_websocket/02_websocketstream.js",
 );
+const loadWebTransport = core.createLazyLoader("ext:ende_web/webtransport.js");
+const loadWebGPU = core.createLazyLoader("ext:ende_webgpu/01_webgpu.js");
 const loadImageData = () => core.loadExtScript("ext:ende_web/16_image_data.js");
 const loadGeometry = () => core.loadExtScript("ext:ende_web/17_geometry.js");
 
@@ -635,9 +637,10 @@ function resolveTransferableResource(type) {
   return resource;
 }
 
-// The deserializers of the [Serializable] ones (and of WebSocketError, whose
-// module is lazily loaded too) are registered here, not by their modules, so
-// that a realm can receive one before loading its module.
+// The deserializers of the [Serializable] ones (and of WebSocketError,
+// WebTransportError and GPUPipelineError, whose modules are lazily loaded too)
+// are registered here, not by their modules, so that a realm can receive one
+// before loading its module.
 {
   const geometryTypes = [
     "DOMMatrix",
@@ -665,6 +668,14 @@ function resolveTransferableResource(type) {
   core.registerCloneableResource(
     "WebSocketError",
     (data) => loadWebSocketStream().deserializeWebSocketError(data),
+  );
+  core.registerCloneableResource(
+    "WebTransportError",
+    (data) => loadWebTransport().deserializeWebTransportError(data),
+  );
+  core.registerCloneableResource(
+    "GPUPipelineError",
+    (data) => loadWebGPU().deserializeGPUPipelineError(data),
   );
 }
 

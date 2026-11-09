@@ -65,7 +65,9 @@ const {
   EventTargetPrototype,
   setEventTargetData,
 } = core.loadExtScript("ext:ende_web/02_event.js");
-const { DOMException } = core.loadExtScript("ext:ende_web/01_dom_exception.js");
+const { DOMException, serializeSubclass, setClonedStack } = core.loadExtScript(
+  "ext:ende_web/01_dom_exception.js",
+);
 const { createFilteredInspectProxy } = core.loadExtScript(
   "ext:ende_web/01_console.js",
 );
@@ -155,8 +157,26 @@ class GPUPipelineError extends DOMException {
     webidl.assertBranded(this, GPUPipelineErrorPrototype);
     return this.#reason;
   }
+
+  // https://gpuweb.github.io/gpuweb/#gpupipelineerror (serialization steps)
+  [serializeSubclass](data) {
+    data.type = "GPUPipelineError";
+    data.reason = this.#reason;
+  }
 }
 const GPUPipelineErrorPrototype = GPUPipelineError.prototype;
+
+// Registered as a cloneable resource by ext:ende_web/13_message_port.js, so a
+// realm that hasn't loaded this module can receive one.
+function deserializeGPUPipelineError(data) {
+  return setClonedStack(
+    new GPUPipelineError(data.message, {
+      __proto__: null,
+      reason: data.reason,
+    }),
+    data,
+  );
+}
 
 class GPUUncapturedErrorEvent extends Event {
   #error;
@@ -940,8 +960,8 @@ function initGPU() {
   }
 }
 
-// Not [Serializable] (GPUPipelineError is, as a DOMException, and GPUDevice
-// is an EventTarget): structuredClone throws a DataCloneError.
+// Not [Serializable] (GPUPipelineError is, and GPUDevice is an EventTarget):
+// structuredClone throws a DataCloneError.
 {
   const { markNotSerializable } = core.loadExtScript(
     "ext:ende_web/13_message_port.js",
@@ -987,6 +1007,7 @@ function initGPU() {
 }
 
 export {
+  deserializeGPUPipelineError,
   endeNsWebGPU,
   GPU,
   gpu,

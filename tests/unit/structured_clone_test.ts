@@ -955,11 +955,13 @@ function describeError(error: unknown) {
     e.requested,
     e.closeCode,
     e.reason,
+    e.source,
+    e.streamErrorCode,
   ];
 }
 
-// QuotaExceededError and WebSocketError are [Serializable] subclasses of
-// DOMException that add fields.
+// QuotaExceededError, WebSocketError, WebTransportError and GPUPipelineError
+// are [Serializable] subclasses of DOMException that add fields.
 function domExceptionSubclasses() {
   return [
     new QuotaExceededError("over", { quota: 10, requested: 12 }),
@@ -967,6 +969,10 @@ function domExceptionSubclasses() {
     new QuotaExceededError("zero", { quota: 0 }),
     new WebSocketError("closed", { closeCode: 4000, reason: "bye" }),
     new WebSocketError("plain"),
+    new WebTransportError("reset", { source: "session", streamErrorCode: 7 }),
+    new WebTransportError("plain"),
+    new GPUPipelineError("invalid", { reason: "validation" }),
+    new GPUPipelineError("broken", { reason: "internal" }),
     new DOMException("still", "NotFoundError"),
   ];
 }
@@ -981,7 +987,8 @@ Deno.test("structuredClone keeps DOMException subclasses and their fields", () =
 });
 
 Deno.test("postMessage keeps DOMException subclasses through a worker", async () => {
-  // A fresh worker hasn't loaded the WebSocketStream module.
+  // A fresh worker hasn't loaded the WebSocketStream, WebTransport or WebGPU
+  // modules.
   const worker = new Worker(
     `data:application/javascript,${
       encodeURIComponent(`onmessage = (event) => {
