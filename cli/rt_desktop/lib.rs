@@ -1831,13 +1831,27 @@ fn run_on_ui_thread(
   f();
 }
 
+/// Variables only `ende desktop`'s development runs set: `--hmr`, and
+/// `--inspect` (also `--inspect-brk` and `--inspect-wait`).
+#[cfg(any(windows, test))]
+const DEV_RUN_ENV_VARS: &[&str] =
+  &["ENDE_DESKTOP_HMR", "ENDE_DESKTOP_INSPECT_INTERNAL_PORT"];
+
+/// Whether `ende desktop` started this process to develop the app, judged by
+/// which variables are set.
+#[cfg(any(windows, test))]
+fn is_dev_run(is_set: impl Fn(&str) -> bool) -> bool {
+  DEV_RUN_ENV_VARS.iter().any(|name| is_set(name))
+}
+
 /// Attaches to the parent's console when `ende desktop` runs the app in
-/// development mode (`--hmr`), so `console.log` output reaches the terminal.
+/// development mode (`--hmr` or `--inspect`), so `console.log` output reaches
+/// the terminal.
 ///
 /// The backend is a GUI-subsystem executable. Windows gives such a process no
 /// console, and no standard handles even when the parent's are inherited, so
 /// its output went nowhere (#36501). Only development runs set
-/// `ENDE_DESKTOP_HMR`, so an app launched normally, e.g. from Explorer, keeps
+/// [`DEV_RUN_ENV_VARS`], so an app launched normally, e.g. from Explorer, keeps
 /// running without a console.
 #[cfg(windows)]
 fn attach_parent_console_in_dev_mode() {
@@ -1856,7 +1870,7 @@ fn attach_parent_console_in_dev_mode() {
   use windows_sys::Win32::System::Console::STD_OUTPUT_HANDLE;
   use windows_sys::Win32::System::Console::SetStdHandle;
 
-  if env::var_os("ENDE_DESKTOP_HMR").is_none() {
+  if !is_dev_run(|name| env::var_os(name).is_some()) {
     return;
   }
   // SAFETY: `CreateFileW` gets a NUL-terminated UTF-16 string that outlives
@@ -2919,6 +2933,18 @@ mod tests {
   use super::run_on_ui_thread;
   use super::should_show_native_error_dialog;
   use super::untrack_notification;
+
+  #[test]
+  fn dev_runs_are_told_by_their_variables() {
+    use super::is_dev_run;
+    assert!(!is_dev_run(|_| false));
+    assert!(is_dev_run(|name| name == "ENDE_DESKTOP_HMR"));
+    // `ende desktop --inspect` (and --inspect-brk / --inspect-wait) without
+    // --hmr.
+    assert!(is_dev_run(
+      |name| name == "ENDE_DESKTOP_INSPECT_INTERNAL_PORT"
+    ));
+  }
 
   // --- default_webview2_user_data_folder ---
 
