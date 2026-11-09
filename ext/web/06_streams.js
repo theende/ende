@@ -8320,6 +8320,14 @@ internals.writableStreamForRid = writableStreamForRid;
   markNotSerializable(TransformStream.prototype);
   markNotSerializable(ByteLengthQueuingStrategy.prototype);
   markNotSerializable(CountQueuingStrategy.prototype);
+  markNotSerializable(ReadableStreamDefaultReader.prototype);
+  markNotSerializable(ReadableStreamBYOBReader.prototype);
+  markNotSerializable(ReadableStreamBYOBRequest.prototype);
+  markNotSerializable(ReadableStreamDefaultController.prototype);
+  markNotSerializable(ReadableByteStreamController.prototype);
+  markNotSerializable(TransformStreamDefaultController.prototype);
+  markNotSerializable(WritableStreamDefaultController.prototype);
+  markNotSerializable(WritableStreamDefaultWriter.prototype);
 }
 
 const kNodeWebStreamsState = SymbolFor("nodejs.webstreams.kState");

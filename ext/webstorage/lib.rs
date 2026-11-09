@@ -34,7 +34,7 @@ struct OriginStorageDir(PathBuf);
 const MAX_STORAGE_BYTES: usize = 10 * 1024 * 1024;
 
 ende_core::extension!(ende_webstorage,
-  deps = [ ende_webidl ],
+  deps = [ ende_webidl, ende_web ],
   ops = [
     op_webstorage_iterate_keys,
   ],

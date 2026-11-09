@@ -1196,6 +1196,17 @@ webidl.converters.WebTransportErrorOptions = webidl.createDictionaryConverter(
   ],
 );
 
+// Not [Serializable]: structuredClone throws a DataCloneError.
+{
+  const { markNotSerializable } = core.loadExtScript(
+    "ext:ende_web/13_message_port.js",
+  );
+  markNotSerializable(WebTransport.prototype);
+  markNotSerializable(WebTransportBidirectionalStream.prototype);
+  markNotSerializable(WebTransportDatagramDuplexStream.prototype);
+  markNotSerializable(WebTransportSendGroup.prototype);
+}
+
 export {
   upgradeWebTransport,
   WebTransport,

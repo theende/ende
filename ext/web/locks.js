@@ -311,4 +311,13 @@ webidl.converters.LockOptions = webidl
 
 const locks = webidl.createBranded(LockManager);
 
+// Not [Serializable]: structuredClone throws a DataCloneError.
+{
+  const { markNotSerializable } = core.loadExtScript(
+    "ext:ende_web/13_message_port.js",
+  );
+  markNotSerializable(LockManager.prototype);
+  markNotSerializable(Lock.prototype);
+}
+
 export { Lock, LockManager, locks };

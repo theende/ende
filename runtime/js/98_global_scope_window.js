@@ -249,4 +249,12 @@ const mainRuntimeGlobalProperties = {
   Storage: core.propNonEnumerableLazyLoaded((w) => w.Storage, lazyWebStorage),
 };
 
+// Not [Serializable]: structuredClone throws a DataCloneError.
+{
+  const { markNotSerializable } = core.loadExtScript(
+    "ext:ende_web/13_message_port.js",
+  );
+  markNotSerializable(Navigator.prototype);
+}
+
 export { mainRuntimeGlobalProperties, memoizeLazy };

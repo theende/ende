@@ -440,6 +440,15 @@ const workerLocationDescriptor = {
   enumerable: true,
 };
 
+// Not [Serializable]: structuredClone throws a DataCloneError.
+{
+  const { markNotSerializable } = core.loadExtScript(
+    "ext:ende_web/13_message_port.js",
+  );
+  markNotSerializable(Location.prototype);
+  markNotSerializable(WorkerLocation.prototype);
+}
+
 return {
   getLocationHref,
   locationConstructorDescriptor,

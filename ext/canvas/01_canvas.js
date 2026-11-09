@@ -27,4 +27,14 @@ ObjectDefineProperty(OffscreenCanvas.prototype, SymbolToStringTag, {
   configurable: true,
 });
 
+// Not [Serializable] (OffscreenCanvas is only [Transferable]):
+// structuredClone throws a DataCloneError.
+{
+  const { markNotSerializable } = core.loadExtScript(
+    "ext:ende_web/13_message_port.js",
+  );
+  markNotSerializable(OffscreenCanvas.prototype);
+  markNotSerializable(ImageBitmapRenderingContext.prototype);
+}
+
 export { ImageBitmapRenderingContext, OffscreenCanvas };

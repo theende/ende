@@ -138,5 +138,13 @@ function sessionStorage() {
   return sessionStorageStorage;
 }
 
+// Not [Serializable]: structuredClone throws a DataCloneError.
+{
+  const { markNotSerializable } = core.loadExtScript(
+    "ext:ende_web/13_message_port.js",
+  );
+  markNotSerializable(Storage.prototype);
+}
+
 return { localStorage, sessionStorage, Storage };
 })();

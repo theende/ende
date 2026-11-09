@@ -426,6 +426,14 @@ function createDependentAbortSignal(signals, prefix) {
   return resultSignal;
 }
 
+// Not [Serializable]: structuredClone throws a DataCloneError.
+{
+  const { markNotSerializable } = core.loadExtScript(
+    "ext:ende_web/13_message_port.js",
+  );
+  markNotSerializable(AbortController.prototype);
+}
+
 return {
   AbortController,
   AbortSignal,
