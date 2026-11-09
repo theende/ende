@@ -965,11 +965,7 @@ function domExceptionSubclasses() {
     new QuotaExceededError("over", { quota: 10, requested: 12 }),
     new QuotaExceededError("unknown"),
     new QuotaExceededError("zero", { quota: 0 }),
-    // lib.ende.unstable.d.ts calls closeCode `code`, unlike the spec.
-    new WebSocketError(
-      "closed",
-      { closeCode: 4000, reason: "bye" } as WebSocketCloseInfo,
-    ),
+    new WebSocketError("closed", { closeCode: 4000, reason: "bye" }),
     new WebSocketError("plain"),
     new DOMException("still", "NotFoundError"),
   ];
