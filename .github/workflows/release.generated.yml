@@ -240,6 +240,10 @@ jobs:
           CC=/usr/bin/clang-22
           CFLAGS=$CFLAGS
           " > $GITHUB_ENV
+      - name: Fetch TypeScript 7 compiler
+        run: |-
+          dir="$(./tools/release/fetch_tsc7.sh "$TARGET" "$RUNNER_TEMP/tsc7")"
+          echo "ENDE_TSC7_DIR=$dir" >> "$GITHUB_ENV"
       - name: Build release
         env:
           ENDE_SNAPSHOT_MINIFY_SOURCES: '1'
@@ -306,6 +310,8 @@ jobs:
           if [ "$first_line" != "$expected" ]; then echo "::error::ende --version does not start with: $expected"; exit 1; fi
           actual="$(target/release/ende eval "console.log(Ende.version.ende)" | tr -d "\r")"
           if [ "$actual" != "$ENDE_VERSION" ]; then echo "::error::Ende.version.ende is $actual, expected $ENDE_VERSION"; exit 1; fi
+          printf "const n: number = 1;\nconsole.log(n);\n" > "$RUNNER_TEMP/tsc7_smoke.ts"
+          if ! ENDE_DIR="$RUNNER_TEMP/tsc7_smoke_ende_dir" target/release/ende check --unstable-tsc7 "$RUNNER_TEMP/tsc7_smoke.ts"; then echo "::error::ende check --unstable-tsc7 failed: is tsc embedded?"; exit 1; fi
       - name: Generate delta patch
         env:
           GH_TOKEN: '${{ github.token }}'

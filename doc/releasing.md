@@ -42,13 +42,15 @@ with every workflow; see [`ci.md`](./ci.md)). Jobs:
 1. **verify** — runs `tools/release/verify_release_tag.ts`.
 2. **build** — one job per target (`aarch64-apple-darwin`,
    `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`,
-   `x86_64-pc-windows-msvc`), with no shared cache. It builds `ende`, `endert`
-   and the desktop runtime (`endert_desktop`, i.e. libendert), strips them,
-   signs `ende` when the signing secrets exist, smoke tests it
-   (`ende --version`, `Ende.version.ende`), generates a delta patch from the
-   latest published GitHub release (skipped when there is none), and runs
-   `tools/release/package_release.sh`. Linux builds use the same sysroot setup
-   as `ci.ts` (`sysRootConfig` in `.github/workflows/common.ts`), so the
+   `x86_64-pc-windows-msvc`), with no shared cache. It fetches the pinned
+   TypeScript 7 compiler for the target (see
+   [TypeScript 7 compiler](#typescript-7-compiler)), builds `ende`, `endert` and
+   the desktop runtime (`endert_desktop`, i.e. libendert), strips them, signs
+   `ende` when the signing secrets exist, smoke tests it (`ende --version`,
+   `Ende.version.ende`, `ende check --unstable-tsc7`), generates a delta patch
+   from the latest published GitHub release (skipped when there is none), and
+   runs `tools/release/package_release.sh`. Linux builds use the same sysroot
+   setup as `ci.ts` (`sysRootConfig` in `.github/workflows/common.ts`), so the
    binaries link against an old glibc and run on older distributions; the job
    checks this by running `ende --version` inside the sysroot.
 3. **release** — creates the draft release with
@@ -75,6 +77,19 @@ Assets per target (`<target>` as above):
 
 Checksum files read `<sha256>  <file name>`. The QuickJS runtimes
 (`endert-quickjs-*`, used by `ende compile --engine quickjs`) are not built yet.
+
+## TypeScript 7 compiler
+
+Release builds embed the TypeScript 7 `tsc` that `--unstable-tsc7` runs.
+`tools/release/fetch_tsc7.sh <target> <work-dir>` downloads
+`https://dl.ende.sh/tsc/<version>/tsc-<target>.zip` for the version in
+`cli/tsc7_sums.lock`, checks it against the mirror's `.sha256sum`, unzips it
+into `<work-dir>/<target>/`, checks `tsc` and the other files against the lock,
+and prints that directory. The build job exports it as `ENDE_TSC7_DIR`, and
+`cli/build.rs` checks the files again and embeds them. A failed download or
+check fails the job, and the smoke test fails a binary without `tsc`. The mirror
+is uploaded once per TypeScript version with `tools/tsc7_mirror.ts`; every
+release target needs a line in the lock file and a zip on the mirror.
 
 ## Signing
 

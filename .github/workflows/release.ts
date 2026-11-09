@@ -126,6 +126,17 @@ const buildSteps = step.dependsOn(
     ...sysRootConfig,
   },
   {
+    // The pinned TypeScript 7 compiler for `--unstable-tsc7` (version from
+    // cli/tsc7_sums.lock), checked against the mirror's checksum and the
+    // lock. cli/build.rs embeds it from ENDE_TSC7_DIR and checks it again. A
+    // failed download or check fails the release.
+    name: "Fetch TypeScript 7 compiler",
+    run: [
+      'dir="$(./tools/release/fetch_tsc7.sh "$TARGET" "$RUNNER_TEMP/tsc7")"',
+      'echo "ENDE_TSC7_DIR=$dir" >> "$GITHUB_ENV"',
+    ],
+  },
+  {
     name: "Build release",
     env: { ENDE_SNAPSHOT_MINIFY_SOURCES: "1" },
     run: [
@@ -227,6 +238,10 @@ const smokeTestStep = step({
     'if [ "$first_line" != "$expected" ]; then echo "::error::ende --version does not start with: $expected"; exit 1; fi',
     'actual="$(target/release/ende eval "console.log(Ende.version.ende)" | tr -d "\\r")"',
     'if [ "$actual" != "$ENDE_VERSION" ]; then echo "::error::Ende.version.ende is $actual, expected $ENDE_VERSION"; exit 1; fi',
+    // Only a build with the embedded tsc can run this (no ENDE_TSC_BIN here);
+    // the fresh ENDE_DIR makes it extract tsc.
+    'printf "const n: number = 1;\\nconsole.log(n);\\n" > "$RUNNER_TEMP/tsc7_smoke.ts"',
+    'if ! ENDE_DIR="$RUNNER_TEMP/tsc7_smoke_ende_dir" target/release/ende check --unstable-tsc7 "$RUNNER_TEMP/tsc7_smoke.ts"; then echo "::error::ende check --unstable-tsc7 failed: is tsc embedded?"; exit 1; fi',
   ],
 });
 

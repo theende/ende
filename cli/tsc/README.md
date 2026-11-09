@@ -44,7 +44,9 @@ the output of `tools/tsc7_mirror.ts` (`tsc/<version>/<target>/`), and
 `cli/build.rs` checks the files against the lock file and embeds them. `tsc7.rs`
 extracts them to `<ENDE_DIR>/tsc/<version>/<hash>/` on first use. Without
 `ENDE_TSC7_DIR` nothing is embedded, and `--unstable-tsc7` needs `ENDE_TSC_BIN`,
-the path of a TypeScript 7 `tsc`.
+the path of a TypeScript 7 `tsc`. Release builds get the directory from
+`tools/release/fetch_tsc7.sh`, which downloads it from dl.ende.sh and checks it
+(see doc/releasing.md).
 
 `tsc7/check.rs` runs it: `tsc -p <tsconfig> --pretty true`, through the CLI
 rather than its unstable API. The project it checks lives in
