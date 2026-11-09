@@ -585,17 +585,9 @@ fn register_deep_links(
   bundle_path: &Path,
   desktop_flags: &DesktopFlags,
 ) -> Result<(), AnyError> {
-  let schemes: Vec<String> = desktop_flags
-    .deep_links
-    .iter()
-    .map(|s| s.trim().to_ascii_lowercase())
-    .filter(|s| !s.is_empty())
-    .collect();
+  let schemes = deep_link_schemes(desktop_flags)?;
   if schemes.is_empty() {
     return Ok(());
-  }
-  for scheme in &schemes {
-    validate_url_scheme(scheme)?;
   }
 
   let target_os = match desktop_flags.target.as_deref() {
@@ -628,6 +620,23 @@ fn register_deep_links(
       .join(", "),
   );
   Ok(())
+}
+
+/// The configured deep-link schemes, trimmed and lowercased, without empty
+/// entries. Errors on a scheme that isn't valid or is reserved.
+fn deep_link_schemes(
+  desktop_flags: &DesktopFlags,
+) -> Result<Vec<String>, AnyError> {
+  let schemes: Vec<String> = desktop_flags
+    .deep_links
+    .iter()
+    .map(|s| s.trim().to_ascii_lowercase())
+    .filter(|s| !s.is_empty())
+    .collect();
+  for scheme in &schemes {
+    validate_url_scheme(scheme)?;
+  }
+  Ok(schemes)
 }
 
 /// macOS: add a single `CFBundleURLTypes` entry carrying every scheme to the
@@ -688,6 +697,17 @@ fn register_deep_links_linux(
     })?;
 
   let contents = std::fs::read_to_string(&desktop_file)?;
+  std::fs::write(
+    &desktop_file,
+    desktop_entry_with_deep_links(&contents, schemes),
+  )?;
+  Ok(())
+}
+
+/// A `.desktop` entry with `x-scheme-handler/<scheme>` MIME types for
+/// `schemes` merged into `MimeType=`, and a `%u` in `Exec=` so the opened URL
+/// reaches the app.
+fn desktop_entry_with_deep_links(contents: &str, schemes: &[String]) -> String {
   let mime = schemes
     .iter()
     .map(|s| format!("x-scheme-handler/{s};"))
@@ -723,9 +743,7 @@ fn register_deep_links_linux(
   if !wrote_mime {
     out.push_str(&format!("MimeType={mime}\n"));
   }
-
-  std::fs::write(&desktop_file, out)?;
-  Ok(())
+  out
 }
 
 /// Windows: there is no in-bundle declarative registration for protocol
@@ -4108,6 +4126,9 @@ struct LinuxPackageMeta {
   summary: String,
   /// Reverse-DNS identifier for the `.desktop` `StartupWMClass`.
   identifier: String,
+  /// Deep-link schemes the `.desktop` entry registers (see
+  /// [`deep_link_schemes`]).
+  deep_links: Vec<String>,
 }
 
 /// Sanitize an app name into a Debian-style package name: lowercase, only
@@ -4187,6 +4208,7 @@ fn linux_package_meta(
     app_name,
     display_name,
     identifier,
+    deep_links: deep_link_schemes(desktop_flags)?,
   })
 }
 
@@ -4270,8 +4292,11 @@ fn rpm_arch_for_target(target: Option<&str>) -> Result<&'static str, AnyError> {
 /// the window app_id to the binary name (reached through the `/usr/bin/<pkg>`
 /// symlink), which wouldn't match and the Wayland icon would fall back to a
 /// generic placeholder (issue #35500).
+///
+/// It's the entry the desktop reads for an installed package, so it carries
+/// the deep links (`MimeType=` and `%u`) too.
 fn system_desktop_entry(meta: &LinuxPackageMeta) -> String {
-  format!(
+  let entry = format!(
     "[Desktop Entry]\n\
      Type=Application\n\
      Name={display_name}\n\
@@ -4282,7 +4307,12 @@ fn system_desktop_entry(meta: &LinuxPackageMeta) -> String {
     display_name = desktop_entry_string(&meta.display_name),
     package = meta.package,
     identifier = meta.identifier,
-  )
+  );
+  if meta.deep_links.is_empty() {
+    entry
+  } else {
+    desktop_entry_with_deep_links(&entry, &meta.deep_links)
+  }
 }
 
 /// Wrap a Linux app directory in a Debian `.deb` package.
@@ -6801,6 +6831,7 @@ def456  other.zip
       maintainer: "MyApp <noreply@ende.sh>".to_string(),
       summary: "MyApp desktop application".to_string(),
       identifier: "sh.ende.desktop.myapp".to_string(),
+      deep_links: Vec::new(),
     };
     let entry = system_desktop_entry(&meta);
     // Exec launches through `env` so the backend's app_id matches
@@ -6810,6 +6841,37 @@ def456  other.zip
       "unexpected Exec line:\n{entry}"
     );
     assert!(entry.contains("StartupWMClass=sh.ende.desktop.myapp\n"));
+  }
+
+  #[test]
+  fn system_desktop_entry_registers_deep_links() {
+    // The deb and rpm install this entry in /usr/share/applications, and it
+    // is the only one the desktop reads, so the deep links must be in it.
+    let tmp = tempfile::tempdir().unwrap();
+    let app_dir = fake_linux_app_dir(tmp.path(), "MyApp");
+    let mut flags = empty_desktop_flags();
+    flags.deep_links = vec!["Acme".to_string(), "acme-beta".to_string()];
+    let meta = linux_package_meta(&app_dir, &flags, None).unwrap();
+    let entry = system_desktop_entry(&meta);
+    assert!(
+      entry.contains(
+        "\nMimeType=x-scheme-handler/acme;x-scheme-handler/acme-beta;\n"
+      ),
+      "{entry}"
+    );
+    assert!(
+      entry
+        .contains("\nExec=env LAUFEY_APP_ID=sh.ende.desktop.myapp myapp %u\n"),
+      "{entry}"
+    );
+    // Without deep links the entry has neither.
+    let meta =
+      linux_package_meta(&app_dir, &empty_desktop_flags(), None).unwrap();
+    let entry = system_desktop_entry(&meta);
+    assert!(
+      !entry.contains("MimeType=") && !entry.contains("%u"),
+      "{entry}"
+    );
   }
 
   #[test]
