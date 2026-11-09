@@ -276,6 +276,9 @@ impl UnsafeWindowSurface {
           .map_err(|e| JsErrorBox::generic(e.to_string()))?;
       }
       Context::WebGPU(context) => {
+        if context.end_skipped_frame(scope) {
+          return Ok(());
+        }
         let configuration = context.configuration.borrow();
         let configuration = configuration.as_ref().ok_or_else(|| {
           JsErrorBox::type_error("GPUCanvasContext has not been configured")

@@ -56,6 +56,9 @@ pub struct GPUCanvasContext {
   pub configuration_obj: RefCell<Option<v8::Global<v8::Object>>>,
 
   pub current_texture: RefCell<Option<v8::Global<v8::Object>>>,
+  /// `current_texture` is a stand-in for a surface texture that couldn't be
+  /// had (see [`SurfaceFrame::Skip`]), so there is nothing to present.
+  frame_skipped: std::cell::Cell<bool>,
 }
 
 // SAFETY: we're sure this can be GCed
@@ -194,37 +197,89 @@ impl GPUCanvasContext {
             unreachable!()
           };
 
-          let output = configuration
-            .device
-            .instance
-            .surface_get_current_texture(surface_data.borrow().id, None)
-            .map_err(|e| JsErrorBox::generic(e.to_string()))?;
+          let surface_id = surface_data.borrow().id;
+          let acquire = || {
+            device
+              .instance
+              .surface_get_current_texture(surface_id, None)
+              .map_err(|e| JsErrorBox::generic(e.to_string()))
+          };
 
-          match output.status {
-            SurfaceStatus::Good | SurfaceStatus::Suboptimal => {
-              let id = output.texture.unwrap();
+          let mut output = acquire()?;
+          let mut frame = surface_frame(&output.status)?;
+          if frame == SurfaceFrame::Reconfigure {
+            let err = device
+              .instance
+              .surface_configure(surface_id, device.id, surface);
+            device.error_handler.push_error(err);
+            output = acquire()?;
+            frame = surface_frame(&output.status)?;
+          }
+
+          let size = Extent3d {
+            width: surface.width,
+            height: surface.height,
+            depth_or_array_layers: 1,
+          };
+          match frame {
+            SurfaceFrame::Present => GPUTexture {
+              instance: device.instance.clone(),
+              error_handler: device.error_handler.clone(),
+              id: output.texture.unwrap(),
+              device_id: device.id,
+              queue_id: device.queue,
+              default_view_id: Default::default(),
+              label: "".to_string(),
+              size,
+              mip_level_count: 0,
+              sample_count: 0,
+              dimension: crate::texture::GPUTextureDimension::D2,
+              format: configuration.format.clone(),
+              usage: configuration.usage,
+            },
+            // Still out of date after reconfiguring: skip this frame too.
+            SurfaceFrame::Skip | SurfaceFrame::Reconfigure => {
+              // The app still gets a texture to draw into, so its render
+              // loop keeps running; `present()` drops it instead of
+              // presenting.
+              let label = "GPUCanvasContext (frame not presented)";
+              let (id, err) = device.instance.device_create_texture(
+                device.id,
+                &TextureDescriptor {
+                  label: Some(label.into()),
+                  size: Extent3d {
+                    width: size.width.max(1),
+                    height: size.height.max(1),
+                    depth_or_array_layers: 1,
+                  },
+                  mip_level_count: 1,
+                  sample_count: 1,
+                  dimension: wgpu_types::TextureDimension::D2,
+                  format: surface.format,
+                  usage: surface.usage,
+                  view_formats: surface.view_formats.clone(),
+                },
+                None,
+              );
+              device.error_handler.push_error(err);
+              self.frame_skipped.set(true);
 
               GPUTexture {
-                instance: configuration.device.instance.clone(),
-                error_handler: configuration.device.error_handler.clone(),
+                instance: device.instance.clone(),
+                error_handler: device.error_handler.clone(),
                 id,
-                device_id: configuration.device.id,
-                queue_id: configuration.device.queue,
+                device_id: device.id,
+                queue_id: device.queue,
                 default_view_id: Default::default(),
-                label: "".to_string(),
-                size: Extent3d {
-                  width: surface.width,
-                  height: surface.height,
-                  depth_or_array_layers: 1,
-                },
-                mip_level_count: 0,
-                sample_count: 0,
+                label: label.to_string(),
+                size,
+                mip_level_count: 1,
+                sample_count: 1,
                 dimension: crate::texture::GPUTextureDimension::D2,
                 format: configuration.format.clone(),
                 usage: configuration.usage,
               }
             }
-            _ => return Err(JsErrorBox::generic("Invalid Surface Status")),
           }
         }
       };
@@ -235,6 +290,37 @@ impl GPUCanvasContext {
       *current_texture = Some(texture_obj.clone());
 
       Ok(texture_obj)
+    }
+  }
+}
+
+/// What `getCurrentTexture()` does with the status of the surface texture it
+/// asked for.
+#[derive(Debug, PartialEq, Eq)]
+enum SurfaceFrame {
+  /// Draw into the surface texture, and present it.
+  Present,
+  /// Reconfigure the surface and ask again.
+  Reconfigure,
+  /// Nothing can be shown now: draw into a texture that isn't presented.
+  Skip,
+}
+
+/// Occluded (wgpu's Metal backend while the window isn't visible: hidden,
+/// minimised, covered, screen locked) and Timeout skip the frame: throwing
+/// would end the app's render loop, and an uncaught throw in a timer exits a
+/// desktop app. Outdated and Lost reconfigure the surface first.
+fn surface_frame(status: &SurfaceStatus) -> Result<SurfaceFrame, JsErrorBox> {
+  match status {
+    SurfaceStatus::Good | SurfaceStatus::Suboptimal => {
+      Ok(SurfaceFrame::Present)
+    }
+    SurfaceStatus::Occluded | SurfaceStatus::Timeout => Ok(SurfaceFrame::Skip),
+    SurfaceStatus::Outdated | SurfaceStatus::Lost => {
+      Ok(SurfaceFrame::Reconfigure)
+    }
+    SurfaceStatus::Validation => {
+      Err(JsErrorBox::generic("Invalid Surface Status"))
     }
   }
 }
@@ -374,6 +460,17 @@ impl GPUCanvasContext {
   fn replace_drawing_buffer(&self, scope: &mut v8::PinScope<'_, '_>) {
     self.expire_current_texture(scope);
     self.current_texture.borrow_mut().take();
+    self.frame_skipped.set(false);
+  }
+
+  /// Ends the current frame if `getCurrentTexture()` skipped it: drops the
+  /// stand-in texture and returns `true`, as there's nothing to present.
+  pub fn end_skipped_frame(&self, scope: &mut v8::PinScope<'_, '_>) -> bool {
+    if !self.frame_skipped.get() {
+      return false;
+    }
+    self.replace_drawing_buffer(scope);
+    true
   }
 
   pub fn resize(&self, scope: &mut v8::PinScope<'_, '_>) {
@@ -668,8 +765,35 @@ pub fn create<'s>(
       configuration: RefCell::new(None),
       configuration_obj: RefCell::new(None),
       current_texture: RefCell::new(None),
+      frame_skipped: std::cell::Cell::new(false),
     },
   );
 
   Ok(v8::Global::new(scope, obj.cast()))
+}
+
+#[cfg(test)]
+mod tests {
+  use wgpu_types::SurfaceStatus;
+
+  use super::SurfaceFrame;
+  use super::surface_frame;
+
+  #[test]
+  fn surface_status_decides_the_frame() {
+    for (status, frame) in [
+      (SurfaceStatus::Good, SurfaceFrame::Present),
+      (SurfaceStatus::Suboptimal, SurfaceFrame::Present),
+      // wgpu's Metal backend says Occluded while the window isn't visible
+      // (hidden, minimised, covered, screen locked); a render loop must keep
+      // running through it.
+      (SurfaceStatus::Occluded, SurfaceFrame::Skip),
+      (SurfaceStatus::Timeout, SurfaceFrame::Skip),
+      (SurfaceStatus::Outdated, SurfaceFrame::Reconfigure),
+      (SurfaceStatus::Lost, SurfaceFrame::Reconfigure),
+    ] {
+      assert_eq!(surface_frame(&status).unwrap(), frame, "for {status:?}");
+    }
+    assert!(surface_frame(&SurfaceStatus::Validation).is_err());
+  }
 }
