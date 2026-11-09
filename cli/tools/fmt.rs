@@ -487,26 +487,31 @@ fn get_resolved_lax_css_config(
     line_width: options.line_width.unwrap_or(80),
     use_tabs: options.use_tabs.unwrap_or_default(),
     indent_width: options.indent_width.unwrap_or(2),
-    new_line_kind: match options.new_line_kind.unwrap_or(NewLineKind::LineFeed)
-    {
-      NewLineKind::Auto => dprint_core::configuration::NewLineKind::Auto,
-      NewLineKind::CarriageReturnLineFeed => {
-        dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
-      }
-      NewLineKind::LineFeed => {
-        dprint_core::configuration::NewLineKind::LineFeed
-      }
-      NewLineKind::System => {
-        if cfg!(windows) {
-          dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
-        } else {
-          dprint_core::configuration::NewLineKind::LineFeed
-        }
-      }
-    },
+    new_line_kind: resolve_lax_new_line_kind(options),
     ignore_node_comment_text: ignore_directive.to_string(),
     ignore_file_comment_text: format!("{ignore_directive}-file"),
     single_line: false,
+  }
+}
+
+/// `fmt.newLineKind` for the lax formatters (CSS, markup, SQL), LF by
+/// default.
+fn resolve_lax_new_line_kind(
+  options: &FmtOptionsConfig,
+) -> dprint_core::configuration::NewLineKind {
+  match options.new_line_kind.unwrap_or(NewLineKind::LineFeed) {
+    NewLineKind::Auto => dprint_core::configuration::NewLineKind::Auto,
+    NewLineKind::CarriageReturnLineFeed => {
+      dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
+    }
+    NewLineKind::LineFeed => dprint_core::configuration::NewLineKind::LineFeed,
+    NewLineKind::System => {
+      if cfg!(windows) {
+        dprint_core::configuration::NewLineKind::CarriageReturnLineFeed
+      } else {
+        dprint_core::configuration::NewLineKind::LineFeed
+      }
+    }
   }
 }
 
@@ -562,9 +567,23 @@ pub fn format_html(
       unstable_options,
     )
   };
-  lax_markup::format_text_with_external(
+  let new_line = dprint_core::configuration::resolve_new_line_kind(
+    file_text,
+    config.new_line_kind,
+  );
+  let maybe_formatted = lax_markup::format_text_with_external(
     file_path, file_text, &config, &external,
-  )
+  )?;
+  // lax-markup ends the text with "\n" whatever the line endings are
+  Ok(maybe_formatted.and_then(|formatted| {
+    let formatted = match formatted.strip_suffix('\n') {
+      Some(text) if new_line == "\r\n" && !text.ends_with('\r') => {
+        format!("{text}\r\n")
+      }
+      _ => formatted,
+    };
+    (formatted != file_text).then_some(formatted)
+  }))
 }
 
 /// Formats the contents of style and script elements in markup. The language
@@ -812,6 +831,8 @@ fn format_embedded_sql(
     config.line_width,
     config.use_tabs,
     config.indent_width,
+    // the typescript formatter sets the line endings of the whole file
+    dprint_core::configuration::NewLineKind::LineFeed,
     ignore_directive(text),
   );
   let Some(formatted) =
@@ -831,13 +852,14 @@ fn get_resolved_lax_sql_config(
   line_width: u32,
   use_tabs: bool,
   indent_width: u8,
+  new_line_kind: dprint_core::configuration::NewLineKind,
   ignore_directive: &str,
 ) -> lax_sql::configuration::Configuration {
   lax_sql::configuration::Configuration {
     line_width,
     use_tabs,
     indent_width,
-    new_line_kind: dprint_core::configuration::NewLineKind::LineFeed,
+    new_line_kind,
     // matches the previous sqlformat behavior of uppercasing keywords
     keyword_case: lax_sql::configuration::KeywordCase::Upper,
     clause_style: lax_sql::configuration::ClauseStyle::Fill,
@@ -857,6 +879,7 @@ pub fn format_sql(
       fmt_options.line_width.unwrap_or(80),
       fmt_options.use_tabs.unwrap_or_default(),
       fmt_options.indent_width.unwrap_or(2),
+      resolve_lax_new_line_kind(fmt_options),
       ignore_directive(file_text),
     ),
   )
@@ -1887,7 +1910,7 @@ fn get_resolved_lax_markup_config(
     line_width: options.line_width.unwrap_or(80),
     use_tabs: options.use_tabs.unwrap_or_default(),
     indent_width: options.indent_width.unwrap_or(2),
-    new_line_kind: dprint_core::configuration::NewLineKind::LineFeed,
+    new_line_kind: resolve_lax_new_line_kind(options),
     ignore_node_comment_text: ignore_directive.to_string(),
     ignore_file_comment_text: format!("{ignore_directive}-file"),
   }
@@ -2233,6 +2256,55 @@ mod test {
     .unwrap()
     .unwrap();
     assert_eq!(file_text, "a {\r\n  color: red;\r\n}\r\n");
+  }
+
+  /// Formats `text` as `file_name` with LF and with CRLF line endings, and
+  /// checks that the CRLF result is the LF one with every line ending
+  /// swapped, and that formatting it again changes nothing.
+  #[track_caller]
+  fn assert_crlf_matches_lf(file_name: &str, text: &str) {
+    let unstable_options = UnstableFmtOptions {
+      component: true,
+      sql: true,
+    };
+    let format = |text: &str, new_line_kind| {
+      format_file(
+        Path::new(file_name),
+        &FileContents {
+          had_bom: false,
+          text: text.to_string().into(),
+        },
+        &FmtOptionsConfig {
+          new_line_kind: Some(new_line_kind),
+          ..Default::default()
+        },
+        &unstable_options,
+        None,
+      )
+      .unwrap()
+    };
+    let lf = format(text, NewLineKind::LineFeed).unwrap();
+    assert!(!lf.contains('\r'), "{lf:?}");
+    let crlf = format(text, NewLineKind::CarriageReturnLineFeed).unwrap();
+    assert_eq!(crlf, lf.replace('\n', "\r\n"));
+    assert_eq!(format(&crlf, NewLineKind::CarriageReturnLineFeed), None);
+  }
+
+  #[test]
+  fn test_markup_respects_crlf_new_line_kind() {
+    // Embedded CSS and JS included.
+    let html = "<div><p>hi</p></div>\n<style>\na { color: red; }\n</style>\n<script>\nconst x = {a:1};\nconsole.log(x)\n</script>\n";
+    assert_crlf_matches_lf("test.html", html);
+    let vue = "<template>\n<div><p>hi</p></div>\n</template>\n<script>\nexport default {a:1}\n</script>\n<style>\na { color: red; }\n</style>\n";
+    assert_crlf_matches_lf("test.vue", vue);
+  }
+
+  #[test]
+  fn test_sql_respects_crlf_new_line_kind() {
+    assert_crlf_matches_lf(
+      "test.sql",
+      "select a, b from t where x = 1;\nselect 1;\n",
+    );
   }
 
   #[test]
