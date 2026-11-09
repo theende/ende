@@ -378,8 +378,8 @@ impl Diagnostic {
     if let Some(related_information) = self.related_information.as_ref()
       && !related_information.is_empty()
     {
-      write!(f, "\n\n")?;
       for info in related_information {
+        write!(f, "\n\n")?;
         info.fmt_stack(f, 4)?;
       }
     }
@@ -804,6 +804,57 @@ mod tests {
     assert_eq!(
       strip_ansi_codes(&actual),
       "TS2552 [ERROR]: Cannot find name \'foo_Bar\'. Did you mean \'foo_bar\'?\nfoo_Bar();\n~~~~~~~\n    at test.ts:8:1\n\n    \'foo_bar\' is declared here.\n    function foo_bar() {\n             ~~~~~~~\n        at test.ts:4:10"
+    );
+  }
+
+  #[test]
+  fn test_diagnostics_multiple_related_info() {
+    let related = |line: u64, message: &str| {
+      json!({
+        "start": { "line": line, "character": 9 },
+        "end": { "line": line, "character": 12 },
+        "fileName": "test.ts",
+        "messageText": message,
+        "sourceLine": "function add() {",
+        "category": 3,
+        "code": 9031
+      })
+    };
+    let value = json!([
+      {
+        "start": { "line": 0, "character": 9 },
+        "end": { "line": 0, "character": 12 },
+        "fileName": "test.ts",
+        "messageText": "Example diagnostic.",
+        "sourceLine": "function add() {",
+        "relatedInformation": [
+          related(0, "First related."),
+          related(4, "Second related.")
+        ],
+        "category": 1,
+        "code": 9013
+      }
+    ]);
+    let diagnostics: Diagnostics = serde_json::from_value(value).unwrap();
+    let actual = diagnostics.to_string();
+    assert_eq!(
+      strip_ansi_codes(&actual),
+      concat!(
+        "TS9013 [ERROR]: Example diagnostic.\n",
+        "function add() {\n",
+        "         ~~~\n",
+        "    at test.ts:1:10\n",
+        "\n",
+        "    First related.\n",
+        "    function add() {\n",
+        "             ~~~\n",
+        "        at test.ts:1:10\n",
+        "\n",
+        "    Second related.\n",
+        "    function add() {\n",
+        "             ~~~\n",
+        "        at test.ts:5:10"
+      )
     );
   }
 }
