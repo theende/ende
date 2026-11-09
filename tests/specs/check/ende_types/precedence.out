@@ -1,0 +1,24 @@
+Check precedence.ts
+TS2322 [ERROR]: Type 'boolean' is not assignable to type 'string'.
+const values: string[] = [a, b, c, d];
+                          ^
+    at file:///[WILDLINE]/precedence.ts:16:27
+
+TS2322 [ERROR]: Type 'boolean' is not assignable to type 'string'.
+const values: string[] = [a, b, c, d];
+                             ^
+    at file:///[WILDLINE]/precedence.ts:16:30
+
+TS2322 [ERROR]: Type 'boolean' is not assignable to type 'string'.
+const values: string[] = [a, b, c, d];
+                                ^
+    at file:///[WILDLINE]/precedence.ts:16:33
+
+TS2322 [ERROR]: Type 'boolean' is not assignable to type 'string'.
+const values: string[] = [a, b, c, d];
+                                   ^
+    at file:///[WILDLINE]/precedence.ts:16:36
+
+Found 4 errors.
+
+error: Type checking failed.

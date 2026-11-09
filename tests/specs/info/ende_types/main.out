@@ -1,0 +1,8 @@
+local: [WILDCARD]main.ts
+type: TypeScript
+dependencies: 2 unique
+size: [WILDCARD]
+
+file:///[WILDLINE]/main.ts ([WILDCARD])
+├── file:///[WILDLINE]/value.js ([WILDCARD])
+└── file:///[WILDLINE]/value.d.ts ([WILDCARD])

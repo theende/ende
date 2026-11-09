@@ -1,0 +1,42 @@
+// Copyright 2026 the Ende authors. MIT license.
+// `// @ende-types="..."` is Ende's alias of `// @ts-types="..."`.
+{
+  "tests": {
+    "relative": {
+      "args": "check relative.ts",
+      "output": "relative.out",
+      "exitCode": 1
+    },
+    "relative_tsc7": {
+      "if": "tsc7",
+      "args": "check --unstable-tsc7 relative.ts",
+      "output": "relative.out",
+      "exitCode": 1
+    },
+    "remote": {
+      "args": "check --allow-import remote.ts",
+      "output": "remote.out",
+      "exitCode": 1
+    },
+    "remote_tsc7": {
+      "if": "tsc7",
+      "args": "check --unstable-tsc7 --allow-import remote.ts",
+      "output": "remote.out",
+      "exitCode": 1
+    },
+    // Like `@ts-types`, only the last comment before an import counts, so
+    // `@ende-types`, `@ts-types` and `@deno-types` overrule each other by
+    // order.
+    "precedence": {
+      "args": "check precedence.ts",
+      "output": "precedence.out",
+      "exitCode": 1
+    },
+    "precedence_tsc7": {
+      "if": "tsc7",
+      "args": "check --unstable-tsc7 precedence.ts",
+      "output": "precedence.out",
+      "exitCode": 1
+    }
+  }
+}

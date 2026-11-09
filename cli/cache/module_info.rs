@@ -6,7 +6,8 @@ use deno_ast::MediaType;
 use deno_ast::ModuleSpecifier;
 use deno_error::JsErrorBox;
 use deno_graph::analysis::ModuleInfo;
-use deno_graph::ast::ParserModuleAnalyzer;
+use deno_graph::ast::EsParser;
+use deno_graph::ast::ParseOptions;
 use ende_core::error::AnyError;
 use ende_core::serde_json;
 use ende_resolver::cache::ParsedSourceCache;
@@ -27,6 +28,14 @@ WHERE
   AND media_type=?2
   AND source_hash=?3
 LIMIT 1";
+
+/// Hashed in with the source, so entries from an analysis that differs (one
+/// that didn't know `@ende-types`) aren't found. Change it with the analysis.
+const ANALYSIS_VERSION: &str = "ende-types";
+
+fn source_hash(source: impl std::hash::Hash) -> CacheDBHash {
+  CacheDBHash::from_hashable((ANALYSIS_VERSION, source))
+}
 
 pub static MODULE_INFO_CACHE_DB: CacheDBConfiguration = CacheDBConfiguration {
   table_initializer: concat!(
@@ -146,7 +155,7 @@ impl deno_graph::source::ModuleInfoCacher for ModuleInfoCache {
     module_info: &deno_graph::analysis::ModuleInfo,
   ) {
     log::debug!("Caching module info for {}", specifier);
-    let source_hash = CacheDBHash::from_hashable(source);
+    let source_hash = source_hash(source);
     let result =
       self.set_module_info(specifier, media_type, source_hash, module_info);
     if let Err(err) = result {
@@ -222,7 +231,7 @@ impl deno_graph::analysis::ModuleAnalyzer
     media_type: MediaType,
   ) -> Result<ModuleInfo, JsErrorBox> {
     // attempt to load from the cache
-    let source_hash = CacheDBHash::from_hashable(&source);
+    let source_hash = source_hash(&source);
     if let Some(info) =
       self.load_cached_module_info(specifier, media_type, source_hash)
     {
@@ -234,11 +243,17 @@ impl deno_graph::analysis::ModuleAnalyzer
       let cache = self.parsed_source_cache.clone();
       let specifier = specifier.clone();
       move || {
-        let parser = cache.as_capturing_parser();
-        let analyzer = ParserModuleAnalyzer::new(&parser);
-        analyzer
-          .analyze_sync(&specifier, source, media_type)
-          .map_err(JsErrorBox::from_err)
+        let parsed_source = cache
+          .as_capturing_parser()
+          .parse_program(ParseOptions {
+            specifier: &specifier,
+            source,
+            media_type,
+            // scope analysis is not necessary for module parsing
+            scope_analysis: false,
+          })
+          .map_err(JsErrorBox::from_err)?;
+        Ok::<_, JsErrorBox>(crate::ende_types::module_info(&parsed_source))
       }
     })
     .await
@@ -408,5 +423,47 @@ mod test {
         .unwrap(),
       None,
     );
+  }
+
+  #[tokio::test]
+  async fn module_info_cache_skips_entries_from_before_ende_types() {
+    use deno_graph::analysis::DependencyDescriptor;
+    use deno_graph::analysis::ModuleAnalyzer;
+
+    let cache = ModuleInfoCache::new_in_memory("1.0.0", Default::default());
+    let specifier = ModuleSpecifier::parse("file:///mod.ts").unwrap();
+    let source: Arc<str> =
+      "// @ende-types=\"./a.d.ts\"\nimport a from \"./a.js\";\n".into();
+    // What an analysis that didn't know `@ende-types` stored for it, under the
+    // same Ende version.
+    let mut stale = ModuleInfo::default();
+    stale.dependencies.push(DependencyDescriptor::Static(
+      deno_graph::analysis::StaticDependencyDescriptor {
+        kind: deno_graph::analysis::StaticDependencyKind::Import,
+        types_specifier: None,
+        specifier: "./a.js".to_string(),
+        specifier_range: PositionRange::zeroed(),
+        import_attributes: Default::default(),
+        is_side_effect: false,
+      },
+    ));
+    cache
+      .set_module_info(
+        &specifier,
+        MediaType::TypeScript,
+        CacheDBHash::from_hashable(&source),
+        &stale,
+      )
+      .unwrap();
+
+    let info = cache
+      .as_module_analyzer()
+      .analyze(&specifier, source, MediaType::TypeScript)
+      .await
+      .unwrap();
+    let DependencyDescriptor::Static(dep) = &info.dependencies[0] else {
+      panic!("expected a static dependency");
+    };
+    assert_eq!(dep.types_specifier.as_ref().unwrap().text, "./a.d.ts");
   }
 }
