@@ -3558,16 +3558,8 @@ async fn package_macos_app_bundle(
   // permission (and other tcc-keyed permissions) are decided per
   // (bundle id, code signature), so a synthetic id changes the user's
   // grant whenever they rename the app.
-  let bundle_id = match desktop_flags.identifier.as_deref() {
-    Some(id) => {
-      validate_bundle_identifier(id)?;
-      id.to_string()
-    }
-    None => {
-      let slug = app_name.to_lowercase().replace(' ', "-");
-      format!("sh.ende.desktop.{slug}")
-    }
-  };
+  let bundle_id =
+    macos_bundle_id(desktop_flags.identifier.as_deref(), &app_name)?;
 
   // Generate Info.plist. The backend binary is the CFBundleExecutable so
   // there is no shell-script `exec` between LaunchServices and the GUI
@@ -3670,6 +3662,54 @@ async fn package_macos_app_bundle(
   let _ = std::fs::remove_file(dylib_path);
 
   Ok(app_bundle)
+}
+
+/// The macOS `CFBundleIdentifier`: `desktop.app.identifier`, or the
+/// identifier [`derived_desktop_id`] derives from the app name. That is the
+/// identifier the app's origin host comes from too (see
+/// [`baked_app_identifier`]), so `my_app` gets `sh.ende.desktop.my-app` for
+/// both. Warns when the derived id isn't the one earlier Ende versions gave
+/// the app.
+fn macos_bundle_id(
+  configured: Option<&str>,
+  app_name: &str,
+) -> Result<String, AnyError> {
+  if let Some(id) = configured {
+    validate_bundle_identifier(id)?;
+    return Ok(id.to_string());
+  }
+  let Some(id) = derived_desktop_id(app_name) else {
+    bail!(
+      "can't derive a bundle identifier from the app name {app_name:?}; set desktop.app.identifier"
+    );
+  };
+  if let Some(warning) = changed_bundle_id_warning(app_name, &id) {
+    log::warn!("{}", colors::yellow(warning));
+  }
+  Ok(id)
+}
+
+/// The build-time warning for an app whose derived bundle id differs from
+/// the one earlier Ende versions derived: they lowercased the app name and
+/// turned spaces into `-`, but kept `_` and `.` (and runs of `-`), which
+/// the app's origin host can't have. Only names like `my_app` or `my.app`
+/// change; `My App` doesn't.
+fn changed_bundle_id_warning(
+  app_name: &str,
+  bundle_id: &str,
+) -> Option<String> {
+  let old = format!(
+    "sh.ende.desktop.{}",
+    app_name.to_lowercase().replace(' ', "-")
+  );
+  (old != bundle_id).then(|| {
+    format!(
+      "The app's bundle identifier changed from {old:?} to {bundle_id:?} \
+       (it now matches the app's origin), so an installed copy loses its \
+       notification permissions and WebKit data once. Set \
+       desktop.app.identifier in ende.json to keep it stable."
+    )
+  })
 }
 
 // Keep the generated bundle metadata aligned with laufey's macOS app plist,
@@ -6781,6 +6821,47 @@ def456  other.zip
     assert_eq!(
       baked_app_origin_host(None, "sh.ende.desktop.My-App").unwrap(),
       "sh.ende.desktop.my-app"
+    );
+  }
+
+  #[test]
+  fn macos_bundle_id_matches_the_app_origin_identifier() {
+    // Without desktop.app.identifier, the bundle id and the identifier the
+    // app's origin host comes from are derived the same way.
+    for name in ["my_app", "My App", "my.app", "a--b", "MyApp", "x_y z"] {
+      assert_eq!(
+        macos_bundle_id(None, name).unwrap(),
+        baked_app_identifier(None, name).unwrap(),
+        "{name}"
+      );
+    }
+    assert_eq!(
+      macos_bundle_id(Some("com.acme.app"), "my_app").unwrap(),
+      "com.acme.app"
+    );
+    assert!(macos_bundle_id(Some("com.acme_app"), "my_app").is_err());
+    // Nothing to derive from: the build says to set the identifier.
+    let err = macos_bundle_id(None, "___").unwrap_err().to_string();
+    assert!(err.contains("desktop.app.identifier"), "{err}");
+  }
+
+  #[test]
+  fn changed_bundle_id_warning_names_both_ids() {
+    // Ende kept `_` and `.` in the derived bundle id before it matched the
+    // origin's identifier.
+    let warning = changed_bundle_id_warning("my_app", "sh.ende.desktop.my-app")
+      .expect("my_app's bundle id changed");
+    assert!(
+      warning.contains(
+        r#"from "sh.ende.desktop.my_app" to "sh.ende.desktop.my-app""#
+      ),
+      "{warning}"
+    );
+    assert!(warning.contains("desktop.app.identifier"), "{warning}");
+    // Lowercased names with single spaces derived the same id before.
+    assert_eq!(
+      changed_bundle_id_warning("My App", "sh.ende.desktop.my-app"),
+      None
     );
   }
 
