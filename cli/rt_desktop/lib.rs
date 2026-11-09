@@ -210,15 +210,35 @@ impl Drop for CloseRequestsDialog<'_> {
 /// Stop tracking a notification and close it, with the map unlocked: the
 /// backend can deliver the notification's `Closed` event before `close`
 /// returns, and that handler (see `show_notification`) locks the same map.
+///
+/// Then report its `close` event with `closed`: laufey 0.7.0's
+/// `NotificationHandle::close` drops the notification's event handler right
+/// after asking the backend to close it, so an asynchronous `Closed` is lost,
+/// and the Notifications spec fires `close` for `close()`. Only whoever
+/// untracks a notification reports its close, so it's reported once.
 fn close_tracked_notification<H>(
   notifications: &Mutex<HashMap<u32, H>>,
   notification_id: u32,
   close: impl FnOnce(&H),
+  closed: impl FnOnce(),
 ) {
   let handle = notifications.lock().unwrap().remove(&notification_id);
   if let Some(handle) = handle {
     close(&handle);
+    closed();
   }
+}
+
+/// Stop tracking a notification. Returns whether it was tracked.
+fn untrack_notification<H>(
+  notifications: &Mutex<HashMap<u32, H>>,
+  notification_id: u32,
+) -> bool {
+  notifications
+    .lock()
+    .unwrap()
+    .remove(&notification_id)
+    .is_some()
 }
 
 /// Close a window natively and record it as closed.
@@ -1085,6 +1105,10 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
           }
         }
         NotificationEvent::Closed => {
+          // Reported by whoever untracks it, see close_tracked_notification.
+          if !untrack_notification(&notifications, nid) {
+            return;
+          }
           ende_runtime::ops::desktop::DesktopEvent::NotificationClose {
             notification_id: nid,
           }
@@ -1097,11 +1121,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
           }
         }
       };
-      let is_terminal = matches!(event, laufey::NotificationEvent::Closed);
       let _ = tx.send(desktop_event);
-      if is_terminal {
-        notifications.lock().unwrap().remove(&nid);
-      }
     });
 
     let id = handle.id();
@@ -1125,6 +1145,13 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
       &self.notifications,
       notification_id,
       laufey::NotificationHandle::close,
+      || {
+        let _ = self.event_tx.send(
+          ende_runtime::ops::desktop::DesktopEvent::NotificationClose {
+            notification_id,
+          },
+        );
+      },
     );
   }
 
@@ -2795,6 +2822,7 @@ mod tests {
   use super::map_permission_status;
   use super::run_on_ui_thread;
   use super::should_show_native_error_dialog;
+  use super::untrack_notification;
 
   // --- default_webview2_user_data_folder ---
 
@@ -3752,13 +3780,18 @@ mod tests {
     // lock deadlocks.
     let notifications = Mutex::new(HashMap::from([(1u32, "handle")]));
     let mut closed = None;
-    close_tracked_notification(&notifications, 1, |handle| {
-      assert!(
-        notifications.try_lock().is_ok(),
-        "the notifications map is still locked during close"
-      );
-      closed = Some(*handle);
-    });
+    close_tracked_notification(
+      &notifications,
+      1,
+      |handle| {
+        assert!(
+          notifications.try_lock().is_ok(),
+          "the notifications map is still locked during close"
+        );
+        closed = Some(*handle);
+      },
+      || {},
+    );
     assert_eq!(closed, Some("handle"));
     assert!(notifications.lock().unwrap().is_empty());
   }
@@ -3766,7 +3799,37 @@ mod tests {
   #[test]
   fn notification_close_ignores_unknown_ids() {
     let notifications = Mutex::new(HashMap::<u32, ()>::new());
-    close_tracked_notification(&notifications, 9, |_| panic!("closed"));
+    close_tracked_notification(
+      &notifications,
+      9,
+      |_| panic!("closed"),
+      || panic!("reported a close"),
+    );
+  }
+
+  #[test]
+  fn notification_close_reports_one_close() {
+    // laufey 0.7.0 drops the notification's event handler in `close`, so the
+    // backend's Closed never arrives: Ende reports the close itself.
+    let notifications = Mutex::new(HashMap::from([(1u32, "handle")]));
+    let mut closes = 0;
+    close_tracked_notification(
+      &notifications,
+      1,
+      |_| {
+        // A backend that does deliver Closed during `close`: the handler
+        // finds the notification untracked and doesn't report it again.
+        assert!(!untrack_notification(&notifications, 1));
+      },
+      || closes += 1,
+    );
+    close_tracked_notification(
+      &notifications,
+      1,
+      |_| panic!("closed twice"),
+      || closes += 1,
+    );
+    assert_eq!(closes, 1);
   }
 
   // --- CloseRequests (denoland/deno#36973) ---
