@@ -311,6 +311,8 @@ struct WefDesktopApi {
   notifications: Arc<Mutex<HashMap<u32, laufey::NotificationHandle>>>,
   /// See [`notifications_supported`].
   notifications_supported: bool,
+  /// The ende.json `desktop.backend` baked into the app.
+  backend: Option<String>,
   /// Singleton for the unified-mux DevTools window. Without this, every
   /// `openDevtools()` call would spawn another DevTools window.
   devtools_window: Mutex<Option<u32>>,
@@ -902,7 +904,9 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
     let raw_display = window.get_display_handle();
 
     let null_window = || {
-      deno_error::JsErrorBox::generic("Laufey returned a null window handle")
+      deno_error::JsErrorBox::generic(no_native_window_error(
+        self.backend.as_deref(),
+      ))
     };
     let null_display = || {
       deno_error::JsErrorBox::generic("Laufey returned a null display handle")
@@ -947,6 +951,7 @@ impl endert::desktop::DesktopApi for WefDesktopApi {
         ));
         Ok((win, display))
       }
+      laufey::LAUFEY_WINDOW_HANDLE_UNKNOWN => Err(null_window()),
       other => Err(deno_error::JsErrorBox::generic(format!(
         "unknown Laufey window handle type: {other}",
       ))),
@@ -2109,6 +2114,23 @@ fn notifications_supported(backend: Option<&str>, os: &str) -> bool {
   !matches!((backend, os), (Some("raw"), "macos"))
 }
 
+/// The message of the error `getNativeWindow()` throws when a window has no
+/// native handle on `backend` (`None`: built before the backend was baked in,
+/// so the default webview one). laufey 0.7.0's webview windows report no
+/// handle type, and its CEF windows a null one (seen on macOS); only raw
+/// backend windows have one.
+fn no_native_window_error(backend: Option<&str>) -> String {
+  match backend {
+    Some("raw") => "Laufey returned no native handle for this window".into(),
+    backend => format!(
+      "getNativeWindow() needs the raw backend: windows of the {} backend \
+       have no native handle. Set \"desktop\": {{ \"backend\": \"raw\" }} in \
+       ende.json or build with `ende desktop --backend raw`.",
+      backend.unwrap_or("webview"),
+    ),
+  }
+}
+
 /// The `app://<host>` bridge's cookie jar, persisted under the app
 /// identifier in the platform's data folder (see [`cookie_jar::cookie_file`])
 /// and written when the app exits. In memory only when there's no usable
@@ -2761,6 +2783,7 @@ async fn run_desktop(
     data.metadata.desktop_backend.as_deref(),
     env::consts::OS,
   );
+  let backend = data.metadata.desktop_backend.clone();
 
   let run_opts = RunOptions {
     auto_serve: true,
@@ -2804,6 +2827,7 @@ async fn run_desktop(
         trays: Arc::new(Mutex::new(HashMap::new())),
         notifications: Arc::new(Mutex::new(HashMap::new())),
         notifications_supported,
+        backend: backend.clone(),
         devtools_window: Mutex::new(None),
         lost_scheme_guard,
       };
@@ -3210,6 +3234,26 @@ mod tests {
     assert!(!navigate_fallback_shows(true, false));
     assert!(!navigate_fallback_shows(false, true));
     assert!(!navigate_fallback_shows(true, true));
+  }
+
+  #[test]
+  fn native_window_error_points_other_backends_to_raw() {
+    use super::no_native_window_error;
+    for backend in ["webview", "cef"] {
+      let message = no_native_window_error(Some(backend));
+      assert!(
+        message.contains(&format!("the {backend} backend")),
+        "{message}"
+      );
+      assert!(message.contains(r#""backend": "raw""#), "{message}");
+      assert!(message.contains("--backend raw"), "{message}");
+    }
+    // An app built before the backend was baked in ran the default one.
+    assert!(no_native_window_error(None).contains("the webview backend"));
+    assert_eq!(
+      no_native_window_error(Some("raw")),
+      "Laufey returned no native handle for this window"
+    );
   }
 
   #[test]

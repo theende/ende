@@ -780,6 +780,9 @@ declare namespace Ende {
      */
     showContextMenu(x: number, y: number, menu: MenuItem[]): void;
 
+    /** The window's WebGPU surface. Only windows of the `raw` backend have
+     * one (`"desktop": { "backend": "raw" }` in ende.json); elsewhere this
+     * throws. */
     getNativeWindow(): Ende.UnsafeWindowSurface;
 
     addEventListener<K extends keyof BrowserWindowEventMap>(
