@@ -5,6 +5,206 @@ https://github.com/theende/ende/releases
 
 We also have one-line install commands at: https://ende.sh
 
+### 2026.11.09 / 2026.11.09
+
+- feat(check): cache passing TypeScript 7 checks
+- feat(check): embed the TypeScript 7 compiler and extract it on first use
+- feat(check): give TypeScript 7 Ende's additions to the dom libs
+- feat(check): related information and exact underlines under --unstable-tsc7
+- feat(check): support --watch, --doc and --doc-only with --unstable-tsc7
+- feat(check): type Wasm, CSS, bytes and text imports under --unstable-tsc7
+- feat(check): type-check run --check, test and bench with --unstable-tsc7
+- feat(check): type-check with TypeScript 7 under --unstable-tsc7
+- feat(desktop): add BrowserWindow.printToPdf and hidden-window option
+- feat(desktop): configure the initial window
+- feat(desktop): derive the app origin host from its identifier
+- feat(desktop): explain a WebView2 window that lost the app:// scheme
+- feat(desktop): handle same-origin redirects in the app:// bridge on macOS
+- feat(desktop): keep cookies for app:// pages on macOS
+- feat(desktop): load the webview from app://<host> on macOS and Windows
+- feat(desktop): warn when the app identifier is derived from its name
+- feat(ext/http): serve over an in-process memory transport
+- feat(ext/os): environment variables only the runtime sees
+- feat(graph): recognise @ende-types as an alias of @ts-types
+- feat(lsp): recognise @ende-types in the editor and in no-sloppy-imports
+- feat(publish): rewrite @ende-types to @ts-types in published files
+- feat(unstable): add the tsc7 feature for TypeScript 7 checking
+- fix(cache): hit module info cached for JSR modules
+- fix(cache): retry cached 404 with auth tokens
+- fix(cache): verify remote lock hashes after charset decode
+- fix(check): keep each tsc build's dom lib copies apart
+- fix(check): print each related diagnostic on its own lines
+- fix(check): remove TypeScript 7 copies that left the module graph
+- fix(check): remove old TypeScript 7 extractions from the cache
+- fix(check): resolve per-file type redirects under --unstable-tsc7
+- fix(check): sort TypeScript 7 diagnostics independently of the platform
+- fix(check): warn about baseUrl under --unstable-tsc7 instead of failing
+- fix(cli): avoid Rust backtrace for test failures
+- fix(cli): preserve source map URL for HMR inspector patches
+- fix(cli): require = for ende upgrade --unsafely-ignore-certificate-errors
+- fix(cli): restore comma escaping in path permissions
+- fix(cli): separate run-together sentences in lint --ext help
+- fix(cli): serialize SQLite first-time init across cache eager-init threads
+- fix(compile): honor `no-legacy-abort` unstable feature in standalone binaries
+- fix(compile): match --exclude paths against canonical walked paths
+- fix(completions): complete script paths for a bare ende run in zsh
+- fix(config): add the missing desktop keys to the config schema
+- fix(config): reject non-object desktop config sections, name the key
+- fix(core): avoid array prototype accessors in callsite cache
+- fix(core): await cached async modules before resolving dynamic imports
+- fix(core): don't overflow on an out-of-range source map line
+- fix(core): keep inherited extension sources across chained snapshots
+- fix(core): keep op contexts alive until the isolate is disposed
+- fix(core): make init_v8 snapshot-mode guard able to fire
+- fix(core): preserve internal module import edges
+- fix(core): throw a DataCloneError for a type with no deserializer
+- fix(coverage): match --include and --exclude against decoded paths
+- fix(coverage): skip files whose coverage doesn't match their source
+- fix(coverage): skip the V8 code cache while collecting coverage
+- fix(deps): bump hyper to 1.11.1 and hyper-util to 0.1.21
+- fix(desktop): attach the console for `ende desktop --inspect` on Windows
+- fix(desktop): check the patched library's hash before staging it
+- fix(desktop): clear the dock badge on setBadge(null)
+- fix(desktop): close a notification with its map unlocked
+- fix(desktop): confirm an update only after its main module has run
+- fix(desktop): create minimal .app bundle for raw backend on macOS
+- fix(desktop): create the WebGPU surface on the UI thread
+- fix(desktop): derive the macOS bundle id like the app origin's identifier
+- fix(desktop): don't report a failed auto-update rollback as done
+- fix(desktop): don't roll back an update while its trial launch runs
+- fix(desktop): don't stage an update again after it was rolled back
+- fix(desktop): don't warn about re-signing the raw backend on macOS
+- fix(desktop): embed the Windows app icon in the exe and the MSI
+- fix(desktop): end the laufey backend's process tree with the dev run on
+  Windows
+- fix(desktop): fire `close` when the app closes a notification
+- fix(desktop): give CEF helper apps the JIT entitlement when signing
+- fix(desktop): give each Windows app its own WebView2 user data folder
+- fix(desktop): grant the JIT entitlement to webview bundles
+- fix(desktop): keep WEBVIEW2_USER_DATA_FOLDER from processes the app starts
+- fix(desktop): keep a desktop app's origin storage under its identifier
+- fix(desktop): keep op_desktop_alert_async past bootstrap
+- fix(desktop): launch and sign macOS --compress apps again
+- fix(desktop): leave build markers out of Linux packages
+- fix(desktop): leave build markers out of the MSI, key its root on the exe
+- fix(desktop): make the window close event cancelable
+- fix(desktop): never drop discrete desktop events when the queue is full
+- fix(desktop): open macOS --compress apps through LaunchServices
+- fix(desktop): pass only the update marker to a macOS restart
+- fix(desktop): pick desktop.output and app.icons by --target
+- fix(desktop): refuse notifications on the raw backend on macOS
+- fix(desktop): register deep links in the deb and rpm desktop entry
+- fix(desktop): reject absolute zip entry names in laufey archives
+- fix(desktop): replace older versions on MSI install, refuse downgrades
+- fix(desktop): restart into a staged update in the same launch
+- fix(desktop): restart macOS apps through LaunchServices after an update
+- fix(desktop): say getNativeWindow() needs the raw backend
+- fix(desktop): say that auto-update isn't supported on Windows
+- fix(desktop): send lax app:// cookies on header-less GET requests
+- fix(desktop): set Linux app_id so Wayland shows the configured icon
+- fix(desktop): show console output of `ende desktop --hmr` apps on Windows
+- fix(desktop): show the app icon in Windows Apps & features
+- fix(desktop): size MSI Binary columns as 2 bytes when re-sorting tables
+- fix(desktop): skip the navigate fallback once the initial window has loaded
+- fix(desktop): throw instead of panicking outside a desktop main thread
+- fix(desktop): treat a WebGPU window the close timeout hid as closed
+- fix(desktop): use desktop.app.name for Linux .desktop Name=
+- fix(desktop): write Linux package paths with / on every host
+- fix(dts): drop declarations TypeScript's own libs now have
+- fix(dts): name WebSocketCloseInfo's close code `closeCode`
+- fix(dts): restore dom.extras for lib: ["dom"]
+- fix(ext): define Symbol.toStringTag on the remaining interface prototypes
+- fix(ext): keep WebTransportError and GPUPipelineError through structuredClone
+- fix(ext/crypto): add Argon2 deriveBits types
+- fix(ext/fetch): abort still cancels a fetch body after the Response is
+  collected
+- fix(ext/http): apply backpressure while an HTTP/1.1 response is pending
+- fix(ext/http): close after an early response with an unread body
+- fix(ext/http): don't apply ENDE_SERVE_ADDRESS inside web Workers
+- fix(ext/http): don't let other transports claim a memory listener's host
+- fix(ext/http): honor Connection: close in HTTP/1 responses
+- fix(ext/http): keep request body readable alongside a streamed response
+- fix(ext/http): preserve request body reads during graceful shutdown
+- fix(ext/http): reject completed on failed raw h1 streams
+- fix(ext/net,ext/fetch): resolve *.localhost names as localhost
+- fix(ext/process): clear error for non-string env values in Ende.Command
+- fix(ext/process): drop unused mut on Windows handles_to_close
+- fix(ext/telemetry): decode one-byte strings as Latin-1
+- fix(ext/web): avoid retaining oversized resource stream buffers
+- fix(ext/web): clone the geometry interfaces, ImageData and ImageBitmap
+- fix(ext/web): construct a plain URL in URL.parse
+- fix(ext/web): define Symbol.toStringTag on interface prototypes
+- fix(ext/web): don't throw when inspecting interface prototypes
+- fix(ext/web): finish and release WebTransport stream resources
+- fix(ext/web): guard inspection of abort and file prototypes
+- fix(ext/web): ignore inherited signal in addEventListener options
+- fix(ext/web): keep DOMException subclasses through structuredClone
+- fix(ext/web): make the global scope toStringTags data properties
+- fix(ext/web): mark special properties when inspecting buffers and DataView
+- fix(ext/web): pace identity pipeThrough bypass on the destination writable
+- fix(ext/web): preserve BOMs after streamed ASCII chunks
+- fix(ext/web): preserve Number coercion semantics in console.table
+- fix(ext/web): reject cloning more non-serializable platform objects
+- fix(ext/web): reject foreign receivers in event handler attributes
+- fix(ext/web): reject nested non-serializable platform objects
+- fix(ext/web): reject non-object iterator results in URLSearchParams
+- fix(ext/web): remove the listener when an event handler is set to null
+- fix(ext/web): use named groups for full-wildcard URLPattern components
+- fix(ext/web): validate the transfer list before serializing and detach only on
+  success
+- fix(ext/webgpu): don't sleep 10ms after device_poll in mapAsync and
+  onSubmittedWorkDone
+- fix(ext/webgpu): make the flag namespaces objects, expose WGSLLanguageFeatures
+- fix(ext/webgpu): put three inspect hooks on the prototypes
+- fix(ext/webidl): end sequence iteration on any truthy done
+- fix(ext/webidl): require an object iterator and result in sequences
+- fix(ext/websocket): fail the connection on a bad Sec-WebSocket-Accept
+- fix(ext/websocket): flush the transport after writing a frame
+- fix(ext/websocket): report close code 1006 for abnormal closures
+- fix(ext/websocket): time out the closing handshake
+- fix(fmt): respect configured CSS line endings
+- fix(fmt): respect fmt.newLineKind for YAML files
+- fix(fmt): respect fmt.newLineKind for markup and SQL files
+- fix(fmt): update dprint-plugin-markdown to 0.29.0
+- fix(fs): allow updating timestamps on read-only files on Windows
+- fix(fs): preserve sub-millisecond utime precision
+- fix(install): don't build the POSIX shim escape test on Windows
+- fix(lint): keep file permissions when applying --fix
+- fix(lint): remove || from Ende.lint.BinaryExpression operator type
+- fix(lint): resolve plugin specifiers through import maps
+- fix(lint): write --fix results through symlinks
+- fix(lsp): go to the imported file from a raw import
+- fix(lsp): honor TypeScript directives for missing imports
+- fix(permissions): name `ende desktop` in a desktop app's permission errors
+- fix(publish): reject reachable JSR self imports
+- fix(publish): unfurl the specifiers in types pragmas
+- fix(repl): keep reading incomplete input containing regex literals
+- fix(resolver): scope sloppy import hints to prepared modules
+- fix(run): kill unref'd children on --watch-hmr and serve --watch restarts
+- fix(run): kill unref'd children on watch restart
+- fix(run): resolve symlinked entrypoints
+- fix(runtime): reject foreign receivers in the global getters
+- fix(runtime): reject foreign receivers in the self getter
+- fix(runtime): release the file watch when a watcher is closed
+- fix(serde_v8): return an error instead of panicking on unsupported value types
+- fix(serve): accept ENDE_SERVE_ADDRESS=memory: only from the desktop runtime
+- fix(serve): resolve symlinked entrypoints
+- fix(test): avoid unused doc test imports
+- fix(tests): define KillOnDropEndeChild only on unix
+- fix(tests): substitute spec variants into array args
+- fix(tsc): make raw import stubs ambient
+- fix(types): declare custom inspection callback types
+- fix(upgrade): refuse to replace an executable a Debian package installed
+- fix(upgrade): unpack --pr and --branch builds next to the output
+- fix(upgrade): unpack the new binary next to the output executable
+- fix(watch): don't let a re-raised signal kill the watcher on restart
+- fix(web): avoid inspecting getters on Event subclass prototypes
+- fix(web): avoid inspecting getters on Event subclass prototypes
+- fix(webgpu): keep a window surface's render loop running while it's hidden
+- fix: preserve JSR provenance through inline modules
+- fix: strip leading UTF-8 BOM from .env files
+- perf: avoid allocating null-prototype objects for default parameters (#36940)
+
 ### 2026.11.06 / 2026.11.06
 
 - fix(cli): enforce worker import permissions for static remote imports
