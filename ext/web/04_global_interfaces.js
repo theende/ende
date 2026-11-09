@@ -6,6 +6,8 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const {
+  ObjectDefineProperty,
+  SafeArrayIterator,
   Symbol,
   SymbolToStringTag,
   TypeError,
@@ -21,10 +23,6 @@ class Window extends EventTarget {
     }
     super();
   }
-
-  get [SymbolToStringTag]() {
-    return "Window";
-  }
 }
 
 class WorkerGlobalScope extends EventTarget {
@@ -33,10 +31,6 @@ class WorkerGlobalScope extends EventTarget {
       throw new TypeError("Illegal constructor");
     }
     super();
-  }
-
-  get [SymbolToStringTag]() {
-    return "WorkerGlobalScope";
   }
 }
 
@@ -47,10 +41,23 @@ class DedicatedWorkerGlobalScope extends WorkerGlobalScope {
     }
     super();
   }
+}
 
-  get [SymbolToStringTag]() {
-    return "DedicatedWorkerGlobalScope";
-  }
+// Web IDL makes the toStringTag of an interface prototype a data property.
+for (
+  const iface of new SafeArrayIterator([
+    Window,
+    WorkerGlobalScope,
+    DedicatedWorkerGlobalScope,
+  ])
+) {
+  ObjectDefineProperty(iface.prototype, SymbolToStringTag, {
+    __proto__: null,
+    value: iface.name,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
 }
 
 const dedicatedWorkerGlobalScopeConstructorDescriptor = {

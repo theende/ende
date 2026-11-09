@@ -187,6 +187,36 @@ Deno.test(async function workerInterfacePrototypesHaveToStringTag() {
   worker.terminate();
 });
 
+// The global scope interfaces get a data property too, not an accessor.
+Deno.test(function windowPrototypeHasToStringTag() {
+  assertEquals(
+    toStringTagDescriptors(["Window"]),
+    expectedToStringTagDescriptors(["Window"]),
+  );
+  assertEquals(Object.prototype.toString.call(globalThis), "[object Window]");
+});
+
+Deno.test(async function workerGlobalScopePrototypesHaveToStringTag() {
+  const names = ["WorkerGlobalScope", "DedicatedWorkerGlobalScope"];
+  // Through JSON: an accessor descriptor's getter can't be posted.
+  const source = `${toStringTagDescriptors.toString()}
+    postMessage(JSON.parse(JSON.stringify([
+      toStringTagDescriptors(${JSON.stringify(names)}),
+      Object.prototype.toString.call(globalThis),
+    ])));`;
+  const worker = new Worker(
+    `data:application/javascript,${encodeURIComponent(source)}`,
+    { type: "module" },
+  );
+  const { promise, resolve } = Promise.withResolvers<unknown>();
+  worker.onmessage = (e) => resolve(e.data);
+  assertEquals(await promise, [
+    expectedToStringTagDescriptors(names),
+    "[object DedicatedWorkerGlobalScope]",
+  ]);
+  worker.terminate();
+});
+
 Deno.test(function globalThisWindowEqualsUndefined() {
   assert(globalThis.window === undefined);
 });
