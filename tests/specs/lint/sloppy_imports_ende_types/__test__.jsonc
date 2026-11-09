@@ -1,0 +1,6 @@
+// A sloppy types specifier is reported in `@ende-types` as in `@ts-types`.
+{
+  "args": "lint --sloppy-imports main.ts",
+  "output": "lint.out",
+  "exitCode": 1
+}

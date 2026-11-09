@@ -2235,7 +2235,7 @@ fn analyze_module(
           .jsx_import_source_config
           .as_deref(),
       };
-      Ok(deno_graph::parse_module_from_ast(
+      Ok(crate::ende_types::parse_module_from_ast(
         deno_graph::ParseModuleFromAstOptions {
           graph_kind: deno_graph::GraphKind::TypesOnly,
           specifier,

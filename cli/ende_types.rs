@@ -11,6 +11,12 @@
 
 use deno_ast::MultiThreadedComments;
 use deno_ast::ParsedSource;
+use deno_ast::ProgramRef;
+use deno_ast::SourceRangedForSpanned;
+use deno_ast::TextChange;
+use deno_graph::JsModule;
+use deno_graph::ModuleTextSource;
+use deno_graph::ParseModuleFromAstOptions;
 use deno_graph::analysis::ModuleInfo;
 use deno_graph::ast::ParserModuleAnalyzer;
 
@@ -26,6 +32,35 @@ fn find_in_comment(text: &str) -> Option<usize> {
     .get(start..start + ENDE_TYPES.len())?
     .eq_ignore_ascii_case(ENDE_TYPES)
     .then_some(start)
+}
+
+/// Byte indexes in the source text of the `@ende-types` that are read as
+/// `@ts-types`.
+fn find_in_source(parsed_source: &ParsedSource) -> Vec<usize> {
+  let start_pos = parsed_source.range().start;
+  let mut indexes = parsed_source
+    .comments()
+    .leading_map()
+    .values()
+    .flatten()
+    .filter_map(|comment| {
+      let offset = find_in_comment(&comment.text)?;
+      // The text starts after the `//` or `/*`.
+      Some(comment.start().as_byte_index(start_pos) + 2 + offset)
+    })
+    .collect::<Vec<_>>();
+  indexes.sort_unstable();
+  indexes
+}
+
+fn text_changes(indexes: &[usize], new_text: &str) -> Vec<TextChange> {
+  indexes
+    .iter()
+    .map(|index| TextChange {
+      range: *index..*index + ENDE_TYPES.len(),
+      new_text: new_text.to_string(),
+    })
+    .collect()
 }
 
 /// [`ParserModuleAnalyzer::module_info`], with `@ende-types` read as
@@ -58,6 +93,47 @@ pub fn module_info(parsed_source: &ParsedSource) -> ModuleInfo {
     parsed_source.text_info_lazy(),
     &comments,
   )
+}
+
+/// [`deno_graph::parse_module_from_ast`], with `@ende-types` read as
+/// `@ts-types`.
+pub fn parse_module_from_ast(options: ParseModuleFromAstOptions) -> JsModule {
+  let parsed_source = options.parsed_source;
+  let indexes = find_in_source(parsed_source);
+  if indexes.is_empty() {
+    return deno_graph::parse_module_from_ast(options);
+  }
+  // deno_graph reads the comments from the ParsedSource, so parse a copy
+  // spelled `@ts-types  `. Only comments change, so the ranges are the same.
+  let text = deno_ast::apply_text_changes(
+    parsed_source.text(),
+    text_changes(&indexes, PADDED_TS_TYPES),
+  );
+  let params = deno_ast::ParseParams {
+    specifier: parsed_source.specifier().clone(),
+    text: text.into(),
+    media_type: parsed_source.media_type(),
+    capture_tokens: false,
+    scope_analysis: false,
+    maybe_syntax: None,
+  };
+  // Parse it the way the original was.
+  let aliased = if let ProgramRef::Script(_) = parsed_source.program_ref() {
+    deno_ast::parse_script(params)
+  } else {
+    deno_ast::parse_module(params)
+  };
+  let Ok(aliased) = aliased else {
+    return deno_graph::parse_module_from_ast(options);
+  };
+  let text = parsed_source.text().clone();
+  let mut module =
+    deno_graph::parse_module_from_ast(ParseModuleFromAstOptions {
+      parsed_source: &aliased,
+      ..options
+    });
+  module.source = ModuleTextSource::new_unknown(text);
+  module
 }
 
 #[cfg(test)]
@@ -173,5 +249,28 @@ mod tests {
       module_info(&parsed_source),
       ParserModuleAnalyzer::module_info(&parsed_source),
     );
+  }
+
+  #[test]
+  fn module_from_ast() {
+    let text = "// @ende-types=\"./a.d.ts\"\nimport a from \"./a.js\";\n";
+    let parsed_source = parse(text);
+    let module = parse_module_from_ast(ParseModuleFromAstOptions {
+      graph_kind: deno_graph::GraphKind::All,
+      specifier: parsed_source.specifier().clone(),
+      maybe_headers: None,
+      mtime: None,
+      parsed_source: &parsed_source,
+      file_system: &deno_graph::source::NullFileSystem,
+      jsr_url_provider: Default::default(),
+      maybe_resolver: None,
+    });
+    let dep = &module.dependencies["./a.js"];
+    assert_eq!(dep.maybe_deno_types_specifier.as_deref(), Some("./a.d.ts"));
+    assert_eq!(dep.get_type().unwrap().as_str(), "file:///a.d.ts");
+    assert_eq!(dep.get_code().unwrap().as_str(), "file:///a.js");
+    let range = dep.maybe_type.maybe_range().unwrap();
+    assert_eq!(range.range, specifier("./a.d.ts", 0, 15).range);
+    assert_eq!(module.source.text.as_ref(), text);
   }
 }

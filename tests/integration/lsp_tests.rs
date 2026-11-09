@@ -3477,6 +3477,62 @@ fn lsp_hover_typescript_types_via_import_map() {
   client.shutdown();
 }
 
+// `@ende-types` is an alias of `@ts-types`.
+#[test(timeout = 300)]
+fn lsp_ende_types() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let temp_dir = context.temp_dir();
+  temp_dir.write("value.d.ts", "export declare const value: number;\n");
+  temp_dir.write("value.js", "export const value = \"a string\";\n");
+  let file = temp_dir.source_file(
+    "main.ts",
+    "// @ende-types=\"./value.d.ts\"\nimport { value } from \"./value.js\";\n\nconst label: string = value;\nconsole.log(label);\n",
+  );
+  let mut client = context.new_lsp_command().build();
+  client.initialize_default();
+  let diagnostics = client.did_open_file(&file);
+  let actual = diagnostics
+    .all()
+    .into_iter()
+    .map(|d| json!([d.code, d.range.start.line]))
+    .collect::<Vec<_>>();
+  assert_eq!(json!(actual), json!([[2322, 3]]));
+  let res = client.write_request(
+    "textDocument/hover",
+    json!({
+      "textDocument": { "uri": file.uri() },
+      "position": { "line": 1, "character": 24 },
+    }),
+  );
+  let url = |name: &str| {
+    temp_dir
+      .url()
+      .join(name)
+      .unwrap()
+      .as_str()
+      .trim_start_matches("file")
+      .to_string()
+  };
+  assert_eq!(
+    res,
+    json!({
+      "contents": {
+        "kind": "markdown",
+        "value": format!(
+          "**Resolved Dependency**\n\n**Code**: file&#8203;{}\n\n**Types**: file&#8203;{}\n",
+          url("value.js"),
+          url("value.d.ts"),
+        ),
+      },
+      "range": {
+        "start": { "line": 1, "character": 22 },
+        "end": { "line": 1, "character": 34 },
+      },
+    })
+  );
+  client.shutdown();
+}
+
 #[test(timeout = 300)]
 fn lsp_hover_jsr() {
   let context = TestContextBuilder::new()

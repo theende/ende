@@ -83,17 +83,19 @@ impl LintRule for NoSloppyImportsRule {
     };
 
     // fill this and capture the sloppy imports in the resolver
-    deno_graph::parse_module_from_ast(deno_graph::ParseModuleFromAstOptions {
-      graph_kind: deno_graph::GraphKind::All,
-      specifier: context.specifier().clone(),
-      maybe_headers: None,
-      mtime: None,
-      parsed_source: context.parsed_source(),
-      // ignore resolving dynamic imports like import(`./dir/${something}`)
-      file_system: &deno_graph::source::NullFileSystem,
-      jsr_url_provider: &CliJsrUrlProvider,
-      maybe_resolver: Some(&resolver),
-    });
+    crate::ende_types::parse_module_from_ast(
+      deno_graph::ParseModuleFromAstOptions {
+        graph_kind: deno_graph::GraphKind::All,
+        specifier: context.specifier().clone(),
+        maybe_headers: None,
+        mtime: None,
+        parsed_source: context.parsed_source(),
+        // ignore resolving dynamic imports like import(`./dir/${something}`)
+        file_system: &deno_graph::source::NullFileSystem,
+        jsr_url_provider: &CliJsrUrlProvider,
+        maybe_resolver: Some(&resolver),
+      },
+    );
 
     for (referrer, (specifier, sloppy_reason)) in
       resolver.captures.borrow_mut().drain()
