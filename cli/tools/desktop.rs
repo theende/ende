@@ -2740,9 +2740,10 @@ fn rewrite_helper_plist_identifier(
 /// Re-uses the JIT entitlements that ship with the laufey CEF bundle
 /// (`Contents/Frameworks/<helper>.app/Contents/Resources/...entitlements...`
 /// or, more robustly, the per-helper entitlements laufey bundles next to
-/// each helper). When laufey ships no browser entitlements (0.7.0 ships
-/// none for any backend) and the identity is real, the main bundle gets
-/// [`WEBVIEW_ENTITLEMENTS`] instead, because Ende's V8 runs in that process.
+/// each helper). When laufey ships none (0.7.0 ships none for any backend)
+/// and the identity is real, the main bundle and every helper get
+/// [`WEBVIEW_ENTITLEMENTS`] instead: Ende's V8 runs in the main process, and
+/// Chromium's helpers JIT too.
 fn codesign_macos_bundle(
   app_bundle: &Path,
   identity: &str,
@@ -2771,7 +2772,47 @@ fn codesign_macos_bundle(
   // doesn't match the bundle's id. Forcing `--identifier=<bundle_id>`
   // makes them match.
   let bundle_id = read_bundle_identifier(app_bundle)?;
+  // Bound to a local so the temp file outlives the codesign calls below.
+  let jit_entitlements = if identity != "-" {
+    Some(write_webview_entitlements()?)
+  } else {
+    None
+  };
+  let plan = macos_signing_plan(
+    app_bundle,
+    &bundle_id,
+    jit_entitlements.as_ref().map(|f| f.path()),
+  );
+  for call in plan {
+    codesign_one(
+      &call.path,
+      identity,
+      call.entitlements.as_deref(),
+      call.identifier.as_deref(),
+    )?;
+  }
+  Ok(())
+}
 
+/// One `codesign` invocation of [`codesign_macos_bundle`].
+#[derive(Debug, PartialEq)]
+struct CodesignCall {
+  path: PathBuf,
+  entitlements: Option<PathBuf>,
+  identifier: Option<String>,
+}
+
+/// The `codesign` calls that sign `app_bundle`, inside out.
+/// `jit_entitlements` is the generated [`WEBVIEW_ENTITLEMENTS`] plist, given
+/// for a real identity (ad-hoc signatures get no Hardened Runtime, so they
+/// need no entitlements). Every helper `.app` and the main bundle get it
+/// unless laufey ships entitlements of its own for them.
+fn macos_signing_plan(
+  app_bundle: &Path,
+  bundle_id: &str,
+  jit_entitlements: Option<&Path>,
+) -> Vec<CodesignCall> {
+  let mut plan = Vec::new();
   // Sign helpers first (inside → outside). The order within helpers
   // doesn't matter — they don't nest into each other.
   let frameworks = app_bundle.join("Contents/Frameworks");
@@ -2786,13 +2827,25 @@ fn codesign_macos_bundle(
         continue;
       };
       if path.is_dir() && name.ends_with(".app") {
-        let helper_entitlements = locate_helper_entitlements(&path);
-        codesign_one(&path, identity, helper_entitlements.as_deref(), None)?;
+        // laufey 0.7.0 ships no helper entitlements, and Chromium's renderer
+        // and GPU helpers JIT, which the Hardened Runtime denies without
+        // allow-jit.
+        let entitlements = locate_helper_entitlements(&path)
+          .or_else(|| jit_entitlements.map(Path::to_path_buf));
+        plan.push(CodesignCall {
+          path,
+          entitlements,
+          identifier: None,
+        });
       } else if path.is_dir() && name.ends_with(".framework") {
         // Frameworks (notably the CEF framework) have an embedded
         // signature already — `codesign --force` re-signs the
         // versioned directory in place.
-        codesign_one(&path, identity, None, None)?;
+        plan.push(CodesignCall {
+          path,
+          entitlements: None,
+          identifier: None,
+        });
       }
     }
   }
@@ -2816,7 +2869,11 @@ fn codesign_macos_bundle(
       if !is_macho_file(&path) {
         continue;
       }
-      codesign_one(&path, identity, None, Some(&bundle_id))?;
+      plan.push(CodesignCall {
+        path,
+        entitlements: None,
+        identifier: Some(bundle_id.to_string()),
+      });
     }
   }
 
@@ -2825,19 +2882,13 @@ fn codesign_macos_bundle(
   // CFBundleExecutable is the laufey binary, which loads the runtime dylib
   // and runs Ende's V8 in-process (with CEF, that's the browser process).
   // laufey 0.7.0 ships no entitlements for any backend.
-  let browser_entitlements = locate_browser_entitlements(app_bundle);
-  // Bound to a local so the temp file outlives the codesign call below.
-  let webview_entitlements =
-    if browser_entitlements.is_none() && identity != "-" {
-      Some(write_webview_entitlements()?)
-    } else {
-      None
-    };
-  let entitlements = browser_entitlements
-    .as_deref()
-    .or_else(|| webview_entitlements.as_ref().map(|f| f.path()));
-  codesign_one(app_bundle, identity, entitlements, None)?;
-  Ok(())
+  plan.push(CodesignCall {
+    path: app_bundle.to_path_buf(),
+    entitlements: locate_browser_entitlements(app_bundle)
+      .or_else(|| jit_entitlements.map(Path::to_path_buf)),
+    identifier: None,
+  });
+  plan
 }
 
 /// Entitlements the webview backend needs under the Hardened Runtime.
@@ -2851,6 +2902,9 @@ fn codesign_macos_bundle(
 /// ```text
 /// # Fatal process out of memory: Failed to reserve virtual memory for CodeRange
 /// ```
+///
+/// CEF's helper apps get it too: Chromium's renderer (V8) and GPU helpers
+/// need `allow-jit` under the Hardened Runtime as well.
 ///
 /// Only `allow-jit` is here. `allow-unsigned-executable-memory` and
 /// `disable-library-validation` are its usual companions in Electron guides,
@@ -6186,6 +6240,59 @@ mod tests {
       "plutil rejected the entitlements plist: {}",
       String::from_utf8_lossy(&output.stdout)
     );
+  }
+
+  #[test]
+  fn signing_plan_gives_every_helper_jit_entitlements() {
+    // A CEF bundle as laufey 0.7.0 ships it: helpers and the framework, no
+    // entitlements plists. Under the Hardened Runtime (any real identity)
+    // Chromium's renderer and GPU helpers can't JIT without allow-jit.
+    let tmp = tempfile::tempdir().unwrap();
+    let app = tmp.path().join("My App.app");
+    let frameworks = app.join("Contents/Frameworks");
+    let helpers = [
+      "laufey Helper.app",
+      "laufey Helper (GPU).app",
+      "laufey Helper (Renderer).app",
+    ];
+    for helper in helpers {
+      std::fs::create_dir_all(frameworks.join(helper).join("Contents/MacOS"))
+        .unwrap();
+    }
+    std::fs::create_dir_all(
+      frameworks.join("Chromium Embedded Framework.framework"),
+    )
+    .unwrap();
+    std::fs::create_dir_all(app.join("Contents/MacOS")).unwrap();
+    std::fs::write(app.join("Contents/MacOS/laufey"), b"\xcf\xfa\xed\xfe")
+      .unwrap();
+    let jit = tmp.path().join("jit.plist");
+    std::fs::write(&jit, WEBVIEW_ENTITLEMENTS).unwrap();
+
+    let plan = macos_signing_plan(&app, "com.acme.app", Some(&jit));
+    for helper in helpers {
+      let call = plan
+        .iter()
+        .find(|c| c.path == frameworks.join(helper))
+        .unwrap_or_else(|| panic!("{helper} isn't signed: {plan:?}"));
+      let entitlements = call
+        .entitlements
+        .as_deref()
+        .unwrap_or_else(|| panic!("{helper} has no entitlements"));
+      assert!(
+        std::fs::read_to_string(entitlements)
+          .unwrap()
+          .contains("com.apple.security.cs.allow-jit"),
+        "{helper}"
+      );
+    }
+    // Inside out: the main bundle is signed last, with the JIT plist too.
+    let last = plan.last().unwrap();
+    assert_eq!(last.path, app);
+    assert_eq!(last.entitlements.as_deref(), Some(jit.as_path()));
+    // Ad-hoc signing has no Hardened Runtime, so no entitlements at all.
+    let adhoc = macos_signing_plan(&app, "com.acme.app", None);
+    assert!(adhoc.iter().all(|c| c.entitlements.is_none()), "{adhoc:?}");
   }
 
   #[test]
