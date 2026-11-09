@@ -3966,6 +3966,23 @@ fn node_header(mode: u16) -> backhand::NodeHeader {
   }
 }
 
+/// `path` joined with `/`, whatever the host's separator, for paths written
+/// into a Linux package (deb, rpm, AppImage), which any host can build.
+fn linux_package_path(path: &Path) -> String {
+  let mut out = String::new();
+  for component in path.components() {
+    if component == std::path::Component::RootDir {
+      out.push('/');
+      continue;
+    }
+    if !out.is_empty() && !out.ends_with('/') {
+      out.push('/');
+    }
+    out.push_str(&component.as_os_str().to_string_lossy());
+  }
+  out
+}
+
 /// Walk `fs_root` and push every entry into `writer` at the SquashFS root.
 /// Directories are pushed before their contents (required by backhand).
 fn push_dir_contents_to_squashfs(
@@ -3988,7 +4005,7 @@ fn push_dir_contents_to_squashfs(
       let mode = unix_mode_of(&meta);
       let ft = meta.file_type();
       if ft.is_symlink() {
-        let target = std::fs::read_link(&path)?;
+        let target = linux_package_path(&std::fs::read_link(&path)?);
         writer.push_symlink(target, &arc_path, node_header(mode))?;
       } else if ft.is_dir() {
         writer.push_dir(&arc_path, node_header(mode))?;
@@ -4560,7 +4577,7 @@ fn build_deb_data_tar(
     files.sort();
     for path in files {
       let rel = path.strip_prefix(app_dir)?;
-      let arc_path = format!("{}/{}", lib_prefix, rel.to_string_lossy());
+      let arc_path = format!("{}/{}", lib_prefix, linux_package_path(rel));
       let meta_fs = std::fs::symlink_metadata(&path)?;
       let mode = unix_mode_of(&meta_fs) as u32;
       let mut h = tar::Header::new_gnu();
@@ -4758,7 +4775,7 @@ fn create_linux_rpm(
       let target = std::fs::read_link(&path)?;
       builder.with_symlink(rpm::FileOptions::symlink(
         &dest,
-        target.to_string_lossy(),
+        linux_package_path(&target),
       ))
     } else {
       builder.with_file(&path, rpm::FileOptions::new(&dest))
@@ -7034,6 +7051,18 @@ def456  other.zip
   }
 
   #[test]
+  fn linux_package_paths_use_forward_slashes() {
+    // Built from components, so on a Windows host these hold `\`, which a
+    // Linux package must not carry (in a name or a symlink target).
+    let nested = Path::new("..").join("lib").join("libcef.so");
+    assert_eq!(linux_package_path(&nested), "../lib/libcef.so");
+    let absolute = Path::new("/").join("usr").join("lib").join("myapp");
+    assert_eq!(linux_package_path(&absolute), "/usr/lib/myapp");
+    assert_eq!(linux_package_path(Path::new("/")), "/");
+    assert!(!linux_package_path(&Path::new("a").join("b")).contains('\\'));
+  }
+
+  #[test]
   fn appimage_apprun_exports_app_id() {
     // With an id, AppRun exports it before exec so the window app_id matches
     // StartupWMClass; without one it falls back to the default (no export).
@@ -8919,7 +8948,7 @@ def456  other.zip
     .unwrap();
     let appimage_paths: Vec<String> = filesystem
       .files()
-      .map(|node| node.fullpath.to_string_lossy().into_owned())
+      .map(|node| linux_package_path(&node.fullpath))
       .collect();
 
     for (format, paths) in [
