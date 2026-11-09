@@ -379,3 +379,15 @@ dir so its watcher sees real files.
   extracted bundle runs as its own app, with one Dock icon, and opening the thin
   app again activates it. It doesn't get the launcher's environment, standard
   streams or exit status.
+- **MSI versions** (`create_windows_msi`): **bump ende.json `version` for every
+  MSI release.** The ProductVersion is its first three numeric fields (`1.0.0`
+  without a `version`, or with one that isn't numeric); a prerelease or build
+  suffix and a fourth field are dropped. ProductCode and the package code are
+  derived from the identifier and that ProductVersion, the UpgradeCode from the
+  identifier alone. The Upgrade table removes an installed older version and
+  refuses to install over a newer one. A rebuild with the same ProductVersion,
+  even with different contents, has the same ProductCode and package code, so
+  Windows Installer takes it for the package that's already installed and runs
+  it as a repair, not an upgrade; its changes aren't reliably applied. Changing
+  only a prerelease suffix (`1.2.0-beta.1` to `1.2.0-beta.2`) or a fourth field
+  doesn't count as a new version.

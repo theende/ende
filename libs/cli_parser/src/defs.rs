@@ -2573,7 +2573,7 @@ pub static DESKTOP_SUBCOMMAND: CommandDef = CommandDef {
       .long("output")
       .action(ArgAction::Set)
       .num_args(NumArgs::Exact(1))
-.help("Output path (e.g. MyApp.app, MyApp.dmg, MyApp.AppImage, MyApp.deb, MyApp.rpm, MyApp.msi)"),
+.help("Output path (e.g. MyApp.app, MyApp.dmg, MyApp.AppImage, MyApp.deb, MyApp.rpm, MyApp.msi). An .msi upgrades an installed copy only if its ende.json `version` is higher, so bump it for every MSI release: a rebuild of the same version installs as a repair"),
     ArgDef::new("target")
       .long("target")
       .action(ArgAction::Set)
