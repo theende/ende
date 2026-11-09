@@ -33,7 +33,10 @@ LIMIT 1";
 /// that didn't know `@ende-types`) aren't found. Change it with the analysis.
 const ANALYSIS_VERSION: &str = "ende-types";
 
-fn source_hash(source: impl std::hash::Hash) -> CacheDBHash {
+/// Hashes the bytes, so a source deno_graph caches module info for (JSR's, as
+/// bytes) and the same source it then analyzes (as a `str`) hash the same:
+/// `Hash` for `str` and for `[u8]` differ.
+fn source_hash(source: &[u8]) -> CacheDBHash {
   CacheDBHash::from_hashable((ANALYSIS_VERSION, source))
 }
 
@@ -231,7 +234,7 @@ impl deno_graph::analysis::ModuleAnalyzer
     media_type: MediaType,
   ) -> Result<ModuleInfo, JsErrorBox> {
     // attempt to load from the cache
-    let source_hash = source_hash(&source);
+    let source_hash = source_hash(source.as_bytes());
     if let Some(info) =
       self.load_cached_module_info(specifier, media_type, source_hash)
     {
@@ -465,5 +468,32 @@ mod test {
       panic!("expected a static dependency");
     };
     assert_eq!(dep.types_specifier.as_ref().unwrap().text, "./a.d.ts");
+  }
+
+  #[tokio::test]
+  async fn module_info_cache_hits_info_cached_for_the_same_bytes() {
+    use deno_graph::analysis::ModuleAnalyzer;
+    use deno_graph::source::ModuleInfoCacher;
+
+    let cache = ModuleInfoCache::new_in_memory("1.0.0", Default::default());
+    let specifier =
+      ModuleSpecifier::parse("https://jsr.io/@a/b/mod.ts").unwrap();
+    let text = "import a from \"./a.ts\";\n";
+    // What deno_graph caches for a JSR module from the registry's module
+    // info. Empty, unlike an analysis of the text, so a hit is visible.
+    let cached = ModuleInfo::default();
+    cache.cache_module_info(
+      &specifier,
+      MediaType::TypeScript,
+      &Arc::from(text.as_bytes()),
+      &cached,
+    );
+
+    let info = cache
+      .as_module_analyzer()
+      .analyze(&specifier, text.into(), MediaType::TypeScript)
+      .await
+      .unwrap();
+    assert_eq!(info, cached);
   }
 }
