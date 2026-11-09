@@ -1,13 +1,13 @@
 Check main.ts
-TS2322 [ERROR]: Type 'string' is not assignable to type 'number'.
-const count: number = value;
-      ~~~~~
-    at file:///[WILDLINE]/scopes/sub/mod.ts:3:7
-
 TS2322 [ERROR]: Type 'number' is not assignable to type 'string'.
 const label: string = value;
       ~~~~~
     at file:///[WILDLINE]/scopes/main.ts:5:7
+
+TS2322 [ERROR]: Type 'string' is not assignable to type 'number'.
+const count: number = value;
+      ~~~~~
+    at file:///[WILDLINE]/scopes/sub/mod.ts:3:7
 
 Found 2 errors.
 

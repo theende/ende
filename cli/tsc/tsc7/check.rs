@@ -221,7 +221,7 @@ pub fn exec(env: &Tsc7Env, request: Request) -> Result<Response, AnyError> {
     read_files: Default::default(),
   };
   let mut dropped = 0;
-  let diagnostics = raw
+  let mut diagnostics = raw
     .into_iter()
     .filter_map(|d| {
       let mapped = mapper.map(d);
@@ -247,6 +247,7 @@ pub fn exec(env: &Tsc7Env, request: Request) -> Result<Response, AnyError> {
   if dropped > 0 {
     log::debug!("tsc7: dropped {dropped} diagnostics in lib files");
   }
+  sort_diagnostics(&mut diagnostics);
 
   Ok(Response {
     diagnostics: Diagnostics::from(diagnostics),
@@ -435,6 +436,22 @@ fn is_provided_lib_not_found(d: &Diagnostic) -> bool {
       .as_deref()
       .and_then(|m| LIB_NOT_FOUND_RE.captures(m))
       .is_some_and(|c| ende_lib_name(&c[1].to_ascii_lowercase()).is_some())
+}
+
+/// Orders mapped diagnostics by module specifier, then start position;
+/// those without a file (global or option errors) come first. tsc sorts by
+/// the paths it read, which name copies by a hash of the module's URL and
+/// can sit in Ende's cache or in the project, so its order would depend on
+/// where both live and on the host's path comparison. The sort is stable:
+/// ties keep tsc's order.
+fn sort_diagnostics(diagnostics: &mut [Diagnostic]) {
+  fn key(d: &Diagnostic) -> (Option<&str>, Option<(u64, u64)>) {
+    (
+      d.file_name.as_deref(),
+      d.start.as_ref().map(|p| (p.line, p.character)),
+    )
+  }
+  diagnostics.sort_by(|a, b| key(a).cmp(&key(b)));
 }
 
 /// Maps diagnostics from tsc's paths and positions back to the modules.
@@ -783,6 +800,59 @@ mod tests {
       Some("asset:///lib.es5.d.ts")
     );
     assert_eq!(related[1].start, position(741, 19));
+  }
+
+  #[test]
+  fn sorts_by_module_not_by_tsc_path() {
+    // tsc read b.ts from a copy that sorts first, and a.ts in place.
+    let mut files = HashMap::new();
+    for (key, specifier) in [
+      (
+        "c:/users/me/appdata/local/ende/tsc7_projects/abc/local/0/b.ts",
+        "file:///C:/proj/b.ts",
+      ),
+      ("c:/proj/a.ts", "file:///C:/proj/a.ts"),
+    ] {
+      files.insert(
+        key.to_string(),
+        MappedFile {
+          specifier: specifier.into(),
+          text: None,
+          shifts: Default::default(),
+        },
+      );
+    }
+    let mapper = mapper(&files);
+    let mut tied = raw(Some("local/0/b.ts"), 2, 1);
+    tied.code = 2304;
+    let mut diagnostics = [
+      raw(Some("local/0/b.ts"), 1, 5),
+      raw(Some("local/0/b.ts"), 2, 1),
+      tied,
+      raw(Some("C:/proj/a.ts"), 3, 1),
+      raw(Some("C:/proj/a.ts"), 1, 9),
+      raw(None, 0, 0),
+    ]
+    .map(|d| mapper.map(d).unwrap());
+    sort_diagnostics(&mut diagnostics);
+    let order = diagnostics
+      .iter()
+      .map(|d| {
+        let start = d.start.as_ref().map(|p| (p.line, p.character));
+        (d.file_name.as_deref(), start, d.code)
+      })
+      .collect::<Vec<_>>();
+    assert_eq!(
+      order,
+      [
+        (None, None, 2322),
+        (Some("file:///C:/proj/a.ts"), Some((0, 8)), 2322),
+        (Some("file:///C:/proj/a.ts"), Some((2, 0)), 2322),
+        (Some("file:///C:/proj/b.ts"), Some((0, 4)), 2322),
+        (Some("file:///C:/proj/b.ts"), Some((1, 0)), 2322),
+        (Some("file:///C:/proj/b.ts"), Some((1, 0)), 2304),
+      ]
+    );
   }
 
   #[test]
