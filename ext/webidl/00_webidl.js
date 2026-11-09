@@ -966,8 +966,20 @@ function createSequenceConverter(converter) {
         context,
       );
     }
-    const iter = V?.[SymbolIterator]?.();
-    if (iter === undefined) {
+    // GetIterator(V, sync): the iterator must be an Object, and its `next`
+    // is read once.
+    const method = V[SymbolIterator];
+    if (typeof method !== "function") {
+      throw makeException(
+        TypeError,
+        "can not be converted to sequence.",
+        prefix,
+        context,
+      );
+    }
+    const iter = FunctionPrototypeCall(method, V);
+    const next = type(iter) === "Object" ? iter.next : undefined;
+    if (typeof next !== "function") {
       throw makeException(
         TypeError,
         "can not be converted to sequence.",
@@ -977,8 +989,9 @@ function createSequenceConverter(converter) {
     }
     const array = [];
     while (true) {
-      const res = iter?.next?.();
-      if (res === undefined) {
+      const res = FunctionPrototypeCall(next, iter);
+      // IteratorNext: the result must be an Object.
+      if (type(res) !== "Object") {
         throw makeException(
           TypeError,
           "can not be converted to sequence.",

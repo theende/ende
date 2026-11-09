@@ -3,6 +3,7 @@ import {
   assert,
   assertEquals,
   assertThrows,
+  iteratorProtocolViolations,
   numberDoneIterable,
 } from "./test_util.ts";
 
@@ -471,4 +472,14 @@ Deno.test(function urlSearchParamsInitIteratorDoneIsToBoolean() {
     numberDoneIterable([numberDoneIterable(["a", "1"]), ["b", "2"]]),
   );
   assertEquals(params.toString(), "a=1&b=2");
+});
+
+Deno.test(function urlSearchParamsInitFollowsIteratorProtocol() {
+  assertEquals(
+    iteratorProtocolViolations(
+      (init) => new URLSearchParams(init as Iterable<[string, string]>),
+      ["a", "b"],
+    ),
+    [],
+  );
 });

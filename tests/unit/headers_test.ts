@@ -4,6 +4,7 @@ import {
   assertEquals,
   assertStringIncludes,
   assertThrows,
+  iteratorProtocolViolations,
   numberDoneIterable,
 } from "./test_util.ts";
 const {
@@ -506,4 +507,22 @@ Deno.test(function headersInitIteratorDoneIsToBoolean() {
     numberDoneIterable([numberDoneIterable(["a", "1"]), ["b", "2"]]),
   );
   assertEquals([...headers], [["a", "1"], ["b", "2"]]);
+});
+
+Deno.test(function headersInitFollowsIteratorProtocol() {
+  assertEquals(
+    iteratorProtocolViolations(
+      (init) => new Headers(init as HeadersInit),
+      ["a", "b"],
+    ),
+    [],
+  );
+  // The inner sequence too.
+  assertEquals(
+    iteratorProtocolViolations(
+      (pair) => new Headers([pair] as unknown as HeadersInit),
+      "a",
+    ),
+    [],
+  );
 });

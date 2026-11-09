@@ -1414,3 +1414,76 @@ export function numberDoneIterable<T>(values: T[]): T[] {
   };
   return iterable as unknown as T[];
 }
+
+// Converts iterables that break the iterator protocol with `convert`, and
+// lists what it got wrong. Number.prototype briefly gets `done`, `value` and
+// `next`, so a conversion that doesn't require an Object misreads a number
+// returned as the iterator, or by next(), as a working one. `next` must be
+// read once per iterator, not once per step.
+export function iteratorProtocolViolations(
+  convert: (iterable: Iterable<unknown>) => void,
+  value: unknown,
+): string[] {
+  const violations: string[] = [];
+  const numberProps: Record<string, unknown> = {
+    done: false,
+    value,
+    next: () => ({ done: true }),
+  };
+  for (const [key, v] of Object.entries(numberProps)) {
+    Object.defineProperty(Number.prototype, key, {
+      value: v,
+      configurable: true,
+      writable: true,
+    });
+  }
+  try {
+    const primitiveResult = {
+      [Symbol.iterator]() {
+        let first = true;
+        return {
+          next() {
+            if (!first) return { done: true };
+            first = false;
+            return 1;
+          },
+        };
+      },
+    };
+    const primitiveIterator = { [Symbol.iterator]: () => 1 };
+    const cases: [string, unknown][] = [
+      ["primitive result", primitiveResult],
+      ["primitive iterator", primitiveIterator],
+    ];
+    for (const [name, iterable] of cases) {
+      try {
+        convert(iterable as Iterable<unknown>);
+        violations.push(`${name} accepted`);
+      } catch (error) {
+        if (!(error instanceof TypeError)) {
+          violations.push(`${name} threw ${error}`);
+        }
+      }
+    }
+  } finally {
+    for (const key of Object.keys(numberProps)) {
+      // deno-lint-ignore no-explicit-any
+      delete (Number.prototype as any)[key];
+    }
+  }
+  let reads = 0;
+  const counted = {
+    [Symbol.iterator]() {
+      let index = 0;
+      return {
+        get next() {
+          reads++;
+          return () => index++ < 2 ? { done: false, value } : { done: true };
+        },
+      };
+    },
+  };
+  convert(counted as Iterable<unknown>);
+  if (reads !== 1) violations.push(`next read ${reads} times`);
+  return violations;
+}

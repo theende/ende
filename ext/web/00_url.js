@@ -23,6 +23,7 @@ const {
   ArrayPrototypeSome,
   ArrayPrototypeSort,
   ArrayPrototypeSplice,
+  FunctionPrototypeCall,
   ObjectGetOwnPropertyDescriptor,
   ObjectKeys,
   ObjectPrototypeIsPrototypeOf,
@@ -149,7 +150,13 @@ class URLSearchParams {
         const pairs = [];
         // deno-lint-ignore ende-internal/prefer-primordials
         const iter = method.call(init);
-        if (iter == null || typeof iter.next !== "function") {
+        // GetIterator: the iterator must be an Object, and its `next` is read
+        // once.
+        const next = iter !== null &&
+            (typeof iter === "object" || typeof iter === "function")
+          ? iter.next
+          : undefined;
+        if (typeof next !== "function") {
           const err = new TypeError(
             "Each query pair must be an iterable [name, value] tuple",
           );
@@ -157,8 +164,7 @@ class URLSearchParams {
           throw err;
         }
         while (true) {
-          // deno-lint-ignore ende-internal/prefer-primordials
-          const res = iter.next();
+          const res = FunctionPrototypeCall(next, iter);
           if (
             res === null ||
             (typeof res !== "object" && typeof res !== "function")
