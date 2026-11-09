@@ -1953,6 +1953,55 @@ fn lsp_hover_asset() {
   client.shutdown();
 }
 
+/// Built-ins that TypeScript's own libs declare have one declaration, not a
+/// second one from Ende's unstable lib (hover would say "+1 overload").
+#[test(timeout = 300)]
+fn lsp_hover_builtin_declared_once() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let temp_dir = context.temp_dir();
+  temp_dir.write("ende.json", json!({}).to_string());
+  let file = temp_dir.source_file(
+    "file.ts",
+    r#"Uint8Array.fromHex("ff");
+new Uint8Array(1).toBase64();
+RegExp.escape("a");
+new Intl.DateTimeFormat().format(new Date());
+"#,
+  );
+  let mut client = context.new_lsp_command().build();
+  client.initialize_default();
+  client.did_open_file(&file);
+  let mut signature = |name: &str| {
+    let res = client.write_request(
+      "textDocument/hover",
+      json!({
+        "textDocument": file.identifier(),
+        "position": file.range_of(name).start,
+      }),
+    );
+    let value = res["contents"]["value"].as_str().unwrap().to_string();
+    value.lines().nth(1).unwrap().to_string()
+  };
+  assert_eq!(
+    signature("fromHex"),
+    "(method) Uint8ArrayConstructor.fromHex(string: string): Uint8Array<ArrayBuffer>"
+  );
+  assert_eq!(
+    signature("toBase64"),
+    "(method) Uint8Array<ArrayBuffer>.toBase64(options?: {"
+  );
+  assert_eq!(
+    signature("escape"),
+    "(method) RegExpConstructor.escape(string: string): string"
+  );
+  // TypeScript's es5 and esnext.intl libs declare one each.
+  assert_eq!(
+    signature("format"),
+    "(method) Intl.DateTimeFormat.format(date?: Intl.FormattableTemporalObject | Date | number): string (+1 overload)"
+  );
+  client.shutdown();
+}
+
 #[test(timeout = 300)]
 fn lsp_hover_disabled() {
   let context = TestContextBuilder::new().use_temp_cwd().build();
@@ -10786,7 +10835,7 @@ fn lsp_notebook_completions() {
       },
       "documentation": {
         "kind": "markdown",
-        "value": "Asynchronously reads and returns the entire contents of a file as an UTF-8\ndecoded string.\n\n```ts\nconst data = await Ende.readTextFile(\"hello.txt\");\nconsole.log(data);\n```\n\nThe returned promise rejects if the operation fails, for example with\n[`Ende.errors.NotFound`](ende:/asset/lib.ende.ns.d.ts#174,5-174,43) if the file does not exist,\n[`Ende.errors.IsADirectory`](ende:/asset/lib.ende.ns.d.ts#307,5-307,47) if `path` refers to a directory, or\n[`Ende.errors.PermissionDenied`](ende:/asset/lib.ende.ns.d.ts#185,5-185,51) if the required permission has not\nbeen granted.\n\nRequires `allow-read` permission.\n\n*@tags* — allow-read\n\n\n*@category* — File System\n",
+        "value": "Asynchronously reads and returns the entire contents of a file as an UTF-8\ndecoded string.\n\n```ts\nconst data = await Ende.readTextFile(\"hello.txt\");\nconsole.log(data);\n```\n\nThe returned promise rejects if the operation fails, for example with\n[`Ende.errors.NotFound`](ende:/asset/lib.ende.ns.d.ts#173,5-173,43) if the file does not exist,\n[`Ende.errors.IsADirectory`](ende:/asset/lib.ende.ns.d.ts#306,5-306,47) if `path` refers to a directory, or\n[`Ende.errors.PermissionDenied`](ende:/asset/lib.ende.ns.d.ts#184,5-184,51) if the required permission has not\nbeen granted.\n\nRequires `allow-read` permission.\n\n*@tags* — allow-read\n\n\n*@category* — File System\n",
       },
       "sortText": "11",
     }),

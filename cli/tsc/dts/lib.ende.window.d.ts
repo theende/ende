@@ -1,6 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
-/// <reference no-default-lib="true" />
 /// <reference lib="ende.ns" />
 /// <reference lib="ende.shared_globals" />
 /// <reference lib="ende.webstorage" />
