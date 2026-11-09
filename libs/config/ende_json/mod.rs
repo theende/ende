@@ -869,6 +869,7 @@ struct SerializedDesktopIconsConfig {
 #[serde(default, deny_unknown_fields)]
 struct SerializedDesktopAppConfig {
   pub name: Option<String>,
+  #[serde(deserialize_with = "deserialize_desktop_app_icons")]
   pub icons: Option<SerializedDesktopIconsConfig>,
   /// Bundle/application identifier in reverse-DNS form (e.g.
   /// `com.acme.foo`). Used as the macOS `CFBundleIdentifier`, the Linux
@@ -983,15 +984,85 @@ where
   Ok(Some(config))
 }
 
+/// Deserializes an object in the `desktop` config, such as `desktop.macos`,
+/// so a non-object is rejected (serde would read `["-"]` as a struct by
+/// position) and an error names the key.
+fn deserialize_desktop_object<'de, D, T>(
+  deserializer: D,
+  key: &str,
+) -> Result<Option<T>, D::Error>
+where
+  D: Deserializer<'de>,
+  T: serde::de::DeserializeOwned,
+{
+  use serde::de::Error;
+
+  let Some(value) = Option::<serde_json::Value>::deserialize(deserializer)?
+  else {
+    return Ok(None);
+  };
+  if !value.is_object() {
+    return Err(D::Error::custom(format!(
+      "\"{key}\" must be an object, got {value}"
+    )));
+  }
+  T::deserialize(value)
+    .map(Some)
+    .map_err(|err| D::Error::custom(format!("invalid \"{key}\": {err}")))
+}
+
+fn deserialize_desktop_app<'de, D: Deserializer<'de>>(
+  deserializer: D,
+) -> Result<Option<SerializedDesktopAppConfig>, D::Error> {
+  deserialize_desktop_object(deserializer, "app")
+}
+
+fn deserialize_desktop_app_icons<'de, D: Deserializer<'de>>(
+  deserializer: D,
+) -> Result<Option<SerializedDesktopIconsConfig>, D::Error> {
+  deserialize_desktop_object(deserializer, "app.icons")
+}
+
+fn deserialize_desktop_output<'de, D: Deserializer<'de>>(
+  deserializer: D,
+) -> Result<Option<SerializedDesktopOutputConfig>, D::Error> {
+  deserialize_desktop_object(deserializer, "output")
+}
+
+fn deserialize_desktop_release<'de, D: Deserializer<'de>>(
+  deserializer: D,
+) -> Result<Option<SerializedDesktopReleaseConfig>, D::Error> {
+  deserialize_desktop_object(deserializer, "release")
+}
+
+fn deserialize_desktop_error_reporting<'de, D: Deserializer<'de>>(
+  deserializer: D,
+) -> Result<Option<SerializedDesktopErrorReportingConfig>, D::Error> {
+  deserialize_desktop_object(deserializer, "errorReporting")
+}
+
+fn deserialize_desktop_macos<'de, D: Deserializer<'de>>(
+  deserializer: D,
+) -> Result<Option<SerializedDesktopMacOSConfig>, D::Error> {
+  deserialize_desktop_object(deserializer, "macos")
+}
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[serde(default, deny_unknown_fields)]
 struct SerializedDesktopConfig {
+  #[serde(deserialize_with = "deserialize_desktop_app")]
   pub app: Option<SerializedDesktopAppConfig>,
   pub backend: Option<String>,
+  #[serde(deserialize_with = "deserialize_desktop_output")]
   pub output: Option<SerializedDesktopOutputConfig>,
+  #[serde(deserialize_with = "deserialize_desktop_release")]
   pub release: Option<SerializedDesktopReleaseConfig>,
-  #[serde(rename = "errorReporting")]
+  #[serde(
+    rename = "errorReporting",
+    deserialize_with = "deserialize_desktop_error_reporting"
+  )]
   pub error_reporting: Option<SerializedDesktopErrorReportingConfig>,
+  #[serde(deserialize_with = "deserialize_desktop_macos")]
   pub macos: Option<SerializedDesktopMacOSConfig>,
   #[serde(
     rename = "initialWindow",
@@ -3695,6 +3766,58 @@ mod tests {
     assert!(
       error("[300, 200]").contains(r#""initialWindow" must be an object"#)
     );
+  }
+
+  #[test]
+  fn desktop_objects_reject_arrays_and_errors_name_the_key() {
+    fn error(desktop: &str) -> String {
+      let config = ConfigFile::new(
+        &format!(r#"{{ "desktop": {desktop} }}"#),
+        root_url().join("ende.json").unwrap(),
+      )
+      .unwrap();
+      let err = config.to_desktop_config().unwrap_err();
+      // The outer error names "desktop"; its source names the key in it.
+      assert!(err.to_string().contains(r#""desktop""#), "{err}");
+      std::error::Error::source(&err).unwrap().to_string()
+    }
+
+    // serde reads an array as a struct by position, so `["-"]` used to set
+    // the first field.
+    for (desktop, key) in [
+      (r#"{ "app": ["My App"] }"#, "app"),
+      (r#"{ "app": { "icons": ["icon.png"] } }"#, "app.icons"),
+      (r#"{ "output": ["dist/App.dmg"] }"#, "output"),
+      (r#"{ "release": ["https://example.com"] }"#, "release"),
+      (
+        r#"{ "errorReporting": ["https://example.com"] }"#,
+        "errorReporting",
+      ),
+      (r#"{ "macos": ["-"] }"#, "macos"),
+    ] {
+      let message = error(desktop);
+      assert!(
+        message.contains(&format!(r#""{key}" must be an object"#)),
+        "{desktop}: {message}"
+      );
+    }
+    // Type errors name the object they're in.
+    let message = error(r#"{ "macos": { "codesignIdentity": 5 } }"#);
+    assert!(message.contains(r#"invalid "macos""#), "{message}");
+    let message = error(r#"{ "release": { "baseUrl": false } }"#);
+    assert!(message.contains(r#"invalid "release""#), "{message}");
+  }
+
+  #[test]
+  fn desktop_objects_null_is_unset() {
+    let config = ConfigFile::new(
+      r#"{ "desktop": { "app": null, "macos": null } }"#,
+      root_url().join("ende.json").unwrap(),
+    )
+    .unwrap();
+    let desktop = config.to_desktop_config().unwrap();
+    assert_eq!(desktop.app, None);
+    assert_eq!(desktop.macos, None);
   }
 
   #[test]
