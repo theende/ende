@@ -1414,7 +1414,9 @@ const windowsTestJob = job("windows-tests", {
       saveCacheStep!,
       {
         name: "Test libs",
-        run: testLibsCommand,
+        // one test binary per crate; report every crate, not just the first
+        // that fails
+        run: `${testLibsCommand} --no-fail-fast`,
       },
       ...windowsUnitTests.map((name) => ({
         name: `Test unit (${name})`,

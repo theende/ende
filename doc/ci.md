@@ -62,13 +62,14 @@ build job's critical path.
   On Windows only `tools/lint.js`, whose clippy run is the only thing in lean CI
   that compiles the Windows-only code (including test code).
 - **`windows tests`** (lean CI only) — runs the tests that only run on Windows,
-  since lean CI builds nothing else there: `cargo test --lib` for the crates in
-  `windowsTestLibCrates` (in `ci.ts`; they have `cfg(windows)` tests, or Windows
-  code their tests exercise), then the `tests/unit` files in `windowsUnitTests`
-  (unit tests that ignore every other OS) against a debug `ende` it builds. It
-  builds everything first and saves its cache before running the tests, so a
-  failing test doesn't make the next run build cold. When a crate or unit test
-  file gains a Windows-only test, add it to those lists.
+  since lean CI builds nothing else there: `cargo test --lib --no-fail-fast` for
+  the crates in `windowsTestLibCrates` (in `ci.ts`; they have `cfg(windows)`
+  tests, or Windows code their tests exercise; every crate reports even when an
+  earlier one fails), then the `tests/unit` files in `windowsUnitTests` (unit
+  tests that ignore every other OS) against a debug `ende` it builds. It builds
+  everything first and saves its cache before running the tests, so a failing
+  test doesn't make the next run build cold. When a crate or unit test file
+  gains a Windows-only test, add it to those lists.
 - **`ci-status`** — an aggregator that the branch protection rule keys on. It
   passes as long as none of its dependencies failed or were cancelled; skipped
   dependencies are fine.
