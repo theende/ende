@@ -57,7 +57,6 @@ pub async fn desktop(
   let laufey_resolver = Arc::new(LaufeyBackendResolver::new(&factory)?);
   let ende_dir_root = factory.ende_dir()?.root.clone();
 
-  apply_desktop_config_to_flags(&mut desktop_flags, desktop_config);
   super::compile::ensure_entrypoint_given(
     "desktop",
     &desktop_flags.source_file,
@@ -75,6 +74,8 @@ pub async fn desktop(
       log::info!("Building for target: {}", target);
       let mut desktop_flags = desktop_flags.clone();
       desktop_flags.target = Some(target.to_string());
+      // Each target gets its own `output.<os>` and `icons.<os>`.
+      apply_desktop_config_to_flags(&mut desktop_flags, desktop_config.clone());
       Box::pin(compile_desktop(
         flags.clone(),
         desktop_flags,
@@ -86,6 +87,7 @@ pub async fn desktop(
     }
     Ok(())
   } else {
+    apply_desktop_config_to_flags(&mut desktop_flags, desktop_config);
     Box::pin(compile_desktop(
       flags,
       desktop_flags,
@@ -100,20 +102,20 @@ pub async fn desktop(
 /// Applies `ende.json`'s `desktop` config to the CLI flags. An `ende.json` field
 /// only fills in a flag that was left unset — CLI flags always win. The webview
 /// backend remains the final fallback via the `unwrap_or("webview")` call sites
-/// that consume `desktop_flags.backend`.
+/// that consume `desktop_flags.backend`. The per-OS `output` and `icons` are
+/// the ones for the OS of `--target`, or of the host without it.
 fn apply_desktop_config_to_flags(
   desktop_flags: &mut DesktopFlags,
   desktop_config: DesktopConfig,
 ) {
+  let target_os = desktop_target_os(desktop_flags.target.as_deref());
   if let Some(output) = desktop_config.output
     && desktop_flags.output.is_none()
   {
-    desktop_flags.output = if cfg!(target_os = "macos") {
-      output.macos
-    } else if cfg!(target_os = "windows") {
-      output.windows
-    } else {
-      output.linux
+    desktop_flags.output = match target_os {
+      "macos" => output.macos,
+      "windows" => output.windows,
+      _ => output.linux,
     };
   }
 
@@ -122,12 +124,10 @@ fn apply_desktop_config_to_flags(
       && desktop_flags.icon.is_none()
     {
       use ende_config::ende_json::DesktopIconValue;
-      let platform_icon = if cfg!(target_os = "macos") {
-        icons.macos
-      } else if cfg!(target_os = "windows") {
-        icons.windows
-      } else {
-        icons.linux
+      let platform_icon = match target_os {
+        "macos" => icons.macos,
+        "windows" => icons.windows,
+        _ => icons.linux,
       };
       desktop_flags.icon = platform_icon.map(|v| match v {
         DesktopIconValue::Single(s) => crate::args::IconConfig::Single(s),
@@ -508,21 +508,7 @@ fn make_self_extracting(
   format: &str,
   desktop_flags: &DesktopFlags,
 ) -> Result<(), AnyError> {
-  let target_os = match desktop_flags.target.as_deref() {
-    Some(t) if t.contains("apple-darwin") => "macos",
-    Some(t) if t.contains("windows") => "windows",
-    Some(_) => "linux",
-    None => {
-      if cfg!(target_os = "macos") {
-        "macos"
-      } else if cfg!(target_os = "windows") {
-        "windows"
-      } else {
-        "linux"
-      }
-    }
-  };
-  match target_os {
+  match desktop_target_os(desktop_flags.target.as_deref()) {
     "macos" => make_self_extracting_macos(bundle_path, format, desktop_flags),
     "windows" => make_self_extracting_dir(bundle_path, format, true, None),
     _ => {
@@ -590,21 +576,7 @@ fn register_deep_links(
     return Ok(());
   }
 
-  let target_os = match desktop_flags.target.as_deref() {
-    Some(t) if t.contains("apple-darwin") => "macos",
-    Some(t) if t.contains("windows") => "windows",
-    Some(_) => "linux",
-    None => {
-      if cfg!(target_os = "macos") {
-        "macos"
-      } else if cfg!(target_os = "windows") {
-        "windows"
-      } else {
-        "linux"
-      }
-    }
-  };
-  match target_os {
+  match desktop_target_os(desktop_flags.target.as_deref()) {
     "macos" => register_deep_links_macos(bundle_path, &schemes)?,
     "windows" => register_deep_links_windows(bundle_path, &schemes)?,
     _ => register_deep_links_linux(bundle_path, &schemes)?,
@@ -620,6 +592,25 @@ fn register_deep_links(
       .join(", "),
   );
   Ok(())
+}
+
+/// The OS a desktop build is for, `macos`, `windows` or `linux`: that of the
+/// `--target` triple, or of the host without one.
+fn desktop_target_os(target: Option<&str>) -> &'static str {
+  match target {
+    Some(t) if t.contains("apple-darwin") => "macos",
+    Some(t) if t.contains("windows") => "windows",
+    Some(_) => "linux",
+    None => {
+      if cfg!(target_os = "macos") {
+        "macos"
+      } else if cfg!(target_os = "windows") {
+        "windows"
+      } else {
+        "linux"
+      }
+    }
+  }
 }
 
 /// The configured deep-link schemes, trimmed and lowercased, without empty
@@ -9583,6 +9574,48 @@ def456  other.zip
   }
 
   // --- desktop.backend config merge (CLI flag > ende.json > webview) ---
+
+  #[test]
+  fn platform_config_follows_the_target_not_the_host() {
+    use ende_config::ende_json::DesktopAppConfig;
+    use ende_config::ende_json::DesktopIconValue;
+    use ende_config::ende_json::DesktopIconsConfig;
+    use ende_config::ende_json::DesktopOutputConfig;
+    let config = DesktopConfig {
+      app: Some(DesktopAppConfig {
+        icons: Some(DesktopIconsConfig {
+          macos: Some(DesktopIconValue::Single("icon.icns".to_string())),
+          windows: Some(DesktopIconValue::Single("icon.ico".to_string())),
+          linux: Some(DesktopIconValue::Single("icon.png".to_string())),
+        }),
+        ..Default::default()
+      }),
+      output: Some(DesktopOutputConfig {
+        macos: Some("dist/App.dmg".to_string()),
+        windows: Some("dist/App.msi".to_string()),
+        linux: Some("dist/App.deb".to_string()),
+      }),
+      ..Default::default()
+    };
+    for (target, icon, output) in [
+      ("x86_64-pc-windows-msvc", "icon.ico", "dist/App.msi"),
+      ("x86_64-unknown-linux-gnu", "icon.png", "dist/App.deb"),
+      ("aarch64-apple-darwin", "icon.icns", "dist/App.dmg"),
+    ] {
+      let mut flags = DesktopFlags {
+        source_file: "main.ts".to_string(),
+        target: Some(target.to_string()),
+        ..Default::default()
+      };
+      apply_desktop_config_to_flags(&mut flags, config.clone());
+      assert_eq!(
+        flags.icon,
+        Some(crate::args::IconConfig::Single(icon.to_string())),
+        "{target}"
+      );
+      assert_eq!(flags.output.as_deref(), Some(output), "{target}");
+    }
+  }
 
   #[test]
   fn backend_from_ende_json_when_flag_absent() {
