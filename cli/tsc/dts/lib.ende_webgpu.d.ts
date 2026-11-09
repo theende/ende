@@ -117,6 +117,25 @@ declare class GPU {
     options?: GPURequestAdapterOptions,
   ): Promise<GPUAdapter | null>;
   getPreferredCanvasFormat(): GPUTextureFormat;
+  readonly wgslLanguageFeatures: WGSLLanguageFeatures;
+}
+
+/**
+ * The WGSL language extensions that the implementation supports.
+ *
+ * @category GPU
+ */
+declare class WGSLLanguageFeatures {
+  forEach(
+    callbackfn: (value: string, value2: string, set: Set<string>) => void,
+    thisArg?: any,
+  ): void;
+  has(value: string): boolean;
+  size: number;
+  [Symbol.iterator](): IterableIterator<string>;
+  entries(): IterableIterator<[string, string]>;
+  keys(): IterableIterator<string>;
+  values(): IterableIterator<string>;
 }
 
 /** @category GPU */
@@ -364,26 +383,26 @@ type GPUBufferUsageFlags = number;
 type GPUFlagsConstant = number;
 
 /** @category GPU */
-declare class GPUBufferUsage {
-  static MAP_READ: 0x0001;
-  static MAP_WRITE: 0x0002;
-  static COPY_SRC: 0x0004;
-  static COPY_DST: 0x0008;
-  static INDEX: 0x0010;
-  static VERTEX: 0x0020;
-  static UNIFORM: 0x0040;
-  static STORAGE: 0x0080;
-  static INDIRECT: 0x0100;
-  static QUERY_RESOLVE: 0x0200;
+declare namespace GPUBufferUsage {
+  const MAP_READ: 0x0001;
+  const MAP_WRITE: 0x0002;
+  const COPY_SRC: 0x0004;
+  const COPY_DST: 0x0008;
+  const INDEX: 0x0010;
+  const VERTEX: 0x0020;
+  const UNIFORM: 0x0040;
+  const STORAGE: 0x0080;
+  const INDIRECT: 0x0100;
+  const QUERY_RESOLVE: 0x0200;
 }
 
 /** @category GPU */
 type GPUMapModeFlags = number;
 
 /** @category GPU */
-declare class GPUMapMode {
-  static READ: 0x0001;
-  static WRITE: 0x0002;
+declare namespace GPUMapMode {
+  const READ: 0x0001;
+  const WRITE: 0x0002;
 }
 
 /**
@@ -449,12 +468,12 @@ type GPUTextureDimension = "1d" | "2d" | "3d";
 type GPUTextureUsageFlags = number;
 
 /** @category GPU */
-declare class GPUTextureUsage {
-  static COPY_SRC: 0x01;
-  static COPY_DST: 0x02;
-  static TEXTURE_BINDING: 0x04;
-  static STORAGE_BINDING: 0x08;
-  static RENDER_ATTACHMENT: 0x10;
+declare namespace GPUTextureUsage {
+  const COPY_SRC: 0x01;
+  const COPY_DST: 0x02;
+  const TEXTURE_BINDING: 0x04;
+  const STORAGE_BINDING: 0x08;
+  const RENDER_ATTACHMENT: 0x10;
 }
 
 /** @category GPU */
@@ -648,10 +667,10 @@ interface GPUBindGroupLayoutEntry {
 type GPUShaderStageFlags = number;
 
 /** @category GPU */
-declare class GPUShaderStage {
-  static VERTEX: 0x1;
-  static FRAGMENT: 0x2;
-  static COMPUTE: 0x4;
+declare namespace GPUShaderStage {
+  const VERTEX: 0x1;
+  const FRAGMENT: 0x2;
+  const COMPUTE: 0x4;
 }
 
 /** @category GPU */
@@ -935,12 +954,12 @@ interface GPUBlendState {
 type GPUColorWriteFlags = number;
 
 /** @category GPU */
-declare class GPUColorWrite {
-  static RED: 0x1;
-  static GREEN: 0x2;
-  static BLUE: 0x4;
-  static ALPHA: 0x8;
-  static ALL: 0xF;
+declare namespace GPUColorWrite {
+  const RED: 0x1;
+  const GREEN: 0x2;
+  const BLUE: 0x4;
+  const ALPHA: 0x8;
+  const ALL: 0xF;
 }
 
 /** @category GPU */

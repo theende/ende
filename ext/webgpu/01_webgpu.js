@@ -44,6 +44,7 @@ import {
 } from "ext:core/ops";
 const {
   ObjectDefineProperty,
+  ObjectEntries,
   ObjectFreeze,
   ObjectPrototypeIsPrototypeOf,
   ObjectSetPrototypeOf,
@@ -410,55 +411,50 @@ ObjectDefineProperty(GPUBufferPrototype, privateCustomInspect, {
   },
 });
 
-class GPUBufferUsage {
-  constructor() {
-    webidl.illegalConstructor();
+// A Web IDL namespace of constants (GPUBufferUsage, ...): a plain object with
+// its own toStringTag and read-only, enumerable, non-configurable members.
+function createNamespace(name, constants) {
+  const namespace = {};
+  for (
+    const { 0: key, 1: value } of new SafeArrayIterator(
+      ObjectEntries(constants),
+    )
+  ) {
+    ObjectDefineProperty(namespace, key, {
+      __proto__: null,
+      value,
+      writable: false,
+      enumerable: true,
+      configurable: false,
+    });
   }
-
-  static get MAP_READ() {
-    return 0x0001;
-  }
-  static get MAP_WRITE() {
-    return 0x0002;
-  }
-  static get COPY_SRC() {
-    return 0x0004;
-  }
-  static get COPY_DST() {
-    return 0x0008;
-  }
-  static get INDEX() {
-    return 0x0010;
-  }
-  static get VERTEX() {
-    return 0x0020;
-  }
-  static get UNIFORM() {
-    return 0x0040;
-  }
-  static get STORAGE() {
-    return 0x0080;
-  }
-  static get INDIRECT() {
-    return 0x0100;
-  }
-  static get QUERY_RESOLVE() {
-    return 0x0200;
-  }
+  ObjectDefineProperty(namespace, SymbolToStringTag, {
+    __proto__: null,
+    value: name,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  return namespace;
 }
 
-class GPUMapMode {
-  constructor() {
-    webidl.illegalConstructor();
-  }
+const GPUBufferUsage = createNamespace("GPUBufferUsage", {
+  MAP_READ: 0x0001,
+  MAP_WRITE: 0x0002,
+  COPY_SRC: 0x0004,
+  COPY_DST: 0x0008,
+  INDEX: 0x0010,
+  VERTEX: 0x0020,
+  UNIFORM: 0x0040,
+  STORAGE: 0x0080,
+  INDIRECT: 0x0100,
+  QUERY_RESOLVE: 0x0200,
+});
 
-  static get READ() {
-    return 0x0001;
-  }
-  static get WRITE() {
-    return 0x0002;
-  }
-}
+const GPUMapMode = createNamespace("GPUMapMode", {
+  READ: 0x0001,
+  WRITE: 0x0002,
+});
 
 const GPUTexturePrototype = GPUTexture.prototype;
 ObjectDefineProperty(GPUTexturePrototype, privateCustomInspect, {
@@ -485,27 +481,13 @@ ObjectDefineProperty(GPUTexturePrototype, privateCustomInspect, {
   },
 });
 
-class GPUTextureUsage {
-  constructor() {
-    webidl.illegalConstructor();
-  }
-
-  static get COPY_SRC() {
-    return 0x01;
-  }
-  static get COPY_DST() {
-    return 0x02;
-  }
-  static get TEXTURE_BINDING() {
-    return 0x04;
-  }
-  static get STORAGE_BINDING() {
-    return 0x08;
-  }
-  static get RENDER_ATTACHMENT() {
-    return 0x10;
-  }
-}
+const GPUTextureUsage = createNamespace("GPUTextureUsage", {
+  COPY_SRC: 0x01,
+  COPY_DST: 0x02,
+  TEXTURE_BINDING: 0x04,
+  STORAGE_BINDING: 0x08,
+  RENDER_ATTACHMENT: 0x10,
+});
 
 const GPUTextureViewPrototype = GPUTextureView.prototype;
 ObjectDefineProperty(GPUTextureViewPrototype, privateCustomInspect, {
@@ -663,23 +645,11 @@ ObjectDefineProperty(GPUCompilationMessagePrototype, privateCustomInspect, {
   },
 });
 
-class GPUShaderStage {
-  constructor() {
-    webidl.illegalConstructor();
-  }
-
-  static get VERTEX() {
-    return 0x1;
-  }
-
-  static get FRAGMENT() {
-    return 0x2;
-  }
-
-  static get COMPUTE() {
-    return 0x4;
-  }
-}
+const GPUShaderStage = createNamespace("GPUShaderStage", {
+  VERTEX: 0x1,
+  FRAGMENT: 0x2,
+  COMPUTE: 0x4,
+});
 
 const GPUComputePipelinePrototype = GPUComputePipeline.prototype;
 ObjectDefineProperty(GPUComputePipelinePrototype, privateCustomInspect, {
@@ -721,27 +691,13 @@ ObjectDefineProperty(GPURenderPipelinePrototype, privateCustomInspect, {
   },
 });
 
-class GPUColorWrite {
-  constructor() {
-    webidl.illegalConstructor();
-  }
-
-  static get RED() {
-    return 0x1;
-  }
-  static get GREEN() {
-    return 0x2;
-  }
-  static get BLUE() {
-    return 0x4;
-  }
-  static get ALPHA() {
-    return 0x8;
-  }
-  static get ALL() {
-    return 0xF;
-  }
-}
+const GPUColorWrite = createNamespace("GPUColorWrite", {
+  RED: 0x1,
+  GREEN: 0x2,
+  BLUE: 0x4,
+  ALPHA: 0x8,
+  ALL: 0xF,
+});
 
 const GPUCommandEncoderPrototype = GPUCommandEncoder.prototype;
 ObjectDefineProperty(GPUCommandEncoderPrototype, privateCustomInspect, {

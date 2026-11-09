@@ -483,6 +483,10 @@ const windowOrWorkerGlobalScope = {
     (webgpu) => webgpu.GPUValidationError,
     loadWebGPU,
   ),
+  WGSLLanguageFeatures: core.propNonEnumerableLazyLoaded(
+    (webgpu) => webgpu.WGSLLanguageFeatures,
+    loadWebGPU,
+  ),
   Lock: core.propNonEnumerableLazyLoaded(
     (locks) => locks.Lock,
     loadLocks,

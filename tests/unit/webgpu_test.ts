@@ -1331,6 +1331,59 @@ Deno.test({
   device.destroy();
 });
 
+// Web IDL namespaces: plain objects with their own toStringTag and
+// read-only, enumerable, non-configurable constants.
+Deno.test(function webgpuFlagNamespacesArePlainObjects() {
+  const namespaces = {
+    GPUBufferUsage: {
+      MAP_READ: 0x0001,
+      MAP_WRITE: 0x0002,
+      COPY_SRC: 0x0004,
+      COPY_DST: 0x0008,
+      INDEX: 0x0010,
+      VERTEX: 0x0020,
+      UNIFORM: 0x0040,
+      STORAGE: 0x0080,
+      INDIRECT: 0x0100,
+      QUERY_RESOLVE: 0x0200,
+    },
+    GPUMapMode: { READ: 0x0001, WRITE: 0x0002 },
+    GPUTextureUsage: {
+      COPY_SRC: 0x01,
+      COPY_DST: 0x02,
+      TEXTURE_BINDING: 0x04,
+      STORAGE_BINDING: 0x08,
+      RENDER_ATTACHMENT: 0x10,
+    },
+    GPUShaderStage: { VERTEX: 0x1, FRAGMENT: 0x2, COMPUTE: 0x4 },
+    GPUColorWrite: { RED: 0x1, GREEN: 0x2, BLUE: 0x4, ALPHA: 0x8, ALL: 0xF },
+  };
+  for (const [name, constants] of Object.entries(namespaces)) {
+    // deno-lint-ignore no-explicit-any
+    const namespace = (globalThis as any)[name];
+    assertEquals(typeof namespace, "object", name);
+    assertEquals(Object.getPrototypeOf(namespace), Object.prototype, name);
+    assertEquals(
+      Object.getOwnPropertyDescriptor(namespace, Symbol.toStringTag),
+      { value: name, writable: false, enumerable: false, configurable: true },
+    );
+    assertEquals(Object.keys(namespace), Object.keys(constants), name);
+    for (const [key, value] of Object.entries(constants)) {
+      assertEquals(
+        Object.getOwnPropertyDescriptor(namespace, key),
+        { value, writable: false, enumerable: true, configurable: false },
+        `${name}.${key}`,
+      );
+    }
+  }
+});
+
+Deno.test(function webgpuWGSLLanguageFeaturesIsExposed() {
+  assertEquals(typeof WGSLLanguageFeatures, "function");
+  assert(navigator.gpu.wgslLanguageFeatures instanceof WGSLLanguageFeatures);
+  assertThrows(() => new WGSLLanguageFeatures(), TypeError);
+});
+
 async function checkIsWsl() {
   return Deno.build.os === "linux" && await hasMicrosoftProcVersion();
 
