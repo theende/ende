@@ -66,7 +66,7 @@ jobs, or run the workflow by hand with the `tag` input.
 
 Assets per target (`<target>` as above):
 
-- `ende-<target>.zip` — just `ende` (`ende.exe` on Windows)
+- `ende-<target>.zip` — `ende` (`ende.exe` on Windows) and `NOTICE`
 - `ende-<target>.zip.sha256sum`
 - `ende-<target>.sha256sum` — SHA-256 of the extracted binary
 - `endert-<target>.zip`, `endert-<target>.zip.sha256sum`
@@ -75,8 +75,10 @@ Assets per target (`<target>` as above):
 - `ende-<target>.from-<previous version>.bsdiff` and `.bsdiff.sha256sum` — when
   there is a previous published release
 
-Checksum files read `<sha256>  <file name>`. The QuickJS runtimes
-(`endert-quickjs-*`, used by `ende compile --engine quickjs`) are not built yet.
+Every zip also holds `NOTICE`: the repository's `NOTICE` followed by the
+`NOTICE.txt` of the embedded TypeScript 7 compiler. Checksum files read
+`<sha256>  <file name>`. The QuickJS runtimes (`endert-quickjs-*`, used by
+`ende compile --engine quickjs`) are not built yet.
 
 ## TypeScript 7 compiler
 
@@ -144,6 +146,8 @@ workflow runs them on every OS when they change.
 
 ## Checking the packaging locally
 
-`tools/release/package_release.sh <target> <bin-dir> <out-dir>` produces the
-assets above from a directory of built binaries, so it can be run against a
-local `cargo build --release` to inspect the archives.
+`tools/release/package_release.sh <target> <bin-dir> <out-dir> <typescript-notice>`
+produces the assets above from a directory of built binaries, so it can be run
+against a local `cargo build --release` to inspect the archives.
+`<typescript-notice>` is the `NOTICE.txt` in the directory `fetch_tsc7.sh`
+unpacked.

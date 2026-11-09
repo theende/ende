@@ -14,21 +14,29 @@
 #   <zip>.sha256sum                for each runtime zip
 #   <patch>.sha256sum              for each `*.bsdiff` already in <out-dir>
 #
-# Each zip holds a single file at its root. Run it on the binaries exactly as
-# they will ship (stripped and signed).
+# Each zip holds its binary and NOTICE at its root. NOTICE is the repo's
+# NOTICE followed by <typescript-notice>, the NOTICE.txt of the TypeScript 7
+# compiler embedded in `ende` (in the directory tools/release/fetch_tsc7.sh
+# unpacks). Run it on the binaries exactly as they will ship (stripped and
+# signed).
 #
-# Usage: package_release.sh <target> <bin-dir> <out-dir>
+# Usage: package_release.sh <target> <bin-dir> <out-dir> <typescript-notice>
 
 set -euo pipefail
 
-if [ $# -ne 3 ]; then
-  echo "Usage: package_release.sh <target> <bin-dir> <out-dir>" >&2
+if [ $# -ne 4 ]; then
+  echo "Usage: package_release.sh <target> <bin-dir> <out-dir> <typescript-notice>" >&2
   exit 1
 fi
 target=$1
 bin_dir=$(cd "$2" && pwd)
 mkdir -p "$3"
 out_dir=$(cd "$3" && pwd)
+typescript_notice=$4
+if [ ! -f "$typescript_notice" ]; then
+  echo "Missing $typescript_notice" >&2
+  exit 1
+fi
 
 case "$target" in
   *-windows-*) exe_ext=.exe lib_file=endert.dll ;;
@@ -57,8 +65,32 @@ write_checksum() {
     > "$out_dir/$checksum_file"
 }
 
-# zip_file <archive-name> <file-name>: zips <bin-dir>/<file-name> into
-# <out-dir>/<archive-name> and checksums the zip.
+notice_dir=$(mktemp -d)
+trap 'rm -rf "$notice_dir"' EXIT
+{
+  cat "$(dirname "$0")/../../NOTICE"
+  printf '\n%s\n\n' "=========================================================================="
+  printf '%s\n' "TypeScript 7 compiler: NOTICE.txt" \
+    "---------------------------------" "" \
+    "The NOTICE.txt of the TypeScript 7 package (see the TypeScript 7" \
+    "section above), unmodified:" ""
+  cat "$typescript_notice"
+} > "$notice_dir/NOTICE"
+
+# add_to_zip <dir> <archive-name> <file-name>: adds <dir>/<file-name> to
+# <out-dir>/<archive-name>, at its root.
+add_to_zip() {
+  local dir=$1 archive=$2 file=$3
+  if command -v zip > /dev/null; then
+    (cd "$dir" && zip -q -9 "$out_dir/$archive" "$file")
+  else
+    # Windows runners have 7-Zip but no `zip`.
+    (cd "$dir" && 7z a -tzip -mx=9 "$out_dir/$archive" "$file" > /dev/null)
+  fi
+}
+
+# zip_file <archive-name> <file-name>: zips <bin-dir>/<file-name> and NOTICE
+# into <out-dir>/<archive-name> and checksums the zip.
 zip_file() {
   local archive=$1 file=$2
   if [ ! -f "$bin_dir/$file" ]; then
@@ -66,12 +98,8 @@ zip_file() {
     exit 1
   fi
   rm -f "$out_dir/$archive"
-  if command -v zip > /dev/null; then
-    (cd "$bin_dir" && zip -q -9 "$out_dir/$archive" "$file")
-  else
-    # Windows runners have 7-Zip but no `zip`.
-    (cd "$bin_dir" && 7z a -tzip -mx=9 "$out_dir/$archive" "$file" > /dev/null)
-  fi
+  add_to_zip "$bin_dir" "$archive" "$file"
+  add_to_zip "$notice_dir" "$archive" NOTICE
   write_checksum "$out_dir/$archive" "$archive.sha256sum"
   echo "Packaged $archive"
 }

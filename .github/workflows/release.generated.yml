@@ -334,7 +334,7 @@ jobs:
           mkdir -p dist
           "target/release/bsdiff_helper$EXE" "prev-release/ende$EXE" "target/release/ende$EXE" "dist/ende-$TARGET.from-${PREV_TAG#v}.bsdiff"
       - name: Package
-        run: ./tools/release/package_release.sh "$TARGET" target/release dist
+        run: ./tools/release/package_release.sh "$TARGET" target/release dist "$ENDE_TSC7_DIR/NOTICE.txt"
       - name: Notarize ende (mac)
         if: matrix.os == 'macos' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_NOTARY_KEY == 'true'
         env:

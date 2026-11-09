@@ -275,7 +275,8 @@ const deltaStep = step({
 
 const packageStep = step({
   name: "Package",
-  run: './tools/release/package_release.sh "$TARGET" target/release dist',
+  run:
+    './tools/release/package_release.sh "$TARGET" target/release dist "$ENDE_TSC7_DIR/NOTICE.txt"',
 });
 
 // Notarizes the exact zip being shipped. A bare executable can't be stapled,
