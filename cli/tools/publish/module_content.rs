@@ -134,8 +134,8 @@ impl<TSys: ModuleContentProviderSys> ModuleContentProvider<TSys> {
         .push(PublishDiagnostic::SpecifierUnfurl(diagnostic));
     };
     let text_info = parsed_source.text_info_lazy();
-    let module_info =
-      deno_graph::ast::ParserModuleAnalyzer::module_info(&parsed_source);
+    // With `@ende-types` read as `@ts-types`, so its specifier is unfurled.
+    let module_info = crate::ende_types::module_info(&parsed_source);
     let mut text_changes =
       crate::ende_types::to_ts_types_text_changes(&parsed_source);
     if media_type.is_jsx() {
@@ -383,6 +383,24 @@ mod test {
         "// @ende-types=\"./a.d.ts\"\nimport { a } from \"lib/a.js\";\nconst b = await /* @Ende-Types='./b.d.ts' */ import(\"./b.js\");\n// @ts-types=\"./c.d.ts\"\nimport { c } from \"./c.js\";\n",
         Some(
           "// @ts-types=\"./a.d.ts\"\nimport { a } from \"./lib/a.js\";\nconst b = await /* @ts-types='./b.d.ts' */ import(\"./b.js\");\n// @ts-types=\"./c.d.ts\"\nimport { c } from \"./c.js\";\n",
+        ),
+      ),
+      ("/lib/a.js", "export const a = 1;", None),
+    ])
+    .await;
+  }
+
+  #[tokio::test]
+  async fn test_module_content_unfurls_types_pragma_specifiers() {
+    // A consumer has no import map, so the specifier in the pragma is
+    // unfurled like the import's.
+    run_test(&[
+      ("/ende.json", r#"{ "imports": { "lib/": "./lib/" } }"#, None),
+      (
+        "/mod.ts",
+        "// @ende-types=\"lib/a.d.ts\"\nimport { a } from \"lib/a.js\";\n// @ts-types=\"lib/c.d.ts\"\nimport { c } from \"./c.js\";\n",
+        Some(
+          "// @ts-types=\"./lib/a.d.ts\"\nimport { a } from \"./lib/a.js\";\n// @ts-types=\"./lib/c.d.ts\"\nimport { c } from \"./c.js\";\n",
         ),
       ),
       ("/lib/a.js", "export const a = 1;", None),

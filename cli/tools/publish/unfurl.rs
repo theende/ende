@@ -534,6 +534,21 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
         }
       };
     for dep in &module_info.dependencies {
+      // The specifier in a `@ts-types` (or `@deno-types`) pragma.
+      let types_specifier = match dep {
+        DependencyDescriptor::Static(dep) => &dep.types_specifier,
+        DependencyDescriptor::Dynamic(dep) => &dep.types_specifier,
+      };
+      if let Some(types_specifier) = types_specifier {
+        analyze_specifier(
+          &types_specifier.text,
+          PositionOrSourceRangeRef::PositionRange(&types_specifier.range),
+          ende_resolver::workspace::ResolutionKind::Types,
+          SpecifierTextContext::QuotedComment,
+          text_changes,
+          diagnostic_reporter,
+        );
+      }
       match dep {
         DependencyDescriptor::Static(dep) => {
           let resolution_kind = if parsed_source.media_type().is_declaration() {
@@ -589,6 +604,16 @@ impl<TSys: SpecifierUnfurlerSys> SpecifierUnfurler<TSys> {
           }
         }
       }
+    }
+    if let Some(specifier_with_range) = &module_info.self_types_specifier {
+      analyze_specifier(
+        &specifier_with_range.text,
+        PositionOrSourceRangeRef::PositionRange(&specifier_with_range.range),
+        ende_resolver::workspace::ResolutionKind::Types,
+        SpecifierTextContext::QuotedComment,
+        text_changes,
+        diagnostic_reporter,
+      );
     }
     for ts_ref in &module_info.ts_references {
       let specifier_with_range = match ts_ref {
@@ -828,6 +853,43 @@ const warn2 = await import(`${expr}`);
 
 import.meta.resolve("./fizz/mod.ts");
 import.meta.resolve(nonAnalyzable);
+"#;
+      assert_eq!(unfurled_source, expected_source);
+    }
+
+    // The specifiers in types pragmas are unfurled too, with types
+    // resolution.
+    {
+      let source_code = r#"// @ts-types="lib/foo.d.ts"
+import foo from "lib/foo.js";
+// @deno-types='./c'
+import c from "./c.js";
+// @ts-types="@std/path"
+import * as path from "./path.js";
+const d = await /* @ts-types="fizz" */ import("./d.js");
+"#;
+      let unfurled_source =
+        unfurl_text(&cwd.join("mod.ts"), source_code, &unfurler);
+      let expected_source = r#"// @ts-types="./lib/foo.d.ts"
+import foo from "./lib/foo.js";
+// @deno-types='./c.d.ts'
+import c from "./c.js";
+// @ts-types="jsr:@std/path@1"
+import * as path from "./path.js";
+const d = await /* @ts-types="./fizz/mod.ts" */ import("./d.js");
+"#;
+      assert_eq!(unfurled_source, expected_source);
+    }
+
+    // `@ts-self-types` (read in JavaScript files only).
+    {
+      let source_code = r#"// @ts-self-types="lib/mod.d.ts"
+export default 1;
+"#;
+      let unfurled_source =
+        unfurl_text(&cwd.join("mod.js"), source_code, &unfurler);
+      let expected_source = r#"// @ts-self-types="./lib/mod.d.ts"
+export default 1;
 "#;
       assert_eq!(unfurled_source, expected_source);
     }
