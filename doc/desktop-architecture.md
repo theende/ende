@@ -164,9 +164,9 @@ is the runtime's own origin storage (`localStorage` and `caches` of the app's
 Ende code): `<data dir>/<identifier>/storage` (`desktop_origin_data_folder` in
 `cli/rt/run.rs`; `ende compile` binaries keep `<data dir>/<app name>`). Builds
 before 2026-11-08 kept it in `<data dir>/<app name>`; that folder is renamed
-into place once, if the new one doesn't exist yet, and is used as it is if
-the rename fails. Its storage key is still `app:<app name>`, so the folders
-inside carry over, but renaming the app still starts this storage empty.
+into place once, if the new one doesn't exist yet, and is used as it is if the
+rename fails. Its storage key is still `app:<app name>`, so the folders inside
+carry over, but renaming the app still starts this storage empty.
 
 What the app sees on `app://`:
 
@@ -238,10 +238,11 @@ What the app sees on `app://`:
     page gets its `Lax` cookies. Framing policies don't help on macOS: the
     bridge passes `Content-Security-Policy` and `X-Frame-Options` through
     unchanged, and WKWebView enforces the CSP's other directives (`script-src`)
-    on `app://` pages, but not `frame-ancestors 'self'` or `X-Frame-Options:
-    SAMEORIGIN`; a `data:` page and an `http://127.0.0.1` page both framed such
-    a page and ran its scripts (laufey 0.7.0, checked 2026-11-08; WebView2
-    untested). A page that mustn't be framed has to check
+    on `app://` pages, but not `frame-ancestors 'self'` or
+    `X-Frame-Options:
+    SAMEORIGIN`; a `data:` page and an `http://127.0.0.1`
+    page both framed such a page and ran its scripts (laufey 0.7.0, checked
+    2026-11-08; WebView2 untested). A page that mustn't be framed has to check
     `window.top === window` itself.
   - Windows keeps WebView2's own cookie handling (untested whether it keeps
     cookies for the scheme).
@@ -300,9 +301,8 @@ dir so its watcher sees real files.
   while `alert`/`confirm`/`prompt` block the JS thread. A WebGPU window is
   hidden instead of destroyed, as in `BrowserWindow.close()`, but it counts as
   closed (`isClosed()`), so the `close` event JS dispatches when it catches up
-  can't be canceled. A programmatic
-  `close()` fires no `close` event, so the documented "`preventDefault()`, ask,
-  then `close()`" pattern can't loop.
+  can't be canceled. A programmatic `close()` fires no `close` event, so the
+  documented "`preventDefault()`, ask, then `close()`" pattern can't loop.
 
 - **Hidden windows** (`hidden_by_app` in `cli/rt_desktop/lib.rs`): a window the
   app hid (`{ visible: false }`, `hide()`) is recorded so neither the initial
@@ -324,12 +324,12 @@ dir so its watcher sees real files.
   bytes through the runtime's `FileSystem`. The raw backend has no page and
   rejects with `NotSupported`.
 - **Auto-update** (`apply_pending_update`, `UpdateLaunch` in
-  `cli/rt_desktop/lib.rs`; unix only, and on Windows `Ende.autoUpdate` logs
-  that it isn't supported yet): `op_desktop_apply_patch` stages
-  `<dylib>.update`. The first thing `runtime_main` does is check the files
-  beside the dylib. A staged update is swapped in, with the old dylib kept as
-  `.backup`. The swap can't change the code already loaded, so libendert then
-  `execve`s the host executable with the same argv and environment plus
+  `cli/rt_desktop/lib.rs`; unix only, and on Windows `Ende.autoUpdate` logs that
+  it isn't supported yet): `op_desktop_apply_patch` stages `<dylib>.update`. The
+  first thing `runtime_main` does is check the files beside the dylib. A staged
+  update is swapped in, with the old dylib kept as `.backup`. The swap can't
+  change the code already loaded, so libendert then `execve`s the host
+  executable with the same argv and environment plus
   `ENDE_DESKTOP_UPDATE_REEXEC` (Ende-written, denoland/deno#36948). The new
   image's first run is the update's trial: it writes `.update-trial`, and only
   it may write `.update-ok` (`UpdateTrial`, once). The trial succeeds once the
@@ -340,22 +340,22 @@ dir so its watcher sees real files.
   that (an `OpExitCallbacks` hook). So an update whose startup JS throws or
   rejects is rolled back; a crash later in the trial launch isn't. A launch that
   finds `.update-trial` without `.update-ok` restores `.backup` and re-execs
-  again, so the old code runs and fires `onRollback`, unless the trial launch
-  is still running: it holds an exclusive lock on `.backup` (taken before it
-  writes `.update-trial`), so a second instance started during the trial runs
-  the update without confirming it instead of rolling it back. A rollback
-  records the failed library's SHA-256 in `.update-rejected`, and
+  again, so the old code runs and fires `onRollback`, unless the trial launch is
+  still running: it holds an exclusive lock on `.backup` (taken before it writes
+  `.update-trial`), so a second instance started during the trial runs the
+  update without confirming it instead of rolling it back. A rollback records
+  the failed library's SHA-256 in `.update-rejected`, and
   `op_desktop_apply_patch` refuses to stage a patch whose `targetSha256` is
-  there (the release server usually still offers it); the record goes once
-  the app confirms a later update. The patch is still downloaded before it's
-  refused. A re-exec'd process never
-  swaps or re-execs, so there is no loop. Before the exec every descriptor above
-  stderr is marked `FD_CLOEXEC`: without that, the new CEF image kept the old
-  one's profile files (LevelDB `LOCK`s, caches) and pipes open. If the exec
-  fails, the old code keeps running, logs a warning, and doesn't confirm; the
-  next launch is the trial. The backend is already up at that point, so a CEF
-  window that showed at creation may flash once. A dylib that can't even be
-  loaded never reaches this code, so it can't be rolled back.
+  there (the release server usually still offers it); the record goes once the
+  app confirms a later update. The patch is still downloaded before it's
+  refused. A re-exec'd process never swaps or re-execs, so there is no loop.
+  Before the exec every descriptor above stderr is marked `FD_CLOEXEC`: without
+  that, the new CEF image kept the old one's profile files (LevelDB `LOCK`s,
+  caches) and pipes open. If the exec fails, the old code keeps running, logs a
+  warning, and doesn't confirm; the next launch is the trial. The backend is
+  already up at that point, so a CEF window that showed at creation may flash
+  once. A dylib that can't even be loaded never reaches this code, so it can't
+  be rolled back.
 - **Window-handle interop** (`get_raw_window_handle`, `lib.rs:467`): laufey's
   native handle is converted to `raw-window-handle` types per platform — AppKit
   / Win32 / X11 / **Wayland** (`LAUFEY_WINDOW_HANDLE_WAYLAND`, `lib.rs:518`).
