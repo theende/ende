@@ -327,7 +327,10 @@ dir so its watcher sees real files.
   that (an `OpExitCallbacks` hook). So an update whose startup JS throws or
   rejects is rolled back; a crash later in the trial launch isn't. A launch that
   finds `.update-trial` without `.update-ok` restores `.backup` and re-execs
-  again, so the old code runs and fires `onRollback`. A re-exec'd process never
+  again, so the old code runs and fires `onRollback`, unless the trial launch
+  is still running: it holds an exclusive lock on `.backup` (taken before it
+  writes `.update-trial`), so a second instance started during the trial runs
+  the update without confirming it instead of rolling it back. A re-exec'd process never
   swaps or re-execs, so there is no loop. Before the exec every descriptor above
   stderr is marked `FD_CLOEXEC`: without that, the new CEF image kept the old
   one's profile files (LevelDB `LOCK`s, caches) and pipes open. If the exec

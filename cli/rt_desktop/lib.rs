@@ -1465,16 +1465,21 @@ const REEXEC_AFTER_ROLLBACK: &str = "rolled-back";
 /// 2. `.backup` and `.update-ok`: the update was confirmed. Delete `.backup`,
 ///    `.update-ok` and `.update-trial` ([`Normal`]).
 /// 3. `.backup` without `.update-ok` or `.update-trial`: this is the new code's
-///    first launch, its trial. Write `.update-trial` ([`Trial`]). Normally this
-///    is the re-exec'd process; it's the next launch if the re-exec failed or
-///    the process died between the swap and the exec.
-/// 4. `.backup` and `.update-trial` without `.update-ok`: the trial launch
-///    ended without confirming, so it crashed. Restore `.backup`
+///    first launch, its trial. Lock `.backup` ([`UpdateTrialLock`], held
+///    until the process ends) and write `.update-trial` ([`Trial`]). Normally
+///    this is the re-exec'd process; it's the next launch if the re-exec failed
+///    or the process died between the swap and the exec.
+/// 4. `.backup` and `.update-trial` without `.update-ok`, and `.backup`
+///    locked: the trial launch is still running, so this is a second instance.
+///    Leave the files to the trial ([`Normal`]).
+/// 5. `.backup` and `.update-trial` without `.update-ok`, and `.backup` not
+///    locked: the trial launch ended without confirming, so it crashed.
+///    Restore `.backup`
 ///    ([`RolledBack`]). The code running is still the broken update's, so
 ///    `runtime_main` re-execs the host here too, and the restored code
 ///    reports the rollback. If the restore fails, keep the files so the next
 ///    launch retries ([`Normal`]).
-/// 5. Anything else: nothing to do ([`Normal`]).
+/// 6. Anything else: nothing to do ([`Normal`]).
 ///
 /// Only a [`Trial`] launch writes `.update-ok`, so an old process that keeps
 /// running after a failed re-exec can't confirm an update it never ran. It
@@ -1499,13 +1504,53 @@ enum UpdateLaunch {
   RolledBack,
 }
 
+/// Held by an update's trial launch for as long as it runs: an exclusive
+/// lock on `<dylib>.backup`. The kernel drops it when the process ends,
+/// however it ends.
+#[cfg(unix)]
+struct UpdateTrialLock(
+  #[allow(dead_code, reason = "held, not read")] std::fs::File,
+);
+
+/// Takes the trial lock, or logs why it couldn't (then a second launch
+/// during the trial rolls the update back, as before the lock existed).
+#[cfg(unix)]
+#[allow(clippy::print_stderr, reason = "runs before logging is initialized")]
+fn lock_update_trial(backup_path: &Path) -> Option<UpdateTrialLock> {
+  let locked = std::fs::File::open(backup_path).and_then(|file| {
+    file.try_lock()?;
+    Ok(file)
+  });
+  match locked {
+    Ok(file) => Some(UpdateTrialLock(file)),
+    Err(e) => {
+      eprintln!("[desktop] could not lock the update trial: {e}");
+      None
+    }
+  }
+}
+
+/// Whether another process holds the trial lock: the trial launch is still
+/// running. `false` when the lock can't be checked, so a crashed trial is
+/// still rolled back.
+#[cfg(unix)]
+fn update_trial_is_running(backup_path: &Path) -> bool {
+  std::fs::File::open(backup_path).is_ok_and(|file| {
+    matches!(file.try_lock(), Err(std::fs::TryLockError::WouldBlock))
+  })
+}
+
 /// Manages pending updates and rollback on startup. See [`UpdateLaunch`] for
-/// the states. `reexeced` is true in the process [`reexec_host`] started.
+/// the states. `reexeced` is true in the process [`reexec_host`] started. A
+/// [`UpdateLaunch::Trial`] comes with the [`UpdateTrialLock`] to hold.
 // Only invoked from the unix `runtime_main` startup path; gated to match its
 // sole call site so it isn't flagged as dead code on other platforms.
 #[cfg(unix)]
 #[allow(clippy::print_stderr, reason = "runs before logging is initialized")]
-fn apply_pending_update(dylib_path: &Path, reexeced: bool) -> UpdateLaunch {
+fn apply_pending_update(
+  dylib_path: &Path,
+  reexeced: bool,
+) -> (UpdateLaunch, Option<UpdateTrialLock>) {
   let ext = dylib_path.extension().unwrap_or_default().to_string_lossy();
   let update_path = dylib_path.with_extension(format!("{}.update", ext));
   let backup_path = dylib_path.with_extension(format!("{}.backup", ext));
@@ -1534,14 +1579,14 @@ fn apply_pending_update(dylib_path: &Path, reexeced: bool) -> UpdateLaunch {
       || std::fs::copy(dylib_path, &backup_path).is_ok();
     if !backup_ok {
       eprintln!("[desktop] could not stage backup, skipping update");
-      return UpdateLaunch::Normal;
+      return (UpdateLaunch::Normal, None);
     }
 
     if replace_dylib_with(&update_path, dylib_path, "update.tmp") {
       // A successful direct rename already consumed `.update`; after a staged
       // copy it's still there, so drop it either way.
       let _ = std::fs::remove_file(&update_path);
-      return UpdateLaunch::Swapped;
+      return (UpdateLaunch::Swapped, None);
     }
     // Couldn't apply the update by rename or copy. Leave `.update` in
     // place so the next launch retries, and delete the unused `.backup`
@@ -1551,11 +1596,11 @@ fn apply_pending_update(dylib_path: &Path, reexeced: bool) -> UpdateLaunch {
     eprintln!(
       "[desktop] failed to apply staged update; will retry on next launch"
     );
-    return UpdateLaunch::Normal;
+    return (UpdateLaunch::Normal, None);
   }
 
   if !backup_path.exists() {
-    return UpdateLaunch::Normal;
+    return (UpdateLaunch::Normal, None);
   }
 
   if sentinel_path.exists() {
@@ -1563,16 +1608,28 @@ fn apply_pending_update(dylib_path: &Path, reexeced: bool) -> UpdateLaunch {
     let _ = std::fs::remove_file(&backup_path);
     let _ = std::fs::remove_file(&sentinel_path);
     let _ = std::fs::remove_file(&trial_path);
-    return UpdateLaunch::Normal;
+    return (UpdateLaunch::Normal, None);
   }
 
   if !trial_path.exists() {
-    // The new code's first launch. If it can't record that, a crash here
-    // isn't rolled back, but neither could a rollback be written.
+    // The new code's first launch. It takes the trial lock before recording
+    // the trial, so a launch that finds the record while this one runs finds
+    // the lock taken too. If it can't record the trial, a crash here isn't
+    // rolled back, but neither could a rollback be written.
+    let lock = lock_update_trial(&backup_path);
     if let Err(e) = std::fs::write(&trial_path, b"") {
       eprintln!("[desktop] could not mark the update trial launch: {e}");
     }
-    return UpdateLaunch::Trial;
+    return (UpdateLaunch::Trial, lock);
+  }
+
+  if update_trial_is_running(&backup_path) {
+    // Another instance is the trial launch, still running: it may yet
+    // confirm the update. This one runs the update without confirming it.
+    eprintln!(
+      "[desktop] another launch is still trying the update; not rolling back"
+    );
+    return (UpdateLaunch::Normal, None);
   }
 
   // The trial launch didn't write the sentinel → it crashed. Rollback.
@@ -1583,12 +1640,12 @@ fn apply_pending_update(dylib_path: &Path, reexeced: bool) -> UpdateLaunch {
     // this launch will fail the same way. Keep `.backup` so the next launch
     // retries instead of treating the failed update as the new baseline.
     eprintln!("[desktop] rollback failed; keeping backup for next launch");
-    return UpdateLaunch::Normal;
+    return (UpdateLaunch::Normal, None);
   }
   // After a copy, `.backup` is still there and would read as a new trial.
   let _ = std::fs::remove_file(&backup_path);
   let _ = std::fs::remove_file(&trial_path);
-  UpdateLaunch::RolledBack
+  (UpdateLaunch::RolledBack, None)
 }
 
 /// Decides what `runtime_main` does after [`apply_pending_update`]: the
@@ -2200,25 +2257,26 @@ fn runtime_main() {
   // Apply any pending update before anything else.
   #[cfg(unix)]
   #[allow(clippy::print_stderr, reason = "runs before logging is initialized")]
-  let update_launch = {
+  // A trial launch holds its lock until the process ends.
+  let (update_launch, _update_trial_lock) = {
     let reexec_reason = env::var_os(UPDATE_REEXEC_ENV);
     if reexec_reason.is_some() {
       // SAFETY: none of our threads exist yet; see the setenv comment below.
       unsafe { env::remove_var(UPDATE_REEXEC_ENV) };
     }
-    let launch = match std::panic::catch_unwind(|| {
+    let (launch, trial_lock) = match std::panic::catch_unwind(|| {
       if let Some(ref dylib_path) = get_dylib_path() {
         eprintln!("[desktop] dylib path: {:?}", dylib_path);
         apply_pending_update(dylib_path, reexec_reason.is_some())
       } else {
         eprintln!("[desktop] could not determine dylib path");
-        UpdateLaunch::Normal
+        (UpdateLaunch::Normal, None)
       }
     }) {
       Ok(v) => v,
       Err(e) => {
         eprintln!("[desktop] update check panicked: {:?}", e);
-        UpdateLaunch::Normal
+        (UpdateLaunch::Normal, None)
       }
     };
     let (restart, launch) =
@@ -2237,7 +2295,7 @@ fn runtime_main() {
         "[desktop] warning: could not restart into {target} ({error}); it runs on the next launch"
       );
     }
-    launch
+    (launch, trial_lock)
   };
   #[cfg(unix)]
   let update_rolled_back = update_launch == UpdateLaunch::RolledBack;
@@ -3490,14 +3548,14 @@ mod tests {
       }
     }
 
-    /// A normal launch (not re-exec'd).
+    /// A normal launch (not re-exec'd) that has ended.
     fn launch(p: &Paths) -> UpdateLaunch {
-      apply_pending_update(&p.dylib, false)
+      apply_pending_update(&p.dylib, false).0
     }
 
-    /// The launch `reexec_host` starts.
+    /// The launch `reexec_host` starts, once it has ended.
     fn reexeced_launch(p: &Paths) -> UpdateLaunch {
-      apply_pending_update(&p.dylib, true)
+      apply_pending_update(&p.dylib, true).0
     }
 
     /// What `op_desktop_confirm_update` does in a trial launch.
@@ -3587,6 +3645,28 @@ mod tests {
       assert!(p.trial.exists(), "the trial launch must be recorded");
       assert_eq!(read(&p.dylib), "new", "the new dylib runs");
       assert_eq!(read(&p.backup), "old", "backup kept for a rollback");
+    }
+
+    #[test]
+    fn pending_update_launch_during_the_trial_does_not_roll_back() {
+      // Two instances started inside one trial window (a terminal, `open -n`
+      // or Linux start a second one): the second must not take the running
+      // trial for a crashed one and roll a good update back.
+      let tmp = tempfile::tempdir().unwrap();
+      let p = paths(tmp.path());
+      touch(&p.dylib, "new");
+      touch(&p.backup, "old");
+      let (trial, lock) = apply_pending_update(&p.dylib, true);
+      assert_eq!(trial, UpdateLaunch::Trial);
+      assert_eq!(launch(&p), UpdateLaunch::Normal);
+      assert_eq!(read(&p.dylib), "new", "the update stays");
+      assert_eq!(read(&p.backup), "old");
+      assert!(p.trial.exists(), "the trial is still on");
+      assert!(lock.is_some(), "the trial launch holds the trial lock");
+      // Once the trial launch has ended unconfirmed, it rolls back.
+      drop(lock);
+      assert_eq!(launch(&p), UpdateLaunch::RolledBack);
+      assert_eq!(read(&p.dylib), "old");
     }
 
     #[test]
