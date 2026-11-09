@@ -5062,7 +5062,9 @@ fn create_windows_msi(
         stack.push(path);
       } else if md.is_file() {
         let rel = path.strip_prefix(app_dir)?.to_path_buf();
-        rel_files.push((rel, md.len()));
+        if !is_unpackaged_app_dir_file(&rel) {
+          rel_files.push((rel, md.len()));
+        }
       }
       // Symlinks are not expected in a Windows app dir (copy_dir_all
       // dereferences) — skip anything else.
@@ -5133,7 +5135,8 @@ fn create_windows_msi(
   }
 
   // --- Components: one per directory that directly contains files. ---------
-  // A component's KeyPath is its first (sorted) file. Files inherit their
+  // A component's KeyPath is its first (sorted) file, except the root's,
+  // which is the launcher (see `component_rows`). Files inherit their
   // directory's component, so files always install next to their siblings.
   let mut comp_for_dir: std::collections::BTreeMap<PathBuf, String> =
     std::collections::BTreeMap::new();
@@ -5200,11 +5203,19 @@ fn create_windows_msi(
     .iter()
     .map(|(dir, comp)| {
       let dir_id = dir_ids[dir].clone();
-      let keypath = files
-        .iter()
-        .find(|f| &f.component == comp)
-        .map(|f| f.key.clone())
-        .unwrap();
+      // Windows Installer checks the KeyPath to tell whether a component is
+      // installed (and repairs it when it's missing), so the root component
+      // is keyed on the app's exe.
+      let keypath = match &shortcut_target {
+        Some((launcher_key, launcher_comp)) if launcher_comp == comp => {
+          launcher_key.clone()
+        }
+        _ => files
+          .iter()
+          .find(|f| &f.component == comp)
+          .map(|f| f.key.clone())
+          .unwrap(),
+      };
       vec![
         Value::Str(comp.clone()),
         Value::Str(msi_derive_guid(&identifier, &format!("component:{comp}"))),
@@ -8856,6 +8867,54 @@ def456  other.zip
     std::fs::create_dir_all(&locales).unwrap();
     std::fs::write(locales.join("en-US.pak"), b"pakdata").unwrap();
     app_dir
+  }
+
+  #[test]
+  fn msi_leaves_out_markers_and_keys_the_root_on_the_exe() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app_dir = fake_windows_app_dir(tmp.path(), "MyApp");
+    std::fs::write(app_dir.join(APP_DIR_MARKER), b"").unwrap();
+    std::fs::write(app_dir.join(LAUFEY_CACHE_MARKER), b"").unwrap();
+    let msi_path = tmp.path().join("MyApp.msi");
+    create_windows_msi(
+      &app_dir,
+      &msi_path,
+      &empty_desktop_flags(),
+      Some("x86_64-pc-windows-msvc"),
+      None,
+    )
+    .unwrap();
+
+    let mut package = msi::open(&msi_path).unwrap();
+    let files: Vec<(String, String)> = package
+      .select_rows(msi::Select::table("File"))
+      .unwrap()
+      .map(|r| {
+        (
+          r["File"].as_str().unwrap().to_string(),
+          r["FileName"].as_str().unwrap().to_string(),
+        )
+      })
+      .collect();
+    assert!(
+      !files.iter().any(|(_, name)| name.ends_with(APP_DIR_MARKER)
+        || name.ends_with(LAUFEY_CACHE_MARKER)),
+      "{files:?}"
+    );
+    // Windows Installer checks a component's KeyPath to decide whether it's
+    // installed, so the root's should be the app itself, not some other file.
+    let exe_key = files
+      .iter()
+      .find(|(_, name)| name.ends_with("|MyApp.exe"))
+      .map(|(key, _)| key.clone())
+      .unwrap();
+    let root_keypath = package
+      .select_rows(msi::Select::table("Component"))
+      .unwrap()
+      .find(|r| r["Directory_"].as_str() == Some("INSTALLDIR"))
+      .map(|r| r["KeyPath"].as_str().unwrap().to_string())
+      .unwrap();
+    assert_eq!(root_keypath, exe_key);
   }
 
   #[test]
