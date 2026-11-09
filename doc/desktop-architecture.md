@@ -330,32 +330,42 @@ dir so its watcher sees real files.
   update is swapped in, with the old dylib kept as `.backup`. The swap can't
   change the code already loaded, so libendert then `execve`s the host
   executable with the same argv and environment plus
-  `ENDE_DESKTOP_UPDATE_REEXEC` (Ende-written, denoland/deno#36948). The new
-  image's first run is the update's trial: it writes `.update-trial`, and only
-  it may write `.update-ok` (`UpdateTrial`, once). The trial succeeds once the
-  main module has evaluated, top-level await included, and the event loop has
-  run one more turn (`confirm_update_trial` in `cli/rt/run.rs`; that turn
-  dispatches rejections startup code left unhandled), unless an uncaught error
-  has started the desktop error exit; or when the app exits with code 0 before
-  that (an `OpExitCallbacks` hook). So an update whose startup JS throws or
-  rejects is rolled back; a crash later in the trial launch isn't. A launch that
-  finds `.update-trial` without `.update-ok` restores `.backup` and re-execs
-  again, so the old code runs and fires `onRollback`, unless the trial launch is
-  still running: it holds an exclusive lock on `.backup` (taken before it writes
-  `.update-trial`), so a second instance started during the trial runs the
-  update without confirming it instead of rolling it back. A rollback records
-  the failed library's SHA-256 in `.update-rejected`, and
-  `op_desktop_apply_patch` refuses to stage a patch whose `targetSha256` is
-  there (the release server usually still offers it); the record goes once the
-  app confirms a later update. The patch is still downloaded before it's
-  refused. A re-exec'd process never swaps or re-execs, so there is no loop.
-  Before the exec every descriptor above stderr is marked `FD_CLOEXEC`: without
-  that, the new CEF image kept the old one's profile files (LevelDB `LOCK`s,
-  caches) and pipes open. If the exec fails, the old code keeps running, logs a
-  warning, and doesn't confirm; the next launch is the trial. The backend is
-  already up at that point, so a CEF window that showed at creation may flash
-  once. A dylib that can't even be loaded never reaches this code, so it can't
-  be rolled back.
+  `ENDE_DESKTOP_UPDATE_REEXEC` (Ende-written, denoland/deno#36948). On macOS an
+  app bundle is restarted through LaunchServices instead (`restart_plan`): after
+  an `execve` the new image's `Ende.Tray` icons never reach the menu bar,
+  however the first run was started (checked live, webview and CEF). The old
+  process spawns a waiter and `_exit`s, and once it's gone the waiter runs
+  `/usr/bin/open -n <bundle> --args …` with every variable passed by `--env`, so
+  the two runs never overlap. For a `--compress` app that's the extracted
+  bundle, whose dylib was updated. The new run doesn't get the old one's
+  standard streams, working directory or pid, and a shell that started the old
+  one sees it exit 0. The new image's first run is the update's trial: it writes
+  `.update-trial`, and only it may write `.update-ok` (`UpdateTrial`, once). The
+  trial succeeds once the main module has evaluated, top-level await included,
+  and the event loop has run one more turn (`confirm_update_trial` in
+  `cli/rt/run.rs`; that turn dispatches rejections startup code left unhandled),
+  unless an uncaught error has started the desktop error exit; or when the app
+  exits with code 0 before that (an `OpExitCallbacks` hook). So an update whose
+  startup JS throws or rejects is rolled back; a crash later in the trial launch
+  isn't. A launch that finds `.update-trial` without `.update-ok` restores
+  `.backup` and re-execs again, so the old code runs and fires `onRollback`,
+  unless the trial launch is still running: it holds an exclusive lock on
+  `.backup` (taken before it writes `.update-trial`), so a second instance
+  started during the trial runs the update without confirming it instead of
+  rolling it back. A rollback records the failed library's SHA-256 in
+  `.update-rejected`, and `op_desktop_apply_patch` refuses to stage a patch
+  whose `targetSha256` is there (the release server usually still offers it);
+  the record goes once the app confirms a later update. The patch is still
+  downloaded before it's refused. A re-exec'd process never swaps or re-execs,
+  so there is no loop. Before the exec every descriptor above stderr is marked
+  `FD_CLOEXEC`: without that, the new CEF image kept the old one's profile files
+  (LevelDB `LOCK`s, caches) and pipes open. If the exec (or spawning the macOS
+  waiter) fails, the old code keeps running, logs a warning, and doesn't
+  confirm; the next launch is the trial. If `open` fails, the waiter logs it and
+  the app ends; the next launch is the trial (after a rollback, the restored
+  version). The backend is already up at that point, so a CEF window that showed
+  at creation may flash once. A dylib that can't even be loaded never reaches
+  this code, so it can't be rolled back.
 - **Window-handle interop** (`get_raw_window_handle`, `lib.rs:467`): laufey's
   native handle is converted to `raw-window-handle` types per platform — AppKit
   / Win32 / X11 / **Wayland** (`LAUFEY_WINDOW_HANDLE_WAYLAND`, `lib.rs:518`).

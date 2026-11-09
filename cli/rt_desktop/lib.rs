@@ -1444,9 +1444,12 @@ fn replace_dylib_with(src: &Path, dylib_path: &Path, tmp_suffix: &str) -> bool {
   staged
 }
 
-/// Set on the host that [`reexec_host`] starts, to [`REEXEC_AFTER_SWAP`] or
+/// Set on the host that [`restart_host`] starts, to [`REEXEC_AFTER_SWAP`] or
 /// [`REEXEC_AFTER_ROLLBACK`]. That process removes it at startup, so the app
-/// and its child processes never see it.
+/// and its child processes never see it. The name says "re-exec", as the docs
+/// here do, but a macOS app bundle is restarted through LaunchServices
+/// instead ([`restart_plan`]). The name can't change: the old version's code
+/// sets it and the new version's code reads it.
 #[cfg(unix)]
 const UPDATE_REEXEC_ENV: &str = "ENDE_DESKTOP_UPDATE_REEXEC";
 #[cfg(unix)]
@@ -1546,7 +1549,7 @@ fn update_trial_is_running(backup_path: &Path) -> bool {
 }
 
 /// Manages pending updates and rollback on startup. See [`UpdateLaunch`] for
-/// the states. `reexeced` is true in the process [`reexec_host`] started. A
+/// the states. `reexeced` is true in the process [`restart_host`] started. A
 /// [`UpdateLaunch::Trial`] comes with the [`UpdateTrialLock`] to hold.
 // Only invoked from the unix `runtime_main` startup path; gated to match its
 // sole call site so it isn't flagged as dead code on other platforms.
@@ -1687,10 +1690,97 @@ fn after_update_check(
   }
 }
 
-/// Replaces this process with a new run of the host executable, so the dylib
-/// now on disk runs in this same launch. Passes the same argv and environment,
-/// plus [`UPDATE_REEXEC_ENV`] set to `reason`. Only returns on failure, with
-/// the process as it was.
+/// How [`restart_host`] starts the new run of the host.
+#[cfg(unix)]
+#[derive(Debug, PartialEq, Eq)]
+enum Restart {
+  /// `execve` the host executable in this process ([`exec_host`]).
+  Exec,
+  /// Run `/usr/bin/open` with these arguments once this process has exited
+  /// ([`open_after_exit`]).
+  #[cfg(target_os = "macos")]
+  LaunchServices(Vec<std::ffi::OsString>),
+}
+
+/// Picks how to restart the host executable `exe`, run with `args` (argv
+/// without argv\[0]) and the environment `vars`, so the new run gets
+/// [`UPDATE_REEXEC_ENV`] set to `reason`.
+///
+/// On macOS an app bundle's host goes through LaunchServices: `open -n
+/// <bundle> --args <args>`, with every variable passed by `--env`.
+/// LaunchServices registers the process it launched, and after an `execve`
+/// the new image's `NSStatusItem`s (`Ende.Tray`) never reach the menu bar,
+/// whether LaunchServices or a shell started the first one. `-n` because the
+/// old process may still be registered when `open` runs, and `open` would
+/// then only activate it. For a `--compress` app this is the extracted
+/// bundle, the one whose dylib was updated; its thin launcher would only open
+/// it again. Anything else, and every other unix, `execve`s.
+#[cfg(unix)]
+fn restart_plan(
+  exe: &Path,
+  args: &[std::ffi::OsString],
+  vars: &[(std::ffi::OsString, std::ffi::OsString)],
+  reason: &str,
+) -> Restart {
+  #[cfg(target_os = "macos")]
+  if let Some(bundle) = app_bundle_of(exe) {
+    use std::ffi::OsString;
+
+    let mut open_args = vec![OsString::from("-n")];
+    let reexec = (OsString::from(UPDATE_REEXEC_ENV), OsString::from(reason));
+    for (key, value) in vars.iter().chain([&reexec]) {
+      let mut var = key.clone();
+      var.push("=");
+      var.push(value);
+      open_args.extend([OsString::from("--env"), var]);
+    }
+    open_args.push(bundle.as_os_str().to_owned());
+    if !args.is_empty() {
+      open_args.push("--args".into());
+      open_args.extend_from_slice(args);
+    }
+    return Restart::LaunchServices(open_args);
+  }
+  let _ = (exe, args, vars, reason);
+  Restart::Exec
+}
+
+/// The app bundle `exe` is the executable of: `<bundle>.app` when `exe` is
+/// `<bundle>.app/Contents/MacOS/<name>` and `Contents/Info.plist` exists.
+#[cfg(target_os = "macos")]
+fn app_bundle_of(exe: &Path) -> Option<&Path> {
+  let macos = exe.parent()?;
+  let contents = macos.parent()?;
+  let bundle = contents.parent()?;
+  let is_bundle = macos.file_name()? == "MacOS"
+    && contents.file_name()? == "Contents"
+    && bundle.extension()? == "app"
+    && contents.join("Info.plist").is_file();
+  is_bundle.then_some(bundle)
+}
+
+/// Starts a new run of the host executable, so the dylib now on disk runs in
+/// this same launch, with the same arguments and environment, plus
+/// [`UPDATE_REEXEC_ENV`] set to `reason`. See [`restart_plan`] for how. Only
+/// returns on failure, with the process as it was.
+#[cfg(unix)]
+fn restart_host(reason: &str) -> std::io::Error {
+  let exe = match env::current_exe() {
+    Ok(exe) => exe,
+    Err(e) => return e,
+  };
+  let argv: Vec<_> = env::args_os().collect();
+  let vars: Vec<_> = env::vars_os().collect();
+  match restart_plan(&exe, argv.get(1..).unwrap_or_default(), &vars, reason) {
+    Restart::Exec => exec_host(&exe, &argv, &vars, reason),
+    #[cfg(target_os = "macos")]
+    Restart::LaunchServices(open_args) => open_after_exit(&open_args),
+  }
+}
+
+/// Replaces this process with a new run of the host executable `exe`, with
+/// `argv` and `vars` plus [`UPDATE_REEXEC_ENV`] set to `reason`. Only returns
+/// on failure, with the process as it was.
 ///
 /// This runs before any of the app's code, but the backend is up: its UI
 /// thread is in its event loop, and CEF has started its helper processes.
@@ -1706,21 +1796,26 @@ fn after_update_check(
 /// process before it execs, and swaps the global `environ` while the backend's
 /// threads may read it.
 #[cfg(unix)]
-fn reexec_host(reason: &str) -> std::io::Error {
+fn exec_host(
+  exe: &Path,
+  argv: &[std::ffi::OsString],
+  vars: &[(std::ffi::OsString, std::ffi::OsString)],
+  reason: &str,
+) -> std::io::Error {
   use std::ffi::CString;
   use std::os::unix::ffi::OsStrExt;
-  use std::os::unix::ffi::OsStringExt;
 
   fn c_string(bytes: Vec<u8>) -> std::io::Result<CString> {
     CString::new(bytes).map_err(std::io::Error::other)
   }
   let build = || -> std::io::Result<(CString, Vec<CString>, Vec<CString>)> {
-    let exe = c_string(env::current_exe()?.into_os_string().into_vec())?;
-    let argv = env::args_os()
-      .map(|arg| c_string(arg.into_vec()))
+    let exe = c_string(exe.as_os_str().as_bytes().to_vec())?;
+    let argv = argv
+      .iter()
+      .map(|arg| c_string(arg.as_bytes().to_vec()))
       .collect::<std::io::Result<Vec<_>>>()?;
     let mut envp = Vec::new();
-    for (key, value) in env::vars_os() {
+    for (key, value) in vars {
       let mut entry = key.as_bytes().to_vec();
       entry.push(b'=');
       entry.extend_from_slice(value.as_bytes());
@@ -1751,6 +1846,56 @@ fn reexec_host(reason: &str) -> std::io::Error {
   error
 }
 
+/// Exits this process, and has `/usr/bin/open` run with `open_args` once it
+/// has. Only returns on failure, with the process as it was.
+///
+/// Like [`exec_host`], the old run ends before the new one starts, so the two
+/// never share the app's data (CEF's profile, WebKit's storage). A waiter
+/// ([`spawn_after_exit`]) runs `open` when this process is gone. If `open`
+/// fails, the waiter says so on this process's stderr, and the app runs the
+/// update or the restored version on its next launch. Descriptors above stderr
+/// are marked close-on-exec first, as in [`exec_host`], so the waiter and
+/// `open` hold none of the backend's files.
+#[cfg(target_os = "macos")]
+fn open_after_exit(open_args: &[std::ffi::OsString]) -> std::io::Error {
+  let marked = mark_fds_cloexec_above_stderr();
+  match spawn_after_exit(Path::new("/usr/bin/open"), open_args) {
+    Ok(_alive) => {
+      // SAFETY: `_exit` ends the process at once, as `execve` would have:
+      // no destructors or atexit handlers run while the backend's threads
+      // are still going. Exiting closes `_alive`'s write end.
+      unsafe { libc::_exit(0) }
+    }
+    Err(e) => {
+      clear_cloexec(&marked);
+      e
+    }
+  }
+}
+
+/// Spawns a shell that runs `program` with `args` once every copy of the
+/// returned pipe end is closed. Only this process holds it (pipes are made
+/// close-on-exec), so that's when this process has exited. The shell's stdin
+/// is the pipe's read end, and `read` returns at end of file.
+#[cfg(target_os = "macos")]
+fn spawn_after_exit(
+  program: &Path,
+  args: &[std::ffi::OsString],
+) -> std::io::Result<std::io::PipeWriter> {
+  const WAIT_THEN_RUN: &str =
+    r#"read -r _; "$@" || echo "[desktop] could not restart the app" >&2"#;
+  let (reader, writer) = std::io::pipe()?;
+  std::process::Command::new("/bin/sh")
+    .arg("-c")
+    .arg(WAIT_THEN_RUN)
+    .arg("sh")
+    .arg(program)
+    .args(args)
+    .stdin(reader)
+    .spawn()?;
+  Ok(writer)
+}
+
 /// Undoes [`mark_fds_cloexec_above_stderr`].
 #[cfg(unix)]
 fn clear_cloexec(fds: &[libc::c_int]) {
@@ -1767,7 +1912,8 @@ fn clear_cloexec(fds: &[libc::c_int]) {
 }
 
 /// Marks every open descriptor above stderr close-on-exec, and returns the
-/// ones that weren't, for [`reexec_host`] to restore.
+/// ones that weren't, for [`exec_host`] (and `open_after_exit` on macOS) to
+/// restore.
 #[cfg(unix)]
 fn mark_fds_cloexec_above_stderr() -> Vec<libc::c_int> {
   #[cfg(target_os = "linux")]
@@ -2319,7 +2465,7 @@ fn runtime_main() {
         "the restored version"
       };
       eprintln!("[desktop] restarting into {target}");
-      let error = reexec_host(reason);
+      let error = restart_host(reason);
       // Still this code. After a swap, the new dylib gets its trial launch
       // next time (state 3 in `UpdateLaunch`).
       eprintln!(
@@ -3608,7 +3754,7 @@ mod tests {
       apply_pending_update(&p.dylib, false).0
     }
 
-    /// The launch `reexec_host` starts, once it has ended.
+    /// The launch `restart_host` starts, once it has ended.
     fn reexeced_launch(p: &Paths) -> UpdateLaunch {
       apply_pending_update(&p.dylib, true).0
     }
@@ -3933,6 +4079,127 @@ mod tests {
     );
     // The restored code reports the rollback that restarted it.
     assert_eq!(after_update_check(Normal, rolled_back), (None, RolledBack));
+  }
+
+  /// A host executable laid out as `<dir>/<name>.app/Contents/MacOS/<exe>`,
+  /// with an Info.plist if `plist`.
+  #[cfg(unix)]
+  fn fake_app_bundle(dir: &std::path::Path, plist: bool) -> std::path::PathBuf {
+    let macos = dir.join("My App.app/Contents/MacOS");
+    std::fs::create_dir_all(&macos).unwrap();
+    if plist {
+      std::fs::write(macos.parent().unwrap().join("Info.plist"), "").unwrap();
+    }
+    let exe = macos.join("laufey_webview");
+    std::fs::write(&exe, "").unwrap();
+    exe
+  }
+
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn restart_of_an_app_bundle_goes_through_launch_services() {
+    use std::ffi::OsString;
+
+    use super::Restart;
+    use super::restart_plan;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let exe = fake_app_bundle(tmp.path(), true);
+    let bundle = exe.parent().unwrap().parent().unwrap().parent().unwrap();
+    let args = [OsString::from("x y"), OsString::from("--flag=1")];
+    let vars = [
+      (OsString::from("PATH"), OsString::from("/usr/bin:/bin")),
+      (OsString::from("PASS_ME"), OsString::from("a=b c")),
+    ];
+    let expected: Vec<OsString> = [
+      "-n",
+      "--env",
+      "PATH=/usr/bin:/bin",
+      "--env",
+      "PASS_ME=a=b c",
+      "--env",
+      "ENDE_DESKTOP_UPDATE_REEXEC=swapped",
+    ]
+    .iter()
+    .map(OsString::from)
+    .chain([bundle.as_os_str().to_owned()])
+    .chain(["--args", "x y", "--flag=1"].iter().map(OsString::from))
+    .collect();
+    assert_eq!(
+      restart_plan(&exe, &args, &vars, "swapped"),
+      Restart::LaunchServices(expected)
+    );
+
+    // No arguments: no `--args`.
+    let Restart::LaunchServices(open_args) =
+      restart_plan(&exe, &[], &[], "rolled-back")
+    else {
+      panic!("not through LaunchServices");
+    };
+    assert_eq!(
+      open_args,
+      [
+        OsString::from("-n"),
+        "--env".into(),
+        "ENDE_DESKTOP_UPDATE_REEXEC=rolled-back".into(),
+        bundle.as_os_str().to_owned(),
+      ]
+    );
+  }
+
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn restart_runs_open_only_once_the_old_process_is_gone() {
+    use std::ffi::OsString;
+
+    use super::spawn_after_exit;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let marker = tmp.path().join("ran");
+    let alive = spawn_after_exit(
+      std::path::Path::new("/usr/bin/touch"),
+      &[OsString::from(&marker)],
+    )
+    .unwrap();
+    // Still "running": the waiter holds off.
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    assert!(!marker.exists(), "ran before the old process exited");
+    // Exiting closes the write end; dropping it here does the same.
+    drop(alive);
+    let deadline =
+      std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !marker.exists() && std::time::Instant::now() < deadline {
+      std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert!(marker.exists(), "never ran after the old process exited");
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn restart_outside_an_app_bundle_execs() {
+    use super::Restart;
+    use super::restart_plan;
+
+    let tmp = tempfile::tempdir().unwrap();
+    // Not in a bundle at all.
+    let exe = tmp.path().join("laufey_webview");
+    std::fs::write(&exe, "").unwrap();
+    assert_eq!(restart_plan(&exe, &[], &[], "swapped"), Restart::Exec);
+    // A bundle's layout without an Info.plist isn't an app LaunchServices
+    // can open.
+    let exe = fake_app_bundle(&tmp.path().join("noplist"), false);
+    assert_eq!(restart_plan(&exe, &[], &[], "swapped"), Restart::Exec);
+  }
+
+  #[cfg(all(unix, not(target_os = "macos")))]
+  #[test]
+  fn restart_of_an_app_bundle_layout_execs_off_macos() {
+    use super::Restart;
+    use super::restart_plan;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let exe = fake_app_bundle(tmp.path(), true);
+    assert_eq!(restart_plan(&exe, &[], &[], "swapped"), Restart::Exec);
   }
 
   #[cfg(unix)]
