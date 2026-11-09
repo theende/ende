@@ -2459,6 +2459,9 @@ mod test {
     ChronVer::parse(text).unwrap()
   }
 
+  // dpkg's multi-arch `ende:amd64.list` can't be created on Windows (NTFS
+  // reads the `:` as a stream name), and dpkg is Linux-only anyway.
+  #[cfg(unix)]
   #[test]
   fn find_dpkg_owner_matches_listed_exe() {
     let root = tempfile::TempDir::new().unwrap();
