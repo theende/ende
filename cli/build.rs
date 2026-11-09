@@ -7,15 +7,16 @@ use std::path::PathBuf;
 
 use ende_runtime::*;
 
-fn compress_decls(out_dir: &Path) {
-  let decls = [
+/// The lib .d.ts files (in tsc/dts/) that release builds compress into the
+/// binary.
+fn decls() -> &'static [&'static str] {
+  &[
     "lib.ende.ns.d.ts",
     "lib.ende.unstable.d.ts",
     "lib.ende.window.d.ts",
     "lib.ende.worker.d.ts",
     "lib.ende.shared_globals.d.ts",
     "lib.ende.desktop.d.ts",
-    "lib.ende.unstable.d.ts",
     "lib.ende_console.d.ts",
     "lib.ende_url.d.ts",
     "lib.ende_web.d.ts",
@@ -141,10 +142,21 @@ fn compress_decls(out_dir: &Path) {
     "lib.webworker.d.ts",
     "lib.webworker.importscripts.d.ts",
     "lib.webworker.iterable.d.ts",
-  ];
-  for decl in decls {
+  ]
+}
+
+fn compress_decls(out_dir: &Path) {
+  for decl in decls() {
     let file = format!("./tsc/dts/{decl}");
     compress_source(out_dir, &file);
+  }
+}
+
+/// Runs in every build, while only release builds compress the decls.
+fn check_decls_unique() {
+  let mut seen = std::collections::HashSet::new();
+  for decl in decls() {
+    assert!(seen.insert(decl), "{decl} is listed twice in decls()");
   }
 }
 
@@ -597,6 +609,7 @@ fn main() {
   let out_dir = std::path::PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
 
   check_appimage_runtime_hashes();
+  check_decls_unique();
   compress_appimage_runtimes(&out_dir);
   embed_tsc7(&out_dir);
 
