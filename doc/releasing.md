@@ -15,6 +15,7 @@ workflows need. The per-release checklist is generated from
 | 4    | `release` (`release.ts`) | the `v*` tag push           | builds every target and creates a **draft** GitHub release with all assets; uploads the archives to dl.ende.sh (if enabled) |
 | 5    | none                     | manual                      | review the draft's notes and assets, then **publish** it                                                                    |
 | 6    | `post_publish`           | the release being published | updates `dl.ende.sh/release-latest.txt` (if enabled)                                                                        |
+| 7    | none                     | manual                      | bump the Ende pinned for CI's tooling (see [After a release](#after-a-release))                                             |
 
 The tag must point at a commit whose `cli/lib/version.txt` holds the same
 version (`v` + the version); the `release` workflow's first job checks this and
@@ -33,6 +34,17 @@ stops otherwise.
   `v2026.10.14`, plus a newline.
 
 To pull a bad release back, point `release-latest.txt` at the previous tag.
+
+## After a release
+
+CI's tooling jobs (lint, format, the workflow checks) install the Ende pinned in
+`tools/ende_version.lock`, never the latest, so bump it in a PR: set
+`# version:` to the new release, take each target's hash from the GitHub
+release's `ende-<target>.zip.sha256sum`, and check it against the zip on
+dl.ende.sh (`shasum -a 256 ende-<target>.zip`; step 4 uploads it, if enabled).
+`tools/release/fetch_ende.sh` fails unless the zip matches both the lock and its
+`.sha256sum`. dprint isn't bumped per release; when it is, its pins are in
+`tools/dprint_version.lock`.
 
 ## The `release` workflow
 
