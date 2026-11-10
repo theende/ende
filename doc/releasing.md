@@ -14,8 +14,8 @@ workflows need. The per-release checklist is generated from
 | 3    | `release_tag`            | manual                      | pushes the `v<version>` tag (with `ENDE_RELEASE_PAT`, so the push starts step 4)                                            |
 | 4    | `release` (`release.ts`) | the `v*` tag push           | builds every target and creates a **draft** GitHub release with all assets; uploads the archives to dl.ende.sh (if enabled) |
 | 5    | none                     | manual                      | review the draft's notes and assets, then **publish** it                                                                    |
-| 6    | `post_publish`           | the release being published | updates `dl.ende.sh/release-latest.txt` (if enabled)                                                                        |
-| 7    | none                     | manual                      | bump the Ende pinned for CI's tooling (see [After a release](#after-a-release))                                             |
+| 6    | `post_publish`           | the release being published | updates `dl.ende.sh/release-latest.txt` and opens a PR pinning CI's tooling Ende to the release (if enabled)                |
+| 7    | none                     | manual                      | merge that PR once its CI is green (see [After a release](#after-a-release))                                                |
 
 The tag must point at a commit whose `cli/lib/version.txt` holds the same
 version (`v` + the version); the `release` workflow's first job checks this and
@@ -38,13 +38,25 @@ To pull a bad release back, point `release-latest.txt` at the previous tag.
 ## After a release
 
 CI's tooling jobs (lint, format, the workflow checks) install the Ende pinned in
-`tools/ende_version.lock`, never the latest, so bump it in a PR: set
-`# version:` to the new release, take each target's hash from the GitHub
-release's `ende-<target>.zip.sha256sum`, and check it against the zip on
-dl.ende.sh (`shasum -a 256 ende-<target>.zip`; step 4 uploads it, if enabled).
-`tools/release/fetch_ende.sh` fails unless the zip matches both the lock and its
-`.sha256sum`. dprint isn't bumped per release; when it is, its pins are in
-`tools/dprint_version.lock`.
+`tools/ende_version.lock`, never the latest, so a release reaches them only
+through a PR. The last step of `post_publish` opens it:
+`tools/release/bump_ende_lock.ts` downloads each target's `ende-<target>.zip`
+from dl.ende.sh, checks it against both the GitHub release's
+`ende-<target>.zip.sha256sum` and dl.ende.sh's own, and pushes an
+`ende_lock_v<version>` branch that changes only the lock's version and hashes.
+It opens the PR with `ENDE_RELEASE_PAT`, since a PR opened with the default
+`GITHUB_TOKEN` wouldn't start CI. The PR's CI run installs the new Ende, so it
+tests the release on CI's tooling: merge the PR once its CI is green.
+
+If a check fails, the step writes nothing and fails the `post_publish` run; the
+version files and the CDN purge before it are already done. If the step failed,
+or didn't run because dl.ende.sh uploads are off (`DL_ENDE_SH_ENABLED`), bump
+the lock by hand in a PR: set `# version:` to the new release, take each
+target's hash from the GitHub release's `ende-<target>.zip.sha256sum`, and check
+it against the zip on dl.ende.sh (`shasum -a 256 ende-<target>.zip`; step 4
+uploads it, if enabled). `tools/release/fetch_ende.sh` fails unless the zip
+matches both the lock and its `.sha256sum`. dprint isn't bumped per release;
+when it is, its pins are in `tools/dprint_version.lock`.
 
 ## The `release` workflow
 
@@ -146,7 +158,8 @@ They need these repository secrets:
 and optionally the variable `DL_S3_REGION` (default `auto`, which R2 expects).
 `post_publish` also writes `versions.json` (all released versions) and, when
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID` are set, purges the edge cache
-for the files it changed.
+for the files it changed. Its PR pinning CI's Ende (see
+[After a release](#after-a-release)) needs `ENDE_RELEASE_PAT`.
 
 ## Install scripts
 

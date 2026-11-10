@@ -6,8 +6,9 @@ import { dlEndeShEnabled, dlS3Env, installEndeStep } from "./common.ts";
 // Runs when a GitHub release is published (the release workflow only creates
 // drafts). Points `ende upgrade` at the new version by updating
 // dl.ende.sh/release-latest.txt, which must not happen before the release's
-// assets are public. Off until the DL_ENDE_SH_ENABLED variable is `true`
-// (see common.ts for the storage secrets).
+// assets are public. Then opens a PR pinning CI's tooling Ende
+// (tools/ende_version.lock) to the release. Off until the DL_ENDE_SH_ENABLED
+// variable is `true` (see common.ts for the storage secrets).
 
 const workflow = createWorkflow({
   name: "post_publish",
@@ -88,6 +89,37 @@ const workflow = createWorkflow({
           "# has to be told to drop them. Otherwise `ende upgrade` keeps",
           "# serving the previous version until the 4 hour TTL expires.",
           'ende run -A --lock=tools/deno.lock.json tools/release/purge_cdn_cache.ts versions.json ${LATEST_FILE:+"$LATEST_FILE"}',
+        ],
+      }),
+      step({
+        // The PR below is opened for its CI run, and pushes and PRs made with
+        // the default GITHUB_TOKEN don't start CI, so this checkout pushes
+        // with ENDE_RELEASE_PAT.
+        name: "Clone primary",
+        uses: "actions/checkout@v6",
+        with: {
+          ref: "primary",
+          path: "primary",
+          "fetch-depth": 1,
+          token: "${{ secrets.ENDE_RELEASE_PAT }}",
+        },
+      }),
+      step({
+        name: "Open a PR pinning CI's Ende to the release",
+        workingDirectory: "primary",
+        env: {
+          GITHUB_TOKEN: "${{ secrets.ENDE_RELEASE_PAT }}",
+          GH_WORKFLOW_ACTOR: "${{ github.actor }}",
+          INPUT_VERSION: "${{ inputs.version }}",
+        },
+        run: [
+          "# Last, so a failure here can't hold back the steps above, but",
+          "# still fails the job. The script checks the version and every",
+          "# zip, and exits 0 when the lock already pins the release.",
+          'VERSION="${INPUT_VERSION:-${GITHUB_REF#refs/*/}}"',
+          'git config user.email "$GITHUB_ACTOR@users.noreply.github.com"',
+          'git config user.name "$GITHUB_ACTOR"',
+          'ende run --allow-read=tools/ende_version.lock --allow-write=tools/ende_version.lock --allow-env=GITHUB_TOKEN,GITHUB_REPOSITORY,GH_WORKFLOW_ACTOR --allow-net=dl.ende.sh,github.com,release-assets.githubusercontent.com,objects.githubusercontent.com,api.github.com --allow-run=git tools/release/bump_ende_lock.ts "$VERSION"',
         ],
       }),
     ],

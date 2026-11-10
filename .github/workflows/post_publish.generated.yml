@@ -77,5 +77,26 @@ jobs:
           # has to be told to drop them. Otherwise `ende upgrade` keeps
           # serving the previous version until the 4 hour TTL expires.
           ende run -A --lock=tools/deno.lock.json tools/release/purge_cdn_cache.ts versions.json ${LATEST_FILE:+"$LATEST_FILE"}
+      - name: Clone primary
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: primary
+          path: primary
+          fetch-depth: 1
+          token: '${{ secrets.ENDE_RELEASE_PAT }}'
+      - name: Open a PR pinning CI's Ende to the release
+        working-directory: primary
+        env:
+          GITHUB_TOKEN: '${{ secrets.ENDE_RELEASE_PAT }}'
+          GH_WORKFLOW_ACTOR: '${{ github.actor }}'
+          INPUT_VERSION: '${{ inputs.version }}'
+        run: |-
+          # Last, so a failure here can't hold back the steps above, but
+          # still fails the job. The script checks the version and every
+          # zip, and exits 0 when the lock already pins the release.
+          VERSION="${INPUT_VERSION:-${GITHUB_REF#refs/*/}}"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          git config user.name "$GITHUB_ACTOR"
+          ende run --allow-read=tools/ende_version.lock --allow-write=tools/ende_version.lock --allow-env=GITHUB_TOKEN,GITHUB_REPOSITORY,GH_WORKFLOW_ACTOR --allow-net=dl.ende.sh,github.com,release-assets.githubusercontent.com,objects.githubusercontent.com,api.github.com --allow-run=git tools/release/bump_ende_lock.ts "$VERSION"
 
 # gagen:pin actions/checkout@v6 = de0fac2e4500dabe0009e67214ff5f5447ce83dd
