@@ -34,8 +34,8 @@ work_dir=$2
 lock="$(cd "$(dirname "$0")/../.." && pwd)/tools/ende_version.lock"
 version=$(sed -n 's/^#[[:space:]]*version:[[:space:]]*\([^[:space:]]*\).*/\1/p' "$lock")
 zip_sha256=$(awk -v t="$target" '$1 == t && NF == 2 { print $2 }' "$lock")
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
-  die "$lock has no '# version: X.Y.Z' (found '$version')"
+[[ "$version" =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[1-9][0-9]*)?$ ]] ||
+  die "$lock has no '# version: YYYY.MM.DD[.N]' (found '$version')"
 [[ "$zip_sha256" =~ ^[0-9a-f]{64}$ ]] ||
   die "$lock pins no Ende zip SHA-256 for $target"
 case "$target" in

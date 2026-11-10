@@ -10,8 +10,8 @@
 # `ende-<target>.zip.sha256sum` on GitHub, check it against the zip on
 # dl.ende.sh (`shasum -a 256 ende-<target>.zip`), and fill it in below.
 #
-# Format: one `<target>  <zip sha256>` per line. The `# version: X.Y.Z`
-# directive is the Ende version, without the `v`.
+# Format: one `<target>  <zip sha256>` per line. The
+# `# version: YYYY.MM.DD[.N]` directive is the Ende version, without the `v`.
 #
 # version: 2026.11.10
 
