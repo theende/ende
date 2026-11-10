@@ -17,7 +17,6 @@ export { existsSync, expandGlobSync, walk } from "jsr:@std/fs@^1";
 export { TextLineStream } from "jsr:@std/streams@^1/text-line-stream";
 export { delay } from "jsr:@std/async@^1/delay";
 export { parse as parseJSONC } from "jsr:@std/jsonc@^1/parse";
-import { createHash } from "node:crypto";
 
 const compressed = new Set(["ld64.lld", "rcodesign"]);
 
@@ -381,14 +380,12 @@ export async function downloadPrebuilt(toolName) {
 
 /// INPUT HASHING
 
-/** A streaming hasher for computing a combined hash of multiple inputs.
- * Mirrors the Rust InputHasher API in tests/util/lib/hash.rs. */
+/** A hasher for computing a combined SHA-256 of multiple inputs.
+ * Mirrors the Rust InputHasher API in tests/util/lib/hash.rs. WebCrypto has
+ * no streaming digest, so the input is buffered until `finish()`. */
 export class InputHasher {
-  #hash;
-
-  constructor() {
-    this.#hash = createHash("sha256");
-  }
+  /** @type {Uint8Array[]} */
+  #chunks = [];
 
   /** Create a hasher pre-seeded with the current CLI args. */
   static newWithCliArgs() {
@@ -401,7 +398,7 @@ export class InputHasher {
 
   /** Write raw string data into the hash. */
   writeSync(data) {
-    this.#hash.update(data);
+    this.#chunks.push(new TextEncoder().encode(data));
   }
 
   /** Hash a single file's contents (streamed). Skips if file doesn't exist. */
@@ -409,7 +406,7 @@ export class InputHasher {
     try {
       const file = await Deno.open(path);
       for await (const chunk of file.readable) {
-        this.#hash.update(chunk);
+        this.#chunks.push(chunk);
       }
     } catch {
       // skip if file doesn't exist
@@ -431,7 +428,7 @@ export class InputHasher {
       try {
         const file = await Deno.open(entryPath);
         for await (const chunk of file.readable) {
-          this.#hash.update(chunk);
+          this.#chunks.push(chunk);
         }
       } catch {
         // skip unreadable files
@@ -441,8 +438,22 @@ export class InputHasher {
   }
 
   /** Finalize the hash and return a hex string. */
-  finish() {
-    return this.#hash.digest("hex");
+  async finish() {
+    let length = 0;
+    for (const chunk of this.#chunks) {
+      length += chunk.length;
+    }
+    const data = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of this.#chunks) {
+      data.set(chunk, offset);
+      offset += chunk.length;
+    }
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(
+      new Uint8Array(digest),
+      (byte) => byte.toString(16).padStart(2, "0"),
+    ).join("");
   }
 }
 
