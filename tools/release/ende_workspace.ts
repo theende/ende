@@ -10,13 +10,8 @@ export class EndeWorkspace {
     return currentDirPath.parentOrThrow().parentOrThrow();
   }
 
-  static async load(): Promise<EndeWorkspace> {
-    return new EndeWorkspace(
-      await Repo.load({
-        name: "deno",
-        path: EndeWorkspace.rootDirPath,
-      }),
-    );
+  static load(): EndeWorkspace {
+    return new EndeWorkspace(new Repo(EndeWorkspace.rootDirPath));
   }
 
   private constructor(repo: Repo) {
@@ -27,28 +22,6 @@ export class EndeWorkspace {
     return this.#repo;
   }
 
-  get crates() {
-    return this.#repo.crates;
-  }
-
-  /** Gets the CLI dependency crates that should be published. */
-  getCliDependencyCrates() {
-    return this.getCliCrate()
-      .descendantDependenciesInRepo()
-      .filter((c) =>
-        c.name !== "test_server" && c.name !== "test_macro" &&
-        c.name !== "test_util"
-      );
-  }
-
-  getCliCrate() {
-    return this.getCrate("ende");
-  }
-
-  getCrate(name: string) {
-    return this.#repo.getCrate(name);
-  }
-
   getReleasesMdFile() {
     return new ReleasesMdFile(
       EndeWorkspace.rootDirPath.join("Releases.md").toString(),
@@ -56,8 +29,14 @@ export class EndeWorkspace {
   }
 
   async runFormatter() {
-    await this.#repo.command(
-      "deno run --allow-write --allow-read --allow-net --allow-run ./tools/format.js",
-    );
+    await this.#repo.command([
+      Deno.execPath(),
+      "run",
+      "--allow-write",
+      "--allow-read",
+      "--allow-net",
+      "--allow-run",
+      "./tools/format.js",
+    ]);
   }
 }

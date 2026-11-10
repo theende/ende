@@ -1,11 +1,11 @@
 #!/usr/bin/env -S deno run -A --lock=tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { EndeWorkspace } from "./ende_workspace.ts";
-import { $, createOctoKit, getGitHubRepository } from "./deps.ts";
+import { $, createGitHubClient, getGitHubRepository } from "./deps.ts";
 import { readProductVersion } from "./chronver.ts";
 
-const octoKit = createOctoKit();
-const workspace = await EndeWorkspace.load();
+const github = createGitHubClient();
+const workspace = EndeWorkspace.load();
 const repo = workspace.repo;
 const version = readProductVersion();
 
@@ -22,15 +22,15 @@ await repo.gitPush("-u", "origin", "HEAD");
 
 // Open PR
 $.logStep("Opening PR...");
-const openedPr = await octoKit.request("POST /repos/{owner}/{repo}/pulls", {
-  ...getGitHubRepository(),
+const { owner, repo: repoName } = getGitHubRepository();
+const openedPr = await github.post(`/repos/${owner}/${repoName}/pulls`, {
   base: originalBranch,
   head: newBranchName,
   draft: true,
   title: version,
   body: getPrBody(),
 });
-$.log(`Opened PR at ${openedPr.data.url}`);
+$.log(`Opened PR at ${openedPr.url}`);
 
 function getPrBody() {
   let text = `Set the Ende version to ${version}\n\n` +

@@ -15,7 +15,7 @@ import {
 // Crate versions in Cargo.toml are not bumped: they are internal and
 // independent of the product version.
 
-const workspace = await EndeWorkspace.load();
+const workspace = EndeWorkspace.load();
 const repo = workspace.repo;
 const originalVersion = readProductVersion();
 
@@ -84,8 +84,8 @@ async function bumpCiCacheVersion() {
   );
   generateScript.writeTextSync(newText);
 
-  // run the script
-  await $`${generateScript}`;
+  // run the script, with the flags in its shebang
+  await $`${Deno.execPath()} run --check --allow-write=. --allow-read=. --lock=./tools/deno.lock.json ${generateScript}`;
 }
 
 async function assertEndeBinaryVersion(expectedVersion: string) {

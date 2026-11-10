@@ -1,10 +1,10 @@
 #!/usr/bin/env -S deno run -A --lock=tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { EndeWorkspace } from "./ende_workspace.ts";
-import { $, createOctoKit, getGitHubRepository } from "./deps.ts";
+import { $, createGitHubClient, getGitHubRepository } from "./deps.ts";
 import { readProductVersion } from "./chronver.ts";
 
-const workspace = await EndeWorkspace.load();
+const workspace = EndeWorkspace.load();
 const repo = workspace.repo;
 const version = readProductVersion();
 
@@ -69,10 +69,11 @@ async function forwardReleaseCommitToMain() {
   $.logStep(`Opening PR...`);
 
   try {
-    const openedPr = await createOctoKit().request(
-      "POST /repos/{owner}/{repo}/pulls",
+    const github = createGitHubClient();
+    const { owner, repo: repoName } = getGitHubRepository();
+    const openedPr = await github.post(
+      `/repos/${owner}/${repoName}/pulls`,
       {
-        ...getGitHubRepository(),
         base: "primary",
         head: newBranchName,
         draft: true,
@@ -80,7 +81,7 @@ async function forwardReleaseCommitToMain() {
         body: getPrBody(),
       },
     );
-    $.log(`Opened PR at ${openedPr.data.url}`);
+    $.log(`Opened PR at ${openedPr.url}`);
   } catch (err) {
     $.logError(
       `Failed to open PR. Please open one manually: https://github.com/theende/ende/pull/new/${newBranchName}`,

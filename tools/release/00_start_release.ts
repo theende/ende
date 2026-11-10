@@ -3,7 +3,7 @@
 
 // deno-lint-ignore-file no-console
 
-import { $, createOctoKit } from "./deps.ts";
+import { $, createGitHubClient } from "./deps.ts";
 import { nextReleaseVersion, readProductVersion } from "./chronver.ts";
 
 const currentDirPath = $.path(import.meta.dirname!);
@@ -17,8 +17,8 @@ const releaseInstructions = buildEndeReleaseInstructionsDoc();
 if (Deno.args.some((a) => a === "--dry-run")) {
   console.log(releaseInstructions);
 } else {
-  const octoKit = createOctoKit();
-  const result = await octoKit.request("POST /gists", {
+  const github = createGitHubClient();
+  const result = await github.post("/gists", {
     description: `Ende CLI v${nextVersion} release checklist`,
     public: false,
     files: {
@@ -31,7 +31,7 @@ if (Deno.args.some((a) => a === "--dry-run")) {
   $.log("==============================================");
   $.log("Created gist with instructions!");
   $.log("");
-  $.log(`  ${result.data.html_url}`);
+  $.log(`  ${result.html_url}`);
   $.log("");
   $.log("Please fork the gist and follow the checklist.");
   $.log("==============================================");
