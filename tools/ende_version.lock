@@ -1,0 +1,21 @@
+# Pinned Ende release for CI's tooling jobs.
+#
+# tools/release/fetch_ende.sh downloads
+#   https://dl.ende.sh/release/v<version>/ende-<target>.zip
+# for the version below, and the zip must match both its published
+# `.zip.sha256sum` and the SHA-256 pinned here for the target. Nothing falls
+# back to the latest release: bump this file on purpose after a release.
+#
+# To bump: change the version, take each target's hash from the release's
+# `ende-<target>.zip.sha256sum` on GitHub, check it against the zip on
+# dl.ende.sh (`shasum -a 256 ende-<target>.zip`), and fill it in below.
+#
+# Format: one `<target>  <zip sha256>` per line. The `# version: X.Y.Z`
+# directive is the Ende version, without the `v`.
+#
+# version: 2026.11.10
+
+aarch64-apple-darwin  fec79975a1813fde9aad3682b8927060c45624abe3a39ddcba16d27096658eed
+aarch64-unknown-linux-gnu  3aab8f01fc81bb2d8d421fceac288922b24afd581d5d51187eb5d514a7b5d8e3
+x86_64-pc-windows-msvc  10e393d8732791e13e1b574752b361e7ce18e203d1c7459de53c143068535b27
+x86_64-unknown-linux-gnu  53c567ad313c3a35d7efef43b84689be9207a66e6162dc639320c563739ec6b4

@@ -125,6 +125,26 @@ export const installDenoStep = step({
   uses: "denoland/setup-deno@v2",
   with: { "deno-version": "v2.x" },
 });
+// The Ende release pinned in tools/ende_version.lock, from dl.ende.sh, for
+// jobs that only run repo tooling. Needs the repo checked out. A failed
+// download or check fails the job.
+export const installEndeStep = step({
+  name: "Install Ende",
+  shell: "bash",
+  run: [
+    'case "${RUNNER_OS}-${RUNNER_ARCH}" in',
+    "  Linux-X64)   target=x86_64-unknown-linux-gnu ;;",
+    "  Linux-ARM64) target=aarch64-unknown-linux-gnu ;;",
+    "  macOS-ARM64) target=aarch64-apple-darwin ;;",
+    "  Windows-X64) target=x86_64-pc-windows-msvc ;;",
+    '  *) echo "No Ende release for ${RUNNER_OS}-${RUNNER_ARCH}"; exit 1 ;;',
+    "esac",
+    'dir="$(./tools/release/fetch_ende.sh "$target" "$RUNNER_TEMP/ende")"',
+    '"$dir/ende" --version',
+    'if command -v cygpath > /dev/null; then dir="$(cygpath -w "$dir")"; fi',
+    'echo "$dir" >> "$GITHUB_PATH"',
+  ].join("\n"),
+});
 
 // Pin rustup-init to 1.28.2: sh.rustup.rs currently serves 1.29.0, which has
 // a broken proxy multi-call dispatch (cargo/rustc identify as rustup-init).
