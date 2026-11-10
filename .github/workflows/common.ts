@@ -120,6 +120,10 @@ export const cloneSubmodule = (path: string) =>
     run: `git submodule update --init --recursive --depth=1 -- ${path}`,
   });
 export const cloneStdSubmoduleStep = cloneSubmodule("./tests/util/std");
+// Upstream Deno, for the jobs not moved to installEndeStep yet. They run
+// tools/install_prebuilt.js (macOS lld, the bench tools) and release.ts's
+// tools/release/verify_release_tag.ts through their `deno` shebang, and
+// tests/wpt/wpt.ts with `deno run`.
 export const installDenoStep = step({
   name: "Install Deno",
   uses: "denoland/setup-deno@v2",

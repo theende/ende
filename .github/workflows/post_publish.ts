@@ -48,6 +48,9 @@ const workflow = createWorkflow({
           "fetch-depth": 1,
         },
       }),
+      // Upstream Deno. These scripts don't import tools/release/deps.ts
+      // (npm:octokit), so this job could move to Ende; it hasn't been tried
+      // on a release yet.
       step({
         uses: "denoland/setup-deno@v2",
         with: { "deno-version": "v2.x" },

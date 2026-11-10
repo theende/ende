@@ -31,6 +31,9 @@ const workflow = createWorkflow({
         name: "Clone repository",
         uses: "actions/checkout@v6",
       }),
+      // Upstream Deno, not Ende: 00_start_release.ts imports
+      // tools/release/deps.ts, whose jsr:@deno/rust-automation imports
+      // npm:octokit, which Ende can't load.
       step({
         name: "Install deno",
         uses: "denoland/setup-deno@v2",

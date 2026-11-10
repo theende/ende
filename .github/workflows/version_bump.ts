@@ -36,6 +36,9 @@ const workflow = createWorkflow({
         },
       }),
       step({ uses: "dsherret/rust-toolchain-file@v1" }),
+      // Upstream Deno, not Ende: 01_bump_crate_versions.ts and
+      // 02_create_pr.ts import tools/release/deps.ts, whose
+      // jsr:@deno/rust-automation imports npm:octokit, which Ende can't load.
       step({
         name: "Install deno",
         uses: "denoland/setup-deno@v2",

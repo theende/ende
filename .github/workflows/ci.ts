@@ -19,6 +19,7 @@ import {
   cloneSubmodule,
   getOsSpecificSteps,
   installDenoStep,
+  installEndeStep,
   installRustStep,
   sysRootConfig,
 } from "./common.ts";
@@ -387,7 +388,7 @@ const endeCoreChangesCheckStep = step({
   run: [
     // Fetch the base SHA so it's available even in shallow clones
     `git fetch --depth=1 origin \${{ github.event.pull_request.base.sha }}`,
-    `deno run -A tools/check_ende_core_changes.js \${{ github.event.pull_request.base.sha }}`,
+    `ende run -A tools/check_ende_core_changes.js \${{ github.event.pull_request.base.sha }}`,
   ],
   outputs: ["skip_ende_core_test"] as const,
 });
@@ -399,7 +400,7 @@ const endeCoreChangesCheckStep = step({
 const docsOnlyChangesCheckStep = step({
   id: "docs_only_changes",
   run: [
-    `deno run -A tools/check_docs_only_changes.js \${{ github.event.pull_request.base.sha }}`,
+    `ende run -A tools/check_docs_only_changes.js \${{ github.event.pull_request.base.sha }}`,
   ],
   outputs: ["docs_only"] as const,
 });
@@ -409,7 +410,7 @@ const preBuildJob = job("pre_build", {
   runsOn: "ubuntu-latest",
   steps: step.if(isPr)(
     cloneRepoStep,
-    installDenoStep,
+    installEndeStep,
     step.if(conditions.isDraftPr())(preBuildCheckStep),
     endeCoreChangesCheckStep,
     docsOnlyChangesCheckStep,
@@ -1254,6 +1255,8 @@ const lintMatrix = defineMatrix({
     profile: "debug",
     job: "lint",
   }, {
+    // Full matrix only. installEndeStep fails on this runner: Ende has no
+    // x86_64-apple-darwin release.
     ...Runners.macosX86,
     profile: "debug",
     job: "lint",
@@ -1302,24 +1305,24 @@ const lintJob = job("lint", {
       cloneStdSubmoduleStep,
       restoreCacheStep,
       installRustStep,
-      installDenoStep,
+      installEndeStep,
       step.if(lintMatrix.os.equals("linux"))(
         {
           name: "test_format.js",
           run:
-            "deno run --allow-write --allow-read --allow-run --allow-net ./tools/format.js --check",
+            "ende run --allow-write --allow-read --allow-run --allow-net ./tools/format.js --check",
         },
         {
           name: "jsdoc_checker.js",
           run:
-            "deno run --allow-read --allow-env --allow-sys ./tools/jsdoc_checker.js",
+            "ende run --allow-read --allow-env --allow-sys ./tools/jsdoc_checker.js",
         },
       ),
       {
         name: "lint.js",
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" },
         run:
-          "deno run --allow-write --allow-read --allow-run --allow-net --allow-env ./tools/lint.js",
+          "ende run --allow-write --allow-read --allow-run --allow-net --allow-env ./tools/lint.js",
       },
       saveCacheStep!,
     );
