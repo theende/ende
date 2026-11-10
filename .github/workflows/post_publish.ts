@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno run --check --allow-write=. --allow-read=. --lock=./tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
-import { createWorkflow, expr, step } from "jsr:@david/gagen@0.3.1";
+import { createWorkflow, expr, step } from "../../tools/gagen/mod.ts";
 import { dlEndeShEnabled, dlS3Env } from "./common.ts";
 
 // Runs when a GitHub release is published (the release workflow only creates

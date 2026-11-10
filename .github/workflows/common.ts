@@ -6,7 +6,7 @@ import {
   type ConfigValue,
   expr,
   step,
-} from "jsr:@david/gagen@0.3.1";
+} from "../../tools/gagen/mod.ts";
 
 // Note that you may need to add more version to the `apt-get remove` line below if you change this
 const llvmVersion = 22;

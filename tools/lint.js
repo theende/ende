@@ -101,6 +101,7 @@ async function lintJS() {
       ":!:tests/wpt/runner/**",
       ":!:tests/wpt/suite/**",
       ":!:libs/**",
+      ":!:tools/gagen/**",
     ]);
 
     if (!sourceFiles.length) {

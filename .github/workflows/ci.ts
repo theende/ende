@@ -13,7 +13,7 @@ import {
   job,
   literal,
   step,
-} from "jsr:@david/gagen@0.3.1";
+} from "../../tools/gagen/mod.ts";
 import {
   cloneStdSubmoduleStep,
   cloneSubmodule,

@@ -2,7 +2,7 @@
 // Copyright 2026 the Ende authors. MIT license.
 // Runs the ende.sh install scripts (tools/install) against the published
 // releases on every OS that has one.
-import { createWorkflow, defineMatrix, step } from "jsr:@david/gagen@0.3.1";
+import { createWorkflow, defineMatrix, step } from "../../tools/gagen/mod.ts";
 
 const installPaths = [
   "tools/install/**",
