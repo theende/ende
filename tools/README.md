@@ -13,6 +13,10 @@ To run formatting:
 deno run --allow-read --allow-write --allow-run ./tools/format.js
 ```
 
+It runs the dprint pinned in `tools/dprint_version.lock`, which
+`tools/release/fetch_dprint.sh` downloads from dl.ende.sh into `target/dprint/`
+on first use (this needs `bash`, `curl` and `unzip`, or `7z` on Windows).
+
 ## lint.js
 
 This script will lint the code base (currently using deno lint, clippy). It is a

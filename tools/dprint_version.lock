@@ -1,0 +1,25 @@
+# Pinned dprint CLI for tools/format.js.
+#
+# tools/release/fetch_dprint.sh downloads
+#   https://dl.ende.sh/dprint/<version>/dprint-<target>.zip
+# for the version below. The zip must match both its published
+# `.zip.sha256sum` and the SHA-256 pinned here for the target, and the `dprint`
+# binary in it (`dprint.exe` on Windows) the binary SHA-256 pinned here. The
+# zips on dl.ende.sh are dprint's own GitHub release zips, unchanged
+# (https://github.com/dprint/dprint/releases/download/<version>/SHASUMS256.txt
+# lists the same hashes). The formatter plugins are pinned separately, with
+# `url@sha256` in .dprint.json.
+#
+# To bump: check each zip against the release's SHASUMS256.txt, upload them to
+# dl.ende.sh/dprint/<version>/ with their `.zip.sha256sum` files, then change
+# the version and fill in each target's zip and binary SHA-256 below.
+#
+# Format: one `<target>  <zip sha256>  <binary sha256>` per line. The
+# `# version: X.Y.Z` directive is the dprint version.
+#
+# version: 0.47.2
+
+aarch64-apple-darwin  d3af3952e4590663282e66413153f20cf7d3f6ac2795990d3652dec8971f68bb  498a3428b155ffcfe0b5c5cd728d6dcffd540edf67cd10a909044e33180f32db
+aarch64-unknown-linux-gnu  6f5265d252773be43e716bedec5d1e25790292654306bcb772b46f5b245f730e  6a013ed1cfe6624b55e4753695d3e0aecc81fbdb9860658dfc42f58b02873cd8
+x86_64-pc-windows-msvc  20ed46ace9d70dadf564cdee3fdf3d06e44539b05c67387f461062890330c218  4fd30f0375a5980f0f3397b0f0f3295ca2b5de75c6e3ee5b550b68a9c64661a3
+x86_64-unknown-linux-gnu  62297402bc9ede9434c33c5de1918d97864002347c0ff85863de7d1ffe6ea384  3d24da8562c3f88af971e9e3f9555a9864224d761162430b2af7b33f400b07c9
