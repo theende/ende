@@ -395,7 +395,7 @@ jobs:
             exit 1
           fi
   dl_ende_sh:
-    name: upload runtimes to dl.ende.sh
+    name: upload archives to dl.ende.sh
     needs:
       - build
     if: vars.DL_ENDE_SH_ENABLED == 'true'
@@ -408,7 +408,7 @@ jobs:
           pattern: release-*
           path: dist
           merge-multiple: true
-      - name: Upload endert and libendert archives
+      - name: 'Upload ende, endert and libendert archives'
         env:
           AWS_ACCESS_KEY_ID: '${{ secrets.DL_S3_ACCESS_KEY_ID }}'
           AWS_SECRET_ACCESS_KEY: '${{ secrets.DL_S3_SECRET_ACCESS_KEY }}'
@@ -417,7 +417,7 @@ jobs:
           AWS_REQUEST_CHECKSUM_CALCULATION: when_required
           AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
           DL_S3_BUCKET: '${{ secrets.DL_S3_BUCKET }}'
-        run: 'aws s3 cp dist/ "s3://$DL_S3_BUCKET/release/$RELEASE_TAG/" --recursive --exclude "*" --include "endert-*" --include "libendert-*"'
+        run: 'aws s3 cp dist/ "s3://$DL_S3_BUCKET/release/$RELEASE_TAG/" --recursive --exclude "*" --include "ende-*.zip" --include "ende-*.zip.sha256sum" --include "endert-*" --include "libendert-*"'
 
 # gagen:pin actions/checkout@v6 = d23441a48e516b6c34aea4fa41551a30e30af803
 # gagen:pin actions/download-artifact@v7 = 37930b1c2abaa49bbe596cd826c3c89aef350131

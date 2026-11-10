@@ -12,7 +12,7 @@ workflows need. The per-release checklist is generated from
 | 1    | `start_release`          | manual                      | a gist with the release checklist                                                                                           |
 | 2    | `version_bump`           | manual                      | a PR setting `cli/lib/version.txt` to today's ChronVer; merge it                                                            |
 | 3    | `release_tag`            | manual                      | pushes the `v<version>` tag (with `ENDE_RELEASE_PAT`, so the push starts step 4)                                            |
-| 4    | `release` (`release.ts`) | the `v*` tag push           | builds every target and creates a **draft** GitHub release with all assets; uploads the runtimes to dl.ende.sh (if enabled) |
+| 4    | `release` (`release.ts`) | the `v*` tag push           | builds every target and creates a **draft** GitHub release with all assets; uploads the archives to dl.ende.sh (if enabled) |
 | 5    | none                     | manual                      | review the draft's notes and assets, then **publish** it                                                                    |
 | 6    | `post_publish`           | the release being published | updates `dl.ende.sh/release-latest.txt` (if enabled)                                                                        |
 
@@ -59,7 +59,9 @@ with every workflow; see [`ci.md`](./ci.md)). Jobs:
    of an existing draft and refuses to touch a published release.
 4. **dl_ende_sh** — uploads `endert-*` and `libendert-*` to
    `release/v<version>/` on dl.ende.sh, which `ende compile` and `ende desktop`
-   download from.
+   download from, and `ende-<target>.zip` with its `.zip.sha256sum`, which CI's
+   tooling jobs install (`tools/release/fetch_ende.sh`). The delta patches and
+   `ende-<target>.sha256sum` stay on GitHub only.
 
 To rebuild an existing tag (for example after a flaky job), re-run the failed
 jobs, or run the workflow by hand with the `tag` input.

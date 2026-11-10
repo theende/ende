@@ -411,13 +411,17 @@ const releaseJob = job("release", {
 
 // === dl.ende.sh ===
 
-// Uploads the runtime archives `ende compile` downloads for this version.
+// Uploads the runtime archives `ende compile` downloads for this version, and
+// the `ende` zips CI's tooling jobs install (tools/release/fetch_ende.sh), so
+// those don't depend on GitHub release downloads. Not the delta patches or the
+// extracted binary's checksum: `ende upgrade` takes those from GitHub.
 // They can go up before the release is published: nothing points at
-// `release/v<version>/` until an `ende` of that version exists.
+// `release/v<version>/` until an `ende` of that version exists, and
+// fetch_ende.sh only fetches the version its lock pins.
 // `release-latest.txt` (what `ende upgrade` checks) must not change until the
 // GitHub release is published, so the post_publish workflow updates it.
 const dlJob = job("dl_ende_sh", {
-  name: "upload runtimes to dl.ende.sh",
+  name: "upload archives to dl.ende.sh",
   needs: [buildJob],
   if: dlEndeShEnabled,
   runsOn: "ubuntu-24.04",
@@ -425,10 +429,10 @@ const dlJob = job("dl_ende_sh", {
   steps: [
     downloadAssetsStep,
     step({
-      name: "Upload endert and libendert archives",
+      name: "Upload ende, endert and libendert archives",
       env: dlS3Env,
       run: [
-        'aws s3 cp dist/ "s3://$DL_S3_BUCKET/release/$RELEASE_TAG/" --recursive --exclude "*" --include "endert-*" --include "libendert-*"',
+        'aws s3 cp dist/ "s3://$DL_S3_BUCKET/release/$RELEASE_TAG/" --recursive --exclude "*" --include "ende-*.zip" --include "ende-*.zip.sha256sum" --include "endert-*" --include "libendert-*"',
       ],
     }),
   ],
