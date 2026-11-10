@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno run --allow-read --allow-env --allow-sys --config=tests/config/deno.json
 // Copyright 2018-2026 the Deno authors. MIT license.
-import { Node, Project, ts } from "npm:ts-morph@25.0.1";
+import { Node, Project, ts } from "jsr:@ts-morph/ts-morph@25.0.1";
 import { join, ROOT_PATH } from "./util.js";
 
 const libs = [
@@ -27,8 +27,14 @@ const unstableLibs = [
 const errors = [];
 
 const project = new Project();
-project.addSourceFilesAtPaths(libs);
-const unstableFiles = project.addSourceFilesAtPaths(unstableLibs);
+// One file at a time: ts-morph's Deno build joins several paths into one
+// `{a,b}` glob, which @std/fs can't expand when they're absolute paths.
+for (const lib of libs) {
+  project.addSourceFileAtPath(lib);
+}
+const unstableFiles = unstableLibs.map((lib) =>
+  project.addSourceFileAtPath(lib)
+);
 
 for (const file of project.getSourceFiles()) {
   for (
