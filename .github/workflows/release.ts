@@ -19,7 +19,7 @@ import {
   dlEndeShEnabled,
   dlS3Env,
   getOsSpecificSteps,
-  installDenoStep,
+  installEndeStep,
   installRustStep,
   sysRootConfig,
 } from "./common.ts";
@@ -47,7 +47,7 @@ const versionStep = step({
   id: "version",
   name: "Check the tag matches cli/lib/version.txt",
   run: [
-    './tools/release/verify_release_tag.ts "$RELEASE_TAG"',
+    'ende run --allow-read=. tools/release/verify_release_tag.ts "$RELEASE_TAG"',
     'echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"',
   ],
   outputs: ["version"] as const,
@@ -57,7 +57,7 @@ const verifyJob = job("verify", {
   name: "verify tag",
   runsOn: "ubuntu-24.04",
   timeoutMinutes: 10,
-  steps: [checkoutTagStep, installDenoStep, versionStep],
+  steps: [checkoutTagStep, installEndeStep, versionStep],
   outputs: {
     version: versionStep.outputs.version,
   },
@@ -115,7 +115,6 @@ const { installPythonStep, setupPrebuiltMacStep, installLldStep } =
 
 const buildSteps = step.dependsOn(
   installLldStep,
-  installDenoStep,
   installPythonStep,
   installRustStep,
 )(

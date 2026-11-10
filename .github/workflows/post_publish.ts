@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --check --allow-write=. --allow-read=. --lock=./tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { createWorkflow, expr, step } from "../../tools/gagen/mod.ts";
-import { dlEndeShEnabled, dlS3Env } from "./common.ts";
+import { dlEndeShEnabled, dlS3Env, installEndeStep } from "./common.ts";
 
 // Runs when a GitHub release is published (the release workflow only creates
 // drafts). Points `ende upgrade` at the new version by updating
@@ -48,13 +48,7 @@ const workflow = createWorkflow({
           "fetch-depth": 1,
         },
       }),
-      // Upstream Deno. These scripts don't import tools/release/deps.ts
-      // (npm:octokit), so this job could move to Ende; it hasn't been tried
-      // on a release yet.
-      step({
-        uses: "denoland/setup-deno@v2",
-        with: { "deno-version": "v2.x" },
-      }),
+      installEndeStep,
       step({
         name: "Upload version file to dl.ende.sh",
         env: {
@@ -73,10 +67,10 @@ const workflow = createWorkflow({
           "# A release published from a tag that skipped version_bump has no",
           "# assets (the release workflow refuses to build it), so never point",
           "# `ende upgrade` at it.",
-          './tools/release/verify_release_tag.ts "$VERSION"',
-          'deno run --allow-net --allow-write tools/release/update_versions_json.ts "$VERSION"',
+          'ende run --allow-read=. tools/release/verify_release_tag.ts "$VERSION"',
+          'ende run --allow-net --allow-write tools/release/update_versions_json.ts "$VERSION"',
           'aws s3 cp versions.json "s3://$DL_S3_BUCKET/versions.json" --content-type application/json',
-          'LATEST_FILE=$(deno run --allow-net --allow-write tools/release/upload_version_file.ts "$VERSION" || exit 0)',
+          'LATEST_FILE=$(ende run --allow-net --allow-write tools/release/upload_version_file.ts "$VERSION" || exit 0)',
           '[ -z "$LATEST_FILE" ] && exit 0',
           'aws s3 cp "$LATEST_FILE" "s3://$DL_S3_BUCKET/$LATEST_FILE" --content-type text/plain',
           'echo "LATEST_FILE=$LATEST_FILE" >> "$GITHUB_ENV"',
@@ -93,7 +87,7 @@ const workflow = createWorkflow({
           "# These live at a stable URL but change every release, so the edge",
           "# has to be told to drop them. Otherwise `ende upgrade` keeps",
           "# serving the previous version until the 4 hour TTL expires.",
-          'deno run -A --lock=tools/deno.lock.json tools/release/purge_cdn_cache.ts versions.json ${LATEST_FILE:+"$LATEST_FILE"}',
+          'ende run -A --lock=tools/deno.lock.json tools/release/purge_cdn_cache.ts versions.json ${LATEST_FILE:+"$LATEST_FILE"}',
         ],
       }),
     ],

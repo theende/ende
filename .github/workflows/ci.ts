@@ -643,7 +643,6 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           )
           .dependsOn(
             installLldStep,
-            installDenoStep,
             restoreCacheStep,
             installRustStep,
             sysRootStep,
@@ -837,13 +836,13 @@ const buildJobs = buildItems.map((rawBuildItem) => {
               "command -v rustc && rustc --version || echo 'No rustc found or bad executable'",
               "echo '*** Cargo'",
               "command -v cargo && cargo --version || echo 'No cargo found or bad executable'",
-              "echo '*** Deno'",
-              "command -v deno && deno --version || echo 'No deno found or bad executable'",
+              "echo '*** Ende'",
+              "command -v ende && ende --version || echo 'No ende found or bad executable'",
               "echo '*** Installed packages'",
               "command -v dpkg && dpkg -l || echo 'No dpkg found or bad executable'",
             ],
           }).comesAfter(
-            installDenoStep,
+            installEndeStep,
             installPythonStep,
             installRustStep,
           ),
@@ -1135,6 +1134,7 @@ const buildJobs = buildItems.map((rawBuildItem) => {
           cloneStdSubmoduleStep,
           cloneSubmodule("./tests/wpt/suite"),
           buildCacheSteps.restoreCacheStep,
+          // Upstream Deno: tests/wpt/wpt.ts hasn't been tried under Ende.
           installDenoStep,
           installPythonStep,
           endeArtifact.download(),
@@ -1217,11 +1217,12 @@ const benchJob = job(
         cloneSubmodule("./tests/bench/testdata/lsp_benchdata"),
         cloneStdSubmoduleStep,
         step(sysRootConfig),
-        installDenoStep,
+        installEndeStep,
         {
           name: "Install benchmark tools",
           env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" },
-          run: "./tools/install_prebuilt.js wrk hyperfine",
+          run:
+            "ende run --allow-write --allow-read --allow-net --allow-env --config=tests/config/ende.json tools/install_prebuilt.js wrk hyperfine",
         },
         // We currently do a full ende build instead of getting this from the build
         // job because the benchmarks inspect the target folder to see the sizes of
@@ -1503,6 +1504,8 @@ const endeCoreTestJob = job("ende-core-test", {
     cloneRepoStep,
     endeCoreTestCacheSteps.restoreCacheStep,
     installRustStep,
+    // Upstream Deno, kept from upstream deno_core's CI. No step here runs
+    // `deno`, but this full-matrix-only job hasn't been run without it.
     installDenoStep,
     step(sysRootConfig),
     {

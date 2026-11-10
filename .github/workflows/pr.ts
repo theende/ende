@@ -1,6 +1,7 @@
 #!/usr/bin/env -S deno run --check --allow-write=. --allow-read=. --lock=./tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { createWorkflow, step } from "../../tools/gagen/mod.ts";
+import { installEndeStep } from "./common.ts";
 
 const workflow = createWorkflow({
   name: "pr",
@@ -15,15 +16,22 @@ const workflow = createWorkflow({
     runsOn: "ubuntu-latest",
     steps: [
       step({
-        name: "Install Deno",
-        uses: "denoland/setup-deno@v2",
-        with: { "deno-version": "canary" },
+        // For installEndeStep's tools/release/fetch_ende.sh and its lock.
+        // Always primary, like the script below: never the PR's code (see the
+        // warning in the header).
+        name: "Clone repository",
+        uses: "actions/checkout@v6",
+        with: {
+          ref: "primary",
+          "persist-credentials": false,
+        },
       }),
+      installEndeStep,
       step({
         name: "Lint",
         env: { PR_TITLE: "${{ github.event.pull_request.title }}" },
         run:
-          'deno run https://raw.githubusercontent.com/theende/ende/refs/heads/primary/tools/verify_pr_title.js "$PR_TITLE"',
+          'ende run https://raw.githubusercontent.com/theende/ende/refs/heads/primary/tools/verify_pr_title.js "$PR_TITLE"',
       }),
     ],
   }],

@@ -120,17 +120,16 @@ export const cloneSubmodule = (path: string) =>
     run: `git submodule update --init --recursive --depth=1 -- ${path}`,
   });
 export const cloneStdSubmoduleStep = cloneSubmodule("./tests/util/std");
-// Upstream Deno, for the jobs not moved to installEndeStep yet. They run
-// tools/install_prebuilt.js (macOS lld, the bench tools) and release.ts's
-// tools/release/verify_release_tag.ts through their `deno` shebang, and
-// tests/wpt/wpt.ts with `deno run`.
+// Upstream Deno, for the jobs not moved to installEndeStep yet: ci.ts's wpt
+// job runs tests/wpt/wpt.ts with `deno run`, and its ende_core test job still
+// installs it (see the comments there).
 export const installDenoStep = step({
   name: "Install Deno",
   uses: "denoland/setup-deno@v2",
   with: { "deno-version": "v2.x" },
 });
 // The Ende release pinned in tools/ende_version.lock, from dl.ende.sh, for
-// jobs that only run repo tooling. Needs the repo checked out. A failed
+// the jobs that run repo tooling. Needs the repo checked out. A failed
 // download or check fails the job.
 export const installEndeStep = step({
   name: "Install Ende",
@@ -222,7 +221,7 @@ export function getOsSpecificSteps({
   const installLldStep = step
     .dependsOn(
       cloneStdSubmoduleStep,
-      installDenoStep,
+      installEndeStep,
       setupPrebuiltMacStep,
     )({
       name: "Install macOS aarch64 lld",
@@ -230,7 +229,8 @@ export function getOsSpecificSteps({
       env: {
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
       },
-      run: "./tools/install_prebuilt.js ld64.lld",
+      run:
+        "ende run --allow-write --allow-read --allow-net --allow-env --config=tests/config/ende.json tools/install_prebuilt.js ld64.lld",
     });
   return {
     installPythonStep,
