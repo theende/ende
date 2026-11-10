@@ -19,15 +19,24 @@ jobs:
           git config --global fetch.parallel 32
       - name: Clone repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - name: Install deno
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
-        with:
-          deno-version: v2.x
+      - name: Install Ende
+        shell: bash
+        run: |-
+          case "${RUNNER_OS}-${RUNNER_ARCH}" in
+            Linux-X64)   target=x86_64-unknown-linux-gnu ;;
+            Linux-ARM64) target=aarch64-unknown-linux-gnu ;;
+            macOS-ARM64) target=aarch64-apple-darwin ;;
+            Windows-X64) target=x86_64-pc-windows-msvc ;;
+            *) echo "No Ende release for ${RUNNER_OS}-${RUNNER_ARCH}"; exit 1 ;;
+          esac
+          dir="$(./tools/release/fetch_ende.sh "$target" "$RUNNER_TEMP/ende")"
+          "$dir/ende" --version
+          if command -v cygpath > /dev/null; then dir="$(cygpath -w "$dir")"; fi
+          echo "$dir" >> "$GITHUB_PATH"
       - name: Create Gist URL
         env:
           GITHUB_TOKEN: '${{ secrets.ENDE_RELEASE_PAT }}'
           GH_WORKFLOW_ACTOR: '${{ github.actor }}'
-        run: ./tools/release/00_start_release.ts
+        run: ende run -A --quiet --lock=tools/deno.lock.json ./tools/release/00_start_release.ts
 
 # gagen:pin actions/checkout@v6 = de0fac2e4500dabe0009e67214ff5f5447ce83dd
-# gagen:pin denoland/setup-deno@v2 = 667a34cdef165d8d2b2e98dde39547c9daac7282

@@ -27,10 +27,20 @@ jobs:
           token: '${{ secrets.ENDE_RELEASE_PAT }}'
           submodules: recursive
       - uses: dsherret/rust-toolchain-file@3551321aa44dd44a0393eb3b6bdfbc5d25ecf621
-      - name: Install deno
-        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
-        with:
-          deno-version: v2.x
+      - name: Install Ende
+        shell: bash
+        run: |-
+          case "${RUNNER_OS}-${RUNNER_ARCH}" in
+            Linux-X64)   target=x86_64-unknown-linux-gnu ;;
+            Linux-ARM64) target=aarch64-unknown-linux-gnu ;;
+            macOS-ARM64) target=aarch64-apple-darwin ;;
+            Windows-X64) target=x86_64-pc-windows-msvc ;;
+            *) echo "No Ende release for ${RUNNER_OS}-${RUNNER_ARCH}"; exit 1 ;;
+          esac
+          dir="$(./tools/release/fetch_ende.sh "$target" "$RUNNER_TEMP/ende")"
+          "$dir/ende" --version
+          if command -v cygpath > /dev/null; then dir="$(cygpath -w "$dir")"; fi
+          echo "$dir" >> "$GITHUB_PATH"
       - name: Create release tag and check forward commit to primary
         env:
           GITHUB_TOKEN: '${{ secrets.ENDE_RELEASE_PAT }}'
@@ -38,8 +48,7 @@ jobs:
         run: |-
           git config user.email "${{ github.actor }}@users.noreply.github.com"
           git config user.name "${{ github.actor }}"
-          ./tools/release/04_post_publish.ts
+          ende run -A --lock=tools/deno.lock.json ./tools/release/04_post_publish.ts
 
 # gagen:pin actions/checkout@v6 = d23441a48e516b6c34aea4fa41551a30e30af803
-# gagen:pin denoland/setup-deno@v2 = 22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
 # gagen:pin dsherret/rust-toolchain-file@v1 = 3551321aa44dd44a0393eb3b6bdfbc5d25ecf621

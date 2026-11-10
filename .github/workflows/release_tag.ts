@@ -1,6 +1,7 @@
 #!/usr/bin/env -S deno run --check --allow-write=. --allow-read=. --lock=./tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { createWorkflow, step } from "../../tools/gagen/mod.ts";
+import { installEndeStep } from "./common.ts";
 
 const workflow = createWorkflow({
   name: "release_tag",
@@ -39,14 +40,7 @@ const workflow = createWorkflow({
         },
       }),
       step({ uses: "dsherret/rust-toolchain-file@v1" }),
-      // Upstream Deno, not Ende: 04_post_publish.ts imports
-      // tools/release/deps.ts, whose jsr:@deno/rust-automation imports
-      // npm:octokit, which Ende can't load.
-      step({
-        name: "Install deno",
-        uses: "denoland/setup-deno@v2",
-        with: { "deno-version": "v2.x" },
-      }),
+      installEndeStep,
       step({
         name: "Create release tag and check forward commit to primary",
         env: {
@@ -56,7 +50,7 @@ const workflow = createWorkflow({
         run: [
           'git config user.email "${{ github.actor }}@users.noreply.github.com"',
           'git config user.name "${{ github.actor }}"',
-          "./tools/release/04_post_publish.ts",
+          "ende run -A --lock=tools/deno.lock.json ./tools/release/04_post_publish.ts",
         ],
       }),
     ],

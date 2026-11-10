@@ -1,6 +1,7 @@
 #!/usr/bin/env -S deno run --check --allow-write=. --allow-read=. --lock=./tools/deno.lock.json
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { createWorkflow, step } from "../../tools/gagen/mod.ts";
+import { installEndeStep } from "./common.ts";
 
 const workflow = createWorkflow({
   name: "start_release",
@@ -31,21 +32,15 @@ const workflow = createWorkflow({
         name: "Clone repository",
         uses: "actions/checkout@v6",
       }),
-      // Upstream Deno, not Ende: 00_start_release.ts imports
-      // tools/release/deps.ts, whose jsr:@deno/rust-automation imports
-      // npm:octokit, which Ende can't load.
-      step({
-        name: "Install deno",
-        uses: "denoland/setup-deno@v2",
-        with: { "deno-version": "v2.x" },
-      }),
+      installEndeStep,
       step({
         name: "Create Gist URL",
         env: {
           GITHUB_TOKEN: "${{ secrets.ENDE_RELEASE_PAT }}",
           GH_WORKFLOW_ACTOR: "${{ github.actor }}",
         },
-        run: "./tools/release/00_start_release.ts",
+        run:
+          "ende run -A --quiet --lock=tools/deno.lock.json ./tools/release/00_start_release.ts",
       }),
     ],
   }],
