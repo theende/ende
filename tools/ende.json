@@ -1,0 +1,6 @@
+{
+  // Ende reads this file and upstream Deno reads deno.json, which also holds
+  // the deno-only regenerate-lockfile task. Keep the other settings the same.
+  "lock": false,
+  "importMap": "../import_map.json"
+}
