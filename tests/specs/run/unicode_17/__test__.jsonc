@@ -1,4 +1,22 @@
 {
-  "args": "run main.js",
-  "output": "main.out"
+  "tests": {
+    "run": {
+      "args": "run main.ts",
+      "output": "main.out"
+    },
+    "check": {
+      "args": "check main.ts",
+      "output": "check.out"
+    },
+    "run_katakana_or_hiragana": {
+      "args": "run katakana_or_hiragana.ts",
+      "output": "katakana_or_hiragana.run.out",
+      "exitCode": 1
+    },
+    "check_katakana_or_hiragana": {
+      "args": "check katakana_or_hiragana.ts",
+      "output": "katakana_or_hiragana.check.out",
+      "exitCode": 1
+    }
+  }
 }

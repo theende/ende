@@ -248,7 +248,7 @@ pub fn exec(env: &Tsc7Env, request: Request) -> Result<Response, AnyError> {
       if ignored {
         log::debug!("tsc7: ignored {d}");
       }
-      !ignored && !is_provided_lib_not_found(d)
+      !ignored && !is_provided_lib_not_found(d) && !is_known_script_name(d)
     })
     .map(|mut d| {
       d.message_text = d.message_text.map(|m| format_message(m, d.code));
@@ -525,6 +525,47 @@ fn is_provided_lib_not_found(d: &Diagnostic) -> bool {
       .is_some_and(|c| ende_lib_name(&c[1].to_ascii_lowercase()).is_some())
 }
 
+/// Script names the bundled TypeScript 6 accepts in `\p{Script=...}`.
+/// tools/update_typescript_unicode.js brings that list up to the engine's
+/// Unicode version; stock tsc 7 has an older one.
+static TS6_SCRIPT_NAMES: LazyLock<HashSet<&'static str>> =
+  LazyLock::new(|| {
+    crate::tsc::TYPESCRIPT_SOURCE
+      .as_str()
+      .split_once("\n  Script: /* @__PURE__ */ new Set([")
+      .and_then(|(_, rest)| rest.split_once("]),"))
+      .map(|(names, _)| {
+        names.split(", ").map(|n| n.trim_matches('"')).collect()
+      })
+      .unwrap_or_default()
+  });
+
+/// Whether `d` is tsc rejecting a script name in a regular expression that
+/// the engine and the TS 6 checker accept.
+fn is_known_script_name(d: &Diagnostic) -> bool {
+  const SCRIPT_PROPERTIES: [&str; 4] =
+    ["{Script=", "{sc=", "{Script_Extensions=", "{scx="];
+  if d.code != 1526 {
+    return false;
+  }
+  let (Some(line), Some(start), Some(end)) = (&d.source_line, &d.start, &d.end)
+  else {
+    return false;
+  };
+  if start.line != end.line {
+    return false;
+  }
+  let units = line.encode_utf16().collect::<Vec<_>>();
+  let (start, end) = (start.character as usize, end.character as usize);
+  let (Some(before), Some(name)) = (units.get(..start), units.get(start..end))
+  else {
+    return false;
+  };
+  let before = String::from_utf16_lossy(before);
+  SCRIPT_PROPERTIES.iter().any(|p| before.ends_with(p))
+    && TS6_SCRIPT_NAMES.contains(String::from_utf16_lossy(name).as_str())
+}
+
 /// Orders mapped diagnostics by module specifier, then start position;
 /// those without a file (global or option errors) come first. tsc sorts by
 /// the paths it read, which name copies by a hash of the module's URL and
@@ -772,6 +813,56 @@ mod tests {
       canonical_files: OnceCell::new(),
       read_files: Default::default(),
     }
+  }
+
+  fn unknown_property_value(line: &str, value: &str) -> Diagnostic {
+    let start = line.find(value).unwrap() as u64;
+    Diagnostic {
+      start: Some(Position {
+        line: 0,
+        character: start,
+      }),
+      end: Some(Position {
+        line: 0,
+        character: start + value.len() as u64,
+      }),
+      source_line: Some(line.to_string()),
+      ..diagnostic(1526, "file:///a.ts", 0, "Unknown Unicode property value.")
+    }
+  }
+
+  #[test]
+  fn drops_script_names_newer_than_tsc() {
+    for line in [
+      r"/\p{Script=Sidetic}/u;",
+      r"/\p{sc=Gara}/u;",
+      r"/\P{Script_Extensions=Tolong_Siki}/v;",
+      r"/\p{scx=Berf}/u;",
+    ] {
+      let value = line.split(['=', '}']).nth(1).unwrap();
+      assert!(
+        is_known_script_name(&unknown_property_value(line, value)),
+        "{line}"
+      );
+    }
+  }
+
+  #[test]
+  fn keeps_other_unknown_property_values() {
+    // Not a script name.
+    let d = unknown_property_value(r"/\p{Script=Nope}/u;", "Nope");
+    assert!(!is_known_script_name(&d));
+    // A script name, but not as a script.
+    let d = unknown_property_value(r"/\p{gc=Sidetic}/u;", "Sidetic");
+    assert!(!is_known_script_name(&d));
+    // Another diagnostic at the same place.
+    let mut d = unknown_property_value(r"/\p{Script=Sidetic}/u;", "Sidetic");
+    d.code = 1524;
+    assert!(!is_known_script_name(&d));
+    // No range to read the name from.
+    let mut d = unknown_property_value(r"/\p{Script=Sidetic}/u;", "Sidetic");
+    d.end = None;
+    assert!(!is_known_script_name(&d));
   }
 
   #[test]

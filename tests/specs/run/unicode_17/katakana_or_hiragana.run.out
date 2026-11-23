@@ -1,0 +1,4 @@
+error: Uncaught SyntaxError: Invalid regular expression: /\p{Script=Katakana_Or_Hiragana}/u: Invalid property name
+console.log(/\p{Script=Katakana_Or_Hiragana}/u.test("a"));
+            ^
+    at [WILDCARD]

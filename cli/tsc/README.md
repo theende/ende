@@ -17,6 +17,11 @@ It works like this currently:
 1. Copy typescript.js into this repo.
 1. Copy d.ts files into dts directory.
 1. Review the copied files, removing and reverting what's necessary
+1. Rerun `tools/update_typescript_unicode.js` (usage is at the top of the
+   script): typescript.js ships Unicode tables older than the engine's, and
+   `ende check` would reject identifiers and regular expression script names
+   that run fine. Rerun it after an engine upgrade that changes its Unicode
+   version, too.
 
 So that might look something like this:
 

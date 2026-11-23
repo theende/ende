@@ -1,0 +1,7 @@
+Check [WILDLINE]katakana_or_hiragana.ts
+TS1526 [ERROR]: Unknown Unicode property value.
+console.log(/\p{Script=Katakana_Or_Hiragana}/u.test("a"));
+                       ~~~~~~~~~~~~~~~~~~~~
+    at file:///[WILDLINE]/katakana_or_hiragana.ts[WILDLINE]
+
+error: Type checking failed.
