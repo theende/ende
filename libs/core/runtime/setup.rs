@@ -161,11 +161,10 @@ fn v8_init(
 ) {
   #[cfg(feature = "include_icu_data")]
   {
-    v8::icu::set_common_data_77(deno_core_icudata::ICU_DATA).unwrap();
+    v8::icu::set_common_data_78(deno_core_icudata::ICU_DATA).unwrap();
   }
 
   let base_flags = concat!(
-    " --no-validate-asm",
     " --turbo_fast_api_calls",
     " --harmony-temporal",
     " --js-float16array",
