@@ -2563,6 +2563,7 @@ impl JsRuntime {
         || pending_state.has_pending_external_ops
         || pending_state.has_tick_scheduled
         || pending_state.has_pending_timers
+        || pending_state.has_refed_immediates
       {
         // pass, will be polled again
       } else {
@@ -2619,6 +2620,7 @@ impl JsRuntime {
         || pending_state.has_pending_external_ops
         || pending_state.has_tick_scheduled
         || pending_state.has_pending_timers
+        || pending_state.has_refed_immediates
       {
         // pass, will be polled again
       } else if realm.modules_idle() {
@@ -2896,6 +2898,7 @@ pub(crate) struct EventLoopPendingState {
   has_pending_promise_events: bool,
   has_pending_external_ops: bool,
   has_outstanding_immediates: bool,
+  has_refed_immediates: bool,
   has_pending_timers: bool,
 }
 
@@ -2931,6 +2934,10 @@ impl EventLoopPendingState {
       || num_pending_ops > num_unrefed_ops;
     let has_outstanding_immediates =
       state.immediate_info[IMM_IDX_HAS_OUTSTANDING] != 0;
+    // Refed immediates keep the event loop alive, including ones queued
+    // from inside an immediate callback, which only run in the next
+    // iteration's check phase.
+    let has_refed_immediates = state.immediate_info[IMM_IDX_REF_COUNT] > 0;
     let has_pending_timers = !state.active_timers.borrow().is_empty();
     EventLoopPendingState {
       has_pending_ops: has_pending_refed_ops || (num_pending_ops > 0),
@@ -2943,6 +2950,7 @@ impl EventLoopPendingState {
       has_pending_promise_events,
       has_pending_external_ops: state.external_ops_tracker.has_pending_ops(),
       has_outstanding_immediates,
+      has_refed_immediates,
       has_pending_timers,
     }
   }
@@ -2963,6 +2971,7 @@ impl EventLoopPendingState {
       || self.has_tick_scheduled
       || self.has_pending_promise_events
       || self.has_pending_external_ops
+      || self.has_refed_immediates
   }
 }
 

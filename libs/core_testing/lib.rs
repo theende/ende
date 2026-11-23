@@ -86,6 +86,7 @@ integration_test!(
   error_get_file_name,
   error_get_file_name_to_string,
   error_get_script_name_or_source_url,
+  immediate_nested_tla,
   import_sync,
   import_sync_existing,
   import_sync_throw,
