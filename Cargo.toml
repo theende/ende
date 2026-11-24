@@ -149,13 +149,13 @@ test_util = { path = "./tests/util/lib" }
 anyhow = "1.0.57"
 arc-swap = "1.7"
 argon2 = { version = "0.6.0-rc.8", default-features = false, features = ["alloc"] }
-async-compression = "0.4"
+async-compression = "=0.4.12" # held: 0.4.13+ needs brotli 7 or later, a second copy beside the workspace's 6
 async-once-cell = "0.5.4"
 async-stream = "0.3"
 async-trait = "0.1.73"
 aws-lc-rs = { version = "1.18.2" }
 aws-lc-sys = { version = "0.40.0", features = ["prebuilt-nasm"] }
-backhand = { version = "0.25.1", default-features = false, features = ["zstd"] }
+backhand = { version = "=0.25.1", default-features = false, features = ["zstd"] } # held: 0.25.5 makes `compressor` an Option, used in cli/tools/desktop.rs
 base32 = "=0.5.1"
 base64 = "0.22.1"
 bencher = "0.1"
@@ -179,8 +179,8 @@ cooked-waker = "5"
 cookie = "0.18.1"
 criterion = "0.5"
 dashmap = "5.5.3"
-data-url = "=0.3.1"
-encoding_rs = "=0.8.35"
+data-url = "=0.3.2"
+encoding_rs = "=0.8.44"
 error_reporter = "1"
 fast-socks5 = "0.9.6"
 faster-hex = "0.10.0"
@@ -205,7 +205,7 @@ httpdate = "1.0.3"
 hyper = { version = "1.11.1", features = ["full"] }
 hyper-rustls = { version = "0.27.2", default-features = false, features = ["http1", "http2", "tls12", "aws-lc-rs"] }
 hyper-util = { version = "0.1.21", features = ["tokio", "client", "client-legacy", "server", "server-auto"] }
-ignore = "0.4"
+ignore = "=0.4.20" # held with globset (cli/Cargo.toml): newer releases accept an invalid .gitignore glob that `publish` rejects
 import_map = { version = "0.25.0", features = ["ext"] }
 indexmap = { version = "2", features = ["serde"] }
 inventory = "0.3.21"
@@ -223,11 +223,11 @@ mime = "0.3.16"
 monch = "=0.6.0"
 msi = "0.10.0"
 netif = "0.1.6"
-notify = "8.2.0"
+notify = "=8.2.0" # held: 8.2.2 swaps the macOS backend, which no CI job covers yet
 num-bigint = "0.4"
 num-traits = "0.2.19"
 once_cell = "1.17.1"
-os_pipe = { version = "=1.2.1", features = ["io_safety"] }
+os_pipe = { version = "=1.2.3", features = ["io_safety"] }
 parking_lot = "0.12.0"
 paste = "1.0"
 percent-encoding = "2.3.0"
@@ -242,10 +242,10 @@ prost-build = "0.14"
 qbsdiff = "1.4"
 quick-junit = "0.3.5"
 quinn = { version = "0.11.8", default-features = false }
-rand = "=0.8.6"
+rand = "=0.8.8"
 rayon = "1.11.0"
 regex = "^1.7.0"
-reqwest = { version = "=0.12.5", default-features = false, features = ["rustls-tls", "stream", "gzip", "brotli", "socks", "json", "http2"] } # pinned because of https://github.com/seanmonstar/reqwest/pull/1955
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream", "gzip", "brotli", "socks", "json", "http2"] }
 # zstd payload (not gzip): rpm's `gzip-compression` pulls flate2's zlib-rs C
 # shim, which collides at link time with deno's zlib-ng (libz-sys). deno
 # already depends on `zstd`, and modern RPM tooling reads zstd payloads.
@@ -253,18 +253,18 @@ rpm = { version = "0.25.1", default-features = false, features = ["payload", "zs
 rstest = "0"
 rusqlite = { version = "0.40.0", features = ["unlock_notify", "bundled", "session", "modern_sqlite", "limits", "backup", "fallible_uint"] } # "modern_sqlite": need sqlite >= 3.49.0 for some db configs; "fallible_uint": ToSql for u64/usize (needed when crates like ende_cache are published/built standalone)
 rustls = { version = "=0.23.46", default-features = false, features = ["logging", "std", "tls12", "aws_lc_rs"] }
-rustls-pemfile = "2"
-rustls-tokio-stream = "=0.8.0"
+rustls-pemfile = "=2.1.2" # held: 2.2.0 changes the error kind for an invalid certificate or key
+rustls-tokio-stream = "=0.8.1"
 rustls-webpki = "0.103.16"
-rustyline = { version = "=17.0.0", features = ["custom-bindings"] }
+rustyline = { version = "=17.0.2", features = ["custom-bindings"] }
 rustyline-derive = "=0.11.1"
 same-file = "1.0.6"
 scopeguard = "1.2.0"
-semver = "=1.0.25"
+semver = "=1.0.28"
 serde = { version = "1.0.149", features = ["derive"] }
 serde_bytes = "0.11"
 serde_json = { version = "1.0.85", features = ["raw_value"] }
-serde_repr = "=0.1.19"
+serde_repr = "=0.1.21"
 shlex = "1.3.0"
 signal-hook = "0.3"
 slab = "0.4"
@@ -276,7 +276,7 @@ strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.1"
 sys_traits = "0.1.28"
 tar = "=0.4.46"
-tempfile = "3.4.0"
+tempfile = "=3.10.1" # held: 3.27 deprecates TempDir::into_path, which is still used
 termcolor = "1.1.3"
 testing_macros = "1.0.0"
 thiserror = "2.0.12"
@@ -293,10 +293,10 @@ tracing-opentelemetry = "0.33.0"
 tracing-subscriber = "0.3.20"
 twox-hash = { version = "2.1.0", features = ["std", "xxhash64"], default-features = false }
 typed-arena = "=2.0.2"
-url = { version = "2.5", features = ["serde", "expose_internals"] }
+url = { version = "=2.5.7", features = ["serde", "expose_internals"] } # held: 2.5.9 percent-encodes `^` in jsr: specifiers
 urlpattern = "=0.4.2"
 uuid = { version = "1.3.0", features = ["v4"] }
-walkdir = "=2.5.0"
+walkdir = "=2.5.1"
 web-transport-proto = "0.2.7"
 webpki-roots = "1.0.10"
 which = { version = "8.0.0", default-features = false }
@@ -310,7 +310,7 @@ opentelemetry-semantic-conventions = { version = "0.32.0", features = ["semconv_
 opentelemetry_sdk = { version = "0.32.0", features = ["rt-tokio", "trace", "experimental_trace_batch_span_processor_with_async_runtime", "experimental_logs_batch_log_processor_with_async_runtime", "experimental_metrics_custom_reader"] }
 
 # canvas
-image = { version = "0.25.4", default-features = false }
+image = { version = "=0.25.4", default-features = false } # held with zune-jpeg (cli/Cargo.toml): the newer JPEG decoder shifts pixel values by one
 lcms2 = "6.1.0"
 
 # cli
@@ -325,7 +325,7 @@ dprint-plugin-jupyter = "=0.2.2"
 dprint-plugin-markdown = "=0.29.0"
 dprint-plugin-typescript = "=0.96.1"
 dunce = "1.0.5"
-env_logger = { version = "=0.11.6", default-features = false, features = ["regex"] }
+env_logger = { version = "=0.11.12", default-features = false, features = ["regex"] }
 imara-diff = "=0.2.0"
 lax-css = "=0.3.0"
 lax-markup = "=0.3.2"
@@ -339,12 +339,12 @@ strsim = "0.11.1"
 text-size = "=1.1.1"
 text_lines = "=0.6.0"
 unicode-general-category = "1.1.0"
-unicode-normalization = "0.1"
-unicode-width = "0.2"
-zstd = "=0.13.4"
+unicode-normalization = "=0.1.25" # Unicode 17, the engine's version; 0.1.26 is Unicode 18
+unicode-width = "=0.2.2" # Unicode 17, the engine's version; 0.2.3 is Unicode 18
+zstd = "=0.13.5"
 
 # crypto
-aes = "=0.8.3"
+aes = "=0.8.4"
 aes-gcm = "0.10"
 aes-kw = "0.2.1"
 const-oid = "0.9.5"
@@ -376,7 +376,7 @@ x509-parser = "0.15.0"
 cranelift = "0.117"
 cranelift-native = "0.117"
 dlopen2 = "0.6.1"
-libffi = "=5.1.0"
+libffi = "=5.2.0"
 memmap2 = "0.9"
 
 # geometry
@@ -396,8 +396,8 @@ nix = "=0.30.1"
 tokio-vsock = "0.7"
 
 # windows deps
-junction = "=1.2.0"
-win32job = "=2.0.3"
+junction = "=1.4.2"
+win32job = "=2.1.0"
 windows-sys = { version = "0.59.0", features = ["Win32_Foundation", "Win32_Media", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_WindowsProgramming", "Wdk", "Wdk_System", "Wdk_System_SystemInformation", "Win32_Security", "Win32_System_Pipes", "Wdk_Storage_FileSystem", "Win32_System_Registry", "Win32_System_Kernel", "Win32_System_Threading", "Win32_UI", "Win32_UI_Shell"] }
 winres = "=0.1.12"
 

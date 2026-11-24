@@ -200,6 +200,20 @@ which = { workspace = true, features = ["real-sys"] }
 zip = { workspace = true, features = ["deflate-flate2"] }
 zstd.workspace = true
 
+# Not used directly: exact versions of transitive dependencies whose newer
+# releases break something here, or move Rust-side Unicode data off the
+# engine's Unicode version (17). Drop a line once its reason is gone.
+globset = { version = "=0.4.14", default-features = false } # with ignore: newer releases accept an invalid .gitignore glob
+icu_locale_core = { version = "=2.2.0", default-features = false } # not tied to icu_provider's version; keep it with the rest of ICU4X
+icu_provider = { version = "=2.2.0", default-features = false } # keeps the ICU4X crates at 2.2 (Unicode 17); 2.4 is Unicode 18
+temporal_capi = { version = "=0.2.3", default-features = false } # with v8: 0.2.6 pulls diplomat 0.16, which breaks the ende_ops tests
+temporal_rs = { version = "=0.2.3", default-features = false } # moves with temporal_capi
+timezone_provider = { version = "=0.2.3", default-features = false } # moves with temporal_capi
+unicode-id-start = { version = "=1.4.0", default-features = false } # Unicode 17; 1.5.0 is Unicode 18
+unicode-width-0_1 = { package = "unicode-width", version = "=0.1.13", default-features = false } # console_static_text's copy; 0.1.14 changes width rules
+yaml_parser = { version = "=0.2.1", default-features = false } # 0.2.3 moves to rowan 0.16 and pretty_yaml 0.5.0 stops compiling
+zune-jpeg = { version = "=0.4.13", default-features = false } # with image: the newer decoder shifts pixel values by one
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_JobObjects", "Win32_System_RestartManager", "Win32_System_Threading"] }
 ende_subprocess_windows.workspace = true
@@ -230,4 +244,16 @@ ProductName = "Ende"
 FileDescription = "Ende: A secure runtime for JavaScript and TypeScript"
 
 [package.metadata.cargo-shear]
-ignored = ["locked-tripwire"]
+ignored = [
+  "globset",
+  "icu_locale_core",
+  "icu_provider",
+  "locked-tripwire",
+  "temporal_capi",
+  "temporal_rs",
+  "timezone_provider",
+  "unicode-id-start",
+  "unicode-width-0_1",
+  "yaml_parser",
+  "zune-jpeg",
+]
