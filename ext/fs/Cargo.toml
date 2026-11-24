@@ -20,6 +20,8 @@ sync_fs = ["ende_maybe_sync/sync"]
 [dependencies]
 async-trait.workspace = true
 boxed_error.workspace = true
+cap-fs-ext.workspace = true
+cap-std.workspace = true
 deno_error.workspace = true
 deno_path_util.workspace = true
 ende_core.workspace = true
@@ -41,3 +43,6 @@ nix = { workspace = true, features = ["fs", "user"] }
 [target.'cfg(windows)'.dependencies]
 junction.workspace = true
 windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem"] }
+
+[dev-dependencies]
+tempfile.workspace = true

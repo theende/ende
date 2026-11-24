@@ -1,0 +1,7 @@
+error: Uncaught (in promise) TypeError: Deno.openRootSync is not a function
+Deno.openRootSync(".");
+     ^
+    at [WILDCARD]fs_root.ts:1:6
+
+    info: Ende.openRoot() is an unstable API.
+    hint: Run again with `--unstable-fs` flag to enable this API.

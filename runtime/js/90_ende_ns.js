@@ -353,6 +353,12 @@ core.defineGlobalProperties(endeNsUnstableById[unstableIds.net], {
   ),
 });
 
+endeNsUnstableById[unstableIds.fs] = {
+  Root: fs.Root,
+  openRoot: fs.openRoot,
+  openRootSync: fs.openRootSync,
+};
+
 // endeNsUnstableById[unstableIds.unsafeProto] = { __proto__: null }
 
 endeNsUnstableById[unstableIds.webgpu] = {

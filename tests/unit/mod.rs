@@ -86,6 +86,10 @@ fn run_test(test: &CollectedTest) -> TestResult {
     ende = ende.arg("--unstable-cron");
   }
 
+  if test.name.ends_with("::fs_root_test") {
+    ende = ende.arg("--unstable-fs");
+  }
+
   if test.name.ends_with("::webgpu_test") {
     ende = ende.arg("--unstable-webgpu");
   }

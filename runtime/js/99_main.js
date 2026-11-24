@@ -466,6 +466,7 @@ core.registerErrorClass("FilesystemLoop", errors.FilesystemLoop);
 core.registerErrorClass("IsADirectory", errors.IsADirectory);
 core.registerErrorClass("NetworkUnreachable", errors.NetworkUnreachable);
 core.registerErrorClass("NotADirectory", errors.NotADirectory);
+core.registerErrorClass("PathEscape", errors.PathEscape);
 core.registerErrorBuilder(
   "DOMExceptionOperationError",
   function DOMExceptionOperationError(msg) {

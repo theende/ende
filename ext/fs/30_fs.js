@@ -59,6 +59,30 @@ const {
   op_fs_remove_sync,
   op_fs_rename_async,
   op_fs_rename_sync,
+  op_fs_root_lstat_async,
+  op_fs_root_lstat_sync,
+  op_fs_root_mkdir_async,
+  op_fs_root_mkdir_sync,
+  op_fs_root_open_async,
+  op_fs_root_open_sync,
+  op_fs_root_open_file_async,
+  op_fs_root_open_file_sync,
+  op_fs_root_open_root_async,
+  op_fs_root_open_root_sync,
+  op_fs_root_read_dir_async,
+  op_fs_root_read_dir_sync,
+  op_fs_root_read_file_async,
+  op_fs_root_read_file_sync,
+  op_fs_root_read_text_file_async,
+  op_fs_root_read_text_file_sync,
+  op_fs_root_remove_async,
+  op_fs_root_remove_sync,
+  op_fs_root_rename_async,
+  op_fs_root_rename_sync,
+  op_fs_root_stat_async,
+  op_fs_root_stat_sync,
+  op_fs_root_write_file_async,
+  op_fs_root_write_file_sync,
   op_fs_seek_async,
   op_fs_seek_sync,
   op_fs_stat_async,
@@ -89,9 +113,11 @@ const {
   ObjectPrototypeIsPrototypeOf,
   ObjectSetPrototypeOf,
   ObjectValues,
+  PromiseResolve,
   StringPrototypeSlice,
   StringPrototypeStartsWith,
   Symbol,
+  SymbolAsyncDispose,
   SymbolAsyncIterator,
   SymbolDispose,
   SymbolIterator,
@@ -797,6 +823,292 @@ class FsFile {
   }
 }
 
+const rootConstructorKey = Symbol("Ende.internal.Root");
+
+async function openRoot(path, options = EMPTY_OPTIONS) {
+  const rid = await op_fs_root_open_async(
+    pathFromURL(path),
+    options.read ?? true,
+    options.write ?? false,
+  );
+  return new Root(rid, rootConstructorKey);
+}
+
+function openRootSync(path, options = EMPTY_OPTIONS) {
+  const rid = op_fs_root_open_sync(
+    pathFromURL(path),
+    options.read ?? true,
+    options.write ?? false,
+  );
+  return new Root(rid, rootConstructorKey);
+}
+
+class Root {
+  #rid = 0;
+
+  constructor(rid, symbol) {
+    if (!symbol || symbol !== rootConstructorKey) {
+      throw new TypeError(
+        "'Ende.Root' cannot be constructed, use 'Ende.openRoot()' or 'Ende.openRootSync()' instead",
+      );
+    }
+    ObjectDefineProperty(this, internalRidSymbol, {
+      __proto__: null,
+      enumerable: false,
+      value: rid,
+    });
+    this.#rid = rid;
+  }
+
+  async open(path, options) {
+    if (options) checkOpenOptions(options);
+    const rid = await op_fs_root_open_file_async(
+      this.#rid,
+      pathFromURL(path),
+      options,
+    );
+    return new FsFile(rid, fsFileConstructorKey);
+  }
+
+  openSync(path, options) {
+    if (options) checkOpenOptions(options);
+    const rid = op_fs_root_open_file_sync(
+      this.#rid,
+      pathFromURL(path),
+      options,
+    );
+    return new FsFile(rid, fsFileConstructorKey);
+  }
+
+  create(path) {
+    return this.open(path, {
+      read: true,
+      write: true,
+      truncate: true,
+      create: true,
+    });
+  }
+
+  createSync(path) {
+    return this.openSync(path, {
+      read: true,
+      write: true,
+      truncate: true,
+      create: true,
+    });
+  }
+
+  async openRoot(path) {
+    const rid = await op_fs_root_open_root_async(this.#rid, pathFromURL(path));
+    return new Root(rid, rootConstructorKey);
+  }
+
+  openRootSync(path) {
+    const rid = op_fs_root_open_root_sync(this.#rid, pathFromURL(path));
+    return new Root(rid, rootConstructorKey);
+  }
+
+  async readFile(path, options) {
+    options?.signal?.throwIfAborted();
+    const data = await op_fs_root_read_file_async(
+      this.#rid,
+      pathFromURL(path),
+    );
+    options?.signal?.throwIfAborted();
+    return data;
+  }
+
+  readFileSync(path) {
+    return op_fs_root_read_file_sync(this.#rid, pathFromURL(path));
+  }
+
+  async readTextFile(path, options) {
+    options?.signal?.throwIfAborted();
+    const text = await op_fs_root_read_text_file_async(
+      this.#rid,
+      pathFromURL(path),
+    );
+    options?.signal?.throwIfAborted();
+    return text;
+  }
+
+  readTextFileSync(path) {
+    return op_fs_root_read_text_file_sync(this.#rid, pathFromURL(path));
+  }
+
+  async writeFile(path, data, options = EMPTY_OPTIONS) {
+    options.signal?.throwIfAborted();
+    if (
+      ObjectPrototypeIsPrototypeOf(lazyStreams().ReadableStreamPrototype, data)
+    ) {
+      const file = await this.open(path, {
+        mode: options.mode,
+        append: options.append ?? false,
+        create: options.create ?? true,
+        createNew: options.createNew ?? false,
+        truncate: !(options.append ?? false),
+        write: true,
+      });
+      await data.pipeTo(file.writable, {
+        signal: options.signal,
+      });
+    } else {
+      await op_fs_root_write_file_async(
+        this.#rid,
+        pathFromURL(path),
+        options.mode,
+        options.append ?? false,
+        options.create ?? true,
+        options.createNew ?? false,
+        data,
+      );
+    }
+    options.signal?.throwIfAborted();
+  }
+
+  writeFileSync(path, data, options = EMPTY_OPTIONS) {
+    options.signal?.throwIfAborted();
+    op_fs_root_write_file_sync(
+      this.#rid,
+      pathFromURL(path),
+      options.mode,
+      options.append ?? false,
+      options.create ?? true,
+      options.createNew ?? false,
+      data,
+    );
+  }
+
+  writeTextFile(path, data, options = undefined) {
+    if (
+      ObjectPrototypeIsPrototypeOf(lazyStreams().ReadableStreamPrototype, data)
+    ) {
+      return this.writeFile(
+        path,
+        data.pipeThrough(new TextEncoderStream()),
+        options,
+      );
+    }
+    const encoder = new TextEncoder();
+    return this.writeFile(path, encoder.encode(data), options);
+  }
+
+  writeTextFileSync(path, data, options = undefined) {
+    const encoder = new TextEncoder();
+    return this.writeFileSync(path, encoder.encode(data), options);
+  }
+
+  async mkdir(path, options) {
+    await op_fs_root_mkdir_async(
+      this.#rid,
+      pathFromURL(path),
+      options?.recursive ?? false,
+      options?.mode,
+    );
+  }
+
+  mkdirSync(path, options) {
+    op_fs_root_mkdir_sync(
+      this.#rid,
+      pathFromURL(path),
+      options?.recursive ?? false,
+      options?.mode,
+    );
+  }
+
+  async remove(path, options = EMPTY_OPTIONS) {
+    await op_fs_root_remove_async(
+      this.#rid,
+      pathFromURL(path),
+      !!options.recursive,
+    );
+  }
+
+  removeSync(path, options = EMPTY_OPTIONS) {
+    op_fs_root_remove_sync(this.#rid, pathFromURL(path), !!options.recursive);
+  }
+
+  async stat(path) {
+    return parseFileInfo(
+      await op_fs_root_stat_async(this.#rid, pathFromURL(path)),
+    );
+  }
+
+  statSync(path) {
+    return parseFileInfo(op_fs_root_stat_sync(this.#rid, pathFromURL(path)));
+  }
+
+  async lstat(path) {
+    return parseFileInfo(
+      await op_fs_root_lstat_async(this.#rid, pathFromURL(path)),
+    );
+  }
+
+  lstatSync(path) {
+    return parseFileInfo(op_fs_root_lstat_sync(this.#rid, pathFromURL(path)));
+  }
+
+  readDir(path) {
+    const rid = this.#rid;
+    const name = pathFromURL(path);
+    return {
+      [SymbolAsyncIterator]() {
+        let entries;
+        let i = 0;
+        return {
+          async next() {
+            if (entries === undefined) {
+              entries = await op_fs_root_read_dir_async(rid, name);
+            }
+            if (i < entries.length) {
+              return { value: entries[i++], done: false };
+            }
+            return { value: undefined, done: true };
+          },
+          [SymbolAsyncIterator]() {
+            return this;
+          },
+        };
+      },
+    };
+  }
+
+  readDirSync(path) {
+    return op_fs_root_read_dir_sync(this.#rid, pathFromURL(path))[
+      SymbolIterator
+    ]();
+  }
+
+  async rename(oldpath, newpath) {
+    await op_fs_root_rename_async(
+      this.#rid,
+      pathFromURL(oldpath),
+      pathFromURL(newpath),
+    );
+  }
+
+  renameSync(oldpath, newpath) {
+    op_fs_root_rename_sync(
+      this.#rid,
+      pathFromURL(oldpath),
+      pathFromURL(newpath),
+    );
+  }
+
+  close() {
+    core.close(this.#rid);
+  }
+
+  [SymbolDispose]() {
+    core.tryClose(this.#rid);
+  }
+
+  [SymbolAsyncDispose]() {
+    core.tryClose(this.#rid);
+    return PromiseResolve();
+  }
+}
+
 function checkOpenOptions(options) {
   if (
     ArrayPrototypeFilter(
@@ -1018,6 +1330,9 @@ return {
   removeSync,
   rename,
   renameSync,
+  Root,
+  openRoot,
+  openRootSync,
   stat,
   statSync,
   symlink,

@@ -139,6 +139,10 @@ impl FileSystem for EndeRtSys {
     RealFs.cwd()
   }
 
+  fn is_virtual_path(&self, path: &Path) -> bool {
+    self.is_vfs_path(path)
+  }
+
   fn tmp_dir(&self) -> FsResult<PathBuf> {
     RealFs.tmp_dir()
   }

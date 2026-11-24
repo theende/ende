@@ -153,7 +153,7 @@ where
 }
 
 #[derive(FromV8, Default, Debug, Clone, Copy)]
-struct FsOpenOptions {
+pub(crate) struct FsOpenOptions {
   #[from_v8(default)]
   read: bool,
   #[from_v8(default)]
@@ -1986,6 +1986,27 @@ pub enum OperationErrorKind {
   Bare,
   WithPath(String),
   WithTwoPaths(String, String),
+}
+
+/// An error from an `Ende.Root` operation on `name`, a name under the root:
+/// an escape keeps its own class (`PathEscape`), any other error reads like
+/// the matching `Ende.*` function's.
+pub(crate) fn root_operation_error(
+  operation: &'static str,
+  name: &Path,
+  err: crate::FsRootError,
+) -> FsOpsError {
+  match err {
+    crate::FsRootError::Io(err) => {
+      FsOpsErrorKind::OperationError(OperationError {
+        operation,
+        kind: OperationErrorKind::WithPath(name.display().to_string()),
+        err: FsError::Io(err),
+      })
+      .into_box()
+    }
+    escape => FsOpsErrorKind::Other(JsErrorBox::from_err(escape)).into_box(),
+  }
 }
 
 trait MapErrContext {

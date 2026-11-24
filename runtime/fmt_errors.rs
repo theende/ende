@@ -566,6 +566,15 @@ fn get_message_suggestions_inner(
           "Run again with `--unstable-cron` flag to enable this API.",
         ),
       ];
+    } else if msg.contains("openRoot is not a function")
+      || msg.contains("openRootSync is not a function")
+    {
+      return vec![
+        FixSuggestion::info("Ende.openRoot() is an unstable API."),
+        FixSuggestion::hint(
+          "Run again with `--unstable-fs` flag to enable this API.",
+        ),
+      ];
     } else if msg.contains("WebSocketStream is not defined") {
       return vec![
         FixSuggestion::info("new WebSocketStream() is an unstable API."),

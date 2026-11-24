@@ -3513,6 +3513,275 @@ declare namespace Ende {
     export {}; // only export exports
   }
 
+  /** **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Options for {@linkcode Ende.openRoot} and {@linkcode Ende.openRootSync}.
+   *
+   * Requires the `--unstable-fs` flag, or `"unstable": ["fs"]` in
+   * `ende.json`.
+   *
+   * @category File System
+   * @experimental
+   */
+  export interface OpenRootOptions {
+    /** Allow reading under the root. Requires `allow-read` for the root
+     * directory.
+     *
+     * @default {true} */
+    read?: boolean;
+    /** Allow creating, writing, renaming and removing under the root.
+     * Requires `allow-write` for the root directory.
+     *
+     * @default {false} */
+    write?: boolean;
+  }
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Opens a directory as an {@linkcode Ende.Root}: names passed to the root's
+   * methods are resolved inside that directory and can't leave it, so code
+   * can take file names from untrusted input and still only touch files
+   * under the root.
+   *
+   * ```ts
+   * await using out = await Ende.openRoot("./output", { write: true });
+   * await out.writeTextFile("report/today.txt", "done"); // OK
+   * await out.readTextFile("a/../b.txt"); // OK, stays inside
+   * await out.readTextFile("../secret.txt"); // throws Ende.errors.PathEscape
+   * await out.readTextFile("/etc/passwd"); // throws Ende.errors.PathEscape
+   * ```
+   *
+   * Throws {@linkcode Ende.errors.NotFound} if `path` doesn't exist, or
+   * {@linkcode Ende.errors.NotCapable} if the permission for `options` has
+   * not been granted for `path`. A path inside the files embedded in a
+   * compiled executable throws {@linkcode Ende.errors.NotSupported}.
+   *
+   * Requires the `--unstable-fs` flag, or `"unstable": ["fs"]` in
+   * `ende.json`.
+   *
+   * @tags allow-read, allow-write
+   * @category File System
+   * @experimental
+   */
+  export function openRoot(
+    path: string | URL,
+    options?: OpenRootOptions,
+  ): Promise<Root>;
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Synchronously opens a directory as an {@linkcode Ende.Root}. See
+   * {@linkcode Ende.openRoot}.
+   *
+   * ```ts
+   * using out = Ende.openRootSync("./output", { write: true });
+   * out.writeTextFileSync("report/today.txt", "done");
+   * ```
+   *
+   * Requires the `--unstable-fs` flag, or `"unstable": ["fs"]` in
+   * `ende.json`.
+   *
+   * @tags allow-read, allow-write
+   * @category File System
+   * @experimental
+   */
+  export function openRootSync(
+    path: string | URL,
+    options?: OpenRootOptions,
+  ): Root;
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   *
+   * A directory that file names are resolved under without leaving it,
+   * returned by {@linkcode Ende.openRoot} and {@linkcode Ende.openRootSync}.
+   *
+   * Names are relative to the root. `..` and symlinks are allowed while they
+   * stay inside it. An absolute name, `..` that climbs above the root, or a
+   * symlink that points outside it (an absolute symlink target included)
+   * throws {@linkcode Ende.errors.PathEscape}. On Windows, reserved device
+   * names such as `NUL` and `COM1`, and NTFS stream names such as `a:b` or
+   * `a::$DATA`, throw it too.
+   *
+   * The root holds the directory open, so renaming or moving the directory
+   * after opening it doesn't redirect later calls. On Windows the directory
+   * can't be renamed or removed while a root holds it.
+   *
+   * Every call is still checked against Ende's permissions where it really
+   * lands: a root never grants access the program doesn't already have, and
+   * `--deny-read`/`--deny-write` rules under the root still apply. A name is
+   * checked before it is looked up too, so a denied name fails the same way
+   * whether or not it exists. Renaming a directory needs write access to
+   * everything inside it, as {@linkcode Ende.Root.remove} with `recursive`
+   * does.
+   *
+   * Calls that create, write, truncate, rename or remove don't follow a
+   * final symlink, even one that stays inside the root: they act on the link
+   * itself, or fail. To write through a link, open its target.
+   *
+   * Not covered: a mount point or bind mount inside the root, and a hard link
+   * that already exists inside it to a file outside, are followed like any
+   * other directory or file.
+   *
+   * Requires the `--unstable-fs` flag, or `"unstable": ["fs"]` in
+   * `ende.json`.
+   *
+   * @category File System
+   * @experimental
+   */
+  export class Root implements Disposable, AsyncDisposable {
+    /** Opens a file under the root. A final symlink is followed only when
+     * the file is opened just for reading. See {@linkcode Ende.open}. */
+    open(path: string | URL, options?: OpenOptions): Promise<FsFile>;
+    /** Synchronously opens a file under the root. See
+     * {@linkcode Ende.openSync}. */
+    openSync(path: string | URL, options?: OpenOptions): FsFile;
+    /** Creates a file under the root, or truncates an existing one. See
+     * {@linkcode Ende.create}. */
+    create(path: string | URL): Promise<FsFile>;
+    /** Synchronously creates a file under the root, or truncates an existing
+     * one. See {@linkcode Ende.createSync}. */
+    createSync(path: string | URL): FsFile;
+    /** Opens a directory under the root as a root of its own, opened for the
+     * same access. Names under it can't leave it, even into the rest of this
+     * root. */
+    openRoot(path: string | URL): Promise<Root>;
+    /** Synchronously opens a directory under the root as a root of its own.
+     * See {@linkcode Ende.Root.openRoot}. */
+    openRootSync(path: string | URL): Root;
+    /** Reads a file under the root. See {@linkcode Ende.readFile}. */
+    readFile(
+      path: string | URL,
+      options?: ReadFileOptions,
+    ): Promise<Uint8Array<ArrayBuffer>>;
+    /** Synchronously reads a file under the root. See
+     * {@linkcode Ende.readFileSync}. */
+    readFileSync(path: string | URL): Uint8Array<ArrayBuffer>;
+    /** Reads a file under the root as UTF-8 text. See
+     * {@linkcode Ende.readTextFile}. */
+    readTextFile(
+      path: string | URL,
+      options?: ReadFileOptions,
+    ): Promise<string>;
+    /** Synchronously reads a file under the root as UTF-8 text. See
+     * {@linkcode Ende.readTextFileSync}. */
+    readTextFileSync(path: string | URL): string;
+    /** Writes `data` to a file under the root. See {@linkcode Ende.writeFile}.
+     *
+     * Requires the root to be opened with `write: true`. */
+    writeFile(
+      path: string | URL,
+      data: Uint8Array | ReadableStream<Uint8Array>,
+      options?: WriteFileOptions,
+    ): Promise<void>;
+    /** Synchronously writes `data` to a file under the root. See
+     * {@linkcode Ende.writeFileSync}.
+     *
+     * Requires the root to be opened with `write: true`. */
+    writeFileSync(
+      path: string | URL,
+      data: Uint8Array,
+      options?: WriteFileOptions,
+    ): void;
+    /** Writes `data` to a file under the root as UTF-8 text. See
+     * {@linkcode Ende.writeTextFile}.
+     *
+     * Requires the root to be opened with `write: true`. */
+    writeTextFile(
+      path: string | URL,
+      data: string | ReadableStream<string>,
+      options?: WriteFileOptions,
+    ): Promise<void>;
+    /** Synchronously writes `data` to a file under the root as UTF-8 text.
+     * See {@linkcode Ende.writeTextFileSync}.
+     *
+     * Requires the root to be opened with `write: true`. */
+    writeTextFileSync(
+      path: string | URL,
+      data: string,
+      options?: WriteFileOptions,
+    ): void;
+    /** Creates a directory under the root. See {@linkcode Ende.mkdir}.
+     *
+     * Requires the root to be opened with `write: true`. */
+    mkdir(path: string | URL, options?: MkdirOptions): Promise<void>;
+    /** Synchronously creates a directory under the root. See
+     * {@linkcode Ende.mkdirSync}.
+     *
+     * Requires the root to be opened with `write: true`. */
+    mkdirSync(path: string | URL, options?: MkdirOptions): void;
+    /** Removes a file, symlink or directory under the root. A symlink is
+     * removed, not its target. See {@linkcode Ende.remove}.
+     *
+     * Requires the root to be opened with `write: true`. */
+    remove(path: string | URL, options?: RemoveOptions): Promise<void>;
+    /** Synchronously removes a file, symlink or directory under the root.
+     * See {@linkcode Ende.removeSync}.
+     *
+     * Requires the root to be opened with `write: true`. */
+    removeSync(path: string | URL, options?: RemoveOptions): void;
+    /** Gets information about a file under the root, following a final
+     * symlink that stays inside. See {@linkcode Ende.stat}.
+     *
+     * A file the operating system won't open for reading (no read access, a
+     * socket) is still stat'ed, unless it is reached through a symlink: then
+     * the call fails. {@linkcode Ende.Root.readDir} and
+     * {@linkcode Ende.Root.openRoot} need to open their directory. */
+    stat(path: string | URL): Promise<FileInfo>;
+    /** Synchronously gets information about a file under the root. See
+     * {@linkcode Ende.statSync}. */
+    statSync(path: string | URL): FileInfo;
+    /** Gets information about a file under the root without following a
+     * final symlink. See {@linkcode Ende.lstat}. */
+    lstat(path: string | URL): Promise<FileInfo>;
+    /** Synchronously gets information about a file under the root without
+     * following a final symlink. See {@linkcode Ende.lstatSync}. */
+    lstatSync(path: string | URL): FileInfo;
+    /** Lists a directory under the root. See {@linkcode Ende.readDir}. */
+    readDir(path: string | URL): AsyncIterable<DirEntry>;
+    /** Synchronously lists a directory under the root. See
+     * {@linkcode Ende.readDirSync}. */
+    readDirSync(path: string | URL): IteratorObject<DirEntry>;
+    /** Renames a file or directory; both names are under the root. See
+     * {@linkcode Ende.rename}.
+     *
+     * Requires the root to be opened with `write: true`. */
+    rename(oldpath: string | URL, newpath: string | URL): Promise<void>;
+    /** Synchronously renames a file or directory; both names are under the
+     * root. See {@linkcode Ende.renameSync}.
+     *
+     * Requires the root to be opened with `write: true`. */
+    renameSync(oldpath: string | URL, newpath: string | URL): void;
+    /** Closes the root. Later calls throw {@linkcode Ende.errors.BadResource}.
+     */
+    close(): void;
+
+    [Symbol.dispose](): void;
+    [Symbol.asyncDispose](): Promise<void>;
+  }
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Error classes raised by unstable Ende APIs.
+   *
+   * @category Errors
+   * @experimental
+   */
+  export namespace errors {
+    /** **UNSTABLE**: New API, yet to be vetted.
+     *
+     * Raised when a name passed to an {@linkcode Ende.Root} would resolve
+     * outside the root: an absolute name, `..` above the root, a symlink
+     * pointing out of it, or (on Windows) a reserved device name or an NTFS
+     * stream name.
+     *
+     * @category Errors
+     * @experimental
+     */
+    export class PathEscape extends Error {}
+
+    export {}; // only export exports
+  }
+
   export {}; // only export exports
 }
 

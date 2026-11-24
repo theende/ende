@@ -1356,6 +1356,7 @@ const windowsTestLibCrates = [
 // whole, in a step of its own, so every file reports.
 const windowsUnitTests = [
   "command_test", // .bat/.cmd argument escaping, raw arguments, env key case
+  "fs_root_test", // Ende.openRoot: device names, drive-letter escapes
   "os_test", // case-insensitive env vars in child processes
   "path_from_url_test", // drive-letter file URLs
   "process_test", // kill() pid and signal validation

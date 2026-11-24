@@ -32,6 +32,7 @@ const errorConstructors = [
   Deno.errors.NetworkUnreachable,
   Deno.errors.NotADirectory,
   Deno.errors.NotCapable,
+  Deno.errors.PathEscape,
 ];
 
 function assertError(ErrorConstructor: typeof Deno.errors.NotFound) {

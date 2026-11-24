@@ -1,0 +1,97 @@
+{
+  "tempDir": true,
+  "tests": {
+    // Opening a root needs read access to its directory.
+    "open_needs_read": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read=main.ts main.ts read",
+      "output": "NotCapable: Requires read access to \"data\", run again with the --allow-read flag\n"
+    },
+    "read_allowed": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read main.ts read",
+      "output": "a\n"
+    },
+    // A deny rule under the root still applies through it.
+    "deny_read_under_root": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read --deny-read=data/secret main.ts read_secret",
+      "output": "NotCapable: Requires read access to \"[WILDLINE]s.txt\", run again with the --allow-read flag\n"
+    },
+    // ...including through a symlink inside the root that points into the
+    // denied directory: the check is on where the file really is.
+    "deny_read_through_symlink": {
+      "if": "unix",
+      "steps": [{
+        "args": "run --quiet -A main.ts link",
+        "output": "linked\n"
+      }, {
+        "args": "run --quiet --no-prompt --unstable-fs --allow-read --deny-read=data/secret main.ts read_link",
+        "output": "NotCapable: Requires read access to \"[WILDLINE]s.txt\", run again with the --allow-read flag\n"
+      }, {
+        "args": "run --quiet --no-prompt --unstable-fs --allow-read --deny-read=data/secret main.ts stat_link",
+        "output": "NotCapable: Requires read access to \"[WILDLINE]s.txt\", run again with the --allow-read flag\n"
+      }, {
+        "args": "run --quiet --no-prompt --unstable-fs --allow-read main.ts read_link",
+        "output": "secret\n"
+      }]
+    },
+    // A revoked permission applies to a root opened before the revoke.
+    "revoke_applies_to_an_open_root": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read=data main.ts revoke",
+      "output": "NotCapable: Requires read access to \"[WILDLINE]a.txt\", run again with the --allow-read flag\n"
+    },
+    // Opening a root for writing needs write access to its directory.
+    "open_write_needs_write": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read --allow-write=data/new.txt main.ts open_write",
+      "output": "NotCapable: Requires write access to \"data\", run again with the --allow-write flag\n"
+    },
+    "deny_write_under_root": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read --allow-write --deny-write=data/locked main.ts write_locked",
+      "output": "NotCapable: Requires write access to \"[WILDLINE]new.txt\", run again with the --allow-write flag\n"
+    },
+    "write_allowed": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read --allow-write main.ts write",
+      "output": "written\n"
+    },
+    // A file opened through a root keeps the path it was checked at, so the
+    // FsFile methods that check permissions (utime, stat) still do.
+    "utime_through_root_deny_write": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read --allow-write --deny-write=data/a.txt main.ts utime",
+      "output": "NotCapable: Requires write access to \"[WILDLINE]a.txt\", run again with the --allow-write flag\n"
+    },
+    "utime_through_root_after_revoke": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read --allow-write main.ts utime_revoke",
+      "output": "NotCapable: Requires write access to \"[WILDLINE]a.txt\", run again with the --allow-write flag\n"
+    },
+    "fstat_through_write_only_root": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-write main.ts fstat_write_only",
+      "output": "NotCapable: Requires read access to \"[WILDLINE]a.txt\", run again with the --allow-read flag\n"
+    },
+    // A denied name is refused before it is resolved, so whether it exists
+    // doesn't show.
+    "deny_read_missing_name": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read --deny-read=data/secret main.ts read_secret_missing",
+      "output": "NotCapable: Requires read access to \"[WILDLINE]nope\", run again with the --allow-read flag\n"
+    },
+    // ...and a FIFO under a denied path is refused without waiting for its
+    // other end.
+    "deny_read_fifo": {
+      "if": "unix",
+      "steps": [{
+        "args": "run --quiet -A main.ts mkfifo",
+        "output": "made\n"
+      }, {
+        "args": "run --quiet --no-prompt --unstable-fs --allow-read --deny-read=data/secret main.ts read_fifo",
+        "output": "NotCapable: Requires read access to \"[WILDLINE]f\", run again with the --allow-read flag\n"
+      }]
+    },
+    // A recursive mkdir is checked before it looks at what exists.
+    "mkdir_existing_under_deny": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read --allow-write --deny-write=data/locked main.ts mkdir_existing",
+      "output": "NotCapable: Requires write access to \"[WILDLINE]a\", run again with the --allow-write flag\n"
+    },
+    // Renaming a directory moves what is inside it, denied paths included.
+    "rename_dir_with_denied_inside": {
+      "args": "run --quiet --no-prompt --unstable-fs --allow-read --allow-write --deny-write=data/d/secret main.ts rename_d",
+      "output": "NotCapable: Requires write access to \"[WILDLINE]d\", run again with the --allow-write flag\n"
+    }
+  }
+}

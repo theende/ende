@@ -120,6 +120,10 @@ const noUnstableFlag = {
   "Ende.spawn": spawnReason,
   "Ende.spawnAndWait": spawnReason,
   "Ende.spawnAndWaitSync": spawnReason,
+  "Ende.errors":
+    "always defined on the Ende namespace (runtime/js/90_ende_ns.js)",
+  "Ende.errors.PathEscape":
+    "always defined on Ende.errors (runtime/js/01_errors.js); only the unstable Ende.Root raises it",
   "Ende.lint":
     "types for `ende lint` plugins; `runPlugin` works under `ende test`",
   "WebSocketOptions.client":

@@ -159,6 +159,13 @@ class NotADirectory extends Error {
   }
 }
 
+class PathEscape extends Error {
+  constructor(msg, opts) {
+    super(msg, opts);
+    this.name = "PathEscape";
+  }
+}
+
 const errors = {
   NotFound,
   PermissionDenied,
@@ -185,6 +192,7 @@ const errors = {
   NetworkUnreachable,
   NotADirectory,
   NotCapable,
+  PathEscape,
 };
 
 return { errors };

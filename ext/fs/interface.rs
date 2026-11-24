@@ -2,6 +2,7 @@
 
 use core::str;
 use std::borrow::Cow;
+use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -214,6 +215,13 @@ pub trait FileSystem: std::fmt::Debug + MaybeSend + MaybeSync {
   fn tmp_dir(&self) -> FsResult<PathBuf>;
   fn chdir(&self, path: &CheckedPath) -> FsResult<()>;
   fn umask(&self, mask: Option<u32>) -> FsResult<u32>;
+
+  /// Whether `path` names a file system this trait serves without a real
+  /// directory behind it (the files embedded in a compiled executable).
+  /// Directory handles, as `Ende.openRoot()` takes, don't exist there.
+  fn is_virtual_path(&self, _path: &Path) -> bool {
+    false
+  }
 
   fn open_sync(
     &self,

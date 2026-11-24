@@ -2,6 +2,8 @@
 
 mod interface;
 mod ops;
+mod root;
+mod root_ops;
 mod std_fs;
 
 pub use ende_io::fs::FsError;
@@ -20,6 +22,12 @@ pub use crate::ops::FsOpsError;
 pub use crate::ops::FsOpsErrorKind;
 pub use crate::ops::OperationError;
 use crate::ops::*;
+pub use crate::root::FsRoot;
+pub use crate::root::FsRootError;
+pub use crate::root::is_windows_device_name;
+pub use crate::root::real_path_of_file;
+pub use crate::root::split_parent;
+use crate::root_ops::*;
 pub use crate::std_fs::RealFs;
 pub use crate::std_fs::open_options_for_checked_path;
 
@@ -98,6 +106,31 @@ ende_core::extension!(ende_fs,
     op_fs_file_truncate_async,
     op_fs_futime_sync,
     op_fs_futime_async,
+
+    op_fs_root_open_sync,
+    op_fs_root_open_async,
+    op_fs_root_open_root_sync,
+    op_fs_root_open_root_async,
+    op_fs_root_open_file_sync,
+    op_fs_root_open_file_async,
+    op_fs_root_read_file_sync,
+    op_fs_root_read_file_async,
+    op_fs_root_read_text_file_sync,
+    op_fs_root_read_text_file_async,
+    op_fs_root_write_file_sync,
+    op_fs_root_write_file_async,
+    op_fs_root_mkdir_sync,
+    op_fs_root_mkdir_async,
+    op_fs_root_remove_sync,
+    op_fs_root_remove_async,
+    op_fs_root_stat_sync,
+    op_fs_root_stat_async,
+    op_fs_root_lstat_sync,
+    op_fs_root_lstat_async,
+    op_fs_root_read_dir_sync,
+    op_fs_root_read_dir_async,
+    op_fs_root_rename_sync,
+    op_fs_root_rename_async,
 
   ],
   lazy_loaded_js = [ "30_fs.js" ],
