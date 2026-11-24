@@ -4,6 +4,8 @@ mod interface;
 mod ops;
 mod root;
 mod root_ops;
+#[cfg(all(test, unix))]
+mod root_proptest;
 mod std_fs;
 
 pub use ende_io::fs::FsError;

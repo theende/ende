@@ -2194,6 +2194,10 @@ fn extract_laufey_archive(
     }
   } else if name.ends_with(".zip") {
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(data))?;
+    // Every write goes through a root on `dest`: names are resolved under
+    // its directory handle, so no entry lands outside `dest`, even if a
+    // directory under it is swapped for a symlink while we extract.
+    let root = ende_runtime::ende_fs::FsRoot::open_ambient(dest)?;
     // Iterate entries manually rather than `archive.extract(dest)`: that
     // helper has the same shape as the tar `unpack` we deliberately
     // avoided (no perm masking; no defence-in-depth against zip-slip
@@ -2240,27 +2244,34 @@ fn extract_laufey_archive(
           rel_path.display()
         );
       }
-      let dest_path = dest.join(&rel_path);
       if entry.is_dir() {
-        std::fs::create_dir_all(&dest_path)?;
+        root.mkdir(&rel_path, true, None)?;
         continue;
       }
-      if let Some(parent) = dest_path.parent() {
-        std::fs::create_dir_all(parent)?;
+      if let Some(parent) = rel_path.parent()
+        && !parent.as_os_str().is_empty()
+      {
+        root.mkdir(parent, true, None)?;
       }
-      let mut out = std::fs::File::create(&dest_path)?;
+      let mut out = root.open(
+        &rel_path,
+        &ende_runtime::ende_fs::OpenOptions {
+          write: true,
+          create: true,
+          truncate: true,
+          ..Default::default()
+        },
+      )?;
       std::io::copy(&mut entry, &mut out)?;
       #[cfg(unix)]
       {
         use std::os::unix::fs::PermissionsExt;
         // Mask to 0o755 / 0o644 — same policy as the tar branch.
         // setuid/setgid/sticky bits are dropped; world-writable bits too.
+        // Set on the open handle, so it is the file just written.
         let mode = entry.unix_mode().unwrap_or(0o644);
         let safe = if mode & 0o111 != 0 { 0o755 } else { 0o644 };
-        let _ = std::fs::set_permissions(
-          &dest_path,
-          std::fs::Permissions::from_mode(safe),
-        );
+        let _ = out.set_permissions(std::fs::Permissions::from_mode(safe));
       }
     }
   } else {
@@ -8214,6 +8225,54 @@ def456  other.zip
       std::fs::read(tmp.path().join("a/b/c/leaf.txt")).unwrap(),
       b"deep"
     );
+  }
+
+  // A directory in `dest` that is (or becomes, mid-extraction) a symlink
+  // pointing out of `dest` must not let an entry write outside it. The zip
+  // branch writes through a root on `dest`, so the name can't escape
+  // whatever the directories under it turn into.
+  #[cfg(unix)]
+  #[test]
+  fn extract_zip_does_not_write_through_a_symlinked_parent() {
+    use zip::write::SimpleFileOptions;
+    let zip = build_zip(|w| {
+      w.start_file("sub/escape.txt", SimpleFileOptions::default())
+        .unwrap();
+      w.write_all(b"oops").unwrap();
+    });
+    let tmp = tempfile::tempdir().unwrap();
+    let dest = tmp.path().join("dest");
+    let outside = tmp.path().join("outside");
+    std::fs::create_dir(&dest).unwrap();
+    std::fs::create_dir(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, dest.join("sub")).unwrap();
+    // It fails either way: creating `sub` finds the symlink in its place, or
+    // the write's name resolves out of the root.
+    extract_laufey_archive("evil.zip", &zip, &dest)
+      .expect_err("writing through a symlinked parent must fail");
+    assert!(!outside.join("escape.txt").exists());
+  }
+
+  // Same for a symlink already standing where an entry's file goes.
+  #[cfg(unix)]
+  #[test]
+  fn extract_zip_does_not_write_through_a_symlinked_leaf() {
+    use zip::write::SimpleFileOptions;
+    let zip = build_zip(|w| {
+      w.start_file("leaf.txt", SimpleFileOptions::default())
+        .unwrap();
+      w.write_all(b"oops").unwrap();
+    });
+    let tmp = tempfile::tempdir().unwrap();
+    let dest = tmp.path().join("dest");
+    let outside = tmp.path().join("outside.txt");
+    std::fs::create_dir(&dest).unwrap();
+    std::fs::write(&outside, b"original").unwrap();
+    std::os::unix::fs::symlink(&outside, dest.join("leaf.txt")).unwrap();
+    let err = extract_laufey_archive("evil.zip", &zip, &dest)
+      .expect_err("writing through a symlinked leaf must fail");
+    assert!(err.to_string().contains("escapes"), "got: {err}");
+    assert_eq!(std::fs::read(&outside).unwrap(), b"original");
   }
 
   // --- read_plist_string ---

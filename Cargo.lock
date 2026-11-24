@@ -3299,6 +3299,7 @@ dependencies = [
  "junction",
  "libc",
  "nix 0.30.1",
+ "proptest",
  "rand 0.8.8",
  "rayon",
  "same-file",
