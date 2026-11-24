@@ -3167,6 +3167,8 @@ declare namespace Ende {
    * they are. It's always an error to rename anything to a non-empty directory.
    *
    * Requires `allow-read` and `allow-write` permissions.
+   * Write access must cover everything inside `oldpath`: a `--deny-write`
+   * scope below it denies the rename.
    *
    * @tags allow-read, allow-write
    * @category File System
@@ -3192,6 +3194,8 @@ declare namespace Ende {
    * directory.
    *
    * Requires `allow-read` and `allow-write` permissions.
+   * Write access must cover everything inside `oldpath`: a `--deny-write`
+   * scope below it denies the rename.
    *
    * @tags allow-read, allow-write
    * @category File System

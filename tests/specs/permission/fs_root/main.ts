@@ -94,6 +94,14 @@ async function run(): Promise<string> {
       root.renameSync("d", "d2");
       return "renamed";
     }
+    case "plain_rename_d": {
+      Deno.renameSync("data/d", "data/d2");
+      return "renamed";
+    }
+    case "plain_rename_d_async": {
+      await Deno.rename("data/d", "data/d2");
+      return "renamed";
+    }
   }
   throw new Error(`unknown mode ${mode}`);
 }

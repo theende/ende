@@ -92,6 +92,19 @@
     "rename_dir_with_denied_inside": {
       "args": "run --quiet --no-prompt --unstable-fs --allow-read --allow-write --deny-write=data/d/secret main.ts rename_d",
       "output": "NotCapable: Requires write access to \"[WILDLINE]d\", run again with the --allow-write flag\n"
+    },
+    // Plain Ende.rename follows the same rule (stricter than upstream Deno).
+    "plain_rename_dir_with_denied_inside": {
+      "args": "run --quiet --no-prompt --allow-read --allow-write --deny-write=data/d/secret main.ts plain_rename_d",
+      "output": "NotCapable: Requires write access to \"[WILDLINE]d\", run again with the --allow-write flag\n"
+    },
+    "plain_rename_dir_with_denied_inside_async": {
+      "args": "run --quiet --no-prompt --allow-read --allow-write --deny-write=data/d/secret main.ts plain_rename_d_async",
+      "output": "NotCapable: Requires write access to \"[WILDLINE]d\", run again with the --allow-write flag\n"
+    },
+    "plain_rename_allowed": {
+      "args": "run --quiet --no-prompt --allow-read --allow-write --deny-write=data/secret main.ts plain_rename_d",
+      "output": "renamed\n"
     }
   }
 }

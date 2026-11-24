@@ -803,11 +803,17 @@ pub fn op_fs_rename_sync(
 ) -> Result<(), FsOpsError> {
   let permissions =
     state.borrow_mut::<ende_permissions::PermissionsContainer>();
+  let oldpath_requested = Path::new(oldpath);
   let oldpath = permissions.check_open(
-    Cow::Borrowed(Path::new(oldpath)),
+    Cow::Borrowed(oldpath_requested),
     OpenAccessKind::ReadWriteNoFollow,
     Some("Ende.renameSync()"),
   )?;
+  // Renaming a directory moves everything inside it, so a deny scope below
+  // `oldpath` blocks the rename, as for a recursive remove. Stricter than
+  // upstream Deno, which only checks `oldpath` itself.
+  permissions
+    .check_write(Cow::Borrowed(oldpath_requested), "Ende.renameSync()")?;
   let newpath = permissions.check_open(
     Cow::Borrowed(Path::new(newpath)),
     OpenAccessKind::WriteNoFollow,
@@ -831,11 +837,14 @@ pub async fn op_fs_rename_async(
     let mut state = state.borrow_mut();
     let permissions =
       state.borrow_mut::<ende_permissions::PermissionsContainer>();
+    let oldpath_requested = PathBuf::from(oldpath);
     let oldpath = permissions.check_open(
-      Cow::Owned(PathBuf::from(oldpath)),
+      Cow::Owned(oldpath_requested.clone()),
       OpenAccessKind::ReadWriteNoFollow,
       Some("Ende.rename()"),
     )?;
+    // See op_fs_rename_sync: a deny scope below `oldpath` blocks the rename.
+    permissions.check_write(Cow::Owned(oldpath_requested), "Ende.rename()")?;
     let newpath = permissions.check_open(
       Cow::Owned(PathBuf::from(newpath)),
       OpenAccessKind::WriteNoFollow,
