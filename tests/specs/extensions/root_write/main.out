@@ -1,0 +1,10 @@
+Recorded extension "@acme/writer" in ende.lock; it will run with: read [WILDLINE]output; write [WILDLINE]output
+write inside: ok
+read back: written
+dot-dot: PathEscape
+absolute: PathEscape
+read through link out: PathEscape
+write through dir link out: PathEscape
+plain write outside: NotCapable
+anything written outside output/: false
+host root still usable: written

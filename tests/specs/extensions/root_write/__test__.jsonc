@@ -1,0 +1,20 @@
+{
+  "tempDir": true,
+  "tests": {
+    // An extension granted write on ./output writes inside a root the host
+    // hands it, and every way out through that root throws PathEscape; a
+    // plain write outside is denied by its own permissions.
+    "writes_inside_cannot_escape": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-write setup.ts",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --unstable-fs --allow-read --allow-write=output main.ts",
+          "output": "main.out"
+        }
+      ]
+    }
+  }
+}

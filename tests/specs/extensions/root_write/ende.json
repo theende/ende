@@ -1,0 +1,11 @@
+{
+  "extensions": {
+    "@acme/writer": {
+      "source": "./ext/writer/mod.ts",
+      "permissions": {
+        "read": ["./output"],
+        "write": ["./output"]
+      }
+    }
+  }
+}
