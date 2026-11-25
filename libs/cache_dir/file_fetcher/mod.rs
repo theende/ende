@@ -94,14 +94,7 @@ impl FileOrRedirect {
     cache_entry: CacheEntry,
   ) -> Result<Self, RedirectResolutionError> {
     if let Some(redirect_to) = cache_entry.metadata.headers.get("location") {
-      let redirect =
-        url
-          .join(redirect_to)
-          .map_err(|source| RedirectResolutionError {
-            url: url.clone(),
-            location: redirect_to.clone(),
-            source,
-          })?;
+      let redirect = resolve_redirect_location(url, redirect_to)?;
       Ok(FileOrRedirect::Redirect(redirect))
     } else {
       Ok(FileOrRedirect::File(File {
@@ -207,13 +200,29 @@ pub enum SendError {
 
 #[derive(Debug, Error, JsError)]
 #[class(inherit)]
-#[error("Failed resolving redirect from '{url}' to '{location}'.")]
+#[error("Failed resolving redirect from '{url}' to '{location}': {source}")]
 pub struct RedirectResolutionError {
   pub url: Url,
   pub location: String,
   #[source]
   #[inherit]
-  pub source: url::ParseError,
+  pub source: RedirectLocationError,
+}
+
+/// Why a redirect's `location` can't be followed.
+#[derive(Debug, Error, JsError)]
+pub enum RedirectLocationError {
+  #[class(inherit)]
+  #[error(transparent)]
+  Parse(#[from] url::ParseError),
+  /// A remote module redirected to a `file:`, `data:` or other non-http
+  /// URL. Following it would let a server hand out local files as module
+  /// source, so it is refused whether the redirect is fetched or replayed
+  /// from the cache. (Ende-specific: upstream Deno resolves a cached
+  /// redirect with `Url::join`, which follows such a location.)
+  #[class(type)]
+  #[error("a remote module can only redirect to an http: or https: URL")]
+  NotHttp,
 }
 
 #[derive(Debug, Error, JsError)]
@@ -245,7 +254,7 @@ pub struct CacheReadError {
 
 #[derive(Debug, Error, JsError)]
 #[class(generic)]
-#[error("Failed reading location header for '{}'{}", .request_url, .maybe_location.as_ref().map(|location| format!(" to '{}'", location)).unwrap_or_default())]
+#[error("Failed reading location header for '{}'{}{}", .request_url, .maybe_location.as_ref().map(|location| format!(" to '{}'", location)).unwrap_or_default(), .maybe_source.as_ref().map(|source| format!(": {source}")).unwrap_or_default())]
 pub struct RedirectHeaderParseError {
   pub request_url: Url,
   pub maybe_location: Option<String>,
@@ -1398,14 +1407,7 @@ impl<TBlobStore: BlobStore, TSys: FileFetcherSys, THttpClient: HttpClient>
       };
     }
     if let Some(redirect_to) = headers.get("location") {
-      let redirect =
-        url
-          .join(redirect_to)
-          .map_err(|source| RedirectResolutionError {
-            url: url.clone(),
-            location: redirect_to.clone(),
-            source,
-          })?;
+      let redirect = resolve_redirect_location(url, redirect_to)?;
       Ok(Some(CachedOrRedirect::Redirect(redirect)))
     } else {
       Ok(Some(CachedOrRedirect::Cached))
@@ -1467,11 +1469,11 @@ pub fn resolve_redirect_from_headers(
       })
     })?;
     log::debug!("Redirecting to {:?}...", &location_string);
-    resolve_url_from_location(request_url, location_string).map_err(|source| {
+    resolve_redirect_location(request_url, location_string).map_err(|err| {
       Box::new(RedirectHeaderParseError {
         request_url: request_url.clone(),
         maybe_location: Some(location_string.to_string()),
-        maybe_source: Some(source),
+        maybe_source: Some(Box::new(err.source)),
       })
     })
   } else {
@@ -1483,12 +1485,33 @@ pub fn resolve_redirect_from_headers(
   }
 }
 
+/// The URL a redirect from `url` to `location` leads to, the same whether
+/// the redirect was just fetched or is replayed from the cache. A redirect
+/// from an http(s) URL must stay on http(s).
+pub fn resolve_redirect_location(
+  url: &Url,
+  location: &str,
+) -> Result<Url, RedirectResolutionError> {
+  let error = |source: RedirectLocationError| RedirectResolutionError {
+    url: url.clone(),
+    location: location.to_string(),
+    source,
+  };
+  let redirect = resolve_url_from_location(url, location)
+    .map_err(|err| error(err.into()))?;
+  let is_http = |url: &Url| matches!(url.scheme(), "http" | "https");
+  if is_http(url) && !is_http(&redirect) {
+    return Err(error(RedirectLocationError::NotHttp));
+  }
+  Ok(redirect)
+}
+
 /// Construct the next uri based on base uri and location header fragment
 /// See <https://tools.ietf.org/html/rfc3986#section-4.2>
 fn resolve_url_from_location(
   base_url: &Url,
   location: &str,
-) -> Result<Url, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<Url, url::ParseError> {
   // todo(dsherret): these shouldn't unwrap
   if location.starts_with("http://") || location.starts_with("https://") {
     // absolute uri
@@ -1499,6 +1522,10 @@ fn resolve_url_from_location(
   } else if location.starts_with('/') {
     // path-absolute
     Ok(base_url.join(location)?)
+  } else if let Ok(absolute) = Url::parse(location) {
+    // an absolute URL with another scheme (`file:`, `data:`, ...), which
+    // `resolve_redirect_location` refuses for a remote module
+    Ok(absolute)
   } else {
     // assuming path-noscheme | path-empty
     let base_url_path_str = base_url.path().to_owned();
@@ -1528,8 +1555,15 @@ enum SendRequestResponse {
 
 #[cfg(test)]
 mod test {
+  use std::borrow::Cow;
+  use std::collections::HashMap;
+
   use url::Url;
 
+  use crate::cache::CacheEntry;
+  use crate::cache::SerializedCachedUrlMetadata;
+  use crate::file_fetcher::FileOrRedirect;
+  use crate::file_fetcher::resolve_redirect_location;
   use crate::file_fetcher::resolve_url_from_location;
 
   #[test]
@@ -1562,6 +1596,63 @@ mod test {
     let new_uri = resolve_url_from_location(&url, "/y").unwrap();
     assert_eq!(new_uri.host_str().unwrap(), "deno.land");
     assert_eq!(new_uri.path(), "/y");
+  }
+
+  #[test]
+  fn remote_redirects_to_other_schemes_are_refused() {
+    let url = "https://deno.land/x/mod.ts".parse::<Url>().unwrap();
+    for location in [
+      "file:///etc/passwd",
+      "data:text/plain,hi",
+      "blob:null/x",
+      "jsr:@std/path",
+    ] {
+      let err = resolve_redirect_location(&url, location).unwrap_err();
+      assert_eq!(err.url, url);
+      assert_eq!(err.location, location);
+      assert!(
+        err.to_string().contains(
+          "a remote module can only redirect to an http: or https: URL"
+        ),
+        "{err}"
+      );
+    }
+    assert_eq!(
+      resolve_redirect_location(&url, "http://golang.org/a").unwrap(),
+      "http://golang.org/a".parse::<Url>().unwrap()
+    );
+    assert_eq!(
+      resolve_redirect_location(&url, "y.ts").unwrap(),
+      "https://deno.land/x/y.ts".parse::<Url>().unwrap()
+    );
+  }
+
+  /// A redirect replayed from the cache resolves the same way, and is
+  /// refused the same way, as when it was fetched.
+  #[test]
+  fn cached_redirect_to_a_file_is_refused() {
+    let url = "http://localhost:4545/data.json".parse::<Url>().unwrap();
+    let entry = |location: &str| CacheEntry {
+      metadata: SerializedCachedUrlMetadata {
+        headers: HashMap::from([(
+          "location".to_string(),
+          location.to_string(),
+        )]),
+        url: url.to_string(),
+        time: None,
+      },
+      content: Cow::Borrowed(b""),
+    };
+    let err =
+      FileOrRedirect::from_ende_cache_entry(&url, entry("file:///etc/passwd"))
+        .unwrap_err();
+    assert_eq!(err.location, "file:///etc/passwd");
+    assert_eq!(
+      FileOrRedirect::from_ende_cache_entry(&url, entry("other.json")).unwrap(),
+      FileOrRedirect::Redirect(
+        "http://localhost:4545/other.json".parse::<Url>().unwrap()
+      )
+    );
   }
 
   #[test]
