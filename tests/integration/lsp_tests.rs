@@ -694,6 +694,186 @@ fn lsp_extension_types() {
 }
 
 #[test(timeout = 300)]
+fn lsp_extension_types_refresh_on_change() {
+  // A new export in a local extension's source is picked up when the file
+  // changes on disk, without reloading the config.
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let temp_dir = context.temp_dir();
+  temp_dir.write(
+    "ende.json",
+    r#"{
+  "extensions": {
+    "@acme/fmt": { "source": "./ext/fmt/mod.ts", "permissions": [] }
+  }
+}"#,
+  );
+  temp_dir.write(
+    "ext/fmt/mod.ts",
+    "export const manifest = { permissions: [] };\n\
+     export function shout(text: string): string {\n  \
+       return text.toUpperCase();\n}\n",
+  );
+  let mut client = context.new_lsp_command().build();
+  client.initialize(|builder| {
+    builder.set_config("./ende.json");
+  });
+  let uri = url_to_uri(&temp_dir.url().join("main.ts").unwrap()).unwrap();
+  let diagnostics = client.did_open(json!({
+    "textDocument": {
+      "uri": uri,
+      "languageId": "typescript",
+      "version": 1,
+      "text": "import { whisper } from \"extension:@acme/fmt\";\nconst n: number = await whisper(\"a\");\nconsole.log(n);\n",
+    }
+  }));
+  assert!(
+    diagnostics
+      .all()
+      .iter()
+      .any(|d| d.message.contains("whisper")),
+    "{:#?}",
+    diagnostics.all()
+  );
+
+  temp_dir.write(
+    "ext/fmt/mod.ts",
+    "export const manifest = { permissions: [] };\n\
+     export function shout(text: string): string {\n  \
+       return text.toUpperCase();\n}\n\
+     export function whisper(text: string): string {\n  \
+       return text.toLowerCase();\n}\n",
+  );
+  client.did_change_watched_files(json!({
+    "changes": [{
+      "uri": url_to_uri(&temp_dir.url().join("ext/fmt/mod.ts").unwrap()).unwrap(),
+      "type": 2
+    }]
+  }));
+  let messages = client
+    .read_diagnostics()
+    .all()
+    .iter()
+    .map(|d| d.message.clone())
+    .collect::<Vec<_>>();
+  // `whisper` now exists and returns Promise<string>, so assigning its
+  // awaited result to a number is the only error left.
+  assert!(
+    messages
+      .iter()
+      .any(|m| m.contains("Type 'string' is not assignable to type 'number'")),
+    "{messages:#?}"
+  );
+  assert!(
+    !messages
+      .iter()
+      .any(|m| m.contains("has no exported member")),
+    "{messages:#?}"
+  );
+  client.shutdown();
+}
+
+#[test(timeout = 300)]
+fn lsp_extension_types_remote_and_jsr() {
+  // Remote and jsr: extension sources are typed in the editor once cached,
+  // the same way `ende check` types them.
+  let context = TestContextBuilder::new()
+    .use_http_server()
+    .use_temp_cwd()
+    .build();
+  let temp_dir = context.temp_dir();
+  temp_dir.write(
+    "ende.json",
+    r#"{
+  "extensions": {
+    "@acme/remote": {
+      "source": "https://localhost:5545/run/extension_lockfile/remote_ext.ts",
+      "permissions": []
+    },
+    "@acme/jsr": {
+      "source": "jsr:@endetest/extension@1",
+      "permissions": []
+    }
+  }
+}"#,
+  );
+  let main_url = temp_dir.url().join("main.ts").unwrap();
+  let main_text = "import { answer } from \"extension:@acme/remote\";\nimport { double } from \"extension:@acme/jsr\";\nconst s: string = await answer();\nconst n: number = await double(\"2\");\nconsole.log(s, n);\n";
+  temp_dir.write("main.ts", main_text);
+
+  let mut client = context.new_lsp_command().build();
+  client.initialize(|builder| {
+    builder.set_config("./ende.json").set_tls_certificate(
+      testdata_path()
+        .join("tls")
+        .join("RootCA.pem")
+        .as_path()
+        .to_string_lossy(),
+    );
+  });
+  let uri = url_to_uri(&main_url).unwrap();
+  client.did_open(json!({
+    "textDocument": {
+      "uri": uri,
+      "languageId": "typescript",
+      "version": 1,
+      "text": main_text,
+    }
+  }));
+  client.cache_specifier(main_url.clone());
+  let diagnostics = client.read_diagnostics();
+  let messages = diagnostics
+    .all()
+    .iter()
+    .map(|d| format!("{}: {}", d.source.as_deref().unwrap_or(""), d.message))
+    .collect::<Vec<_>>();
+  // The remote extension's result is Promise<number>, so awaiting it gives
+  // a number, not a string.
+  assert!(
+    messages
+      .iter()
+      .any(|m| m.contains("Type 'number' is not assignable to type 'string'")),
+    "{messages:#?}"
+  );
+  // The jsr extension's `double` takes a number, so a string argument is an
+  // error.
+  assert!(
+    messages.iter().any(|m| m.contains(
+      "Argument of type 'string' is not assignable to parameter of type 'number'"
+    )),
+    "{messages:#?}"
+  );
+  assert!(
+    !messages.iter().any(|m| m.contains("extension:@acme")),
+    "{messages:#?}"
+  );
+
+  let res = client.write_request(
+    "textDocument/hover",
+    json!({
+      "textDocument": { "uri": uri },
+      "position": { "line": 0, "character": 10 }
+    }),
+  );
+  let value = res.pointer("/contents").map(|v| v.to_string()).unwrap();
+  assert!(value.contains("() => Promise<number>"), "{value}");
+
+  let res = client.write_request(
+    "textDocument/hover",
+    json!({
+      "textDocument": { "uri": uri },
+      "position": { "line": 1, "character": 10 }
+    }),
+  );
+  let value = res.pointer("/contents").map(|v| v.to_string()).unwrap();
+  assert!(
+    value.contains("(value: number) => Promise<number>"),
+    "{value}"
+  );
+
+  client.shutdown();
+}
+
+#[test(timeout = 300)]
 fn lsp_import_map_remote() {
   let context = TestContextBuilder::new()
     .use_http_server()

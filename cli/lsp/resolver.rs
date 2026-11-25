@@ -56,6 +56,9 @@ pub struct LspScopedResolver {
   redirect_resolver: Option<Arc<RedirectResolver>>,
   dep_info: Arc<Mutex<Arc<ScopeDepInfo>>>,
   config_data: Option<Arc<ConfigData>>,
+  /// Where remote and jsr: extension sources are read from, for their
+  /// export names.
+  http_cache: Option<Arc<dyn HttpCache>>,
 }
 
 impl Default for LspScopedResolver {
@@ -68,6 +71,7 @@ impl Default for LspScopedResolver {
       redirect_resolver: None,
       dep_info: Default::default(),
       config_data: None,
+      http_cache: None,
     }
   }
 }
@@ -95,6 +99,9 @@ impl LspScopedResolver {
       redirect_resolver,
       dep_info: Default::default(),
       config_data: config_data.cloned(),
+      http_cache: Some(
+        cache.for_specifier(config_data.map(|d| d.scope.as_ref())),
+      ),
     }
   }
 
@@ -103,9 +110,10 @@ impl LspScopedResolver {
   }
 
   /// A `data:` module with the types of extension `name` as its proxy
-  /// presents them (see `crate::extensions::ExtensionTypes`), for a local
-  /// source. `None` for an undeclared name or a remote or `jsr:` source,
-  /// whose import then stays untyped in the editor.
+  /// presents them (see `crate::extensions::ExtensionTypes`). `None` for an
+  /// undeclared name, or a remote or `jsr:` source that isn't cached yet
+  /// (typed once it is): the import then stays untyped, without a false
+  /// error.
   pub fn extension_stub(&self, name: &str) -> Option<ModuleSpecifier> {
     use base64::Engine;
     let config = self
@@ -116,21 +124,47 @@ impl LspScopedResolver {
       .to_extensions_config()
       .ok()?;
     let source = &config.extensions.get(name)?.source;
-    if source.scheme() != "file" {
-      return None;
-    }
-    let path = deno_path_util::url_to_file_path(source).ok()?;
-    #[allow(
-      clippy::disallowed_methods,
-      reason = "the extension's source, read for its export names"
-    )]
-    let text = std::fs::read_to_string(path).ok()?;
-    let stub = crate::extensions::stub_for_source(name, source, &text)?;
+    let (module, text) = self.extension_source_text(source)?;
+    let stub =
+      crate::extensions::stub_for_source(name, source, &module, &text)?;
     ModuleSpecifier::parse(&format!(
       "data:application/typescript;base64,{}",
       base64::engine::general_purpose::STANDARD.encode(stub)
     ))
     .ok()
+  }
+
+  /// An extension's entry module and its text: read from disk for a local
+  /// source, from the HTTP cache for a remote or `jsr:` one. The module is
+  /// what the source resolves to (after redirects, or the jsr package's
+  /// file); its extension gives the media type to read the text as, which a
+  /// `jsr:` specifier doesn't carry.
+  fn extension_source_text(
+    &self,
+    source: &ModuleSpecifier,
+  ) -> Option<(ModuleSpecifier, String)> {
+    let url = match source.scheme() {
+      "file" => {
+        let path = deno_path_util::url_to_file_path(source).ok()?;
+        #[allow(
+          clippy::disallowed_methods,
+          reason = "the extension's source, read for its export names"
+        )]
+        let text = std::fs::read_to_string(path).ok()?;
+        return Some((source.clone(), text));
+      }
+      "jsr" => {
+        let req_ref = JsrPackageReqReference::from_specifier(source).ok()?;
+        self.jsr_to_resource_url(&req_ref)?
+      }
+      _ => self.resolve_redirects(source)?,
+    };
+    let http_cache = self.http_cache.as_ref()?;
+    let entry = http_cache
+      .get(&http_cache.cache_item_key(&url).ok()?, None)
+      .ok()??;
+    let text = String::from_utf8(entry.content.into_owned()).ok()?;
+    Some((url, text))
   }
 
   pub fn as_workspace_resolver(&self) -> &Arc<WorkspaceResolver<CliSys>> {

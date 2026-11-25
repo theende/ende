@@ -1,0 +1,26 @@
+{
+  "tempDir": true,
+  "tests": {
+    // A declared remote extension on a host outside the default
+    // --allow-import list is fetched for types like it is for running (the
+    // declaration in ende.json is the consent), so `ende check` types it.
+    "wrong_result": {
+      "args": "check --quiet --cert RootCA.pem wrong_result.ts",
+      "output": "TS2322 [ERROR]: Type 'number' is not assignable to type 'string'.[WILDCARD]wrong_result.ts:3:7[WILDCARD]",
+      "exitCode": 1
+    },
+    // The app's own imports from that host still need --allow-import.
+    "own_import_denied": {
+      "args": "check --quiet --cert RootCA.pem own_import.ts",
+      "output": "[WILDCARD]Requires import access to \"localhost:5545\"[WILDCARD]",
+      "exitCode": 1
+    },
+    // A module the app imports itself is checked with the app's
+    // permissions even when the extension's graph has it too.
+    "shared_import_denied": {
+      "args": "check --quiet --cert RootCA.pem shared_import.ts",
+      "output": "[WILDCARD]Requires import access to \"localhost:5545\"[WILDCARD]",
+      "exitCode": 1
+    }
+  }
+}

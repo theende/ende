@@ -40,7 +40,8 @@ use super::manifest::extract_manifest;
 /// What is known about an extension's exports.
 #[derive(Debug, Clone)]
 enum Exports {
-  /// Not read yet: the stub only brings the source into the graph.
+  /// Not read yet: the stub is empty, so the first build holds only the
+  /// app's own modules, each loaded with the app's permissions.
   Pending,
   /// The manifest reader's export names.
   Known(Vec<String>),
@@ -67,16 +68,35 @@ impl ExtensionTypes {
     })
   }
 
+  /// The declared extensions' sources.
+  pub fn sources(&self) -> impl Iterator<Item = &ModuleSpecifier> {
+    self.config.extensions.values().map(|e| &e.source)
+  }
+
+  /// A loader serving the stubs, sending each module of an extension's own
+  /// graph (`routes`: the modules found when that graph was fetched with the
+  /// extension's loader permissions, and that loader) to its extension's
+  /// loader, and everything else to `inner`.
   pub fn loader<'a>(
     &'a self,
     inner: &'a dyn Loader,
+    routes: &'a [(HashSet<ModuleSpecifier>, &'a dyn Loader)],
   ) -> ExtensionTypesLoader<'a> {
-    ExtensionTypesLoader { types: self, inner }
+    ExtensionTypesLoader {
+      types: self,
+      inner,
+      routes,
+    }
   }
 
-  /// After a build, reads the exports of each stub still pending from its
-  /// source module in `graph`, and returns the stubs to load again.
-  pub fn resolve_exports(&self, graph: &ModuleGraph) -> Vec<ModuleSpecifier> {
+  /// After the first build, reads the exports of each stub still pending
+  /// from its source module in that extension's own graph
+  /// (`extension_graphs`, by source), and returns the stubs to load again.
+  pub fn resolve_exports(
+    &self,
+    graph: &ModuleGraph,
+    extension_graphs: &HashMap<ModuleSpecifier, ModuleGraph>,
+  ) -> Vec<ModuleSpecifier> {
     let mut reload = Vec::new();
     for (name, extension) in &self.config.extensions {
       let Some(stub) = stub_specifier(name) else {
@@ -91,9 +111,9 @@ impl ExtensionTypes {
       ) {
         continue;
       }
-      let exports = graph
-        .resolve_dependency(extension.source.as_str(), &stub, true)
-        .and_then(|source| graph.get(source))
+      let exports = extension_graphs
+        .get(&extension.source)
+        .and_then(|extension_graph| extension_graph.get(&extension.source))
         .and_then(|module| match module {
           Module::Js(module) => extract_manifest(
             name,
@@ -138,7 +158,11 @@ impl ExtensionTypes {
           specifier: specifier.clone(),
         });
       }
-      Exports::Pending => stub_source(name, extension.source.as_str(), &[]),
+      Exports::Pending => {
+        format!(
+          "// Types of extension \"{name}\": not read yet.\nexport {{}};\n"
+        )
+      }
       Exports::Known(exports) => {
         stub_source(name, extension.source.as_str(), &exports)
       }
@@ -159,6 +183,7 @@ impl ExtensionTypes {
 pub struct ExtensionTypesLoader<'a> {
   types: &'a ExtensionTypes,
   inner: &'a dyn Loader,
+  routes: &'a [(HashSet<ModuleSpecifier>, &'a dyn Loader)],
 }
 
 impl Loader for ExtensionTypesLoader<'_> {
@@ -184,6 +209,11 @@ impl Loader for ExtensionTypesLoader<'_> {
     {
       return std::future::ready(Ok(Some(response))).boxed_local();
     }
+    for (modules, loader) in self.routes {
+      if modules.contains(specifier) {
+        return loader.load(specifier, options);
+      }
+    }
     self.inner.load(specifier, options)
   }
 }
@@ -206,12 +236,15 @@ pub fn runtime_specifier(
 pub fn stub_for_source(
   name: &str,
   source: &ModuleSpecifier,
+  module: &ModuleSpecifier,
   text: &str,
 ) -> Option<String> {
+  // `module` is what `source` resolves to; its media type, not the source's
+  // (a `jsr:` specifier has none), says how to read `text`.
   let manifest = extract_manifest(
     name,
-    source,
-    deno_ast::MediaType::from_specifier(source),
+    module,
+    deno_ast::MediaType::from_specifier(module),
     text,
   )
   .ok()?;
@@ -347,12 +380,32 @@ mod test {
   }
 
   #[test]
-  fn pending_stub_only_imports_the_source() {
+  fn stub_without_exports_still_imports_the_source() {
     let text = stub_source("@acme/fmt", "jsr:@acme/fmt@1", &[]);
     assert!(
       text.contains("import type * as __extension from \"jsr:@acme/fmt@1\";")
     );
     assert!(text.contains("export {};"));
     assert!(!text.contains("export declare"));
+  }
+
+  #[test]
+  fn jsr_source_is_read_as_its_resolved_module() {
+    // A `jsr:` specifier has no media type of its own: the text is read as
+    // the module it resolves to, while the stub still imports the source.
+    let source = ModuleSpecifier::parse("jsr:@acme/fmt@1").unwrap();
+    let module =
+      ModuleSpecifier::parse("https://jsr.io/@acme/fmt/1.0.0/mod.ts").unwrap();
+    let text = "export const manifest = { permissions: [] };\n\
+      export function double(value: number): number { return value * 2; }\n";
+    let stub = stub_for_source("@acme/fmt", &source, &module, text).unwrap();
+    assert!(
+      stub.contains("import type * as __extension from \"jsr:@acme/fmt@1\";")
+    );
+    assert!(stub.contains(
+      "export declare const double: __Proxied<typeof __extension.double>;"
+    ));
+    // Read as the source itself, it isn't recognised as an extension entry.
+    assert!(stub_for_source("@acme/fmt", &source, &source, text).is_none());
   }
 }

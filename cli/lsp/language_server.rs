@@ -1303,6 +1303,27 @@ impl Inner {
     ));
   }
 
+  /// Whether `specifier` is the entry module of a declared extension.
+  fn is_extension_entry(&self, specifier: &Url) -> bool {
+    self
+      .config
+      .tree
+      .data_by_scope()
+      .values()
+      .any(|config_data| {
+        config_data
+          .member_dir
+          .workspace
+          .to_extensions_config()
+          .is_ok_and(|config| {
+            config
+              .extensions
+              .values()
+              .any(|extension| extension.source == *specifier)
+          })
+      })
+  }
+
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
   fn refresh_resolver(&mut self) {
     self.resolver =
@@ -1728,6 +1749,9 @@ impl Inner {
         || path.ends_with("/node_modules/.ende/.setup-cache.bin")
         || self.config.tree.is_watched_file(specifier)
         || self.compiler_options_resolver.is_watched_file(specifier)
+        // An extension's entry module: its export names are in the type
+        // stub its `extension:` import resolves to.
+        || self.is_extension_entry(specifier)
     });
     if has_config_changes {
       let mut ende_config_changes = IndexSet::with_capacity(changes.len());

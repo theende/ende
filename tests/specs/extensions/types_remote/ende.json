@@ -1,0 +1,8 @@
+{
+  "extensions": {
+    "@acme/remote": {
+      "source": "https://localhost:5545/run/extension_lockfile/remote_ext.ts",
+      "permissions": []
+    }
+  }
+}

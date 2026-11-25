@@ -1,6 +1,7 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -854,15 +855,6 @@ impl ModuleGraphBuilder {
     } else {
       None
     };
-    let base_loader = loader.as_loader();
-    let extension_loader = extension_types
-      .as_ref()
-      .map(|types| types.loader(base_loader));
-    let loader: &dyn Loader = match &extension_loader {
-      Some(extension_loader) => extension_loader,
-      None => base_loader,
-    };
-
     let graph_kind = graph.graph_kind();
     macro_rules! build_options {
       () => {
@@ -893,20 +885,85 @@ impl ModuleGraphBuilder {
       };
     }
 
+    // An extension's own graph is fetched with the same loader permissions
+    // as when it runs (the declaration in ende.json is the consent), not
+    // the app's --allow-import: fetch it first in a scratch graph. The app's
+    // graph is then built with empty stubs, so every module the app reaches
+    // itself is loaded with the app's permissions; only when the stubs are
+    // filled in do the modules that only an extension reaches go to that
+    // extension's loader.
+    let mut extension_graph_loaders = Vec::new();
+    let mut extension_graph_modules = Vec::new();
+    let mut extension_graphs = HashMap::new();
+    if let Some(types) = &extension_types {
+      let desc_parser = Arc::new(
+        ende_runtime::ende_permissions::RuntimePermissionDescriptorParser::new(
+          self.sys.clone(),
+        ),
+      );
+      for source in types.sources() {
+        let Ok(permissions) = crate::extensions::extension_loader_permissions(
+          desc_parser.clone(),
+          source,
+        ) else {
+          continue;
+        };
+        let extension_loader =
+          self.create_graph_loader_with_permissions(permissions, None);
+        let mut extension_graph = ModuleGraph::new(graph_kind);
+        let mut extension_build_options = build_options!();
+        extension_build_options.is_dynamic = true;
+        // A failure here leaves the extension untyped; running reports it.
+        let _ = self
+          .build_graph_with_build_options(
+            &mut extension_graph,
+            BuildGraphRequest::Roots(vec![source.clone()], vec![]),
+            &extension_loader,
+            extension_build_options,
+          )
+          .await;
+        let modules: HashSet<ModuleSpecifier> = extension_graph
+          .specifiers()
+          .map(|(specifier, _)| specifier.clone())
+          .chain(extension_graph.redirects.keys().cloned())
+          .chain(extension_graph.redirects.values().cloned())
+          .collect();
+        extension_graph_modules.push(modules);
+        extension_graph_loaders.push(extension_loader);
+        extension_graphs.insert(source.clone(), extension_graph);
+      }
+    }
+    let extension_routes: Vec<(HashSet<ModuleSpecifier>, &dyn Loader)> =
+      extension_graph_modules
+        .into_iter()
+        .zip(extension_graph_loaders.iter().map(|l| l as &dyn Loader))
+        .collect();
+    let base_loader = loader.as_loader();
+    let app_loader = extension_types
+      .as_ref()
+      .map(|types| types.loader(base_loader, &[]));
+    let loader: &dyn Loader = match &app_loader {
+      Some(app_loader) => app_loader,
+      None => base_loader,
+    };
+
     self
       .build_graph_with_build_options(graph, request, loader, build_options!())
       .await?;
 
-    // The stubs' exports come from their sources, which the first build
-    // brought into the graph; load the stubs again with them.
+    // The stubs' exports come from the extensions' own graphs; load the
+    // stubs again with them. Modules the first build already holds stay as
+    // the app loaded them; the rest of each extension's graph goes to its
+    // loader.
     if let Some(types) = &extension_types {
-      let stubs = types.resolve_exports(graph);
+      let stubs = types.resolve_exports(graph, &extension_graphs);
       if !stubs.is_empty() {
+        let routed_loader = types.loader(base_loader, &extension_routes);
         self
           .build_graph_with_build_options(
             graph,
             BuildGraphRequest::Reload(stubs),
-            loader,
+            &routed_loader,
             build_options!(),
           )
           .await?;

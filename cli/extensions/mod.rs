@@ -22,6 +22,7 @@ pub use registry::ExtensionRegistry;
 pub use registry::check_extension_directory;
 pub use registry::check_extension_graph_resolution;
 pub use registry::extension_directory;
+pub use registry::extension_loader_permissions;
 pub use types::ExtensionTypes;
 pub use types::extension_only_modules;
 pub use types::runtime_specifier;

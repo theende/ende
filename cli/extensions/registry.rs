@@ -393,23 +393,33 @@ impl ExtensionRegistry {
     &self,
     source: &ModuleSpecifier,
   ) -> Result<PermissionsContainer, JsErrorBox> {
-    let allow_read = extension_directory(source)
-      .map(|dir| vec![dir.to_string_lossy().into_owned()]);
-    let permissions = Permissions::from_options(
-      self.desc_parser.as_ref(),
-      &PermissionsOptions {
-        allow_import: Some(vec![]),
-        allow_read,
-        prompt: false,
-        ..Default::default()
-      },
-    )
-    .map_err(to_js_error)?;
-    Ok(
-      PermissionsContainer::new(self.desc_parser.clone(), permissions)
-        .with_import_symlinks_resolved(),
-    )
+    extension_loader_permissions(self.desc_parser.clone(), source)
   }
+}
+
+/// The permissions an extension's static graph is fetched with (see
+/// [`ExtensionRegistry::loader_permissions`]). Shared with `ende check`,
+/// which fetches the same graph for types.
+pub fn extension_loader_permissions(
+  desc_parser: Arc<RuntimePermissionDescriptorParser<CliSys>>,
+  source: &ModuleSpecifier,
+) -> Result<PermissionsContainer, JsErrorBox> {
+  let allow_read = extension_directory(source)
+    .map(|dir| vec![dir.to_string_lossy().into_owned()]);
+  let permissions = Permissions::from_options(
+    desc_parser.as_ref(),
+    &PermissionsOptions {
+      allow_import: Some(vec![]),
+      allow_read,
+      prompt: false,
+      ..Default::default()
+    },
+  )
+  .map_err(to_js_error)?;
+  Ok(
+    PermissionsContainer::new(desc_parser, permissions)
+      .with_import_symlinks_resolved(),
+  )
 }
 
 /// Starts extension workers for the main thread (see
