@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "default": {
+      "read": { "allow": true, "deny": ["./link"] },
+      "write": { "allow": true, "deny": ["./link"] }
+    }
+  }
+}

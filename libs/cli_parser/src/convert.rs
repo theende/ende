@@ -1395,7 +1395,10 @@ fn serve_parse(
 }
 
 fn eval_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
-  runtime_args_parse(result, flags, false, true)?;
+  // eval accepts the permission flags, so parse them: its deny flags must
+  // apply even though it allows everything else. Upstream Deno skips them
+  // here and silently ignores `--deny-*`; Ende diverges on purpose.
+  runtime_args_parse(result, flags, true, true)?;
   // eval implies allow all permissions
   flags.permissions.allow_all = true;
 

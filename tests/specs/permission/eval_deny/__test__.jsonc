@@ -1,0 +1,33 @@
+{
+  "tempDir": true,
+  // `ende eval` grants every permission, but its deny flags still apply.
+  "tests": {
+    "eval_deny_write": {
+      "args": [
+        "eval",
+        "--no-config",
+        "--deny-write=./ext",
+        "try { Deno.writeTextFileSync('ext/e.txt', 'x'); console.log('wrote'); } catch (e) { console.log(e.constructor.name); }"
+      ],
+      "output": "NotCapable\n"
+    },
+    "eval_deny_read": {
+      "args": [
+        "eval",
+        "--no-config",
+        "--deny-read=./ext",
+        "try { Deno.readTextFileSync('ext/s.txt'); console.log('read'); } catch (e) { console.log(e.constructor.name); }"
+      ],
+      "output": "NotCapable\n"
+    },
+    "eval_still_allows_the_rest": {
+      "args": [
+        "eval",
+        "--no-config",
+        "--deny-write=./ext",
+        "Deno.writeTextFileSync('out.txt', 'x'); console.log(Deno.readTextFileSync('ext/s.txt').trim());"
+      ],
+      "output": "secret\n"
+    }
+  }
+}

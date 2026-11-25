@@ -1,0 +1,152 @@
+{
+  "tempDir": true,
+  // A deny rule applies to the real location: a symlink on either side, the
+  // rule or the path asked for, doesn't get around it. Allow rules still
+  // match the path as written.
+  "tests": {
+    "deny_read_link_query_real": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('real', 'link')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --deny-read=link r.ts real/secret.txt",
+          "output": "NotCapable\n"
+        }
+      ]
+    },
+    "deny_read_real_query_link": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('real', 'link')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --deny-read=real r.ts link/secret.txt",
+          "output": "NotCapable\n"
+        }
+      ]
+    },
+    "deny_write_link_query_real": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('real', 'link')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write --deny-write=link w.ts real/new.txt",
+          "output": "NotCapable\n"
+        }
+      ]
+    },
+    "deny_write_real_query_link": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('real', 'link')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write --deny-write=real w.ts link/new.txt",
+          "output": "NotCapable\n"
+        }
+      ]
+    },
+    "deny_strict_remove_through_link": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('real', 'link')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write --deny-write=link rm.ts real",
+          "output": "NotCapable\n"
+        }
+      ]
+    },
+    "config_deny_read_query_real": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('real', 'link')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --config perms.json -P r.ts real/secret.txt",
+          "output": "NotCapable\n"
+        }
+      ]
+    },
+    "config_deny_write_query_real": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('real', 'link')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --config perms.json -P w.ts real/new.txt",
+          "output": "NotCapable\n"
+        }
+      ]
+    },
+    "allow_read_through_link_still_allowed": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('real', 'link')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --no-config --allow-read=link r.ts link/secret.txt",
+          "output": "read\n"
+        }
+      ]
+    },
+    "deny_read_elsewhere_still_allowed": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('real', 'link')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --deny-read=link r.ts other.txt",
+          "output": "read\n"
+        }
+      ]
+    }
+  }
+}

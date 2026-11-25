@@ -1351,6 +1351,39 @@ fn comparison_path(path: &Path) -> PathBuf {
   path.to_path_buf()
 }
 
+/// `path` with symlinks resolved, in comparison form, for matching deny
+/// rules: the longest existing ancestor is canonicalized and the rest
+/// appended. `None` for a Windows device path or when nothing resolves.
+///
+/// Allow and deny rules match paths as written, so without this a symlink
+/// on either side got around a deny rule: `--deny-read=link` didn't cover
+/// `real/x` when `link` points at `real`, and a rule given through a
+/// symlinked directory (macOS `/var` vs `/private/var`) didn't cover the
+/// same file reached through the current directory, which the OS reports
+/// resolved. Upstream Deno has the same gap; Ende diverges on purpose.
+fn real_comparison_path(
+  path: &Path,
+  is_windows_device_path: bool,
+) -> Option<PathBuf> {
+  if is_windows_device_path {
+    return None;
+  }
+  let mut existing = path;
+  let mut rest = Vec::new();
+  loop {
+    #[allow(clippy::disallowed_methods, reason = "deny rules match real paths")]
+    if let Ok(real) = std::fs::canonicalize(existing) {
+      let real = rest
+        .iter()
+        .rev()
+        .fold(real, |path: PathBuf, part| path.join(part));
+      return Some(comparison_path(&strip_verbatim_prefix(Cow::Owned(real))));
+    }
+    rest.push(existing.file_name()?.to_os_string());
+    existing = existing.parent()?;
+  }
+}
+
 /// On Windows, strips a `\\?\` verbatim (extended-length) prefix from a path
 /// when it can be losslessly represented without it, so that the permission
 /// system treats `\\?\C:\foo` and `C:\foo` as the same path. The two forms
@@ -1377,6 +1410,38 @@ fn strip_verbatim_prefix(path: Cow<'_, Path>) -> Cow<'_, Path> {
 #[inline]
 fn strip_verbatim_prefix(path: Cow<'_, Path>) -> Cow<'_, Path> {
   path
+}
+
+impl PathQueryDescriptor<'_> {
+  /// Whether this path is inside `deny` (or is it): as written, or with
+  /// symlinks resolved on both sides. See [`real_comparison_path`].
+  fn is_within_deny(&self, deny: &PathDescriptor) -> bool {
+    if self.cmp_path.starts_with(&deny.cmp_path) {
+      return true;
+    }
+    match (
+      real_comparison_path(&deny.path, deny.is_windows_device_path),
+      real_comparison_path(&self.path, self.is_windows_device_path),
+    ) {
+      (Some(deny), Some(path)) => path.starts_with(deny),
+      _ => false,
+    }
+  }
+
+  /// Whether `deny` is inside this path (or is it), as written or with
+  /// symlinks resolved: what a recursive operation on this path would reach.
+  fn holds_deny(&self, deny: &PathDescriptor) -> bool {
+    if deny.cmp_path.starts_with(&self.cmp_path) {
+      return true;
+    }
+    match (
+      real_comparison_path(&deny.path, deny.is_windows_device_path),
+      real_comparison_path(&self.path, self.is_windows_device_path),
+    ) {
+      (Some(deny), Some(path)) => deny.starts_with(path),
+      _ => false,
+    }
+  }
 }
 
 impl<'a> PathQueryDescriptor<'a> {
@@ -1533,7 +1598,7 @@ impl QueryDescriptor for ReadQueryDescriptor<'_> {
   }
 
   fn matches_deny(&self, other: &Self::DenyDesc) -> bool {
-    self.0.starts_with(&other.0)
+    self.0.is_within_deny(&other.0)
   }
 
   fn revokes(&self, other: &Self::AllowDesc) -> bool {
@@ -1541,7 +1606,7 @@ impl QueryDescriptor for ReadQueryDescriptor<'_> {
   }
 
   fn stronger_than_deny(&self, other: &Self::DenyDesc) -> bool {
-    other.0.starts_with(&self.0)
+    self.0.holds_deny(&other.0)
   }
 
   fn overlaps_deny(&self, other: &Self::DenyDesc) -> bool {
@@ -1743,7 +1808,7 @@ impl QueryDescriptor for WriteQueryDescriptor<'_> {
   }
 
   fn matches_deny(&self, other: &Self::DenyDesc) -> bool {
-    self.0.starts_with(&other.0)
+    self.0.is_within_deny(&other.0)
   }
 
   fn revokes(&self, other: &Self::AllowDesc) -> bool {
@@ -1751,7 +1816,7 @@ impl QueryDescriptor for WriteQueryDescriptor<'_> {
   }
 
   fn stronger_than_deny(&self, other: &Self::DenyDesc) -> bool {
-    other.0.starts_with(&self.0)
+    self.0.holds_deny(&other.0)
   }
 
   fn overlaps_deny(&self, other: &Self::DenyDesc) -> bool {
@@ -3170,7 +3235,7 @@ impl QueryDescriptor for FfiQueryDescriptor<'_> {
   }
 
   fn matches_deny(&self, other: &Self::DenyDesc) -> bool {
-    self.0.starts_with(&other.0)
+    self.0.is_within_deny(&other.0)
   }
 
   fn revokes(&self, other: &Self::AllowDesc) -> bool {
@@ -3178,7 +3243,7 @@ impl QueryDescriptor for FfiQueryDescriptor<'_> {
   }
 
   fn stronger_than_deny(&self, other: &Self::DenyDesc) -> bool {
-    other.0.starts_with(&self.0)
+    self.0.holds_deny(&other.0)
   }
 
   fn overlaps_deny(&self, other: &Self::DenyDesc) -> bool {

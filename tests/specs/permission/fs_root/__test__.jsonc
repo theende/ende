@@ -16,7 +16,8 @@
       "output": "NotCapable: Requires read access to \"[WILDLINE]s.txt\", run again with the --allow-read flag\n"
     },
     // ...including through a symlink inside the root that points into the
-    // denied directory: the check is on where the file really is.
+    // denied directory: deny rules match where the file really is, so the
+    // check on the name, before the root resolves it, already denies it.
     "deny_read_through_symlink": {
       "if": "unix",
       "steps": [{
@@ -24,10 +25,10 @@
         "output": "linked\n"
       }, {
         "args": "run --quiet --no-prompt --unstable-fs --allow-read --deny-read=data/secret main.ts read_link",
-        "output": "NotCapable: Requires read access to \"[WILDLINE]s.txt\", run again with the --allow-read flag\n"
+        "output": "NotCapable: Requires read access to \"[WILDLINE]link\", run again with the --allow-read flag\n"
       }, {
         "args": "run --quiet --no-prompt --unstable-fs --allow-read --deny-read=data/secret main.ts stat_link",
-        "output": "NotCapable: Requires read access to \"[WILDLINE]s.txt\", run again with the --allow-read flag\n"
+        "output": "NotCapable: Requires read access to \"[WILDLINE]link\", run again with the --allow-read flag\n"
       }, {
         "args": "run --quiet --no-prompt --unstable-fs --allow-read main.ts read_link",
         "output": "secret\n"
