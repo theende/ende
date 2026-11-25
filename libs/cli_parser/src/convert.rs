@@ -1399,8 +1399,18 @@ fn eval_parse(result: &ParseResult, flags: &mut Flags) -> Result<(), CliError> {
   // apply even though it allows everything else. Upstream Deno skips them
   // here and silently ignores `--deny-*`; Ende diverges on purpose.
   runtime_args_parse(result, flags, true, true)?;
-  // eval implies allow all permissions
-  flags.permissions.allow_all = true;
+  // eval implies allow all permissions, so its allow flags change nothing:
+  // drop them rather than let them conflict with --allow-all.
+  let permissions = &mut flags.permissions;
+  permissions.allow_all = true;
+  permissions.allow_read = None;
+  permissions.allow_write = None;
+  permissions.allow_net = None;
+  permissions.allow_env = None;
+  permissions.allow_run = None;
+  permissions.allow_sys = None;
+  permissions.allow_ffi = None;
+  permissions.allow_import = None;
 
   ext_arg_parse(result, flags);
   cpu_prof_parse(result, flags);

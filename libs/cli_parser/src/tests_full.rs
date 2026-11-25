@@ -1903,6 +1903,35 @@ fn eval_with_flags() {
 }
 
 #[test]
+fn eval_allow_flags_are_accepted_and_deny_flags_kept() {
+  // eval allows everything, so its allow flags change nothing and must not
+  // conflict with that; its deny flags still apply.
+  let r = flags_from_vec(svec![
+    "ende",
+    "eval",
+    "--allow-write",
+    "--allow-read=.",
+    "--deny-write=./ext",
+    "42"
+  ]);
+  assert_eq!(
+    r.unwrap(),
+    Flags {
+      subcommand: EndeSubcommand::Eval(EvalFlags {
+        print: false,
+        code: "42".to_string(),
+      }),
+      permissions: PermissionFlags {
+        allow_all: true,
+        deny_write: Some(svec!["./ext"]),
+        ..Default::default()
+      },
+      ..Flags::default()
+    }
+  );
+}
+
+#[test]
 fn eval_args() {
   let r = flags_from_vec(svec![
     "ende",
