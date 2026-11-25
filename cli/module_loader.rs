@@ -1136,6 +1136,10 @@ impl<TGraphContainer: ModuleGraphContainer>
       }
     };
 
+    // A type-checked graph redirects `extension:@scope/name` to its type
+    // stub; running always loads the proxy.
+    let specifier =
+      crate::extensions::runtime_specifier(&specifier).unwrap_or(specifier);
     if specifier.scheme() == EXTENSION_SCHEME {
       self.check_extension_import(raw_specifier, &specifier)?;
     }

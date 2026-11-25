@@ -1,0 +1,55 @@
+{
+  "tempDir": true,
+  "tests": {
+    // `ende check` sees an extension's exports with their real parameter
+    // types and the proxy's Promise-wrapped results; the extension's own type
+    // errors aren't reported for the app.
+    "ok": {
+      "args": "check --quiet ok.ts",
+      "output": ""
+    },
+    "wrong_arg": {
+      "args": "check --quiet wrong_arg.ts",
+      "output": "TS2345 [ERROR]: Argument of type 'number' is not assignable to parameter of type 'string'.[WILDCARD]wrong_arg.ts:3:23[WILDCARD]",
+      "exitCode": 1
+    },
+    "no_await": {
+      "args": "check --quiet no_await.ts",
+      "output": "TS2322 [ERROR]: Type 'Promise<string>' is not assignable to type 'string'.[WILDCARD]no_await.ts:3:7[WILDCARD]",
+      "exitCode": 1
+    },
+    "unknown_export": {
+      "args": "check --quiet unknown_export.ts",
+      "output": "TS2305 [ERROR]: Module '\"extension:///@acme/fmt.ts\"' has no exported member 'whisper'.[WILDCARD]",
+      "exitCode": 1
+    },
+    "jsr_wrong_arg": {
+      "args": "check --quiet jsr_wrong_arg.ts",
+      "output": "TS2345 [ERROR]: Argument of type 'string' is not assignable to parameter of type 'number'.[WILDCARD]",
+      "exitCode": 1
+    },
+    // The same under TypeScript 7 (runs when ENDE_TEST_TSC7_BIN is set).
+    "ok_tsc7": {
+      "if": "tsc7",
+      "args": "check --quiet --unstable-tsc7 ok.ts",
+      "output": ""
+    },
+    "wrong_arg_tsc7": {
+      "if": "tsc7",
+      "args": "check --quiet --unstable-tsc7 wrong_arg.ts",
+      "output": "TS2345 [ERROR]: Argument of type 'number' is not assignable to parameter of type 'string'.[WILDCARD]wrong_arg.ts:3:23[WILDCARD]",
+      "exitCode": 1
+    },
+    "no_await_tsc7": {
+      "if": "tsc7",
+      "args": "check --quiet --unstable-tsc7 no_await.ts",
+      "output": "TS2322 [ERROR]: Type 'Promise<string>' is not assignable to type 'string'.[WILDCARD]no_await.ts:3:7[WILDCARD]",
+      "exitCode": 1
+    },
+    // Running still works and checks the same way with --check.
+    "run_check": {
+      "args": "run --quiet --check ok.ts",
+      "output": "run_check.out"
+    }
+  }
+}

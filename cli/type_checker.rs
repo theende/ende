@@ -367,9 +367,13 @@ impl TypeChecker {
     let grouped_roots =
       self.group_roots_by_compiler_options(&graph, options.lib)?;
 
+    let extension_only_modules =
+      crate::extensions::extension_only_modules(&graph);
+
     Ok(DiagnosticsByFolderIterator(
       DiagnosticsByFolderIteratorInner::Real(DiagnosticsByFolderRealIterator {
         graph,
+        extension_only_modules,
         sys: &self.sys,
         jsx_import_source_config_resolver: Arc::new(
           JsxImportSourceConfigResolver::from_compiler_options_resolver(
@@ -522,6 +526,9 @@ enum DiagnosticsByFolderIteratorInner<'a> {
 
 struct DiagnosticsByFolderRealIterator<'a> {
   graph: Arc<ModuleGraph>,
+  /// Modules only extensions use (see `crate::extensions::ExtensionTypes`):
+  /// their own type errors aren't reported for the app.
+  extension_only_modules: HashSet<String>,
   sys: &'a CliSys,
   jsx_import_source_config_resolver: Arc<JsxImportSourceConfigResolver>,
   compiler_options_resolver: &'a CompilerOptionsResolver,
@@ -872,7 +879,9 @@ impl DiagnosticsByFolderRealIterator<'_> {
     if self.is_remote_diagnostic(d) {
       type_check_mode == TypeCheckMode::All && d.include_when_remote()
     } else {
-      true
+      !d.file_name
+        .as_ref()
+        .is_some_and(|f| self.extension_only_modules.contains(f))
     }
   }
 

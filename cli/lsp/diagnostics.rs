@@ -1153,10 +1153,13 @@ fn diagnose_resolution(
               // these may be invalid, however, if this is an ambient module with
               // no real source (as in the case of a virtual module).
               let ende_diagnostic = match specifier.scheme() {
-                "file" => EndeDiagnostic::NoLocal(specifier.clone()),
-                _ => EndeDiagnostic::NoCache(specifier.clone()),
+                "file" => Some(EndeDiagnostic::NoLocal(specifier.clone())),
+                // An extension whose types the editor can't show yet (a
+                // remote or jsr: source) is still a valid import.
+                crate::extensions::EXTENSION_SCHEME => None,
+                _ => Some(EndeDiagnostic::NoCache(specifier.clone())),
               };
-              deferred_diagnostics.push(ende_diagnostic);
+              deferred_diagnostics.extend(ende_diagnostic);
             }
           }
         }

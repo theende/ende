@@ -5598,6 +5598,7 @@ fn op_script_names(state: &mut OpState) -> ScriptNames {
         jsx_import_source_config: compiler_options_data
           .jsx_import_source_config
           .as_deref(),
+        scoped_resolver: Some(scoped_resolver),
       };
       for relative_specifier in relative_specifiers {
         let Ok(specifier) = resolver

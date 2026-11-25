@@ -102,6 +102,37 @@ impl LspScopedResolver {
     self.resolver.as_ref()
   }
 
+  /// A `data:` module with the types of extension `name` as its proxy
+  /// presents them (see `crate::extensions::ExtensionTypes`), for a local
+  /// source. `None` for an undeclared name or a remote or `jsr:` source,
+  /// whose import then stays untyped in the editor.
+  pub fn extension_stub(&self, name: &str) -> Option<ModuleSpecifier> {
+    use base64::Engine;
+    let config = self
+      .config_data
+      .as_ref()?
+      .member_dir
+      .workspace
+      .to_extensions_config()
+      .ok()?;
+    let source = &config.extensions.get(name)?.source;
+    if source.scheme() != "file" {
+      return None;
+    }
+    let path = deno_path_util::url_to_file_path(source).ok()?;
+    #[allow(
+      clippy::disallowed_methods,
+      reason = "the extension's source, read for its export names"
+    )]
+    let text = std::fs::read_to_string(path).ok()?;
+    let stub = crate::extensions::stub_for_source(name, source, &text)?;
+    ModuleSpecifier::parse(&format!(
+      "data:application/typescript;base64,{}",
+      base64::engine::general_purpose::STANDARD.encode(stub)
+    ))
+    .ok()
+  }
+
   pub fn as_workspace_resolver(&self) -> &Arc<WorkspaceResolver<CliSys>> {
     &self.workspace_resolver
   }
@@ -504,6 +535,8 @@ pub struct SingleReferrerGraphResolver<'a> {
   pub valid_referrer: &'a ModuleSpecifier,
   pub cli_resolver: &'a CliResolver,
   pub jsx_import_source_config: Option<&'a JsxImportSourceConfig>,
+  /// Serves `extension:` imports as their type stubs.
+  pub scoped_resolver: Option<&'a LspScopedResolver>,
 }
 
 impl deno_graph::source::Resolver for SingleReferrerGraphResolver<'_> {
@@ -541,6 +574,13 @@ impl deno_graph::source::Resolver for SingleReferrerGraphResolver<'_> {
     // this resolver assumes it will only be used with a single referrer
     // with the provided referrer kind
     debug_assert_eq!(referrer_range.specifier, *self.valid_referrer);
+    if let Some(name) = specifier_text.strip_prefix("extension:")
+      && let Some(stub) = self
+        .scoped_resolver
+        .and_then(|scoped_resolver| scoped_resolver.extension_stub(name))
+    {
+      return Ok(stub);
+    }
     self
       .cli_resolver
       .resolve(

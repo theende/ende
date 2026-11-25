@@ -2234,6 +2234,7 @@ fn analyze_module(
         jsx_import_source_config: compiler_options_data
           .jsx_import_source_config
           .as_deref(),
+        scoped_resolver: Some(scoped_resolver),
       };
       Ok(crate::ende_types::parse_module_from_ast(
         deno_graph::ParseModuleFromAstOptions {

@@ -613,6 +613,87 @@ fn lsp_hover_dependency_import_map() {
 }
 
 #[test(timeout = 300)]
+fn lsp_extension_types() {
+  // An `extension:` import shows its exports as the proxy presents them:
+  // the same parameters, the result wrapped in a Promise.
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let temp_dir = context.temp_dir();
+  temp_dir.write(
+    "ende.json",
+    r#"{
+  "extensions": {
+    "@acme/fmt": { "source": "./ext/fmt/mod.ts", "permissions": [] },
+    "@acme/remote": {
+      "source": "https://example.com/mod.ts",
+      "permissions": []
+    }
+  }
+}"#,
+  );
+  temp_dir.write(
+    "ext/fmt/mod.ts",
+    "export const manifest = { permissions: [] };\n\
+     export function shout(text: string): string {\n  \
+       return text.toUpperCase();\n}\n",
+  );
+
+  let mut client = context.new_lsp_command().build();
+  client.initialize(|builder| {
+    builder.set_config("./ende.json");
+  });
+
+  let uri = url_to_uri(&temp_dir.url().join("main.ts").unwrap()).unwrap();
+  let diagnostics = client.did_open(json!({
+    "textDocument": {
+      "uri": uri,
+      "languageId": "typescript",
+      "version": 1,
+      "text": "import { shout } from \"extension:@acme/fmt\";\nimport { other } from \"extension:@acme/remote\";\nconst n: number = await shout(1);\nconsole.log(n, other);\n",
+    }
+  }));
+  let messages = diagnostics
+    .all()
+    .iter()
+    .map(|d| format!("{}: {}", d.source.as_deref().unwrap_or(""), d.message))
+    .collect::<Vec<_>>();
+  // The call is checked against the extension's real types; the import
+  // itself resolves.
+  assert!(
+    messages.iter().any(|m| m.contains(
+      "Argument of type 'number' is not assignable to parameter of type 'string'"
+    )),
+    "{messages:#?}"
+  );
+  assert!(
+    messages
+      .iter()
+      .any(|m| m.contains("Type 'string' is not assignable to type 'number'")),
+    "{messages:#?}"
+  );
+  // A remote source isn't typed in the editor yet, but it isn't reported
+  // as missing either.
+  assert!(
+    !messages.iter().any(|m| m.contains("extension:@acme")),
+    "{messages:#?}"
+  );
+
+  let res = client.write_request(
+    "textDocument/hover",
+    json!({
+      "textDocument": { "uri": uri },
+      "position": { "line": 0, "character": 10 }
+    }),
+  );
+  let value = res.pointer("/contents").map(|v| v.to_string()).unwrap();
+  assert!(
+    value.contains("(text: string) => Promise<string>"),
+    "{value}"
+  );
+
+  client.shutdown();
+}
+
+#[test(timeout = 300)]
 fn lsp_import_map_remote() {
   let context = TestContextBuilder::new()
     .use_http_server()

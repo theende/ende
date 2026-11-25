@@ -842,37 +842,76 @@ impl ModuleGraphBuilder {
     let maybe_reporter = self.maybe_reporter.as_deref();
     let mut locker = self.lockfile.as_ref().map(|l| l.as_deno_graph_locker());
 
-    let build_options = deno_graph::BuildOptions {
-      skip_dynamic_deps: self.cli_options.unstable_lazy_dynamic_imports()
-        && graph.graph_kind() == GraphKind::CodeOnly,
-      is_dynamic: options.is_dynamic,
-      passthrough_jsr_specifiers: false,
-      executor: Default::default(),
-      file_system: &self.sys,
-      jsr_metadata_store: None,
-      jsr_url_provider: &CliJsrUrlProvider,
-      jsr_version_resolver: Cow::Borrowed(self.jsr_version_resolver.as_ref()),
-      npm_resolver: None,
-      module_analyzer: &analyzer,
-      module_info_cacher: self.module_info_cache.as_ref(),
-      reporter: maybe_reporter,
-      resolver: Some(&graph_resolver),
-      locker: locker.as_mut().map(|l| l as _),
-      unstable_bytes_imports: self.cli_options.unstable_raw_imports(),
-      unstable_css_imports: self.cli_options.unstable_raw_imports(),
-      unstable_config_imports: false,
-      prefer_cached_jsr_versions: self.cli_options.cache_setting()
-        == ende_cache_dir::file_fetcher::CacheSetting::Only,
+    // Type checking sees `extension:` imports through generated stubs (see
+    // `crate::extensions::ExtensionTypes`); running never needs them.
+    let extension_types = if graph.graph_kind().include_types() {
+      self
+        .cli_options
+        .workspace()
+        .to_extensions_config()
+        .ok()
+        .and_then(crate::extensions::ExtensionTypes::new)
+    } else {
+      None
+    };
+    let base_loader = loader.as_loader();
+    let extension_loader = extension_types
+      .as_ref()
+      .map(|types| types.loader(base_loader));
+    let loader: &dyn Loader = match &extension_loader {
+      Some(extension_loader) => extension_loader,
+      None => base_loader,
     };
 
+    let graph_kind = graph.graph_kind();
+    macro_rules! build_options {
+      () => {
+        deno_graph::BuildOptions {
+          skip_dynamic_deps: self.cli_options.unstable_lazy_dynamic_imports()
+            && graph_kind == GraphKind::CodeOnly,
+          is_dynamic: options.is_dynamic,
+          passthrough_jsr_specifiers: false,
+          executor: Default::default(),
+          file_system: &self.sys,
+          jsr_metadata_store: None,
+          jsr_url_provider: &CliJsrUrlProvider,
+          jsr_version_resolver: Cow::Borrowed(
+            self.jsr_version_resolver.as_ref(),
+          ),
+          npm_resolver: None,
+          module_analyzer: &analyzer,
+          module_info_cacher: self.module_info_cache.as_ref(),
+          reporter: maybe_reporter,
+          resolver: Some(&graph_resolver),
+          locker: locker.as_mut().map(|l| l as _),
+          unstable_bytes_imports: self.cli_options.unstable_raw_imports(),
+          unstable_css_imports: self.cli_options.unstable_raw_imports(),
+          unstable_config_imports: false,
+          prefer_cached_jsr_versions: self.cli_options.cache_setting()
+            == ende_cache_dir::file_fetcher::CacheSetting::Only,
+        }
+      };
+    }
+
     self
-      .build_graph_with_build_options(
-        graph,
-        request,
-        loader.as_loader(),
-        build_options,
-      )
+      .build_graph_with_build_options(graph, request, loader, build_options!())
       .await?;
+
+    // The stubs' exports come from their sources, which the first build
+    // brought into the graph; load the stubs again with them.
+    if let Some(types) = &extension_types {
+      let stubs = types.resolve_exports(graph);
+      if !stubs.is_empty() {
+        self
+          .build_graph_with_build_options(
+            graph,
+            BuildGraphRequest::Reload(stubs),
+            loader,
+            build_options!(),
+          )
+          .await?;
+      }
+    }
 
     Ok(())
   }

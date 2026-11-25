@@ -630,9 +630,12 @@ fn ensure_no_extensions(graph: &ModuleGraph) -> Result<(), AnyError> {
   if let Some(module) = graph.modules().find(|module| {
     module.specifier().scheme() == crate::extensions::EXTENSION_SCHEME
   }) {
+    let specifier = module.specifier();
     bail!(
       "ende compile doesn't support extensions yet: \"{}\"",
-      module.specifier()
+      crate::extensions::runtime_specifier(specifier)
+        .as_ref()
+        .unwrap_or(specifier)
     );
   }
   Ok(())

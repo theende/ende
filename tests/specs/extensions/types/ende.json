@@ -1,0 +1,12 @@
+{
+  "extensions": {
+    "@acme/fmt": {
+      "source": "./ext/fmt/mod.ts",
+      "permissions": []
+    },
+    "@acme/jsr": {
+      "source": "jsr:@endetest/extension@1",
+      "permissions": []
+    }
+  }
+}
