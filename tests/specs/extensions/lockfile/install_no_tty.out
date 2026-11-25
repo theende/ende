@@ -1,0 +1,6 @@
+[WILDCARD]Extension "@acme/fmt" changed:
+  grant (ende.json):
+    - {"read":["./data"]}
+    + {"read":["./data","./other"]}
+  it will run with: read [WILDCARD]data[WILDCARD]
+error: Extension changes need approval: run `ende install` in a terminal to review them, or `ende install --yes` to approve them. ende.lock was not changed.

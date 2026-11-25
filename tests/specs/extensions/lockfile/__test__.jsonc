@@ -1,0 +1,217 @@
+{
+  "tempDir": true,
+  "tests": {
+    // The first run records each extension's source, manifest and grant in
+    // ende.lock (and a hash of a local extension's code).
+    "records_on_first_run": {
+      "steps": [
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read show_lock.ts",
+          "output": "@acme/fmt ./ext/fmt/mod.ts {\"read\":true} {\"read\":[\"./data\"]} string\n"
+        },
+        { "args": "run --quiet main.ts", "output": "HELLO\n" }
+      ]
+    },
+    // Recording an extension prints a notice naming what it will run with,
+    // so a re-record (after an older Ende dropped the section) is visible.
+    // An unchanged run prints nothing; the notice shows even with --quiet.
+    "notice_on_record": {
+      "steps": [
+        {
+          "args": "run main.ts",
+          "output": "[WILDCARD]Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        },
+        { "args": "run main.ts", "output": "HELLO\n" },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts drop_section",
+          "output": ""
+        },
+        {
+          "args": "run main.ts",
+          "output": "[WILDCARD]Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts drop_section",
+          "output": ""
+        },
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        }
+      ]
+    },
+    // `ende install` records every new extension with the same notice.
+    "install_records_new": {
+      "steps": [
+        {
+          "args": "install --cert RootCA.pem",
+          "output": "install_records_new.out"
+        },
+        { "args": "install --cert RootCA.pem", "output": "[WILDCARD]" },
+        { "args": "run main.ts", "output": "HELLO\n" }
+      ]
+    },
+    // A lockfile written before extensions existed gets the section added.
+    "older_lockfile_without_section": {
+      "steps": [
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts old_lockfile",
+          "output": ""
+        },
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read show_lock.ts",
+          "output": "@acme/fmt ./ext/fmt/mod.ts {\"read\":true} {\"read\":[\"./data\"]} string\n"
+        }
+      ]
+    },
+    "local_source_change": {
+      "steps": [
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts code",
+          "output": ""
+        },
+        {
+          "args": "run --quiet main.ts",
+          "output": "[WILDCARD]Extension \"@acme/fmt\" changed since ende.lock approved it: its source. Run `ende install` to review the change and approve it.[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    "transitive_local_change": {
+      "steps": [
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts helper",
+          "output": ""
+        },
+        {
+          "args": "run --quiet main.ts",
+          "output": "[WILDCARD]Extension \"@acme/fmt\" changed since ende.lock approved it: its source. Run `ende install`[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    "manifest_change": {
+      "steps": [
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts manifest",
+          "output": ""
+        },
+        {
+          "args": "run --quiet main.ts",
+          "output": "[WILDCARD]Extension \"@acme/fmt\" changed since ende.lock approved it: its source, its manifest (the permissions it asks for). Run `ende install`[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // A changed grant blocks runs until `ende install` approves it. Without
+    // a terminal, approving needs --yes; --frozen still forbids any change.
+    "grant_change_and_install": {
+      "steps": [
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts grant",
+          "output": ""
+        },
+        {
+          "args": "run --quiet main.ts",
+          "output": "[WILDCARD]Extension \"@acme/fmt\" changed since ende.lock approved it: its grant in ende.json. Run `ende install`[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --cert RootCA.pem",
+          "output": "install_no_tty.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install --cert RootCA.pem --frozen --yes",
+          "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --cert RootCA.pem --yes",
+          "output": "install_yes.out"
+        },
+        { "args": "run --quiet main.ts", "output": "HELLO\n" },
+        {
+          "args": "run --quiet --no-config --allow-read show_lock.ts",
+          // `ende install` pins every declared extension, not only imported ones.
+          "output": "lock_after_install.out"
+        }
+      ]
+    },
+    "frozen_unchanged": {
+      "steps": [
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        },
+        { "args": "run --quiet --frozen main.ts", "output": "HELLO\n" }
+      ]
+    },
+    // An extension removed from ende.json loses its pin on the next write.
+    "removed_extension_dropped": {
+      "steps": [
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/fmt\" in ende.lock; it will run with: read [WILDLINE]data\nHELLO\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts remove",
+          "output": ""
+        },
+        { "args": "install", "output": "[WILDCARD]" },
+        {
+          "args": "run --quiet --no-config --allow-read show_lock.ts",
+          "output": ""
+        }
+      ]
+    },
+    // A remote extension's modules are pinned by the lockfile's `remote`
+    // section; a different checksum fails the lockfile's integrity check
+    // (exit code 10), as for any remote module.
+    "remote_source_change": {
+      "steps": [
+        {
+          "args": "run --quiet --cert RootCA.pem remote.ts",
+          "output": "Recorded extension \"@acme/remote\" in ende.lock; it will run with: no permissions\n42\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read show_lock.ts",
+          "output": "@acme/remote https://localhost:5545/run/extension_lockfile/remote_ext.ts [] [] string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts remote_checksum",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --cert RootCA.pem remote.ts",
+          "output": "[WILDCARD]Integrity check failed for remote specifier[WILDCARD]Specifier: https://localhost:5545/run/extension_lockfile/remote_ext.ts[WILDCARD]",
+          "exitCode": 10
+        }
+      ]
+    }
+  }
+}

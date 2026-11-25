@@ -562,3 +562,58 @@ fn installer_second_module_looks_like_script_argument() {
     ))
     .assert_exit_code(1);
 }
+
+/// Writes a project with one local extension, run once so ende.lock pins
+/// it, then widens its grant so `ende install` has a change to approve.
+fn extension_project_with_changed_grant(context: &TestContext) {
+  let temp_dir = context.temp_dir();
+  temp_dir.write(
+    "ende.json",
+    r#"{ "extensions": { "@acme/fmt": { "source": "./ext/fmt/mod.ts", "permissions": [] } } }"#,
+  );
+  temp_dir.create_dir_all("ext/fmt");
+  temp_dir.write(
+    "ext/fmt/mod.ts",
+    "export const manifest = { permissions: [] };\nexport function f(): number { return 1; }\n",
+  );
+  temp_dir.write(
+    "main.ts",
+    "import { f } from \"extension:@acme/fmt\";\nconsole.log(await f());\n",
+  );
+  let output = context.new_command().args("run --quiet main.ts").run();
+  output.assert_matches_text(
+    "Recorded extension \"@acme/fmt\" in ende.lock; it will run with: no permissions\n1\n",
+  );
+  temp_dir.write(
+    "ende.json",
+    r#"{ "extensions": { "@acme/fmt": { "source": "./ext/fmt/mod.ts", "permissions": ["env"] } } }"#,
+  );
+}
+
+#[test(flaky)]
+fn install_asks_before_approving_extension_changes() {
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  extension_project_with_changed_grant(&context);
+
+  // Declining leaves the lockfile alone, so runs still refuse.
+  context.new_command().arg("install").with_pty(|mut pty| {
+    pty.expect("Extension \"@acme/fmt\" changed:");
+    pty.expect("Approve these extension changes?");
+    pty.write_raw("n\r\n");
+    pty.expect("Extension changes not approved; ende.lock was not changed.");
+  });
+  let output = context.new_command().args("run --quiet main.ts").run();
+  output.assert_exit_code(1);
+  assert_contains!(output.combined_output(), "changed since ende.lock");
+
+  // Approving records the change, and runs start the extension again.
+  context.new_command().arg("install").with_pty(|mut pty| {
+    pty.expect("Approve these extension changes?");
+    pty.write_raw("y\r\n");
+    pty.expect(
+      "Recorded the approved changes to extension \"@acme/fmt\" in ende.lock.",
+    );
+  });
+  let output = context.new_command().args("run --quiet main.ts").run();
+  output.assert_matches_text("1\n");
+}

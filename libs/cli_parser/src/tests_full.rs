@@ -9023,6 +9023,35 @@ fn unstable_kv_flag_removed() {
 }
 
 #[test]
+fn install_yes_flag() {
+  let flags = flags_from_vec(svec!["ende", "install", "--yes"]).unwrap();
+  assert_eq!(
+    flags.subcommand,
+    EndeSubcommand::Install(InstallFlags::Local(InstallFlagsLocal::TopLevel(
+      InstallTopLevelFlags {
+        lockfile_only: false,
+        yes: true,
+      }
+    )))
+  );
+  let flags = flags_from_vec(svec!["ende", "install", "-y"]).unwrap();
+  assert!(matches!(
+    flags.subcommand,
+    EndeSubcommand::Install(InstallFlags::Local(InstallFlagsLocal::TopLevel(
+      InstallTopLevelFlags { yes: true, .. }
+    )))
+  ));
+  // The removed `--dev` isn't answered with "a similar argument exists:
+  // '--yes'", which approves extension changes.
+  let err =
+    flags_from_vec(svec!["ende", "install", "--dev", "jsr:@a/b"]).unwrap_err();
+  assert_eq!(
+    err.suggestion.as_deref(),
+    Some("`--dev` is not supported in Ende")
+  );
+}
+
+#[test]
 fn unstable_tsc7_flag() {
   for args in [
     svec!["ende", "check", "--unstable-tsc7", "main.ts"],

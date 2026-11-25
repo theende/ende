@@ -1,0 +1,6 @@
+{
+  "vendor": true,
+  "extensions": {
+    "@acme/rem": { "source": "./ext/rem/mod.ts", "permissions": [] }
+  }
+}

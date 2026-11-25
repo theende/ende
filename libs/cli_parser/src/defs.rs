@@ -1891,6 +1891,12 @@ pub static INSTALL_SUBCOMMAND: CommandDef = CommandDef {
       .set_true()
       .conflicts_with(&["global"])
 .help("Install only updating the lockfile"),
+    ArgDef::new("yes")
+      .short('y')
+      .long("yes")
+      .set_true()
+      .conflicts_with(&["global"])
+.help("Approve changes to the extensions declared in ende.json (their source, manifest or grant) without asking"),
     ArgDef::new("save-exact")
       .long("save-exact")
       .long_aliases(&["exact"])

@@ -1,3 +1,5 @@
+Recorded extension "@acme/reader" in ende.lock; it will run with: read [WILDLINE]data
+Recorded extension "@acme/math" in ende.lock; it will run with: no permissions
 a
 NotCapable: @acme/math: Requires read access to "[WILDLINE]a.txt". Grant it in ende.json under extensions["@acme/math"].permissions.read (the extension's manifest must ask for it too)
 a

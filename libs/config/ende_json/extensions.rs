@@ -50,6 +50,11 @@ pub struct ExtensionConfig {
   /// An absolute `https:` or `file:` URL of the extension's entry module.
   pub source: Url,
   pub permissions: ExtensionPermissions,
+  /// `source` as written in ende.json. The lockfile pins this form, which
+  /// doesn't depend on where the project is checked out.
+  pub source_specifier: String,
+  /// `permissions` as written in ende.json, pinned by the lockfile.
+  pub permissions_json: Value,
 }
 
 /// What the app grants an extension.
@@ -185,10 +190,13 @@ fn parse_extension(
       package: name.split_once('/').map(|(_, p)| p).unwrap_or(name).into(),
     });
   }
+  let permissions_json = entry.get("permissions").cloned().unwrap_or_default();
   let permissions = parse_permissions(name, entry.remove("permissions"), base)?;
   Ok(ExtensionConfig {
+    source_specifier: written.unwrap_or_else(|| source.to_string()),
     source,
     permissions,
+    permissions_json,
   })
 }
 
@@ -440,6 +448,11 @@ mod test {
             },
           }
         )),
+        source_specifier: "https://example.com/1.2.3/mod.ts".to_string(),
+        permissions_json: json!({
+          "read": ["./data"],
+          "net": ["api.example.com:443"],
+        }),
       }
     );
   }
@@ -801,6 +814,8 @@ mod test {
       ExtensionConfig {
         source: Url::parse("https://example.com/b.ts").unwrap(),
         permissions: ExtensionPermissions::Names(vec![]),
+        source_specifier: "https://example.com/b.ts".to_string(),
+        permissions_json: json!([]),
       }
     );
   }

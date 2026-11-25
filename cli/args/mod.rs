@@ -1129,6 +1129,11 @@ impl CliOptions {
   /// could give itself the extension's grant. (A subprocess, with
   /// `--allow-run`, can still change files, as with any Ende permission;
   /// the lockfile is meant to pin local extension sources by hash.)
+  /// Whether `--no-lock` was given on the command line.
+  pub fn no_lock_flag(&self) -> bool {
+    self.flags.no_lock
+  }
+
   fn augment_extension_deny_write(&self, options: &mut PermissionsOptions) {
     let Ok(config) = self.workspace().to_extensions_config() else {
       // reported when an extension is imported
@@ -1160,6 +1165,54 @@ impl CliOptions {
       }
     }
     ende_runtime::ende_permissions::set_extension_directories(directories);
+    if config.extensions.is_empty() {
+      return;
+    }
+    // The files that declare and pin the extensions: app code that could
+    // write them could approve a wider grant, or swap pinned code, for
+    // itself. Ende writes the lockfile itself, outside these permissions.
+    // (A subprocess started with --allow-run is, as always, unrestricted.)
+    let mut pinned = Vec::new();
+    if let Some(config_file) = self.workspace().root_ende_json()
+      && let Ok(path) = deno_path_util::url_to_file_path(&config_file.specifier)
+    {
+      pinned.push((
+        path,
+        "declares this app's extensions. Edit it outside the app, then run `ende install`",
+      ));
+    }
+    let lockfile_path = if self.flags.no_lock {
+      None
+    } else if let Some(lock) = &self.flags.lock {
+      Some(self.initial_cwd.join(lock))
+    } else {
+      self
+        .workspace()
+        .resolve_lockfile_path(&CliSys::default())
+        .ok()
+        .flatten()
+    };
+    if let Some(path) = lockfile_path {
+      pinned.push((
+        path,
+        "pins this app's extensions. Run `ende install` to change it",
+      ));
+    }
+    if let Some(vendor) = self.vendor_dir_path() {
+      pinned.push((
+        vendor.clone(),
+        "holds this app's vendored code, which pins its extensions' remote modules. Change it outside the app",
+      ));
+    }
+    let deny_write = options.deny_write.get_or_insert_with(Vec::new);
+    let mut reasons = Vec::new();
+    for (path, reason) in pinned {
+      deny_write.push(path.to_string_lossy().into_owned());
+      let real = crate::util::fs::canonicalize_path_maybe_not_exists(&path)
+        .unwrap_or(path);
+      reasons.push((real, reason.to_string()));
+    }
+    ende_runtime::ende_permissions::set_extension_pinned_paths(reasons);
   }
 
   fn augment_import_permissions(&self, options: &mut PermissionsOptions) {

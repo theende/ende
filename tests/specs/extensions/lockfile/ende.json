@@ -1,0 +1,12 @@
+{
+  "extensions": {
+    "@acme/fmt": {
+      "source": "./ext/fmt/mod.ts",
+      "permissions": { "read": ["./data"] }
+    },
+    "@acme/remote": {
+      "source": "https://localhost:5545/run/extension_lockfile/remote_ext.ts",
+      "permissions": []
+    }
+  }
+}

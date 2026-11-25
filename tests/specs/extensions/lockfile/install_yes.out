@@ -1,0 +1,8 @@
+[WILDCARD]Extension "@acme/fmt" changed:
+  grant (ende.json):
+    - {"read":["./data"]}
+    + {"read":["./data","./other"]}
+  it will run with: read [WILDCARD]data[WILDCARD]
+Recorded the approved changes to extension "@acme/fmt" in ende.lock.
+Recorded extension "@acme/remote" in ende.lock; it will run with: no permissions
+[WILDCARD]

@@ -295,6 +295,9 @@ const REMOVED_FLAGS: &[&str] = &[
   "--package-json",
   "--npm",
   "--no-npm",
+  // `ende install`/`add --dev` added npm devDependencies. Listed so a typo'd
+  // or old `--dev` isn't answered with "a similar argument exists: '--yes'".
+  "--dev",
   "--bundle",
   "--minify",
   "--canary",
@@ -2265,12 +2268,18 @@ fn install_parse(
       ));
     } else {
       flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
-        InstallFlagsLocal::TopLevel(InstallTopLevelFlags { lockfile_only }),
+        InstallFlagsLocal::TopLevel(InstallTopLevelFlags {
+          lockfile_only,
+          yes: result.get_bool("yes"),
+        }),
       ));
     }
   } else {
     flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
-      InstallFlagsLocal::TopLevel(InstallTopLevelFlags { lockfile_only }),
+      InstallFlagsLocal::TopLevel(InstallTopLevelFlags {
+        lockfile_only,
+        yes: result.get_bool("yes"),
+      }),
     ));
   }
   Ok(())

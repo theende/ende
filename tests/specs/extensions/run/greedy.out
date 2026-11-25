@@ -1,3 +1,4 @@
+Recorded extension "@acme/greedy" in ende.lock; it will run with: no permissions
 Warning Extension "@acme/greedy" asks for permissions that ende.json doesn't grant, so using them will be denied:
   net "example.com": add it to extensions["@acme/greedy"].permissions.net
 pong

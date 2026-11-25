@@ -35,6 +35,8 @@ pub struct ExtensionManifest {
   pub permissions: PermissionsOptions,
   /// Its exported functions, in source order.
   pub exports: Vec<String>,
+  /// `manifest.permissions` as declared, which the lockfile pins.
+  pub permissions_json: Value,
 }
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
@@ -341,9 +343,16 @@ impl Reader<'_> {
         "it has no manifest. Add `export const manifest = { permissions: [] }` and list the permissions it needs.".to_string(),
       ));
     };
+    let permissions_json = match &manifest {
+      Value::Object(object) => {
+        object.get("permissions").cloned().unwrap_or_default()
+      }
+      _ => Value::Null,
+    };
     Ok(ExtensionManifest {
       permissions: self.permissions(manifest, range)?,
       exports,
+      permissions_json,
     })
   }
 
@@ -607,6 +616,11 @@ export function f() {}"#,
           ..Default::default()
         },
         exports: svec(&["f"]),
+        permissions_json: serde_json::json!({
+          "read": true,
+          "net": ["api.example.com", "x.com:443"],
+          "env": false,
+        }),
       }
     );
   }

@@ -1,0 +1,103 @@
+{
+  "tempDir": true,
+  "tests": {
+    // A text import is code too (it can be eval'd): changing it must be
+    // approved like any other change to the extension.
+    "text_import_change": {
+      "steps": [
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/plug\" in ende.lock; it will run with: read [WILDLINE]plug\npayload-v1 plugin-v1\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts payload",
+          "output": ""
+        },
+        {
+          "args": "run --quiet main.ts",
+          "output": "[WILDCARD]Extension \"@acme/plug\" changed since ende.lock approved it: its source. Run `ende install` to review the change and approve it.[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --yes",
+          "output": "[WILDCARD]code: changed payload.txt[WILDCARD]"
+        },
+        { "args": "run --quiet main.ts", "output": "payload-v2 plugin-v1\n" }
+      ]
+    },
+    // So is a module imported through a computed path, which the module
+    // graph never sees.
+    "computed_import_change": {
+      "steps": [
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/plug\" in ende.lock; it will run with: read [WILDLINE]plug\npayload-v1 plugin-v1\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts plugin",
+          "output": ""
+        },
+        {
+          "args": "run --quiet main.ts",
+          "output": "[WILDCARD]Extension \"@acme/plug\" changed since ende.lock approved it: its source.[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // App code can't approve a change for itself by rewriting the files that
+    // declare and pin its extensions.
+    "app_cannot_rewrite_config_or_lockfile": {
+      "steps": [
+        {
+          "args": "run --quiet main.ts",
+          "output": "Recorded extension \"@acme/plug\" in ende.lock; it will run with: read [WILDLINE]plug\npayload-v1 plugin-v1\n"
+        },
+        {
+          "args": "run --quiet --allow-read=. --allow-write=. widen.ts",
+          "output": "widen.out"
+        }
+      ]
+    },
+    // Vendored remote code in an extension's graph is pinned by its bytes:
+    // the app can't write to the vendor folder, and a change made outside the
+    // app is refused, with or without --frozen.
+    "vendored_remote_change": {
+      "steps": [
+        {
+          "args": "run --quiet --config vendor.json --cert RootCA.pem remote_main.ts",
+          "output": "Recorded extension \"@acme/rem\" in ende.lock; it will run with: no permissions\n42\n"
+        },
+        {
+          "args": "run --quiet --config vendor.json --allow-read=. --allow-write=. widen.ts vendor/new.txt",
+          "output": "NotCapable: Requires write access to \"vendor/new.txt\", which holds this app's vendored code[WILDLINE]\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts vendor",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --config vendor.json --cert RootCA.pem remote_main.ts",
+          "output": "[WILDCARD]Extension \"@acme/rem\" changed since ende.lock approved it: its source.[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "run --quiet --frozen --config vendor.json --cert RootCA.pem remote_main.ts",
+          "output": "[WILDCARD]Extension \"@acme/rem\" changed since ende.lock approved it: its source.[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // Extensions need the lockfile: "lock": false in the config is refused.
+    "lock_disabled_in_config": {
+      "args": "run --quiet --config nolock.json main.ts",
+      "output": "[WILDCARD]Extension \"@acme/plug\" needs a lockfile[WILDCARD]",
+      "exitCode": 1
+    },
+    // --no-lock on the command line is the user's own opt-out: it runs, with
+    // a warning that --quiet doesn't hide.
+    "no_lock_flag_warns": {
+      "args": "run --quiet --no-lock main.ts",
+      "output": "[WILDCARD]Extension \"@acme/plug\" runs unpinned[WILDCARD]--no-lock[WILDCARD]payload-v1 plugin-v1\n"
+    }
+  }
+}

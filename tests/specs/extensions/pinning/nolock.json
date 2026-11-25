@@ -1,0 +1,10 @@
+{
+  "lock": false,
+  "unstable": ["raw-imports"],
+  "extensions": {
+    "@acme/plug": {
+      "source": "./ext/plug/mod.ts",
+      "permissions": { "read": ["./ext/plug"] }
+    }
+  }
+}

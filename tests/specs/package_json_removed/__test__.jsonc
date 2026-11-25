@@ -84,7 +84,7 @@
     },
     "install_dev_flag_removed": {
       "args": "install --dev jsr:@endetest/add",
-      "output": "error: unexpected argument '--dev' found\n",
+      "output": "error: unexpected argument '--dev' found\n\n  tip: `--dev` is not supported in Ende\n",
       "exitCode": 1
     },
     "init_npm_flag_removed": {

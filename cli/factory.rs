@@ -834,6 +834,8 @@ impl CliFactory {
             self.resolver().await?.clone(),
             self.permission_desc_parser()?.clone(),
             self.cli_options()?.workspace().root_dir_path(),
+            self.maybe_lockfile().await?.cloned(),
+            self.cli_options()?.no_lock_flag(),
           )))
         }
         .boxed_local(),

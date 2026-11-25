@@ -379,6 +379,8 @@ pub struct CiFlags {}
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InstallTopLevelFlags {
   pub lockfile_only: bool,
+  /// Approve changed extension pins without asking (`--yes`).
+  pub yes: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

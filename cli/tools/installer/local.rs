@@ -54,6 +54,14 @@ async fn install_top_level(
   )
   .await?;
 
+  // Pins the extensions ende.json declares, asking before it records a
+  // changed source, manifest or grant.
+  factory
+    .extension_registry()
+    .await?
+    .approve_changes(top_level_flags.yes)
+    .await?;
+
   if let Some(lockfile) = factory.maybe_lockfile().await? {
     lockfile.write_if_changed()?;
   }
@@ -79,6 +87,7 @@ pub async fn ci_command(
     flags,
     InstallTopLevelFlags {
       lockfile_only: false,
+      yes: false,
     },
   )
   .await

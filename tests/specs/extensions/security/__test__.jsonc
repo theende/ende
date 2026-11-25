@@ -21,7 +21,7 @@
     },
     "static_import_inside_dir": {
       "args": "run --quiet inside.ts",
-      "output": "{\"inside\":true}\n"
+      "output": "Recorded extension \"@sec/inside\" in ende.lock; it will run with: no permissions\n{\"inside\":true}\n"
     },
     // A symlink inside the extension's directory pointing outside it doesn't
     // get around that (the link is made without the config, which protects
@@ -83,7 +83,7 @@
     // file changes on disk in between (here through a subprocess).
     "rewrite_between_prepare_and_start": {
       "args": "run --quiet --allow-run rewrite_between.ts",
-      "output": "ORIGINAL\n"
+      "output": "Recorded extension \"@sec/fmt2\" in ende.lock; it will run with: no permissions\nORIGINAL\n"
     },
     // An extension resolves without the app's import map.
     "import_map_cannot_swap_source": {
@@ -100,7 +100,7 @@
     // don't crash the app or turn the error into something else.
     "crafted_error_names": {
       "args": "run --quiet errors.ts",
-      "output": "true hasOwnProperty named hasOwnProperty\ntrue constructor named constructor\ntrue __proto__ named __proto__\nhost still alive\n"
+      "output": "crafted_error_names.out"
     }
   }
 }

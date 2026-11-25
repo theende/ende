@@ -1,0 +1,2 @@
+@acme/fmt ./ext/fmt/mod.ts {"read":true} {"read":["./data","./other"]} string
+@acme/remote https://localhost:5545/run/extension_lockfile/remote_ext.ts [] [] string

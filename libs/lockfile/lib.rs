@@ -349,6 +349,32 @@ impl WorkspaceConfigContent {
   }
 }
 
+/// What the lockfile pins about one extension declared in ende.json, as
+/// approved: where its code comes from, what its manifest asks for and what
+/// the app grants it. A run refuses to start an extension that differs until
+/// `ende install` approves the change. Everything is as written (no absolute
+/// paths of this machine), so the lockfile can be shared.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExtensionLockEntry {
+  /// `source` as written in ende.json.
+  pub source: String,
+  /// A SHA-256 over `files` (see there). Missing only in entries written
+  /// before code was pinned file by file; such an entry never matches.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub integrity: Option<String>,
+  /// Every file the extension can run, with a SHA-256 of its bytes: for a
+  /// local source each file in its folder (by path relative to the folder;
+  /// a symlink's value starts with `symlink:`), and every remote module in
+  /// its graph (by specifier).
+  #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+  pub files: BTreeMap<String, String>,
+  /// The manifest's `permissions`, as the extension declares them.
+  pub manifest: serde_json::Value,
+  /// The app's grant (`extensions[name].permissions`), as written.
+  pub grant: serde_json::Value,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct LockfileContent {
   pub packages: PackagesContent,
@@ -356,6 +382,8 @@ pub struct LockfileContent {
   /// Mapping between URLs and their checksums for "http:" and "https:" deps
   pub(crate) remote: BTreeMap<String, String>,
   pub(crate) workspace: WorkspaceConfigContent,
+  /// Pins of the extensions the root ende.json declares, by name.
+  pub extensions: BTreeMap<String, ExtensionLockEntry>,
 }
 
 impl LockfileContent {
@@ -592,6 +620,7 @@ impl LockfileContent {
       },
       redirects: deserialize_section(&mut json, "redirects")?,
       remote: deserialize_section(&mut json, "remote")?,
+      extensions: deserialize_section(&mut json, "extensions")?,
       workspace: {
         let mut workspace: WorkspaceConfigContent =
           deserialize_section(&mut json, "workspace")?;
@@ -646,6 +675,9 @@ impl LockfileContent {
     for (url, hash) in theirs.remote {
       ours.remote.entry(url).or_insert(hash);
     }
+    for (name, entry) in theirs.extensions {
+      ours.extensions.entry(name).or_insert(entry);
+    }
     ours
   }
 
@@ -654,6 +686,7 @@ impl LockfileContent {
       && self.redirects.is_empty()
       && self.remote.is_empty()
       && self.workspace.is_empty()
+      && self.extensions.is_empty()
   }
 
   /// Removes everything npm related: the `npm` section, npm specifiers,
@@ -1260,6 +1293,37 @@ impl Lockfile {
       if start_count != end_count {
         self.has_content_changed = true;
       }
+    }
+  }
+
+  /// The pin of extension `name`, if the lockfile has one.
+  pub fn extension(&self, name: &str) -> Option<&ExtensionLockEntry> {
+    self.content.extensions.get(name)
+  }
+
+  /// Records the pin of extension `name`, replacing any previous one.
+  pub fn insert_extension(&mut self, name: String, entry: ExtensionLockEntry) {
+    match self.content.extensions.entry(name) {
+      BTreeMapEntry::Vacant(vacant) => {
+        vacant.insert(entry);
+        self.has_content_changed = true;
+      }
+      BTreeMapEntry::Occupied(mut occupied) => {
+        if *occupied.get() != entry {
+          occupied.insert(entry);
+          self.has_content_changed = true;
+        }
+      }
+    }
+  }
+
+  /// Drops the pins of extensions for which `keep` returns false (no longer
+  /// declared in ende.json).
+  pub fn retain_extensions(&mut self, keep: impl Fn(&str) -> bool) {
+    let count = self.content.extensions.len();
+    self.content.extensions.retain(|name, _| keep(name));
+    if self.content.extensions.len() != count {
+      self.has_content_changed = true;
     }
   }
 
@@ -2190,5 +2254,176 @@ mod tests {
 }
 "#
     );
+  }
+
+  fn extension_entry(grant: serde_json::Value) -> ExtensionLockEntry {
+    ExtensionLockEntry {
+      source: "./ext/fmt/mod.ts".to_string(),
+      integrity: Some("abc123".to_string()),
+      files: Default::default(),
+      manifest: serde_json::json!({ "read": ["/etc/hosts"], "net": true }),
+      grant,
+    }
+  }
+
+  fn lockfile_from(content: &str) -> Lockfile {
+    new_lockfile(NewLockfileOptions {
+      file_path: PathBuf::from("ende.lock"),
+      content,
+      overwrite: false,
+    })
+    .unwrap()
+  }
+
+  #[test]
+  fn extensions_round_trip() {
+    let content = r#"{
+  "version": "5",
+  "extensions": {
+    "@acme/fmt": {
+      "source": "./ext/fmt/mod.ts",
+      "integrity": "abc123",
+      "manifest": {
+        "read": [
+          "/etc/hosts"
+        ],
+        "net": true
+      },
+      "grant": [
+        "net"
+      ]
+    },
+    "@acme/pure": {
+      "source": "https://example.com/pure.ts",
+      "manifest": [],
+      "grant": []
+    }
+  }
+}
+"#;
+    let lockfile = lockfile_from(content);
+    assert!(!lockfile.has_content_changed);
+    assert_eq!(
+      lockfile.extension("@acme/fmt"),
+      Some(&extension_entry(serde_json::json!(["net"])))
+    );
+    assert_eq!(
+      lockfile.extension("@acme/pure"),
+      Some(&ExtensionLockEntry {
+        source: "https://example.com/pure.ts".to_string(),
+        integrity: None,
+        files: Default::default(),
+        manifest: serde_json::json!([]),
+        grant: serde_json::json!([]),
+      })
+    );
+    assert_eq!(lockfile.extension("@acme/other"), None);
+    assert_eq!(lockfile.as_json_string(), content);
+  }
+
+  #[test]
+  fn extension_files_round_trip() {
+    let content = r#"{
+  "version": "5",
+  "extensions": {
+    "@acme/fmt": {
+      "source": "./ext/fmt/mod.ts",
+      "integrity": "abc123",
+      "files": {
+        "https://example.com/dep.ts": "33",
+        "mod.ts": "11",
+        "payload.txt": "22"
+      },
+      "manifest": [],
+      "grant": []
+    }
+  }
+}
+"#;
+    let lockfile = lockfile_from(content);
+    assert!(!lockfile.has_content_changed);
+    let entry = lockfile.extension("@acme/fmt").unwrap();
+    assert_eq!(
+      entry.files.keys().collect::<Vec<_>>(),
+      ["https://example.com/dep.ts", "mod.ts", "payload.txt"]
+    );
+    assert_eq!(entry.files["payload.txt"], "22");
+    assert_eq!(lockfile.as_json_string(), content);
+  }
+
+  #[test]
+  fn lockfile_without_extensions_has_none() {
+    let lockfile = setup(false).unwrap();
+    assert!(lockfile.content.extensions.is_empty());
+    assert!(!lockfile.as_json_string().contains("extensions"));
+  }
+
+  #[test]
+  fn insert_extension_marks_changes() {
+    let mut lockfile = lockfile_from("{ \"version\": \"5\" }");
+    assert!(lockfile.content.is_empty());
+    let entry = extension_entry(serde_json::json!(["net"]));
+    lockfile.insert_extension("@acme/fmt".to_string(), entry.clone());
+    assert!(lockfile.has_content_changed);
+    assert!(!lockfile.content.is_empty());
+
+    // the same entry again is no change
+    lockfile.has_content_changed = false;
+    lockfile.insert_extension("@acme/fmt".to_string(), entry.clone());
+    assert!(!lockfile.has_content_changed);
+
+    // a different grant is
+    lockfile.insert_extension(
+      "@acme/fmt".to_string(),
+      extension_entry(serde_json::json!(["net", "read"])),
+    );
+    assert!(lockfile.has_content_changed);
+    assert_eq!(
+      lockfile.extension("@acme/fmt").unwrap().grant,
+      serde_json::json!(["net", "read"])
+    );
+  }
+
+  #[test]
+  fn retain_extensions_drops_undeclared() {
+    let mut lockfile = lockfile_from("{ \"version\": \"5\" }");
+    let entry = extension_entry(serde_json::json!([]));
+    lockfile.insert_extension("@acme/a".to_string(), entry.clone());
+    lockfile.insert_extension("@acme/b".to_string(), entry);
+    lockfile.has_content_changed = false;
+
+    lockfile.retain_extensions(|name| name == "@acme/a" || name == "@acme/b");
+    assert!(!lockfile.has_content_changed);
+
+    lockfile.retain_extensions(|name| name == "@acme/a");
+    assert!(lockfile.has_content_changed);
+    assert!(lockfile.extension("@acme/a").is_some());
+    assert!(lockfile.extension("@acme/b").is_none());
+  }
+
+  #[test]
+  fn extensions_merge_conflict_keeps_both_sides() {
+    let content = r#"{
+  "version": "5",
+  "extensions": {
+<<<<<<< HEAD
+    "@acme/a": {
+      "source": "https://example.com/a.ts",
+      "manifest": [],
+      "grant": []
+    }
+=======
+    "@acme/b": {
+      "source": "https://example.com/b.ts",
+      "manifest": [],
+      "grant": []
+    }
+>>>>>>> branch
+  }
+}
+"#;
+    let lockfile = lockfile_from(content);
+    assert!(lockfile.extension("@acme/a").is_some());
+    assert!(lockfile.extension("@acme/b").is_some());
   }
 }

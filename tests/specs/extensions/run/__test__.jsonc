@@ -6,11 +6,11 @@
     // though the extension worker is idle.
     "basic": {
       "args": "run --quiet basic.ts",
-      "output": "3\n1 2\n"
+      "output": "Recorded extension \"@acme/math\" in ende.lock; it will run with: no permissions\n3\n1 2\n"
     },
     "error_propagates": {
       "args": "run --quiet error.ts",
-      "output": "TypeError: boom\ntrue\n"
+      "output": "Recorded extension \"@acme/math\" in ende.lock; it will run with: no permissions\nTypeError: boom\ntrue\n"
     },
     // `"permissions": []` denies reads even though the host may read; the
     // message names the extension and where to grant it.
@@ -21,11 +21,11 @@
     // The extension has net while the host runs without --allow-net.
     "net_without_host_net": {
       "args": "run --quiet net.ts",
-      "output": "200\nNotCapable\n"
+      "output": "Recorded extension \"@acme/net\" in ende.lock; it will run with: net localhost:4545\n200\nNotCapable\n"
     },
     "globals_are_separate": {
       "args": "run --quiet globals.ts",
-      "output": "undefined\nundefined\n"
+      "output": "Recorded extension \"@acme/math\" in ende.lock; it will run with: no permissions\nundefined\nundefined\n"
     },
     "undeclared_name": {
       "args": "run --quiet undeclared.ts",
@@ -49,7 +49,7 @@
     },
     "function_argument": {
       "args": "run --quiet clone.ts",
-      "output": "DataCloneError\n"
+      "output": "Recorded extension \"@acme/math\" in ende.lock; it will run with: no permissions\nDataCloneError\n"
     },
     "nested_extension_import": {
       "args": "run --quiet nested.ts",
@@ -67,7 +67,7 @@
     },
     "jsr_source": {
       "args": "run --quiet jsr.ts",
-      "output": "42\n"
+      "output": "Recorded extension \"@acme/jsr\" in ende.lock; it will run with: no permissions\n42\n"
     },
     // A worker started by an extension, and its dynamic imports, are held to
     // the extension's own permissions; user code can't start an extension's

@@ -118,7 +118,15 @@ fn denied_message(access: &str, name: &'static str) -> String {
       Some(label) => format!(
         "Requires {access}, which is in the directory of extension \"{label}\" declared in ende.json. An extension's source can't change while the app runs"
       ),
-      None => format!("Requires {access}, {}", format_permission_error(name)),
+      None => match (name == "write")
+        .then(|| path_owner(access, &EXTENSION_PINNED_PATHS))
+        .flatten()
+      {
+        Some(reason) => format!("Requires {access}, which {reason}"),
+        None => {
+          format!("Requires {access}, {}", format_permission_error(name))
+        }
+      },
     },
   }
 }
@@ -137,10 +145,34 @@ pub fn set_extension_directories(directories: Vec<(PathBuf, String)>) {
   }
 }
 
+/// The files and folders that declare and pin an app's extensions (its
+/// config file, its lockfile, its vendor folder), which the app may not write
+/// to while it declares extensions, each with why. Only used to word the
+/// denial; the denial itself comes from `deny_write` entries.
+static EXTENSION_PINNED_PATHS: std::sync::RwLock<Vec<(PathBuf, String)>> =
+  std::sync::RwLock::new(Vec::new());
+
+/// Records the paths that declare and pin the app's extensions, with the
+/// reason a write there is denied (e.g. "pins this app's extensions").
+pub fn set_extension_pinned_paths(paths: Vec<(PathBuf, String)>) {
+  if let Ok(mut current) = EXTENSION_PINNED_PATHS.write() {
+    *current = paths;
+  }
+}
+
 /// The extension whose directory holds the path quoted in `access`
 /// (`write access to "<path>"`), if any. Only used to word the message.
 fn extension_owning_path(access: &str) -> Option<String> {
-  let directories = EXTENSION_DIRECTORIES.read().ok()?;
+  path_owner(access, &EXTENSION_DIRECTORIES)
+}
+
+/// The label of the first entry in `owners` whose path holds the path quoted
+/// in `access` (`write access to "<path>"`), with symlinks resolved.
+fn path_owner(
+  access: &str,
+  owners: &std::sync::RwLock<Vec<(PathBuf, String)>>,
+) -> Option<String> {
+  let directories = owners.read().ok()?;
   if directories.is_empty() {
     return None;
   }
