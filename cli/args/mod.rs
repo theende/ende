@@ -1916,7 +1916,13 @@ mod test {
           base_dir.join("data").to_string_lossy().into_owned()
         ]),
         deny_read: Some(vec![
-          base_dir.join("data/secret").to_string_lossy().into_owned()
+          // Joined per component: "data/secret" would keep its forward
+          // slash on Windows, while the grant resolves to `data\secret`.
+          base_dir
+            .join("data")
+            .join("secret")
+            .to_string_lossy()
+            .into_owned()
         ]),
         allow_net: Some(vec![]),
         prompt: false,
