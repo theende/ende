@@ -1,0 +1,47 @@
+{
+  "extensions": {
+    "@acme/math": {
+      "source": "./ext/math.ts",
+      "permissions": []
+    },
+    "@acme/net": {
+      "source": "./ext/net.ts",
+      "permissions": {
+        "net": [
+          "localhost:4545"
+        ]
+      }
+    },
+    "@acme/reader": {
+      "source": "./ext/reader.ts",
+      "permissions": {
+        "read": [
+          "./data"
+        ]
+      }
+    },
+    "@acme/greedy": {
+      "source": "./ext/greedy.ts",
+      "permissions": []
+    },
+    "@acme/bad": {
+      "source": "./ext/bad.ts",
+      "permissions": []
+    },
+    "@acme/nested": {
+      "source": "./ext/nested.ts",
+      "permissions": []
+    },
+    "@acme/jsr": {
+      "source": "jsr:@endetest/extension@1",
+      "permissions": []
+    },
+    "@acme/probe": {
+      "source": "./ext/probe.ts",
+      "permissions": []
+    }
+  },
+  "imports": {
+    "mathx": "extension:@acme/math"
+  }
+}

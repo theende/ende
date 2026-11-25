@@ -76,6 +76,55 @@ impl Resource for RootResource {
   fn name(&self) -> Cow<'_, str> {
     "fsRoot".into()
   }
+
+  /// Hands the root to another thread (a worker or an extension), keeping
+  /// what it was opened for. It carries no authority there: every operation
+  /// is still checked against that thread's own permissions.
+  fn transfer(
+    self: Rc<Self>,
+  ) -> Result<Box<dyn ende_core::TransferredResource>, JsErrorBox> {
+    Ok(Box::new(TransferredRoot {
+      root: self.root.clone(),
+      read: self.read,
+      write: self.write,
+    }))
+  }
+}
+
+struct TransferredRoot {
+  root: SharedRoot,
+  read: bool,
+  write: bool,
+}
+
+impl ende_core::TransferredResource for TransferredRoot {
+  fn receive(self: Box<Self>) -> Rc<dyn Resource> {
+    Rc::new(RootResource {
+      root: self.root,
+      read: self.read,
+      write: self.write,
+    })
+  }
+}
+
+/// A second resource for the root behind `rid`, sharing its directory
+/// handle: transferring a root sends this copy, so the sender's root stays
+/// usable.
+#[op2(fast)]
+#[smi]
+pub fn op_fs_root_dup(
+  state: &mut OpState,
+  #[smi] rid: ResourceId,
+) -> Result<ResourceId, FsOpsError> {
+  let resource = state
+    .resource_table
+    .get::<RootResource>(rid)
+    .map_err(|err| FsOpsErrorKind::Resource(err).into_box())?;
+  Ok(state.resource_table.add(RootResource {
+    root: resource.root.clone(),
+    read: resource.read,
+    write: resource.write,
+  }))
 }
 
 /// What an operation needs the root to have been opened for.

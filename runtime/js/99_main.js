@@ -739,6 +739,11 @@ const userVisibleCore = ObjectFreeze(ObjectDefineProperties(
   userVisibleCoreDescriptors,
 ));
 ObjectAssign(internals, { core: userVisibleCore });
+// Used by the generated proxy module of an `extension:@scope/name` import.
+// Starting an extension's worker only works in the main thread, and only for
+// an extension the app declares (op_create_extension_worker).
+internals.extensions = core.loadExtScript("ext:runtime/11_workers.js")
+  .extensions;
 const internalSymbol = Symbol("Deno.internal");
 // `Ende.test` and its sub-methods are no-ops outside of `ende test`, kept for
 // compatibility so they don't error under `ende run`. Mirrors the surface of

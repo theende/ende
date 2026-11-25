@@ -64,6 +64,7 @@ const {
   op_fs_root_mkdir_async,
   op_fs_root_mkdir_sync,
   op_fs_root_open_async,
+  op_fs_root_dup,
   op_fs_root_open_sync,
   op_fs_root_open_file_async,
   op_fs_root_open_file_sync,
@@ -1108,6 +1109,19 @@ class Root {
     return PromiseResolve();
   }
 }
+
+// A root is [Transferable]: a worker or an extension can be handed one. The
+// copy sent shares the directory handle, so the sender's root stays usable,
+// and carries no authority: the receiver's own permissions still apply.
+ObjectDefineProperty(Root.prototype, core.hostObjectBrand, {
+  __proto__: null,
+  value: "EndeRoot",
+});
+core.registerTransferableResource(
+  "EndeRoot",
+  (root) => op_fs_root_dup(root[internalRidSymbol]),
+  (rid) => new Root(rid, rootConstructorKey),
+);
 
 function checkOpenOptions(options) {
   if (

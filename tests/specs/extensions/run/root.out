@@ -1,0 +1,3 @@
+a
+NotCapable: @acme/math: Requires read access to "[WILDLINE]a.txt". Grant it in ende.json under extensions["@acme/math"].permissions.read (the extension's manifest must ask for it too)
+a

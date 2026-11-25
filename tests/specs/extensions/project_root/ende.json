@@ -1,0 +1,5 @@
+{
+  "extensions": {
+    "@root/sym": { "source": "./ext/mod.ts", "permissions": [] }
+  }
+}

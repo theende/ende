@@ -3,6 +3,7 @@
 (function () {
 const { core, primordials } = __bootstrap;
 const {
+  op_create_extension_worker,
   op_create_worker,
   op_host_post_message,
   op_host_post_message_raw,
@@ -12,9 +13,27 @@ const {
   op_host_terminate_worker,
 } = core.ops;
 const {
+  ArrayIsArray,
   ArrayPrototypeFilter,
   ArrayPrototypeJoin,
+  ArrayPrototypePush,
   Error,
+  EvalError,
+  MapPrototypeDelete,
+  MapPrototypeForEach,
+  MapPrototypeGet,
+  MapPrototypeSet,
+  ObjectGetPrototypeOf,
+  ObjectHasOwn,
+  ObjectPrototype,
+  ObjectValues,
+  PromiseReject,
+  RangeError,
+  ReferenceError,
+  SafeMap,
+  SafeSet,
+  SetPrototypeAdd,
+  SetPrototypeHas,
   JSONStringify,
   ObjectDefineProperty,
   ObjectFreeze,
@@ -28,7 +47,9 @@ const {
   SymbolFor,
   SymbolIterator,
   SymbolToStringTag,
+  SyntaxError,
   TypeError,
+  URIError,
 } = primordials;
 
 const EMPTY_OPTIONS = ObjectFreeze(ObjectSetPrototypeOf({}, null));
@@ -97,6 +118,9 @@ function hostRecvMessage(id) {
 }
 
 const privateWorkerRef = Symbol();
+// Constructs a `Worker` for a worker that already exists (an extension's),
+// instead of creating one from a specifier.
+const existingWorkerKey = Symbol("existingWorker");
 
 let warnedDenoOption = false;
 
@@ -116,6 +140,13 @@ class Worker extends EventTarget {
 
   constructor(specifier, options = EMPTY_OPTIONS) {
     super();
+    if (specifier === existingWorkerKey) {
+      this.#id = options.id;
+      this.#name = options.name;
+      this.#pollControl();
+      this.#pollMessages();
+      return;
+    }
     specifier = String(specifier);
     const {
       ende,
@@ -417,5 +448,187 @@ webidl.converters["WorkerType"] = webidl.createEnumConverter("WorkerType", [
   "module",
 ]);
 
-return { Worker };
+// Sandboxed extensions (`extension:@scope/name`). The module an app imports
+// is a generated proxy that calls `start` once and `call` per export; the
+// extension itself runs in its own worker with its own permissions, started
+// by Rust from the app's configuration alone (op_create_extension_worker).
+// Only values that can be structured-cloned cross, plus `Ende.Root`s, which
+// are transferred (see ext/fs/30_fs.js).
+
+/** name -> { worker, ready, pending, nextId, failure } */
+const extensionWorkers = new SafeMap();
+
+function startExtension(name) {
+  let extension = MapPrototypeGet(extensionWorkers, name);
+  if (extension === undefined) {
+    const id = op_create_extension_worker(name);
+    const worker = new Worker(existingWorkerKey, {
+      id,
+      name: `extension:${name}`,
+    });
+    extension = {
+      worker,
+      ready: undefined,
+      resolveReady: undefined,
+      rejectReady: undefined,
+      pending: new SafeMap(),
+      nextId: 0,
+      failure: undefined,
+    };
+    const current = extension;
+    current.ready = new Promise((resolve, reject) => {
+      current.resolveReady = resolve;
+      current.rejectReady = reject;
+    });
+    worker.onmessage = (event) => onExtensionMessage(current, event.data);
+    worker.onerror = (event) => {
+      event.preventDefault();
+      failExtension(current, new Error(event.message));
+    };
+    MapPrototypeSet(extensionWorkers, name, extension);
+  }
+  return extension.ready;
+}
+
+function failExtension(extension, error) {
+  if (extension.failure !== undefined) return;
+  extension.failure = error;
+  extension.rejectReady(error);
+  const pending = extension.pending;
+  extension.pending = new SafeMap();
+  MapPrototypeForEach(pending, (call) => call.reject(error));
+}
+
+function onExtensionMessage(extension, data) {
+  if (data === null || typeof data !== "object") return;
+  if (data.ready === true) {
+    // An idle extension doesn't keep the process alive; a call in flight
+    // does (see callExtension).
+    extension.worker[privateWorkerRef](false);
+    extension.resolveReady();
+    return;
+  }
+  const call = MapPrototypeGet(extension.pending, data.id);
+  if (call === undefined) return;
+  MapPrototypeDelete(extension.pending, data.id);
+  if (extension.pending.size === 0) {
+    extension.worker[privateWorkerRef](false);
+  }
+  if (data.ok === true) {
+    call.resolve(data.value);
+  } else if (data.error !== undefined) {
+    call.reject(reviveExtensionError(data.error));
+  } else {
+    call.reject(data.thrown);
+  }
+}
+
+function callExtension(name, exportName, args) {
+  const extension = MapPrototypeGet(extensionWorkers, name);
+  if (extension === undefined) {
+    return PromiseReject(
+      new Error(`Extension "${name}" hasn't been started`),
+    );
+  }
+  if (extension.failure !== undefined) {
+    return PromiseReject(extension.failure);
+  }
+  const id = extension.nextId++;
+  try {
+    extension.worker.postMessage(
+      { id, name: exportName, args },
+      transferredRoots(args),
+    );
+  } catch (error) {
+    return PromiseReject(error);
+  }
+  if (extension.pending.size === 0) {
+    extension.worker[privateWorkerRef](true);
+  }
+  return new Promise((resolve, reject) => {
+    MapPrototypeSet(extension.pending, id, { resolve, reject });
+  });
+}
+
+/** The `Ende.Root`s inside `value`, which are transferred rather than cloned. */
+function transferredRoots(value, roots = [], seen = new SafeSet()) {
+  if (value === null || typeof value !== "object") return roots;
+  if (SetPrototypeHas(seen, value)) return roots;
+  SetPrototypeAdd(seen, value);
+  if (value[core.hostObjectBrand] === "EndeRoot") {
+    ArrayPrototypePush(roots, value);
+    return roots;
+  }
+  if (ArrayIsArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      transferredRoots(value[i], roots, seen);
+    }
+  } else if (ObjectGetPrototypeOf(value) === ObjectPrototype) {
+    const values = ObjectValues(value);
+    for (let i = 0; i < values.length; i++) {
+      transferredRoots(values[i], roots, seen);
+    }
+  }
+  return roots;
+}
+
+// An error thrown in an extension, sent as `{ name, message, stack,
+// isDOMException }`: the structured clone of an error keeps only the
+// built-in error types, not `Ende.errors.*` or `DOMException`.
+const builtinErrors = {
+  __proto__: null,
+  Error,
+  EvalError,
+  RangeError,
+  ReferenceError,
+  SyntaxError,
+  TypeError,
+  URIError,
+};
+
+// `name` and `message` come from the extension, so they're data: only an
+// own property of the error tables picks a class (never `constructor` or
+// `hasOwnProperty`), and anything that fails to construct becomes a plain
+// `Error` carrying the same name and message.
+function reviveExtensionError({ name, message, stack, isDOMException }) {
+  const { errors } = core.loadExtScript("ext:runtime/01_errors.js");
+  let error;
+  try {
+    if (isDOMException === true) {
+      error = new DOMException(message, name);
+    } else if (
+      typeof name === "string" && ObjectHasOwn(errors, name) &&
+      typeof errors[name] === "function"
+    ) {
+      error = new errors[name](message);
+    } else if (
+      typeof name === "string" && ObjectHasOwn(builtinErrors, name)
+    ) {
+      error = new builtinErrors[name](message);
+    }
+  } catch {
+    error = undefined;
+  }
+  if (error === undefined) {
+    error = new Error(String(message));
+    ObjectDefineProperty(error, "name", {
+      __proto__: null,
+      value: String(name),
+      writable: true,
+      configurable: true,
+    });
+  }
+  ObjectDefineProperty(error, "stack", {
+    __proto__: null,
+    value: stack,
+    writable: true,
+    configurable: true,
+  });
+  return error;
+}
+
+return {
+  Worker,
+  extensions: { start: startExtension, call: callExtension },
+};
 })();

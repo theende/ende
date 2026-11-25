@@ -1,0 +1,29 @@
+{
+  "tempDir": true,
+  "tests": {
+    // A local extension's folder may not be the project folder. A symlink
+    // that makes "./ext" point at the project folder is caught on the real
+    // path, and the app can still write in the project until it imports it.
+    "folder_through_symlink": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('.', 'ext')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-write write.ts",
+          "output": "wrote\n"
+        },
+        {
+          "args": "run --quiet main.ts",
+          "output": "folder_through_symlink.out",
+          "exitCode": 1
+        }
+      ]
+    }
+  }
+}

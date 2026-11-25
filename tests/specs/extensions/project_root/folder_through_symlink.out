@@ -1,0 +1,1 @@
+[WILDCARD]Extension "@root/sym": its source's folder resolves to "[WILDCARD]", which holds ende.json. A local extension can read its whole folder, and the app can't write to it, so give it a folder of its own, like "./ext/sym/mod.ts".[WILDCARD]

@@ -33,10 +33,16 @@ use crate::import_map::scope_entries;
 use crate::import_map::value_to_dep_req;
 use crate::util::is_skippable_io_error;
 
+mod extensions;
 mod file_names;
 mod permissions;
 mod ts;
 
+pub use extensions::EXTENSION_PERMISSION_NAMES;
+pub use extensions::ExtensionConfig;
+pub use extensions::ExtensionPermissions;
+pub use extensions::ExtensionsConfig;
+pub use extensions::ExtensionsConfigError;
 pub use file_names::CONFIG_FILE_NAMES;
 pub use file_names::DEFAULT_CONFIG_FILE_NAME;
 pub use file_names::DEPRECATED_LOCKFILE_NAME;
@@ -1458,6 +1464,7 @@ pub struct ConfigFileJson {
   pub vendor: Option<bool>,
   pub license: Option<Value>,
   pub permissions: Option<Value>,
+  pub extensions: Option<Value>,
   pub publish: Option<Value>,
 
   pub name: Option<String>,
@@ -2371,6 +2378,17 @@ impl ConfigFile {
           config: "permissions",
           source: error,
         }),
+      None => Ok(Default::default()),
+    }
+  }
+
+  /// The `extensions` key, empty when absent. Only the workspace root's is
+  /// used; see `Workspace::to_extensions_config`.
+  pub fn to_extensions_config(
+    &self,
+  ) -> Result<ExtensionsConfig, ExtensionsConfigError> {
+    match self.json.extensions.clone() {
+      Some(value) => ExtensionsConfig::parse(value, &self.specifier),
       None => Ok(Default::default()),
     }
   }

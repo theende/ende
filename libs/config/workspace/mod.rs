@@ -43,6 +43,8 @@ use crate::ende_json::ConfigFileReadError;
 use crate::ende_json::CoverageConfig;
 use crate::ende_json::CoverageThresholds;
 use crate::ende_json::DesktopConfig;
+use crate::ende_json::ExtensionsConfig;
+use crate::ende_json::ExtensionsConfigError;
 use crate::ende_json::FmtConfig;
 use crate::ende_json::FmtOptionsConfig;
 use crate::ende_json::LinkConfigParseError;
@@ -833,6 +835,12 @@ impl Workspace {
           kind: WorkspaceDiagnosticKind::RootOnlyOption("minimumDependencyAge"),
         });
       }
+      if member_config.json.extensions.is_some() {
+        diagnostics.push(WorkspaceDiagnostic {
+          config_url: member_config.specifier.clone(),
+          kind: WorkspaceDiagnosticKind::RootOnlyOption("extensions"),
+        });
+      }
       if member_config.json.links.is_some() {
         diagnostics.push(WorkspaceDiagnostic {
           config_url: member_config.specifier.clone(),
@@ -1278,6 +1286,16 @@ impl Workspace {
     with_root: impl Fn(&'a ConfigFile) -> R,
   ) -> Option<R> {
     self.root_ende_json().map(|c| with_root(c))
+  }
+
+  /// The root config's `extensions`; a member's are ignored (and reported
+  /// as a root-only option).
+  pub fn to_extensions_config(
+    &self,
+  ) -> Result<ExtensionsConfig, ExtensionsConfigError> {
+    self
+      .with_root_config_only(|root_config| root_config.to_extensions_config())
+      .unwrap_or(Ok(Default::default()))
   }
 
   pub fn minimum_dependency_age(
@@ -2916,6 +2934,42 @@ pub mod test {
       workspace_dir.workspace.diagnostics(),
       vec![WorkspaceDiagnostic {
         kind: WorkspaceDiagnosticKind::RootOnlyOption("importMap"),
+        config_url: url_from_file_path(&root_dir().join("member/ende.json"))
+          .unwrap(),
+      }]
+    );
+  }
+
+  #[test]
+  fn test_root_member_extensions() {
+    let workspace_dir = workspace_for_root_and_member(
+      json!({
+        "extensions": {
+          "@scope/root": {
+            "source": "https://example.com/root.ts",
+            "permissions": [],
+          },
+        },
+      }),
+      json!({
+        "extensions": {
+          "@scope/member": {
+            "source": "https://example.com/member.ts",
+            "permissions": ["net"],
+          },
+        },
+      }),
+    );
+    // Only the root's extensions count; a member's are reported and ignored.
+    let extensions = workspace_dir.workspace.to_extensions_config().unwrap();
+    assert_eq!(
+      extensions.extensions.keys().collect::<Vec<_>>(),
+      vec!["@scope/root"]
+    );
+    assert_eq!(
+      workspace_dir.workspace.diagnostics(),
+      vec![WorkspaceDiagnostic {
+        kind: WorkspaceDiagnosticKind::RootOnlyOption("extensions"),
         config_url: url_from_file_path(&root_dir().join("member/ende.json"))
           .unwrap(),
       }]

@@ -21,6 +21,7 @@ pub use ende_config::ende_json::BenchConfig;
 pub use ende_config::ende_json::CompilerOptions;
 pub use ende_config::ende_json::ConfigFile;
 pub use ende_config::ende_json::CoverageThresholds;
+use ende_config::ende_json::ExtensionPermissions;
 use ende_config::ende_json::FmtConfig;
 pub use ende_config::ende_json::FmtOptionsConfig;
 pub use ende_config::ende_json::LintRulesConfig;
@@ -1025,6 +1026,7 @@ impl CliOptions {
       config_permissions,
     )?;
     self.augment_import_permissions(&mut permissions_options);
+    self.augment_extension_deny_write(&mut permissions_options);
     if let EndeSubcommand::Serve(serve_flags) = &self.flags.subcommand {
       augment_permissions_with_serve_flags(
         &mut permissions_options,
@@ -1120,6 +1122,44 @@ impl CliOptions {
       None
     };
     Ok(config_permissions)
+  }
+
+  /// The app may not write into a local extension's directory: the source
+  /// there decides the extension's manifest, so an app that could rewrite it
+  /// could give itself the extension's grant. (A subprocess, with
+  /// `--allow-run`, can still change files, as with any Ende permission;
+  /// the lockfile is meant to pin local extension sources by hash.)
+  fn augment_extension_deny_write(&self, options: &mut PermissionsOptions) {
+    let Ok(config) = self.workspace().to_extensions_config() else {
+      // reported when an extension is imported
+      return;
+    };
+    let project_root = self.workspace().root_dir_path();
+    let mut directories = Vec::new();
+    for (name, extension) in &config.extensions {
+      // An extension whose folder holds the project can't load (the error
+      // comes on import); locking the project for the app would only get in
+      // its way.
+      if crate::extensions::check_extension_directory(
+        name,
+        &extension.source,
+        &project_root,
+      )
+      .is_err()
+      {
+        continue;
+      }
+      if let Some(dir) =
+        crate::extensions::extension_directory(&extension.source)
+      {
+        options
+          .deny_write
+          .get_or_insert_with(Vec::new)
+          .push(dir.to_string_lossy().into_owned());
+        directories.push((dir, name.clone()));
+      }
+    }
+    ende_runtime::ende_permissions::set_extension_directories(directories);
   }
 
   fn augment_import_permissions(&self, options: &mut PermissionsOptions) {
@@ -1674,6 +1714,41 @@ fn flags_to_permissions_options(
   })
 }
 
+/// The permissions an app grants an extension in ende.json
+/// (`extensions["@scope/name"].permissions`), with relative paths resolved
+/// against the config file. Never prompts.
+pub fn extension_grant_permissions_options(
+  grant: &ExtensionPermissions,
+) -> Result<PermissionsOptions, AnyError> {
+  let mut options = match grant {
+    ExtensionPermissions::Object(object) => {
+      flags_to_permissions_options(&PermissionFlags::default(), Some(object))?
+    }
+    ExtensionPermissions::Names(names) => permission_names_to_options(names),
+  };
+  options.prompt = false;
+  Ok(options)
+}
+
+/// Options granting each named permission whole (`["read", "net"]`); `all`
+/// names every permission. Never prompts.
+pub fn permission_names_to_options(names: &[String]) -> PermissionsOptions {
+  let has = |name: &str| names.iter().any(|n| n == name || n == "all");
+  let whole = |name: &str| has(name).then(Vec::new);
+  PermissionsOptions {
+    allow_env: whole("env"),
+    allow_net: whole("net"),
+    allow_ffi: whole("ffi"),
+    allow_read: whole("read"),
+    allow_run: whole("run"),
+    allow_sys: whole("sys"),
+    allow_write: whole("write"),
+    allow_import: whole("import"),
+    prompt: false,
+    ..Default::default()
+  }
+}
+
 fn augment_permissions_with_serve_flags(
   permissions_options: &mut PermissionsOptions,
   serve_flags: &ServeFlags,
@@ -1775,6 +1850,92 @@ mod test {
       Some("example.com:80".to_string())
     );
     assert_eq!(parse("file:///example.com"), None);
+  }
+
+  #[test]
+  fn permission_names_to_options_grants_whole_permissions() {
+    let names = |names: &[&str]| {
+      permission_names_to_options(
+        &names.iter().map(ToString::to_string).collect::<Vec<_>>(),
+      )
+    };
+    assert_eq!(names(&[]), PermissionsOptions::default());
+    assert_eq!(
+      names(&["read", "net"]),
+      PermissionsOptions {
+        allow_read: Some(vec![]),
+        allow_net: Some(vec![]),
+        ..Default::default()
+      }
+    );
+    assert_eq!(
+      names(&["all"]),
+      PermissionsOptions {
+        allow_env: Some(vec![]),
+        allow_net: Some(vec![]),
+        allow_ffi: Some(vec![]),
+        allow_read: Some(vec![]),
+        allow_run: Some(vec![]),
+        allow_sys: Some(vec![]),
+        allow_write: Some(vec![]),
+        allow_import: Some(vec![]),
+        ..Default::default()
+      }
+    );
+  }
+
+  #[test]
+  fn extension_grant_permissions_options_resolves_against_the_config() {
+    let base_dir = resolve_cwd(None).unwrap().join("sub");
+    let grant =
+      ExtensionPermissions::Object(Box::new(PermissionsObjectWithBase {
+        base: deno_path_util::url_from_file_path(&base_dir.join("ende.json"))
+          .unwrap(),
+        permissions: PermissionsObject {
+          read: AllowDenyIgnorePermissionConfig {
+            allow: Some(PermissionConfigValue::Some(vec![
+              "./data".to_string(),
+            ])),
+            deny: Some(PermissionConfigValue::Some(vec![
+              "./data/secret".to_string(),
+            ])),
+            ignore: None,
+          },
+          net: AllowDenyPermissionConfig {
+            allow: Some(PermissionConfigValue::All),
+            deny: None,
+          },
+          ..Default::default()
+        },
+      }));
+    let options = extension_grant_permissions_options(&grant).unwrap();
+    assert_eq!(
+      options,
+      PermissionsOptions {
+        allow_read: Some(vec![
+          base_dir.join("data").to_string_lossy().into_owned()
+        ]),
+        deny_read: Some(vec![
+          base_dir.join("data/secret").to_string_lossy().into_owned()
+        ]),
+        allow_net: Some(vec![]),
+        prompt: false,
+        ..Default::default()
+      }
+    );
+    let options =
+      extension_grant_permissions_options(&ExtensionPermissions::Names(vec![
+        "env".to_string(),
+      ]))
+      .unwrap();
+    assert_eq!(
+      options,
+      PermissionsOptions {
+        allow_env: Some(vec![]),
+        prompt: false,
+        ..Default::default()
+      }
+    );
   }
 
   #[test]

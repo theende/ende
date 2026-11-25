@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use deno_error::JsErrorBox;
 use ende_core::CancelFuture;
 use ende_core::CancelHandle;
 use ende_core::DetachedBuffer;
@@ -72,7 +73,36 @@ pub struct CreateWebWorkerArgs {
   pub resource_limits: Option<ResourceLimits>,
   pub wait_for_debugger_on_start: bool,
   pub wait_for_page_wait_for_debugger: bool,
+  /// For the worker of a sandboxed extension (`extension:@scope/name`), the
+  /// extension's name. Its module loader then fetches the extension's static
+  /// graph with `parent_permissions` alone, never with `permissions`.
+  pub extension_name: Option<String>,
 }
+
+/// The worker a sandboxed extension (`extension:@scope/name`) runs in.
+pub struct ExtensionWorkerSpec {
+  /// The module the worker starts: it imports the extension and serves the
+  /// host's calls.
+  pub main_module: ModuleSpecifier,
+  /// The extension's own permissions: what the app grants it intersected
+  /// with what its manifest asks for. Never prompts.
+  pub permissions: PermissionsContainer,
+  /// What the extension's static module graph is fetched with.
+  pub loader_permissions: PermissionsContainer,
+}
+
+/// Describes the workers of the extensions the app declares. Only the main
+/// thread has one, so neither a web worker nor an extension can start an
+/// extension worker.
+pub trait ExtensionWorkerProvider: Send + Sync {
+  /// The worker for the declared extension `name`. Its permissions come from
+  /// the app's configuration alone; nothing passed from JS can choose them.
+  fn worker_spec(&self, name: &str) -> Result<ExtensionWorkerSpec, JsErrorBox>;
+}
+
+/// Put into the main thread's `OpState` when the app declares extensions.
+#[derive(Clone)]
+pub struct ExtensionWorkerHost(pub Arc<dyn ExtensionWorkerProvider>);
 
 pub type CreateWebWorkerCb = dyn Fn(CreateWebWorkerArgs) -> (WebWorker, SendableWebWorkerHandle)
   + Sync
@@ -125,6 +155,7 @@ ende_core::extension!(
   ende_worker_host,
   ops = [
     op_create_worker,
+    op_create_extension_worker,
     op_host_terminate_worker,
     op_host_post_message,
     op_host_recv_ctrl,
@@ -179,6 +210,9 @@ pub enum CreateWorkerError {
   #[class(inherit)]
   #[error("{0}")]
   Io(#[from] std::io::Error),
+  #[class(inherit)]
+  #[error(transparent)]
+  Extension(JsErrorBox),
 }
 
 /// Create worker as the host
@@ -220,6 +254,89 @@ fn op_create_worker(
     parent_permissions.clone()
   };
   let parent_permissions = parent_permissions.clone();
+  let module_specifier = ende_core::resolve_url(&specifier)?;
+  spawn_worker(
+    state,
+    SpawnWorker {
+      name: args_name.unwrap_or_default(),
+      parent_permissions,
+      permissions: worker_permissions,
+      module_specifier,
+      maybe_source_code,
+      worker_type,
+      close_on_idle: args.close_on_idle,
+      maybe_worker_metadata,
+      resource_limits: args.resource_limits,
+      extension_name: None,
+    },
+  )
+}
+
+/// Starts the worker of the declared extension `name` (see
+/// [`ExtensionWorkerProvider`]). Only the main thread can: elsewhere there is
+/// no provider.
+#[op2(stack_trace)]
+fn op_create_extension_worker(
+  state: &mut OpState,
+  #[string] name: String,
+) -> Result<WorkerId, CreateWorkerError> {
+  let Some(host) = state.try_borrow::<ExtensionWorkerHost>().cloned() else {
+    return Err(CreateWorkerError::Extension(JsErrorBox::type_error(
+      format!(
+        "Extensions can only be imported in the main thread, not in a worker: \"extension:{name}\""
+      ),
+    )));
+  };
+  let spec = host
+    .0
+    .worker_spec(&name)
+    .map_err(CreateWorkerError::Extension)?;
+  spawn_worker(
+    state,
+    SpawnWorker {
+      name: format!("extension:{name}"),
+      parent_permissions: spec.loader_permissions,
+      permissions: spec.permissions,
+      module_specifier: spec.main_module,
+      maybe_source_code: None,
+      worker_type: WorkerThreadType::Module,
+      close_on_idle: false,
+      maybe_worker_metadata: None,
+      resource_limits: None,
+      extension_name: Some(name),
+    },
+  )
+}
+
+struct SpawnWorker {
+  name: String,
+  parent_permissions: PermissionsContainer,
+  permissions: PermissionsContainer,
+  module_specifier: ModuleSpecifier,
+  maybe_source_code: Option<String>,
+  worker_type: WorkerThreadType,
+  close_on_idle: bool,
+  maybe_worker_metadata: Option<JsMessageData>,
+  resource_limits: Option<ResourceLimits>,
+  extension_name: Option<String>,
+}
+
+fn spawn_worker(
+  state: &mut OpState,
+  spawn: SpawnWorker,
+) -> Result<WorkerId, CreateWorkerError> {
+  let SpawnWorker {
+    name: worker_name,
+    parent_permissions,
+    permissions: worker_permissions,
+    module_specifier,
+    maybe_source_code,
+    worker_type,
+    close_on_idle,
+    maybe_worker_metadata,
+    resource_limits,
+    extension_name,
+  } = spawn;
   let create_web_worker_cb = state.borrow::<CreateWebWorkerCbHolder>().clone();
   let format_js_error_fn = state.borrow::<FormatJsErrorFnHolder>().clone();
   let wait_for_debugger_on_start = state
@@ -234,7 +351,6 @@ fn op_create_worker(
     .unwrap_or(false);
   let worker_id = WorkerId::new();
 
-  let module_specifier = ende_core::resolve_url(&specifier)?;
   // Synchronously capture the root blob so a racing `URL.revokeObjectURL`
   // after `new Worker(blobUrl)` can't make the worker load fail (see #26142).
   // This anchors only the worker root; blob URL dependencies still resolve
@@ -245,7 +361,6 @@ fn op_create_worker(
   } else {
     None
   };
-  let worker_name = args_name.unwrap_or_default();
 
   let (handle_sender, handle_receiver) =
     std::sync::mpsc::sync_channel::<SendableWebWorkerHandle>(1);
@@ -253,8 +368,7 @@ fn op_create_worker(
   // Setup new thread. stackSizeMb from resourceLimits wins, matching Node.js
   // behavior; otherwise the isolate thread gets the default above rather than
   // Rust's smaller 2MB one.
-  let stack_size_mb = args
-    .resource_limits
+  let stack_size_mb = resource_limits
     .as_ref()
     .and_then(|limits| limits.stack_size_mb.filter(|&v| v > 0))
     .unwrap_or(DEFAULT_WORKER_STACK_SIZE_MB);
@@ -277,6 +391,10 @@ fn op_create_worker(
     // - JS worker is useless - meaning it throws an exception and can't do anything else,
     //  all action done upon it should be noops
     // - newly spawned thread exits
+    // Permission errors raised on an extension's thread name the extension.
+    if let Some(name) = &extension_name {
+      ende_permissions::set_thread_extension_label(Some(name.clone()));
+    }
     let fut = async move {
       let (worker, external_handle) =
         (create_web_worker_cb.0)(CreateWebWorkerArgs {
@@ -286,12 +404,13 @@ fn op_create_worker(
           permissions: worker_permissions,
           main_module: module_specifier.clone(),
           worker_type,
-          close_on_idle: args.close_on_idle,
+          close_on_idle,
           maybe_worker_metadata,
           maybe_main_module_blob,
-          resource_limits: args.resource_limits,
+          resource_limits,
           wait_for_debugger_on_start,
           wait_for_page_wait_for_debugger,
+          extension_name: extension_name.clone(),
         });
 
       // Send thread safe handle from newly created worker to host thread

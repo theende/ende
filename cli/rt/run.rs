@@ -936,6 +936,7 @@ pub async fn run_with_options(
       ende_env::var("ENDE_DISABLE_OFFSCREEN_CANVAS").as_deref(),
       Ok("1") | Ok("true")
     ),
+    extension_worker_provider: None,
   };
   let worker_factory = LibMainWorkerFactory::new(
     blob_store,

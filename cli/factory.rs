@@ -268,6 +268,7 @@ struct CliFactoryServices {
   cli_options: Deferred<Arc<CliOptions>>,
   code_cache: Deferred<Arc<CodeCache>>,
   eszip_module_loader_provider: Deferred<Arc<EszipModuleLoaderProvider>>,
+  extension_registry: Deferred<Arc<crate::extensions::ExtensionRegistry>>,
   feature_checker: Deferred<Arc<FeatureChecker>>,
   file_fetcher: Deferred<Arc<CliFileFetcher>>,
   fs: Deferred<Arc<dyn ende_fs::FileSystem>>,
@@ -812,6 +813,34 @@ impl CliFactory {
       .await
   }
 
+  /// The sandboxed extensions the app declares in ende.json
+  /// (`extension:@scope/name`).
+  pub async fn extension_registry(
+    &self,
+  ) -> Result<&Arc<crate::extensions::ExtensionRegistry>, AnyError> {
+    self
+      .services
+      .extension_registry
+      .get_or_try_init_async(
+        async {
+          let config = self
+            .cli_options()?
+            .workspace()
+            .to_extensions_config()
+            .map_err(|err| err.to_string());
+          Ok(Arc::new(crate::extensions::ExtensionRegistry::new(
+            config,
+            self.module_load_preparer().await?.clone(),
+            self.resolver().await?.clone(),
+            self.permission_desc_parser()?.clone(),
+            self.cli_options()?.workspace().root_dir_path(),
+          )))
+        }
+        .boxed_local(),
+      )
+      .await
+  }
+
   pub fn permission_desc_parser(
     &self,
   ) -> Result<&Arc<RuntimePermissionDescriptorParser<CliSys>>, AnyError> {
@@ -910,6 +939,7 @@ impl CliFactory {
       self.sys(),
       maybe_eszip_loader,
       self.watcher_communicator.clone(),
+      self.extension_registry().await?.clone(),
     );
 
     Ok(module_loader_factory)
@@ -957,7 +987,14 @@ impl CliFactory {
       self.root_cert_store_provider().clone(),
       cli_options.resolve_storage_key_resolver(),
       self.sys(),
-      self.create_lib_main_worker_options()?,
+      {
+        let mut options = self.create_lib_main_worker_options()?;
+        options.extension_worker_provider =
+          Some(Arc::new(crate::extensions::CliExtensionWorkerProvider(
+            self.extension_registry().await?.clone(),
+          )));
+        options
+      },
       roots,
     );
 
@@ -1013,6 +1050,7 @@ impl CliFactory {
         ende_env::var("ENDE_DISABLE_OFFSCREEN_CANVAS").as_deref(),
         Ok("1") | Ok("true")
       ),
+      extension_worker_provider: None,
     })
   }
 

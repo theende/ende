@@ -102,6 +102,41 @@
         "$ref": "#/$defs/permissionSet"
       }]
     },
+    "extension": {
+      "type": "object",
+      "description": "A sandboxed extension: where its code comes from and what it may do.",
+      "additionalProperties": false,
+      "required": ["source", "permissions"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "pattern": "^(https:|file:|jsr:|\\./|\\.\\./)",
+          "description": "The extension's entry module: an https: or file: URL, a jsr: package (jsr:@scope/name@version), or a path relative to this file starting with ./ or ../."
+        },
+        "permissions": {
+          "description": "What the extension is granted. Required: use [] to grant nothing. A list of permission names grants each whole kind; an object grants scoped permissions like a permission set, with relative paths resolved against this file.",
+          "oneOf": [{
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "all",
+                "read",
+                "write",
+                "import",
+                "env",
+                "net",
+                "run",
+                "ffi",
+                "sys"
+              ]
+            }
+          }, {
+            "$ref": "#/$defs/permissionSet"
+          }]
+        }
+      }
+    },
     "minimumDependencyAgeDate": {
       "oneOf": [{
         "description": "(Unstable) The age in minutes, ISO-8601 duration or RFC3339 absolute timestamp (e.g. '120' for two hours, 'P2D' for two days, '2025-09-16' for cutoff date, '2025-09-16T12:00:00+00:00' for cutoff time, '0' to disable).",
@@ -1202,6 +1237,14 @@
       "type": "object",
       "description": "Named permission sets that can be selected with -P/--permission-set or referenced in \"test\", \"bench\", or \"compile\" permissions. A special name \"default\" is used when -P is passed without a value.",
       "additionalProperties": { "$ref": "#/$defs/permissionSet" }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Sandboxed extensions the program can import as `extension:@scope/name`. Each one runs in its own worker with only the permissions granted here. Workspace root only.",
+      "propertyNames": {
+        "pattern": "^@[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9-]*$"
+      },
+      "additionalProperties": { "$ref": "#/$defs/extension" }
     },
     "links": {
       "type": "array",

@@ -604,6 +604,7 @@ async fn build_compile_graph(
   let checked_graph = module_graph_creator
     .create_graph_and_maybe_check(roots.strict.clone())
     .await?;
+  ensure_no_extensions(&checked_graph)?;
 
   if roots.include.is_empty() && !cli_options.type_check_mode().is_true() {
     // Fast path: no includes and no type checking, so the validated graph is
@@ -621,6 +622,20 @@ async fn build_compile_graph(
       .create_graph(GraphKind::CodeOnly, all_roots)
       .await
   }
+}
+
+/// Sandboxed extensions (`extension:@scope/name`) run in their own worker,
+/// which compiled binaries can't start yet.
+fn ensure_no_extensions(graph: &ModuleGraph) -> Result<(), AnyError> {
+  if let Some(module) = graph.modules().find(|module| {
+    module.specifier().scheme() == crate::extensions::EXTENSION_SCHEME
+  }) {
+    bail!(
+      "ende compile doesn't support extensions yet: \"{}\"",
+      module.specifier()
+    );
+  }
+  Ok(())
 }
 
 fn watch_compile_paths(

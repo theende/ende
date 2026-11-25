@@ -62,6 +62,17 @@ pub trait ModuleLoaderFactory: Send + Sync {
     permissions: PermissionsContainer,
     maybe_main_module_blob: Option<(ModuleSpecifier, Arc<Blob>)>,
   ) -> CreateModuleLoaderResult;
+
+  /// The loader of the worker a sandboxed extension runs in: it fetches the
+  /// extension's static graph with `loader_permissions` only.
+  fn create_for_extension_worker(
+    &self,
+    loader_permissions: PermissionsContainer,
+    permissions: PermissionsContainer,
+    _extension_name: String,
+  ) -> CreateModuleLoaderResult {
+    self.create_for_worker(loader_permissions, permissions, None)
+  }
 }
 
 enum StorageKeyResolverStrategy {
@@ -337,6 +348,10 @@ pub struct LibMainWorkerOptions {
   pub maybe_initial_cwd: Option<Url>,
   /// When true, the `OffscreenCanvas` global is removed at bootstrap.
   pub disable_offscreen_canvas: bool,
+  /// Starts the workers of the sandboxed extensions the app declares. Only
+  /// the main worker gets it.
+  pub extension_worker_provider:
+    Option<Arc<dyn ende_runtime::ops::worker_host::ExtensionWorkerProvider>>,
 }
 
 #[derive(Default, Clone)]
@@ -384,15 +399,23 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
   ) -> Arc<CreateWebWorkerCb> {
     let shared = self.clone();
     Arc::new(move |args| {
-      let CreateModuleLoaderResult { module_loader } =
-        shared.module_loader_factory.create_for_worker(
+      let CreateModuleLoaderResult { module_loader } = match &args
+        .extension_name
+      {
+        Some(name) => shared.module_loader_factory.create_for_extension_worker(
+          args.parent_permissions.clone(),
+          args.permissions.clone(),
+          name.clone(),
+        ),
+        None => shared.module_loader_factory.create_for_worker(
           args.parent_permissions.clone(),
           args.permissions.clone(),
           args
             .maybe_main_module_blob
             .clone()
             .map(|blob| (args.main_module.clone(), blob)),
-        );
+        ),
+      };
       let create_web_worker_cb =
         shared.create_web_worker_callback(stdio.clone());
 
@@ -720,6 +743,11 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
     let mut worker =
       MainWorker::bootstrap_from_options(&main_module, services, options);
     worker.setup_memory_trim_handler();
+    if let Some(provider) = &shared.options.extension_worker_provider {
+      worker.js_runtime.op_state().borrow_mut().put(
+        ende_runtime::ops::worker_host::ExtensionWorkerHost(provider.clone()),
+      );
+    }
 
     // Store the main inspector session sender for worker debugging
     let inspector = worker.js_runtime.inspector();

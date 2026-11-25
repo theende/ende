@@ -1,0 +1,4 @@
+NotCapable: Can't escalate parent thread permissions
+TypeError: @acme/probe: Requires import access to "localhost:4545". Grant it in ende.json under extensions["@acme/probe"].permissions.import (the extension's manifest must ask for it too)
+undefined
+Extension "@acme/math" isn't loaded: import it as "extension:@acme/math"

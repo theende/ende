@@ -1,0 +1,106 @@
+{
+  "tempDir": true,
+  "tests": {
+    // An extension's static imports stay inside its own directory: a JSON,
+    // text or bytes import of a file outside it needs read access the
+    // extension doesn't have.
+    "static_json_outside_dir": {
+      "args": "run --quiet json.ts",
+      "output": "[WILDCARD]Requires read access to [WILDCARD]secret.json[WILDCARD]",
+      "exitCode": 1
+    },
+    "static_text_outside_dir": {
+      "args": "run --quiet --unstable-raw-imports text.ts",
+      "output": "[WILDCARD]Requires read access to [WILDCARD]secret.txt[WILDCARD]",
+      "exitCode": 1
+    },
+    "static_bytes_outside_dir": {
+      "args": "run --quiet --unstable-raw-imports bytes.ts",
+      "output": "[WILDCARD]Requires read access to [WILDCARD]secret.txt[WILDCARD]",
+      "exitCode": 1
+    },
+    "static_import_inside_dir": {
+      "args": "run --quiet inside.ts",
+      "output": "{\"inside\":true}\n"
+    },
+    // A symlink inside the extension's directory pointing outside it doesn't
+    // get around that (the link is made without the config, which protects
+    // extension directories from writes).
+    "static_import_through_symlink": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Deno.symlinkSync('../secret.json', 'ext_sym/link.json')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet sym.ts",
+          "output": "[WILDCARD]Requires read access to [WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // A remote module can't redirect to a file: URL, neither when the
+    // redirect is fetched nor when it is replayed from the cache.
+    "redirect_to_file_main_module": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-import main_redirect.ts",
+          "output": "[WILDCARD]can only redirect to an http: or https: URL[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "run --quiet --allow-import main_redirect.ts",
+          "output": "[WILDCARD]can only redirect to an http: or https: URL[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    "redirect_to_file_extension": {
+      "steps": [
+        {
+          "args": "run --quiet --cert RootCA.pem remote.ts",
+          "output": "[WILDCARD]can only redirect to an http: or https: URL[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "run --quiet --cert RootCA.pem remote.ts",
+          "output": "[WILDCARD]can only redirect to an http: or https: URL[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // The app can't rewrite a local extension's source to get its grant,
+    // even with write access to that directory.
+    "app_cannot_rewrite_extension": {
+      "args": "run --quiet --allow-write=./ext_fmt rewrite.ts",
+      "output": "NotCapable: Requires write access to \"./ext_fmt/mod.ts\"[WILDCARD]@sec/fmt[WILDCARD]\nNotCapable\n"
+    },
+    // The worker runs the code the extension was prepared from, even if the
+    // file changes on disk in between (here through a subprocess).
+    "rewrite_between_prepare_and_start": {
+      "args": "run --quiet --allow-run rewrite_between.ts",
+      "output": "ORIGINAL\n"
+    },
+    // An extension resolves without the app's import map.
+    "import_map_cannot_swap_source": {
+      "args": "run --quiet impostor_main.ts",
+      "output": "[WILDCARD]import map[WILDCARD]",
+      "exitCode": 1
+    },
+    "import_map_bare_specifier": {
+      "args": "run --quiet bare.ts",
+      "output": "[WILDCARD]\"helperish\"[WILDCARD]import map[WILDCARD]",
+      "exitCode": 1
+    },
+    // An error's name is data: names that are properties of every object
+    // don't crash the app or turn the error into something else.
+    "crafted_error_names": {
+      "args": "run --quiet errors.ts",
+      "output": "true hasOwnProperty named hasOwnProperty\ntrue constructor named constructor\ntrue __proto__ named __proto__\nhost still alive\n"
+    }
+  }
+}

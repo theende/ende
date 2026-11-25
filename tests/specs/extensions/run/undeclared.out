@@ -1,0 +1,2 @@
+error: Unknown extension "@acme/missing". ende.json declares @acme/math, @acme/net, @acme/reader, @acme/greedy, @acme/bad, @acme/nested, @acme/jsr, @acme/probe
+[WILDCARD]

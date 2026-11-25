@@ -1,0 +1,25 @@
+{
+  "extensions": {
+    "@sec/json": { "source": "./ext_json/mod.ts", "permissions": [] },
+    "@sec/text": { "source": "./ext_text/mod.ts", "permissions": [] },
+    "@sec/bytes": { "source": "./ext_bytes/mod.ts", "permissions": [] },
+    "@sec/inside": { "source": "./ext_inside/mod.ts", "permissions": [] },
+    "@sec/symlink": { "source": "./ext_sym/mod.ts", "permissions": [] },
+    "@sec/remote": {
+      "source": "https://localhost:5545/run/redirect_to_file/remote_ext.ts",
+      "permissions": []
+    },
+    "@sec/fmt": {
+      "source": "./ext_fmt/mod.ts",
+      "permissions": { "read": true, "env": true }
+    },
+    "@sec/fmt2": { "source": "./ext_fmt2/mod.ts", "permissions": [] },
+    "@sec/real": { "source": "./ext_real/mod.ts", "permissions": [] },
+    "@sec/bare": { "source": "./ext_bare/mod.ts", "permissions": [] },
+    "@sec/errors": { "source": "./ext_errors/mod.ts", "permissions": [] }
+  },
+  "imports": {
+    "./ext_real/mod.ts": "./impostor.ts",
+    "helperish": "./ext_bare/helper.ts"
+  }
+}

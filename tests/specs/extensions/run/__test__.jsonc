@@ -1,0 +1,85 @@
+{
+  "tempDir": true,
+  "tests": {
+    // A call returns the extension's result; importers share one worker, so
+    // state persists across calls; the process exits once main is done even
+    // though the extension worker is idle.
+    "basic": {
+      "args": "run --quiet basic.ts",
+      "output": "3\n1 2\n"
+    },
+    "error_propagates": {
+      "args": "run --quiet error.ts",
+      "output": "TypeError: boom\ntrue\n"
+    },
+    // `"permissions": []` denies reads even though the host may read; the
+    // message names the extension and where to grant it.
+    "denied_read": {
+      "args": "run --quiet --allow-read denied.ts",
+      "output": "denied.out"
+    },
+    // The extension has net while the host runs without --allow-net.
+    "net_without_host_net": {
+      "args": "run --quiet net.ts",
+      "output": "200\nNotCapable\n"
+    },
+    "globals_are_separate": {
+      "args": "run --quiet globals.ts",
+      "output": "undefined\nundefined\n"
+    },
+    "undeclared_name": {
+      "args": "run --quiet undeclared.ts",
+      "output": "undeclared.out",
+      "exitCode": 1
+    },
+    "ungranted_warning": {
+      "args": "run greedy.ts",
+      "output": "greedy.out"
+    },
+    "non_function_export": {
+      "args": "run --quiet bad.ts",
+      "output": "error: [WILDCARD]notAFunction[WILDCARD]",
+      "exitCode": 1
+    },
+    // A root carries no authority: the extension's own permissions apply,
+    // and the host's root stays usable after the call.
+    "root": {
+      "args": "run --quiet --unstable-fs --allow-read root.ts",
+      "output": "root.out"
+    },
+    "function_argument": {
+      "args": "run --quiet clone.ts",
+      "output": "DataCloneError\n"
+    },
+    "nested_extension_import": {
+      "args": "run --quiet nested.ts",
+      "output": "[WILDCARD]Extensions can't import other extensions: \"extension:@acme/math\" is imported from inside an extension[WILDCARD]",
+      "exitCode": 1
+    },
+    "import_map_target": {
+      "args": "run --quiet importmap.ts",
+      "output": "error: Import map entries can't point at extensions: \"mathx\" resolves to \"extension:@acme/math\". Import \"extension:@acme/math\" directly.\n[WILDCARD]",
+      "exitCode": 1
+    },
+    "web_worker_import": {
+      "args": "run --quiet --allow-read worker.ts",
+      "output": "[WILDCARD]Extensions can only be imported in the main thread, not in a worker: \"extension:@acme/math\"[WILDCARD]"
+    },
+    "jsr_source": {
+      "args": "run --quiet jsr.ts",
+      "output": "42\n"
+    },
+    // A worker started by an extension, and its dynamic imports, are held to
+    // the extension's own permissions; user code can't start an extension's
+    // worker itself.
+    "probe": {
+      "args": "run --quiet --unstable-worker-options probe.ts",
+      "output": "probe.out"
+    },
+    "compile": {
+      "args": "compile --output app basic.ts",
+      "output": "[WILDCARD]error: ende compile doesn't support extensions yet: \"extension:@acme/math\"[WILDCARD]",
+      "exitCode": 1
+    }
+  }
+}

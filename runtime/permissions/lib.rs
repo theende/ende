@@ -56,6 +56,36 @@ pub enum BrokerResponse {
 use self::broker::has_broker;
 use self::broker::maybe_check_with_broker;
 
+/// What a permission check does with the permission broker's answer.
+#[derive(Debug, PartialEq, Eq)]
+enum BrokerDecision {
+  Allow,
+  Deny {
+    message: Option<String>,
+  },
+  /// No broker, or its answer doesn't settle it: the permission's own
+  /// state decides.
+  OwnState,
+}
+
+/// On an extension's thread (`extension:@scope/name`) the broker can only
+/// narrow: its "allow" still needs the extension's own permissions (the
+/// app's grant ∩ the extension's manifest) to grant the request, because the
+/// broker can't tell the extension's requests from the app's.
+fn broker_decision(
+  response: Option<BrokerResponse>,
+  on_extension_thread: bool,
+) -> BrokerDecision {
+  match response {
+    None => BrokerDecision::OwnState,
+    Some(BrokerResponse::Allow) if on_extension_thread => {
+      BrokerDecision::OwnState
+    }
+    Some(BrokerResponse::Allow) => BrokerDecision::Allow,
+    Some(BrokerResponse::Deny { message }) => BrokerDecision::Deny { message },
+  }
+}
+
 pub type OtelAuditFn =
   fn(permission: &str, value: &str, stack: Option<&[String]>);
 
@@ -67,7 +97,7 @@ pub enum AuditSink {
 pub static AUDIT_SINK: OnceLock<AuditSink> = OnceLock::new();
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
-#[error("{}", custom_message.as_ref().cloned().unwrap_or_else(|| format!("Requires {access}, {}", format_permission_error(.name))))]
+#[error("{}", custom_message.as_ref().cloned().unwrap_or_else(|| denied_message(access, name)))]
 #[class("NotCapable")]
 pub struct PermissionDeniedError {
   pub access: String,
@@ -76,8 +106,94 @@ pub struct PermissionDeniedError {
   pub state: PermissionState,
 }
 
+fn denied_message(access: &str, name: &'static str) -> String {
+  match current_extension_label() {
+    Some(label) => format!(
+      "{label}: Requires {access}. Grant it in ende.json under extensions[\"{label}\"].permissions.{name} (the extension's manifest must ask for it too)"
+    ),
+    None => match (name == "write")
+      .then(|| extension_owning_path(access))
+      .flatten()
+    {
+      Some(label) => format!(
+        "Requires {access}, which is in the directory of extension \"{label}\" declared in ende.json. An extension's source can't change while the app runs"
+      ),
+      None => format!("Requires {access}, {}", format_permission_error(name)),
+    },
+  }
+}
+
+/// The directories of the local extensions an app declares, which the app
+/// may not write to (see `set_extension_directories`).
+static EXTENSION_DIRECTORIES: std::sync::RwLock<Vec<(PathBuf, String)>> =
+  std::sync::RwLock::new(Vec::new());
+
+/// Records the directories of the local extensions the app declares, with
+/// the extension names, so a write denied there names the extension. The
+/// denial itself comes from `deny_write` entries for the same directories.
+pub fn set_extension_directories(directories: Vec<(PathBuf, String)>) {
+  if let Ok(mut current) = EXTENSION_DIRECTORIES.write() {
+    *current = directories;
+  }
+}
+
+/// The extension whose directory holds the path quoted in `access`
+/// (`write access to "<path>"`), if any. Only used to word the message.
+fn extension_owning_path(access: &str) -> Option<String> {
+  let directories = EXTENSION_DIRECTORIES.read().ok()?;
+  if directories.is_empty() {
+    return None;
+  }
+  let start = access.find('"')?;
+  let end = access.rfind('"')?;
+  let path = PathBuf::from(access.get(start + 1..end)?);
+  #[allow(clippy::disallowed_methods, reason = "only words an error message")]
+  let path = if path.is_absolute() {
+    path
+  } else {
+    std::env::current_dir().ok()?.join(path)
+  };
+  // The path may not exist yet; resolve symlinks in its nearest ancestor.
+  let mut existing = path.as_path();
+  let mut rest = Vec::new();
+  #[allow(clippy::disallowed_methods, reason = "only words an error message")]
+  let real = loop {
+    if let Ok(real) = std::fs::canonicalize(existing) {
+      break rest
+        .iter()
+        .rev()
+        .fold(real, |path: PathBuf, part| path.join(part));
+    }
+    rest.push(existing.file_name()?.to_os_string());
+    existing = existing.parent()?;
+  };
+  directories
+    .iter()
+    .find(|(dir, _)| real.starts_with(dir))
+    .map(|(_, label)| label.clone())
+}
+
 fn format_permission_error(name: &'static str) -> String {
   permission_flag_hint(name, standalone_subcommand())
+}
+
+thread_local! {
+  /// The extension (`extension:@scope/name`) whose worker runs on this
+  /// thread, if any. Permission errors raised here name it and point at its
+  /// grant in ende.json instead of at a command-line flag.
+  static EXTENSION_LABEL: std::cell::RefCell<Option<String>> =
+    const { std::cell::RefCell::new(None) };
+}
+
+/// Marks the current thread as running the worker of extension `label`, so
+/// permission errors raised on it name the extension. Set once, when the
+/// extension's worker thread starts.
+pub fn set_thread_extension_label(label: Option<String>) {
+  EXTENSION_LABEL.with(|cell| *cell.borrow_mut() = label);
+}
+
+fn current_extension_label() -> Option<String> {
+  EXTENSION_LABEL.with(|cell| cell.borrow().clone())
 }
 
 /// What a permission error tells the user to do: run again with the flag, or,
@@ -533,25 +649,25 @@ impl PermissionState {
     info: impl Fn() -> Option<String>,
     prompt: bool,
   ) -> (Result<(), PermissionDeniedError>, bool, bool) {
-    if let Some(resp) = maybe_check_with_broker(name, &stringify_value_fn) {
-      match resp {
-        BrokerResponse::Allow => {
-          Self::log_perm_access(name, info);
-          return (Ok(()), false, false);
-        }
-        BrokerResponse::Deny { message } => {
-          return (
-            Err(PermissionDeniedError {
-              access: Self::fmt_access(name, info().as_deref()),
-              name,
-              custom_message: message,
-              state: PermissionState::Denied,
-            }),
-            false,
-            false,
-          );
-        }
+    let response = maybe_check_with_broker(name, &stringify_value_fn);
+    match broker_decision(response, current_extension_label().is_some()) {
+      BrokerDecision::Allow => {
+        Self::log_perm_access(name, info);
+        return (Ok(()), false, false);
       }
+      BrokerDecision::Deny { message } => {
+        return (
+          Err(PermissionDeniedError {
+            access: Self::fmt_access(name, info().as_deref()),
+            name,
+            custom_message: message,
+            state: PermissionState::Denied,
+          }),
+          false,
+          false,
+        );
+      }
+      BrokerDecision::OwnState => {}
     }
 
     match self {
@@ -3873,6 +3989,20 @@ impl NarrowKind {
     NarrowKind::Import,
   ];
 
+  /// The permission's name, as in `--allow-<name>` and permissions objects.
+  fn name(self) -> &'static str {
+    match self {
+      NarrowKind::Net => "net",
+      NarrowKind::Read => "read",
+      NarrowKind::Write => "write",
+      NarrowKind::Env => "env",
+      NarrowKind::Run => "run",
+      NarrowKind::Sys => "sys",
+      NarrowKind::Ffi => "ffi",
+      NarrowKind::Import => "import",
+    }
+  }
+
   fn var(self) -> &'static str {
     match self {
       NarrowKind::Net => "ENDE_ALLOW_NET",
@@ -4034,6 +4164,216 @@ fn expand_bare_net_ports(entries: Vec<String>) -> Vec<String> {
     }
   }
   out
+}
+
+/// A permission an extension's manifest asks for that the app's grant does
+/// not cover at all.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UngrantedPermission {
+  /// The permission's name: `read`, `net`, ...
+  pub name: &'static str,
+  /// The entry asked for, or `None` when the manifest asks for the whole
+  /// permission.
+  pub entry: Option<String>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum IntersectPermissionsError {
+  #[error("{name} entry \"{entry}\" is invalid: {message}")]
+  InvalidEntry {
+    name: &'static str,
+    entry: String,
+    message: String,
+  },
+  #[error(transparent)]
+  FromOptions(#[from] PermissionsFromOptionsError),
+}
+
+impl PermissionsOptions {
+  /// The permissions both `self` (what was granted) and `requested` allow,
+  /// per permission, for an extension that asks for `requested` and is
+  /// granted `self`.
+  ///
+  /// Only allow lists are intersected. `self`'s deny and ignore lists are
+  /// kept, so the grant's denials still apply; `requested`'s are ignored.
+  /// An entry is kept when the other side allows all of it, so the narrower
+  /// of two overlapping entries wins. Requested entries the grant allows none
+  /// of are returned as ungranted. The result never prompts.
+  pub fn intersect_requested(
+    &self,
+    requested: &PermissionsOptions,
+    parser: &dyn PermissionDescriptorParser,
+  ) -> Result<
+    (PermissionsOptions, Vec<UngrantedPermission>),
+    IntersectPermissionsError,
+  > {
+    #[derive(PartialEq)]
+    enum Covered {
+      All,
+      Part,
+      Nothing,
+    }
+
+    fn covered(
+      kind: NarrowKind,
+      permissions: &Permissions,
+      parser: &dyn PermissionDescriptorParser,
+      list: &[String],
+      entry: &str,
+    ) -> Result<Covered, IntersectPermissionsError> {
+      let invalid = |message: String| IntersectPermissionsError::InvalidEntry {
+        name: kind.name(),
+        entry: entry.to_string(),
+        message,
+      };
+      // A command that isn't on this host's PATH can't be compared by path,
+      // so only the same name covers it.
+      if matches!(kind, NarrowKind::Run)
+        && let RunQueryDescriptor::Name(_) = parser
+          .parse_run_query(entry)
+          .map_err(|err| invalid(err.to_string()))?
+      {
+        return Ok(if list.iter().any(|item| item == entry) {
+          Covered::All
+        } else {
+          Covered::Nothing
+        });
+      }
+      Ok(
+        match kind.query(permissions, parser, entry).map_err(invalid)? {
+          PermissionState::Granted => Covered::All,
+          PermissionState::GrantedPartial | PermissionState::DeniedPartial => {
+            Covered::Part
+          }
+          PermissionState::Prompt
+          | PermissionState::Denied
+          | PermissionState::Ignored => Covered::Nothing,
+        },
+      )
+    }
+
+    let mut granted = self.clone();
+    granted.prompt = false;
+    let mut asked = PermissionsOptions::default();
+    for kind in NarrowKind::ALL {
+      *kind.allow_list(&mut asked) =
+        kind.allow_list(&mut requested.clone()).take();
+      if matches!(kind, NarrowKind::Net) {
+        for options in [&mut granted, &mut asked] {
+          if let Some(list) = kind.allow_list(options).take() {
+            *kind.allow_list(options) = Some(expand_bare_net_ports(list));
+          }
+        }
+      }
+    }
+    // Built on first use: lists that are all of a permission are never
+    // parsed here, as `narrow_from_env` doesn't parse them either.
+    let mut granted_permissions = None;
+    let mut asked_permissions = None;
+
+    let mut effective = granted.clone();
+    let mut ungranted = Vec::new();
+    for kind in NarrowKind::ALL {
+      let name = kind.name();
+      let granted_list = kind.allow_list(&mut granted).clone();
+      let asked_list = kind.allow_list(&mut asked).clone();
+      // `None` is no access and `Some(vec![])` is all access.
+      *kind.allow_list(&mut effective) = match (granted_list, asked_list) {
+        (_, None) => None,
+        (None, Some(asked_list)) => {
+          if asked_list.is_empty() {
+            ungranted.push(UngrantedPermission { name, entry: None });
+          }
+          ungranted.extend(asked_list.into_iter().map(|entry| {
+            UngrantedPermission {
+              name,
+              entry: Some(entry),
+            }
+          }));
+          None
+        }
+        (Some(granted_list), Some(asked_list)) if granted_list.is_empty() => {
+          Some(asked_list)
+        }
+        (Some(granted_list), Some(asked_list)) if asked_list.is_empty() => {
+          Some(granted_list)
+        }
+        (Some(granted_list), Some(asked_list)) => {
+          let granted_permissions = match &granted_permissions {
+            Some(permissions) => permissions,
+            None => granted_permissions.insert(
+              Permissions::from_options_without_unresolved_run_log(
+                parser, &granted,
+              )?,
+            ),
+          };
+          let mut list = Vec::new();
+          for entry in &asked_list {
+            match covered(
+              kind,
+              granted_permissions,
+              parser,
+              &granted_list,
+              entry,
+            )? {
+              Covered::All => list.push(entry.clone()),
+              Covered::Part => {}
+              // A query of an entry doesn't report the narrower entries
+              // granted inside it, so look the other way too: `/data` asked
+              // and `/data/app` granted is part of what was asked for.
+              Covered::Nothing => {
+                let mut alone = PermissionsOptions::default();
+                *kind.allow_list(&mut alone) = Some(vec![entry.clone()]);
+                let alone =
+                  Permissions::from_options_without_unresolved_run_log(
+                    parser, &alone,
+                  )?;
+                let mut part = false;
+                for granted_entry in &granted_list {
+                  if covered(
+                    kind,
+                    &alone,
+                    parser,
+                    std::slice::from_ref(entry),
+                    granted_entry,
+                  )? == Covered::All
+                  {
+                    part = true;
+                    break;
+                  }
+                }
+                if !part {
+                  ungranted.push(UngrantedPermission {
+                    name,
+                    entry: Some(entry.clone()),
+                  });
+                }
+              }
+            }
+          }
+          let asked_permissions = match &asked_permissions {
+            Some(permissions) => permissions,
+            None => asked_permissions.insert(
+              Permissions::from_options_without_unresolved_run_log(
+                parser, &asked,
+              )?,
+            ),
+          };
+          for entry in &granted_list {
+            if !list.contains(entry)
+              && covered(kind, asked_permissions, parser, &asked_list, entry)?
+                == Covered::All
+            {
+              list.push(entry.clone());
+            }
+          }
+          (!list.is_empty()).then_some(list)
+        }
+      };
+    }
+    effective.prompt = false;
+    Ok((effective, ungranted))
+  }
 }
 
 impl Permissions {
@@ -4435,6 +4775,10 @@ pub struct PermissionsContainer {
   /// Hosts already resolved for the import deny check. See
   /// [`PermissionsContainer::resolve_host`].
   resolved_import_hosts: ResolvedHostsCache,
+  /// Whether `check_specifier` checks a `file:` import against the file it
+  /// resolves to through symlinks (see
+  /// [`PermissionsContainer::with_import_symlinks_resolved`]).
+  resolve_import_symlinks: bool,
 }
 
 impl PermissionsContainer {
@@ -4446,7 +4790,18 @@ impl PermissionsContainer {
       descriptor_parser,
       inner: Arc::new(Mutex::new(perms)),
       resolved_import_hosts: Default::default(),
+      resolve_import_symlinks: false,
     }
+  }
+
+  /// Checks `file:` imports against the file they resolve to through
+  /// symlinks rather than the path as written. Used for the loader of an
+  /// extension's graph (`extension:@scope/name`), which may read only its
+  /// own directory: a link inside that directory must not reach outside it.
+  /// (Ordinary permission checks keep upstream's as-written semantics.)
+  pub fn with_import_symlinks_resolved(mut self) -> Self {
+    self.resolve_import_symlinks = true;
+    self
   }
 
   pub fn deep_clone(&self) -> PermissionsContainer {
@@ -4454,6 +4809,7 @@ impl PermissionsContainer {
       descriptor_parser: self.descriptor_parser.clone(),
       inner: Arc::new(Mutex::new(self.inner.lock().clone())),
       resolved_import_hosts: Default::default(),
+      resolve_import_symlinks: self.resolve_import_symlinks,
     }
   }
 
@@ -4469,6 +4825,7 @@ impl PermissionsContainer {
       descriptor_parser: self.descriptor_parser.clone(),
       inner: Arc::new(Mutex::new(permissions)),
       resolved_import_hosts: Default::default(),
+      resolve_import_symlinks: self.resolve_import_symlinks,
     }
   }
 
@@ -4581,15 +4938,30 @@ impl PermissionsContainer {
         }
 
         match url_to_file_path(specifier) {
-          Ok(path) => inner
-            .read
-            .check(
-              // a file: specifier will always go to absolute
-              &PathQueryDescriptor::new_known_absolute(Cow::Owned(path))
-                .into_read(),
-              Some("import()"),
-            )
-            .map_err(ignored_to_not_found),
+          Ok(path) => {
+            let path = if self.resolve_import_symlinks {
+              // The file the import will actually read, not the link.
+              Cow::Owned(
+                self
+                  .descriptor_parser
+                  .parse_special_file_descriptor(
+                    PathQueryDescriptor::new_known_absolute(Cow::Owned(path)),
+                  )?
+                  .path
+                  .into_owned(),
+              )
+            } else {
+              Cow::Owned(path)
+            };
+            inner
+              .read
+              .check(
+                // a file: specifier will always go to absolute
+                &PathQueryDescriptor::new_known_absolute(path).into_read(),
+                Some("import()"),
+              )
+              .map_err(ignored_to_not_found)
+          }
           Err(_) => {
             Err(PermissionCheckError::InvalidFilePath(specifier.clone()))
           }
@@ -6165,6 +6537,26 @@ mod tests {
   use crate::prompter::set_prompter;
 
   #[test]
+  fn broker_can_only_narrow_an_extensions_permissions() {
+    // The app's thread: the broker decides.
+    assert_eq!(
+      broker_decision(Some(BrokerResponse::Allow), false),
+      BrokerDecision::Allow
+    );
+    // An extension's thread: an allow falls back to the extension's own
+    // permissions; a deny still denies.
+    assert_eq!(
+      broker_decision(Some(BrokerResponse::Allow), true),
+      BrokerDecision::OwnState
+    );
+    assert_eq!(
+      broker_decision(Some(BrokerResponse::Deny { message: None }), true),
+      BrokerDecision::Deny { message: None }
+    );
+    assert_eq!(broker_decision(None, true), BrokerDecision::OwnState);
+  }
+
+  #[test]
   fn permission_errors_name_the_subcommand_that_built_the_app() {
     assert_eq!(
       permission_flag_hint("env", None),
@@ -6483,6 +6875,288 @@ mod tests {
     narrow(&mut opts, &[("ENDE_ALLOW_RUN", "ende_test_missing_binary")])
       .unwrap();
     assert_eq!(opts.allow_run, Some(svec!["ende_test_missing_binary"]));
+  }
+
+  fn intersect(
+    granted: PermissionsOptions,
+    requested: PermissionsOptions,
+  ) -> (PermissionsOptions, Vec<UngrantedPermission>) {
+    granted
+      .intersect_requested(&requested, &TestPermissionDescriptorParser)
+      .unwrap()
+  }
+
+  fn ungranted(name: &'static str, entry: Option<&str>) -> UngrantedPermission {
+    UngrantedPermission {
+      name,
+      entry: entry.map(ToString::to_string),
+    }
+  }
+
+  #[test]
+  fn intersect_requested_not_asked_is_not_granted() {
+    let (effective, missing) = intersect(
+      PermissionsOptions {
+        allow_read: Some(vec![]),
+        allow_net: Some(svec!["example.com"]),
+        prompt: true,
+        ..Default::default()
+      },
+      PermissionsOptions::default(),
+    );
+    assert_eq!(effective, PermissionsOptions::default());
+    assert!(!effective.prompt);
+    assert_eq!(missing, vec![]);
+  }
+
+  #[test]
+  fn intersect_requested_all_and_lists() {
+    let (effective, missing) = intersect(
+      PermissionsOptions {
+        // all ∩ list = list
+        allow_read: Some(vec![]),
+        // list ∩ all = list
+        allow_net: Some(svec!["api.example.com:443"]),
+        // all ∩ all = all
+        allow_env: Some(vec![]),
+        ..Default::default()
+      },
+      PermissionsOptions {
+        allow_read: Some(svec!["/data"]),
+        allow_net: Some(vec![]),
+        allow_env: Some(vec![]),
+        ..Default::default()
+      },
+    );
+    assert_eq!(effective.allow_read, Some(svec!["/data"]));
+    assert_eq!(effective.allow_net, Some(svec!["api.example.com:443"]));
+    assert_eq!(effective.allow_env, Some(vec![]));
+    assert_eq!(missing, vec![]);
+  }
+
+  #[test]
+  fn intersect_requested_narrower_entry_wins() {
+    let (effective, missing) = intersect(
+      PermissionsOptions {
+        allow_read: Some(svec!["/data/app", "/srv"]),
+        allow_net: Some(svec!["api.example.com"]),
+        ..Default::default()
+      },
+      PermissionsOptions {
+        allow_read: Some(svec!["/data", "/srv/cache"]),
+        allow_net: Some(svec!["api.example.com:443"]),
+        ..Default::default()
+      },
+    );
+    // The grant narrows /data to /data/app; the manifest narrows /srv to
+    // /srv/cache.
+    let mut read = effective.allow_read.clone().unwrap();
+    read.sort();
+    assert_eq!(read, svec!["/data/app", "/srv/cache"]);
+    assert_eq!(effective.allow_net, Some(svec!["api.example.com:443"]));
+    assert_eq!(missing, vec![]);
+  }
+
+  #[test]
+  fn intersect_requested_paths_by_component() {
+    let (effective, missing) = intersect(
+      PermissionsOptions {
+        allow_read: Some(svec!["/data"]),
+        ..Default::default()
+      },
+      PermissionsOptions {
+        allow_read: Some(svec!["/database"]),
+        ..Default::default()
+      },
+    );
+    assert_eq!(effective.allow_read, None);
+    assert_eq!(missing, vec![ungranted("read", Some("/database"))]);
+  }
+
+  #[test]
+  fn intersect_requested_ungranted_entries_and_kinds() {
+    let (effective, missing) = intersect(
+      PermissionsOptions {
+        allow_net: Some(svec!["api.example.com"]),
+        ..Default::default()
+      },
+      PermissionsOptions {
+        allow_net: Some(svec!["api.example.com", "other.example.com"]),
+        allow_write: Some(vec![]),
+        allow_env: Some(svec!["HOME"]),
+        ..Default::default()
+      },
+    );
+    assert_eq!(effective.allow_net, Some(svec!["api.example.com"]));
+    assert_eq!(effective.allow_write, None);
+    assert_eq!(effective.allow_env, None);
+    assert_eq!(
+      missing,
+      vec![
+        ungranted("net", Some("other.example.com")),
+        ungranted("write", None),
+        ungranted("env", Some("HOME")),
+      ]
+    );
+  }
+
+  #[test]
+  fn intersect_requested_keeps_the_grants_denials() {
+    let (effective, missing) = intersect(
+      PermissionsOptions {
+        allow_read: Some(svec!["/data"]),
+        deny_read: Some(svec!["/data/secret"]),
+        ignore_env: Some(svec!["TOKEN"]),
+        allow_env: Some(vec![]),
+        ..Default::default()
+      },
+      PermissionsOptions {
+        allow_read: Some(svec!["/data"]),
+        // A manifest's own denials don't count.
+        deny_write: Some(svec!["/"]),
+        allow_env: Some(vec![]),
+        ..Default::default()
+      },
+    );
+    assert_eq!(effective.allow_read, Some(svec!["/data"]));
+    assert_eq!(effective.deny_read, Some(svec!["/data/secret"]));
+    assert_eq!(effective.ignore_env, Some(svec!["TOKEN"]));
+    assert_eq!(effective.deny_write, None);
+    assert_eq!(missing, vec![]);
+  }
+
+  #[test]
+  fn intersect_requested_env_sys_import_ffi() {
+    let (effective, missing) = intersect(
+      PermissionsOptions {
+        allow_env: Some(svec!["APP_*"]),
+        allow_sys: Some(svec!["hostname"]),
+        allow_import: Some(svec!["jsr.io"]),
+        allow_ffi: Some(svec!["/libs"]),
+        ..Default::default()
+      },
+      PermissionsOptions {
+        allow_env: Some(svec!["APP_KEY", "HOME"]),
+        allow_sys: Some(svec!["hostname", "uid"]),
+        allow_import: Some(svec!["jsr.io:443"]),
+        allow_ffi: Some(svec!["/libs/a.so"]),
+        ..Default::default()
+      },
+    );
+    assert_eq!(effective.allow_env, Some(svec!["APP_KEY"]));
+    assert_eq!(effective.allow_sys, Some(svec!["hostname"]));
+    assert_eq!(effective.allow_import, Some(svec!["jsr.io:443"]));
+    assert_eq!(effective.allow_ffi, Some(svec!["/libs/a.so"]));
+    assert_eq!(
+      missing,
+      vec![
+        ungranted("env", Some("HOME")),
+        ungranted("sys", Some("uid"))
+      ]
+    );
+  }
+
+  #[test]
+  fn intersect_requested_run_names_match_exactly() {
+    // A name that isn't on this host's PATH can't be resolved to compare by
+    // path, so it is kept only when the grant names it too.
+    let (effective, missing) = intersect(
+      PermissionsOptions {
+        allow_run: Some(svec!["ende_test_missing_binary"]),
+        ..Default::default()
+      },
+      PermissionsOptions {
+        allow_run: Some(svec![
+          "ende_test_missing_binary",
+          "ende_test_other_missing_binary"
+        ]),
+        ..Default::default()
+      },
+    );
+    assert_eq!(effective.allow_run, Some(svec!["ende_test_missing_binary"]));
+    assert_eq!(
+      missing,
+      vec![ungranted("run", Some("ende_test_other_missing_binary"))]
+    );
+  }
+
+  #[test]
+  fn intersect_requested_expands_bare_net_ports() {
+    let (effective, missing) = intersect(
+      PermissionsOptions {
+        allow_net: Some(svec!["localhost:8080"]),
+        ..Default::default()
+      },
+      PermissionsOptions {
+        allow_net: Some(svec![":8080"]),
+        ..Default::default()
+      },
+    );
+    assert_eq!(effective.allow_net, Some(svec!["localhost:8080"]));
+    assert_eq!(
+      missing,
+      vec![
+        ungranted("net", Some("0.0.0.0:8080")),
+        ungranted("net", Some("127.0.0.1:8080")),
+      ]
+    );
+  }
+
+  #[test]
+  fn intersect_requested_result_builds() {
+    let (effective, _) = intersect(
+      PermissionsOptions {
+        allow_read: Some(svec!["/data"]),
+        deny_read: Some(svec!["/data/secret"]),
+        allow_net: Some(vec![]),
+        allow_run: Some(svec!["ende_test_missing_binary"]),
+        ..Default::default()
+      },
+      PermissionsOptions {
+        allow_read: Some(vec![]),
+        allow_net: Some(svec!["example.com:443"]),
+        allow_run: Some(vec![]),
+        ..Default::default()
+      },
+    );
+    Permissions::from_options(&TestPermissionDescriptorParser, &effective)
+      .unwrap();
+  }
+
+  #[test]
+  fn intersect_requested_invalid_entry() {
+    let err = PermissionsOptions {
+      allow_net: Some(vec![]),
+      ..Default::default()
+    }
+    .intersect_requested(
+      &PermissionsOptions {
+        allow_net: Some(svec!["exa mple.com"]),
+        ..Default::default()
+      },
+      &TestPermissionDescriptorParser,
+    );
+    // All ∩ list keeps the list unparsed; from_options reports it later.
+    // A list ∩ list has to parse it now.
+    assert!(err.is_ok());
+    let err = PermissionsOptions {
+      allow_net: Some(svec!["example.com"]),
+      ..Default::default()
+    }
+    .intersect_requested(
+      &PermissionsOptions {
+        allow_net: Some(svec!["exa mple.com"]),
+        ..Default::default()
+      },
+      &TestPermissionDescriptorParser,
+    )
+    .unwrap_err();
+    assert!(
+      err
+        .to_string()
+        .starts_with("net entry \"exa mple.com\" is invalid"),
+      "{err}"
+    );
   }
 
   #[test]

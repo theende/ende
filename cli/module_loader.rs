@@ -76,6 +76,8 @@ use crate::args::EndeSubcommand;
 use crate::args::TsTypeLib;
 use crate::args::jsr_url;
 use crate::cache::CodeCache;
+use crate::extensions::EXTENSION_SCHEME;
+use crate::extensions::ExtensionRegistry;
 use crate::file_fetcher::CliFileFetcher;
 use crate::graph_container::MainModuleGraphContainer;
 use crate::graph_container::ModuleGraphContainer;
@@ -272,6 +274,49 @@ impl ModuleLoadPreparer {
     Ok(())
   }
 
+  /// Builds the static module graph of an extension's entry module
+  /// (`extension:@scope/name`, see `cli/extensions`) into `graph`, fetching it
+  /// with `permissions` and recording it in the lockfile. Unlike
+  /// [`Self::prepare_module_load`], it never type-checks: the extension is the
+  /// extension author's code, not the app's. Like an ordinary worker's, its
+  /// static imports are checked as dynamic ones, so a `file:` import needs
+  /// read access in `permissions` (see `ExtensionRegistry`).
+  pub async fn build_extension_graph(
+    &self,
+    graph: &mut ModuleGraph,
+    root: ModuleSpecifier,
+    permissions: PermissionsContainer,
+  ) -> Result<(), PrepareModuleLoadError> {
+    let loader = self
+      .module_graph_builder
+      .create_graph_loader_with_permissions(permissions, None);
+    let roots = vec![root];
+    self
+      .module_graph_builder
+      .build_graph_roots(
+        graph,
+        roots.clone(),
+        BuildGraphOptions {
+          is_dynamic: true,
+          loader: Some(&loader),
+        },
+      )
+      .await?;
+    self.graph_roots_valid(
+      graph,
+      &roots,
+      GraphRootsValidOptions {
+        allow_unknown_media_types: false,
+        allow_unknown_jsr_exports: false,
+        allow_sloppy_imports_hints_for_unreferenced_roots: false,
+      },
+    )?;
+    if let Some(lockfile) = &self.lockfile {
+      lockfile.write_if_changed()?;
+    }
+    Ok(())
+  }
+
   pub async fn reload_specifiers(
     &self,
     graph: &mut ModuleGraph,
@@ -341,6 +386,7 @@ struct SharedCliModuleLoaderState {
   in_flight_loads_tracker: InFlightModuleLoadsTracker,
   maybe_eszip_loader: Option<Arc<EszipModuleLoader>>,
   watcher_communicator: Option<Arc<WatcherCommunicator>>,
+  extensions: Arc<ExtensionRegistry>,
 }
 
 struct InFlightModuleLoadsTracker {
@@ -396,6 +442,7 @@ impl CliModuleLoaderFactory {
     sys: CliSys,
     maybe_eszip_loader: Option<Arc<EszipModuleLoader>>,
     watcher_communicator: Option<Arc<WatcherCommunicator>>,
+    extensions: Arc<ExtensionRegistry>,
   ) -> Self {
     Self {
       shared: Arc::new(SharedCliModuleLoaderState {
@@ -420,10 +467,12 @@ impl CliModuleLoaderFactory {
         },
         maybe_eszip_loader,
         watcher_communicator,
+        extensions,
       }),
     }
   }
 
+  #[allow(clippy::too_many_arguments, reason = "construction")]
   fn create_with_lib<TGraphContainer: ModuleGraphContainer>(
     &self,
     graph_container: TGraphContainer,
@@ -432,11 +481,13 @@ impl CliModuleLoaderFactory {
     parent_permissions: PermissionsContainer,
     permissions: PermissionsContainer,
     maybe_main_module_blob: Option<(ModuleSpecifier, Arc<Blob>)>,
+    extension_name: Option<String>,
   ) -> CreateModuleLoaderResult {
     let module_loader =
       Rc::new(CliModuleLoader(Rc::new(CliModuleLoaderInner {
         lib,
         is_worker,
+        extension_name,
         parent_permissions,
         permissions,
         graph_container,
@@ -461,6 +512,7 @@ impl ModuleLoaderFactory for CliModuleLoaderFactory {
       root_permissions.clone(),
       root_permissions,
       None,
+      None,
     )
   }
 
@@ -480,6 +532,32 @@ impl ModuleLoaderFactory for CliModuleLoaderFactory {
       parent_permissions,
       permissions,
       maybe_main_module_blob,
+      None,
+    )
+  }
+
+  fn create_for_extension_worker(
+    &self,
+    loader_permissions: PermissionsContainer,
+    permissions: PermissionsContainer,
+    extension_name: String,
+  ) -> CreateModuleLoaderResult {
+    // Start from the graph the extension's manifest was read from, so the
+    // worker runs that code rather than fetching the source again.
+    let graph = self
+      .shared
+      .extensions
+      .prepared_graph(&extension_name)
+      .map(|graph| (*graph).clone())
+      .unwrap_or_else(|| ModuleGraph::new(self.shared.graph_kind));
+    self.create_with_lib(
+      WorkerModuleGraphContainer::new(Arc::new(graph)),
+      self.shared.lib_worker,
+      /* is worker */ true,
+      loader_permissions,
+      permissions,
+      None,
+      Some(extension_name),
     )
   }
 }
@@ -493,6 +571,10 @@ struct ModuleCodeStringSource {
 struct CliModuleLoaderInner<TGraphContainer: ModuleGraphContainer> {
   lib: TsTypeLib,
   is_worker: bool,
+  /// For an extension's worker, the extension's name. Its static graph is
+  /// fetched with `parent_permissions` (imports only); see
+  /// `ExtensionRegistry`.
+  extension_name: Option<String>,
   /// The initial set of permissions used to resolve the static imports in the
   /// worker. These are "allow all" for main worker, and parent thread
   /// permissions for Web Worker.
@@ -798,6 +880,16 @@ impl<TGraphContainer: ModuleGraphContainer>
     requested_module_type: &RequestedModuleType,
   ) -> Result<ModuleCodeStringSource, ende_resolver::file_fetcher::FetchError>
   {
+    // An extension's static text or bytes imports are held to its loader
+    // permissions as dynamic ones are, like the rest of its static graph:
+    // only files in its own directory (see `ExtensionRegistry`).
+    let (permissions, check_specifier_kind) = if self.extension_name.is_some()
+      && check_specifier_kind == CheckSpecifierKind::Static
+    {
+      (&self.parent_permissions, CheckSpecifierKind::Dynamic)
+    } else {
+      (&self.permissions, check_specifier_kind)
+    };
     let file = self
       .shared
       .file_fetcher
@@ -812,7 +904,7 @@ impl<TGraphContainer: ModuleGraphContainer>
         // For statically analyzable imports `check_specifier` skips the read
         // check entirely, so the chosen container does not matter there.
         FetchPermissionsOptionRef::Restricted(
-          &self.permissions,
+          permissions,
           check_specifier_kind,
         ),
         FetchOptions {
@@ -1044,6 +1136,10 @@ impl<TGraphContainer: ModuleGraphContainer>
       }
     };
 
+    if specifier.scheme() == EXTENSION_SCHEME {
+      self.check_extension_import(raw_specifier, &specifier)?;
+    }
+
     // only verify this for an import and not import.meta.resolve
     if !is_import_meta {
       let is_jsr_referrer = referrer.as_str().starts_with(jsr_url().as_str())
@@ -1058,6 +1154,54 @@ impl<TGraphContainer: ModuleGraphContainer>
     }
 
     Ok(specifier)
+  }
+}
+
+impl<TGraphContainer: ModuleGraphContainer>
+  CliModuleLoaderInner<TGraphContainer>
+{
+  /// An `extension:@scope/name` import is allowed only as written, only in
+  /// the main thread, and only for a declared extension.
+  fn check_extension_import(
+    &self,
+    raw_specifier: &str,
+    specifier: &ModuleSpecifier,
+  ) -> Result<(), JsErrorBox> {
+    if !raw_specifier.starts_with("extension:") {
+      return Err(JsErrorBox::type_error(format!(
+        "Import map entries can't point at extensions: \"{raw_specifier}\" resolves to \"{specifier}\". Import \"{specifier}\" directly."
+      )));
+    }
+    if self.extension_name.is_some() {
+      return Err(JsErrorBox::type_error(format!(
+        "Extensions can't import other extensions: \"{specifier}\" is imported from inside an extension"
+      )));
+    }
+    if self.is_worker {
+      return Err(JsErrorBox::type_error(format!(
+        "Extensions can only be imported in the main thread, not in a worker: \"{specifier}\""
+      )));
+    }
+    self.shared.extensions.declared(specifier.path())?;
+    Ok(())
+  }
+
+  /// The proxy module of `extension:@scope/name` (see `ExtensionRegistry`).
+  async fn load_extension(
+    &self,
+    specifier: &ModuleSpecifier,
+  ) -> Result<ModuleSource, ModuleLoaderError> {
+    let code = self
+      .shared
+      .extensions
+      .proxy_module(specifier.path())
+      .await?;
+    Ok(ModuleSource::new(
+      ModuleType::JavaScript,
+      ModuleSourceCode::String(code.into()),
+      specifier,
+      None,
+    ))
   }
 }
 
@@ -1116,6 +1260,13 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
 
     if let Some(eszip_loader) = &inner.shared.maybe_eszip_loader {
       return eszip_loader.load(specifier);
+    }
+
+    if specifier.scheme() == EXTENSION_SCHEME {
+      let specifier = specifier.clone();
+      return ende_core::ModuleLoadResponse::Async(
+        async move { inner.load_extension(&specifier).await }.boxed_local(),
+      );
     }
 
     self.0.loaded_files.borrow_mut().insert(specifier.clone());
@@ -1211,6 +1362,35 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
     let future = async move {
       let graph_container = &inner.graph_container;
       let module_load_preparer = &inner.shared.module_load_preparer;
+      // An extension's worker: its static graph is the one the app declared
+      // and the registry already fetched, so it's built the same way, with
+      // the loader permissions (imports only) and without type checking.
+      // Anything it imports dynamically goes the usual way below, checked
+      // against the extension's own permissions.
+      if let Some(name) = inner.extension_name.as_deref()
+        && !options.is_dynamic_import
+      {
+        // The worker's main module is the harness, which imports the
+        // extension's source: that import must reach the source itself,
+        // not whatever the app's import map makes of it.
+        let extensions = &inner.shared.extensions;
+        let source = extensions.source(name)?;
+        extensions.check_source_resolution(name, &source, &specifier)?;
+        let mut update_permit = graph_container.acquire_update_permit().await;
+        let graph = update_permit.graph_mut();
+        module_load_preparer
+          .build_extension_graph(
+            graph,
+            specifier.clone(),
+            inner.parent_permissions.clone(),
+          )
+          .await
+          .map_err(JsErrorBox::from_err)?;
+        crate::extensions::check_extension_graph_resolution(name, graph)?;
+        graph.prune_types();
+        update_permit.commit();
+        return Ok(());
+      }
       let permissions = if options.is_dynamic_import {
         &inner.permissions
       } else {
@@ -1347,7 +1527,10 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
       // the specified `ende.permissions.import` and match behavior with main
       // graph. Dynamic `import()` is already checked against the worker's
       // permissions while the graph is built.
-      if inner.is_worker && !options.is_dynamic_import {
+      if inner.is_worker
+        && inner.extension_name.is_none()
+        && !options.is_dynamic_import
+      {
         let graph = graph_container.graph();
         for module in graph.modules() {
           let specifier = module.specifier();

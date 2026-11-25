@@ -529,6 +529,24 @@ async fn main_server(
       );
       Ok(res)
     }
+    (_, "/redirect_to_file.json") => {
+      // A remote module that redirects to a local file, which must be refused.
+      let path = testdata_path()
+        .join("run/redirect_to_file/secret.json")
+        .to_string_lossy()
+        .replace('\\', "/");
+      let target = if path.starts_with('/') {
+        format!("file://{path}")
+      } else {
+        format!("file:///{path}")
+      };
+      let mut res = Response::new(empty_body());
+      *res.status_mut() = StatusCode::FOUND;
+      res
+        .headers_mut()
+        .insert("location", HeaderValue::from_str(&target).unwrap());
+      Ok(res)
+    }
     (_, "/non_ascii_redirect") => {
       let mut res = Response::new(empty_body());
       *res.status_mut() = StatusCode::MOVED_PERMANENTLY;

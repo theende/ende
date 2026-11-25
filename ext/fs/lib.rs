@@ -109,6 +109,7 @@ ende_core::extension!(ende_fs,
     op_fs_futime_sync,
     op_fs_futime_async,
 
+    op_fs_root_dup,
     op_fs_root_open_sync,
     op_fs_root_open_async,
     op_fs_root_open_root_sync,
