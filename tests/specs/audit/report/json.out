@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "name": "jsr:@endetest/add@0.2.1",
+      "kind": "jsr",
+      "sandboxed": true,
+      "matcher": "jsr:@endetest/add",
+      "granted": [],
+      "requested": null,
+      "effective": {
+        "allow": {},
+        "deny": {},
+        "prompts": false
+      },
+      "canEscape": [],
+      "processWide": [],
+      "lockfile": "unpinned",
+      "modules": 1
+    },
+    {
+      "name": "jsr:@endetest/add@1.0.0",
+      "kind": "jsr",
+      "sandboxed": true,
+      "matcher": "jsr:@endetest/add",
+      "granted": [],
+      "requested": null,
+      "effective": {
+        "allow": {},
+        "deny": {},
+        "prompts": false
+      },
+      "canEscape": [],
+      "processWide": [],
+      "lockfile": "unpinned",
+      "modules": 1
+    },
+    {
+      "name": "https://localhost:5545/subdir/",
+      "kind": "remote",
+      "sandboxed": true,
+      "matcher": "https://localhost:5545/subdir/",
+      "granted": {
+        "net": [
+          "api.example.com:443"
+        ],
+        "read": {
+          "allow": [
+            "./data"
+          ],
+          "deny": [
+            "./data/secret"
+          ]
+        }
+      },
+      "requested": null,
+      "effective": {
+        "allow": {
+          "read": [
+            "[WILDCARD]data"
+          ],
+          "net": [
+            "api.example.com:443"
+          ]
+        },
+        "deny": {
+          "read": [
+            "[WILDCARD]secret"
+          ],
+          "net": [
+            "other.example.com"
+          ]
+        },
+        "prompts": false
+      },
+      "canEscape": [],
+      "processWide": [],
+      "lockfile": "unpinned",
+      "modules": 1
+    },
+    {
+      "name": "./vendor/tool/",
+      "kind": "local",
+      "sandboxed": true,
+      "matcher": "./vendor/tool/",
+      "granted": [
+        "read",
+        "run",
+        "ffi",
+        "env",
+        "sys"
+      ],
+      "requested": null,
+      "effective": {
+        "allow": {
+          "read": [],
+          "run": [
+            "git"
+          ]
+        },
+        "deny": {},
+        "prompts": false
+      },
+      "canEscape": [
+        "run",
+        "ffi"
+      ],
+      "processWide": [
+        "env",
+        "sys"
+      ],
+      "lockfile": "local",
+      "modules": 1
+    },
+    {
+      "name": "https://localhost:5545",
+      "kind": "remote",
+      "sandboxed": false,
+      "matcher": null,
+      "granted": null,
+      "requested": null,
+      "effective": {
+        "allow": {
+          "read": [],
+          "net": [
+            "api.example.com:443",
+            "other.example.com"
+          ],
+          "run": [
+            "git"
+          ],
+          "import": []
+        },
+        "deny": {
+          "net": [
+            "other.example.com"
+          ]
+        },
+        "prompts": true
+      },
+      "canEscape": [],
+      "processWide": [],
+      "lockfile": "unpinned",
+      "modules": 1
+    },
+    {
+      "name": "local modules (the app)",
+      "kind": "local",
+      "sandboxed": false,
+      "matcher": null,
+      "granted": null,
+      "requested": null,
+      "effective": {
+        "allow": {
+          "read": [],
+          "net": [
+            "api.example.com:443",
+            "other.example.com"
+          ],
+          "run": [
+            "git"
+          ],
+          "import": []
+        },
+        "deny": {
+          "net": [
+            "other.example.com"
+          ]
+        },
+        "prompts": true
+      },
+      "canEscape": [],
+      "processWide": [],
+      "lockfile": "local",
+      "modules": 1
+    }
+  ],
+  "unmatchedRules": [
+    "jsr:@endetest/subtract"
+  ]
+}

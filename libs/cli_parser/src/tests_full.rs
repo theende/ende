@@ -7990,6 +7990,76 @@ fn why_missing_package() {
 }
 
 #[test]
+fn audit() {
+  let r = flags_from_vec(svec!["ende", "audit", "main.ts"]);
+  assert_eq!(
+    r.unwrap(),
+    Flags {
+      subcommand: EndeSubcommand::Audit(AuditFlags {
+        files: svec!["main.ts"],
+        json: false,
+      }),
+      ..Flags::default()
+    }
+  );
+}
+
+#[test]
+fn audit_json_permissions_and_config() {
+  let r = flags_from_vec(svec![
+    "ende",
+    "audit",
+    "--json",
+    "--allow-read=./data",
+    "--allow-net",
+    "--config",
+    "ende.jsonc",
+    "--no-lock",
+    "main.ts",
+    "other.ts"
+  ]);
+  assert_eq!(
+    r.unwrap(),
+    Flags {
+      subcommand: EndeSubcommand::Audit(AuditFlags {
+        files: svec!["main.ts", "other.ts"],
+        json: true,
+      }),
+      permissions: PermissionFlags {
+        allow_read: Some(svec!["./data"]),
+        allow_net: Some(vec![]),
+        ..Default::default()
+      },
+      config_flag: ConfigFlag::Path("ende.jsonc".to_owned()),
+      no_lock: true,
+      ..Flags::default()
+    }
+  );
+
+  let r = flags_from_vec(svec!["ende", "audit", "-A", "main.ts"]);
+  assert_eq!(
+    r.unwrap(),
+    Flags {
+      subcommand: EndeSubcommand::Audit(AuditFlags {
+        files: svec!["main.ts"],
+        json: false,
+      }),
+      permissions: PermissionFlags {
+        allow_all: true,
+        ..Default::default()
+      },
+      ..Flags::default()
+    }
+  );
+}
+
+#[test]
+fn audit_needs_an_entry_module() {
+  let r = flags_from_vec(svec!["ende", "audit"]);
+  assert!(r.is_err());
+}
+
+#[test]
 fn transpile_single_file() {
   let r = flags_from_vec(svec!["ende", "transpile", "main.ts"]);
   assert_eq!(
@@ -8425,7 +8495,7 @@ fn preload_flag_test() {
 
 #[test]
 fn npm_subcommands_removed() {
-  for name in ["approve-scripts", "approve-builds", "audit", "pack"] {
+  for name in ["approve-scripts", "approve-builds", "pack"] {
     let err = flags_from_vec(svec!["ende", name]).unwrap_err();
     assert_eq!(err.kind, CliErrorKind::UnknownSubcommand, "{name}");
     assert_eq!(err.message, format!("unrecognized subcommand '{name}'"));

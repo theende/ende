@@ -1,0 +1,52 @@
+jsr:@endetest/add@0.2.1
+  sandboxed:    yes
+  matcher:      "jsr:@endetest/add"
+  granted:      []
+  requested:    —
+  effective:    none
+  lockfile:     pinned
+
+jsr:@endetest/add@1.0.0
+  sandboxed:    yes
+  matcher:      "jsr:@endetest/add"
+  granted:      []
+  requested:    —
+  effective:    none
+  lockfile:     integrity mismatch
+
+https://localhost:5545/subdir/
+  sandboxed:    yes
+  matcher:      "https://localhost:5545/subdir/"
+  granted:      {"net":["api.example.com:443"],"read":{"allow":["./data"],"deny":["./data/secret"]}}
+  requested:    —
+  effective:    none
+  lockfile:     integrity mismatch
+
+./vendor/tool/
+  sandboxed:    yes
+  matcher:      "./vendor/tool/"
+  granted:      ["read","run","ffi","env","sys"]
+  requested:    —
+  effective:    none
+  can escape:   run, ffi (a subprocess or native code ignores Ende's permissions)
+  process-wide: env, sys (shared with the whole process, not just the sandbox)
+  lockfile:     local, not pinned
+
+https://localhost:5545
+  sandboxed:    no, runs in the app
+  matcher:      —
+  granted:      —
+  requested:    —
+  effective:    the app's: import (+ prompts)
+  lockfile:     pinned
+
+local modules (the app)
+  sandboxed:    no, runs in the app
+  matcher:      —
+  granted:      —
+  requested:    —
+  effective:    the app's: import (+ prompts)
+  lockfile:     local, not pinned
+
+Rules that match nothing:
+  isolate["jsr:@endetest/subtract"] matches no module in the graph, so it sandboxes nothing. Rules match resolved specifiers, after the import map.

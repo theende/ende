@@ -205,6 +205,7 @@ pub fn convert(result: ParseResult) -> Result<Flags, CliError> {
     Some("lsp") => lsp_parse(&mut flags),
     Some("vendor") => vendor_parse(&mut flags),
     Some("why") => why_parse(&result, &mut flags),
+    Some("audit") => audit_parse(&result, &mut flags)?,
     Some("transpile") => transpile_parse(&result, &mut flags),
     Some("bump-version") => bump_version_parse(&result, &mut flags)?,
     Some("ci") => ci_parse(&result, &mut flags),
@@ -264,7 +265,6 @@ const REMOVED_SUBCOMMANDS: &[&str] = &[
   "bundle",
   "approve-scripts",
   "approve-builds",
-  "audit",
   "pack",
   "jupyter",
   "deploy",
@@ -2629,6 +2629,23 @@ fn why_parse(result: &ParseResult, flags: &mut Flags) {
   flags.subcommand = EndeSubcommand::Why(WhyFlags {
     package: package.unwrap_or_default(),
   });
+}
+
+fn audit_parse(
+  result: &ParseResult,
+  flags: &mut Flags,
+) -> Result<(), CliError> {
+  compile_args_without_check_parse(result, flags);
+  permission_args_parse(result, flags)?;
+  let files = result
+    .get_many("files")
+    .map(|v| v.iter().map(|s| s.to_string()).collect())
+    .unwrap_or_default();
+  flags.subcommand = EndeSubcommand::Audit(AuditFlags {
+    files,
+    json: result.get_bool("json"),
+  });
+  Ok(())
 }
 
 fn remove_parse(result: &ParseResult, flags: &mut Flags) {

@@ -137,6 +137,36 @@
         }
       }
     },
+    "isolateRule": {
+      "type": "object",
+      "description": "A sandboxed dependency: what the modules this rule matches may do. A sandbox never gets more than the program has.",
+      "additionalProperties": false,
+      "required": ["permissions"],
+      "properties": {
+        "permissions": {
+          "description": "What the sandbox is granted, narrowed to the program's own permissions. Required: use [] to grant nothing. A list of permission names grants each whole kind; an object grants scoped permissions like a permission set, with relative paths resolved against this file.",
+          "oneOf": [{
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "all",
+                "read",
+                "write",
+                "import",
+                "env",
+                "net",
+                "run",
+                "ffi",
+                "sys"
+              ]
+            }
+          }, {
+            "$ref": "#/$defs/permissionSet"
+          }]
+        }
+      }
+    },
     "minimumDependencyAgeDate": {
       "oneOf": [{
         "description": "(Unstable) The age in minutes, ISO-8601 duration or RFC3339 absolute timestamp (e.g. '120' for two hours, 'P2D' for two days, '2025-09-16' for cutoff date, '2025-09-16T12:00:00+00:00' for cutoff time, '0' to disable).",
@@ -1245,6 +1275,14 @@
         "pattern": "^@[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9-]*$"
       },
       "additionalProperties": { "$ref": "#/$defs/extension" }
+    },
+    "isolate": {
+      "type": "object",
+      "description": "Dependencies to run in a sandbox of their own, with only the permissions granted here (never more than the program has). Keys match resolved modules: jsr:@scope/name (every version and entry), an https: URL (ending in / for every module under it), or a folder relative to this file starting with ./ or ../ and ending in /. Workspace root only. Not enforced yet: `ende audit` reports what each rule matches.",
+      "propertyNames": {
+        "pattern": "^(https:|file:|jsr:@|\\./|\\.\\./)"
+      },
+      "additionalProperties": { "$ref": "#/$defs/isolateRule" }
     },
     "links": {
       "type": "array",

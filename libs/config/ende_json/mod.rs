@@ -35,6 +35,7 @@ use crate::util::is_skippable_io_error;
 
 mod extensions;
 mod file_names;
+mod isolate;
 mod permissions;
 mod ts;
 
@@ -50,6 +51,10 @@ pub use file_names::LOCKFILE_NAME;
 pub use file_names::is_config_file_name;
 pub use file_names::resolve_default_lockfile_path;
 pub use file_names::warn_if_deprecated_file_name;
+pub use isolate::IsolateConfig;
+pub use isolate::IsolateConfigError;
+pub use isolate::IsolateMatcher;
+pub use isolate::IsolateRule;
 pub use permissions::AllowDenyIgnorePermissionConfig;
 pub use permissions::AllowDenyIgnorePermissionConfigValue;
 pub use permissions::AllowDenyPermissionConfig;
@@ -1465,6 +1470,7 @@ pub struct ConfigFileJson {
   pub license: Option<Value>,
   pub permissions: Option<Value>,
   pub extensions: Option<Value>,
+  pub isolate: Option<Value>,
   pub publish: Option<Value>,
 
   pub name: Option<String>,
@@ -2391,6 +2397,21 @@ impl ConfigFile {
       Some(value) => ExtensionsConfig::parse(value, &self.specifier),
       None => Ok(Default::default()),
     }
+  }
+
+  /// The `isolate` key, empty when absent. Only the workspace root's is
+  /// used; see `Workspace::to_isolate_config`. A rule matching the source of
+  /// a declared extension is an error.
+  pub fn to_isolate_config(&self) -> Result<IsolateConfig, IsolateConfigError> {
+    let Some(value) = self.json.isolate.clone() else {
+      return Ok(Default::default());
+    };
+    let config = IsolateConfig::parse(value, &self.specifier)?;
+    // An invalid `extensions` key is reported where extensions load.
+    if let Ok(extensions) = self.to_extensions_config() {
+      config.check_extensions(&extensions)?;
+    }
+    Ok(config)
   }
 
   pub(crate) fn to_publish_config(

@@ -2793,6 +2793,36 @@ pub static WHY_SUBCOMMAND: CommandDef = CommandDef {
   keep_double_dash: false,
 };
 
+// `audit` was npm's vulnerability audit upstream; Ende reuses the name for a
+// report of which dependencies run sandboxed and what each may do.
+pub static AUDIT_SUBCOMMAND: CommandDef = CommandDef {
+  name: "audit",
+  about: "Show which dependencies run sandboxed and what each may do",
+  aliases: &[],
+  args: &[
+    ArgDef::new("files")
+      .positional()
+      .action(ArgAction::Append)
+      .num_args(NumArgs::OneOrMore)
+      .required()
+      .help("The entry modules whose module graph to audit"),
+    ArgDef::new("json")
+      .long("json")
+      .set_true()
+      .help("Output the report in JSON format"),
+  ],
+  arg_groups: &[
+    UNSTABLE_DEPRECATED_ARG,
+    UNSTABLE_FEATURE_ARGS,
+    PERMISSION_ARGS,
+    COMPILE_ARGS,
+  ],
+  subcommands: &[],
+  default_subcommand: None,
+  trailing_var_arg: false,
+  keep_double_dash: false,
+};
+
 pub static LINK_SUBCOMMAND: CommandDef = CommandDef {
   name: "link",
   about: "Link a local JSR package into the current project for development",
@@ -2881,6 +2911,7 @@ pub static ENDE_ROOT: CommandDef = CommandDef {
     LSP_SUBCOMMAND,
     VENDOR_SUBCOMMAND,
     WHY_SUBCOMMAND,
+    AUDIT_SUBCOMMAND,
     TRANSPILE_SUBCOMMAND,
     BUMP_VERSION_SUBCOMMAND,
     CI_SUBCOMMAND,

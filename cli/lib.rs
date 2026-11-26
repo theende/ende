@@ -10,6 +10,7 @@ mod file_fetcher;
 mod graph_container;
 mod graph_util;
 mod http_util;
+mod isolate;
 mod jsr;
 mod lsp;
 mod module_loader;
@@ -200,6 +201,9 @@ async fn run_subcommand(
     }
     EndeSubcommand::Init(init_flags) => spawn_subcommand(async {
       tools::init::init_project(flags, init_flags).await
+    }),
+    EndeSubcommand::Audit(audit_flags) => spawn_subcommand(async {
+      tools::audit::audit(Arc::new(flags), audit_flags).await
     }),
     EndeSubcommand::Info(info_flags) => spawn_subcommand(async {
       tools::info::info(Arc::new(flags), info_flags).await

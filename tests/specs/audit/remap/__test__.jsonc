@@ -1,0 +1,12 @@
+{
+  "tempDir": true,
+  "tests": {
+    // Rules match the module that runs, after the import map: the import
+    // names the URL, but the map sends it to a local copy, so the rule
+    // matches nothing and the report says so instead of skipping it.
+    "import_map_remap": {
+      "args": "audit --quiet main.ts",
+      "output": "remap.out"
+    }
+  }
+}

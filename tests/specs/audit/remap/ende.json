@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "https://localhost:5545/subdir/": "./vendor/subdir/"
+  },
+  "isolate": {
+    "https://localhost:5545/subdir/": { "permissions": [] }
+  }
+}

@@ -206,7 +206,7 @@ fn parse_extension(
 /// the extension the project and lock the app out of it. Compares the URLs
 /// as written; the CLI repeats the check on canonical paths, which also
 /// catches a folder reached through a symlink.
-fn folder_holds_config(source: &Url, base: &Url) -> bool {
+pub(super) fn folder_holds_config(source: &Url, base: &Url) -> bool {
   if source.scheme() != "file" || base.scheme() != "file" {
     return false;
   }
@@ -221,7 +221,7 @@ fn folder_holds_config(source: &Url, base: &Url) -> bool {
 /// Extension names are `@scope/name`, each part lowercase ASCII letters,
 /// digits and hyphens, not starting with a hyphen, as on JSR. Lowercase only,
 /// so two declarations can't differ by case alone.
-fn is_valid_extension_name(name: &str) -> bool {
+pub(super) fn is_valid_extension_name(name: &str) -> bool {
   fn is_valid_part(part: &str) -> bool {
     !part.is_empty()
       && !part.starts_with('-')
@@ -321,7 +321,7 @@ fn is_valid_jsr_package_name(name: &str) -> bool {
   )
 }
 
-fn parse_permissions(
+pub(super) fn parse_permissions(
   name: &str,
   permissions: Option<Value>,
   base: &Url,

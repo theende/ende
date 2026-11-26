@@ -3,11 +3,6 @@
 {
   "tempDir": true,
   "tests": {
-    "subcommand_audit": {
-      "args": "audit",
-      "output": "audit.out",
-      "exitCode": 1
-    },
     "subcommand_approve_scripts": {
       "args": "approve-scripts",
       "output": "approve_scripts.out",

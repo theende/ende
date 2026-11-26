@@ -1,0 +1,5 @@
+{
+  "isolate": {
+    "npm:chalk": { "permissions": [] }
+  }
+}

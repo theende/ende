@@ -1,0 +1,13 @@
+{
+  "isolate": {
+    "jsr:@endetest/add": { "permissions": [] },
+    "https://localhost:5545/subdir/": {
+      "permissions": {
+        "net": ["api.example.com:443"],
+        "read": { "allow": ["./data"], "deny": ["./data/secret"] }
+      }
+    },
+    "./vendor/tool/": { "permissions": ["read", "run", "ffi", "env", "sys"] },
+    "jsr:@endetest/subtract": { "permissions": [] }
+  }
+}

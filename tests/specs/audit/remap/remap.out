@@ -1,0 +1,10 @@
+local modules (the app)
+  sandboxed:    no, runs in the app
+  matcher:      —
+  granted:      —
+  requested:    —
+  effective:    the app's: import: [WILDLINE]
+  lockfile:     local, not pinned
+
+Rules that match nothing:
+  isolate["https://localhost:5545/subdir/"] matches no module in the graph, so it sandboxes nothing. Rules match resolved specifiers, after the import map.

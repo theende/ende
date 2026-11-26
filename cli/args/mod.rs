@@ -478,6 +478,22 @@ impl CliOptions {
     for diagnostic in start_dir.workspace.diagnostics() {
       log::warn!("{} {}", colors::yellow("Warning"), diagnostic);
     }
+    // Commands that run the app's code, or audit it, say that `isolate`
+    // rules don't sandbox anything yet.
+    if matches!(
+      flags.subcommand,
+      EndeSubcommand::Run(_)
+        | EndeSubcommand::Serve(_)
+        | EndeSubcommand::Test(_)
+        | EndeSubcommand::Bench(_)
+        | EndeSubcommand::Eval(_)
+        | EndeSubcommand::Repl(_)
+        | EndeSubcommand::Compile(_)
+        | EndeSubcommand::Desktop(_)
+        | EndeSubcommand::Audit(_)
+    ) {
+      crate::isolate::warn_not_enforced(&start_dir.workspace);
+    }
 
     log::debug!("Finished config loading.");
 
@@ -1278,6 +1294,9 @@ impl CliOptions {
         }
         EndeSubcommand::Check(check_flags) => {
           Some(files_to_urls(&check_flags.files))
+        }
+        EndeSubcommand::Audit(audit_flags) => {
+          Some(files_to_urls(&audit_flags.files))
         }
         EndeSubcommand::Install(InstallFlags::Global(flags)) => flags
           .module_urls

@@ -47,6 +47,8 @@ use crate::ende_json::ExtensionsConfig;
 use crate::ende_json::ExtensionsConfigError;
 use crate::ende_json::FmtConfig;
 use crate::ende_json::FmtOptionsConfig;
+use crate::ende_json::IsolateConfig;
+use crate::ende_json::IsolateConfigError;
 use crate::ende_json::LinkConfigParseError;
 use crate::ende_json::LintConfig;
 use crate::ende_json::LintRulesConfig;
@@ -841,6 +843,12 @@ impl Workspace {
           kind: WorkspaceDiagnosticKind::RootOnlyOption("extensions"),
         });
       }
+      if member_config.json.isolate.is_some() {
+        diagnostics.push(WorkspaceDiagnostic {
+          config_url: member_config.specifier.clone(),
+          kind: WorkspaceDiagnosticKind::RootOnlyOption("isolate"),
+        });
+      }
       if member_config.json.links.is_some() {
         diagnostics.push(WorkspaceDiagnostic {
           config_url: member_config.specifier.clone(),
@@ -1295,6 +1303,14 @@ impl Workspace {
   ) -> Result<ExtensionsConfig, ExtensionsConfigError> {
     self
       .with_root_config_only(|root_config| root_config.to_extensions_config())
+      .unwrap_or(Ok(Default::default()))
+  }
+
+  /// The root config's `isolate` rules; a member's are ignored (and reported
+  /// as a root-only option).
+  pub fn to_isolate_config(&self) -> Result<IsolateConfig, IsolateConfigError> {
+    self
+      .with_root_config_only(|root_config| root_config.to_isolate_config())
       .unwrap_or(Ok(Default::default()))
   }
 
@@ -2972,6 +2988,34 @@ pub mod test {
         kind: WorkspaceDiagnosticKind::RootOnlyOption("extensions"),
         config_url: url_from_file_path(&root_dir().join("member/ende.json"))
           .unwrap(),
+      }]
+    );
+  }
+
+  #[test]
+  fn test_root_member_isolate() {
+    let workspace_dir = workspace_for_root_and_member(
+      json!({
+        "isolate": { "jsr:@std/csv": { "permissions": [] } },
+      }),
+      json!({
+        "isolate": { "jsr:@std/path": { "permissions": ["read"] } },
+      }),
+    );
+    // Only the root's rules count; a member's are reported and ignored.
+    let isolate = workspace_dir.workspace.to_isolate_config().unwrap();
+    assert_eq!(
+      isolate.rules.keys().collect::<Vec<_>>(),
+      vec!["jsr:@std/csv"]
+    );
+    assert_eq!(
+      workspace_dir.workspace.diagnostics(),
+      vec![WorkspaceDiagnostic {
+        kind: WorkspaceDiagnosticKind::RootOnlyOption("isolate"),
+        config_url: url_from_file_path(
+          &root_dir().join("member").join("ende.json")
+        )
+        .unwrap(),
       }]
     );
   }

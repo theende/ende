@@ -1,0 +1,12 @@
+{
+  "tempDir": true,
+  "tests": {
+    // An invalid "isolate" key stops the report (and isn't enforced
+    // either).
+    "npm_matcher": {
+      "args": "audit main.ts",
+      "output": "npm_matcher.out",
+      "exitCode": 1
+    }
+  }
+}

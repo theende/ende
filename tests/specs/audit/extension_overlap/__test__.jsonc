@@ -1,0 +1,13 @@
+{
+  "tempDir": true,
+  "tests": {
+    // A rule inside a local extension's folder would claim code the
+    // extension's own grant governs. Comparing as written can't tell (the
+    // rule doesn't hold the extension's source), so audit checks folders.
+    "rule_inside_an_extension_folder": {
+      "args": "audit main.ts",
+      "output": "rule_inside_an_extension_folder.out",
+      "exitCode": 1
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "extensions": {
+    "@acme/fmt": { "source": "./ext/fmt/mod.ts", "permissions": [] }
+  },
+  "isolate": {
+    "./ext/fmt/vendor/": { "permissions": [] }
+  }
+}

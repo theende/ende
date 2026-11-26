@@ -1,0 +1,2 @@
+Warning "isolate" rules are not enforced yet: sandboxed dependencies still run with the app's permissions.
+error: isolate["npm:chalk"]: npm: packages are not supported. Use a jsr: package, an https: URL or a local folder.

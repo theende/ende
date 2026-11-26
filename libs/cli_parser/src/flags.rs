@@ -338,6 +338,13 @@ pub struct InitFlags {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AuditFlags {
+  /// The entry modules whose graph is audited.
+  pub files: Vec<String>,
+  pub json: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InfoFlags {
   pub json: bool,
   pub file: Option<String>,
@@ -650,6 +657,7 @@ pub struct CleanFlags {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EndeSubcommand {
   Add(AddFlags),
+  Audit(AuditFlags),
   Remove(RemoveFlags),
   Bench(BenchFlags),
   Cache(CacheFlags),

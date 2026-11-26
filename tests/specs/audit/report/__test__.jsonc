@@ -1,0 +1,59 @@
+{
+  "tempDir": true,
+  "tests": {
+    // One entry per JSR package version, per URL or folder rule, per origin
+    // of the other remote modules, and one for the app's own code. The app
+    // has no permissions here, so no sandbox has any either; run and ffi
+    // grants are flagged as able to escape, env and sys as process-wide, and
+    // a rule that matches nothing is listed.
+    "text": {
+      "args": "audit --quiet --cert RootCA.pem --allow-import main.ts",
+      "output": "text.out"
+    },
+    // The same as JSON, for CI. A sandbox gets what both its grant and the
+    // app's flags allow, minus what either denies, and never prompts; code
+    // outside a sandbox may prompt for more.
+    "json": {
+      "args": "audit --quiet --json --cert RootCA.pem --allow-import --allow-read --allow-net=api.example.com:443,other.example.com --deny-net=other.example.com --allow-run=git main.ts",
+      "output": "json.out"
+    },
+    // Nothing is enforced yet, and the report says so.
+    "not_enforced_warning": {
+      "args": "audit --cert RootCA.pem --allow-import main.ts",
+      "output": "[WILDCARD]Warning \"isolate\" rules are not enforced yet: sandboxed dependencies still run with the app's permissions.\n[WILDCARD]"
+    },
+    // Remote and JSR code is pinned once the lockfile records it, and code
+    // that doesn't match the lockfile is reported rather than loaded. The
+    // report never writes the lockfile itself (the text test above found
+    // everything unpinned).
+    "lockfile": {
+      "steps": [
+        {
+          "args": "cache --quiet --cert RootCA.pem --allow-import main.ts",
+          "output": ""
+        },
+        {
+          "args": "audit --quiet --cert RootCA.pem --allow-import main.ts",
+          "output": "lockfile_pinned.out"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit_lock.ts",
+          "output": ""
+        },
+        {
+          "args": "audit --quiet --cert RootCA.pem --allow-import main.ts",
+          "output": "lockfile_mismatch.out"
+        }
+      ]
+    },
+    "no_lockfile": {
+      "args": "audit --quiet --no-lock --cert RootCA.pem --allow-import main.ts",
+      "output": "[WILDCARD]jsr:@endetest/add@1.0.0\n[WILDCARD]  lockfile:     no lockfile\n[WILDCARD]"
+    },
+    "needs_an_entry_module": {
+      "args": "audit",
+      "output": "error: the following required arguments were not provided: files\n",
+      "exitCode": 1
+    }
+  }
+}
