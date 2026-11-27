@@ -1,0 +1,6 @@
+{
+  "tasks": { "build": "sh ./tools/build.sh" },
+  "isolate": {
+    "./sandboxed/": { "permissions": { "write": ["./tools"] } }
+  }
+}

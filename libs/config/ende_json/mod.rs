@@ -55,6 +55,7 @@ pub use isolate::IsolateConfig;
 pub use isolate::IsolateConfigError;
 pub use isolate::IsolateMatcher;
 pub use isolate::IsolateRule;
+pub use isolate::normalized_for_match;
 pub use permissions::AllowDenyIgnorePermissionConfig;
 pub use permissions::AllowDenyIgnorePermissionConfigValue;
 pub use permissions::AllowDenyPermissionConfig;

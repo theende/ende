@@ -109,6 +109,10 @@ pub struct BootstrapOptions {
   pub close_on_idle: bool,
   /// When true, the `OffscreenCanvas` global is removed at bootstrap.
   pub disable_offscreen_canvas: bool,
+  /// For the worker of an extension or a sandbox (or one they start): the
+  /// app's shared origin storage and channels (`caches`,
+  /// `BroadcastChannel`) are removed at bootstrap.
+  pub labelled_worker: bool,
 }
 
 impl Default for BootstrapOptions {
@@ -143,6 +147,7 @@ impl Default for BootstrapOptions {
       otel_config: Default::default(),
       close_on_idle: false,
       disable_offscreen_canvas: false,
+      labelled_worker: false,
     }
   }
 }
@@ -188,6 +193,8 @@ struct BootstrapV8<'a>(
   bool,
   // disable offscreen canvas
   bool,
+  // labelled worker
+  bool,
 );
 
 impl BootstrapOptions {
@@ -219,6 +226,7 @@ impl BootstrapOptions {
       self.is_standalone,
       self.auto_serve,
       self.disable_offscreen_canvas,
+      self.labelled_worker,
     );
 
     bootstrap.serialize(ser).unwrap()

@@ -478,23 +478,6 @@ impl CliOptions {
     for diagnostic in start_dir.workspace.diagnostics() {
       log::warn!("{} {}", colors::yellow("Warning"), diagnostic);
     }
-    // Commands that run the app's code, or audit it, say that `isolate`
-    // rules don't sandbox anything yet.
-    if matches!(
-      flags.subcommand,
-      EndeSubcommand::Run(_)
-        | EndeSubcommand::Serve(_)
-        | EndeSubcommand::Test(_)
-        | EndeSubcommand::Bench(_)
-        | EndeSubcommand::Eval(_)
-        | EndeSubcommand::Repl(_)
-        | EndeSubcommand::Compile(_)
-        | EndeSubcommand::Desktop(_)
-        | EndeSubcommand::Audit(_)
-    ) {
-      crate::isolate::warn_not_enforced(&start_dir.workspace);
-    }
-
     log::debug!("Finished config loading.");
 
     Self::new(flags, initial_cwd, start_dir)
@@ -1197,18 +1180,7 @@ impl CliOptions {
         "declares this app's extensions. Edit it outside the app, then run `ende install`",
       ));
     }
-    let lockfile_path = if self.flags.no_lock {
-      None
-    } else if let Some(lock) = &self.flags.lock {
-      Some(self.initial_cwd.join(lock))
-    } else {
-      self
-        .workspace()
-        .resolve_lockfile_path(&CliSys::default())
-        .ok()
-        .flatten()
-    };
-    if let Some(path) = lockfile_path {
+    if let Some(path) = self.lockfile_path() {
       pinned.push((
         path,
         "pins this app's extensions. Run `ende install` to change it",
@@ -1229,6 +1201,160 @@ impl CliOptions {
       reasons.push((real, reason.to_string()));
     }
     ende_runtime::ende_permissions::set_extension_pinned_paths(reasons);
+  }
+
+  /// The lockfile this run uses, if any.
+  fn lockfile_path(&self) -> Option<PathBuf> {
+    if self.flags.no_lock {
+      None
+    } else if let Some(lock) = &self.flags.lock {
+      Some(self.initial_cwd.join(lock))
+    } else {
+      self
+        .workspace()
+        .resolve_lockfile_path(&CliSys::default())
+        .ok()
+        .flatten()
+    }
+  }
+
+  /// The files and folders Ende reads to set up a run, which could change
+  /// what code runs or how the process is configured, so no sandbox
+  /// (`isolate` in ende.json) or extension may write them, even when
+  /// granted write access: the config files (the workspace's, its members'
+  /// and its links'), the folders of linked packages, the import map
+  /// (named by the flag or the config), the lockfile, the vendor folder,
+  /// `node_modules`, env files, the TLS certificate file, and lint plugin
+  /// files. (The module cache and the compiler options' sources are added
+  /// by the factory, which knows them.)
+  pub fn sandbox_protected_paths(&self) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    for config_file in self.workspace().resolver_ende_jsons() {
+      if let Ok(path) = deno_path_util::url_to_file_path(&config_file.specifier)
+      {
+        paths.push(path);
+      }
+      // Lint plugins are code `ende lint` runs.
+      if let Ok(lint) = config_file.to_lint_config() {
+        for plugin in &lint.options.plugins {
+          if let Ok(url) = plugin.base.join(&plugin.specifier)
+            && url.scheme() == "file"
+            && let Ok(path) = deno_path_util::url_to_file_path(&url)
+          {
+            paths.push(path);
+          }
+        }
+      }
+    }
+    // Linked packages are code the app loads.
+    for url in self.workspace().link_folders().keys() {
+      if let Ok(path) = deno_path_util::url_to_file_path(url) {
+        paths.push(path);
+      }
+    }
+    if let Ok(Some(specifier)) = self.resolve_specified_import_map_specifier()
+      && let Ok(path) = deno_path_util::url_to_file_path(&specifier)
+    {
+      paths.push(path);
+    }
+    // The import map the config's "importMap" names.
+    if let Ok(Some(path)) = self.workspace().to_import_map_path() {
+      paths.push(path);
+    }
+    // Env files can set ENDE_DIR, proxies, auth tokens and certificates.
+    for name in self.env_file_names() {
+      paths.extend(
+        ende_dotenv::candidate_paths(&self.initial_cwd, name)
+          .map(|path| path.into_owned()),
+      );
+    }
+    // The running executable, and the repository's .git folder, whose
+    // hooks git runs with the user's privileges.
+    paths.extend(executable_and_repository_paths(
+      &self.workspace().root_dir_path(),
+    ));
+    // The TLS certificate file, by flag or environment.
+    if let Some(CaData::File(path)) = &self.flags.ca_data {
+      paths.push(self.initial_cwd.join(path));
+    }
+    // (`ENDE_CERT` falls back to `DENO_CERT`.)
+    if let Ok(path) = ende_env::var("ENDE_CERT")
+      && !path.is_empty()
+      && !path.starts_with("base64:")
+    {
+      paths.push(self.initial_cwd.join(path));
+    }
+    paths.extend(self.lockfile_path());
+    paths.extend(self.vendor_dir_path().cloned());
+    // Code the app may load from a `node_modules` folder of the workspace.
+    for url in self.workspace().config_folders().keys() {
+      if let Ok(folder) = deno_path_util::url_to_file_path(url) {
+        paths.push(folder.join("node_modules"));
+      }
+    }
+    paths
+  }
+
+  /// The scripts and programs the tasks of the workspace (root and
+  /// members) run, by task name, as `crate::task_runner::paths_named_by`
+  /// finds them, resolved against the folder of the config that declares
+  /// the task. `ende task` runs them with the user's privileges, so no
+  /// sandbox may write them. Data a task reads or writes isn't listed.
+  pub fn task_named_paths(&self) -> Vec<(String, PathBuf)> {
+    let mut paths = Vec::new();
+    for (url, folder) in self.workspace().config_folders() {
+      let (Some(config), Ok(dir)) =
+        (&folder.ende_json, deno_path_util::url_to_file_path(url))
+      else {
+        continue;
+      };
+      let Ok(Some(tasks)) = config.to_tasks_config() else {
+        continue;
+      };
+      for (name, task) in &tasks {
+        if let Some(command) = &task.command {
+          paths.extend(
+            crate::task_runner::paths_named_by(command, &dir)
+              .into_iter()
+              .map(|path| (name.clone(), path)),
+          );
+        }
+      }
+    }
+    paths
+  }
+
+  /// What each sandbox's and extension's scoped write grant names, by who
+  /// holds it (`isolate["…"]` or `extension "…"`). An unscoped extension
+  /// grant is left out: it covers everything, and the install notice says
+  /// it can escape.
+  pub fn labelled_write_grants(&self) -> Vec<(String, PathBuf)> {
+    let mut grants = Vec::new();
+    if let Ok(config) = self.workspace().to_isolate_config() {
+      for (matcher, rule) in &config.rules {
+        if let Ok(grant) =
+          extension_grant_permissions_options(&rule.permissions)
+        {
+          for entry in grant.allow_write.iter().flatten() {
+            grants
+              .push((format!("isolate[\"{matcher}\"]"), PathBuf::from(entry)));
+          }
+        }
+      }
+    }
+    if let Ok(extensions) = self.workspace().to_extensions_config() {
+      for (name, extension) in &extensions.extensions {
+        if let Ok(grant) =
+          extension_grant_permissions_options(&extension.permissions)
+        {
+          for entry in grant.allow_write.iter().flatten() {
+            grants
+              .push((format!("extension \"{name}\""), PathBuf::from(entry)));
+          }
+        }
+      }
+    }
+    grants
   }
 
   fn augment_import_permissions(&self, options: &mut PermissionsOptions) {
@@ -1789,6 +1915,31 @@ fn flags_to_permissions_options(
 /// The permissions an app grants an extension in ende.json
 /// (`extensions["@scope/name"].permissions`), with relative paths resolved
 /// against the config file. Never prompts.
+/// The running executable (with symlinks resolved), and the `.git` of the
+/// repository holding `root` (the first one up from it, and the folder a
+/// `.git` file points at), which no sandbox or extension may write.
+#[allow(clippy::disallowed_methods, reason = "finding what Ende must protect")]
+pub fn executable_and_repository_paths(root: &Path) -> Vec<PathBuf> {
+  let mut paths = Vec::new();
+  if let Ok(exe) = std::env::current_exe() {
+    paths.push(std::fs::canonicalize(&exe).unwrap_or(exe));
+  }
+  for dir in root.ancestors() {
+    let git = dir.join(".git");
+    if let Ok(metadata) = std::fs::symlink_metadata(&git) {
+      if metadata.is_file()
+        && let Ok(text) = std::fs::read_to_string(&git)
+        && let Some(target) = text.trim().strip_prefix("gitdir:")
+      {
+        paths.push(dir.join(target.trim()));
+      }
+      paths.push(git);
+      break;
+    }
+  }
+  paths
+}
+
 pub fn extension_grant_permissions_options(
   grant: &ExtensionPermissions,
 ) -> Result<PermissionsOptions, AnyError> {
@@ -1845,6 +1996,31 @@ fn augment_permissions_with_serve_flags(
 
 #[cfg(test)]
 mod test {
+  #[test]
+  #[allow(clippy::disallowed_methods, reason = "test fixtures on disk")]
+  fn the_executable_and_the_repository_are_protected() {
+    let dir = tempfile::tempdir().unwrap();
+    let repo = dir.path().canonicalize().unwrap();
+    std::fs::create_dir_all(repo.join(".git").join("hooks")).unwrap();
+    let root = repo.join("app").join("sub");
+    std::fs::create_dir_all(&root).unwrap();
+    let paths = executable_and_repository_paths(&root);
+    let exe = std::env::current_exe().unwrap().canonicalize().unwrap();
+    assert!(paths.contains(&exe), "{paths:?}");
+    assert!(paths.contains(&repo.join(".git")), "{paths:?}");
+    // A worktree's `.git` file points at the real folder.
+    let worktree = repo.join("worktree");
+    std::fs::create_dir_all(&worktree).unwrap();
+    std::fs::write(worktree.join(".git"), "gitdir: ../.git/worktrees/w\n")
+      .unwrap();
+    let paths = executable_and_repository_paths(&worktree);
+    assert!(paths.contains(&worktree.join(".git")), "{paths:?}");
+    assert!(
+      paths.contains(&worktree.join("../.git/worktrees/w")),
+      "{paths:?}"
+    );
+  }
+
   use ende_config::ende_json::AllowDenyIgnorePermissionConfig;
   use ende_config::ende_json::AllowDenyPermissionConfig;
   use ende_config::ende_json::PermissionsObject;

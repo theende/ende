@@ -1,8 +1,8 @@
 // Copyright 2018-2026 the Ende authors. MIT license.
 
 //! Per-package permissions (`isolate` in ende.json): which modules of a graph
-//! fall under which rule. Nothing is enforced yet; `ende audit` reports the
-//! classification.
+//! fall under which rule (`ende audit` reports it), and the sandboxes that
+//! run them (`sandbox`).
 //!
 //! Modules are matched by their resolved specifier, the one the graph holds
 //! after the import map, so a remapped import can't skip its sandbox
@@ -11,21 +11,31 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
 
 use deno_graph::ModuleGraph;
 use deno_graph::source::recommended_registry_package_url_to_nv;
 use deno_path_util::url_to_file_path;
-use deno_terminal::colors;
 use ende_config::ende_json::ExtensionsConfig;
 use ende_config::ende_json::IsolateConfig;
 use ende_config::ende_json::IsolateConfigError;
 use ende_config::ende_json::IsolateMatcher;
-use ende_config::workspace::Workspace;
+use ende_config::ende_json::normalized_for_match;
 use ende_core::ModuleSpecifier;
 use ende_core::url::Url;
 use sys_traits::FsCanonicalize;
+
+mod exports;
+mod sandbox;
+
+pub use exports::Requested;
+pub use sandbox::CliSandboxWorkerProvider;
+pub use sandbox::ENTRY_SCHEME;
+pub use sandbox::ISOLATE_SCHEME;
+pub use sandbox::SandboxRegistry;
+pub use sandbox::entry_module_code;
+pub use sandbox::parse_entry_specifier;
+pub use sandbox::parse_proxy_specifier;
+pub use sandbox::proxy_specifier;
 
 /// A sandbox: the index of its rule in `IsolateConfig::rules`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -79,11 +89,7 @@ pub fn classify(
   jsr_url: &Url,
   sys: &impl FsCanonicalize,
 ) -> Classification {
-  let rules = config
-    .rules
-    .values()
-    .map(|rule| Rule::new(&rule.matcher, sys))
-    .collect::<Vec<_>>();
+  let classifier = Classifier::new(config, jsr_url, sys);
   // Every name of each module: its final specifier, then the specifiers
   // that redirect to it.
   let mut names: BTreeMap<&ModuleSpecifier, Vec<&ModuleSpecifier>> =
@@ -102,25 +108,135 @@ pub fn classify(
   }
   let mut sandboxes = BTreeMap::new();
   for (specifier, names) in names {
-    let names = names
-      .into_iter()
-      .map(|name| (name, paths_of(name, sys)))
-      .collect::<Vec<_>>();
-    if let Some(index) = rules.iter().position(|rule| {
-      names
-        .iter()
-        .any(|(name, paths)| rule.matches(name, paths, jsr_url))
-    }) {
-      sandboxes.insert(specifier.clone(), SandboxId(index));
+    if let Some(id) =
+      classifier.first_match(names.into_iter(), &|url| paths_of(url, sys))
+    {
+      sandboxes.insert(specifier.clone(), id);
     }
   }
-  let unmatched = (0..rules.len())
+  let unmatched = (0..classifier.rules.len())
     .map(SandboxId)
     .filter(|id| !sandboxes.values().any(|matched| matched == id))
     .collect();
   Classification {
     sandboxes,
     unmatched,
+  }
+}
+
+/// The rules of an `isolate` config, ready to match modules one by one.
+pub struct Classifier {
+  rules: Vec<Rule>,
+  jsr_url: Url,
+}
+
+impl Classifier {
+  pub fn new(
+    config: &IsolateConfig,
+    jsr_url: &Url,
+    sys: &impl FsCanonicalize,
+  ) -> Self {
+    Self {
+      rules: config
+        .rules
+        .values()
+        .map(|rule| Rule::new(&rule.matcher, sys))
+        .collect(),
+      jsr_url: jsr_url.clone(),
+    }
+  }
+
+  /// The sandbox of the module `specifier` resolves to in `graph`, as
+  /// [`classify`] puts it: matched by its final specifier or by any that
+  /// redirects to it. A module not in the graph (yet) is matched by
+  /// `specifier` alone. `paths` gives a `file:` URL's paths, as written and
+  /// with symlinks resolved (see [`paths_of`]).
+  pub fn sandbox_of(
+    &self,
+    graph: &ModuleGraph,
+    specifier: &ModuleSpecifier,
+    paths: &dyn Fn(&Url) -> Vec<PathBuf>,
+  ) -> Option<SandboxId> {
+    let target = graph.resolve(specifier);
+    let mut names = vec![target];
+    if target != specifier {
+      names.push(specifier);
+    }
+    for from in graph.redirects.keys() {
+      if graph.resolve(from) == target && !names.contains(&from) {
+        names.push(from);
+      }
+    }
+    self.first_match(names.into_iter(), paths)
+  }
+
+  /// The lowest-numbered rule that matches any of `names`.
+  fn first_match<'a>(
+    &self,
+    names: impl Iterator<Item = &'a ModuleSpecifier>,
+    paths: &dyn Fn(&Url) -> Vec<PathBuf>,
+  ) -> Option<SandboxId> {
+    let names = names
+      .map(|name| {
+        let name_paths = if self.has_folder_rules() {
+          paths(name)
+        } else {
+          Vec::new()
+        };
+        (name, name_paths)
+      })
+      .collect::<Vec<_>>();
+    self
+      .rules
+      .iter()
+      .position(|rule| {
+        names
+          .iter()
+          .any(|(name, paths)| rule.matches(name, paths, &self.jsr_url))
+      })
+      .map(SandboxId)
+  }
+
+  fn has_folder_rules(&self) -> bool {
+    self
+      .rules
+      .iter()
+      .any(|rule| matches!(rule.matcher, IsolateMatcher::Folder(_)))
+  }
+
+  /// The folder of rule `id` with symlinks resolved, if it is a folder rule
+  /// (and exists).
+  pub fn canonical_folder(
+    &self,
+    id: SandboxId,
+    sys: &impl FsCanonicalize,
+  ) -> Option<PathBuf> {
+    let rule = self.rules.get(id.0)?;
+    let IsolateMatcher::Folder(folder) = &rule.matcher else {
+      return None;
+    };
+    let path = url_to_file_path(folder).ok()?;
+    sys.fs_canonicalize(&path).ok()
+  }
+
+  /// Whether rule `id` is a folder rule.
+  pub fn is_folder_rule(&self, id: SandboxId) -> bool {
+    self
+      .rules
+      .get(id.0)
+      .is_some_and(|rule| matches!(rule.matcher, IsolateMatcher::Folder(_)))
+  }
+
+  /// The folders of the folder rules other than `except`, as written and
+  /// with symlinks resolved.
+  pub fn other_folders(&self, except: SandboxId) -> Vec<PathBuf> {
+    self
+      .rules
+      .iter()
+      .enumerate()
+      .filter(|(index, _)| *index != except.0)
+      .flat_map(|(_, rule)| rule.folder_paths.iter().cloned())
+      .collect()
   }
 }
 
@@ -177,7 +293,7 @@ pub fn check_extensions(
       });
       if rule.matches(&extension.source, &source_paths, jsr_url)
         || jsr_source_overlaps_url_rule(
-          rule.matcher,
+          &rule.matcher,
           &extension.source,
           jsr_url,
         )
@@ -230,38 +346,20 @@ fn jsr_source_overlaps_url_rule(
   }
 }
 
-/// Whether the "not enforced yet" warning was printed in this process.
-static NOT_ENFORCED_WARNED: AtomicBool = AtomicBool::new(false);
-
-/// Prints, once per process, that `isolate` rules aren't enforced yet, when
-/// the workspace root declares any (or an `isolate` key that doesn't
-/// parse): code under them still runs with the app's permissions.
-pub fn warn_not_enforced(workspace: &Workspace) {
-  let declared = match workspace.to_isolate_config() {
-    Ok(config) => !config.rules.is_empty(),
-    Err(_) => true,
-  };
-  if declared && !NOT_ENFORCED_WARNED.swap(true, Ordering::Relaxed) {
-    log::warn!("{} {}", colors::yellow("Warning"), NOT_ENFORCED_WARNING);
-  }
-}
-
-pub const NOT_ENFORCED_WARNING: &str = "\"isolate\" rules are not enforced yet: sandboxed dependencies still run with the app's permissions.";
-
-struct Rule<'a> {
-  matcher: &'a IsolateMatcher,
+struct Rule {
+  matcher: IsolateMatcher,
   /// For a folder: its path as written and with symlinks resolved.
   folder_paths: Vec<PathBuf>,
 }
 
-impl<'a> Rule<'a> {
-  fn new(matcher: &'a IsolateMatcher, sys: &impl FsCanonicalize) -> Self {
+impl Rule {
+  fn new(matcher: &IsolateMatcher, sys: &impl FsCanonicalize) -> Self {
     let folder_paths = match matcher {
       IsolateMatcher::Folder(folder) => paths_of(folder, sys),
       _ => Vec::new(),
     };
     Self {
-      matcher,
+      matcher: matcher.clone(),
       folder_paths,
     }
   }
@@ -272,12 +370,17 @@ impl<'a> Rule<'a> {
     module_paths: &[PathBuf],
     jsr_url: &Url,
   ) -> bool {
-    match self.matcher {
+    match &self.matcher {
       // A `jsr:` specifier is in the graph only when its package failed
-      // to load.
+      // to load (or, while running, before a dynamic import loads it).
+      // Another spelling of a registry URL is the same package.
       IsolateMatcher::JsrPackage(name) => {
-        recommended_registry_package_url_to_nv(jsr_url, specifier)
-          .is_some_and(|nv| nv.name.as_str() == name)
+        [specifier.clone(), normalized_for_match(specifier)]
+          .iter()
+          .any(|specifier| {
+            recommended_registry_package_url_to_nv(jsr_url, specifier)
+              .is_some_and(|nv| nv.name.as_str() == name)
+          })
           || self.matcher.matches_specifier(specifier)
       }
       IsolateMatcher::UrlPrefix(_) | IsolateMatcher::Url(_) => {
@@ -295,7 +398,7 @@ impl<'a> Rule<'a> {
 
 /// The path of a `file:` URL as written, then with symlinks resolved if
 /// that differs. Empty for other URLs.
-fn paths_of(url: &Url, sys: &impl FsCanonicalize) -> Vec<PathBuf> {
+pub fn paths_of(url: &Url, sys: &impl FsCanonicalize) -> Vec<PathBuf> {
   if url.scheme() != "file" {
     return Vec::new();
   }
@@ -665,6 +768,117 @@ mod test {
       Some(&SandboxId(0))
     );
     assert_eq!(classification.sandboxes.len(), 4);
+  }
+
+  #[tokio::test]
+  async fn one_module_is_classified_as_the_whole_graph_is() {
+    let base = Url::parse("file:///app/ende.json").unwrap();
+    let loader = MemoryLoader::new(
+      vec![
+        (
+          "file:///app/main.ts".to_string(),
+          Source::Module {
+            specifier: "file:///app/main.ts".to_string(),
+            maybe_headers: None,
+            content: "import 'https://short.test/c.js';".to_string(),
+          },
+        ),
+        (
+          "https://short.test/c.js".to_string(),
+          Source::Redirect("https://cdn.example.com/lib/c.js".to_string()),
+        ),
+        (
+          "https://cdn.example.com/lib/c.js".to_string(),
+          Source::Module {
+            specifier: "https://cdn.example.com/lib/c.js".to_string(),
+            maybe_headers: None,
+            content: String::new(),
+          },
+        ),
+      ],
+      Vec::new(),
+    );
+    let analyzer = deno_graph::ast::CapturingModuleAnalyzer::default();
+    let mut graph = ModuleGraph::new(GraphKind::CodeOnly);
+    graph
+      .build(
+        vec![Url::parse("file:///app/main.ts").unwrap()],
+        Vec::new(),
+        &loader,
+        deno_graph::BuildOptions {
+          module_analyzer: &analyzer,
+          ..Default::default()
+        },
+      )
+      .await;
+    let config = config(
+      json!({ "https://cdn.example.com/lib/": { "permissions": [] } }),
+      &base,
+    );
+    let sys = CliSys::default();
+    let classifier = Classifier::new(&config, &jsr_url(), &sys);
+    let sandbox_of = |specifier: &str| {
+      classifier.sandbox_of(&graph, &Url::parse(specifier).unwrap(), &|url| {
+        paths_of(url, &sys)
+      })
+    };
+    // By the URL that redirects to it, and by its final URL.
+    assert_eq!(sandbox_of("https://short.test/c.js"), Some(SandboxId(0)));
+    assert_eq!(
+      sandbox_of("https://cdn.example.com/lib/c.js"),
+      Some(SandboxId(0))
+    );
+    // A module not loaded yet, by its own name.
+    assert_eq!(
+      sandbox_of("https://cdn.example.com/lib/later.js"),
+      Some(SandboxId(0))
+    );
+    assert_eq!(sandbox_of("file:///app/main.ts"), None);
+    assert_eq!(sandbox_of("https://other.test/x.js"), None);
+  }
+
+  #[test]
+  fn other_spellings_of_a_sandboxed_url_still_match() {
+    let base = Url::parse("file:///app/ende.json").unwrap();
+    let config = config(
+      json!({
+        "https://cdn.example.com/lib/": { "permissions": [] },
+        "https://cdn.example.com/one/x.ts": { "permissions": [] },
+        "jsr:@std/csv": { "permissions": [] },
+      }),
+      &base,
+    );
+    let sys = CliSys::default();
+    let classifier = Classifier::new(&config, &jsr_url(), &sys);
+    let graph = ModuleGraph::new(GraphKind::CodeOnly);
+    let sandbox_of = |specifier: &str| {
+      classifier
+        .sandbox_of(&graph, &Url::parse(specifier).unwrap(), &|_| Vec::new())
+    };
+    for (specifier, id) in [
+      ("https://cdn.example.com/lib/a.ts", 0),
+      ("https://cdn.example.com/%6cib/a.ts", 0),
+      ("https://cdn.example.com/%6Cib/a.ts", 0),
+      ("https://cdn.example.com//lib/a.ts", 0),
+      ("https://cdn.example.com/lib//a.ts", 0),
+      ("https://cdn.example.com/one/x.ts?v=1", 1),
+      ("https://cdn.example.com/one/x.ts#frag", 1),
+      ("https://cdn.example.com/one//x.ts", 1),
+      ("https://cdn.example.com/one/%78.ts", 1),
+      ("https://registry.test/@std/%63sv/1.0.0/mod.ts", 2),
+      ("https://registry.test/@std//csv/1.0.0/mod.ts", 2),
+    ] {
+      assert_eq!(sandbox_of(specifier), Some(SandboxId(id)), "{specifier}");
+    }
+    for specifier in [
+      "https://cdn.example.com/library/a.ts",
+      "https://cdn.example.com/one/x.tsx",
+      // An encoded slash is a different path.
+      "https://cdn.example.com/lib%2Fa.ts",
+      "https://registry.test/@std/csvx/1.0.0/mod.ts",
+    ] {
+      assert_eq!(sandbox_of(specifier), None, "{specifier}");
+    }
   }
 
   #[tokio::test]

@@ -1,0 +1,53 @@
+{
+  "tempDir": true,
+  "tests": {
+    // A path a task names is code Ende runs with the user's privileges, so
+    // a write grant holding it is refused...
+    "grant_holding_a_task_script": {
+      "args": "run --quiet src/main.ts",
+      "output": "[WILDCARD]isolate[\"./sandboxed/\"] may write [WILDCARD]tools, which holds [WILDCARD]build.sh[WILDCARD]",
+      "exitCode": 1
+    },
+    // ...and `ende task` won't run a task whose script a sandbox may write.
+    "task_script_a_sandbox_may_write": {
+      "args": "task build",
+      "output": "[WILDCARD]Task \"build\" runs [WILDCARD]build.sh, which isolate[\"./sandboxed/\"] may write[WILDCARD]",
+      "exitCode": 1
+    },
+    // What a task only reads or writes is data: a grant may cover it.
+    "task_data_a_sandbox_may_write": {
+      "steps": [
+        {
+          "args": "run --quiet --config clean.json src/main.ts",
+          "output": "pong\n"
+        },
+        {
+          "args": "task --quiet --config clean.json clean",
+          "output": ""
+        },
+        {
+          "args": "eval --no-config console.log(Ende.readTextFileSync('clean.log').trim())",
+          "output": "cleaned\n"
+        }
+      ]
+    },
+    // The repository's .git folder runs hooks with the user's privileges.
+    "grant_inside_the_git_folder": {
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Ende.mkdirSync('.git/hooks', { recursive: true })"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --config git.json src/main.ts",
+          "output": "[WILDCARD]isolate[\"./sandboxed/\"] may write [WILDCARD]hooks, which is inside [WILDCARD].git[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+./vendor/none/mod.ts -> sandboxed: NotCapable
+./vendor/none/mod.ts?x=1 -> sandboxed: NotCapable
+./vendor/none/mod.ts#h -> sandboxed: NotCapable
+./vendor/none/./mod.ts -> sandboxed: NotCapable
+./vendor//none/mod.ts -> sandboxed: NotCapable
+./vendor/none/%6dod.ts -> sandboxed: NotCapable
+./vendor/%6eone/mod.ts -> sandboxed: NotCapable
+./other/link/mod.ts -> sandboxed: NotCapable
+./Vendlink/none/mod.ts -> sandboxed: NotCapable
+./other/../vendor/none/mod.ts -> sandboxed: NotCapable
+alias/mod.ts -> sandboxed: NotCapable
+@lib -> sandboxed: NotCapable
+<file URL> -> sandboxed: NotCapable
+<file URL> -> sandboxed: NotCapable
+[WILDCARD]

@@ -1,0 +1,5 @@
+{
+  "isolate": {
+    "./sandboxed/": { "permissions": { "write": ["./data"] } }
+  }
+}

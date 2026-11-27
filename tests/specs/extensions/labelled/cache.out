@@ -1,0 +1,4 @@
+Recorded extension "@acme/cache" in ende.lock; it will run with: write [WILDCARD]
+vendor/jsr.io/evil.ts: NotCapable: @acme/cache: Requires write access to "vendor/jsr.io/evil.ts", which [WILDCARD]
+cache/gen/evil.js: NotCapable: @acme/cache: Requires write access to "cache/gen/evil.js", which [WILDCARD]
+.git/hooks/pre-commit: NotCapable: @acme/cache: Requires write access to ".git/hooks/pre-commit", which [WILDCARD]

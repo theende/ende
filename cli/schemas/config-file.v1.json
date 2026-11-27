@@ -1278,7 +1278,7 @@
     },
     "isolate": {
       "type": "object",
-      "description": "Dependencies to run in a sandbox of their own, with only the permissions granted here (never more than the program has). Keys match resolved modules: jsr:@scope/name (every version and entry), an https: URL (ending in / for every module under it), or a folder relative to this file starting with ./ or ../ and ending in /. Workspace root only. Not enforced yet: `ende audit` reports what each rule matches.",
+      "description": "Dependencies to run in a sandbox of their own, with only the permissions granted here (never more than the program has). Keys match resolved modules: jsr:@scope/name (every version and entry), an https: URL (ending in / for every module under it), or a folder relative to this file starting with ./ or ../ and ending in /. Workspace root only. Only functions and structured-clonable constants cross into the app (functions are called async); `ende audit` reports what each rule matches. A write grant makes its folders untrusted for anything run outside Ende: Ende never loads code from them and refuses grants over what it reads or runs itself (config, lockfile, import map, env files, task scripts, its own binary, the repository's .git), but other tools that read or run files there aren't guarded.",
       "propertyNames": {
         "pattern": "^(https:|file:|jsr:@|\\./|\\.\\./)"
       },

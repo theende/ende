@@ -1,0 +1,10 @@
+{
+  "isolate": {
+    "./sandboxed/": {
+      "permissions": {
+        "read": ["./out", "./linked"],
+        "write": ["./out", "./linked"]
+      }
+    }
+  }
+}

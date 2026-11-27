@@ -1,0 +1,4 @@
+{
+  "isolate": { "./vendor/none/": { "permissions": [] } },
+  "imports": { "alias/": "./vendor/none/", "@lib": "./vendor/none/mod.ts" }
+}

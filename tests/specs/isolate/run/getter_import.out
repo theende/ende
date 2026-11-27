@@ -1,0 +1,1 @@
+[WILDCARD]Cannot import "withGetter" from "[WILDCARD]/vendor/none/mod.ts": it is a value with a getter or setter ("value"), which can't leave the sandbox of isolate["./vendor/none/"].[WILDCARD]

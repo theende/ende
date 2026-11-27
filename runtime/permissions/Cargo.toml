@@ -31,11 +31,9 @@ serde.workspace = true
 serde_json.workspace = true
 sys_traits.workspace = true
 thiserror.workspace = true
+unicode-normalization = { workspace = true }
 url.workspace = true
 which.workspace = true
-
-[target.'cfg(target_os = "macos")'.dependencies]
-unicode-normalization = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 dunce.workspace = true

@@ -1,0 +1,19 @@
+{
+  "workspace": ["./member"],
+  "isolate": {
+    "./vendor/none/": { "permissions": [] },
+    "./vendor/writer/": {
+      "permissions": {
+        "read": ["./vendor/writer", "./out"],
+        "write": ["./out", "./nested", "./vendor/writer"]
+      }
+    },
+    "./vendor/linked/": { "permissions": { "read": ["./vendor/linked"] } },
+    "./vendor/then/": { "permissions": [] },
+    "./vendor/shipped/": {
+      "permissions": { "read": ["./vendor/shipped"] }
+    },
+    "https://localhost:5545/subdir/print_hello.ts": { "permissions": [] },
+    "https://localhost:5545/run/extension_lockfile/": { "permissions": [] }
+  }
+}

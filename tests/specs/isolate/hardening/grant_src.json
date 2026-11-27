@@ -1,0 +1,1 @@
+{ "isolate": { "./vendor/none/": { "permissions": { "write": ["./src"] } } } }

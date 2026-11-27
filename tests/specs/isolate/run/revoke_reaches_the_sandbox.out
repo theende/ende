@@ -1,0 +1,2 @@
+before: "secret\n"
+after: NotCapable: ./vendor/probe/: Requires read access to "secret.txt", which the app itself isn't allowed. isolate["./vendor/probe/"] can only narrow the app's permissions; run again with the --allow-read flag

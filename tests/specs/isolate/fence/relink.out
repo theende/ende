@@ -1,0 +1,6 @@
+write linked/y.ts: ok
+remove linked: ok
+mkdir linked: ok
+write linked/x.ts: ok
+linked/x.ts: refused: "[WILDCARD]linked/x.ts" is in [WILDCARD], which isolate["./sandboxed/"] may write, and the app never loads code from a folder a sandbox or extension can write
+store/y.ts: refused: "[WILDCARD]store/y.ts" is in [WILDCARD], which isolate["./sandboxed/"] may write, and the app never loads code from a folder a sandbox or extension can write

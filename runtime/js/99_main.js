@@ -744,6 +744,11 @@ ObjectAssign(internals, { core: userVisibleCore });
 // an extension the app declares (op_create_extension_worker).
 internals.extensions = core.loadExtScript("ext:runtime/11_workers.js")
   .extensions;
+// Used by the generated proxy module of an import of a sandboxed package
+// (`isolate` in ende.json); likewise main-thread only
+// (op_create_sandbox_worker).
+internals.sandboxes = core.loadExtScript("ext:runtime/11_workers.js")
+  .sandboxes;
 const internalSymbol = Symbol("Deno.internal");
 // `Ende.test` and its sub-methods are no-ops outside of `ende test`, kept for
 // compatibility so they don't error under `ende run`. Mirrors the surface of
@@ -1112,6 +1117,7 @@ function bootstrapWorkerRuntime(
       10: otelConfig,
       12: standalone,
       14: disableOffscreenCanvas,
+      15: labelledWorker,
     } = runtimeOptions;
 
     endeNs.build.standalone = standalone;
@@ -1142,6 +1148,14 @@ function bootstrapWorkerRuntime(
     });
     if (disableOffscreenCanvas) {
       delete globalThis.OffscreenCanvas;
+    }
+    // An extension's or a sandbox's worker shares no origin storage or
+    // channels with the app (Ende only; its Rust side has none either).
+    if (labelledWorker) {
+      delete globalThis.caches;
+      delete globalThis.CacheStorage;
+      delete globalThis.Cache;
+      delete globalThis.BroadcastChannel;
     }
     if (enableTestingFeaturesFlag) {
       ObjectDefineProperty(

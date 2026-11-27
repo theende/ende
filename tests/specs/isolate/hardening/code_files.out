@@ -1,0 +1,7 @@
+write tool.ts: "written"
+write helper: "written"
+write x.txt: "written"
+load tool.ts: TypeError: [WILDCARD]out/tool.ts" is in [WILDCARD]out, which isolate["./vendor/writer/"] may write, and the app never loads code from a folder a sandbox or extension can write[WILDCARD]
+load helper: TypeError: [WILDCARD]out/helper" is in [WILDCARD]out, which isolate["./vendor/writer/"] may write[WILDCARD]
+load x.txt: TypeError: [WILDCARD]out/x.txt" is in [WILDCARD]out, which isolate["./vendor/writer/"] may write[WILDCARD]
+[WILDCARD]

@@ -1,0 +1,202 @@
+{
+  "tempDir": true,
+  "tests": {
+    // `"permissions": []` gets nothing, even with the app running with -A,
+    // and the denial names the rule and where to grant it.
+    "empty_grant_under_allow_all": {
+      "args": "run --quiet -A empty_grant.ts",
+      "output": "empty_grant_under_allow_all.out"
+    },
+    // A sandboxed function is called async; without an `isolate` key the
+    // same code runs in the app, unchanged.
+    "calls_are_async": {
+      "args": "run --quiet -A plain_call.ts",
+      "output": "true\nNotCapable\n"
+    },
+    "no_isolate_key": {
+      "args": "run --quiet -A --config no_isolate.json plain_call.ts",
+      "output": "false\nsecret\n"
+    },
+    // A grant wider than the app warns once at start and is denied at call
+    // time: a sandbox never gets more than the app.
+    "grant_beyond_the_app": {
+      "args": "run --allow-read wide.ts",
+      "output": "grant_beyond_the_app.out"
+    },
+    "grant_within_the_app": {
+      "args": "run --quiet --allow-read --allow-env wide.ts",
+      "output": "read data: \"data\"\nenv: true\n"
+    },
+    // The app's revoke after the sandbox started reaches it.
+    "revoke_reaches_the_sandbox": {
+      "args": "run --quiet --allow-read revoke.ts",
+      "output": "revoke_reaches_the_sandbox.out"
+    },
+    // So does a test's own narrowing of the app, in `ende test`.
+    "test_permissions_reach_the_sandbox": {
+      "args": "test --quiet --allow-read sandbox_test.ts",
+      "output": "[WILDCARD]ok | 2 passed | 0 failed[WILDCARD]"
+    },
+    // Neither side sees the other's prototype pollution.
+    "prototype_pollution": {
+      "args": "run --quiet pollution.ts",
+      "output": "polluted\nclean 2\nclean\n"
+    },
+    // The sandbox can't reach the app's resources by guessing their ids.
+    "rid_guessing": {
+      "args": "run --quiet --allow-read rids.ts",
+      "output": "app [\"secret\\n\"]\nsandbox []\n"
+    },
+    // Raw ops give no way around the checks: the gated ones aren't
+    // reachable, and a worker the sandbox starts is held to its permissions.
+    "raw_ops": {
+      "args": "run --quiet -A raw_ops.ts",
+      "output": "gated ops reachable: 0\nTypeError\n"
+    },
+    "sandbox_worker": {
+      "args": "run --quiet -A sub_worker.ts",
+      "output": "NotCapable: ./vendor/none/: Requires read access to \"secret.txt\"; grant it in ende.json under isolate[\"./vendor/none/\"].permissions.read\n"
+    },
+    // A sandbox may start a worker from its own modules; it runs in the
+    // sandbox too.
+    "worker_of_its_own": {
+      "args": "run --quiet -A own_worker.ts",
+      "output": "1 NotCapable\n"
+    },
+    // Code a sandbox writes into its own folder may run there, but can't
+    // load the app's modules without the sandbox's own read access.
+    "written_code_stays_inside": {
+      "args": "run --quiet -A own_code.ts",
+      "output": "written_code_stays_inside.out"
+    },
+    // A broker's "allow" can't widen a sandbox.
+    "broker_allow_does_not_widen": {
+      "if": "unix",
+      "args": "run --quiet -A broker.ts",
+      "output": "broker_allow_does_not_widen.out"
+    },
+    // Even with write granted, a sandbox can't write the app's config,
+    // lockfile or code, nor another sandbox's; elsewhere it can.
+    "protected_writes": {
+      "args": "run --quiet --allow-read --allow-write writes.ts",
+      "output": "protected_writes.out"
+    },
+    // Nor through a symlink in a folder it may write.
+    "protected_write_through_a_symlink": {
+      "if": "unix",
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Ende.symlinkSync('../../write_link.ts', 'vendor/probe/link.ts')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-write write_link.ts",
+          "output": "protected_write_through_a_symlink.out"
+        }
+      ]
+    },
+    // Exports that can't cross are an error at the import, naming them.
+    "class_import": {
+      "args": "run --quiet class_import.ts",
+      "output": "class_import.out",
+      "exitCode": 1
+    },
+    "let_import": {
+      "args": "run --quiet let_import.ts",
+      "output": "let_import.out",
+      "exitCode": 1
+    },
+    // One whose kind shows only when the sandbox runs too.
+    "getter_import": {
+      "args": "run --quiet runtime_kind.ts",
+      "output": "getter_import.out",
+      "exitCode": 1
+    },
+    // Type-only imports of a class are gone from the code that runs.
+    "type_only_import": {
+      "args": "run --quiet type_only.ts",
+      "output": "hello types undefined\n"
+    },
+    // A thrown error keeps its class.
+    "errors_keep_their_class": {
+      "args": "run --quiet errors.ts",
+      "output": "errors_keep_their_class.out"
+    },
+    // A root is transferred, and carries no authority yet.
+    "root_transfer": {
+      "args": "run --quiet --unstable-fs --allow-read root.ts",
+      "output": "root.out"
+    },
+    "nested_rules": {
+      "args": "run --quiet nested.ts",
+      "output": "nested_rules.out",
+      "exitCode": 1
+    },
+    "default_export_and_constants": {
+      "args": "run --quiet defaults.ts",
+      "output": "hello world 1.2.3 {\"rows\":10,\"columns\":[\"a\",\"b\"]}\n"
+    },
+    // `import *` and `import()` see only what can cross; an export whose
+    // kind shows only when the sandbox runs makes a namespace import fail.
+    "namespace_and_dynamic_imports": {
+      "args": "run --quiet namespace.ts",
+      "output": "namespace_and_dynamic_imports.out"
+    },
+    // Two entries of one sandbox share its worker.
+    "entries_share_a_worker": {
+      "args": "run --quiet shared.ts",
+      "output": "1 2 3\n"
+    },
+    // A jsr: rule covers every entry of the package; the packages it imports
+    // load inside its sandbox.
+    "jsr_package": {
+      "args": "run --quiet jsr.ts",
+      "output": "true 3 1\n"
+    },
+    // The app reads a sandbox's JSON as data; the sandbox needs read access
+    // for data outside its folder.
+    "json_modules": {
+      "args": "run --quiet -A json.ts",
+      "output": "json_modules.out"
+    },
+    // Sandboxed code runs only behind its proxy, in the main thread.
+    "app_worker_import": {
+      "args": "run --quiet -A app_worker.ts",
+      "output": "app_worker_import.out"
+    },
+    "main_module_in_a_sandbox": {
+      "args": "run --quiet vendor/none/mod.ts",
+      "output": "main_module_in_a_sandbox.out",
+      "exitCode": 1
+    },
+    // Every command that runs code enforces the rules.
+    "eval": {
+      "args": [
+        "eval",
+        "--quiet",
+        "-A",
+        "const { read } = await import('./vendor/none/reader.ts'); try { await read('secret.txt'); } catch (e) { console.log(e.message); }"
+      ],
+      "output": "./vendor/none/: Requires read access to \"secret.txt\"; grant it in ende.json under isolate[\"./vendor/none/\"].permissions.read\n"
+    },
+    "bench": {
+      "args": "bench --quiet --allow-read sandbox_bench.ts",
+      "output": "./vendor/none/: Requires read access to \"secret.txt\"; grant it in ende.json under isolate[\"./vendor/none/\"].permissions.read\n[WILDCARD]call[WILDCARD]"
+    },
+    // A compiled app can't enforce them, so it refuses them.
+    "compile": {
+      "args": "compile --quiet --output app defaults.ts",
+      "output": "compile.out",
+      "exitCode": 1
+    },
+    // A rule that matches nothing says so.
+    "unmatched_rule": {
+      "args": "run defaults.ts",
+      "output": "unmatched_rule.out"
+    }
+  }
+}

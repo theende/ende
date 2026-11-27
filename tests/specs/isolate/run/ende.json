@@ -1,0 +1,14 @@
+{
+  "isolate": {
+    "./vendor/none/": { "permissions": [] },
+    "./vendor/probe/": {
+      "permissions": { "read": true, "write": ["./out", "./vendor/probe"] }
+    },
+    "./vendor/wide/": { "permissions": { "read": ["./data"], "env": true } },
+    "./vendor/pkg/": { "permissions": [] },
+    "./vendor/writer/": { "permissions": { "write": ["./vendor/writer"] } },
+    "./vendor/outer/": { "permissions": [] },
+    "./vendor/inner/": { "permissions": [] },
+    "jsr:@endetest/multiple-exports": { "permissions": [] }
+  }
+}

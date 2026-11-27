@@ -1,0 +1,1 @@
+[WILDCARD]ende compile doesn't support "isolate" rules yet: a compiled app can't run its sandboxed dependencies in sandboxes. Remove "isolate" from ende.json to compile.

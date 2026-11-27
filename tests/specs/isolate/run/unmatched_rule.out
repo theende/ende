@@ -1,0 +1,2 @@
+[WILDCARD]Warning isolate["./vendor/probe/"] matches no module in the graph, so it sandboxes nothing. Rules match resolved specifiers, after the import map.
+[WILDCARD]hello world[WILDCARD]

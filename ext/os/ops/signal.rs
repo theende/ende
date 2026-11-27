@@ -23,6 +23,9 @@ pub enum SignalError {
   #[error("Binding to signal '{0}' is not allowed")]
   SignalNotAllowed(String),
   #[class(inherit)]
+  #[error(transparent)]
+  Permission(#[from] ende_permissions::PermissionCheckError),
+  #[class(inherit)]
   #[error("{0}")]
   Io(#[from] std::io::Error),
 }
@@ -55,6 +58,12 @@ pub fn op_signal_bind(
   state: &mut OpState,
   #[string] sig: &str,
 ) -> Result<ResourceId, SignalError> {
+  // Signal handlers are the whole process's: an extension or a sandbox
+  // could otherwise keep the app from being interrupted. (Ende only.)
+  ende_permissions::check_not_labelled(
+    "Ende.addSignalListener()",
+    "handles signals for the whole process",
+  )?;
   let signo = ende_signals::signal_str_to_int(sig)?;
   if ende_signals::is_forbidden(signo) {
     return Err(SignalError::SignalNotAllowed(sig.to_string()));

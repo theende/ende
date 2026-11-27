@@ -1,0 +1,1 @@
+[WILDCARD]"[WILDCARD]/vendor/none/mod.ts" is in the sandbox of isolate["./vendor/none/"], and sandboxed packages can only be imported in the main thread, not in a worker

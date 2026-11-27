@@ -160,6 +160,296 @@ pub struct TaskResult {
   pub exit_code: i32,
 }
 
+/// The paths a task's command runs, resolved against `cwd`: only words in
+/// executed positions, whose text is fixed (no variables or command
+/// substitutions), in every simple command of the script (pipelines,
+/// `&&`, `||`, `;`, subshells and `$(…)` included):
+///
+/// - the command word, when it names a path (has a `/` or `\` or starts
+///   with `.`);
+/// - the command a wrapper runs: `env VAR=… cmd`, `time`, `exec`, `nice`,
+///   `xargs`;
+/// - the script of an interpreter or of sourcing: the first non-flag
+///   argument of `sh bash zsh dash ksh fish source .` and `node python
+///   python3 ruby perl php bun`, and a shell's `-c` script, parsed in turn;
+/// - for `ende`/`deno`: the module of `run`, `x`, `test`, `bench`, `serve`
+///   and the like (the first positional after the subcommand), and the
+///   `--config`, `--import-map`, `--env-file`, `--preload`, `--import`,
+///   `--cert` and `--lock` files.
+///
+/// Redirect targets, env var values and other commands' arguments are data
+/// and don't count, nor does a path a command builds at run time. These
+/// are code a task runs with the user's privileges (see
+/// `CliOptions::task_named_paths`). A script that doesn't parse names
+/// nothing.
+pub fn paths_named_by(command: &str, cwd: &Path) -> Vec<PathBuf> {
+  let mut found = Vec::new();
+  if let Ok(list) = deno_task_shell::parser::parse(command) {
+    task_paths::visit_list(&list, cwd, &mut found);
+  }
+  found
+}
+
+mod task_paths {
+  use std::path::Path;
+  use std::path::PathBuf;
+
+  use deno_task_shell::parser;
+
+  const SHELLS: [&str; 6] = ["sh", "bash", "zsh", "dash", "ksh", "fish"];
+  const INTERPRETERS: [&str; 9] = [
+    "source", ".", "node", "python", "python3", "ruby", "perl", "php", "bun",
+  ];
+  const WRAPPERS: [&str; 5] = ["env", "time", "exec", "nice", "xargs"];
+  /// `ende`/`deno` flags whose value is a file Ende reads to set up a run.
+  const ENDE_FILE_FLAGS: [&str; 8] = [
+    "--config",
+    "-c",
+    "--import-map",
+    "--env-file",
+    "--preload",
+    "--import",
+    "--cert",
+    "--lock",
+  ];
+
+  /// The fixed text of a word, or `None` if part of it is decided at run
+  /// time.
+  fn word_text(word: &parser::Word) -> Option<String> {
+    fn push(parts: &[parser::WordPart], text: &mut String) -> bool {
+      for part in parts {
+        match part {
+          parser::WordPart::Text(value) => text.push_str(value),
+          parser::WordPart::Quoted(inner) => {
+            if !push(inner, text) {
+              return false;
+            }
+          }
+          _ => return false,
+        }
+      }
+      true
+    }
+    let mut text = String::new();
+    push(word.parts(), &mut text).then_some(text)
+  }
+
+  fn is_path_like(text: &str) -> bool {
+    !text.contains("://")
+      && (text.contains('/') || text.contains('\\') || text.starts_with('.'))
+  }
+
+  fn resolve(text: &str, cwd: &Path) -> PathBuf {
+    deno_path_util::normalize_path(std::borrow::Cow::Owned(cwd.join(text)))
+      .into_owned()
+  }
+
+  /// The program a command word names, without its folder.
+  fn program_name(text: &str) -> &str {
+    text.rsplit(['/', '\\']).next().unwrap_or(text)
+  }
+
+  /// The paths the simple command `words` runs (see `paths_named_by`).
+  fn command_paths(
+    words: &[Option<String>],
+    cwd: &Path,
+    found: &mut Vec<PathBuf>,
+  ) {
+    let mut index = 0;
+    while let Some(Some(command)) = words.get(index) {
+      if is_path_like(command) {
+        found.push(resolve(command, cwd));
+      }
+      let name = program_name(command);
+      let rest = &words[index + 1..];
+      if WRAPPERS.contains(&name) {
+        // the wrapped command: after flags and `VAR=value` assignments
+        let skip = rest
+          .iter()
+          .take_while(|word| {
+            word.as_deref().is_some_and(|word| {
+              word.starts_with('-')
+                || (name == "env" && word.contains('='))
+                || (name == "nice" && word.parse::<i32>().is_ok())
+            })
+          })
+          .count();
+        index += 1 + skip;
+        continue;
+      }
+      if SHELLS.contains(&name) || INTERPRETERS.contains(&name) {
+        let mut args = rest.iter();
+        while let Some(arg) = args.next() {
+          let Some(arg) = arg else {
+            break;
+          };
+          if SHELLS.contains(&name) && arg == "-c" {
+            if let Some(Some(script)) = args.next() {
+              found.extend(super::paths_named_by(script, cwd));
+            }
+            break;
+          }
+          if arg.starts_with('-') {
+            continue;
+          }
+          found.push(resolve(arg, cwd));
+          break;
+        }
+        return;
+      }
+      if name == "ende" || name == "deno" {
+        ende_paths(rest, cwd, found);
+      }
+      return;
+    }
+  }
+
+  /// The module and setup files an `ende`/`deno` command line names.
+  fn ende_paths(args: &[Option<String>], cwd: &Path, found: &mut Vec<PathBuf>) {
+    let mut args = args.iter();
+    let mut subcommand = None;
+    while let Some(arg) = args.next() {
+      let Some(arg) = arg else {
+        continue;
+      };
+      if let Some((flag, value)) = arg.split_once('=')
+        && ENDE_FILE_FLAGS.contains(&flag)
+      {
+        found.push(resolve(value, cwd));
+        continue;
+      }
+      if ENDE_FILE_FLAGS.contains(&arg.as_str()) && arg != "--env-file" {
+        if let Some(Some(value)) = args.next() {
+          found.push(resolve(value, cwd));
+        }
+        continue;
+      }
+      if arg.starts_with('-') {
+        continue;
+      }
+      match subcommand {
+        None => {
+          // `ende ./main.ts` runs it too
+          if is_path_like(arg) {
+            found.push(resolve(arg, cwd));
+            return;
+          }
+          subcommand = Some(arg.as_str());
+        }
+        Some(
+          "run" | "x" | "test" | "bench" | "serve" | "check" | "compile",
+        ) => {
+          found.push(resolve(arg, cwd));
+          return;
+        }
+        Some(_) => return,
+      }
+    }
+  }
+
+  fn visit_words(words: &[parser::Word], cwd: &Path, found: &mut Vec<PathBuf>) {
+    // substitutions run wherever they are
+    for word in words {
+      for part in word.parts() {
+        visit_part(part, cwd, found);
+      }
+    }
+    let texts = words.iter().map(word_text).collect::<Vec<_>>();
+    command_paths(&texts, cwd, found);
+  }
+
+  fn visit_part(part: &parser::WordPart, cwd: &Path, found: &mut Vec<PathBuf>) {
+    match part {
+      parser::WordPart::Command(list) => visit_list(list, cwd, found),
+      parser::WordPart::Quoted(inner) => {
+        for part in inner {
+          visit_part(part, cwd, found);
+        }
+      }
+      parser::WordPart::Brace(words) => {
+        for word in words {
+          for part in word.parts() {
+            visit_part(part, cwd, found);
+          }
+        }
+      }
+      _ => {}
+    }
+  }
+
+  fn visit_command(
+    command: &parser::Command,
+    cwd: &Path,
+    found: &mut Vec<PathBuf>,
+  ) {
+    match &command.inner {
+      parser::CommandInner::Simple(simple) => {
+        for env_var in &simple.env_vars {
+          for part in env_var.value.parts() {
+            visit_part(part, cwd, found);
+          }
+        }
+        visit_words(&simple.args, cwd, found);
+      }
+      parser::CommandInner::Subshell(list) => visit_list(list, cwd, found),
+    }
+    if let Some(redirect) = &command.redirect
+      && let parser::IoFile::Word(word) = &redirect.io_file
+    {
+      for part in word.parts() {
+        visit_part(part, cwd, found);
+      }
+    }
+  }
+
+  fn visit_pipeline(
+    inner: &parser::PipelineInner,
+    cwd: &Path,
+    found: &mut Vec<PathBuf>,
+  ) {
+    match inner {
+      parser::PipelineInner::Command(command) => {
+        visit_command(command, cwd, found)
+      }
+      parser::PipelineInner::PipeSequence(sequence) => {
+        visit_command(&sequence.current, cwd, found);
+        visit_pipeline(&sequence.next, cwd, found);
+      }
+    }
+  }
+
+  fn visit_sequence(
+    sequence: &parser::Sequence,
+    cwd: &Path,
+    found: &mut Vec<PathBuf>,
+  ) {
+    match sequence {
+      parser::Sequence::ShellVar(env_var) => {
+        for part in env_var.value.parts() {
+          visit_part(part, cwd, found);
+        }
+      }
+      parser::Sequence::Pipeline(pipeline) => {
+        visit_pipeline(&pipeline.inner, cwd, found)
+      }
+      parser::Sequence::BooleanList(list) => {
+        visit_sequence(&list.current, cwd, found);
+        visit_sequence(&list.next, cwd, found);
+      }
+    }
+  }
+
+  pub fn visit_list(
+    list: &parser::SequentialList,
+    cwd: &Path,
+    found: &mut Vec<PathBuf>,
+  ) {
+    for item in &list.items {
+      visit_sequence(&item.sequence, cwd, found);
+    }
+  }
+}
+
 pub async fn run_task(
   mut opts: RunTaskOptions<'_>,
 ) -> Result<TaskResult, AnyError> {
@@ -351,6 +641,49 @@ async fn listen_and_forward_all_signals(kill_signal: KillSignal) {
 mod test {
 
   use super::*;
+
+  #[test]
+  fn paths_a_task_runs() {
+    let cwd = Path::new("/app");
+    let runs = |command: &str| {
+      paths_named_by(command, cwd)
+        .into_iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+    };
+    // the command word, when it names a path
+    assert_eq!(runs("./tools/build.sh --fast"), ["/app/tools/build.sh"]);
+    assert_eq!(runs("build"), Vec::<String>::new());
+    // an interpreter's script, with or without a folder
+    assert_eq!(runs("sh ./x.sh"), ["/app/x.sh"]);
+    assert_eq!(runs("bash -e build.sh arg"), ["/app/build.sh"]);
+    assert_eq!(runs("node scripts/gen.js"), ["/app/scripts/gen.js"]);
+    assert_eq!(runs("sh -c './inner.sh && rm ./x'"), ["/app/inner.sh"]);
+    // ende's module and setup files
+    assert_eq!(runs("ende run ./x.ts"), ["/app/x.ts"]);
+    assert_eq!(
+      runs(
+        "ende run --config=conf/ende.json -A --import-map map.json main.ts arg"
+      ),
+      ["/app/conf/ende.json", "/app/map.json", "/app/main.ts"]
+    );
+    assert_eq!(runs("ende fmt ./src"), Vec::<String>::new());
+    // wrappers run the wrapped command
+    assert_eq!(runs("env A=1 ./x"), ["/app/x"]);
+    assert_eq!(runs("nice -n 10 ./y.sh"), ["/app/y.sh"]);
+    // substitutions, pipelines and lists run too
+    assert_eq!(runs("echo $(./gen.sh)"), ["/app/gen.sh"]);
+    assert_eq!(
+      runs("cat a | ./filter && (./sub.sh); ../up.sh || true"),
+      ["/app/filter", "/app/sub.sh", "/up.sh"]
+    );
+    // data isn't counted: arguments, redirects, env var values
+    assert_eq!(runs("rm -rf ./out"), Vec::<String>::new());
+    assert_eq!(runs("echo hi > ./out/log"), Vec::<String>::new());
+    assert_eq!(runs("FOO=./x.ts cp ./a ./b"), Vec::<String>::new());
+    assert_eq!(runs("$CMD ./x.sh"), Vec::<String>::new());
+    assert!(paths_named_by("not ( valid", cwd).is_empty());
+  }
 
   #[test]
   fn test_get_script_with_args() {

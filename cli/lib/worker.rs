@@ -73,6 +73,16 @@ pub trait ModuleLoaderFactory: Send + Sync {
   ) -> CreateModuleLoaderResult {
     self.create_for_worker(loader_permissions, permissions, None)
   }
+
+  /// The loader of the worker a sandboxed package (`isolate` rule `rule` in
+  /// ende.json) runs in: it serves only that sandbox's code.
+  fn create_for_sandbox_worker(
+    &self,
+    permissions: PermissionsContainer,
+    _rule: String,
+  ) -> CreateModuleLoaderResult {
+    self.create_for_worker(permissions.clone(), permissions, None)
+  }
 }
 
 enum StorageKeyResolverStrategy {
@@ -352,6 +362,10 @@ pub struct LibMainWorkerOptions {
   /// the main worker gets it.
   pub extension_worker_provider:
     Option<Arc<dyn ende_runtime::ops::worker_host::ExtensionWorkerProvider>>,
+  /// Starts the workers of the sandboxes the app declares (`isolate` in
+  /// ende.json). Only the main worker gets it.
+  pub sandbox_worker_provider:
+    Option<Arc<dyn ende_runtime::ops::worker_host::SandboxWorkerProvider>>,
 }
 
 #[derive(Default, Clone)]
@@ -399,29 +413,50 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
   ) -> Arc<CreateWebWorkerCb> {
     let shared = self.clone();
     Arc::new(move |args| {
-      let CreateModuleLoaderResult { module_loader } = match &args
-        .extension_name
-      {
-        Some(name) => shared.module_loader_factory.create_for_extension_worker(
-          args.parent_permissions.clone(),
-          args.permissions.clone(),
-          name.clone(),
-        ),
-        None => shared.module_loader_factory.create_for_worker(
-          args.parent_permissions.clone(),
-          args.permissions.clone(),
-          args
-            .maybe_main_module_blob
-            .clone()
-            .map(|blob| (args.main_module.clone(), blob)),
-        ),
-      };
+      let CreateModuleLoaderResult { module_loader } =
+        match (&args.extension_name, &args.sandbox_rule) {
+          (Some(name), _) => {
+            shared.module_loader_factory.create_for_extension_worker(
+              args.parent_permissions.clone(),
+              args.permissions.clone(),
+              name.clone(),
+            )
+          }
+          (None, Some(rule)) => shared
+            .module_loader_factory
+            .create_for_sandbox_worker(args.permissions.clone(), rule.clone()),
+          (None, None) => shared.module_loader_factory.create_for_worker(
+            args.parent_permissions.clone(),
+            args.permissions.clone(),
+            args
+              .maybe_main_module_blob
+              .clone()
+              .map(|blob| (args.main_module.clone(), blob)),
+          ),
+        };
       let create_web_worker_cb =
         shared.create_web_worker_callback(stdio.clone());
 
+      // The worker of an extension or a sandbox, or one they started (this
+      // runs on the new worker's thread, which carries their label): it
+      // gets no stdin, no origin storage and no channel shared with the
+      // app. (Ende only.)
+      let labelled =
+        ende_runtime::ende_permissions::current_thread_label().is_some();
+      let stdio = if labelled {
+        ende_runtime::ende_io::Stdio {
+          stdin: null_stdin(),
+          stdout: stdio.stdout.clone(),
+          stderr: stdio.stderr.clone(),
+        }
+      } else {
+        stdio.clone()
+      };
+
       let maybe_storage_key = shared
         .storage_key_resolver
-        .resolve_storage_key(&args.main_module);
+        .resolve_storage_key(&args.main_module)
+        .filter(|_| !labelled);
       let cache_storage_dir = maybe_storage_key.as_ref().map(|key| {
         // TODO(@satyarohith): storage quota management
         get_cache_storage_dir_for_key(
@@ -442,7 +477,11 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
         module_loader,
         fs: shared.fs.clone(),
         blob_store: shared.blob_store.clone(),
-        broadcast_channel: shared.broadcast_channel.clone(),
+        broadcast_channel: if labelled {
+          Default::default()
+        } else {
+          shared.broadcast_channel.clone()
+        },
         shared_array_buffer_store: Some(
           shared.shared_array_buffer_store.clone(),
         ),
@@ -510,6 +549,7 @@ impl<TSys: EndeLibSys> LibWorkerFactorySharedState<TSys> {
           no_legacy_abort: shared.options.no_legacy_abort,
           close_on_idle: args.close_on_idle,
           disable_offscreen_canvas: shared.options.disable_offscreen_canvas,
+          labelled_worker: labelled,
         },
         extensions: vec![],
         startup_snapshot: shared.options.startup_snapshot,
@@ -713,6 +753,7 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
         otel_config: shared.options.otel_config.clone(),
         close_on_idle: shared.options.close_on_idle,
         disable_offscreen_canvas: shared.options.disable_offscreen_canvas,
+        labelled_worker: false,
       },
       extensions: custom_extensions,
       startup_snapshot: shared.options.startup_snapshot,
@@ -748,6 +789,11 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
         ende_runtime::ops::worker_host::ExtensionWorkerHost(provider.clone()),
       );
     }
+    if let Some(provider) = &shared.options.sandbox_worker_provider {
+      worker.js_runtime.op_state().borrow_mut().put(
+        ende_runtime::ops::worker_host::SandboxWorkerHost(provider.clone()),
+      );
+    }
 
     // Store the main inspector session sender for worker debugging
     let inspector = worker.js_runtime.inspector();
@@ -760,6 +806,33 @@ impl<TSys: EndeLibSys> LibMainWorkerFactory<TSys> {
       worker,
     })
   }
+}
+
+/// An empty stdin, for the workers of extensions and sandboxes: reading it
+/// ends at once, so they can't read what the user types to the app.
+fn null_stdin() -> ende_runtime::ende_io::StdioPipe {
+  #[allow(clippy::disallowed_methods, reason = "opening the null device")]
+  let file = match std::fs::File::open(if cfg!(windows) {
+    "NUL"
+  } else {
+    "/dev/null"
+  }) {
+    Ok(file) => file,
+    // No null device: a pipe whose writing end is closed reads as empty
+    // too. Never fall back to the app's stdin.
+    Err(_) => {
+      let (reader, writer) =
+        std::io::pipe().expect("a closed stdin for a labelled worker");
+      drop(writer);
+      #[cfg(unix)]
+      let file = std::fs::File::from(std::os::fd::OwnedFd::from(reader));
+      #[cfg(windows)]
+      let file =
+        std::fs::File::from(std::os::windows::io::OwnedHandle::from(reader));
+      file
+    }
+  };
+  ende_runtime::ende_io::StdioPipe::file(file)
 }
 
 pub struct LibMainWorker {

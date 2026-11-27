@@ -1,0 +1,2 @@
+app: "secret"
+sandbox: NotCapable: ./vendor/none/: Requires read access to "secret.txt"; grant it in ende.json under isolate["./vendor/none/"].permissions.read

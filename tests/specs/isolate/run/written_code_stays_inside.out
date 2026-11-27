@@ -1,0 +1,3 @@
+{"own":1}
+TypeError: ./vendor/writer/: Requires read access to "[WILDCARD]secret_module.ts"; grant it in ende.json under isolate["./vendor/writer/"].permissions.read
+    at [WILDCARD]leak.ts:1:15

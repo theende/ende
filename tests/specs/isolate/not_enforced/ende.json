@@ -1,5 +1,0 @@
-{
-  "isolate": {
-    "./vendor/": { "permissions": [] }
-  }
-}

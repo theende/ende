@@ -1,0 +1,19 @@
+{
+  "vendor": true,
+  "extensions": {
+    "@acme/probe": {
+      "source": "./ext/probe.ts",
+      "permissions": { "write": ["./ende.jsonc", "./deno.json", "./plugins"] }
+    },
+    "@acme/cache": {
+      "source": "./cachewriter/mod.ts",
+      "permissions": {
+        "write": ["./vendor/jsr.io", "./cache/gen", "./.git/hooks"]
+      }
+    },
+    "@acme/shipped": {
+      "source": "./shipped/mod.ts",
+      "permissions": { "read": ["./shipped"] }
+    }
+  }
+}

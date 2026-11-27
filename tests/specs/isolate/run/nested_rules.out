@@ -1,0 +1,1 @@
+[WILDCARD]"[WILDCARD]/vendor/inner/mod.ts" is in the sandbox of isolate["./vendor/inner/"], but it is imported from inside the sandbox of isolate["./vendor/outer/"] (by [WILDCARD]/vendor/outer/mod.ts). Sandboxes can't be nested yet: change the rules so that one sandbox holds both[WILDCARD]

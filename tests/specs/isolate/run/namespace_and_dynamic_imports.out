@@ -1,0 +1,5 @@
+greet true
+hello namespace
+extra
+greet true
+Cannot import "made" from "[WILDCARD]/vendor/none/mod.ts": it is a class, which can't leave the sandbox of isolate["./vendor/none/"]. [WILDCARD] so import the exports you use by name

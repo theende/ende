@@ -1,0 +1,1 @@
+[WILDCARD]isolate["./vendor/none/"] may write [WILDCARD]out, which holds [WILDCARD]app.lock, a config file or lockfile Ende uses[WILDCARD]; grant a folder of data instead

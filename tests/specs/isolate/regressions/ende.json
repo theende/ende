@@ -1,0 +1,6 @@
+{
+  "isolate": {
+    "./vendor/names/": { "permissions": [] },
+    "./vendor/doc/": { "permissions": [] }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "importMap": "./data/import_map.json",
+  "isolate": {
+    "./sandboxed/": { "permissions": { "write": ["./data"] } }
+  }
+}

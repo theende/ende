@@ -937,6 +937,7 @@ pub async fn run_with_options(
       Ok("1") | Ok("true")
     ),
     extension_worker_provider: None,
+    sandbox_worker_provider: None,
   };
   let worker_factory = LibMainWorkerFactory::new(
     blob_store,

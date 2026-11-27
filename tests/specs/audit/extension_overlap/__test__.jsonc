@@ -8,6 +8,11 @@
       "args": "audit main.ts",
       "output": "rule_inside_an_extension_folder.out",
       "exitCode": 1
+    },
+    "run_refuses_the_overlap": {
+      "args": "run main.ts",
+      "output": "rule_inside_an_extension_folder.out",
+      "exitCode": 1
     }
   }
 }

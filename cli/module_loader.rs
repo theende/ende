@@ -86,6 +86,10 @@ use crate::graph_util::BuildGraphOptions;
 use crate::graph_util::BuildGraphRequest;
 use crate::graph_util::GraphRootsValidOptions;
 use crate::graph_util::ModuleGraphBuilder;
+use crate::isolate::ISOLATE_SCHEME;
+use crate::isolate::Requested;
+use crate::isolate::SandboxId;
+use crate::isolate::SandboxRegistry;
 use crate::resolver::CliResolver;
 use crate::sys::CliSys;
 use crate::type_checker::CheckError;
@@ -387,6 +391,8 @@ struct SharedCliModuleLoaderState {
   maybe_eszip_loader: Option<Arc<EszipModuleLoader>>,
   watcher_communicator: Option<Arc<WatcherCommunicator>>,
   extensions: Arc<ExtensionRegistry>,
+  /// The app's `isolate` rules, when it declares any.
+  sandboxes: Option<Arc<SandboxRegistry>>,
 }
 
 struct InFlightModuleLoadsTracker {
@@ -443,6 +449,7 @@ impl CliModuleLoaderFactory {
     maybe_eszip_loader: Option<Arc<EszipModuleLoader>>,
     watcher_communicator: Option<Arc<WatcherCommunicator>>,
     extensions: Arc<ExtensionRegistry>,
+    sandboxes: Option<Arc<SandboxRegistry>>,
   ) -> Self {
     Self {
       shared: Arc::new(SharedCliModuleLoaderState {
@@ -468,6 +475,7 @@ impl CliModuleLoaderFactory {
         maybe_eszip_loader,
         watcher_communicator,
         extensions,
+        sandboxes,
       }),
     }
   }
@@ -482,12 +490,15 @@ impl CliModuleLoaderFactory {
     permissions: PermissionsContainer,
     maybe_main_module_blob: Option<(ModuleSpecifier, Arc<Blob>)>,
     extension_name: Option<String>,
+    sandbox: Option<SandboxId>,
   ) -> CreateModuleLoaderResult {
     let module_loader =
       Rc::new(CliModuleLoader(Rc::new(CliModuleLoaderInner {
         lib,
         is_worker,
         extension_name,
+        sandbox,
+        sandbox_entries: Default::default(),
         parent_permissions,
         permissions,
         graph_container,
@@ -513,6 +524,7 @@ impl ModuleLoaderFactory for CliModuleLoaderFactory {
       root_permissions,
       None,
       None,
+      None,
     )
   }
 
@@ -522,6 +534,20 @@ impl ModuleLoaderFactory for CliModuleLoaderFactory {
     permissions: PermissionsContainer,
     maybe_main_module_blob: Option<(ModuleSpecifier, Arc<Blob>)>,
   ) -> CreateModuleLoaderResult {
+    // A worker a sandbox starts (its thread carries the sandbox's label, see
+    // `spawn_worker`) is part of that sandbox: it may load the sandbox's
+    // own modules, as the sandbox does.
+    let sandbox = match ende_runtime::ende_permissions::current_thread_label() {
+      Some(ende_runtime::ende_permissions::ThreadLabel::Sandbox(rule)) => Some(
+        self
+          .shared
+          .sandboxes
+          .as_ref()
+          .and_then(|sandboxes| sandboxes.id_of(&rule).ok())
+          .unwrap_or(SandboxId(usize::MAX)),
+      ),
+      _ => None,
+    };
     self.create_with_lib(
       // create a fresh module graph for the worker
       WorkerModuleGraphContainer::new(Arc::new(ModuleGraph::new(
@@ -533,6 +559,7 @@ impl ModuleLoaderFactory for CliModuleLoaderFactory {
       permissions,
       maybe_main_module_blob,
       None,
+      sandbox,
     )
   }
 
@@ -558,6 +585,39 @@ impl ModuleLoaderFactory for CliModuleLoaderFactory {
       permissions,
       None,
       Some(extension_name),
+      None,
+    )
+  }
+
+  fn create_for_sandbox_worker(
+    &self,
+    permissions: PermissionsContainer,
+    rule: String,
+  ) -> CreateModuleLoaderResult {
+    let sandbox = self
+      .shared
+      .sandboxes
+      .as_ref()
+      .and_then(|sandboxes| sandboxes.id_of(&rule).ok());
+    // The sandbox's own static code is fetched as the app fetched the rest
+    // of its graph; everything else it loads, with its own permissions.
+    let loader_permissions = permissions
+      .chained_app()
+      .unwrap_or_else(|| permissions.clone());
+    self.create_with_lib(
+      // Starts empty: entries add the sandbox's static graph as they load.
+      WorkerModuleGraphContainer::new(Arc::new(ModuleGraph::new(
+        self.shared.graph_kind,
+      ))),
+      self.shared.lib_worker,
+      /* is worker */ true,
+      loader_permissions,
+      permissions,
+      None,
+      None,
+      // A loader for a rule that doesn't exist serves nothing: every
+      // module then looks outside its sandbox.
+      Some(sandbox.unwrap_or(SandboxId(usize::MAX))),
     )
   }
 }
@@ -575,6 +635,11 @@ struct CliModuleLoaderInner<TGraphContainer: ModuleGraphContainer> {
   /// fetched with `parent_permissions` (imports only); see
   /// `ExtensionRegistry`.
   extension_name: Option<String>,
+  /// For a sandbox's worker (`isolate` in ende.json), its rule. Its graph
+  /// holds only the sandbox's static code (see `prepare_load`).
+  sandbox: Option<SandboxId>,
+  /// The entries the app loaded in this sandbox so far.
+  sandbox_entries: RefCell<Vec<ModuleSpecifier>>,
   /// The initial set of permissions used to resolve the static imports in the
   /// worker. These are "allow all" for main worker, and parent thread
   /// permissions for Web Worker.
@@ -887,6 +952,17 @@ impl<TGraphContainer: ModuleGraphContainer>
       && check_specifier_kind == CheckSpecifierKind::Static
     {
       (&self.parent_permissions, CheckSpecifierKind::Dynamic)
+    } else if self.sandbox.is_some()
+      && check_specifier_kind == CheckSpecifierKind::Static
+    {
+      // A sandbox's static text or bytes import: its own files are part of
+      // its code, fetched as the app fetched it; anything else is data it
+      // reads, which needs its own read permission.
+      if self.in_own_sandbox(specifier) {
+        (&self.parent_permissions, CheckSpecifierKind::Static)
+      } else {
+        (&self.permissions, CheckSpecifierKind::Dynamic)
+      }
     } else {
       (&self.permissions, check_specifier_kind)
     };
@@ -1157,6 +1233,20 @@ impl<TGraphContainer: ModuleGraphContainer>
       }
     }
 
+    if let Some(sandboxes) = &self.shared.sandboxes
+      && !is_import_meta
+    {
+      return self.resolve_sandboxed(
+        sandboxes,
+        raw_specifier,
+        raw_referrer,
+        &referrer,
+        specifier,
+        kind,
+        &graph,
+      );
+    }
+
     Ok(specifier)
   }
 }
@@ -1188,6 +1278,203 @@ impl<TGraphContainer: ModuleGraphContainer>
     }
     self.shared.extensions.declared(specifier.path())?;
     Ok(())
+  }
+
+  /// Where an import resolves to when the app declares `isolate` rules:
+  ///
+  /// - from outside a sandbox into a module it holds, to the proxy module
+  ///   (`isolate:`, see `crate::isolate`), but only in the main thread and
+  ///   never as a module that runs on its own (a main, test or preload
+  ///   module);
+  /// - inside a sandbox, to the module itself, unless another sandbox holds
+  ///   it: sandboxes can't be nested yet.
+  ///
+  /// A JSON module in a sandbox is data, so the app imports it as is.
+  #[allow(clippy::too_many_arguments, reason = "resolution context")]
+  fn resolve_sandboxed(
+    &self,
+    sandboxes: &SandboxRegistry,
+    raw_specifier: &str,
+    raw_referrer: &str,
+    referrer: &ModuleSpecifier,
+    specifier: ModuleSpecifier,
+    kind: ende_core::ResolutionKind,
+    graph: &ModuleGraph,
+  ) -> Result<ModuleSpecifier, JsErrorBox> {
+    if specifier.scheme() == crate::isolate::ENTRY_SCHEME {
+      // Only a sandbox's harness loads its entries this way.
+      if self.sandbox.is_none() {
+        return Err(JsErrorBox::type_error(format!(
+          "\"{specifier}\" can only be imported inside a sandbox"
+        )));
+      }
+      return Ok(specifier);
+    }
+    if specifier.scheme() == ISOLATE_SCHEME {
+      if self.is_worker {
+        return Err(JsErrorBox::type_error(format!(
+          "\"{specifier}\" can only be imported in the app's main thread"
+        )));
+      }
+      return Ok(specifier);
+    }
+    let target = sandboxes.sandbox_of(graph, &specifier);
+    if let Some(own) = self.sandbox {
+      return match target {
+        Some(inner) if inner != own => {
+          Err(sandboxes.nested_error(own, inner, &specifier, raw_referrer))
+        }
+        _ => Ok(specifier),
+      };
+    }
+    let Some(id) = target else {
+      return Ok(specifier);
+    };
+    let rule = sandboxes.matcher(id);
+    if self.is_worker {
+      return Err(JsErrorBox::type_error(format!(
+        "\"{specifier}\" is in the sandbox of isolate[\"{rule}\"], and sandboxed packages can only be imported in the main thread, not in a worker"
+      )));
+    }
+    if matches!(kind, ende_core::ResolutionKind::MainModule)
+      || raw_referrer == "."
+    {
+      return Err(JsErrorBox::type_error(format!(
+        "\"{specifier}\" is in the sandbox of isolate[\"{rule}\"], so it can't run on its own: a sandboxed package runs only when the app imports it. Exclude it from the files to run"
+      )));
+    }
+    if let Some(deno_graph::Module::Json(_)) =
+      graph.get(graph.resolve(&specifier))
+    {
+      return Ok(specifier);
+    }
+    let requested = if matches!(kind, ende_core::ResolutionKind::DynamicImport)
+    {
+      Requested {
+        names: Default::default(),
+        all: true,
+      }
+    } else {
+      sandboxes.requested_by(
+        referrer,
+        raw_specifier,
+        self.code_that_runs(referrer),
+      )
+    };
+    Ok(crate::isolate::proxy_specifier(&specifier, &requested))
+  }
+
+  /// The JavaScript V8 runs for the app's module `specifier`.
+  fn code_that_runs(&self, specifier: &ModuleSpecifier) -> Option<String> {
+    let source = self
+      .try_load_code_source_sync(specifier, &RequestedModuleType::None)
+      .ok()??;
+    match source.code {
+      ModuleSourceCode::String(code) => Some(code.as_str().to_string()),
+      ModuleSourceCode::Bytes(bytes) => {
+        String::from_utf8(bytes.as_bytes().to_vec()).ok()
+      }
+    }
+  }
+
+  /// The proxy module of an `isolate:` specifier (see `crate::isolate`).
+  fn load_sandbox_proxy(
+    &self,
+    specifier: &ModuleSpecifier,
+    requested_module_type: &RequestedModuleType,
+  ) -> Result<ModuleSource, ModuleLoaderError> {
+    let Some(sandboxes) = &self.shared.sandboxes else {
+      return Err(JsErrorBox::type_error(format!(
+        "\"{specifier}\": ende.json has no isolate rules"
+      )));
+    };
+    if self.is_worker {
+      return Err(JsErrorBox::type_error(format!(
+        "\"{specifier}\" can only be imported in the app's main thread"
+      )));
+    }
+    let (entry, requested) = crate::isolate::parse_proxy_specifier(specifier)?;
+    if !matches!(requested_module_type, RequestedModuleType::None) {
+      return Err(JsErrorBox::type_error(format!(
+        "\"{entry}\" is in a sandbox, so it can only be imported as a module, not as text, bytes or JSON"
+      )));
+    }
+    let graph = self.graph_container.graph();
+    let code = sandboxes.proxy_module(&graph, &entry, &requested)?;
+    Ok(ModuleSource::new(
+      ModuleType::JavaScript,
+      ModuleSourceCode::String(code.into()),
+      specifier,
+      None,
+    ))
+  }
+
+  /// Errors unless the app's loader may load `specifier` itself: a module a
+  /// sandbox holds runs only in its worker, behind a proxy (`resolve`
+  /// guarantees that; this is a second line). Data the app reads (JSON,
+  /// text, bytes) isn't code, so it may. A sandbox's loader may load only
+  /// its own modules and those outside every sandbox, and the data it
+  /// reads from outside its own sandbox needs its read permission.
+  fn check_sandboxed_load(
+    &self,
+    specifier: &ModuleSpecifier,
+    requested_module_type: &RequestedModuleType,
+  ) -> Result<(), JsErrorBox> {
+    let Some(sandboxes) = &self.shared.sandboxes else {
+      return Ok(());
+    };
+    if specifier.scheme() == ISOLATE_SCHEME
+      || specifier.scheme() == crate::isolate::ENTRY_SCHEME
+      || matches!(
+        requested_module_type,
+        RequestedModuleType::Text | RequestedModuleType::Bytes
+      )
+    {
+      return Ok(());
+    }
+    let main_graph = self.shared.main_module_graph_container.graph();
+    let graph = self.graph_container.graph();
+    let is_json =
+      matches!(
+        graph.get(graph.resolve(specifier)),
+        Some(deno_graph::Module::Json(_))
+      ) || matches!(requested_module_type, RequestedModuleType::Json);
+    let target = sandboxes
+      .sandbox_of(&graph, specifier)
+      .or_else(|| sandboxes.sandbox_of(&main_graph, specifier));
+    match (self.sandbox, target) {
+      (None, Some(id)) if !is_json => Err(JsErrorBox::type_error(format!(
+        "\"{specifier}\" is in the sandbox of isolate[\"{}\"], so it runs only there, imported from outside through its proxy",
+        sandboxes.matcher(id)
+      ))),
+      (Some(own), Some(inner)) if own != inner => {
+        Err(sandboxes.nested_error(own, inner, specifier, "the sandbox"))
+      }
+      // A local file outside the sandbox's own folder (by where it really
+      // is), code or data, is read with the sandbox's own read access.
+      // Remote modules in the app's graph are pinned code that carries no
+      // capability, so they load.
+      (Some(_), _)
+        if specifier.scheme() == "file" && !self.in_own_sandbox(specifier) =>
+      {
+        self
+          .permissions
+          .check_specifier(specifier, CheckSpecifierKind::Dynamic)
+          .map_err(JsErrorBox::from_err)
+      }
+      _ => Ok(()),
+    }
+  }
+
+  /// For a sandbox's worker, whether `specifier` is one of its sandbox's
+  /// modules, as the app's graph holds them.
+  fn in_own_sandbox(&self, specifier: &ModuleSpecifier) -> bool {
+    let (Some(own), Some(sandboxes)) = (self.sandbox, &self.shared.sandboxes)
+    else {
+      return false;
+    };
+    let main_graph = self.shared.main_module_graph_container.graph();
+    sandboxes.is_own(own, &main_graph, specifier)
   }
 
   /// The proxy module of `extension:@scope/name` (see `ExtensionRegistry`).
@@ -1271,6 +1558,70 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
       return ende_core::ModuleLoadResponse::Async(
         async move { inner.load_extension(&specifier).await }.boxed_local(),
       );
+    }
+
+    if specifier.scheme() == ISOLATE_SCHEME && inner.shared.sandboxes.is_some()
+    {
+      return ende_core::ModuleLoadResponse::Sync(
+        inner
+          .load_sandbox_proxy(specifier, &options.requested_module_type)
+          .map_err(|err| match maybe_referrer {
+            Some(referrer) => JsErrorBox::new(
+              err.get_class(),
+              format!(
+                "{err}\n    at {}:{}:{}",
+                referrer.specifier,
+                referrer.line_number,
+                referrer.column_number
+              ),
+            ),
+            None => err,
+          }),
+      );
+    }
+    if specifier.scheme() == crate::isolate::ENTRY_SCHEME
+      && inner.sandbox.is_some()
+    {
+      return ende_core::ModuleLoadResponse::Sync(
+        crate::isolate::parse_entry_specifier(specifier).and_then(|entry| {
+          if !inner.in_own_sandbox(&entry) {
+            return Err(JsErrorBox::type_error(format!(
+              "\"{entry}\" isn't a module of this sandbox"
+            )));
+          }
+          Ok(ModuleSource::new(
+            ModuleType::JavaScript,
+            ModuleSourceCode::String(
+              crate::isolate::entry_module_code(&entry).into(),
+            ),
+            specifier,
+            None,
+          ))
+        }),
+      );
+    }
+    if let Err(err) =
+      inner.check_sandboxed_load(specifier, &options.requested_module_type)
+    {
+      return ende_core::ModuleLoadResponse::Sync(Err(err));
+    }
+    // Code never loads from where a sandbox or extension may write, by its
+    // real path, whatever the file is called (see
+    // `ende_permissions::check_code_load`). Data imports aren't code.
+    if specifier.scheme() == "file"
+      && !matches!(
+        options.requested_module_type,
+        RequestedModuleType::Text
+          | RequestedModuleType::Bytes
+          | RequestedModuleType::Json
+      )
+      && let Ok(path) = deno_path_util::url_to_file_path(specifier)
+      && let Err(message) =
+        ende_runtime::ende_permissions::check_code_load(&path)
+    {
+      return ende_core::ModuleLoadResponse::Sync(Err(JsErrorBox::type_error(
+        message,
+      )));
     }
 
     self.0.loaded_files.borrow_mut().insert(specifier.clone());
@@ -1359,13 +1710,70 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
       return Box::pin(ende_core::futures::future::ready(Ok(())));
     }
 
-    let specifier = specifier.clone();
+    // A dynamic import of a sandboxed module: the proxy loads from the app's
+    // graph, so prepare the module itself there, as the app's own import.
+    let specifier = if specifier.scheme() == ISOLATE_SCHEME
+      && self.0.shared.sandboxes.is_some()
+    {
+      match crate::isolate::parse_proxy_specifier(specifier) {
+        Ok((entry, _)) => entry,
+        Err(err) => return Box::pin(std::future::ready(Err(err))),
+      }
+    } else if specifier.scheme() == crate::isolate::ENTRY_SCHEME
+      && self.0.sandbox.is_some()
+    {
+      // The harness loading an entry through its wrapper (see
+      // `crate::isolate::ENTRY_SCHEME`): prepare the entry.
+      match crate::isolate::parse_entry_specifier(specifier) {
+        Ok(entry) => entry,
+        Err(err) => return Box::pin(std::future::ready(Err(err))),
+      }
+    } else {
+      specifier.clone()
+    };
     let inner = self.0.clone();
     let is_synchronous = options.is_synchronous;
 
     let future = async move {
       let graph_container = &inner.graph_container;
       let module_load_preparer = &inner.shared.module_load_preparer;
+      // A sandbox's worker loading one of the sandbox's own modules: an
+      // entry for the app (the harness's import), the main module of a
+      // worker the sandbox started, or the sandbox's own dynamic import.
+      // When the app's graph holds it, the worker's graph becomes the
+      // sandbox's static graph from its roots, cut from the app's, which
+      // fetched it; otherwise it is fetched as the app would fetch it. Either
+      // way nothing else is in that graph, so whatever else the sandbox
+      // loads is checked against its own permissions.
+      let mut sandbox_own_root = false;
+      if let (Some(own), Some(sandboxes)) =
+        (inner.sandbox, &inner.shared.sandboxes)
+      {
+        let from_harness = options.is_dynamic_import
+          && maybe_referrer.as_deref()
+            == Some(sandboxes.harness_url(own).as_str());
+        sandbox_own_root = inner.in_own_sandbox(&specifier);
+        if from_harness && !sandbox_own_root {
+          return Err(JsErrorBox::type_error(format!(
+            "\"{specifier}\" isn't a module of the sandbox of isolate[\"{}\"]",
+            sandboxes.matcher(own)
+          )));
+        }
+        let main_graph = inner.shared.main_module_graph_container.graph();
+        if sandbox_own_root && main_graph.get(&specifier).is_some() {
+          let entries = {
+            let mut entries = inner.sandbox_entries.borrow_mut();
+            if !entries.contains(&specifier) {
+              entries.push(specifier.clone());
+            }
+            entries.clone()
+          };
+          let mut update_permit = graph_container.acquire_update_permit().await;
+          *update_permit.graph_mut() = main_graph.segment(&entries);
+          update_permit.commit();
+          return Ok(());
+        }
+      }
       // An extension's worker: its static graph is the one the app declared
       // and the registry already fetched, so it's built the same way, with
       // the loader permissions (imports only) and without type checking.
@@ -1395,7 +1803,23 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
         update_permit.commit();
         return Ok(());
       }
-      let permissions = if options.is_dynamic_import {
+      // A sandbox's own module the app's graph doesn't hold: loaded with
+      // the sandbox's permissions plus reading its own folder.
+      let own_code_permissions = match (sandbox_own_root, inner.sandbox) {
+        (true, Some(own)) => inner
+          .shared
+          .sandboxes
+          .as_ref()
+          .map(|sandboxes| {
+            sandboxes.own_code_permissions(own, &inner.permissions)
+          })
+          .transpose()?
+          .flatten(),
+        _ => None,
+      };
+      let permissions = if let Some(own_code) = &own_code_permissions {
+        own_code
+      } else if options.is_dynamic_import {
         &inner.permissions
       } else {
         &inner.parent_permissions
@@ -1533,6 +1957,7 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
       // permissions while the graph is built.
       if inner.is_worker
         && inner.extension_name.is_none()
+        && inner.sandbox.is_none()
         && !options.is_dynamic_import
       {
         let graph = graph_container.graph();
@@ -1547,6 +1972,17 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
             return Err(JsErrorBox::from_err(err));
           }
         }
+      }
+
+      // The app's static graph is in: say which rules sandbox nothing, and
+      // refuse a rule that may write where the app's modules live.
+      if !inner.is_worker
+        && !options.is_dynamic_import
+        && let Some(sandboxes) = &inner.shared.sandboxes
+      {
+        let graph = graph_container.graph();
+        sandboxes.check_write_grants_against_graph(&graph)?;
+        sandboxes.warn_unmatched(&graph);
       }
 
       Ok(())

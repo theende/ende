@@ -2,7 +2,8 @@
 
 //! `ende audit`: which dependencies of a module graph run sandboxed (the
 //! `isolate` key of ende.json), what each may do, and whether the lockfile
-//! pins their code. Report only; nothing is enforced yet.
+//! pins their code. It only reports; `ende run` and the other commands that
+//! run code enforce the rules (`crate::isolate`).
 //!
 //! The name is reused: upstream `audit` was npm's vulnerability audit.
 
@@ -92,7 +93,6 @@ pub async fn audit(
   }
 
   let classification = isolate::classify(&graph, &config, jsr_url(), &sys);
-  // The "not enforced yet" warning comes from `CliOptions::from_flags`.
 
   let mut effective_by_rule = Vec::with_capacity(config.rules.len());
   for rule in config.rules.values() {

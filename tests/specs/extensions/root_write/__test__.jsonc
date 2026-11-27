@@ -2,8 +2,10 @@
   "tempDir": true,
   "tests": {
     // An extension granted write on ./output writes inside a root the host
-    // hands it, and every way out through that root throws PathEscape; a
-    // plain write outside is denied by its own permissions.
+    // hands it, and every way out through that root fails: `..` and
+    // absolute paths throw PathEscape, and a symlink out is already denied
+    // by its own permissions, which match real paths on an extension's
+    // thread; a plain write outside is denied too.
     "writes_inside_cannot_escape": {
       "steps": [
         {

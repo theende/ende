@@ -601,6 +601,7 @@ async fn build_compile_graph(
   cli_options: &CliOptions,
   roots: &CompileModuleRoots,
 ) -> Result<ModuleGraph, AnyError> {
+  ensure_no_isolate_rules(cli_options)?;
   let checked_graph = module_graph_creator
     .create_graph_and_maybe_check(roots.strict.clone())
     .await?;
@@ -636,6 +637,22 @@ fn ensure_no_extensions(graph: &ModuleGraph) -> Result<(), AnyError> {
       crate::extensions::runtime_specifier(specifier)
         .as_ref()
         .unwrap_or(specifier)
+    );
+  }
+  Ok(())
+}
+
+/// A compiled binary can't enforce `isolate` rules (it has no sandbox
+/// workers), so it refuses them rather than run the code they name with the
+/// app's permissions. A key that doesn't parse is refused too.
+fn ensure_no_isolate_rules(cli_options: &CliOptions) -> Result<(), AnyError> {
+  let declared = match cli_options.workspace().to_isolate_config() {
+    Ok(config) => !config.rules.is_empty(),
+    Err(_) => true,
+  };
+  if declared {
+    bail!(
+      "ende compile doesn't support \"isolate\" rules yet: a compiled app can't run its sandboxed dependencies in sandboxes. Remove \"isolate\" from ende.json to compile."
     );
   }
   Ok(())

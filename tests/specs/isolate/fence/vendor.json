@@ -1,0 +1,6 @@
+{
+  "vendor": true,
+  "isolate": {
+    "./sandboxed/": { "permissions": { "write": ["./vendor/jsr.io"] } }
+  }
+}

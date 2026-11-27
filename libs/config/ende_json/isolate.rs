@@ -81,16 +81,63 @@ impl IsolateMatcher {
           && deno_semver::jsr::JsrPackageReqReference::from_specifier(specifier)
             .is_ok_and(|reference| reference.req().name.as_str() == name)
       }
-      Self::UrlPrefix(prefix) => {
-        specifier.as_str().starts_with(prefix.as_str())
+      // Compared in a normal form, so another spelling of the same URL
+      // (percent-encoded letters, doubled slashes, a query or fragment on
+      // an exact URL) can't load it outside its sandbox.
+      Self::UrlPrefix(prefix) => normalized_for_match(specifier)
+        .as_str()
+        .starts_with(normalized_for_match(prefix).as_str()),
+      Self::Url(url) => {
+        normalized_for_match(specifier) == normalized_for_match(url)
       }
-      Self::Url(url) => specifier == url,
       Self::Folder(folder) => {
         specifier.scheme() == "file"
           && specifier.as_str().starts_with(folder.as_str())
       }
     }
   }
+}
+
+/// `url` as rules compare it: without its query and fragment, with
+/// percent-encoded unreserved characters (letters, digits, `-._~`) decoded,
+/// other percent-encodings in upper case, and runs of `/` in its path
+/// collapsed. A server may treat all these spellings as the same file.
+pub fn normalized_for_match(url: &Url) -> Url {
+  fn hex(byte: u8) -> Option<u8> {
+    (byte as char).to_digit(16).map(|digit| digit as u8)
+  }
+  let bytes = url.path().as_bytes();
+  let mut path = String::with_capacity(bytes.len());
+  let mut i = 0;
+  while i < bytes.len() {
+    let byte = bytes[i];
+    if byte == b'%'
+      && i + 2 < bytes.len()
+      && let (Some(high), Some(low)) = (hex(bytes[i + 1]), hex(bytes[i + 2]))
+    {
+      let decoded = high * 16 + low;
+      if decoded.is_ascii_alphanumeric() || b"-._~".contains(&decoded) {
+        path.push(decoded as char);
+      } else {
+        path.push('%');
+        path.push((bytes[i + 1] as char).to_ascii_uppercase());
+        path.push((bytes[i + 2] as char).to_ascii_uppercase());
+      }
+      i += 3;
+      continue;
+    }
+    if byte == b'/' && path.ends_with('/') {
+      i += 1;
+      continue;
+    }
+    path.push(byte as char);
+    i += 1;
+  }
+  let mut normalized = url.clone();
+  normalized.set_query(None);
+  normalized.set_fragment(None);
+  normalized.set_path(&path);
+  normalized
 }
 
 #[derive(Debug, Error, JsError, Clone, PartialEq, Eq)]

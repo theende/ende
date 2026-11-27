@@ -1,2 +1,1 @@
-Warning "isolate" rules are not enforced yet: sandboxed dependencies still run with the app's permissions.
 error: isolate["./ext/fmt/vendor/"] overlaps the folder of extension "@acme/fmt". An extension's code and its dependencies run under the grant in extensions["@acme/fmt"], so an "isolate" rule can't claim them too.

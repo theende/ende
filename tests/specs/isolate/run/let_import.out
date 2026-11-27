@@ -1,0 +1,1 @@
+[WILDCARD]Cannot import "counter" from "[WILDCARD]/vendor/none/mod.ts": it is a let or var binding, whose value can change after a snapshot, which can't leave the sandbox of isolate["./vendor/none/"].[WILDCARD]

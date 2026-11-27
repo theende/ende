@@ -77,6 +77,9 @@ pub struct CreateWebWorkerArgs {
   /// extension's name. Its module loader then fetches the extension's static
   /// graph with `parent_permissions` alone, never with `permissions`.
   pub extension_name: Option<String>,
+  /// For the worker of a sandboxed package (`isolate` in ende.json), the
+  /// rule's matcher. Its module loader then serves only that sandbox's code.
+  pub sandbox_rule: Option<String>,
 }
 
 /// The worker a sandboxed extension (`extension:@scope/name`) runs in.
@@ -103,6 +106,32 @@ pub trait ExtensionWorkerProvider: Send + Sync {
 /// Put into the main thread's `OpState` when the app declares extensions.
 #[derive(Clone)]
 pub struct ExtensionWorkerHost(pub Arc<dyn ExtensionWorkerProvider>);
+
+/// The worker a sandboxed package (an `isolate` rule in ende.json) runs in.
+pub struct SandboxWorkerSpec {
+  /// The module the worker starts: it imports the sandbox's entry modules
+  /// when the app asks and serves the app's calls.
+  pub main_module: ModuleSpecifier,
+  /// The sandbox's own permissions: its grant, never prompting, with the
+  /// paths no sandbox may write denied. The worker checks these and the
+  /// app's live permissions (see `PermissionsContainer::chained_to`).
+  pub permissions: PermissionsContainer,
+}
+
+/// Describes the workers of the sandboxes the app declares (`isolate` in
+/// ende.json). Only the main thread has one, so neither a web worker nor a
+/// sandbox can start a sandbox's worker.
+pub trait SandboxWorkerProvider: Send + Sync {
+  /// The worker for the rule whose matcher is `rule`. Its permissions come
+  /// from the app's configuration alone; nothing passed from JS can choose
+  /// them.
+  fn worker_spec(&self, rule: &str) -> Result<SandboxWorkerSpec, JsErrorBox>;
+}
+
+/// Put into the main thread's `OpState` when the app declares `isolate`
+/// rules.
+#[derive(Clone)]
+pub struct SandboxWorkerHost(pub Arc<dyn SandboxWorkerProvider>);
 
 pub type CreateWebWorkerCb = dyn Fn(CreateWebWorkerArgs) -> (WebWorker, SendableWebWorkerHandle)
   + Sync
@@ -156,6 +185,7 @@ ende_core::extension!(
   ops = [
     op_create_worker,
     op_create_extension_worker,
+    op_create_sandbox_worker,
     op_host_terminate_worker,
     op_host_post_message,
     op_host_recv_ctrl,
@@ -268,6 +298,7 @@ fn op_create_worker(
       maybe_worker_metadata,
       resource_limits: args.resource_limits,
       extension_name: None,
+      sandbox_rule: None,
     },
   )
 }
@@ -304,6 +335,51 @@ fn op_create_extension_worker(
       maybe_worker_metadata: None,
       resource_limits: None,
       extension_name: Some(name),
+      sandbox_rule: None,
+    },
+  )
+}
+
+/// Starts the worker of the sandbox of `isolate` rule `rule` (see
+/// [`SandboxWorkerProvider`]). Only the main thread can: elsewhere there is
+/// no provider. The worker's permissions are the rule's grant chained to the
+/// app's own, so they never exceed the app's, now or after a revoke.
+#[op2(stack_trace)]
+fn op_create_sandbox_worker(
+  state: &mut OpState,
+  #[string] rule: String,
+) -> Result<WorkerId, CreateWorkerError> {
+  let Some(host) = state.try_borrow::<SandboxWorkerHost>().cloned() else {
+    return Err(CreateWorkerError::Extension(JsErrorBox::type_error(
+      format!(
+        "Sandboxed packages can only be imported in the main thread, not in a worker: isolate[\"{rule}\"]"
+      ),
+    )));
+  };
+  let spec = host
+    .0
+    .worker_spec(&rule)
+    .map_err(CreateWorkerError::Extension)?;
+  if !state.has::<ende_permissions::AppPermissions>() {
+    let app = state.borrow::<PermissionsContainer>().clone();
+    state.put(ende_permissions::AppPermissions::new(app));
+  }
+  let app = state.borrow::<ende_permissions::AppPermissions>().clone();
+  let permissions = spec.permissions.chained_to(app);
+  spawn_worker(
+    state,
+    SpawnWorker {
+      name: format!("isolate[\"{rule}\"]"),
+      parent_permissions: permissions.clone(),
+      permissions,
+      module_specifier: spec.main_module,
+      maybe_source_code: None,
+      worker_type: WorkerThreadType::Module,
+      close_on_idle: false,
+      maybe_worker_metadata: None,
+      resource_limits: None,
+      extension_name: None,
+      sandbox_rule: Some(rule),
     },
   )
 }
@@ -319,6 +395,7 @@ struct SpawnWorker {
   maybe_worker_metadata: Option<JsMessageData>,
   resource_limits: Option<ResourceLimits>,
   extension_name: Option<String>,
+  sandbox_rule: Option<String>,
 }
 
 fn spawn_worker(
@@ -336,6 +413,7 @@ fn spawn_worker(
     maybe_worker_metadata,
     resource_limits,
     extension_name,
+    sandbox_rule,
   } = spawn;
   let create_web_worker_cb = state.borrow::<CreateWebWorkerCbHolder>().clone();
   let format_js_error_fn = state.borrow::<FormatJsErrorFnHolder>().clone();
@@ -385,16 +463,27 @@ fn spawn_worker(
   } else {
     None
   };
+  // A worker started by an extension or a sandbox runs on their behalf:
+  // its permission errors name them, and it doesn't prompt or take the
+  // broker's "allow" either. (Divergence from upstream, which has neither.)
+  let thread_label = match (&extension_name, &sandbox_rule) {
+    (Some(name), _) => {
+      Some(ende_permissions::ThreadLabel::Extension(name.clone()))
+    }
+    (None, Some(rule)) => {
+      Some(ende_permissions::ThreadLabel::Sandbox(rule.clone()))
+    }
+    (None, None) => ende_permissions::current_thread_label(),
+  };
   // Spawn it
   thread_builder.spawn(move || {
     // Any error inside this block is terminal:
     // - JS worker is useless - meaning it throws an exception and can't do anything else,
     //  all action done upon it should be noops
     // - newly spawned thread exits
-    // Permission errors raised on an extension's thread name the extension.
-    if let Some(name) = &extension_name {
-      ende_permissions::set_thread_extension_label(Some(name.clone()));
-    }
+    // Permission errors raised on an extension's or a sandbox's thread name
+    // it.
+    ende_permissions::set_thread_label(thread_label);
     let fut = async move {
       let (worker, external_handle) =
         (create_web_worker_cb.0)(CreateWebWorkerArgs {
@@ -411,6 +500,7 @@ fn spawn_worker(
           wait_for_debugger_on_start,
           wait_for_page_wait_for_debugger,
           extension_name: extension_name.clone(),
+          sandbox_rule: sandbox_rule.clone(),
         });
 
       // Send thread safe handle from newly created worker to host thread

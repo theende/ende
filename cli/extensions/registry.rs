@@ -864,7 +864,11 @@ fn describe_permissions(options: &PermissionsOptions) -> String {
     .iter()
     .filter_map(|(kind, allow)| {
       let allow = allow.as_ref()?;
-      Some(if allow.is_empty() {
+      Some(if allow.is_empty() && *kind == "write" {
+        // Ende fences scoped writes off from the app's code (see
+        // `ende_permissions::check_code_load`); everything can't be.
+        "write (all; can escape: it can change the app's code)".to_string()
+      } else if allow.is_empty() {
         format!("{kind} (all)")
       } else {
         format!("{kind} {}", allow.join(", "))

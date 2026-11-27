@@ -1,0 +1,1 @@
+[WILDCARD]"[WILDCARD]/vendor/none/mod.ts" is in the sandbox of isolate["./vendor/none/"], so it can't run on its own: a sandboxed package runs only when the app imports it. Exclude it from the files to run

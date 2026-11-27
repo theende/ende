@@ -1,0 +1,2 @@
+through a link: NotCapable: ./vendor/probe/: Requires write access to "vendor/probe/link.ts", which is denied to this sandbox: by a deny list in isolate["./vendor/probe/"].permissions, or because no sandbox may write the app's config, lockfile, vendor folder, module cache or code
+true

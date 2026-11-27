@@ -1,10 +1,17 @@
 {
   "tempDir": true,
   "tests": {
-    // An invalid "isolate" key stops the report (and isn't enforced
-    // either).
+    // An invalid "isolate" key stops the report (and running the app
+    // too).
     "npm_matcher": {
       "args": "audit main.ts",
+      "output": "npm_matcher.out",
+      "exitCode": 1
+    },
+    // Running refuses rules it can't enforce rather than run the code they
+    // name with the app's permissions.
+    "run_refuses_invalid_rules": {
+      "args": "run main.ts",
       "output": "npm_matcher.out",
       "exitCode": 1
     }

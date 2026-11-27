@@ -3,8 +3,8 @@ write inside: ok
 read back: written
 dot-dot: PathEscape
 absolute: PathEscape
-read through link out: PathEscape
-write through dir link out: PathEscape
+read through link out: NotCapable
+write through dir link out: NotCapable
 plain write outside: NotCapable
 anything written outside output/: false
 host root still usable: written

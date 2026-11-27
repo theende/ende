@@ -1,0 +1,4 @@
+NotFound NotFound no such thing true false false
+RangeError RangeError too far false true false
+AbortError AbortError stopped false false true
+CustomError CustomError custom false false false

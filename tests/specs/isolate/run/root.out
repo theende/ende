@@ -1,0 +1,4 @@
+described: "true function"
+app after the call: "data\n"
+no grant: NotCapable: ./vendor/none/: Requires read access to "[WILDCARD]a.txt"; grant it in ende.json under isolate["./vendor/none/"].permissions.read
+read grant: "data"

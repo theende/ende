@@ -1,0 +1,4 @@
+[WILDCARD]Warning isolate["./vendor/wide/"] grants permissions the app itself doesn't have. A sandbox never gets more than the app, so using them will be denied:
+  env
+read data: "data"
+env: NotCapable: ./vendor/wide/: Requires env access to "HOME", which the app itself isn't allowed. isolate["./vendor/wide/"] can only narrow the app's permissions; run again with the --allow-env flag

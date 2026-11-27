@@ -1,0 +1,2 @@
+own file: "own data"
+through the link: NotCapable: ./vendor/shipped/: Requires read access to "[WILDCARD]data/secret.txt"; grant it in ende.json under isolate["./vendor/shipped/"].permissions.read

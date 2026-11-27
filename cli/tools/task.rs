@@ -750,6 +750,42 @@ impl<'a> TaskRunner<'a> {
     Ok(exit_code)
   }
 
+  /// Refuses to run a task that names a path a sandbox or an extension may
+  /// write (by its scoped grant): it would run their code with the user's
+  /// privileges. Compared as written and with symlinks resolved, folded.
+  fn check_task_paths(
+    &self,
+    task_name: &str,
+    script: &str,
+    cwd: &Path,
+  ) -> Result<(), AnyError> {
+    let grants = self.cli_options.labelled_write_grants();
+    if grants.is_empty() {
+      return Ok(());
+    }
+    let real = |path: &Path| {
+      crate::util::fs::canonicalize_path_maybe_not_exists(path)
+        .unwrap_or_else(|_| path.to_path_buf())
+    };
+    let within = ende_runtime::ende_permissions::path_within;
+    for path in task_runner::paths_named_by(script, cwd) {
+      let forms = [real(&path), path.clone()];
+      for (owner, grant) in &grants {
+        let grant_forms = [real(grant), grant.clone()];
+        if forms
+          .iter()
+          .any(|path| grant_forms.iter().any(|grant| within(path, grant)))
+        {
+          bail!(
+            "Task \"{task_name}\" runs {}, which {owner} may write; a sandbox's or extension's write grant can't cover a script a task runs, so Ende won't run it. Move the script out of the granted folder, or narrow the grant.",
+            path.display()
+          );
+        }
+      }
+    }
+    Ok(())
+  }
+
   async fn run_single(
     &self,
     opts: RunSingleOptions<'_>,
@@ -765,6 +801,7 @@ impl<'a> TaskRunner<'a> {
       parallel_info,
     } = opts;
 
+    self.check_task_paths(task_name, script, &cwd)?;
     self.output_task(
       task_name,
       package_name,

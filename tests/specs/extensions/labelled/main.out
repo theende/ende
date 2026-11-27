@@ -1,0 +1,13 @@
+Recorded extension "@acme/probe" in ende.lock; it will run with: write [WILDCARD]
+ende.jsonc: NotCapable: @acme/probe: Requires write access to "ende.jsonc", which [WILDCARD]
+deno.json: NotCapable: @acme/probe: Requires write access to "deno.json", which [WILDCARD]
+plugins/ende.jſon: NotCapable: @acme/probe: Requires write access to "plugins/ende.jſon", which [WILDCARD]
+plugins/tool.ts: "written"
+plugins/data.json: "written"
+load plugins/tool.ts: TypeError: [WILDCARD]plugins/tool.ts" is in [WILDCARD]plugins, which extension "@acme/probe" may write, and the app never loads code from a folder a sandbox or extension can write[WILDCARD]
+chdir: NotCapable: @acme/probe: Ende.chdir() changes the working directory of the whole process, so sandboxed code and extensions can't call it
+stdin: "closed"
+storage: "caches: undefined, BroadcastChannel: undefined"
+signal: NotCapable: @acme/probe: Ende.addSignalListener() handles signals for the whole process, so sandboxed code and extensions can't call it
+exit: Error: extension:@acme/probe stopped: its worker exited or failed, so calls into it fail
+after: Error: extension:@acme/probe stopped: its worker exited or failed, so calls into it fail

@@ -10,6 +10,7 @@ use deno_graph::packages::JsrVersionResolver;
 use ende_cache_dir::GlobalOrLocalHttpCache;
 use ende_config::workspace::WorkspaceDirectory;
 use ende_core::anyhow::Context;
+use ende_core::anyhow::bail;
 use ende_core::error::AnyError;
 use ende_core::futures::FutureExt;
 use ende_core::serde_json;
@@ -269,6 +270,7 @@ struct CliFactoryServices {
   code_cache: Deferred<Arc<CodeCache>>,
   eszip_module_loader_provider: Deferred<Arc<EszipModuleLoaderProvider>>,
   extension_registry: Deferred<Arc<crate::extensions::ExtensionRegistry>>,
+  sandbox_registry: Deferred<Option<Arc<crate::isolate::SandboxRegistry>>>,
   feature_checker: Deferred<Arc<FeatureChecker>>,
   file_fetcher: Deferred<Arc<CliFileFetcher>>,
   fs: Deferred<Arc<dyn ende_fs::FileSystem>>,
@@ -843,6 +845,170 @@ impl CliFactory {
       .await
   }
 
+  /// The sandboxes of the `isolate` rules the root ende.json declares, if
+  /// any. Rules that don't parse, or that hold the project or an
+  /// extension, are an error: running without them would run the code they
+  /// name with the app's permissions.
+  pub async fn sandbox_registry(
+    &self,
+  ) -> Result<Option<&Arc<crate::isolate::SandboxRegistry>>, AnyError> {
+    self
+      .services
+      .sandbox_registry
+      .get_or_try_init_async(
+        async {
+          let cli_options = self.cli_options()?;
+          let workspace = cli_options.workspace();
+          let config = workspace.to_isolate_config()?;
+          if config.rules.is_empty() {
+            return Ok(None);
+          }
+          let sys = self.sys();
+          crate::isolate::check_folders(
+            &config,
+            &workspace.root_dir_path(),
+            &sys,
+          )?;
+          if let Ok(extensions) = workspace.to_extensions_config() {
+            crate::isolate::check_extensions(
+              &config,
+              &extensions,
+              crate::args::jsr_url(),
+              &sys,
+            )?;
+          }
+          let protected_paths = self.run_setup_paths()?;
+          let registry = crate::isolate::SandboxRegistry::new(
+            config,
+            crate::args::jsr_url(),
+            self.permission_desc_parser()?.clone(),
+            cli_options.permissions_options()?,
+            protected_paths,
+            self.main_module_graph_container().await?.clone(),
+          );
+          let extension_folders = workspace
+            .to_extensions_config()
+            .map(|extensions| {
+              extensions
+                .extensions
+                .iter()
+                .filter_map(|(name, extension)| {
+                  crate::extensions::extension_directory(&extension.source)
+                    .map(|dir| (name.clone(), dir))
+                })
+                .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+          registry.check_write_grants(
+            &workspace.root_dir_path(),
+            &extension_folders,
+            &cli_options.task_named_paths(),
+          )?;
+          Ok(Some(Arc::new(registry)))
+        }
+        .boxed_local(),
+      )
+      .await
+      .map(|registry| registry.as_ref())
+  }
+
+  /// Every file and folder Ende reads to set up this run that could change
+  /// what code runs or how the process is configured (see
+  /// `CliOptions::sandbox_protected_paths`), plus the module cache and the
+  /// sources of the compiler options (tsconfig files, extended ones too).
+  fn run_setup_paths(&self) -> Result<Vec<PathBuf>, AnyError> {
+    let cli_options = self.cli_options()?;
+    let mut paths = cli_options.sandbox_protected_paths();
+    paths.push(self.ende_dir()?.root.clone());
+    // What tasks run, which `ende task` runs with the user's privileges.
+    paths.extend(cli_options.task_named_paths().into_iter().map(|(_, p)| p));
+    for (_, data, _) in self.compiler_options_resolver()?.entries() {
+      for source in &data.sources {
+        if let Ok(path) = deno_path_util::url_to_file_path(&source.specifier) {
+          paths.push(path);
+        }
+      }
+    }
+    paths.sort();
+    paths.dedup();
+    Ok(paths)
+  }
+
+  /// Tells the permission checks what no extension's or sandbox's thread
+  /// may write, even when granted, and where the app may not load code
+  /// from (see `ende_permissions::LabelledWriteGuard`): the vendor folder,
+  /// `node_modules`, the module cache, the config, import map and lockfile
+  /// in use, each one's own folder, and each scoped write grant.
+  async fn set_labelled_write_guard(&self) -> Result<(), AnyError> {
+    use ende_runtime::ende_permissions::ThreadLabel;
+    let cli_options = self.cli_options()?;
+    let workspace = cli_options.workspace();
+    // Without sandboxes or extensions no thread is labelled, so there is
+    // nothing to guard and nothing to pay.
+    let has_extensions = workspace
+      .to_extensions_config()
+      .map(|extensions| !extensions.extensions.is_empty())
+      .unwrap_or(false);
+    if self.sandbox_registry().await?.is_none() && !has_extensions {
+      return Ok(());
+    }
+    let real = |path: PathBuf| {
+      crate::util::fs::canonicalize_path_maybe_not_exists(&path).unwrap_or(path)
+    };
+    // Config and lockfile names are refused wherever they are written (see
+    // `ende_permissions::is_config_name`), so only the files in use with
+    // other names need listing; they are among the protected paths.
+    let config_files = Vec::new();
+    // No labelled thread writes in these, whatever its grant: they hold the
+    // app's code or configuration.
+    let protected = self.run_setup_paths()?;
+    let protected = protected.into_iter().map(real).collect::<Vec<_>>();
+    let mut own_folders = Vec::new();
+    let mut writable = Vec::new();
+    if let Some(sandboxes) = self.sandbox_registry().await? {
+      for (matcher, folder) in sandboxes.own_folders() {
+        own_folders.push((ThreadLabel::Sandbox(matcher), vec![folder]));
+      }
+      for (matcher, granted) in sandboxes.write_grant_entries() {
+        let at_start = real(granted.clone());
+        writable.push((ThreadLabel::Sandbox(matcher), granted, at_start));
+      }
+    }
+    if let Ok(extensions) = workspace.to_extensions_config() {
+      for (name, extension) in &extensions.extensions {
+        if let Some(dir) =
+          crate::extensions::extension_directory(&extension.source)
+        {
+          own_folders.push((ThreadLabel::Extension(name.clone()), vec![dir]));
+        }
+        // An unscoped write grant covers everything, so it can't be fenced
+        // off; the install notice says it can escape.
+        if let Ok(grant) = crate::args::extension_grant_permissions_options(
+          &extension.permissions,
+        ) {
+          for entry in grant.allow_write.iter().flatten() {
+            let granted = PathBuf::from(entry);
+            let at_start = real(granted.clone());
+            writable.push((
+              ThreadLabel::Extension(name.clone()),
+              granted,
+              at_start,
+            ));
+          }
+        }
+      }
+    }
+    ende_runtime::ende_permissions::set_labelled_write_guard(
+      ende_runtime::ende_permissions::LabelledWriteGuard {
+        config_files,
+        own_folders,
+        protected,
+        writable,
+      },
+    );
+    Ok(())
+  }
+
   pub fn permission_desc_parser(
     &self,
   ) -> Result<&Arc<RuntimePermissionDescriptorParser<CliSys>>, AnyError> {
@@ -925,6 +1091,12 @@ impl CliFactory {
 
     let maybe_eszip_loader =
       self.eszip_module_loader_provider()?.get().await?.cloned();
+    let sandboxes = self.sandbox_registry().await?.cloned();
+    if maybe_eszip_loader.is_some() && sandboxes.is_some() {
+      bail!(
+        "\"isolate\" rules can't be enforced for code loaded from an eszip. Run the app from its sources."
+      );
+    }
     let module_loader_factory = CliModuleLoaderFactory::new(
       cli_options,
       if cli_options.code_cache_enabled() {
@@ -942,6 +1114,7 @@ impl CliFactory {
       maybe_eszip_loader,
       self.watcher_communicator.clone(),
       self.extension_registry().await?.clone(),
+      sandboxes,
     );
 
     Ok(module_loader_factory)
@@ -962,6 +1135,7 @@ impl CliFactory {
     // issue #7590.
     let maybe_file_watcher_communicator = self.watcher_communicator.clone();
     let module_loader_factory = self.create_module_loader_factory().await?;
+    self.set_labelled_write_guard().await?;
     self.maybe_start_inspector_server()?;
 
     let maybe_cpu_prof_config_for_workers =
@@ -995,6 +1169,11 @@ impl CliFactory {
           Some(Arc::new(crate::extensions::CliExtensionWorkerProvider(
             self.extension_registry().await?.clone(),
           )));
+        options.sandbox_worker_provider =
+          self.sandbox_registry().await?.map(|registry| {
+            Arc::new(crate::isolate::CliSandboxWorkerProvider(registry.clone()))
+              as Arc<dyn ende_runtime::ops::worker_host::SandboxWorkerProvider>
+          });
         options
       },
       roots,
@@ -1053,6 +1232,7 @@ impl CliFactory {
         Ok("1") | Ok("true")
       ),
       extension_worker_provider: None,
+      sandbox_worker_provider: None,
     })
   }
 

@@ -1,0 +1,14 @@
+{
+  "tempDir": true,
+  "tests": {
+    "export_names_are_data": {
+      "args": "run --quiet names.ts",
+      "output": "names.out"
+    },
+    "doc_snippets_of_a_sandbox": {
+      "args": "test --quiet --doc -A vendor/doc/mod.ts",
+      "output": "[WILDCARD]is in the sandbox of isolate[\"./vendor/doc/\"], so it can't run on its own[WILDCARD]",
+      "exitCode": 1
+    }
+  }
+}

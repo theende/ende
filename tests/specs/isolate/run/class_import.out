@@ -1,0 +1,2 @@
+[WILDCARD]Cannot import "Parser" from "[WILDCARD]/vendor/none/mod.ts": it is a class, which can't leave the sandbox of isolate["./vendor/none/"]. A sandboxed package can only export functions (called async, with arguments and results structured-cloned) and structured-clonable constants
+    at [WILDCARD]/class_import.ts:1:24

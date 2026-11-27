@@ -1,0 +1,49 @@
+{
+  "tempDir": true,
+  "tests": {
+    // An extension's thread is labelled like a sandbox's: it can't write the
+    // app's config or code, change the process's working directory or
+    // signal handlers, read the app's stdin, or reach the app's caches and
+    // channels, and calls fail rather than hang once its worker exits.
+    "grant_inside_vendor_and_cache": {
+      "envs": { "ENDE_DIR": "cache" },
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Ende.mkdirSync('.git/hooks', { recursive: true })"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet cache.ts",
+          "output": "cache.out"
+        }
+      ]
+    },
+    // A symlink an extension ships doesn't widen its read grant.
+    "shipped_symlink": {
+      "if": "unix",
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Ende.symlinkSync('..', 'shipped/data')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet shipped.ts",
+          "output": "shipped.out"
+        }
+      ]
+    },
+    "labelled_thread_limits": {
+      "args": "run --quiet --allow-read main.ts",
+      "input": "typed by the user\n",
+      "output": "main.out"
+    }
+  }
+}

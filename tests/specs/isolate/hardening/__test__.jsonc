@@ -1,0 +1,110 @@
+{
+  "tempDir": true,
+  "tests": {
+    // No sandbox may write a config or lockfile name Ende looks for, in
+    // any folder and any spelling a file system may treat as the same.
+    "config_files": {
+      "args": "run --quiet -A config.ts",
+      "output": "config_files.out"
+    },
+    // The app never loads code from a folder a sandbox may write.
+    "code_files": {
+      "args": "run --quiet -A code.ts",
+      "output": "code_files.out"
+    },
+    // A write grant that holds an app module's folder, or a config file or
+    // lockfile in use, is refused.
+    "write_grant_holding_app_code": {
+      "args": "run --quiet --config grant_src.json src/main.ts",
+      "output": "[WILDCARD]isolate[\"./vendor/none/\"] may write [WILDCARD]src, which holds the app's module [WILDCARD]main.ts; grant a folder of data instead[WILDCARD]",
+      "exitCode": 1
+    },
+    "write_grant_holding_the_lockfile": {
+      "args": "run --quiet --config grant_config.json --lock=out/app.lock src/main.ts",
+      "output": "write_grant_holding_the_lockfile.out",
+      "exitCode": 1
+    },
+    // A write grant that holds the app's folder is refused.
+    "write_grant_holding_the_project": {
+      "args": "run --quiet --config root_grant.json root_grant.ts",
+      "output": "[WILDCARD]isolate[\"./vendor/none/\"] grants write access to the folder that holds ende.json[WILDCARD]",
+      "exitCode": 1
+    },
+    "unscoped_write_grant": {
+      "args": "run --quiet --config all_write.json root_grant.ts",
+      "output": "[WILDCARD]isolate[\"./vendor/none/\"] grants write access to the folder that holds ende.json[WILDCARD]",
+      "exitCode": 1
+    },
+    // Local modules outside a sandbox's folder need its read permission;
+    // remote ones in the app's graph don't.
+    "outside_code": {
+      "args": "run --quiet -A outside.ts",
+      "output": "outside_code.out"
+    },
+    // A symlink in a sandbox's folder doesn't make what it points at the
+    // sandbox's own.
+    "symlink_out_of_the_folder": {
+      "if": "unix",
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Ende.symlinkSync('../..', 'vendor/linked/root')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet -A linked.ts",
+          "output": "symlink.out"
+        }
+      ]
+    },
+    // Nor a symlink its package ships: an allow rule holds only if the
+    // real path is inside it too.
+    "shipped_symlink": {
+      "if": "unix",
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Ende.symlinkSync('../..', 'vendor/shipped/data')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet -A shipped.ts",
+          "output": "shipped_symlink.out"
+        }
+      ]
+    },
+    // Process-wide state and the app's channels stay the app's.
+    "process_wide": {
+      "args": "run --quiet -A process.ts",
+      "input": "typed by the user\n",
+      "output": "process.out"
+    },
+    // A sandbox that exits fails its calls instead of hanging them.
+    "sandbox_exits": {
+      "args": "run --quiet exit.ts",
+      "output": "exit.out"
+    },
+    // A `then` export can't hang the sandbox, and can't be imported.
+    "then_export": {
+      "args": "run --quiet then.ts",
+      "output": "hello hello\n"
+    },
+    "then_import": {
+      "args": "run --quiet then_import.ts",
+      "output": "[WILDCARD]Cannot import \"then\" from \"[WILDCARD]/vendor/then/mod.ts\": it is a then export[WILDCARD]",
+      "exitCode": 1
+    },
+    // A query, a fragment or another spelling of a sandboxed URL is still
+    // sandboxed.
+    "url_forms": {
+      "args": "run --quiet --cert RootCA.pem -A urls.ts",
+      "output": "urls.out"
+    }
+  }
+}

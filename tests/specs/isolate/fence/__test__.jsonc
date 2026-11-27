@@ -1,0 +1,60 @@
+{
+  "tempDir": true,
+  "tests": {
+    // The app never loads code from where a sandbox may write, matched
+    // live: by the grant as written and by where it resolves, now and at
+    // start, with names compared as a case-folding file system would.
+    "grant_folder_swapped_for_another_spelling": {
+      "if": "unix",
+      "args": "run --quiet -A swap.ts",
+      "output": "swap.out"
+    },
+    "grant_symlink_replaced": {
+      "if": "unix",
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Ende.symlinkSync('store', 'linked')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet -A relink.ts",
+          "output": "relink.out"
+        }
+      ]
+    },
+    "grant_symlink_re_pointed_by_the_app": {
+      "if": "unix",
+      "args": "run --quiet -A --config grant_link.json relink_by_app.ts",
+      "output": "relink_by_app.out"
+    },
+    // A write grant that holds a file Ende reads to set up the run is
+    // refused: the import map the config names, an env file.
+    "grant_holding_the_configured_import_map": {
+      "args": "run --quiet --config import_map.json src/main.ts",
+      "output": "[WILDCARD]isolate[\"./sandboxed/\"] may write [WILDCARD]data, which holds [WILDCARD]import_map.json[WILDCARD]",
+      "exitCode": 1
+    },
+    "grant_holding_an_env_file": {
+      "args": "run --quiet --config env_file.json --env-file=data/app.env src/main.ts",
+      "output": "[WILDCARD]isolate[\"./sandboxed/\"] may write [WILDCARD]data, which holds [WILDCARD]app.env[WILDCARD]",
+      "exitCode": 1
+    },
+    // A write grant inside a folder that pins the app's code is refused:
+    // its vendor folder and its module cache.
+    "grant_inside_the_vendor_folder": {
+      "args": "run --quiet --config vendor.json src/main.ts",
+      "output": "[WILDCARD]isolate[\"./sandboxed/\"] may write [WILDCARD]jsr.io, which [WILDCARD]vendor[WILDCARD]",
+      "exitCode": 1
+    },
+    "grant_inside_the_module_cache": {
+      "args": "run --quiet --config cache.json src/main.ts",
+      "envs": { "ENDE_DIR": "cache" },
+      "output": "[WILDCARD]isolate[\"./sandboxed/\"] may write [WILDCARD]gen, which [WILDCARD]cache[WILDCARD]",
+      "exitCode": 1
+    }
+  }
+}

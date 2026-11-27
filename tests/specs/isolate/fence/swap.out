@@ -1,0 +1,4 @@
+remove out: ok
+mkdir OUT: ok
+write OUT/x.ts: ok
+OUT/x.ts: refused: "[WILDCARD]OUT/x.ts" is in [WILDCARD]out, which isolate["./sandboxed/"] may write, and the app never loads code from a folder a sandbox or extension can write

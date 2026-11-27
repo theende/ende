@@ -96,6 +96,12 @@ pub fn op_pledge_test_permissions(
   state.put::<PermissionsHolder>(PermissionsHolder(token, parent_permissions));
 
   // NOTE: This call overrides current permission set for the worker
+  // Sandboxes (`isolate` in ende.json) are narrowed with the app.
+  if let Some(app) =
+    state.try_borrow::<ende_runtime::ende_permissions::AppPermissions>()
+  {
+    app.set(worker_permissions.clone());
+  }
   state.put::<PermissionsContainer>(worker_permissions);
 
   Ok(token)
@@ -115,6 +121,11 @@ pub fn op_restore_test_permissions(
       }
 
       let permissions = permissions_holder.1;
+      if let Some(app) =
+        state.try_borrow::<ende_runtime::ende_permissions::AppPermissions>()
+      {
+        app.set(permissions.clone());
+      }
       state.put::<PermissionsContainer>(permissions);
       Ok(())
     }

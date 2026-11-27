@@ -79,6 +79,12 @@
       "args": "run --quiet --allow-write=./ext_fmt rewrite.ts",
       "output": "NotCapable: Requires write access to \"./ext_fmt/mod.ts\"[WILDCARD]@sec/fmt[WILDCARD]\nNotCapable\n"
     },
+    // Nor with a grant that names the file itself: a more specific allow
+    // doesn't beat the protection.
+    "app_cannot_rewrite_extension_with_a_narrower_grant": {
+      "args": "run --quiet -A narrow_grant.ts",
+      "output": "NotCapable: Requires write access to \"./ext_fmt/mod.ts\"[WILDCARD]@sec/fmt[WILDCARD]\nNotCapable\n"
+    },
     // The worker runs the code the extension was prepared from, even if the
     // file changes on disk in between (here through a subprocess).
     "rewrite_between_prepare_and_start": {

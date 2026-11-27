@@ -68,17 +68,18 @@ enum BrokerDecision {
   OwnState,
 }
 
-/// On an extension's thread (`extension:@scope/name`) the broker can only
-/// narrow: its "allow" still needs the extension's own permissions (the
-/// app's grant ∩ the extension's manifest) to grant the request, because the
-/// broker can't tell the extension's requests from the app's.
+/// On an extension's thread (`extension:@scope/name`) or a sandbox's
+/// (`isolate` in ende.json) the broker can only narrow: its "allow" still
+/// needs the thread's own permissions (the app's grant ∩ the extension's
+/// manifest, or a sandbox's grant ∩ the app's) to grant the request, because
+/// the broker can't tell those requests from the app's.
 fn broker_decision(
   response: Option<BrokerResponse>,
-  on_extension_thread: bool,
+  on_labelled_thread: bool,
 ) -> BrokerDecision {
   match response {
     None => BrokerDecision::OwnState,
-    Some(BrokerResponse::Allow) if on_extension_thread => {
+    Some(BrokerResponse::Allow) if on_labelled_thread => {
       BrokerDecision::OwnState
     }
     Some(BrokerResponse::Allow) => BrokerDecision::Allow,
@@ -97,7 +98,7 @@ pub enum AuditSink {
 pub static AUDIT_SINK: OnceLock<AuditSink> = OnceLock::new();
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
-#[error("{}", custom_message.as_ref().cloned().unwrap_or_else(|| denied_message(access, name)))]
+#[error("{}", custom_message.as_ref().cloned().unwrap_or_else(|| denied_message(access, name, *state)))]
 #[class("NotCapable")]
 pub struct PermissionDeniedError {
   pub access: String,
@@ -106,7 +107,14 @@ pub struct PermissionDeniedError {
   pub state: PermissionState,
 }
 
-fn denied_message(access: &str, name: &'static str) -> String {
+fn denied_message(
+  access: &str,
+  name: &'static str,
+  state: PermissionState,
+) -> String {
+  if let Some(rule) = current_sandbox_label() {
+    return sandbox_denied_message(&rule, access, name, state);
+  }
   match current_extension_label() {
     Some(label) => format!(
       "{label}: Requires {access}. Grant it in ende.json under extensions[\"{label}\"].permissions.{name} (the extension's manifest must ask for it too)"
@@ -209,23 +217,541 @@ fn format_permission_error(name: &'static str) -> String {
   permission_flag_hint(name, standalone_subcommand())
 }
 
+/// What runs on a thread that isn't the app's own: an extension's worker or
+/// a sandbox's. See [`set_thread_extension_label`] and
+/// [`set_thread_sandbox_label`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ThreadLabel {
+  /// The extension (`extension:@scope/name`) whose worker runs here.
+  Extension(String),
+  /// The `isolate` rule (its matcher as written in ende.json) whose sandbox
+  /// runs here.
+  Sandbox(String),
+}
+
 thread_local! {
-  /// The extension (`extension:@scope/name`) whose worker runs on this
-  /// thread, if any. Permission errors raised here name it and point at its
-  /// grant in ende.json instead of at a command-line flag.
-  static EXTENSION_LABEL: std::cell::RefCell<Option<String>> =
+  /// What runs on this thread, if it isn't the app: permission errors raised
+  /// here name it and point at its grant in ende.json instead of at a
+  /// command-line flag, and the broker can only narrow here.
+  static THREAD_LABEL: std::cell::RefCell<Option<ThreadLabel>> =
     const { std::cell::RefCell::new(None) };
+  /// Set while a sandbox's check consults the app's container (see
+  /// [`PermissionsContainer::chained_to`]).
+  static IN_APP_CHECK: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 /// Marks the current thread as running the worker of extension `label`, so
 /// permission errors raised on it name the extension. Set once, when the
 /// extension's worker thread starts.
 pub fn set_thread_extension_label(label: Option<String>) {
-  EXTENSION_LABEL.with(|cell| *cell.borrow_mut() = label);
+  set_thread_label(label.map(ThreadLabel::Extension));
+}
+
+/// Marks the current thread as running the sandbox of `isolate` rule `rule`:
+/// permission errors raised on it name the rule, it never prompts, and the
+/// broker can only narrow. Set once, when the sandbox's worker thread starts.
+pub fn set_thread_sandbox_label(rule: Option<String>) {
+  set_thread_label(rule.map(ThreadLabel::Sandbox));
+}
+
+/// Sets what runs on the current thread. A worker started from a labelled
+/// thread gets the same label (see [`current_thread_label`]).
+pub fn set_thread_label(label: Option<ThreadLabel>) {
+  THREAD_LABEL.with(|cell| *cell.borrow_mut() = label);
+}
+
+/// What runs on the current thread, if it isn't the app.
+pub fn current_thread_label() -> Option<ThreadLabel> {
+  THREAD_LABEL.with(|cell| cell.borrow().clone())
 }
 
 fn current_extension_label() -> Option<String> {
-  EXTENSION_LABEL.with(|cell| cell.borrow().clone())
+  match current_thread_label() {
+    Some(ThreadLabel::Extension(label)) => Some(label),
+    _ => None,
+  }
+}
+
+fn current_sandbox_label() -> Option<String> {
+  match current_thread_label() {
+    Some(ThreadLabel::Sandbox(rule)) => Some(rule),
+    _ => None,
+  }
+}
+
+fn in_app_check() -> bool {
+  IN_APP_CHECK.with(|cell| cell.get())
+}
+
+impl ThreadLabel {
+  /// How denials name it: the extension's name or the rule's matcher.
+  fn name(&self) -> &str {
+    match self {
+      Self::Extension(name) | Self::Sandbox(name) => name,
+    }
+  }
+}
+
+/// What no labelled thread (an extension's or a sandbox's) may write, even
+/// when its grant allows it, and where code may be loaded from. Set once by
+/// the CLI before workers start (see [`set_labelled_write_guard`]).
+#[derive(Clone, Debug, Default)]
+pub struct LabelledWriteGuard {
+  /// The config files, lockfiles and other files that configure the app
+  /// (the ones in use and the names Ende looks for in the folders it looks
+  /// in), with symlinks resolved. Besides these, no file whose name folds to
+  /// a config or lockfile name may be written anywhere (see
+  /// [`is_config_name`]).
+  pub config_files: Vec<PathBuf>,
+  /// The folders that are each label's own, with symlinks resolved. No
+  /// other label may write there.
+  pub own_folders: Vec<(ThreadLabel, Vec<PathBuf>)>,
+  /// What no label may write in, whatever its grant says (no allow entry
+  /// overrides these): the vendor folder, `node_modules` folders, the module
+  /// cache, and the config, lockfile and import map in use.
+  pub protected: Vec<PathBuf>,
+  /// What each label's scoped write grant covers: the path as granted
+  /// (absolute) and where it resolved at start. No code is loaded from
+  /// there (see [`check_code_load`]), except by that label from its own
+  /// folder.
+  pub writable: Vec<(ThreadLabel, PathBuf, PathBuf)>,
+}
+
+/// A path's components as a case-folding file system compares them (see
+/// [`folded_file_name`]).
+type FoldedPath = Vec<String>;
+
+fn fold_path(path: &Path) -> FoldedPath {
+  path
+    .components()
+    .map(|component| match component {
+      std::path::Component::Normal(name) => folded_file_name(name),
+      other => other.as_os_str().to_string_lossy().into_owned(),
+    })
+    .collect()
+}
+
+fn folded_within(path: &FoldedPath, base: &FoldedPath) -> bool {
+  path.len() >= base.len() && path[..base.len()] == base[..]
+}
+
+/// A path the guard compares against, prepared once: as given and where it
+/// resolved when the guard was set, both folded.
+#[derive(Debug)]
+struct GuardPath {
+  shown: PathBuf,
+  forms: Vec<FoldedPath>,
+}
+
+impl GuardPath {
+  fn new(path: &Path) -> Self {
+    let mut forms = vec![fold_path(path)];
+    if let Some(real) = resolve_write_path(path) {
+      let real = fold_path(&real);
+      if !forms.contains(&real) {
+        forms.push(real);
+      }
+    }
+    Self {
+      shown: path.to_path_buf(),
+      forms,
+    }
+  }
+
+  fn holds(&self, forms: &[FoldedPath]) -> bool {
+    self
+      .forms
+      .iter()
+      .any(|base| forms.iter().any(|path| folded_within(path, base)))
+  }
+}
+
+/// [`LabelledWriteGuard`] with every path folded and resolved once, so a
+/// check only resolves the path being written or loaded.
+#[derive(Debug, Default)]
+struct PreparedGuard {
+  config_files: Vec<GuardPath>,
+  protected: Vec<GuardPath>,
+  own_folders: Vec<(ThreadLabel, Vec<GuardPath>)>,
+  /// Each grant's owner, its path as written, and its forms at start.
+  writable: Vec<(ThreadLabel, PathBuf, GuardPath)>,
+}
+
+static LABELLED_WRITE_GUARD: std::sync::RwLock<
+  Option<std::sync::Arc<PreparedGuard>>,
+> = std::sync::RwLock::new(None);
+
+fn prepared_guard() -> Option<std::sync::Arc<PreparedGuard>> {
+  LABELLED_WRITE_GUARD.read().ok()?.clone()
+}
+
+/// Sets what labelled threads may never write (see [`LabelledWriteGuard`]).
+pub fn set_labelled_write_guard(guard: LabelledWriteGuard) {
+  let prepared = PreparedGuard {
+    config_files: guard
+      .config_files
+      .iter()
+      .map(|p| GuardPath::new(p))
+      .collect(),
+    protected: guard.protected.iter().map(|p| GuardPath::new(p)).collect(),
+    own_folders: guard
+      .own_folders
+      .iter()
+      .map(|(label, folders)| {
+        (
+          label.clone(),
+          folders.iter().map(|p| GuardPath::new(p)).collect(),
+        )
+      })
+      .collect(),
+    writable: guard
+      .writable
+      .iter()
+      .map(|(label, granted, at_start)| {
+        let mut path = GuardPath::new(granted);
+        let at_start = fold_path(at_start);
+        if !path.forms.contains(&at_start) {
+          path.forms.push(at_start);
+        }
+        (label.clone(), granted.clone(), path)
+      })
+      .collect(),
+  };
+  if let Ok(mut current) = LABELLED_WRITE_GUARD.write() {
+    *current = Some(std::sync::Arc::new(prepared));
+  }
+  if let Ok(mut live) = LIVE_GRANTS.lock() {
+    *live = None;
+  }
+  if let Ok(mut targets) = GRANT_TARGETS.lock() {
+    targets.clear();
+  }
+}
+
+/// Bumped on every write a labelled thread asks for: it may re-point a
+/// grant's folder, so the fence resolves grants again (see
+/// [`live_grant_forms`]).
+static LABELLED_WRITES: std::sync::atomic::AtomicU64 =
+  std::sync::atomic::AtomicU64::new(0);
+
+/// Where each grant resolves now, cached for one burst of loads: reused
+/// only while no labelled thread asked to write and for at most
+/// [`LIVE_GRANTS_TTL`].
+static LIVE_GRANTS: std::sync::Mutex<Option<LiveGrants>> =
+  std::sync::Mutex::new(None);
+
+/// When the grants were resolved, how many labelled writes had been asked
+/// for then, and where each grant resolved.
+type LiveGrants = (std::time::Instant, u64, Vec<Option<FoldedPath>>);
+
+const LIVE_GRANTS_TTL: std::time::Duration =
+  std::time::Duration::from_millis(50);
+
+/// Every real folder a grant resolved to when a labelled thread wrote
+/// through it: grow-only, so code written there stays fenced even after the
+/// grant's symlink is re-pointed again (by the app too).
+static GRANT_TARGETS: std::sync::Mutex<Vec<(usize, FoldedPath)>> =
+  std::sync::Mutex::new(Vec::new());
+
+/// Records where each grant holding `written` (a path a labelled thread
+/// writes, as written and made absolute) resolves now.
+fn record_grant_targets(guard: &PreparedGuard, written: &FoldedPath) {
+  for (index, (_, granted, grant)) in guard.writable.iter().enumerate() {
+    if !folded_within(written, &grant.forms[0]) {
+      continue;
+    }
+    let Some(now) = resolve_write_path(granted).map(|p| fold_path(&p)) else {
+      continue;
+    };
+    let mut targets = match GRANT_TARGETS.lock() {
+      Ok(targets) => targets,
+      Err(poisoned) => poisoned.into_inner(),
+    };
+    if !targets
+      .iter()
+      .any(|(i, target)| *i == index && *target == now)
+    {
+      targets.push((index, now));
+    }
+  }
+}
+
+fn live_grant_forms(guard: &PreparedGuard) -> Vec<Option<FoldedPath>> {
+  let writes = LABELLED_WRITES.load(std::sync::atomic::Ordering::SeqCst);
+  let mut live = match LIVE_GRANTS.lock() {
+    Ok(live) => live,
+    Err(poisoned) => poisoned.into_inner(),
+  };
+  if let Some((at, seen, forms)) = live.as_ref()
+    && *seen == writes
+    && at.elapsed() < LIVE_GRANTS_TTL
+  {
+    return forms.clone();
+  }
+  let forms = guard
+    .writable
+    .iter()
+    .map(|(_, granted, _)| resolve_write_path(granted).map(|p| fold_path(&p)))
+    .collect::<Vec<_>>();
+  *live = Some((std::time::Instant::now(), writes, forms.clone()));
+  forms
+}
+
+/// The names of the config files and lockfiles Ende looks for.
+const CONFIG_NAMES: [&str; 7] = [
+  "ende.json",
+  "ende.jsonc",
+  "deno.json",
+  "deno.jsonc",
+  "ende.lock",
+  "deno.lock",
+  // read beside each member's ende.json for its compiler options
+  "tsconfig.json",
+];
+
+/// A file name as a file system may see it: without what Windows ignores
+/// (an alternate data stream after `:`, trailing dots and spaces), case
+/// folded and decomposed (APFS and NTFS fold case; APFS folds `ſ` to `s`).
+fn folded_file_name(name: &std::ffi::OsStr) -> String {
+  use unicode_normalization::UnicodeNormalization;
+  let name = name.to_string_lossy();
+  let name = name.split(':').next().unwrap_or_default();
+  let name = name.trim_end_matches(['.', ' ']);
+  let decomposed: String = name.nfkd().collect();
+  decomposed.to_uppercase().to_lowercase().nfkd().collect()
+}
+
+/// Whether `path`'s file name is, as a file system may see it, the name of
+/// a config file or lockfile Ende looks for.
+fn is_config_name(path: &Path) -> bool {
+  path
+    .file_name()
+    .map(folded_file_name)
+    .is_some_and(|name| CONFIG_NAMES.contains(&name.as_str()))
+}
+
+/// `path` made absolute against the current directory, normalized, with
+/// symlinks resolved in the part of it that exists.
+#[allow(clippy::disallowed_methods, reason = "resolving where a path lands")]
+fn resolve_write_path(path: &Path) -> Option<PathBuf> {
+  let path = if path.is_absolute() {
+    path.to_path_buf()
+  } else {
+    std::env::current_dir().ok()?.join(path)
+  };
+  let path = normalize_path(Cow::Owned(path)).into_owned();
+  let mut existing = path.as_path();
+  let mut rest = Vec::new();
+  loop {
+    if let Ok(real) = std::fs::canonicalize(existing) {
+      return Some(
+        rest
+          .iter()
+          .rev()
+          .fold(real, |path: PathBuf, part| path.join(part)),
+      );
+    }
+    rest.push(existing.file_name()?.to_os_string());
+    existing = existing.parent()?;
+  }
+}
+
+/// Why a labelled thread may not write `requested`, if it may not: its
+/// name, as written or where it really lands, is a config or lockfile name,
+/// or it is a file that configures the app (see [`LabelledWriteGuard`]).
+fn labelled_write_denial(requested: &Path) -> Option<PermissionCheckError> {
+  let label = current_thread_label()?;
+  LABELLED_WRITES.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+  let guard = prepared_guard().unwrap_or_default();
+  // The path as written (made absolute) and where it really lands: the
+  // only paths resolved here.
+  let paths = [absolute_path(requested), resolve_write_path(requested)]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>();
+  let forms = paths.iter().map(|path| fold_path(path)).collect::<Vec<_>>();
+  if let Some(written) = forms.first() {
+    record_grant_targets(&guard, written);
+  }
+  let reason = if is_config_name(requested)
+    || paths.iter().any(|path| is_config_name(path))
+    || guard.config_files.iter().any(|file| file.holds(&forms))
+  {
+    "would configure or pin the app (a config file or lockfile Ende looks for, by any spelling), so no sandbox or extension may write it".to_string()
+  } else if let Some(base) =
+    guard.protected.iter().find(|base| base.holds(&forms))
+  {
+    format!(
+      "is in {}, which holds the app's code or configuration (its vendor folder, node_modules, module cache, config, lockfile or import map), so no sandbox or extension may write there, whatever its grant",
+      base.shown.display()
+    )
+  } else if let Some((owner, base)) = guard
+    .own_folders
+    .iter()
+    .filter(|(owner, _)| *owner != label)
+    .flat_map(|(owner, folders)| folders.iter().map(move |base| (owner, base)))
+    .find(|(_, base)| base.holds(&forms))
+  {
+    format!(
+      "is in {}, the folder of {}, so no other sandbox or extension may write there",
+      base.shown.display(),
+      owner_name(owner)
+    )
+  } else {
+    return None;
+  };
+  let access = format!("write access to \"{}\"", requested.display());
+  Some(PermissionCheckError::PermissionDenied(
+    PermissionDeniedError {
+      custom_message: Some(format!(
+        "{}: Requires {access}, which {reason}",
+        label.name()
+      )),
+      access,
+      name: "write",
+      state: PermissionState::Denied,
+    },
+  ))
+}
+
+fn owner_name(owner: &ThreadLabel) -> String {
+  match owner {
+    ThreadLabel::Sandbox(rule) => format!("isolate[\"{rule}\"]"),
+    ThreadLabel::Extension(name) => format!("extension \"{name}\""),
+  }
+}
+
+/// `path` made absolute against the current directory and normalized,
+/// without resolving symlinks.
+#[allow(clippy::disallowed_methods, reason = "where a path is written")]
+fn absolute_path(path: &Path) -> Option<PathBuf> {
+  let path = if path.is_absolute() {
+    path.to_path_buf()
+  } else {
+    std::env::current_dir().ok()?.join(path)
+  };
+  Some(normalize_path(Cow::Owned(path)).into_owned())
+}
+
+/// Whether `path` is `base` or inside it, comparing each component as a
+/// case-folding file system would (see [`folded_file_name`]). Folding on a
+/// case-sensitive volume only protects more.
+pub fn path_within(path: &Path, base: &Path) -> bool {
+  folded_within(&fold_path(path), &fold_path(base))
+}
+
+/// Errors unless the current thread may load the module at `path` as code:
+/// nothing loads code from where a sandbox or extension may write (its
+/// scoped write grant), except that sandbox or extension from its own
+/// folder. The message says why.
+pub fn check_code_load(path: &Path) -> Result<(), String> {
+  let Some(guard) = prepared_guard() else {
+    return Ok(());
+  };
+  if guard.writable.is_empty() {
+    return Ok(());
+  }
+  // The module as named and where it really is; each grant as written,
+  // where it resolved at start, and where it resolves now: a grant's folder
+  // swapped for a symlink, another spelling or another target is still
+  // covered. Names are compared folded.
+  let forms = [absolute_path(path), resolve_write_path(path)]
+    .into_iter()
+    .flatten()
+    .map(|path| fold_path(&path))
+    .collect::<Vec<_>>();
+  let live = live_grant_forms(&guard);
+  let targets = match GRANT_TARGETS.lock() {
+    Ok(targets) => targets.clone(),
+    Err(poisoned) => poisoned.into_inner().clone(),
+  };
+  let label = current_thread_label();
+  for (index, ((owner, _, grant), now)) in
+    guard.writable.iter().zip(live).enumerate()
+  {
+    let within =
+      |base: &FoldedPath| forms.iter().any(|path| folded_within(path, base));
+    let covered = grant.holds(&forms)
+      || now.as_ref().is_some_and(within)
+      || targets
+        .iter()
+        .any(|(i, target)| *i == index && within(target));
+    if !covered {
+      continue;
+    }
+    let own = label.as_ref() == Some(owner)
+      && guard
+        .own_folders
+        .iter()
+        .filter(|(label, _)| label == owner)
+        .flat_map(|(_, folders)| folders)
+        .any(|own| {
+          forms
+            .iter()
+            .all(|path| own.forms.iter().any(|base| folded_within(path, base)))
+        });
+    if own {
+      continue;
+    }
+    return Err(format!(
+      "\"{}\" is in {}, which {} may write, and the app never loads code from a folder a sandbox or extension can write",
+      path.display(),
+      grant.shown.display(),
+      owner_name(owner)
+    ));
+  }
+  Ok(())
+}
+
+/// Refuses `api` on a labelled thread (an extension's or a sandbox's): it
+/// changes state the whole process shares, like the working directory.
+pub fn check_not_labelled(
+  api: &str,
+  what: &str,
+) -> Result<(), PermissionCheckError> {
+  let Some(label) = current_thread_label() else {
+    return Ok(());
+  };
+  Err(PermissionCheckError::PermissionDenied(
+    PermissionDeniedError {
+      access: api.to_string(),
+      name: "sys",
+      custom_message: Some(format!(
+        "{}: {api} {what}, so sandboxed code and extensions can't call it",
+        label.name()
+      )),
+      state: PermissionState::Denied,
+    },
+  ))
+}
+
+/// The denial of a sandbox's own check: its grant lacks the permission, or
+/// denies it (its deny lists, or a path no sandbox may write).
+fn sandbox_denied_message(
+  rule: &str,
+  access: &str,
+  name: &'static str,
+  state: PermissionState,
+) -> String {
+  match state {
+    PermissionState::Denied | PermissionState::DeniedPartial => format!(
+      "{rule}: Requires {access}, which is denied to this sandbox: by a deny list in isolate[\"{rule}\"].permissions, or because no sandbox may write the app's config, lockfile, vendor folder, module cache or code"
+    ),
+    _ => format!(
+      "{rule}: Requires {access}; grant it in ende.json under isolate[\"{rule}\"].permissions.{name}"
+    ),
+  }
+}
+
+/// The denial of the app's check on behalf of a sandbox: the sandbox's grant
+/// allows it, but the app itself may not (never had it, revoked it, or
+/// denies it), and a sandbox never gets more than the app.
+fn sandbox_app_denied_message(access: &str, name: &'static str) -> String {
+  let rule = current_sandbox_label().unwrap_or_default();
+  format!(
+    "{rule}: Requires {access}, which the app itself isn't allowed. isolate[\"{rule}\"] can only narrow the app's permissions; {}",
+    format_permission_error(name)
+  )
 }
 
 /// What a permission error tells the user to do: run again with the flag, or,
@@ -681,8 +1207,14 @@ impl PermissionState {
     info: impl Fn() -> Option<String>,
     prompt: bool,
   ) -> (Result<(), PermissionDeniedError>, bool, bool) {
-    let response = maybe_check_with_broker(name, &stringify_value_fn);
-    match broker_decision(response, current_extension_label().is_some()) {
+    // A sandbox's own check already asked the broker; checking the app's
+    // container on its behalf doesn't ask again.
+    let response = if in_app_check() {
+      None
+    } else {
+      maybe_check_with_broker(name, &stringify_value_fn)
+    };
+    match broker_decision(response, current_thread_label().is_some()) {
       BrokerDecision::Allow => {
         Self::log_perm_access(name, info);
         return (Ok(()), false, false);
@@ -707,7 +1239,10 @@ impl PermissionState {
         Self::log_perm_access(name, info);
         (Ok(()), false, false)
       }
-      PermissionState::Prompt if prompt => {
+      // A sandbox never prompts, not even through the app's container.
+      PermissionState::Prompt
+        if prompt && current_sandbox_label().is_none() =>
+      {
         let info = info();
         let msg = StringBuilder::<String>::build(|builder| {
           builder.append(name);
@@ -1561,6 +2096,42 @@ fn strip_verbatim_prefix(path: Cow<'_, Path>) -> Cow<'_, Path> {
 }
 
 impl PathQueryDescriptor<'_> {
+  /// Whether an allow entry for `base` grants this path: it is inside
+  /// `base` as written and, on a labelled thread (an extension's or a
+  /// sandbox's), also with symlinks resolved on both sides. Their code may
+  /// ship a symlink out of the folder they are granted, so the path as
+  /// written isn't enough there. (Ende only; other threads keep upstream's
+  /// as-written allow semantics.)
+  fn is_within_allow(&self, base: &PathDescriptor) -> bool {
+    self.starts_with(base)
+      && self.real_path_also(base, |path, base| path.starts_with(base))
+  }
+
+  /// As [`Self::is_within_allow`], for an allow entry naming this exact
+  /// path (`--allow-run=/path/to/bin`).
+  fn is_allowed_exactly(&self, base: &PathDescriptor) -> bool {
+    self == base && self.real_path_also(base, |path, base| path == base)
+  }
+
+  /// On a labelled thread, whether `matches` holds for the real paths too;
+  /// a path whose real location can't be told is not allowed there.
+  fn real_path_also(
+    &self,
+    base: &PathDescriptor,
+    matches: impl FnOnce(&Path, &Path) -> bool,
+  ) -> bool {
+    if current_thread_label().is_none() {
+      return true;
+    }
+    match (
+      real_comparison_path(&self.path, self.is_windows_device_path),
+      real_comparison_path(&base.path, base.is_windows_device_path),
+    ) {
+      (Some(path), Some(base)) => matches(&path, &base),
+      _ => false,
+    }
+  }
+
   /// Whether this path is inside `deny` (or is it): as written, or with
   /// symlinks resolved on both sides. See [`real_comparison_path`].
   fn is_within_deny(&self, deny: &PathDescriptor) -> bool {
@@ -1742,7 +2313,7 @@ impl QueryDescriptor for ReadQueryDescriptor<'_> {
   }
 
   fn matches_allow(&self, other: &Self::AllowDesc) -> bool {
-    self.0.starts_with(&other.0)
+    self.0.is_within_allow(&other.0)
   }
 
   fn matches_deny(&self, other: &Self::DenyDesc) -> bool {
@@ -1952,7 +2523,7 @@ impl QueryDescriptor for WriteQueryDescriptor<'_> {
   }
 
   fn matches_allow(&self, other: &Self::AllowDesc) -> bool {
-    self.0.starts_with(&other.0)
+    self.0.is_within_allow(&other.0)
   }
 
   fn matches_deny(&self, other: &Self::DenyDesc) -> bool {
@@ -2969,7 +3540,7 @@ impl QueryDescriptor for RunQueryDescriptor<'_> {
 
   fn matches_allow(&self, other: &Self::AllowDesc) -> bool {
     match self {
-      RunQueryDescriptor::Path(path) => *path == other.0,
+      RunQueryDescriptor::Path(path) => path.is_allowed_exactly(&other.0),
       RunQueryDescriptor::Name(_) => false,
     }
   }
@@ -3379,7 +3950,7 @@ impl QueryDescriptor for FfiQueryDescriptor<'_> {
   }
 
   fn matches_allow(&self, other: &Self::AllowDesc) -> bool {
-    self.0.starts_with(&other.0)
+    self.0.is_within_allow(&other.0)
   }
 
   fn matches_deny(&self, other: &Self::DenyDesc) -> bool {
@@ -4811,6 +5382,48 @@ pub struct PermissionsContainer {
   /// resolves to through symlinks (see
   /// [`PermissionsContainer::with_import_symlinks_resolved`]).
   resolve_import_symlinks: bool,
+  /// For a sandbox's container, the app's live permissions, which every
+  /// check must pass too (see [`PermissionsContainer::chained_to`]).
+  app: Option<AppPermissions>,
+}
+
+/// The app's permissions as a sandbox sees them: the container the app's
+/// main thread currently checks against. `ende test` and `ende bench` swap
+/// that container while a test or bench narrows its permissions, and update
+/// this too, so a sandbox is narrowed with it.
+#[derive(Clone, Debug)]
+pub struct AppPermissions(Arc<Mutex<PermissionsContainer>>);
+
+impl AppPermissions {
+  pub fn new(container: PermissionsContainer) -> Self {
+    Self(Arc::new(Mutex::new(container)))
+  }
+
+  /// Makes `container` what sandboxes check against from now on.
+  pub fn set(&self, container: PermissionsContainer) {
+    *self.0.lock() = container;
+  }
+
+  fn current(&self) -> PermissionsContainer {
+    self.0.lock().clone()
+  }
+}
+
+/// Restores [`IN_APP_CHECK`] when the app's check on a sandbox's behalf
+/// ends.
+struct AppCheckGuard(bool);
+
+impl AppCheckGuard {
+  fn enter() -> Self {
+    Self(IN_APP_CHECK.with(|cell| cell.replace(true)))
+  }
+}
+
+impl Drop for AppCheckGuard {
+  fn drop(&mut self) {
+    let previous = self.0;
+    IN_APP_CHECK.with(|cell| cell.set(previous));
+  }
 }
 
 impl PermissionsContainer {
@@ -4823,7 +5436,89 @@ impl PermissionsContainer {
       inner: Arc::new(Mutex::new(perms)),
       resolved_import_hosts: Default::default(),
       resolve_import_symlinks: false,
+      app: None,
     }
+  }
+
+  /// Chains a sandbox's container to the app's: every check must then pass
+  /// both this container (the sandbox's grant) and the app's current one,
+  /// so the app's later revokes, its deny rules and its broker still narrow
+  /// the sandbox, and nothing the app lacks gets through. The app's
+  /// container is only checked and queried, never prompted (sandbox threads
+  /// don't prompt) or revoked: revoking in a sandbox narrows only the
+  /// sandbox. Workers the sandbox starts inherit the chain.
+  pub fn chained_to(mut self, app: AppPermissions) -> Self {
+    self.app = Some(app);
+    self
+  }
+
+  /// For a sandbox's container, the app's container it is chained to, as it
+  /// is now. A sandbox's loader fetches the sandbox's own static code with
+  /// it, as the app fetched the rest of its graph.
+  pub fn chained_app(&self) -> Option<PermissionsContainer> {
+    self.app.as_ref().map(AppPermissions::current)
+  }
+
+  /// For a sandbox's container, the app's permissions it is chained to, to
+  /// chain another of the sandbox's containers to.
+  pub fn app_permissions(&self) -> Option<AppPermissions> {
+    self.app.clone()
+  }
+
+  /// Runs `check` against the app's container, if this one is chained to
+  /// it. A denial there names the sandbox's rule and says the app lacks it.
+  #[inline(always)]
+  fn check_app<T>(
+    &self,
+    check: impl FnOnce(&mut PermissionsContainer) -> Result<T, PermissionCheckError>,
+  ) -> Result<(), PermissionCheckError> {
+    let Some(app) = &self.app else {
+      return Ok(());
+    };
+    let mut app = app.current();
+    let _guard = AppCheckGuard::enter();
+    check(&mut app).map(|_| ()).map_err(|err| match err {
+      PermissionCheckError::PermissionDenied(mut err) => {
+        if err.custom_message.is_none() {
+          err.custom_message =
+            Some(sandbox_app_denied_message(&err.access, err.name));
+        }
+        PermissionCheckError::PermissionDenied(err)
+      }
+      err => err,
+    })
+  }
+
+  /// The state a sandbox sees for a query: the narrower of its own and the
+  /// app's (prompting counts as denied on the app's side, since a sandbox
+  /// never prompts).
+  fn query_app<E>(
+    &self,
+    own: PermissionState,
+    query: impl FnOnce(&PermissionsContainer) -> Result<PermissionState, E>,
+  ) -> Result<PermissionState, E> {
+    let Some(app) = &self.app else {
+      return Ok(own);
+    };
+    /// How little a state allows: the higher, the narrower.
+    fn narrowness(state: PermissionState) -> u8 {
+      match state {
+        PermissionState::Granted => 0,
+        PermissionState::GrantedPartial => 1,
+        PermissionState::Prompt => 2,
+        PermissionState::DeniedPartial => 3,
+        PermissionState::Denied | PermissionState::Ignored => 4,
+      }
+    }
+    let app = match query(&app.current())? {
+      PermissionState::Prompt => PermissionState::Denied,
+      state => state,
+    };
+    Ok(if narrowness(app) > narrowness(own) {
+      app
+    } else {
+      own
+    })
   }
 
   /// Checks `file:` imports against the file they resolve to through
@@ -4842,6 +5537,7 @@ impl PermissionsContainer {
       inner: Arc::new(Mutex::new(self.inner.lock().clone())),
       resolved_import_hosts: Default::default(),
       resolve_import_symlinks: self.resolve_import_symlinks,
+      app: self.app.clone(),
     }
   }
 
@@ -4858,6 +5554,7 @@ impl PermissionsContainer {
       inner: Arc::new(Mutex::new(permissions)),
       resolved_import_hosts: Default::default(),
       resolve_import_symlinks: self.resolve_import_symlinks,
+      app: self.app.clone(),
     }
   }
 
@@ -4943,14 +5640,16 @@ impl PermissionsContainer {
       },
     )?;
 
-    Ok(PermissionsContainer::new(
-      self.descriptor_parser.clone(),
-      worker_perms,
-    ))
+    // A worker started in a sandbox stays chained to the app.
+    let mut child =
+      PermissionsContainer::new(self.descriptor_parser.clone(), worker_perms);
+    child.app = self.app.clone();
+    child.resolve_import_symlinks = self.resolve_import_symlinks;
+    Ok(child)
   }
 
   #[inline(always)]
-  pub fn check_specifier(
+  fn own_check_specifier(
     &self,
     specifier: &Url,
     kind: CheckSpecifierKind,
@@ -5044,7 +5743,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  fn check_open_with_requested<'a>(
+  fn own_check_open_with_requested<'a>(
     &self,
     path: Cow<'a, Path>,
     access_kind: OpenAccessKind,
@@ -5122,7 +5821,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn check_read_all(
+  fn own_check_read_all(
     &self,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
@@ -5135,12 +5834,12 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn query_read_all(&self) -> bool {
+  fn own_query_read_all(&self) -> bool {
     self.inner.lock().read.query(None) == PermissionState::Granted
   }
 
   #[inline(always)]
-  pub fn check_write_all(
+  fn own_check_write_all(
     &self,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
@@ -5149,7 +5848,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn check_write_partial<'a>(
+  fn own_check_write_partial<'a>(
     &self,
     path: Cow<'a, Path>,
     api_name: &str,
@@ -5187,7 +5886,7 @@ impl PermissionsContainer {
   /// block the operation. (`check_open` deliberately uses partial semantics, so
   /// recursive callers must not route through it.)
   #[inline(always)]
-  pub fn check_write<'a>(
+  fn own_check_write<'a>(
     &self,
     path: Cow<'a, Path>,
     api_name: &str,
@@ -5219,7 +5918,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn check_run(
+  fn own_check_run(
     &self,
     cmd: &RunQueryDescriptor,
     api_name: &str,
@@ -5229,7 +5928,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn check_run_all(
+  fn own_check_run_all(
     &mut self,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
@@ -5238,12 +5937,12 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn query_run_all(&mut self, api_name: &str) -> bool {
+  fn own_query_run_all(&mut self, api_name: &str) -> bool {
     self.inner.lock().run.query_all(Some(api_name))
   }
 
   #[inline(always)]
-  pub fn check_sys(
+  fn own_check_sys(
     &self,
     kind: &str,
     api_name: &str,
@@ -5256,31 +5955,31 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn check_env(&self, var: &str) -> Result<(), PermissionCheckError> {
+  fn own_check_env(&self, var: &str) -> Result<(), PermissionCheckError> {
     self.inner.lock().env.check(var, None)?;
     Ok(())
   }
 
   #[inline(always)]
-  pub fn check_env_all(&self) -> Result<(), PermissionCheckError> {
+  fn own_check_env_all(&self) -> Result<(), PermissionCheckError> {
     self.inner.lock().env.check_all()?;
     Ok(())
   }
 
   #[inline(always)]
-  pub fn check_sys_all(&self) -> Result<(), PermissionCheckError> {
+  fn own_check_sys_all(&self) -> Result<(), PermissionCheckError> {
     self.inner.lock().sys.check_all()?;
     Ok(())
   }
 
   #[inline(always)]
-  pub fn check_ffi_all(&self) -> Result<(), PermissionCheckError> {
+  fn own_check_ffi_all(&self) -> Result<(), PermissionCheckError> {
     self.inner.lock().ffi.check_all()?;
     Ok(())
   }
 
   #[inline(always)]
-  pub fn check_has_all_permissions(
+  fn own_check_has_all_permissions(
     &self,
     context_path: &Path,
   ) -> Result<(), PermissionCheckError> {
@@ -5303,7 +6002,7 @@ impl PermissionsContainer {
   /// Checks special file access, returning the failed permission type if
   /// not successful.
   #[must_use = "the resolved return value to mitigate time-of-check to time-of-use issues"]
-  pub fn check_special_file<'a>(
+  fn own_check_special_file<'a>(
     &self,
     path: SpecialFilePathQueryDescriptor<'a>,
     access_kind: OpenAccessKind,
@@ -5454,7 +6153,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn check_net_url(
+  fn own_check_net_url(
     &mut self,
     url: &Url,
     api_name: &str,
@@ -5471,7 +6170,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn check_net<T: AsRef<str>>(
+  fn own_check_net<T: AsRef<str>>(
     &mut self,
     host: &(T, Option<u16>),
     api_name: &str,
@@ -5497,7 +6196,7 @@ impl PermissionsContainer {
   /// IP is not in the deny list. This prevents bypassing IP-literal deny
   /// rules via numeric hostname aliases or attacker-controlled DNS.
   #[inline(always)]
-  pub fn check_net_resolved(
+  fn own_check_net_resolved(
     &mut self,
     resolved_ip: &std::net::IpAddr,
     port: u16,
@@ -5517,7 +6216,7 @@ impl PermissionsContainer {
   /// bypassing IP-literal `--deny-import` rules via hostname aliases that
   /// resolve to the denied IP.
   #[inline(always)]
-  pub fn check_import_resolved(
+  fn own_check_import_resolved(
     &mut self,
     resolved_ip: &std::net::IpAddr,
     port: u16,
@@ -5605,7 +6304,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn check_net_vsock(
+  fn own_check_net_vsock(
     &mut self,
     cid: u32,
     port: u32,
@@ -5635,7 +6334,7 @@ impl PermissionsContainer {
   /// Abstract socket paths (Linux, leading NUL) are not absolute, so they
   /// cannot be expressed as a scoped `unix:` rule and are only reachable via
   /// an unscoped `--allow-net` grant.
-  pub fn check_net_unix_socket(
+  fn own_check_net_unix_socket(
     &mut self,
     path: &Path,
     api_name: Option<&str>,
@@ -5652,7 +6351,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn check_ffi<'a>(
+  fn own_check_ffi<'a>(
     &mut self,
     path: Cow<'a, Path>,
   ) -> Result<Cow<'a, Path>, PermissionCheckError> {
@@ -5670,7 +6369,7 @@ impl PermissionsContainer {
 
   #[must_use = "the resolved return value to mitigate time-of-check to time-of-use issues"]
   #[inline(always)]
-  pub fn check_ffi_partial_no_path(
+  fn own_check_ffi_partial_no_path(
     &mut self,
   ) -> Result<(), PermissionCheckError> {
     let mut inner = self.inner.lock();
@@ -5685,7 +6384,7 @@ impl PermissionsContainer {
 
   #[must_use = "the resolved return value to mitigate time-of-check to time-of-use issues"]
   #[inline(always)]
-  pub fn check_ffi_partial_with_path<'a>(
+  fn own_check_ffi_partial_with_path<'a>(
     &mut self,
     path: Cow<'a, Path>,
   ) -> Result<Cow<'a, Path>, PermissionCheckError> {
@@ -5704,7 +6403,7 @@ impl PermissionsContainer {
   // query
 
   #[inline(always)]
-  pub fn query_read(
+  fn own_query_read(
     &self,
     path: Option<&str>,
   ) -> Result<PermissionState, PathResolveError> {
@@ -5731,7 +6430,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn query_write(
+  fn own_query_write(
     &self,
     path: Option<&str>,
   ) -> Result<PermissionState, PathResolveError> {
@@ -5758,7 +6457,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn query_net(
+  fn own_query_net(
     &self,
     host: Option<&str>,
   ) -> Result<PermissionState, NetDescriptorParseError> {
@@ -5779,7 +6478,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn query_env(&self, var: Option<&str>) -> PermissionState {
+  fn own_query_env(&self, var: Option<&str>) -> PermissionState {
     let inner = self.inner.lock();
     let permission = &inner.env;
     if permission.is_allow_all() {
@@ -5789,7 +6488,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn query_sys(
+  fn own_query_sys(
     &self,
     kind: Option<&str>,
   ) -> Result<PermissionState, SysDescriptorParseError> {
@@ -5809,7 +6508,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn query_run(
+  fn own_query_run(
     &self,
     cmd: Option<&str>,
   ) -> Result<PermissionState, RunDescriptorParseError> {
@@ -5829,7 +6528,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn query_ffi(
+  fn own_query_ffi(
     &self,
     path: Option<&str>,
   ) -> Result<PermissionState, PathResolveError> {
@@ -5856,7 +6555,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn query_import(
+  fn own_query_import(
     &self,
     host: Option<&str>,
   ) -> Result<PermissionState, NetDescriptorParseError> {
@@ -6018,7 +6717,7 @@ impl PermissionsContainer {
   // request
 
   #[inline(always)]
-  pub fn request_read(
+  fn own_request_read(
     &self,
     path: Option<&str>,
   ) -> Result<PermissionState, PathResolveError> {
@@ -6040,7 +6739,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn request_write(
+  fn own_request_write(
     &self,
     path: Option<&str>,
   ) -> Result<PermissionState, PathResolveError> {
@@ -6062,7 +6761,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn request_net(
+  fn own_request_net(
     &self,
     host: Option<&str>,
   ) -> Result<PermissionState, NetDescriptorParseError> {
@@ -6078,12 +6777,12 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn request_env(&self, var: Option<&str>) -> PermissionState {
+  fn own_request_env(&self, var: Option<&str>) -> PermissionState {
     self.inner.lock().env.request(var)
   }
 
   #[inline(always)]
-  pub fn request_sys(
+  fn own_request_sys(
     &self,
     kind: Option<&str>,
   ) -> Result<PermissionState, SysDescriptorParseError> {
@@ -6098,7 +6797,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn request_run(
+  fn own_request_run(
     &self,
     cmd: Option<&str>,
   ) -> Result<PermissionState, RunDescriptorParseError> {
@@ -6113,7 +6812,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn request_ffi(
+  fn own_request_ffi(
     &self,
     path: Option<&str>,
   ) -> Result<PermissionState, PathResolveError> {
@@ -6135,7 +6834,7 @@ impl PermissionsContainer {
   }
 
   #[inline(always)]
-  pub fn request_import(
+  fn own_request_import(
     &self,
     host: Option<&str>,
   ) -> Result<PermissionState, NetDescriptorParseError> {
@@ -6150,6 +6849,471 @@ impl PermissionsContainer {
         .as_ref(),
       ),
     )
+  }
+}
+
+/// The checks ops call. Each checks this container (`own_*`) and then, for a
+/// sandbox, the app's (see [`PermissionsContainer::chained_to`]). Revoking
+/// only ever narrows this container.
+impl PermissionsContainer {
+  #[inline(always)]
+  pub fn check_specifier(
+    &self,
+    specifier: &Url,
+    kind: CheckSpecifierKind,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_specifier(specifier, kind)?;
+    self.check_app(|app| app.check_specifier(specifier, kind))
+  }
+
+  #[inline(always)]
+  fn check_open_with_requested<'a>(
+    &self,
+    path: Cow<'a, Path>,
+    access_kind: OpenAccessKind,
+    blind_requested: Option<&str>,
+    api_name: Option<&str>,
+  ) -> Result<CheckedPath<'a>, PermissionCheckError> {
+    if access_kind.is_write()
+      && let Some(err) = labelled_write_denial(&path)
+    {
+      return Err(err);
+    }
+    if self.app.is_none() {
+      return self.own_check_open_with_requested(
+        path,
+        access_kind,
+        blind_requested,
+        api_name,
+      );
+    }
+    let checked = self.own_check_open_with_requested(
+      path.clone(),
+      access_kind,
+      blind_requested,
+      api_name,
+    )?;
+    self.check_app(|app| {
+      app.check_open_with_requested(
+        path,
+        access_kind,
+        blind_requested,
+        api_name,
+      )
+    })?;
+    Ok(checked)
+  }
+
+  #[inline(always)]
+  pub fn check_read_all(
+    &self,
+    api_name: &str,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_read_all(api_name)?;
+    self.check_app(|app| app.check_read_all(api_name))
+  }
+
+  #[inline(always)]
+  pub fn query_read_all(&self) -> bool {
+    self.own_query_read_all()
+      && self
+        .app
+        .as_ref()
+        .is_none_or(|app| app.current().query_read_all())
+  }
+
+  #[inline(always)]
+  pub fn check_write_all(
+    &self,
+    api_name: &str,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_write_all(api_name)?;
+    self.check_app(|app| app.check_write_all(api_name))
+  }
+
+  #[inline(always)]
+  pub fn check_write_partial<'a>(
+    &self,
+    path: Cow<'a, Path>,
+    api_name: &str,
+  ) -> Result<CheckedPath<'a>, PermissionCheckError> {
+    if let Some(err) = labelled_write_denial(&path) {
+      return Err(err);
+    }
+    if self.app.is_none() {
+      return self.own_check_write_partial(path, api_name);
+    }
+    let checked = self.own_check_write_partial(path.clone(), api_name)?;
+    self.check_app(|app| app.check_write_partial(path, api_name))?;
+    Ok(checked)
+  }
+
+  #[inline(always)]
+  pub fn check_write<'a>(
+    &self,
+    path: Cow<'a, Path>,
+    api_name: &str,
+  ) -> Result<CheckedPath<'a>, PermissionCheckError> {
+    if let Some(err) = labelled_write_denial(&path) {
+      return Err(err);
+    }
+    if self.app.is_none() {
+      return self.own_check_write(path, api_name);
+    }
+    let checked = self.own_check_write(path.clone(), api_name)?;
+    self.check_app(|app| app.check_write(path, api_name))?;
+    Ok(checked)
+  }
+
+  #[inline(always)]
+  pub fn check_run(
+    &self,
+    cmd: &RunQueryDescriptor,
+    api_name: &str,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_run(cmd, api_name)?;
+    self.check_app(|app| app.check_run(cmd, api_name))
+  }
+
+  #[inline(always)]
+  pub fn check_run_all(
+    &mut self,
+    api_name: &str,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_run_all(api_name)?;
+    self.check_app(|app| app.check_run_all(api_name))
+  }
+
+  #[inline(always)]
+  pub fn query_run_all(&mut self, api_name: &str) -> bool {
+    self.own_query_run_all(api_name)
+      && self
+        .app
+        .as_ref()
+        .is_none_or(|app| app.current().query_run_all(api_name))
+  }
+
+  #[inline(always)]
+  pub fn check_sys(
+    &self,
+    kind: &str,
+    api_name: &str,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_sys(kind, api_name)?;
+    self.check_app(|app| app.check_sys(kind, api_name))
+  }
+
+  #[inline(always)]
+  pub fn check_env(&self, var: &str) -> Result<(), PermissionCheckError> {
+    self.own_check_env(var)?;
+    self.check_app(|app| app.check_env(var))
+  }
+
+  #[inline(always)]
+  pub fn check_env_all(&self) -> Result<(), PermissionCheckError> {
+    self.own_check_env_all()?;
+    self.check_app(|app| app.check_env_all())
+  }
+
+  #[inline(always)]
+  pub fn check_sys_all(&self) -> Result<(), PermissionCheckError> {
+    self.own_check_sys_all()?;
+    self.check_app(|app| app.check_sys_all())
+  }
+
+  #[inline(always)]
+  pub fn check_ffi_all(&self) -> Result<(), PermissionCheckError> {
+    self.own_check_ffi_all()?;
+    self.check_app(|app| app.check_ffi_all())
+  }
+
+  #[inline(always)]
+  pub fn check_has_all_permissions(
+    &self,
+    context_path: &Path,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_has_all_permissions(context_path)?;
+    self.check_app(|app| app.check_has_all_permissions(context_path))
+  }
+
+  /// Checks special file access, returning the failed permission type if
+  /// not successful.
+  #[must_use = "the resolved return value to mitigate time-of-check to time-of-use issues"]
+  pub fn check_special_file<'a>(
+    &self,
+    path: SpecialFilePathQueryDescriptor<'a>,
+    access_kind: OpenAccessKind,
+    api_name: Option<&str>,
+  ) -> Result<CheckedPath<'a>, PermissionCheckError> {
+    if self.app.is_none() {
+      return self.own_check_special_file(path, access_kind, api_name);
+    }
+    let for_app = SpecialFilePathQueryDescriptor {
+      path: path.path.clone(),
+      requested: path.requested.clone(),
+      canonicalized: path.canonicalized,
+    };
+    let checked = self.own_check_special_file(path, access_kind, api_name)?;
+    self.check_app(|app| {
+      app.check_special_file(for_app, access_kind, api_name)
+    })?;
+    Ok(checked)
+  }
+
+  #[inline(always)]
+  pub fn check_net_url(
+    &mut self,
+    url: &Url,
+    api_name: &str,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_net_url(url, api_name)?;
+    self.check_app(|app| app.check_net_url(url, api_name))
+  }
+
+  #[inline(always)]
+  pub fn check_net<T: AsRef<str>>(
+    &mut self,
+    host: &(T, Option<u16>),
+    api_name: &str,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_net(host, api_name)?;
+    self.check_app(|app| app.check_net(host, api_name))
+  }
+
+  /// After resolving a hostname to an IP address, check that the resolved
+  /// IP is not in the deny list. This prevents bypassing IP-literal deny
+  /// rules via numeric hostname aliases or attacker-controlled DNS.
+  #[inline(always)]
+  pub fn check_net_resolved(
+    &mut self,
+    resolved_ip: &std::net::IpAddr,
+    port: u16,
+    api_name: &str,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_net_resolved(resolved_ip, port, api_name)?;
+    self.check_app(|app| app.check_net_resolved(resolved_ip, port, api_name))
+  }
+
+  /// After resolving a module specifier's hostname to an IP address, check
+  /// that the resolved IP is not in the import deny list.
+  #[inline(always)]
+  pub fn check_import_resolved(
+    &mut self,
+    resolved_ip: &std::net::IpAddr,
+    port: u16,
+    api_name: &str,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_import_resolved(resolved_ip, port, api_name)?;
+    self.check_app(|app| app.check_import_resolved(resolved_ip, port, api_name))
+  }
+
+  #[inline(always)]
+  pub fn check_net_vsock(
+    &mut self,
+    cid: u32,
+    port: u32,
+    api_name: &str,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_net_vsock(cid, port, api_name)?;
+    self.check_app(|app| app.check_net_vsock(cid, port, api_name))
+  }
+
+  /// Network permission check for Unix domain socket endpoints (see
+  /// `own_check_net_unix_socket`).
+  pub fn check_net_unix_socket(
+    &mut self,
+    path: &Path,
+    api_name: Option<&str>,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_net_unix_socket(path, api_name)?;
+    self.check_app(|app| app.check_net_unix_socket(path, api_name))
+  }
+
+  #[inline(always)]
+  pub fn check_ffi<'a>(
+    &mut self,
+    path: Cow<'a, Path>,
+  ) -> Result<Cow<'a, Path>, PermissionCheckError> {
+    if self.app.is_none() {
+      return self.own_check_ffi(path);
+    }
+    let checked = self.own_check_ffi(path.clone())?;
+    self.check_app(|app| app.check_ffi(path))?;
+    Ok(checked)
+  }
+
+  #[must_use = "the resolved return value to mitigate time-of-check to time-of-use issues"]
+  #[inline(always)]
+  pub fn check_ffi_partial_no_path(
+    &mut self,
+  ) -> Result<(), PermissionCheckError> {
+    self.own_check_ffi_partial_no_path()?;
+    self.check_app(|app| app.check_ffi_partial_no_path())
+  }
+
+  #[must_use = "the resolved return value to mitigate time-of-check to time-of-use issues"]
+  #[inline(always)]
+  pub fn check_ffi_partial_with_path<'a>(
+    &mut self,
+    path: Cow<'a, Path>,
+  ) -> Result<Cow<'a, Path>, PermissionCheckError> {
+    if self.app.is_none() {
+      return self.own_check_ffi_partial_with_path(path);
+    }
+    let checked = self.own_check_ffi_partial_with_path(path.clone())?;
+    self.check_app(|app| app.check_ffi_partial_with_path(path))?;
+    Ok(checked)
+  }
+
+  // query
+
+  #[inline(always)]
+  pub fn query_read(
+    &self,
+    path: Option<&str>,
+  ) -> Result<PermissionState, PathResolveError> {
+    let own = self.own_query_read(path)?;
+    self.query_app(own, |app| app.query_read(path))
+  }
+
+  #[inline(always)]
+  pub fn query_write(
+    &self,
+    path: Option<&str>,
+  ) -> Result<PermissionState, PathResolveError> {
+    let own = self.own_query_write(path)?;
+    self.query_app(own, |app| app.query_write(path))
+  }
+
+  #[inline(always)]
+  pub fn query_net(
+    &self,
+    host: Option<&str>,
+  ) -> Result<PermissionState, NetDescriptorParseError> {
+    let own = self.own_query_net(host)?;
+    self.query_app(own, |app| app.query_net(host))
+  }
+
+  #[inline(always)]
+  pub fn query_env(&self, var: Option<&str>) -> PermissionState {
+    let own = self.own_query_env(var);
+    match self
+      .query_app::<std::convert::Infallible>(own, |app| Ok(app.query_env(var)))
+    {
+      Ok(state) => state,
+    }
+  }
+
+  #[inline(always)]
+  pub fn query_sys(
+    &self,
+    kind: Option<&str>,
+  ) -> Result<PermissionState, SysDescriptorParseError> {
+    let own = self.own_query_sys(kind)?;
+    self.query_app(own, |app| app.query_sys(kind))
+  }
+
+  #[inline(always)]
+  pub fn query_run(
+    &self,
+    cmd: Option<&str>,
+  ) -> Result<PermissionState, RunDescriptorParseError> {
+    let own = self.own_query_run(cmd)?;
+    self.query_app(own, |app| app.query_run(cmd))
+  }
+
+  #[inline(always)]
+  pub fn query_ffi(
+    &self,
+    path: Option<&str>,
+  ) -> Result<PermissionState, PathResolveError> {
+    let own = self.own_query_ffi(path)?;
+    self.query_app(own, |app| app.query_ffi(path))
+  }
+
+  #[inline(always)]
+  pub fn query_import(
+    &self,
+    host: Option<&str>,
+  ) -> Result<PermissionState, NetDescriptorParseError> {
+    let own = self.own_query_import(host)?;
+    self.query_app(own, |app| app.query_import(host))
+  }
+
+  // request: a sandbox never prompts, so what it gets is what it has, and
+  // never more than the app has.
+
+  #[inline(always)]
+  pub fn request_read(
+    &self,
+    path: Option<&str>,
+  ) -> Result<PermissionState, PathResolveError> {
+    let own = self.own_request_read(path)?;
+    self.query_app(own, |app| app.query_read(path))
+  }
+
+  #[inline(always)]
+  pub fn request_write(
+    &self,
+    path: Option<&str>,
+  ) -> Result<PermissionState, PathResolveError> {
+    let own = self.own_request_write(path)?;
+    self.query_app(own, |app| app.query_write(path))
+  }
+
+  #[inline(always)]
+  pub fn request_net(
+    &self,
+    host: Option<&str>,
+  ) -> Result<PermissionState, NetDescriptorParseError> {
+    let own = self.own_request_net(host)?;
+    self.query_app(own, |app| app.query_net(host))
+  }
+
+  #[inline(always)]
+  pub fn request_env(&self, var: Option<&str>) -> PermissionState {
+    let own = self.own_request_env(var);
+    match self
+      .query_app::<std::convert::Infallible>(own, |app| Ok(app.query_env(var)))
+    {
+      Ok(state) => state,
+    }
+  }
+
+  #[inline(always)]
+  pub fn request_sys(
+    &self,
+    kind: Option<&str>,
+  ) -> Result<PermissionState, SysDescriptorParseError> {
+    let own = self.own_request_sys(kind)?;
+    self.query_app(own, |app| app.query_sys(kind))
+  }
+
+  #[inline(always)]
+  pub fn request_run(
+    &self,
+    cmd: Option<&str>,
+  ) -> Result<PermissionState, RunDescriptorParseError> {
+    let own = self.own_request_run(cmd)?;
+    self.query_app(own, |app| app.query_run(cmd))
+  }
+
+  #[inline(always)]
+  pub fn request_ffi(
+    &self,
+    path: Option<&str>,
+  ) -> Result<PermissionState, PathResolveError> {
+    let own = self.own_request_ffi(path)?;
+    self.query_app(own, |app| app.query_ffi(path))
+  }
+
+  #[inline(always)]
+  pub fn request_import(
+    &self,
+    host: Option<&str>,
+  ) -> Result<PermissionState, NetDescriptorParseError> {
+    let own = self.own_request_import(host)?;
+    self.query_app(own, |app| app.query_import(host))
   }
 }
 
@@ -6586,6 +7750,265 @@ mod tests {
       BrokerDecision::Deny { message: None }
     );
     assert_eq!(broker_decision(None, true), BrokerDecision::OwnState);
+  }
+
+  fn container(options: PermissionsOptions) -> PermissionsContainer {
+    let parser = TestPermissionDescriptorParser;
+    let permissions = Permissions::from_options(&parser, &options).unwrap();
+    PermissionsContainer::new(Arc::new(parser), permissions)
+  }
+
+  /// Runs `f` on a fresh thread labelled as the sandbox of `rule`, as a
+  /// sandbox's worker thread is.
+  fn on_sandbox_thread<T: Send + 'static>(
+    rule: &str,
+    f: impl FnOnce() -> T + Send + 'static,
+  ) -> T {
+    let rule = rule.to_string();
+    std::thread::spawn(move || {
+      set_thread_sandbox_label(Some(rule));
+      f()
+    })
+    .join()
+    .unwrap()
+  }
+
+  #[test]
+  fn sandbox_checks_its_grant_and_the_apps_live_container() {
+    let app_container = container(PermissionsOptions {
+      allow_read: Some(vec![]),
+      allow_env: Some(vec!["HOME".to_string()]),
+      prompt: true,
+      ..Default::default()
+    });
+    let app = AppPermissions::new(app_container.clone());
+    // Granted read and env (all of it), but not net.
+    let sandbox = container(PermissionsOptions {
+      allow_read: Some(vec![]),
+      allow_env: Some(vec![]),
+      ..Default::default()
+    })
+    .chained_to(app.clone());
+    let (read_ok, env_home_ok, env_other, net) =
+      on_sandbox_thread("jsr:@a/b", {
+        let mut sandbox = sandbox.clone();
+        move || {
+          (
+            sandbox.check_read_all("test").is_ok(),
+            sandbox.check_env("HOME").is_ok(),
+            sandbox.check_env("PATH").unwrap_err().to_string(),
+            sandbox
+              .check_net(&("example.com", None), "test")
+              .unwrap_err()
+              .to_string(),
+          )
+        }
+      });
+    assert!(read_ok);
+    assert!(env_home_ok);
+    // The grant allows it, the app doesn't: never more than the app, and no
+    // prompt although the app's container would prompt.
+    assert_eq!(
+      env_other,
+      "jsr:@a/b: Requires env access to \"PATH\", which the app itself isn't allowed. isolate[\"jsr:@a/b\"] can only narrow the app's permissions; run again with the --allow-env flag"
+    );
+    // The grant doesn't allow it: the denial names the rule.
+    assert_eq!(
+      net,
+      "jsr:@a/b: Requires net access to \"example.com\"; grant it in ende.json under isolate[\"jsr:@a/b\"].permissions.net"
+    );
+
+    // The app revokes read after the sandbox started: the sandbox loses it.
+    app_container.revoke_read(None).unwrap();
+    let read_after_revoke = on_sandbox_thread("jsr:@a/b", {
+      let sandbox = sandbox.clone();
+      move || sandbox.check_read_all("test").unwrap_err().to_string()
+    });
+    assert!(
+      read_after_revoke.contains("which the app itself isn't allowed"),
+      "{read_after_revoke}"
+    );
+    // A revoke in the sandbox narrows only the sandbox.
+    sandbox.revoke_env(None);
+    assert_eq!(
+      app_container.query_env(Some("HOME")),
+      PermissionState::Granted
+    );
+    assert_eq!(sandbox.query_env(Some("HOME")), PermissionState::Prompt);
+  }
+
+  #[test]
+  fn sandbox_queries_and_requests_never_exceed_the_app() {
+    let app_container = container(PermissionsOptions {
+      allow_env: Some(vec!["HOME".to_string()]),
+      prompt: true,
+      ..Default::default()
+    });
+    let sandbox = container(PermissionsOptions {
+      allow_env: Some(vec![]),
+      ..Default::default()
+    })
+    .chained_to(AppPermissions::new(app_container));
+    assert_eq!(sandbox.query_env(Some("HOME")), PermissionState::Granted);
+    // The app would prompt; a sandbox can't, so it's denied.
+    assert_eq!(sandbox.query_env(Some("PATH")), PermissionState::Denied);
+    assert_eq!(sandbox.request_env(Some("PATH")), PermissionState::Denied);
+    // Neither grants net; a sandbox can't prompt for it either.
+    assert_eq!(sandbox.query_net(None).unwrap(), PermissionState::Denied);
+  }
+
+  #[test]
+  fn sandbox_queries_report_the_narrower_of_partial_grants() {
+    // The sandbox may read everything but /secret: a partial grant.
+    let options = PermissionsOptions {
+      allow_read: Some(vec![]),
+      deny_read: Some(vec!["/secret".to_string()]),
+      ..Default::default()
+    };
+    assert_eq!(
+      container(options.clone()).query_read(None).unwrap(),
+      PermissionState::GrantedPartial
+    );
+    // Chained to an app that may read nothing, it reports the app's answer.
+    let app = AppPermissions::new(container(PermissionsOptions::default()));
+    let sandbox = container(options).chained_to(app.clone());
+    assert_eq!(sandbox.query_read(None).unwrap(), PermissionState::Denied);
+    assert_eq!(
+      sandbox.query_read(Some("/data")).unwrap(),
+      PermissionState::Denied
+    );
+    // Once the app may read everything, the sandbox's own partial grant.
+    app.set(container(PermissionsOptions {
+      allow_read: Some(vec![]),
+      ..Default::default()
+    }));
+    assert_eq!(
+      sandbox.query_read(None).unwrap(),
+      PermissionState::GrantedPartial
+    );
+    assert_eq!(
+      sandbox.query_read(Some("/data")).unwrap(),
+      PermissionState::Granted
+    );
+  }
+
+  #[test]
+  fn sandbox_workers_and_swapped_app_containers_stay_chained() {
+    let app = AppPermissions::new(container(PermissionsOptions {
+      allow_env: Some(vec![]),
+      ..Default::default()
+    }));
+    let sandbox = container(PermissionsOptions {
+      allow_env: Some(vec![]),
+      ..Default::default()
+    })
+    .chained_to(app.clone());
+    // A worker the sandbox starts is narrowed from it, and stays chained.
+    let child = sandbox
+      .create_child_permissions(ChildPermissionsArg::inherit())
+      .unwrap();
+    assert!(child.check_env("HOME").is_ok());
+    // `ende test` swaps the app's container while a test narrows it.
+    app.set(container(PermissionsOptions::default()));
+    assert!(sandbox.check_env("HOME").is_err());
+    assert!(child.check_env("HOME").is_err());
+    assert!(sandbox.deep_clone().check_env("HOME").is_err());
+  }
+
+  #[cfg(unix)]
+  #[test]
+  #[allow(clippy::disallowed_methods, reason = "test fixtures on disk")]
+  fn labelled_threads_match_allow_rules_by_real_path_too() {
+    let dir = std::env::temp_dir()
+      .join(format!("ende-allow-real-{}", std::process::id()));
+    let folder = dir.join("pkg");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(folder.join("own.txt"), "own").unwrap();
+    std::fs::write(dir.join("secret.txt"), "secret").unwrap();
+    std::os::unix::fs::symlink("..", folder.join("data")).unwrap();
+    let folder = std::fs::canonicalize(&folder).unwrap();
+    let options = PermissionsOptions {
+      allow_read: Some(vec![folder.to_string_lossy().into_owned()]),
+      ..Default::default()
+    };
+    let own = folder.join("own.txt");
+    let through_link = folder.join("data").join("secret.txt");
+    // The app's thread keeps the as-written semantics.
+    let app = container(options.clone());
+    assert!(
+      app.query_read(through_link.to_str()).unwrap()
+        == PermissionState::Granted
+    );
+    let (own_ok, link_ok) = on_sandbox_thread("./pkg/", move || {
+      let sandbox = container(options);
+      (
+        sandbox.query_read(own.to_str()).unwrap(),
+        sandbox.query_read(through_link.to_str()).unwrap(),
+      )
+    });
+    assert_eq!(own_ok, PermissionState::Granted);
+    assert_ne!(link_ok, PermissionState::Granted);
+    std::fs::remove_dir_all(&dir).unwrap();
+  }
+
+  #[test]
+  fn config_names_match_every_spelling_a_file_system_may_fold() {
+    for name in [
+      "ende.json",
+      "ENDE.JSONC",
+      "Deno.Json",
+      "deno.lock",
+      "ende.j\u{17F}on",
+      "ende.loc\u{212A}",
+      "ende.json.",
+      "ende.json .",
+      "ende.json:stream",
+      "ende.lock::$DATA",
+    ] {
+      assert!(
+        is_config_name(Path::new("dir").join(name).as_path()),
+        "{name}"
+      );
+    }
+    for name in ["ende.json5", "my-ende.json", "data.json", "ende", "lock"] {
+      assert!(
+        !is_config_name(Path::new("dir").join(name).as_path()),
+        "{name}"
+      );
+    }
+  }
+
+  #[test]
+  fn paths_are_compared_as_a_case_folding_file_system_would() {
+    let within =
+      |path: &str, base: &str| path_within(Path::new(path), Path::new(base));
+    assert!(within("/app/OUT/x.ts", "/app/out"));
+    assert!(within("/app/o\u{17F}t/x.ts", "/app/ost"));
+    assert!(within("/app/out", "/app/out"));
+    assert!(!within("/app/output/x.ts", "/app/out"));
+    assert!(!within("/app", "/app/out"));
+  }
+
+  #[test]
+  fn sandbox_denials_say_why() {
+    let sandbox = container(PermissionsOptions {
+      allow_write: Some(vec![]),
+      deny_write: Some(vec!["/app/src/main.ts".to_string()]),
+      ..Default::default()
+    })
+    .chained_to(AppPermissions::new(PermissionsContainer::allow_all(
+      Arc::new(TestPermissionDescriptorParser),
+    )));
+    let denied = on_sandbox_thread("./vendor/", move || {
+      sandbox
+        .check_write(Cow::Borrowed(Path::new("/app/src/main.ts")), "test")
+        .unwrap_err()
+        .to_string()
+    });
+    assert_eq!(
+      denied,
+      "./vendor/: Requires write access to \"/app/src/main.ts\", which is denied to this sandbox: by a deny list in isolate[\"./vendor/\"].permissions, or because no sandbox may write the app's config, lockfile, vendor folder, module cache or code"
+    );
   }
 
   #[test]

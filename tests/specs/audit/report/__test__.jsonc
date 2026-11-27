@@ -17,11 +17,6 @@
       "args": "audit --quiet --json --cert RootCA.pem --allow-import --allow-read --allow-net=api.example.com:443,other.example.com --deny-net=other.example.com --allow-run=git main.ts",
       "output": "json.out"
     },
-    // Nothing is enforced yet, and the report says so.
-    "not_enforced_warning": {
-      "args": "audit --cert RootCA.pem --allow-import main.ts",
-      "output": "[WILDCARD]Warning \"isolate\" rules are not enforced yet: sandboxed dependencies still run with the app's permissions.\n[WILDCARD]"
-    },
     // Remote and JSR code is pinned once the lockfile records it, and code
     // that doesn't match the lockfile is reported rather than loaded. The
     // report never writes the lockfile itself (the text test above found

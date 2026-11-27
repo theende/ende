@@ -4,6 +4,7 @@
 const { core, primordials } = __bootstrap;
 const {
   op_create_extension_worker,
+  op_create_sandbox_worker,
   op_create_worker,
   op_host_post_message,
   op_host_post_message_raw,
@@ -127,6 +128,8 @@ let warnedDenoOption = false;
 class Worker extends EventTarget {
   #id = 0;
   #name = "";
+  // For an extension's or a sandbox's worker: called once it closes.
+  #onClose = undefined;
   #refCount = 1;
   #messagePromise = undefined;
   #controlPromise = undefined;
@@ -143,6 +146,7 @@ class Worker extends EventTarget {
     if (specifier === existingWorkerKey) {
       this.#id = options.id;
       this.#name = options.name;
+      this.#onClose = options.onClose;
       this.#pollControl();
       this.#pollMessages();
       return;
@@ -289,6 +293,7 @@ class Worker extends EventTarget {
         case 3: { // Close
           log(`Host got "close" message from worker: ${this.#name}`);
           this.#status = "CLOSED";
+          this.#onClose?.();
           return;
         }
         default: {
@@ -465,6 +470,7 @@ function startExtension(name) {
     const worker = new Worker(existingWorkerKey, {
       id,
       name: `extension:${name}`,
+      onClose: () => failExtension(current, stoppedError(`extension:${name}`)),
     });
     extension = {
       worker,
@@ -488,6 +494,14 @@ function startExtension(name) {
     MapPrototypeSet(extensionWorkers, name, extension);
   }
   return extension.ready;
+}
+
+// A worker that closed (`Ende.exit()`, `close()`) fails the calls in flight
+// and later ones instead of leaving them pending forever.
+function stoppedError(label) {
+  return new Error(
+    `${label} stopped: its worker exited or failed, so calls into it fail`,
+  );
 }
 
 function failExtension(extension, error) {
@@ -627,8 +641,165 @@ function reviveExtensionError({ name, message, stack, isDOMException }) {
   return error;
 }
 
+// Sandboxed packages (`isolate` in ende.json). An import of a sandboxed
+// module from outside its sandbox gets a generated proxy that calls `start`
+// once; the sandbox itself runs in a worker of its own, started by Rust from
+// the app's configuration alone (op_create_sandbox_worker), whose
+// permissions are the rule's grant checked together with the app's own. One
+// worker serves every entry of a sandbox. As with extensions, only
+// structured-cloned values and transferred `Ende.Root`s cross.
+
+/** rule -> { worker, ready, pending, nextId, failure, entries } */
+const sandboxWorkers = new SafeMap();
+
+function sandboxWorker(rule) {
+  let sandbox = MapPrototypeGet(sandboxWorkers, rule);
+  if (sandbox === undefined) {
+    const id = op_create_sandbox_worker(rule);
+    const worker = new Worker(existingWorkerKey, {
+      id,
+      name: `isolate["${rule}"]`,
+      onClose: () => failExtension(current, stoppedError(`isolate["${rule}"]`)),
+    });
+    sandbox = {
+      worker,
+      ready: undefined,
+      resolveReady: undefined,
+      rejectReady: undefined,
+      pending: new SafeMap(),
+      nextId: 0,
+      failure: undefined,
+      /** entry -> Promise<SafeMap<name, { kind, value, what }>> */
+      entries: new SafeMap(),
+    };
+    const current = sandbox;
+    current.ready = new Promise((resolve, reject) => {
+      current.resolveReady = resolve;
+      current.rejectReady = reject;
+    });
+    worker.onmessage = (event) => onExtensionMessage(current, event.data);
+    worker.onerror = (event) => {
+      event.preventDefault();
+      failExtension(
+        current,
+        new Error(
+          `${stoppedError(`isolate["${rule}"]`).message}: ${event.message}`,
+        ),
+      );
+    };
+    MapPrototypeSet(sandboxWorkers, rule, sandbox);
+  }
+  return sandbox;
+}
+
+function sandboxRequest(sandbox, message, transfer) {
+  if (sandbox.failure !== undefined) {
+    return PromiseReject(sandbox.failure);
+  }
+  const id = sandbox.nextId++;
+  message.id = id;
+  try {
+    sandbox.worker.postMessage(message, transfer);
+  } catch (error) {
+    return PromiseReject(error);
+  }
+  if (sandbox.pending.size === 0) {
+    sandbox.worker[privateWorkerRef](true);
+  }
+  return new Promise((resolve, reject) => {
+    MapPrototypeSet(sandbox.pending, id, { resolve, reject });
+  });
+}
+
+/** The exports of `entry`, loaded in the sandbox once per entry. */
+function sandboxEntry(sandbox, entry) {
+  let exports = MapPrototypeGet(sandbox.entries, entry);
+  if (exports === undefined) {
+    exports = (async () => {
+      await sandbox.ready;
+      const list = await sandboxRequest(sandbox, { load: entry }, []);
+      const map = new SafeMap();
+      for (let i = 0; i < list.length; i++) {
+        const { 0: name, 1: kind, 2: payload } = list[i];
+        MapPrototypeSet(map, name, {
+          kind,
+          value: kind === "value" ? payload : undefined,
+          what: kind === "unsupported" ? String(payload) : undefined,
+          binding: undefined,
+        });
+      }
+      return map;
+    })();
+    MapPrototypeSet(sandbox.entries, entry, exports);
+  }
+  return exports;
+}
+
+function sandboxBinding(sandbox, entry, name, info) {
+  if (info.kind === "value") return info.value;
+  if (info.binding === undefined) {
+    info.binding = (...args) =>
+      sandboxRequest(
+        sandbox,
+        { entry, name, args },
+        transferredRoots(args),
+      );
+  }
+  return info.binding;
+}
+
+function unsupportedExport(rule, entry, name, what) {
+  return new TypeError(
+    `Cannot import "${name}" from "${entry}": it is ${what}, which can't leave the sandbox of isolate["${rule}"]. A sandboxed package can only export functions (called async, with arguments and results structured-cloned) and structured-clonable constants`,
+  );
+}
+
+// Starts the sandbox of `rule` (once per isolate), loads `entry` in it (once
+// per entry), and returns the bindings of `named` then `implicit`, in that
+// order. `named` are the exports the importer names; `implicit` are the
+// others a namespace import sees. Either way an export the sandbox can't
+// hand over is an error at the import, naming it.
+async function startSandbox(rule, entry, named, implicit) {
+  const sandbox = sandboxWorker(rule);
+  const exports = await sandboxEntry(sandbox, entry);
+  const bindings = [];
+  for (let i = 0; i < named.length; i++) {
+    const name = named[i];
+    const info = MapPrototypeGet(exports, name);
+    if (info === undefined) {
+      throw new SyntaxError(
+        `The requested module "${entry}" does not provide an export named "${name}"`,
+      );
+    }
+    if (info.kind === "unsupported") {
+      throw unsupportedExport(rule, entry, name, info.what);
+    }
+    ArrayPrototypePush(
+      bindings,
+      sandboxBinding(sandbox, entry, name, info),
+    );
+  }
+  for (let i = 0; i < implicit.length; i++) {
+    const name = implicit[i];
+    const info = MapPrototypeGet(exports, name);
+    if (info === undefined || info.kind === "unsupported") {
+      throw new TypeError(
+        `${
+          unsupportedExport(rule, entry, name, info?.what ?? "missing").message
+        }. A namespace import leaves out the exports that can't cross only when their kind shows in the source; this one's shows only when the sandbox runs, so import the exports you use by name`,
+      );
+    }
+    ArrayPrototypePush(
+      bindings,
+      sandboxBinding(sandbox, entry, name, info),
+    );
+  }
+  return bindings;
+}
+
 return {
   Worker,
   extensions: { start: startExtension, call: callExtension },
+  sandboxes: { start: startSandbox },
 };
 })();

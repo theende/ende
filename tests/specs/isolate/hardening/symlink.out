@@ -1,0 +1,2 @@
+TypeError: ./vendor/linked/: Requires read access to "[WILDCARD]secret.ts"[WILDCARD]
+text: TypeError: ./vendor/linked/: Requires read access to "[WILDCARD]secret.txt"[WILDCARD]

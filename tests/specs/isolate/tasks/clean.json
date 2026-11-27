@@ -1,0 +1,6 @@
+{
+  "tasks": { "clean": "rm -rf ./out && echo cleaned > ./clean.log" },
+  "isolate": {
+    "./sandboxed/": { "permissions": { "write": ["./out"] } }
+  }
+}

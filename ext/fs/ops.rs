@@ -126,6 +126,13 @@ pub fn op_fs_chdir(
   state: &mut OpState,
   #[string] directory: &str,
 ) -> Result<(), FsOpsError> {
+  // The working directory is the whole process's: changing it from an
+  // extension or a sandbox would change what the app's relative paths
+  // mean. (Ende only.)
+  ende_permissions::check_not_labelled(
+    "Ende.chdir()",
+    "changes the working directory of the whole process",
+  )?;
   let d = state
     .borrow_mut::<ende_permissions::PermissionsContainer>()
     .check_open(

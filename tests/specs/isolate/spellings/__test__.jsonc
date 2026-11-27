@@ -1,0 +1,25 @@
+{
+  "tempDir": true,
+  "tests": {
+    // Another spelling of a sandboxed module's path, a query or fragment,
+    // an import map alias or a symlink to its folder still gets the
+    // sandbox: matching is on where the module resolves to.
+    "spellings": {
+      "if": "unix",
+      "steps": [
+        {
+          "args": [
+            "eval",
+            "--no-config",
+            "Ende.symlinkSync('../vendor/none', 'other/link'); Ende.symlinkSync('vendor', 'Vendlink')"
+          ],
+          "output": ""
+        },
+        {
+          "args": "run --quiet -A main.ts",
+          "output": "main.out"
+        }
+      ]
+    }
+  }
+}

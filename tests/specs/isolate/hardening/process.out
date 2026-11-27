@@ -1,0 +1,6 @@
+chdir: NotCapable: ./vendor/none/: Ende.chdir() changes the working directory of the whole process, so sandboxed code and extensions can't call it
+stdin: "closed, prompt is undefined"
+app stdin: typed by the user
+storage: "caches: undefined, BroadcastChannel: undefined"
+app caches: object
+signal: NotCapable: ./vendor/none/: Ende.addSignalListener() handles signals for the whole process, so sandboxed code and extensions can't call it
