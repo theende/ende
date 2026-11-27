@@ -1,3 +1,4 @@
+Recorded isolate["./vendor/none/"] in ende.lock; it will run with: no permissions
 app module: TypeError: ./vendor/none/: Requires read access to "[WILDCARD]secret.ts"; grant it in ende.json under isolate["./vendor/none/"].permissions.read[WILDCARD]
 remote module: 3
 [WILDCARD]worker of an app module: "error: [WILDCARD]./vendor/none/: Requires read access to [WILDCARD]w.ts[WILDCARD]"

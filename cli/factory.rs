@@ -860,6 +860,9 @@ impl CliFactory {
           let cli_options = self.cli_options()?;
           let workspace = cli_options.workspace();
           let config = workspace.to_isolate_config()?;
+          // Pins of rules no longer declared are dropped only by
+          // `ende install`, which knows the config: a run with another
+          // config (`--config`) mustn't reset them.
           if config.rules.is_empty() {
             return Ok(None);
           }
@@ -885,6 +888,12 @@ impl CliFactory {
             cli_options.permissions_options()?,
             protected_paths,
             self.main_module_graph_container().await?.clone(),
+            self.maybe_lockfile().await?.cloned(),
+            cli_options.no_lock_flag(),
+            deno_path_util::url_from_directory_path(
+              &workspace.root_dir_path(),
+            )?,
+            cli_options.initial_cwd().to_path_buf(),
           );
           let extension_folders = workspace
             .to_extensions_config()
@@ -910,6 +919,30 @@ impl CliFactory {
       )
       .await
       .map(|registry| registry.as_ref())
+  }
+
+  /// What the lockfile's `isolate` pins hold the app to (see
+  /// `crate::isolate::PinChecks`).
+  async fn isolate_pin_checks(
+    &self,
+  ) -> Result<Option<Arc<crate::isolate::PinChecks>>, AnyError> {
+    let Some(lockfile) = self.maybe_lockfile().await? else {
+      return Ok(None);
+    };
+    let pins = lockfile.lock().content.isolate.clone();
+    let cli_options = self.cli_options()?;
+    let workspace = cli_options.workspace();
+    let config = workspace.to_isolate_config().unwrap_or_default();
+    Ok(
+      crate::isolate::PinChecks::new(
+        &config,
+        &pins,
+        &deno_path_util::url_from_directory_path(&workspace.root_dir_path())?,
+        crate::args::jsr_url(),
+        cli_options.initial_cwd(),
+      )
+      .map(Arc::new),
+    )
   }
 
   /// Every file and folder Ende reads to set up this run that could change
@@ -1115,6 +1148,7 @@ impl CliFactory {
       self.watcher_communicator.clone(),
       self.extension_registry().await?.clone(),
       sandboxes,
+      self.isolate_pin_checks().await?,
     );
 
     Ok(module_loader_factory)

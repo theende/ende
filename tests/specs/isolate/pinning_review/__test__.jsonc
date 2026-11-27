@@ -1,0 +1,201 @@
+{
+  "tempDir": true,
+  "tests": {
+    // A new entry, under any name, gets no more than ende.lock approved for the rule unless the app's graph approves it: `ende install` alone can't, and the block names the command that can.
+    "new_entry_without_a_manifest": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "first.out"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_other.ts",
+          "output": "new_entry_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --quiet --frozen --allow-read --allow-env main_other.ts",
+          "output": "new_entry_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install --yes",
+          "output": "[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_other.ts",
+          "output": "new_entry_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main_other.ts --frozen --yes",
+          "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main_other.ts --yes",
+          "output": "[WILDCARD]new run from main_other.ts (asks for: no manifest)[WILDCARD]Recorded the approved changes to isolate[\"./vendor/m/\"] in ende.lock.\n"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_other.ts",
+          "output": "true\n"
+        }
+      ]
+    },
+    // A query makes another entry: the package's manifest removed and imported as `mod.ts?v=2` doesn't widen the sandbox.
+    "another_spelling_of_an_entry": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "first.out"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts unmanifest",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_query.ts",
+          "output": "query_blocked.out",
+          "exitCode": 1
+        }
+      ]
+    },
+    // Another spelling of a rule is the same pin.
+    "another_spelling_of_the_rule": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "first.out"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts respell",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "data\nNotCapable: [WILDLINE]\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts respell_wider",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "[WILDCARD]isolate[\"./vendor/./m/\"] changed since ende.lock approved it: its grant in ende.json.[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // Where permission paths fold case, so does the pin.
+    "another_case_of_the_rule": {
+      "if": "mac",
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "first.out"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts respell_case",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "[WILDCARD]./vendor/m/mod.ts was approved under isolate[\"./vendor/m/\"], but it now falls under isolate[\"./Vendor/m/\"].[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // A run with another config doesn't drop the pins: only `ende install` does.
+    "another_config_keeps_the_pins": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "first.out"
+        },
+        {
+          "args": "run --quiet --config other.json other.ts",
+          "output": "other\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts grant",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "[WILDCARD]changed since ende.lock approved it: its grant in ende.json.[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // A new rule that takes over an entry another rule's pin records needs approval, not trust on first use.
+    "a_new_rule_takes_over_an_entry": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "first.out"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts overlap",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "moved_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes to isolate[\"./vendor/\"] in ende.lock.\n[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "data\nNotCapable: [WILDLINE]\n"
+        }
+      ]
+    },
+    // Entry names decide nothing: a renamed entry is the same run, and a grant change is approved whatever `ende install` can load.
+    "a_renamed_entry_never_gets_install_stuck": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "first.out"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts rename",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "data\nNotCapable: [WILDLINE]\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts grant",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "[WILDCARD]its grant in ende.json. Run `ende install --entrypoint main.ts` to review[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --yes",
+          "output": "[WILDCARD]Recorded the approved changes to isolate[\"./vendor/m/\"] in ende.lock.\n"
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "renamed_install.out"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "data\nNotCapable: [WILDLINE]\n"
+        }
+      ]
+    },
+    // An entry with a manifest imported after the sandbox started says what to do.
+    "an_entry_imported_late": {
+      "args": "run --quiet --allow-read --allow-env main_late.ts",
+      "output": "late_entry.out",
+      "exitCode": 1
+    }
+  }
+}

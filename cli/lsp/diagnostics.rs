@@ -1433,6 +1433,60 @@ fn diagnose_dependency(
   }
 }
 
+/// Imports, in `module`, of exports that can't leave a sandbox (a class, a
+/// `let` binding, `then`) used as values, as `ende check` and running
+/// report them (see `crate::isolate::types`).
+fn diagnose_sandboxed_imports(
+  snapshot: &language_server::StateSnapshot,
+  module: &DocumentModule,
+) -> Vec<lsp::Diagnostic> {
+  let stub_of = |code: Option<&ModuleSpecifier>| {
+    code.and_then(crate::isolate::types::data_stub_info)
+  };
+  if !module
+    .dependencies
+    .values()
+    .any(|dependency| stub_of(dependency.get_code()).is_some())
+  {
+    return Vec::new();
+  }
+  let transpile = snapshot
+    .compiler_options_resolver
+    .inner
+    .for_specifier(&module.specifier)
+    .transpile_options()
+    .map(|options| options.transpile.clone())
+    .unwrap_or_default();
+  crate::isolate::types::unsupported_imports(
+    &module.specifier,
+    module.media_type,
+    &module.text,
+    &transpile,
+    &|src| stub_of(module.dependencies.get(src)?.get_code()),
+  )
+  .into_iter()
+  .map(|import| {
+    let position = |(line, character): (usize, usize)| lsp::Position {
+      line: line as u32,
+      character: character as u32,
+    };
+    lsp::Diagnostic {
+      range: lsp::Range {
+        start: position(import.start),
+        end: position(import.end),
+      },
+      severity: Some(lsp::DiagnosticSeverity::ERROR),
+      code: Some(lsp::NumberOrString::String(
+        "isolate-unsupported-export".to_string(),
+      )),
+      source: Some(DiagnosticSource::Ende.as_lsp_source().to_string()),
+      message: import.message,
+      ..Default::default()
+    }
+  })
+  .collect()
+}
+
 fn import_map_diagnostic_range(
   document: &OpenDocument,
   text: &str,
@@ -1783,6 +1837,7 @@ pub async fn generate_module_diagnostics(
           dependency,
         );
       }
+      diagnostics.extend(diagnose_sandboxed_imports(&snapshot, &module));
       (diagnostics, deferred)
     }
   });

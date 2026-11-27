@@ -1,3 +1,4 @@
+Recorded isolate["./vendor/none/"] in ende.lock; it will run with: no permissions
 NotFound NotFound no such thing true false false
 RangeError RangeError too far false true false
 AbortError AbortError stopped false false true

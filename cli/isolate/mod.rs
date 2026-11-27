@@ -25,9 +25,18 @@ use ende_core::url::Url;
 use sys_traits::FsCanonicalize;
 
 mod exports;
+mod manifests;
 mod sandbox;
+pub mod types;
 
+pub use exports::ExportsSource;
 pub use exports::Requested;
+pub use exports::SourceModule;
+pub use manifests::RulePin;
+pub use manifests::effective_options;
+pub use manifests::entry_key;
+pub use manifests::read_manifest;
+pub use manifests::sandbox_entries;
 pub use sandbox::CliSandboxWorkerProvider;
 pub use sandbox::ENTRY_SCHEME;
 pub use sandbox::ISOLATE_SCHEME;
@@ -36,6 +45,264 @@ pub use sandbox::entry_module_code;
 pub use sandbox::parse_entry_specifier;
 pub use sandbox::parse_proxy_specifier;
 pub use sandbox::proxy_specifier;
+
+/// The key of a rule's pin in the lockfile: its matcher (`matcher`, as
+/// written) normalized lexically, so that the lockfile is the same on every
+/// machine: a jsr package by name, a URL as rules match it, a folder
+/// relative to `root_dir` (the folder of the root ende.json) with `.`, `..`
+/// and `//` resolved. No real path and no case folding: those differ
+/// between machines. Another rule naming the same folder through a symlink
+/// or in another case is caught by `SandboxRegistry::overlapping_pin`.
+pub fn rule_key(
+  written: &str,
+  matcher: &IsolateMatcher,
+  root_dir: &Url,
+) -> String {
+  match matcher {
+    IsolateMatcher::JsrPackage(name) => format!("jsr:{name}"),
+    IsolateMatcher::UrlPrefix(url) | IsolateMatcher::Url(url) => {
+      normalized_for_match(url).to_string()
+    }
+    IsolateMatcher::Folder(folder) => {
+      let segments = folder
+        .path_segments()
+        .map(|segments| {
+          segments
+            .filter(|segment| !segment.is_empty() && *segment != ".")
+            .collect::<Vec<_>>()
+            .join("/")
+        })
+        .unwrap_or_default();
+      let mut folder = folder.clone();
+      folder.set_path(&format!("/{segments}/"));
+      let relative = match root_dir.make_relative(&folder) {
+        Some(relative) if relative.starts_with("../") => relative,
+        Some(relative) => format!("./{relative}"),
+        None => written.to_string(),
+      };
+      percent_encoding::percent_decode_str(&relative)
+        .decode_utf8_lossy()
+        .into_owned()
+    }
+  }
+}
+
+/// How `module`, an entry point or entry, is shown in a command to type:
+/// relative to `cwd` when it is a file under it.
+pub fn shown_module(cwd: &Path, module: &ModuleSpecifier) -> String {
+  let cwd = deno_path_util::url_from_directory_path(cwd).ok();
+  let shown = match (&cwd, module.scheme()) {
+    (Some(cwd), "file") => cwd
+      .make_relative(module)
+      .filter(|relative| !relative.starts_with("../"))
+      .map(|relative| {
+        percent_encoding::percent_decode_str(&relative)
+          .decode_utf8_lossy()
+          .into_owned()
+      })
+      .unwrap_or_else(|| {
+        url_to_file_path(module)
+          .map(|path| path.display().to_string())
+          .unwrap_or_else(|_| module.to_string())
+      }),
+    _ => module.to_string(),
+  };
+  if shown.contains(' ') {
+    format!("\"{shown}\"")
+  } else {
+    shown
+  }
+}
+
+/// What the lockfile's `isolate` pins hold the app to, whatever ende.json
+/// now says, checked whenever a graph is loaded.
+///
+/// Each pinned rule, declared or not, is matched against the graph the way
+/// runs match rules (see [`classify`]: paths as written and real, every name
+/// that redirects to a module, including the redirects the lockfile
+/// recorded, and every version of a jsr package), so a module is held by
+/// what it is, not by how it was imported. A module a pin covers must run
+/// under that rule, or under a pinned rule it yields to, while that rule
+/// has the grant that was approved (see `IsolateLockEntry::yields_to`). Anything else is a move, refused until
+/// approved: to another rule by `ende install --entrypoint`, to no rule
+/// (its rule removed) by `ende install`. A pin whose key isn't a rule Ende
+/// can read fails closed: what it could cover is refused, and when that
+/// can't be told, every run.
+pub struct PinChecks {
+  declared: IsolateConfig,
+  /// The pin key of each declared rule, by `SandboxId`.
+  declared_keys: Vec<String>,
+  pins: Vec<PinnedRule>,
+  root_dir: Url,
+  jsr_url: Url,
+  cwd: PathBuf,
+}
+
+struct PinnedRule {
+  key: String,
+  /// The key read as a rule, when it can be.
+  rule: Option<IsolateConfig>,
+  yields_to: Vec<ende_lockfile::IsolateYield>,
+}
+
+/// A module a pin covers that ende.json now puts elsewhere (see
+/// [`PinChecks`]).
+pub struct PinMove {
+  /// The pin's key.
+  pub pin: String,
+  /// The module; `None` when the pin's key can't be read, so what it covers
+  /// can't be told.
+  pub module: Option<ModuleSpecifier>,
+  /// The key of the declared rule it now falls under, if any.
+  pub now: Option<String>,
+}
+
+impl PinChecks {
+  /// `None` when the lockfile pins nothing.
+  pub fn new(
+    declared: &IsolateConfig,
+    pins: &BTreeMap<String, ende_lockfile::IsolateLockEntry>,
+    root_dir: &Url,
+    jsr_url: &Url,
+    cwd: &Path,
+  ) -> Option<Self> {
+    if pins.is_empty() {
+      return None;
+    }
+    let base = root_dir.join("ende.json").ok()?;
+    let pins = pins
+      .iter()
+      .map(|(key, pin)| {
+        // One key at a time: a key that doesn't read doesn't hide the rest.
+        let rule = ende_core::serde_json::json!({
+          key.as_str(): { "permissions": [] }
+        });
+        PinnedRule {
+          key: key.clone(),
+          rule: IsolateConfig::parse(rule, &base).ok(),
+          yields_to: pin.yields_to.clone(),
+        }
+      })
+      .collect();
+    Some(Self {
+      declared_keys: declared
+        .rules
+        .iter()
+        .map(|(written, rule)| rule_key(written, &rule.matcher, root_dir))
+        .collect(),
+      declared: declared.clone(),
+      pins,
+      root_dir: root_dir.clone(),
+      jsr_url: jsr_url.clone(),
+      cwd: cwd.to_path_buf(),
+    })
+  }
+
+  /// Every module of `graph` a pin covers that ende.json now puts
+  /// elsewhere, without approval.
+  pub fn moves(&self, graph: &ModuleGraph) -> Vec<PinMove> {
+    let sys = crate::sys::CliSys::default();
+    let declared = classify(graph, &self.declared, &self.jsr_url, &sys);
+    let pinned = |key: &str| self.pins.iter().any(|pin| pin.key == key);
+    let mut moves = Vec::new();
+    for pin in &self.pins {
+      let covered = match &pin.rule {
+        Some(rule) => classify(graph, rule, &self.jsr_url, &sys)
+          .sandboxes
+          .into_keys()
+          .collect::<Vec<_>>(),
+        // Not a rule Ende can read: what it names as written.
+        None => {
+          let prefix =
+            if pin.key.starts_with("./") || pin.key.starts_with("../") {
+              self.root_dir.join(&pin.key).ok()
+            } else {
+              Url::parse(&pin.key).ok()
+            };
+          let Some(prefix) = prefix else {
+            moves.push(PinMove {
+              pin: pin.key.clone(),
+              module: None,
+              now: None,
+            });
+            continue;
+          };
+          graph
+            .specifiers()
+            .map(|(specifier, _)| graph.resolve(specifier).clone())
+            .filter(|module| module.as_str().starts_with(prefix.as_str()))
+            .collect()
+        }
+      };
+      for module in covered {
+        let id = declared.sandboxes.get(&module);
+        let now = id.and_then(|id| self.declared_keys.get(id.0));
+        let grant = id
+          .and_then(|id| self.declared.rules.get_index(id.0))
+          .map(|(_, rule)| &rule.permissions_json);
+        let approved = now.is_some_and(|now| {
+          *now == pin.key
+            || (pinned(now)
+              && pin.yields_to.iter().any(|yielded| {
+                yielded.rule == *now && Some(&yielded.grant) == grant
+              }))
+        });
+        if !approved {
+          moves.push(PinMove {
+            pin: pin.key.clone(),
+            module: Some(module),
+            now: now.cloned(),
+          });
+        }
+      }
+    }
+    moves
+  }
+
+  /// Errors if `graph` breaks what the pins hold the app to (see
+  /// [`PinChecks`]).
+  pub fn check(
+    &self,
+    graph: &ModuleGraph,
+  ) -> Result<(), deno_error::JsErrorBox> {
+    let Some(found) = self.moves(graph).into_iter().next() else {
+      return Ok(());
+    };
+    let pin = &found.pin;
+    let message = match (&found.module, &found.now) {
+      (None, _) => format!(
+        "ende.lock pins isolate[\"{pin}\"], which isn't a rule Ende can read, so it can't tell what that pin sandboxes. Fix or remove that key in ende.lock (`ende install` removes it, with approval)"
+      ),
+      (Some(module), Some(now)) => {
+        let roots = graph
+          .roots
+          .iter()
+          .filter(|root| !root.path().contains("$ende$"))
+          .map(|root| shown_module(&self.cwd, root))
+          .collect::<Vec<_>>();
+        let roots = if roots.is_empty() {
+          "<the module you run>".to_string()
+        } else {
+          roots.join(" ")
+        };
+        format!(
+          "{} was approved under isolate[\"{pin}\"], but it now falls under isolate[\"{now}\"]. Moving a package to another sandbox needs approval. Run `ende install --entrypoint {roots}` to review it and approve it, or change the rules back",
+          self.shown(module)
+        )
+      }
+      (Some(module), None) => format!(
+        "isolate[\"{pin}\"] is no longer declared in ende.json, but ende.lock still pins it and the app imports {module}, which it sandboxed. Removing the rule would run that package with the app's permissions. Run `ende install` to approve the removal, or declare the rule again"
+      ),
+    };
+    Err(deno_error::JsErrorBox::type_error(message))
+  }
+
+  /// How `module` is shown in a move: a local file relative to the folder
+  /// of the root ende.json, as the lockfile names entries.
+  pub fn shown(&self, module: &ModuleSpecifier) -> String {
+    manifests::entry_key(module, module, &self.root_dir, &self.jsr_url)
+  }
+}
 
 /// A sandbox: the index of its rule in `IsolateConfig::rules`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -168,6 +435,17 @@ impl Classifier {
       }
     }
     self.first_match(names.into_iter(), paths)
+  }
+
+  /// The rule that matches `specifier` by itself, without a graph to
+  /// follow redirects in: for resolving imports, before the graph has the
+  /// module.
+  pub fn sandbox_of_specifier(
+    &self,
+    specifier: &ModuleSpecifier,
+    paths: &dyn Fn(&Url) -> Vec<PathBuf>,
+  ) -> Option<SandboxId> {
+    self.first_match(std::iter::once(specifier), paths)
   }
 
   /// The lowest-numbered rule that matches any of `names`.

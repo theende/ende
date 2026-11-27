@@ -1,0 +1,7 @@
+{
+  "isolate": {
+    "./vendor/pkg/": { "permissions": [] },
+    "jsr:@endetest/multiple-exports": { "permissions": [] },
+    "https://localhost:5545/run/extension_lockfile/": { "permissions": [] }
+  }
+}

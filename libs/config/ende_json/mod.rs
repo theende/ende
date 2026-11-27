@@ -44,6 +44,7 @@ pub use extensions::ExtensionConfig;
 pub use extensions::ExtensionPermissions;
 pub use extensions::ExtensionsConfig;
 pub use extensions::ExtensionsConfigError;
+pub use extensions::grant_from_json;
 pub use file_names::CONFIG_FILE_NAMES;
 pub use file_names::DEFAULT_CONFIG_FILE_NAME;
 pub use file_names::DEPRECATED_LOCKFILE_NAME;

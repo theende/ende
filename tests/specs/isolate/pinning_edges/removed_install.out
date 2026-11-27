@@ -1,0 +1,2 @@
+[WILDCARD]isolate["./vendor/m/"] changed:
+  removed from ende.json: what it sandboxed now runs in the app[WILDCARD]Recorded the approved changes to isolate["./vendor/m/"] in ende.lock.

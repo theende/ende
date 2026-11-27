@@ -15,6 +15,7 @@
 //! - Its permissions come from ende.json alone, through
 //!   [`CliSandboxWorkerProvider`], never from JS.
 
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -40,8 +41,10 @@ use super::SandboxId;
 use super::exports::Requested;
 use super::exports::module_exports;
 use super::exports::requested_exports;
+use super::manifests;
 use super::paths_of;
 use super::unmatched_rule_warning;
+use crate::args::CliLockfile;
 use crate::args::extension_grant_permissions_options;
 use crate::graph_container::MainModuleGraphContainer;
 use crate::graph_container::ModuleGraphContainer;
@@ -75,9 +78,43 @@ pub struct SandboxRegistry {
   /// The rules whose too-wide grant was warned about.
   warned_grants: Mutex<HashSet<SandboxId>>,
   warned_unmatched: Mutex<bool>,
+  /// Pins each rule's grant and its entries' manifests once approved.
+  lockfile: Option<Arc<CliLockfile>>,
+  /// `--no-lock` was given on the command line: sandboxes run unpinned,
+  /// with a warning. Without it, a missing lockfile (`"lock": false` in the
+  /// config) is an error.
+  no_lock_flag: bool,
+  /// The folder of the root ende.json, which the lockfile names local
+  /// entries relative to.
+  root_dir: Url,
+  /// The sandboxes the app imported, with what they run with.
+  prepared: Mutex<HashMap<SandboxId, Arc<PreparedSandbox>>>,
+  /// The rules whose "Recorded" notice this run printed: one per rule.
+  noticed: Mutex<HashSet<SandboxId>>,
+  /// The folder commands run from, for the `ende install --entrypoint`
+  /// command a block message prints.
+  cwd: PathBuf,
+}
+
+/// A sandbox whose entries' manifests were read and whose pin was checked.
+struct PreparedSandbox {
+  /// Its grant ∩ its entries' manifests (the app's permissions apply on
+  /// top, through the chain).
+  options: PermissionsOptions,
+  /// Its grant alone, and the grant ∩ each manifest by entry, to say which
+  /// manifests withhold what a denial asks for. Empty without manifests.
+  narrowing: Option<(PermissionsOptions, Vec<(String, PermissionsOptions)>)>,
+  /// The entries counted, by lockfile key, with the `permissions` of the
+  /// manifest each declares.
+  entries: Mutex<BTreeMap<String, Option<serde_json::Value>>>,
+  /// The modules those entries name. The app's loader may reach one by
+  /// another specifier (a jsr import by its registry URL), which is the
+  /// same entry.
+  modules: Mutex<HashSet<ModuleSpecifier>>,
 }
 
 impl SandboxRegistry {
+  #[allow(clippy::too_many_arguments, reason = "set up once, by the factory")]
   pub fn new(
     config: IsolateConfig,
     jsr_url: &Url,
@@ -85,6 +122,10 @@ impl SandboxRegistry {
     app_options: PermissionsOptions,
     protected_paths: Vec<PathBuf>,
     main_graph: Arc<MainModuleGraphContainer>,
+    lockfile: Option<Arc<CliLockfile>>,
+    no_lock_flag: bool,
+    root_dir: Url,
+    cwd: PathBuf,
   ) -> Self {
     let sys = CliSys::default();
     Self {
@@ -99,6 +140,12 @@ impl SandboxRegistry {
       requested: Default::default(),
       warned_grants: Default::default(),
       warned_unmatched: Default::default(),
+      lockfile,
+      no_lock_flag,
+      root_dir,
+      prepared: Default::default(),
+      noticed: Default::default(),
+      cwd,
     }
   }
 
@@ -301,7 +348,500 @@ impl SandboxRegistry {
     } else {
       Vec::new()
     };
+    self.check_entry(id, entry, &target)?;
     Ok(proxy_module_code(rule, &target, &named, &implicit))
+  }
+
+  /// Prepares sandbox `id` when the app first imports it: reads the
+  /// manifests of its entries in the app's graph, works out what it runs
+  /// with and checks its pin. An entry imported after that (a computed
+  /// `import()`) is checked on its own: it is recorded like the others, and
+  /// a manifest of its own that the running sandbox doesn't already apply
+  /// is an error, since the sandbox's permissions are set when it starts.
+  fn check_entry(
+    &self,
+    id: SandboxId,
+    entry: &ModuleSpecifier,
+    target: &ModuleSpecifier,
+  ) -> Result<(), JsErrorBox> {
+    let prepared = self.prepare(id, Some((entry, target)))?;
+    let key = self.entry_key(entry, target);
+    if prepared.modules.lock().contains(target)
+      || prepared.entries.lock().contains_key(&key)
+    {
+      return Ok(());
+    }
+    let rule = self.matcher(id);
+    let graph = self.main_graph.graph();
+    let manifest = manifests::read_manifest(rule, &graph, target)?;
+    if let Some(json) = manifest.as_ref().map(|m| &m.permissions_json)
+      && !prepared
+        .entries
+        .lock()
+        .values()
+        .any(|counted| counted.as_ref() == Some(json))
+    {
+      return Err(JsErrorBox::type_error(format!(
+        "\"{target}\" declares a manifest of its own, but it was first imported after the sandbox of isolate[\"{rule}\"] started, which runs with the manifests of the entries the app's module graph held then. Import it from a module the app imports statically (a dynamic import the graph reaches only through a computed import, or with --unstable-lazy-dynamic-imports, comes too late), so its manifest counts from the start"
+      )));
+    }
+    let json = manifest.as_ref().map(|m| m.permissions_json.clone());
+    let mut manifests = prepared
+      .entries
+      .lock()
+      .iter()
+      .map(|(key, manifest)| {
+        (
+          key.clone(),
+          manifest.clone().unwrap_or(serde_json::Value::Null),
+        )
+      })
+      .collect::<BTreeMap<_, _>>();
+    manifests
+      .insert(key.clone(), json.clone().unwrap_or(serde_json::Value::Null));
+    self.check_rule_pin(
+      id,
+      &prepared.options,
+      manifests,
+      std::slice::from_ref(target),
+    )?;
+    prepared.entries.lock().insert(key, json);
+    prepared.modules.lock().insert(target.clone());
+    Ok(())
+  }
+
+  /// The key the lockfile names entry `entry` (naming `target`) by.
+  fn entry_key(
+    &self,
+    entry: &ModuleSpecifier,
+    target: &ModuleSpecifier,
+  ) -> String {
+    manifests::entry_key(
+      entry,
+      target,
+      &self.root_dir,
+      &self.classifier.jsr_url,
+    )
+  }
+
+  /// The key of rule `id`'s pin (see [`super::rule_key`]).
+  pub fn rule_key(&self, id: SandboxId) -> String {
+    let (matcher, rule) = self.config.rules.get_index(id.0).unwrap();
+    super::rule_key(matcher, &rule.matcher, &self.root_dir)
+  }
+
+  /// What a first pin of rule `id` yields to: each other rule that `graph`
+  /// puts a module rule `id` covers under, with its grant. Only what the
+  /// graph shows: an earlier rule that covers none of those modules yet (a
+  /// symlinked folder pointing elsewhere, a URL no redirect reaches) takes
+  /// them later only with approval.
+  fn first_yields(
+    &self,
+    id: SandboxId,
+    graph: &ModuleGraph,
+  ) -> Vec<ende_lockfile::IsolateYield> {
+    let key = self.rule_key(id);
+    let (written, rule) = self.config.rules.get_index(id.0).unwrap();
+    let alone = IsolateConfig {
+      rules: [(written.clone(), rule.clone())].into_iter().collect(),
+    };
+    let covered =
+      super::classify(graph, &alone, &self.classifier.jsr_url, &self.sys);
+    let mut yields: Vec<ende_lockfile::IsolateYield> = Vec::new();
+    for module in covered.sandboxes.keys() {
+      let Some(other) = self.sandbox_of(graph, module) else {
+        continue;
+      };
+      let other_key = self.rule_key(other);
+      if other_key != key
+        && !yields.iter().any(|yielded| yielded.rule == other_key)
+      {
+        yields.push(ende_lockfile::IsolateYield {
+          rule: other_key,
+          grant: self.config.rules[other.0].permissions_json.clone(),
+        });
+      }
+    }
+    yields
+  }
+
+  /// How `root`, an entry point, is shown in a command to type.
+  fn shown_root(&self, root: &ModuleSpecifier) -> String {
+    super::shown_module(&self.cwd, root)
+  }
+
+  /// `ende install --entrypoint` with what approves this run of sandbox
+  /// `id`: the run's entry points that reach the sandbox statically (or are
+  /// its entries), or else `modules`, the entries the run imports (a
+  /// sandbox reached only through a computed import, or from `ende eval`).
+  fn entrypoint_command(
+    &self,
+    id: SandboxId,
+    modules: &[ModuleSpecifier],
+  ) -> String {
+    let graph = self.main_graph.graph();
+    let mut roots = graph
+      .roots
+      .iter()
+      .filter(|root| matches!(root.scheme(), "file" | "http" | "https" | "jsr"))
+      .filter(|root| !root.path().contains("$ende$"))
+      .filter(|root| {
+        self.sandbox_of(&graph, root) == Some(id) || {
+          let segment = graph.segment(std::slice::from_ref(*root));
+          !manifests::sandbox_entries(&segment, id, &|specifier| {
+            self.sandbox_of(&segment, specifier)
+          })
+          .is_empty()
+        }
+      })
+      .map(|root| self.shown_root(root))
+      .collect::<Vec<_>>();
+    if roots.is_empty() {
+      roots = modules
+        .iter()
+        .map(|module| self.shown_root(module))
+        .collect();
+    }
+    if roots.is_empty() {
+      "ende install --entrypoint <the module you run>".to_string()
+    } else {
+      format!("ende install --entrypoint {}", roots.join(" "))
+    }
+  }
+
+  /// Checks rule `id`'s pin for this run, which gets `options` and
+  /// imports entries with `manifests` (`modules`: the modules), recording
+  /// what needs no approval. (That no module another pin covers moved here
+  /// is `super::PinChecks`'s job, done when the graph loads.)
+  fn check_rule_pin(
+    &self,
+    id: SandboxId,
+    options: &PermissionsOptions,
+    manifests: BTreeMap<String, serde_json::Value>,
+    modules: &[ModuleSpecifier],
+  ) -> Result<(), JsErrorBox> {
+    let (rule, config) = self.config.rules.get_index(id.0).unwrap();
+    let key = self.rule_key(id);
+    let grant = extension_grant_permissions_options(&config.permissions)
+      .map_err(|err| JsErrorBox::type_error(err.to_string()))?;
+    let approved = self
+      .lockfile
+      .as_ref()
+      .and_then(|lockfile| lockfile.lock().isolate_rule(&key).cloned());
+    let notice = !self.noticed.lock().contains(&id);
+    let mut pin = manifests::decide_run(
+      manifests::RunInputs {
+        key,
+        matcher: rule,
+        grant_json: &config.permissions_json,
+        grant: &grant,
+        options,
+        manifests: &manifests,
+        yields_to: match approved {
+          Some(_) => Vec::new(),
+          None => self.first_yields(id, &self.main_graph.graph()),
+        },
+        root_dir: &self.root_dir,
+        entrypoint_command: String::new(),
+        notice,
+      },
+      approved.as_ref(),
+      self.desc_parser.as_ref(),
+    )?;
+    if !pin.needs_approval.is_empty() {
+      pin.approve_command = self.entrypoint_command(id, modules);
+    }
+    let noticed = crate::pins::Pinned::notice(&pin);
+    crate::pins::check_pin(&pin, self.lockfile.as_deref(), self.no_lock_flag)?;
+    if noticed {
+      self.noticed.lock().insert(id);
+    }
+    Ok(())
+  }
+
+  /// Sandbox `id` as the app's graph has it now, with `first` (an entry
+  /// and its module) if that is the import that prepares it (see
+  /// [`Self::check_entry`]).
+  fn prepare(
+    &self,
+    id: SandboxId,
+    first: Option<(&ModuleSpecifier, &ModuleSpecifier)>,
+  ) -> Result<Arc<PreparedSandbox>, JsErrorBox> {
+    if let Some(prepared) = self.prepared.lock().get(&id) {
+      return Ok(prepared.clone());
+    }
+    let (rule, config) = self.config.rules.get_index(id.0).unwrap();
+    let graph = self.main_graph.graph();
+    let mut entries = manifests::sandbox_entries(&graph, id, &|specifier| {
+      self.sandbox_of(&graph, specifier)
+    });
+    if let Some((entry, target)) = first
+      && !entries.values().any(|counted| counted == target)
+    {
+      entries.insert(entry.clone(), target.clone());
+    }
+    // One entry per module: a jsr import and its registry URL are the same.
+    let mut modules = HashSet::new();
+    entries.retain(|_, target| modules.insert(target.clone()));
+    let sandboxed = entries.clone();
+    let mut read: BTreeMap<String, Option<crate::extensions::PackageManifest>> =
+      BTreeMap::new();
+    for (entry, target) in &entries {
+      let manifest = manifests::read_manifest(rule, &graph, target)?;
+      read.insert(self.entry_key(entry, target), manifest);
+    }
+    let grant = extension_grant_permissions_options(&config.permissions)
+      .map_err(|err| JsErrorBox::type_error(err.to_string()))?;
+    let mut per_entry = Vec::new();
+    for (key, manifest) in &read {
+      if let Some(manifest) = manifest {
+        let (narrowed, _) = manifests::effective_options(
+          rule,
+          &grant,
+          std::iter::once((key.as_str(), manifest)),
+          self.desc_parser.as_ref(),
+        )?;
+        per_entry.push((key.clone(), narrowed));
+      }
+    }
+    let narrowing = (!per_entry.is_empty()).then(|| {
+      let mut grant = grant.clone();
+      grant.prompt = false;
+      (grant, per_entry)
+    });
+    let (options, warnings) = manifests::effective_options(
+      rule,
+      &grant,
+      read
+        .iter()
+        .filter_map(|(key, manifest)| Some((key.as_str(), manifest.as_ref()?))),
+      self.desc_parser.as_ref(),
+    )?;
+    let entries = read
+      .iter()
+      .map(|(key, manifest)| {
+        (
+          key.clone(),
+          manifest
+            .as_ref()
+            .map(|manifest| manifest.permissions_json.clone()),
+        )
+      })
+      .collect::<BTreeMap<_, _>>();
+    let targets = sandboxed.values().cloned().collect::<Vec<_>>();
+    self.check_rule_pin(
+      id,
+      &options,
+      entries
+        .iter()
+        .map(|(key, manifest)| {
+          (
+            key.clone(),
+            manifest.clone().unwrap_or(serde_json::Value::Null),
+          )
+        })
+        .collect(),
+      &targets,
+    )?;
+    let mut map = self.prepared.lock();
+    if let Some(existing) = map.get(&id) {
+      return Ok(existing.clone());
+    }
+    let prepared = Arc::new(PreparedSandbox {
+      options,
+      narrowing,
+      entries: Mutex::new(entries),
+      modules: Mutex::new(modules),
+    });
+    map.insert(id, prepared.clone());
+    drop(map);
+    for warning in warnings {
+      log::warn!("{} {}", crate::colors::yellow("Warning"), warning);
+    }
+    Ok(prepared)
+  }
+
+  /// `container`, sandbox `id`'s, with what explains a denial its
+  /// manifests cause (see `ManifestNarrowing`).
+  fn with_manifest_narrowing(
+    &self,
+    id: SandboxId,
+    container: PermissionsContainer,
+  ) -> Result<PermissionsContainer, JsErrorBox> {
+    let prepared = self.prepare(id, None)?;
+    let Some((grant, per_entry)) = &prepared.narrowing else {
+      return Ok(container);
+    };
+    let build = |options: &PermissionsOptions| {
+      Permissions::from_options(self.desc_parser.as_ref(), options)
+        .map(|permissions| {
+          PermissionsContainer::new(self.desc_parser.clone(), permissions)
+            .with_import_symlinks_resolved()
+        })
+        .map_err(|err| JsErrorBox::type_error(err.to_string()))
+    };
+    let mut manifests = Vec::with_capacity(per_entry.len());
+    for (entry, options) in per_entry {
+      manifests.push((entry.clone(), build(options)?));
+    }
+    Ok(container.with_manifest_narrowing(
+      ende_runtime::ende_permissions::ManifestNarrowing::new(
+        build(grant)?,
+        manifests,
+      ),
+    ))
+  }
+
+  /// `ende install`: drops the pins of rules no longer declared, records
+  /// grant changes, with `--entrypoint` approves the moves of the entry
+  /// points' modules from one pin to another rule (see `super::PinChecks`), and with `--entrypoint` (`app`: the
+  /// entry points' graph and the entry points) adds each entry point's run
+  /// to what's approved. It asks before recording what needs approval; `yes`
+  /// approves without asking, and without a terminal changes need `yes`.
+  /// It never removes an approved run, and reads no entry again, so nothing
+  /// it can't load gets it stuck or resets anything.
+  pub fn approve_changes(
+    &self,
+    app: Option<(&ModuleGraph, &[ModuleSpecifier])>,
+    yes: bool,
+  ) -> Result<(), ende_core::error::AnyError> {
+    let Some(lockfile) = &self.lockfile else {
+      return Ok(());
+    };
+    let keys = (0..self.config.rules.len())
+      .map(|index| self.rule_key(SandboxId(index)))
+      .collect::<Vec<_>>();
+    let pinned = lockfile.lock().content.isolate.clone();
+    // The entry points' modules that another pin covers, by the rule they
+    // now fall under, with that pin. (One that falls under no rule is the
+    // removal of its rule, below.)
+    let mut moves: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
+    if let Some((graph, _)) = app
+      && let Some(checks) = super::PinChecks::new(
+        &self.config,
+        &pinned,
+        &self.root_dir,
+        &self.classifier.jsr_url,
+        &self.cwd,
+      )
+    {
+      for found in checks.moves(graph) {
+        if let (Some(module), Some(now)) = (&found.module, found.now) {
+          let list = moves.entry(now).or_default();
+          let item = (found.pin, checks.shown(module));
+          if !list.contains(&item) {
+            list.push(item);
+          }
+        }
+      }
+    }
+    let mut reached = HashSet::new();
+    let mut items = Vec::new();
+    let mut seen = HashSet::new();
+    for (index, (matcher, config)) in self.config.rules.iter().enumerate() {
+      let id = SandboxId(index);
+      let key = self.rule_key(id);
+      if !seen.insert(key.clone()) {
+        // another spelling of a rule declared earlier: one pin
+        continue;
+      }
+      let approved = pinned.get(&key);
+      let moves = moves.remove(&key).unwrap_or_default();
+      let grant = extension_grant_permissions_options(&config.permissions)?;
+      let mut runs = Vec::new();
+      if let Some((graph, roots)) = app {
+        for root in roots {
+          let segment = graph.segment(std::slice::from_ref(root));
+          let mut modules = HashSet::new();
+          let mut read = BTreeMap::new();
+          for (entry, target) in
+            manifests::sandbox_entries(&segment, id, &|specifier| {
+              self.sandbox_of(&segment, specifier)
+            })
+          {
+            if !modules.insert(target.clone()) {
+              continue;
+            }
+            let manifest =
+              manifests::read_manifest(matcher, &segment, &target)?;
+            read.insert(self.entry_key(&entry, &target), manifest);
+          }
+          // An entry point that is itself an entry: a run that imports
+          // just it, as a computed import does.
+          if read.is_empty()
+            && self.sandbox_of(&segment, root) == Some(id)
+            && matches!(segment.get(root), Some(deno_graph::Module::Js(_)))
+          {
+            let target = segment.resolve(root).clone();
+            let manifest =
+              manifests::read_manifest(matcher, &segment, &target)?;
+            read.insert(self.entry_key(root, &target), manifest);
+          }
+          if read.is_empty() {
+            continue;
+          }
+          reached.insert(root.clone());
+          let (options, _) = manifests::effective_options(
+            matcher,
+            &grant,
+            read.iter().filter_map(|(key, manifest)| {
+              Some((key.as_str(), manifest.as_ref()?))
+            }),
+            self.desc_parser.as_ref(),
+          )?;
+          let manifests = read
+            .into_iter()
+            .map(|(key, manifest)| {
+              (
+                key,
+                manifest
+                  .map(|manifest| manifest.permissions_json)
+                  .unwrap_or(serde_json::Value::Null),
+              )
+            })
+            .collect();
+          runs.push((self.shown_root(root), options, manifests));
+        }
+      }
+      if let Some(pin) = manifests::decide_install(
+        manifests::InstallInputs {
+          key,
+          matcher,
+          grant_json: &config.permissions_json,
+          grant: &grant,
+          moves,
+          yields_to: match (approved, app) {
+            (None, Some((graph, _))) => self.first_yields(id, graph),
+            _ => Vec::new(),
+          },
+          runs,
+          root_dir: &self.root_dir,
+        },
+        approved,
+        self.desc_parser.as_ref(),
+      )? {
+        items.push(pin);
+      }
+    }
+    // A rule ende.json no longer declares: dropping its pin would run what
+    // it sandboxed in the app (or under another rule), so that needs
+    // approval too; a run that imports a module it covers is refused until
+    // then (see `super::PinChecks`).
+    for (key, pin) in &pinned {
+      if !keys.contains(key) {
+        items.push(manifests::RulePin::removal(key, pin));
+      }
+    }
+    if let Some((_, roots)) = app {
+      for root in roots.iter().filter(|root| !reached.contains(*root)) {
+        log::warn!(
+          "{} {} imports no sandboxed module, so `ende install --entrypoint` approves nothing for it.",
+          crate::colors::yellow("Warning"),
+          self.shown_root(root)
+        );
+      }
+    }
+    crate::pins::approve_changes(items, lockfile, yes)
   }
 
   /// The error for an import, from inside sandbox `outer`, of a module in
@@ -320,7 +860,8 @@ impl SandboxRegistry {
     ))
   }
 
-  /// The permissions of sandbox `id`'s worker: its grant, never prompting,
+  /// The permissions of sandbox `id`'s worker: its grant ∩ its entries'
+  /// manifests, never prompting,
   /// with every path no sandbox may write denied: the protected paths, the
   /// app's local modules outside this sandbox (including other sandboxes'),
   /// and the folders of the other folder rules.
@@ -328,9 +869,7 @@ impl SandboxRegistry {
     &self,
     id: SandboxId,
   ) -> Result<PermissionsOptions, JsErrorBox> {
-    let (_, rule) = self.config.rules.get_index(id.0).unwrap();
-    let mut options = extension_grant_permissions_options(&rule.permissions)
-      .map_err(|err| JsErrorBox::type_error(err.to_string()))?;
+    let mut options = self.prepare(id, None)?.options.clone();
     options.prompt = false;
 
     let mut denied = self.protected_paths.clone();
@@ -424,9 +963,12 @@ impl SandboxRegistry {
     // Imports are checked by where the file really is, so a link in the
     // folder reads nothing outside it.
     Ok(Some(
-      PermissionsContainer::new(self.desc_parser.clone(), permissions)
-        .with_import_symlinks_resolved()
-        .chained_to(app),
+      self.with_manifest_narrowing(
+        id,
+        PermissionsContainer::new(self.desc_parser.clone(), permissions)
+          .with_import_symlinks_resolved()
+          .chained_to(app),
+      )?,
     ))
   }
 
@@ -607,7 +1149,7 @@ fn real_path(path: &std::path::Path) -> Option<PathBuf> {
 /// Why export `name` of kind `kind` can't cross, if it can't. A `then`
 /// export never does: it would make the module's namespace look like a
 /// promise to whoever imports it.
-fn unsupported_export(
+pub(super) fn unsupported_export(
   name: &str,
   kind: &super::exports::ExportKind,
 ) -> Option<&'static str> {
@@ -649,9 +1191,26 @@ fn cannot_import(
   name: &str,
   what: &str,
 ) -> JsErrorBox {
-  JsErrorBox::type_error(format!(
-    "Cannot import \"{name}\" from \"{entry}\": it is {what}, which can't leave the sandbox of isolate[\"{rule}\"]. A sandboxed package can only export functions (called async, with arguments and results structured-cloned) and structured-clonable constants"
+  JsErrorBox::type_error(cannot_import_message(
+    rule,
+    entry.as_str(),
+    name,
+    what,
   ))
+}
+
+/// Why `name` can't be imported from `entry`, a module of the sandbox of
+/// `isolate[rule]`: it is `what`. Shared by running, `ende check` and the
+/// editor.
+pub(super) fn cannot_import_message(
+  rule: &str,
+  entry: &str,
+  name: &str,
+  what: &str,
+) -> String {
+  format!(
+    "Cannot import \"{name}\" from \"{entry}\": it is {what}, which can't leave the sandbox of isolate[\"{rule}\"]. A sandboxed package can only export functions (called async, with arguments and results structured-cloned) and structured-clonable constants"
+  )
 }
 
 /// Starts sandbox workers for the main thread (see
@@ -671,11 +1230,11 @@ impl SandboxWorkerProvider for CliSandboxWorkerProvider {
       main_module: registry.harness_url(id),
       // Imports are checked by where the file really is (see
       // `SandboxRegistry::is_own`).
-      permissions: PermissionsContainer::new(
-        registry.desc_parser.clone(),
-        permissions,
-      )
-      .with_import_symlinks_resolved(),
+      permissions: registry.with_manifest_narrowing(
+        id,
+        PermissionsContainer::new(registry.desc_parser.clone(), permissions)
+          .with_import_symlinks_resolved(),
+      )?,
     })
   }
 }

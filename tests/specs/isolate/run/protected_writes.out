@@ -1,3 +1,4 @@
+Recorded isolate["./vendor/probe/"] in ende.lock; it will run with: [WILDLINE]
 ende.json: NotCapable: ./vendor/probe/: Requires write access to "ende.json", which would configure or pin the app (a config file or lockfile Ende looks for, by any spelling), so no sandbox or extension may write it
 ende.lock: NotCapable: ./vendor/probe/: Requires write access to "ende.lock", which would configure or pin the app (a config file or lockfile Ende looks for, by any spelling), so no sandbox or extension may write it
 writes.ts: NotCapable: ./vendor/probe/: Requires write access to "writes.ts", which is denied to this sandbox: by a deny list in isolate["./vendor/probe/"].permissions, or because no sandbox may write the app's config, lockfile, vendor folder, module cache or code

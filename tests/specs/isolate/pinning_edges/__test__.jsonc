@@ -1,0 +1,123 @@
+{
+  "tempDir": true,
+  "tests": {
+    // Removing a rule from ende.json would run its package with the app's permissions: that needs approval, which --frozen refuses.
+    "a_removed_rule_doesnt_unsandbox_its_package": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main_mod.ts",
+          "output": "Recorded [WILDLINE]\ndata | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts remove_rule",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main_mod.ts",
+          "output": "removed_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_mod.ts",
+          "output": "removed_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install",
+          "output": "[WILDCARD]Isolate rule changes need approval[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --frozen --yes",
+          "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --yes",
+          "output": "removed_install.out"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_mod.ts",
+          "output": "data | string\n"
+        }
+      ]
+    },
+    // Removing a rule whose package the app no longer imports needs none.
+    "a_removed_rule_the_app_no_longer_imports": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main_mod.ts",
+          "output": "Recorded [WILDLINE]\ndata | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts remove_rule",
+          "output": ""
+        },
+        {
+          "args": "run --quiet other.ts",
+          "output": "other\n"
+        }
+      ]
+    },
+    // A sandbox reached only by a computed import: the block names an entry point that approves it, for a file and for `ende eval`.
+    "a_sandbox_reached_by_a_computed_import": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main_mod.ts",
+          "output": "Recorded [WILDLINE]\ndata | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_computed.ts",
+          "output": "computed_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": [
+            "eval",
+            "--quiet",
+            "--allow-read",
+            "--allow-env",
+            "const { both } = await import('./vendor/m/' + 'plain.ts'); console.log(await both());"
+          ],
+          "output": "computed_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint vendor/m/plain.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_computed.ts",
+          "output": "data | string\n"
+        }
+      ]
+    },
+    // A recorded run that can't be read on this machine (a Windows path) doesn't match, and another run still does.
+    "an_unreadable_run_never_bricks_the_rule": {
+      "cwd": "wm",
+      "args": "run --quiet --allow-read --allow-env --frozen main.ts",
+      "output": "data | NotCapable\n"
+    },
+    // A run that fits writes nothing, so --frozen passes: another entry asking for the same, or a narrower manifest.
+    "frozen_runs_that_fit": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main_mod.ts",
+          "output": "Recorded [WILDLINE]\ndata | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main_twin.ts",
+          "output": "data | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts narrow",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main_mod.ts",
+          "output": "NotCapable | NotCapable\n"
+        }
+      ]
+    }
+  }
+}

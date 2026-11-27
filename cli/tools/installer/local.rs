@@ -62,6 +62,10 @@ async fn install_top_level(
     .approve_changes(top_level_flags.yes)
     .await?;
 
+  // Pins the `isolate` rules' grants, and asks before it records a changed
+  // grant or a changed manifest of an entry the lockfile records.
+  super::approve_sandbox_pins(&factory, None, top_level_flags.yes).await?;
+
   if let Some(lockfile) = factory.maybe_lockfile().await? {
     lockfile.write_if_changed()?;
   }

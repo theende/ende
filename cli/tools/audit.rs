@@ -94,11 +94,48 @@ pub async fn audit(
 
   let classification = isolate::classify(&graph, &config, jsr_url(), &sys);
 
+  // What each rule runs with: grant ∩ the manifests its entries in this
+  // graph declare (see `crate::isolate`) ∩ the app.
+  let root_dir = deno_path_util::url_from_directory_path(
+    &cli_options.workspace().root_dir_path(),
+  )?;
+  let sandbox_of = |specifier: &ModuleSpecifier| {
+    classification
+      .sandboxes
+      .get(graph.resolve(specifier))
+      .copied()
+  };
   let mut effective_by_rule = Vec::with_capacity(config.rules.len());
-  for rule in config.rules.values() {
+  for (index, (matcher, rule)) in config.rules.iter().enumerate() {
     let grant = extension_grant_permissions_options(&rule.permissions)?;
-    let effective = sandbox_effective(&app, &grant, parser.as_ref())?;
-    effective_by_rule.push((grant, effective));
+    let mut manifests = Vec::new();
+    for (entry, target) in
+      isolate::sandbox_entries(&graph, SandboxId(index), &sandbox_of)
+    {
+      if let Some(manifest) = isolate::read_manifest(matcher, &graph, &target)?
+      {
+        manifests.push((
+          isolate::entry_key(&entry, &target, &root_dir, jsr_url()),
+          manifest,
+        ));
+      }
+    }
+    let (narrowed, _) = isolate::effective_options(
+      matcher,
+      &grant,
+      manifests
+        .iter()
+        .map(|(key, manifest)| (key.as_str(), manifest)),
+      parser.as_ref(),
+    )?;
+    let effective = sandbox_effective(&app, &narrowed, parser.as_ref())?;
+    let requested = (!manifests.is_empty()).then(|| {
+      manifests
+        .into_iter()
+        .map(|(key, manifest)| (key, manifest.permissions_json))
+        .collect::<BTreeMap<_, _>>()
+    });
+    effective_by_rule.push((grant, effective, requested));
   }
 
   let entries = entries(&graph, &classification, &pinned, &failed, jsr_url());
@@ -114,15 +151,16 @@ pub async fn audit(
         kind: key.unit.kind(&config),
         matcher: rule.map(|(matcher, _, _)| matcher.clone()),
         granted: rule.map(|(_, rule, _)| rule.permissions_json.clone()),
+        requested: rule.and_then(|(_, _, (_, _, requested))| requested.clone()),
         effective: match rule {
-          Some((_, _, (_, effective))) => effective.clone(),
+          Some((_, _, (_, effective, _))) => effective.clone(),
           None => app.clone(),
         },
         can_escape: rule
-          .map(|(_, _, (grant, _))| granted_kinds(grant, &["run", "ffi"]))
+          .map(|(_, _, (grant, _, _))| granted_kinds(grant, &["run", "ffi"]))
           .unwrap_or_default(),
         process_wide: rule
-          .map(|(_, _, (grant, _))| granted_kinds(grant, &["env", "sys"]))
+          .map(|(_, _, (grant, _, _))| granted_kinds(grant, &["env", "sys"]))
           .unwrap_or_default(),
         lockfile: entry.lockfile,
         modules: entry.modules,
@@ -390,6 +428,9 @@ struct ReportEntry {
   kind: &'static str,
   matcher: Option<String>,
   granted: Option<Value>,
+  /// The `permissions` of each manifest the sandbox's entries declare, by
+  /// entry.
+  requested: Option<BTreeMap<String, Value>>,
   effective: PermissionsOptions,
   can_escape: Vec<&'static str>,
   process_wide: Vec<&'static str>,
@@ -416,8 +457,7 @@ impl ReportEntry {
       "sandboxed": self.matcher.is_some(),
       "matcher": self.matcher,
       "granted": self.granted,
-      // Manifests of sandboxed packages aren't read yet.
-      "requested": null,
+      "requested": self.requested,
       "effective": effective,
       "canEscape": self.can_escape,
       "processWide": self.process_wide,
@@ -454,7 +494,20 @@ impl ReportEntry {
           .map(|granted| granted.to_string())
           .unwrap_or_else(|| dash.clone()),
       ),
-      ("requested", dash.clone()),
+      (
+        "requested",
+        self
+          .requested
+          .as_ref()
+          .map(|requested| {
+            requested
+              .iter()
+              .map(|(entry, manifest)| format!("{manifest} ({entry})"))
+              .collect::<Vec<_>>()
+              .join("; ")
+          })
+          .unwrap_or_else(|| dash.clone()),
+      ),
       ("effective", effective),
     ];
     if !self.can_escape.is_empty() {

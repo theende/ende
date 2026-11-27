@@ -59,6 +59,11 @@ pub struct LspScopedResolver {
   /// Where remote and jsr: extension sources are read from, for their
   /// export names.
   http_cache: Option<Arc<dyn HttpCache>>,
+  /// The scope's `isolate` rules, if it declares any.
+  sandbox_rules: Option<Arc<crate::isolate::types::SandboxRules>>,
+  /// The text of sandboxed modules open in the editor, unsaved edits
+  /// included, which their stubs are read from instead of the disk.
+  open_texts: Arc<DashMap<ModuleSpecifier, Arc<str>>>,
 }
 
 impl Default for LspScopedResolver {
@@ -72,6 +77,8 @@ impl Default for LspScopedResolver {
       dep_info: Default::default(),
       config_data: None,
       http_cache: None,
+      sandbox_rules: None,
+      open_texts: Default::default(),
     }
   }
 }
@@ -102,6 +109,16 @@ impl LspScopedResolver {
       http_cache: Some(
         cache.for_specifier(config_data.map(|d| d.scope.as_ref())),
       ),
+      sandbox_rules: config_data
+        .and_then(|d| d.member_dir.workspace.to_isolate_config().ok())
+        .and_then(|config| {
+          crate::isolate::types::SandboxRules::new(
+            config,
+            crate::args::jsr_url(),
+          )
+        })
+        .map(Arc::new),
+      open_texts: Default::default(),
     }
   }
 
@@ -134,6 +151,52 @@ impl LspScopedResolver {
     .ok()
   }
 
+  /// A `data:` module with the types of `resolved`, a sandboxed module
+  /// that `referrer` imports from outside every sandbox, as its proxy
+  /// presents them (see `crate::isolate::types`). `None` when the import
+  /// isn't proxied, or the module isn't cached yet (it is then typed as it
+  /// is, until it is).
+  pub fn sandbox_stub(
+    &self,
+    referrer: &ModuleSpecifier,
+    resolved: &ModuleSpecifier,
+  ) -> Option<ModuleSpecifier> {
+    let rules = self.sandbox_rules.as_ref()?;
+    // A URL that redirects into a sandbox is sandboxed when the app runs.
+    let target = match resolved.scheme() {
+      "http" | "https" => self.resolve_redirects(resolved),
+      _ => None,
+    };
+    if !rules.is_proxied(referrer, resolved, target.as_ref()) {
+      return None;
+    }
+    let (module, text) = self.extension_source_text(resolved)?;
+    let rule = rules.rule_of(&module).or_else(|| rules.rule_of(resolved))?;
+    let manifest = rules.manifest_of(
+      rule,
+      &module,
+      deno_ast::MediaType::from_specifier(&module),
+      &text,
+    );
+    let stub = crate::isolate::types::stub_for(
+      &LspExportsSource { resolver: self },
+      rule,
+      resolved,
+      manifest,
+    )?;
+    crate::isolate::types::data_stub(&stub)
+  }
+
+  /// What the sandbox of `rule` runs with when its entries declare
+  /// `manifests` (see `crate::isolate::types::SandboxRules::runs_with`).
+  pub fn sandbox_runs_with<'a>(
+    &self,
+    rule: &str,
+    manifests: impl Iterator<Item = &'a ende_core::serde_json::Value>,
+  ) -> Option<String> {
+    self.sandbox_rules.as_ref()?.runs_with(rule, manifests)
+  }
+
   /// An extension's entry module and its text: read from disk for a local
   /// source, from the HTTP cache for a remote or `jsr:` one. The module is
   /// what the source resolves to (after redirects, or the jsr package's
@@ -145,6 +208,9 @@ impl LspScopedResolver {
   ) -> Option<(ModuleSpecifier, String)> {
     let url = match source.scheme() {
       "file" => {
+        if let Some(text) = self.open_texts.get(source) {
+          return Some((source.clone(), text.to_string()));
+        }
         let path = deno_path_util::url_to_file_path(source).ok()?;
         #[allow(
           clippy::disallowed_methods,
@@ -341,6 +407,21 @@ pub struct LspResolver {
 }
 
 impl LspResolver {
+  /// Shares `texts`, the editor's open sandboxed modules, with every
+  /// scope (see `LspScopedResolver::sandbox_stub`).
+  pub fn set_open_texts(
+    &mut self,
+    texts: &Arc<DashMap<ModuleSpecifier, Arc<str>>>,
+  ) {
+    for scoped in self
+      .by_scope
+      .values_mut()
+      .chain(std::iter::once(&mut self.unscoped))
+    {
+      Arc::make_mut(scoped).open_texts = texts.clone();
+    }
+  }
+
   pub fn from_config(config: &Config, cache: &LspCache) -> Self {
     let mut by_scope = BTreeMap::new();
     for (scope, config_data) in config.tree.data_by_scope().as_ref() {
@@ -564,12 +645,55 @@ impl std::fmt::Debug for RedirectResolver {
   }
 }
 
+/// The editor's modules, as `crate::isolate` reads exports from them: local
+/// files from disk, remote and jsr modules from the cache.
+struct LspExportsSource<'a> {
+  resolver: &'a LspScopedResolver,
+}
+
+impl crate::isolate::ExportsSource for LspExportsSource<'_> {
+  fn module(
+    &self,
+    specifier: &ModuleSpecifier,
+  ) -> Option<crate::isolate::SourceModule> {
+    let (specifier, text) = self.resolver.extension_source_text(specifier)?;
+    let media_type = deno_ast::MediaType::from_specifier(&specifier);
+    Some(if media_type == deno_ast::MediaType::Json {
+      crate::isolate::SourceModule::Json
+    } else {
+      crate::isolate::SourceModule::Js {
+        specifier,
+        text: text.into(),
+        media_type,
+      }
+    })
+  }
+
+  fn dependency(
+    &self,
+    referrer: &ModuleSpecifier,
+    src: &str,
+  ) -> Option<ModuleSpecifier> {
+    self
+      .resolver
+      .resolver
+      .resolve(
+        src,
+        referrer,
+        deno_graph::Position::zeroed(),
+        ResolutionKind::Execution,
+      )
+      .ok()
+  }
+}
+
 #[derive(Debug)]
 pub struct SingleReferrerGraphResolver<'a> {
   pub valid_referrer: &'a ModuleSpecifier,
   pub cli_resolver: &'a CliResolver,
   pub jsx_import_source_config: Option<&'a JsxImportSourceConfig>,
-  /// Serves `extension:` imports as their type stubs.
+  /// Serves `extension:` imports, and imports into sandboxed modules, as
+  /// their type stubs.
   pub scoped_resolver: Option<&'a LspScopedResolver>,
 }
 
@@ -615,7 +739,7 @@ impl deno_graph::source::Resolver for SingleReferrerGraphResolver<'_> {
     {
       return Ok(stub);
     }
-    self
+    let resolved = self
       .cli_resolver
       .resolve(
         specifier_text,
@@ -623,7 +747,14 @@ impl deno_graph::source::Resolver for SingleReferrerGraphResolver<'_> {
         referrer_range.range.start,
         ResolutionKind::from_deno_graph(resolution_kind),
       )
-      .map_err(|err| err.into_deno_graph_error())
+      .map_err(|err| err.into_deno_graph_error())?;
+    // An import into a sandboxed module is typed as its proxy presents it.
+    if let Some(stub) = self.scoped_resolver.and_then(|scoped_resolver| {
+      scoped_resolver.sandbox_stub(&referrer_range.specifier, &resolved)
+    }) {
+      return Ok(stub);
+    }
+    Ok(resolved)
   }
 }
 

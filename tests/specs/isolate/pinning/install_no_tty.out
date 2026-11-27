@@ -1,0 +1,1 @@
+[WILDCARD]Isolate rule changes need approval: run `ende install` in a terminal to review them, or `ende install --yes` to approve them. ende.lock was not changed.

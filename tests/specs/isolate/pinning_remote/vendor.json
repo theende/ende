@@ -1,0 +1,8 @@
+{
+  "vendor": true,
+  "isolate": {
+    "https://localhost:5545/run/extension_lockfile/": {
+      "permissions": ["env"]
+    }
+  }
+}

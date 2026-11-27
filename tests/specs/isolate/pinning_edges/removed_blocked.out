@@ -1,0 +1,1 @@
+[WILDCARD]isolate["./vendor/m/"] is no longer declared in ende.json, but ende.lock still pins it and the app imports [WILDLINE]vendor/m/mod.ts, which it sandboxed.[WILDCARD]Run `ende install` to approve the removal[WILDCARD]

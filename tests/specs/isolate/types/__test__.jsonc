@@ -1,0 +1,49 @@
+{
+  "tempDir": true,
+  "tests": {
+    // `ende check` sees a sandboxed module as its proxy presents it:
+    // functions take the same arguments and return a Promise, constants and
+    // types are as they are. The package's own type errors aren't reported.
+    "ok": {
+      "args": "check --quiet ok.ts",
+      "output": ""
+    },
+    // A sync export used as sync is a type error.
+    "sync_use": {
+      "args": "check --quiet sync_use.ts",
+      "output": "TS2322 [ERROR]: Type 'Promise<string>' is not assignable to type 'string'.[WILDCARD]sync_use.ts:3:7[WILDCARD]",
+      "exitCode": 1
+    },
+    "jsr_sync_use": {
+      "args": "check --quiet jsr_sync.ts",
+      "output": "TS2322 [ERROR]: Type 'Promise<number>' is not assignable to type 'number'.[WILDCARD]jsr_sync.ts:3:7[WILDCARD]",
+      "exitCode": 1
+    },
+    // Importing a class is an error at the import, as when the app runs.
+    "class_import": {
+      "args": "check --quiet class_import.ts",
+      "output": "class_import.out",
+      "exitCode": 1
+    },
+    // Used only as a type, it is fine: running accepts it too.
+    "class_used_as_a_type": {
+      "args": "check --quiet type_only_class.ts",
+      "output": ""
+    },
+    "class_used_as_a_type_runs": {
+      "args": "run --quiet --check type_only_class.ts",
+      "output": "Recorded [WILDLINE]\nundefined HI\n"
+    },
+    // A URL that redirects into a sandbox is typed through its stub too.
+    "redirect_into_a_sandbox": {
+      "args": "check --quiet --cert RootCA.pem --allow-import=localhost:5545 redirect.ts",
+      "output": "TS2322 [ERROR]: Type 'Promise<number>' is not assignable to type 'number'.[WILDCARD]redirect.ts:5:7[WILDCARD]",
+      "exitCode": 1
+    },
+    // Running with --check checks the same way, and runs.
+    "run_check": {
+      "args": "run --quiet --check ok.ts",
+      "output": "Recorded isolate[\"./vendor/pkg/\"] in ende.lock; it will run with: no permissions\nHI 1.0.0 true undefined\n"
+    }
+  }
+}

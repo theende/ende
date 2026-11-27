@@ -15,6 +15,7 @@ mod jsr;
 mod lsp;
 mod module_loader;
 mod ops;
+mod pins;
 mod registry;
 mod resolver;
 mod standalone;
@@ -157,6 +158,7 @@ async fn run_subcommand(
         self::args::InstallEntrypointsFlags {
           entrypoints: cache_flags.files,
           lockfile_only: false,
+          approve: None,
         },
       )
       .await

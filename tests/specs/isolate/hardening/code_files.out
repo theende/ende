@@ -1,3 +1,4 @@
+Recorded isolate["./vendor/writer/"] in ende.lock; it will run with: [WILDLINE]
 write tool.ts: "written"
 write helper: "written"
 write x.txt: "written"

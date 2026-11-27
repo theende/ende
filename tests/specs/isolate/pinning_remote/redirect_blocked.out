@@ -1,0 +1,1 @@
+[WILDCARD]https://localhost:5545/run/extension_lockfile/remote_ext.ts was approved under isolate["https://localhost:5545/isolate/"], but it now falls under isolate["https://localhost:5545/run/"]. Moving a package to another sandbox needs approval. Run `ende install --entrypoint main_redirect.ts`[WILDCARD]

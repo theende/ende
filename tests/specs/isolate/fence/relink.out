@@ -1,3 +1,4 @@
+Recorded isolate["./sandboxed/"] in ende.lock; it will run with: [WILDLINE]
 write linked/y.ts: ok
 remove linked: ok
 mkdir linked: ok

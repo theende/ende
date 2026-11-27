@@ -19,7 +19,7 @@
       "steps": [
         {
           "args": "run --quiet --config clean.json src/main.ts",
-          "output": "pong\n"
+          "output": "Recorded isolate[\"./sandboxed/\"] in ende.lock; it will run with: [WILDLINE]\npong\n"
         },
         {
           "args": "task --quiet --config clean.json clean",

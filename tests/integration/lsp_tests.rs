@@ -874,6 +874,231 @@ fn lsp_extension_types_remote_and_jsr() {
 }
 
 #[test(timeout = 300)]
+fn lsp_isolate_types() {
+  // An import into a sandboxed module (local, https and jsr) is typed as
+  // its proxy presents it: a sync result becomes a Promise. Importing a
+  // class is an error at the import, and hovering the import shows what the
+  // sandbox runs with.
+  let context = TestContextBuilder::new()
+    .use_http_server()
+    .use_temp_cwd()
+    .build();
+  let temp_dir = context.temp_dir();
+  temp_dir.write(
+    "ende.json",
+    r#"{
+  "isolate": {
+    "./vendor/pkg/": {
+      "permissions": { "read": ["./data"], "env": true }
+    },
+    "https://localhost:5545/run/extension_lockfile/": { "permissions": [] },
+    "jsr:@endetest/extension": { "permissions": [] }
+  }
+}"#,
+  );
+  temp_dir.write(
+    "vendor/pkg/mod.ts",
+    "export const manifest = { permissions: { read: true } };\n\
+     export function shout(text: string): string {\n  \
+       return text.toUpperCase();\n}\n\
+     export class Widget {}\n",
+  );
+  let main_url = temp_dir.url().join("main.ts").unwrap();
+  let main_text = "import { shout, Widget } from \"./vendor/pkg/mod.ts\";\n\
+    import { answer } from \"https://localhost:5545/run/extension_lockfile/remote_ext.ts\";\n\
+    import { double } from \"jsr:@endetest/extension@1\";\n\
+    const a: string = shout(\"a\");\n\
+    const b: number = answer();\n\
+    const c: number = double(2);\n\
+    console.log(a, b, c, typeof Widget);\n";
+  temp_dir.write("main.ts", main_text);
+
+  let mut client = context.new_lsp_command().build();
+  client.initialize(|builder| {
+    builder.set_config("./ende.json").set_tls_certificate(
+      testdata_path()
+        .join("tls")
+        .join("RootCA.pem")
+        .as_path()
+        .to_string_lossy(),
+    );
+  });
+  let uri = url_to_uri(&main_url).unwrap();
+  client.did_open(json!({
+    "textDocument": {
+      "uri": uri,
+      "languageId": "typescript",
+      "version": 1,
+      "text": main_text,
+    }
+  }));
+  client.cache_specifier(main_url.clone());
+  let diagnostics = client.read_diagnostics();
+  let messages = diagnostics
+    .all()
+    .iter()
+    .map(|d| {
+      format!(
+        "{}:{} {}: {}",
+        d.range.start.line,
+        d.range.start.character,
+        d.source.as_deref().unwrap_or(""),
+        d.message
+      )
+    })
+    .collect::<Vec<_>>();
+  // Each sandboxed function returns a Promise, so using its result as sync
+  // is a type error: local, https and jsr.
+  for (line, expected) in [
+    (
+      3,
+      "Type 'Promise<string>' is not assignable to type 'string'",
+    ),
+    (
+      4,
+      "Type 'Promise<number>' is not assignable to type 'number'",
+    ),
+    (
+      5,
+      "Type 'Promise<number>' is not assignable to type 'number'",
+    ),
+  ] {
+    assert!(
+      messages
+        .iter()
+        .any(|m| m.starts_with(&format!("{line}:")) && m.contains(expected)),
+      "line {line}: {messages:#?}"
+    );
+  }
+  // The class import is an error at the import, naming the rule.
+  assert!(
+    messages.iter().any(|m| m.starts_with("0:16 ende: ")
+      && m.contains("Cannot import \"Widget\"")
+      && m.contains("isolate[\"./vendor/pkg/\"]")),
+    "{messages:#?}"
+  );
+  // The package's own code isn't reported missing or typed as the app's.
+  assert!(
+    !messages.iter().any(|m| m.contains("Cannot find module")),
+    "{messages:#?}"
+  );
+
+  // Hovering the import shows what the sandbox runs with: the grant as the
+  // manifest narrows it (env is granted but not asked for).
+  let res = client.write_request(
+    "textDocument/hover",
+    json!({
+      "textDocument": { "uri": uri },
+      "position": { "line": 0, "character": 35 }
+    }),
+  );
+  let value = res
+    .pointer("/contents/value")
+    .and_then(|v| v.as_str())
+    .unwrap();
+  assert!(
+    value
+      .contains("**Sandbox**: `isolate[\"./vendor/pkg/\"]` runs with: read "),
+    "{value}"
+  );
+  assert!(!value.contains("env"), "{value}");
+  // The app's own flags still narrow it, which the editor can't know.
+  assert!(value.contains("narrow it further when it runs"), "{value}");
+
+  // A sandboxed function shows its proxied type.
+  let res = client.write_request(
+    "textDocument/hover",
+    json!({
+      "textDocument": { "uri": uri },
+      "position": { "line": 2, "character": 10 }
+    }),
+  );
+  let value = res.pointer("/contents").map(|v| v.to_string()).unwrap();
+  assert!(
+    value.contains("(value: number) => Promise<number>"),
+    "{value}"
+  );
+
+  client.shutdown();
+}
+
+#[test(timeout = 300)]
+fn lsp_isolate_types_follow_unsaved_edits() {
+  // A sandboxed module open in the editor is read from its open text, so
+  // its importers see unsaved edits; a manifest that doesn't parse is shown
+  // as such on hover, not as the full grant.
+  let context = TestContextBuilder::new().use_temp_cwd().build();
+  let temp_dir = context.temp_dir();
+  temp_dir.write(
+    "ende.json",
+    r#"{ "isolate": { "./vendor/pkg/": { "permissions": ["env"] } } }"#,
+  );
+  temp_dir.write(
+    "vendor/pkg/mod.ts",
+    "export function shout(text: string): string {\n  return text;\n}\n",
+  );
+  let mut client = context.new_lsp_command().build();
+  client.initialize(|builder| {
+    builder.set_config("./ende.json");
+  });
+  let pkg_uri =
+    url_to_uri(&temp_dir.url().join("vendor/pkg/mod.ts").unwrap()).unwrap();
+  client.did_open(json!({
+    "textDocument": {
+      "uri": pkg_uri,
+      "languageId": "typescript",
+      "version": 1,
+      "text": "export const manifest = { permissions: [\"bogus\"] };\nexport function shout(text: string): string {\n  return text;\n}\nexport function whisper(text: string): string {\n  return text;\n}\n",
+    }
+  }));
+  let uri = url_to_uri(&temp_dir.url().join("main.ts").unwrap()).unwrap();
+  let diagnostics = client.did_open(json!({
+    "textDocument": {
+      "uri": uri,
+      "languageId": "typescript",
+      "version": 1,
+      "text": "import { whisper } from \"./vendor/pkg/mod.ts\";\nconst n: number = await whisper(\"a\");\nconsole.log(n);\n",
+    }
+  }));
+  let messages = diagnostics
+    .all()
+    .iter()
+    .filter(|d| d.range.start.line < 3)
+    .map(|d| d.message.clone())
+    .collect::<Vec<_>>();
+  // `whisper` exists only in the unsaved text, and returns Promise<string>.
+  assert!(
+    messages
+      .iter()
+      .any(|m| m.contains("Type 'string' is not assignable to type 'number'")),
+    "{messages:#?}"
+  );
+  assert!(
+    !messages
+      .iter()
+      .any(|m| m.contains("has no exported member")),
+    "{messages:#?}"
+  );
+  let res = client.write_request(
+    "textDocument/hover",
+    json!({
+      "textDocument": { "uri": uri },
+      "position": { "line": 0, "character": 30 }
+    }),
+  );
+  let value = res
+    .pointer("/contents/value")
+    .and_then(|v| v.as_str())
+    .unwrap();
+  assert!(
+    value.contains("won't start until its entries' manifests can be read"),
+    "{value}"
+  );
+  assert!(!value.contains("runs with"), "{value}");
+  client.shutdown();
+}
+
+#[test(timeout = 300)]
 fn lsp_import_map_remote() {
   let context = TestContextBuilder::new()
     .use_http_server()

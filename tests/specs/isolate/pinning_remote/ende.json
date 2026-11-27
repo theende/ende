@@ -1,0 +1,6 @@
+{
+  "imports": { "pkg": "jsr:@endetest/isolate-manifest@1.0.0" },
+  "isolate": {
+    "jsr:@endetest/isolate-manifest": { "permissions": ["env"] }
+  }
+}

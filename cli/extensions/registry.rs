@@ -268,39 +268,11 @@ impl ExtensionRegistry {
     pin: &ExtensionLockEntry,
     options: &PermissionsOptions,
   ) -> Result<(), JsErrorBox> {
-    let Some(lockfile) = &self.lockfile else {
-      if self.no_lock_flag {
-        // The user's own opt-out, so it runs; shown even with --quiet.
-        #[allow(clippy::print_stderr, reason = "must show even with --quiet")]
-        {
-          eprintln!(
-            "{} Extension \"{name}\" runs unpinned: --no-lock turned off the lockfile, so changes to its code, manifest or grant aren't checked.",
-            crate::colors::yellow("Warning")
-          );
-        }
-        return Ok(());
-      }
-      return Err(JsErrorBox::type_error(format!(
-        "Extension \"{name}\" needs a lockfile, which pins its code and permissions, but the lockfile is turned off (\"lock\": false in the config). Turn it back on, or pass --no-lock to run extensions unpinned."
-      )));
-    };
-    let approved = lockfile.lock().extension(name).cloned();
-    match approved {
-      Some(approved) if approved == *pin => Ok(()),
-      Some(approved) => Err(JsErrorBox::type_error(format!(
-        "Extension \"{name}\" changed since {} approved it: {}. Run `ende install` to review the change and approve it.",
-        lockfile_name(lockfile),
-        changed_parts(&approved, pin).join(", "),
-      ))),
-      None => {
-        lockfile
-          .lock()
-          .insert_extension(name.to_string(), pin.clone());
-        lockfile.write_if_changed().map_err(JsErrorBox::from_err)?;
-        print_recorded_notice(name, lockfile, options);
-        Ok(())
-      }
-    }
+    crate::pins::check_pin(
+      &ExtensionPin { name, pin, options },
+      self.lockfile.as_deref(),
+      self.no_lock_flag,
+    )
   }
 
   /// `ende install`: loads every declared extension, records new ones and
@@ -314,68 +286,20 @@ impl ExtensionRegistry {
       Ok(config) => config.extensions.keys().cloned().collect::<Vec<_>>(),
       Err(err) => return Err(JsErrorBox::type_error(err.clone()).into()),
     };
-    let mut changed = Vec::new();
-    let mut recorded = Vec::new();
+    let mut loaded = Vec::with_capacity(names.len());
     for name in names {
-      let loaded = self.load(&name).await?;
-      let approved = lockfile.lock().extension(&name).cloned();
-      match approved {
-        Some(approved) if approved == loaded.pin => {}
-        Some(approved) => changed.push((name, approved, loaded)),
-        None => {
-          lockfile
-            .lock()
-            .insert_extension(name.clone(), loaded.pin.clone());
-          recorded.push((name, loaded));
-        }
-      }
+      let extension = self.load(&name).await?;
+      loaded.push((name, extension));
     }
-    if changed.is_empty() {
-      return write_and_report(lockfile, &[], &recorded);
-    }
-    for (name, approved, loaded) in &changed {
-      log::info!(
-        "{}",
-        describe_change(name, approved, &loaded.pin, &loaded.prepared.options)
-      );
-    }
-    let approve = yes
-      || match crate::util::console::confirm(
-        crate::util::console::ConfirmOptions {
-          message: "Approve these extension changes?".to_string(),
-          default: false,
-        },
-      ) {
-        Some(answer) => answer,
-        None => {
-          return Err(
-            JsErrorBox::type_error(format!(
-              "Extension changes need approval: run `ende install` in a terminal to review them, or `ende install --yes` to approve them. {} was not changed.",
-              lockfile_name(lockfile),
-            ))
-            .into(),
-          );
-        }
-      };
-    if !approve {
-      return Err(
-        JsErrorBox::type_error(format!(
-          "Extension changes not approved; {} was not changed.",
-          lockfile_name(lockfile),
-        ))
-        .into(),
-      );
-    }
-    let mut lock = lockfile.lock();
-    for (name, _, loaded) in &changed {
-      lock.insert_extension(name.clone(), loaded.pin.clone());
-    }
-    drop(lock);
-    let approved = changed
+    let items = loaded
       .iter()
-      .map(|(name, _, _)| name.clone())
-      .collect::<Vec<_>>();
-    write_and_report(lockfile, &approved, &recorded)
+      .map(|(name, loaded)| ExtensionPin {
+        name,
+        pin: &loaded.pin,
+        options: &loaded.prepared.options,
+      })
+      .collect();
+    crate::pins::approve_changes(items, lockfile, yes)
   }
 
   /// What an extension's static module graph is fetched with: remote
@@ -542,6 +466,72 @@ fn resolve_as_written(
     return referrer.join(raw).ok();
   }
   None
+}
+
+/// An extension as the lockfile pins it (see [`crate::pins`]).
+struct ExtensionPin<'a> {
+  name: &'a str,
+  pin: &'a ExtensionLockEntry,
+  options: &'a PermissionsOptions,
+}
+
+impl crate::pins::Pinned for ExtensionPin<'_> {
+  type Entry = ExtensionLockEntry;
+  const KIND: &'static str = "extension";
+  const PLURAL: &'static str = "extensions";
+  const PINNED_PARTS: &'static str = "its code, manifest or grant";
+  const PROTECTS: &'static str = "its code and permissions";
+
+  fn name(&self) -> String {
+    format!("extension \"{}\"", self.name)
+  }
+
+  fn title(&self) -> String {
+    format!("Extension \"{}\"", self.name)
+  }
+
+  fn options(&self) -> &PermissionsOptions {
+    self.options
+  }
+
+  fn approved(
+    &self,
+    lockfile: &ende_lockfile::Lockfile,
+  ) -> Option<Self::Entry> {
+    lockfile.extension(self.name).cloned()
+  }
+
+  fn record(&self, lockfile: &mut ende_lockfile::Lockfile, entry: Self::Entry) {
+    lockfile.insert_extension(self.name.to_string(), entry);
+  }
+
+  fn pin(&self, _approved: Option<&Self::Entry>) -> Self::Entry {
+    self.pin.clone()
+  }
+
+  fn changed_parts(&self, approved: Option<&Self::Entry>) -> Vec<String> {
+    let Some(approved) = approved else {
+      return Vec::new();
+    };
+    if approved == self.pin {
+      return Vec::new();
+    }
+    let parts = changed_parts(approved, self.pin);
+    if parts.is_empty() {
+      // only the file list differs, under the same integrity
+      return vec!["its source".to_string()];
+    }
+    parts.into_iter().map(String::from).collect()
+  }
+
+  fn describe_change(&self, approved: Option<&Self::Entry>) -> String {
+    match approved {
+      Some(approved) => {
+        describe_change(self.name, approved, self.pin, self.options)
+      }
+      None => format!("New extension \"{}\"", self.name),
+    }
+  }
 }
 
 /// What the lockfile pins about an extension: its source, its manifest and
@@ -756,7 +746,7 @@ fn describe_change(
   }
   text.push_str(&format!(
     "\n  it will run with: {}",
-    describe_permissions(options)
+    crate::pins::describe_permissions(options)
   ));
   text
 }
@@ -796,98 +786,6 @@ fn describe_file_changes(
   } else {
     parts.join("; ")
   }
-}
-
-/// Writes what `ende install` recorded, then says so: one line per approved
-/// change and per new extension. Nothing is said if the write fails (for
-/// example with `--frozen`).
-fn write_and_report(
-  lockfile: &CliLockfile,
-  approved: &[String],
-  recorded: &[(String, LoadedExtension)],
-) -> Result<(), AnyError> {
-  lockfile.write_if_changed()?;
-  for name in approved {
-    log::info!(
-      "Recorded the approved changes to extension \"{name}\" in {}.",
-      lockfile_name(lockfile)
-    );
-  }
-  for (name, loaded) in recorded {
-    print_recorded_notice(name, lockfile, &loaded.prepared.options);
-  }
-  Ok(())
-}
-
-/// Prints the line for an extension first recorded in the lockfile (or
-/// recorded again after its pin was lost). It is shown even with --quiet:
-/// a record is the visible sign that a pin was reset, so it is never silent.
-fn print_recorded_notice(
-  name: &str,
-  lockfile: &CliLockfile,
-  options: &PermissionsOptions,
-) {
-  #[allow(clippy::print_stderr, reason = "must show even with --quiet")]
-  {
-    eprintln!("{}", recorded_notice(name, lockfile, options));
-  }
-}
-
-/// The line printed when an extension is first recorded in the lockfile
-/// (or recorded again after its pin was lost), so a record is never silent.
-fn recorded_notice(
-  name: &str,
-  lockfile: &CliLockfile,
-  options: &PermissionsOptions,
-) -> String {
-  format!(
-    "Recorded extension \"{name}\" in {}; it will run with: {}",
-    lockfile_name(lockfile),
-    describe_permissions(options)
-  )
-}
-
-/// A one-line summary of effective permissions, like
-/// `read /data, net api.example.com`.
-fn describe_permissions(options: &PermissionsOptions) -> String {
-  let kinds = [
-    ("read", &options.allow_read),
-    ("write", &options.allow_write),
-    ("net", &options.allow_net),
-    ("env", &options.allow_env),
-    ("run", &options.allow_run),
-    ("ffi", &options.allow_ffi),
-    ("sys", &options.allow_sys),
-    ("import", &options.allow_import),
-  ];
-  let parts = kinds
-    .iter()
-    .filter_map(|(kind, allow)| {
-      let allow = allow.as_ref()?;
-      Some(if allow.is_empty() && *kind == "write" {
-        // Ende fences scoped writes off from the app's code (see
-        // `ende_permissions::check_code_load`); everything can't be.
-        "write (all; can escape: it can change the app's code)".to_string()
-      } else if allow.is_empty() {
-        format!("{kind} (all)")
-      } else {
-        format!("{kind} {}", allow.join(", "))
-      })
-    })
-    .collect::<Vec<_>>();
-  if parts.is_empty() {
-    "no permissions".to_string()
-  } else {
-    parts.join("; ")
-  }
-}
-
-fn lockfile_name(lockfile: &CliLockfile) -> String {
-  lockfile
-    .filename
-    .file_name()
-    .map(|name| name.to_string_lossy().into_owned())
-    .unwrap_or_else(|| "the lockfile".to_string())
 }
 
 fn to_js_error(err: impl std::fmt::Display) -> JsErrorBox {

@@ -1,0 +1,5 @@
+{
+  "isolate": {
+    "./vendor/m/": { "permissions": { "read": ["./data"], "env": true } }
+  }
+}

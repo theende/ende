@@ -1,0 +1,1 @@
+[WILDCARD]./vendor/m/mod.ts was approved under isolate["./vendor/m/"], but it now falls under isolate["./vendor/"]. Moving a package to another sandbox needs approval. Run `ende install --entrypoint main.ts` to review it and approve it, or change the rules back

@@ -333,6 +333,9 @@ pub struct Inner {
   force_push_based_diagnostics: bool,
   registered_semantic_tokens_capabilities: bool,
   pub resolver: Arc<LspResolver>,
+  /// The text of sandboxed modules open in the editor (see
+  /// `LspResolver::set_open_texts`).
+  sandbox_texts: Arc<DashMap<Url, Arc<str>>>,
   task_queue: LanguageServerTaskQueue,
   pub ts_server: Arc<TsServer>,
   workspace_files: Arc<IndexSet<PathBuf>>,
@@ -707,6 +710,7 @@ impl Inner {
       registered_semantic_tokens_capabilities: false,
       force_push_based_diagnostics: false,
       resolver: Default::default(),
+      sandbox_texts: Default::default(),
       ts_server,
       workspace_files: Default::default(),
       workspace_files_hash: 0,
@@ -1324,10 +1328,118 @@ impl Inner {
       })
   }
 
+  /// The hover line for an import of a module in the sandbox `info` names:
+  /// what the sandbox's worker runs with, its grant ∩ the manifest of every
+  /// entry of it the workspace imports.
+  fn sandbox_hover_text(
+    &self,
+    info: &crate::isolate::types::StubInfo,
+    scope: Option<&Url>,
+  ) -> String {
+    let mut manifests = BTreeMap::new();
+    let mut unreadable = Vec::new();
+    if let Some(err) = &info.manifest_error {
+      unreadable.push(err.clone());
+    }
+    manifests.insert(info.module.clone(), info.manifest.clone());
+    let modules = self.document_modules.workspace_file_modules_by_scope();
+    for module in modules
+      .get(&scope.map(|scope| Arc::new(scope.clone())))
+      .into_iter()
+      .flatten()
+    {
+      for dependency in module.dependencies.values() {
+        if let Some(other) = dependency
+          .get_code()
+          .and_then(crate::isolate::types::data_stub_info)
+          && other.rule == info.rule
+        {
+          if let Some(err) = other.manifest_error
+            && !unreadable.contains(&err)
+          {
+            unreadable.push(err);
+          }
+          manifests.insert(other.module, other.manifest);
+        }
+      }
+    }
+    if !unreadable.is_empty() {
+      return format!(
+        "**Sandbox**: `isolate[\"{}\"]` won't start until its entries' manifests can be read: {}\n",
+        info.rule,
+        unreadable.join("; ")
+      );
+    }
+    let entries = manifests.len();
+    let runs_with = self
+      .resolver
+      .get_scoped_resolver(scope)
+      .sandbox_runs_with(&info.rule, manifests.values().flatten())
+      .unwrap_or_else(|| "its grant".to_string());
+    format!(
+      "**Sandbox**: `isolate[\"{}\"]` runs with: {runs_with}, its grant ∩ the manifests of the {entries} {} the workspace imports. The app's own permissions narrow it further when it runs; the editor doesn't know the flags it runs with.\n",
+      info.rule,
+      if entries == 1 { "entry" } else { "entries" },
+    )
+  }
+
+  /// Whether `specifier` is a module an `isolate` rule sandboxes.
+  fn is_sandboxed_module(&self, specifier: &Url) -> bool {
+    self
+      .config
+      .tree
+      .data_by_scope()
+      .values()
+      .any(|config_data| {
+        config_data
+          .member_dir
+          .workspace
+          .to_isolate_config()
+          .ok()
+          .and_then(|config| {
+            crate::isolate::types::SandboxRules::new(
+              config,
+              crate::args::jsr_url(),
+            )
+          })
+          .is_some_and(|rules| rules.rule_of(specifier).is_some())
+      })
+  }
+
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
   fn refresh_resolver(&mut self) {
-    self.resolver =
-      Arc::new(LspResolver::from_config(&self.config, &self.cache));
+    let mut resolver = LspResolver::from_config(&self.config, &self.cache);
+    resolver.set_open_texts(&self.sandbox_texts);
+    self.resolver = Arc::new(resolver);
+  }
+
+  /// Keeps the text of a sandboxed module open in the editor (`None` once
+  /// it is closed) for its importers' stubs, and resolves them again, so
+  /// unsaved edits reach them.
+  fn sync_sandbox_text(&mut self, uri: &Uri, text: Option<Arc<str>>) {
+    let specifier = uri_to_url(uri);
+    if !self.is_sandboxed_module(&specifier) {
+      return;
+    }
+    match text {
+      Some(text) => {
+        if self
+          .sandbox_texts
+          .get(&specifier)
+          .is_some_and(|known| *known == text)
+        {
+          return;
+        }
+        self.sandbox_texts.insert(specifier, text);
+      }
+      None => {
+        if self.sandbox_texts.remove(&specifier).is_none() {
+          return;
+        }
+      }
+    }
+    self.refresh_resolver();
+    self.refresh_documents_config();
   }
 
   #[cfg_attr(feature = "lsp-tracing", tracing::instrument(skip_all))]
@@ -1371,6 +1483,7 @@ impl Inner {
         params.text_document.uri.as_str()
       );
     }
+    let uri = params.text_document.uri.clone();
     let document = self.document_modules.open_document(
       params.text_document.uri,
       params.text_document.version,
@@ -1378,6 +1491,7 @@ impl Inner {
       params.text_document.text.into(),
       None,
     );
+    self.sync_sandbox_text(&uri, Some(document.text.clone()));
     if document.is_diagnosable() {
       self.check_semantic_tokens_capabilities();
       self.refresh_dep_info();
@@ -1419,6 +1533,9 @@ impl Inner {
           return;
         }
       }
+    }
+    if let Some(document) = &document {
+      self.sync_sandbox_text(&batch_queue.uri, Some(document.text.clone()));
     }
     if let Some(document) = document
       && document.is_diagnosable()
@@ -1542,6 +1659,7 @@ impl Inner {
         return;
       }
     };
+    self.sync_sandbox_text(&params.text_document.uri, None);
     if document.is_diagnosable() {
       self.refresh_dep_info();
       self.project_changed(
@@ -1752,6 +1870,8 @@ impl Inner {
         // An extension's entry module: its export names are in the type
         // stub its `extension:` import resolves to.
         || self.is_extension_entry(specifier)
+        // So are a sandboxed module's, in the stub its importers get.
+        || self.is_sandboxed_module(specifier)
     });
     if has_config_changes {
       let mut ende_config_changes = IndexSet::with_capacity(changes.len());
@@ -2091,6 +2211,18 @@ impl Inner {
         format!("{value}\n{}", import_map_hover_text(&import_map_hover))
       } else {
         value
+      };
+      // A sandboxed module's import resolves to its type stub: say what the
+      // sandbox runs with.
+      let value = match dep
+        .get_code()
+        .and_then(crate::isolate::types::data_stub_info)
+      {
+        Some(info) => format!(
+          "{value}\n{}",
+          self.sandbox_hover_text(&info, module.scope.as_deref())
+        ),
+        None => value,
       };
       let value = if let Some(docs) = self.module_registry.get_hover(dep).await
       {

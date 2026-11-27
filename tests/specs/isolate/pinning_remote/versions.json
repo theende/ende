@@ -1,0 +1,5 @@
+{
+  "isolate": {
+    "jsr:@endetest/isolate-manifest": { "permissions": ["env"] }
+  }
+}

@@ -13,6 +13,7 @@ use deno_semver::package::PackageNv;
 use serde::Serialize;
 
 use crate::ExtensionLockEntry;
+use crate::IsolateLockEntry;
 use crate::JsrPackageInfo;
 use crate::LockfileContent;
 use crate::LockfileLinkContent;
@@ -162,6 +163,8 @@ struct LockfileV5<'a> {
   workspace: SerializedWorkspaceConfigContent<'a>,
   #[serde(skip_serializing_if = "BTreeMap::is_empty")]
   extensions: &'a BTreeMap<String, ExtensionLockEntry>,
+  #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+  isolate: &'a BTreeMap<String, IsolateLockEntry>,
 }
 
 pub fn print_v5_content(content: &LockfileContent) -> String {
@@ -390,6 +393,7 @@ pub fn print_v5_content(content: &LockfileContent) -> String {
     remote: &content.remote,
     workspace: handle_workspace(&content.workspace),
     extensions: &content.extensions,
+    isolate: &content.isolate,
   };
   let mut writer = Vec::with_capacity(1024);
   let mut serializer =

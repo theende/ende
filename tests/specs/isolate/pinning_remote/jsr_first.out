@@ -1,0 +1,3 @@
+Recorded isolate["jsr:@endetest/isolate-manifest"] in ende.lock; it will run with: no permissions
+1.0.0
+jsr:@endetest/isolate-manifest: Requires env access to "HOME", which the manifest of jsr:@endetest/isolate-manifest@1.0.0 doesn't request. isolate["jsr:@endetest/isolate-manifest"]'s grant in ende.json allows it, but a sandbox gets only what its packages' manifests ask for

@@ -1,3 +1,4 @@
+Recorded isolate["./vendor/none/"] in ende.lock; it will run with: no permissions
 inside: true
 true
 outside: [WILDCARD]./vendor/none/: Requires read access to "[WILDCARD]secret.json"; grant it in ende.json under isolate["./vendor/none/"].permissions.read[WILDCARD]

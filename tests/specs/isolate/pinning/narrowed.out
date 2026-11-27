@@ -1,0 +1,2 @@
+NotCapable: ./vendor/m/: Requires read access to "data/a.txt"[WILDLINE]
+NotCapable: [WILDLINE]

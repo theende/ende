@@ -1,8 +1,10 @@
+Recorded isolate["https://localhost:5545/subdir/print_hello.ts"] in ende.lock; it will run with: no permissions
 Hello
 https://localhost:5545/subdir/print_hello.ts: true
 Hello
 https://localhost:5545/subdir/print_hello.ts?x=1: true
 Hello
 https://localhost:5545/subdir/print_hello.ts#x: true
+Recorded isolate["https://localhost:5545/run/extension_lockfile/"] in ende.lock; it will run with: no permissions
 https://localhost:5545/run/extension_lockfile/remote_ext.ts: true
 https://localhost:5545/run//extension_lockfile/remote_ext.ts: true

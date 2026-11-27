@@ -1,0 +1,6 @@
+{
+  "isolate": {
+    "https://localhost:5545/run/": { "permissions": ["env", "read"] },
+    "https://localhost:5545/isolate/": { "permissions": [] }
+  }
+}

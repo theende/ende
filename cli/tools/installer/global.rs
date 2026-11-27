@@ -499,6 +499,7 @@ async fn setup_config_dir(
   let entrypoint_flags = InstallEntrypointsFlags {
     lockfile_only: false,
     entrypoints: vec![bin_name_and_url.module_url.to_string()],
+    approve: None,
   };
   new_flags.subcommand = EndeSubcommand::Install(InstallFlags::Local(
     InstallFlagsLocal::Entrypoints(entrypoint_flags.clone()),

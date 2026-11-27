@@ -1,0 +1,142 @@
+{
+  "tempDir": true,
+  "tests": {
+    // A first run records the rule (trust on first use) and says so, even
+    // with --quiet. The package's manifest narrows what the grant allows:
+    // env stays denied, and the denial names the rule.
+    "first_run_records_the_rule": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "first_run.out"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "data\nNotCapable: [WILDLINE]\n"
+        }
+      ]
+    },
+    // A grant change blocks runs until `ende install` approves it.
+    "grant_change_needs_install": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDCARD]"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts grant",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "grant_changed.out",
+          "exitCode": 1
+        },
+        // Without a terminal, approving needs --yes.
+        {
+          "args": "install",
+          "output": "install_no_tty.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "install_grant.out"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "data\nNotCapable: [WILDLINE]\n"
+        }
+      ]
+    },
+    // So does a change to the manifest of an entry the lockfile records.
+    "manifest_change_needs_install": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDCARD]"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts manifest",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "manifest_changed.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "install_manifest.out"
+        },
+        // The approved manifest asks for env too, so it is allowed now.
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "data\n[WILDLINE]\n"
+        }
+      ]
+    },
+    // A manifest that asks for less fits what was approved: it runs, and
+    // nothing is written (`ende install --entrypoint` updates the review
+    // text). Widening is re-confirmed.
+    "manifest_change_that_narrows": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDCARD]"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts narrow",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "narrowed.out"
+        }
+      ]
+    },
+    // --frozen refuses to write the lockfile, a first record included.
+    "frozen_refuses_the_write": {
+      "args": "run --quiet --frozen --allow-read --allow-env main.ts",
+      "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
+      "exitCode": 1
+    },
+    "frozen_install_refuses_the_write": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDCARD]"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts grant",
+          "output": ""
+        },
+        {
+          "args": "install --frozen --yes",
+          "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "[WILDCARD]isolate[\"./vendor/m/\"] changed since ende.lock approved it[WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // Sandboxes need the lockfile: "lock": false in the config is refused,
+    // and --no-lock runs unpinned with a warning --quiet doesn't hide.
+    "lock_disabled_in_config": {
+      "args": "run --quiet --config nolock.json --allow-read main.ts",
+      "output": "lock_disabled.out",
+      "exitCode": 1
+    },
+    "no_lock_flag_warns": {
+      "args": "run --quiet --no-lock --allow-read main.ts",
+      "output": "no_lock.out"
+    },
+    // `ende audit` shows what the manifest asks for.
+    "audit_shows_the_manifest": {
+      "args": "audit --json main.ts",
+      "output": "[WILDCARD]\"requested\": {\n        \"./vendor/m/mod.ts\": {\n          \"read\": true\n        }\n      },[WILDCARD]"
+    }
+  }
+}

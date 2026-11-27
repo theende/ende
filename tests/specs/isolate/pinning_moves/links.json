@@ -1,0 +1,6 @@
+{
+  "isolate": {
+    "./link/": { "permissions": { "read": ["./data"], "env": true } },
+    "./vendor/m/": { "permissions": [] }
+  }
+}

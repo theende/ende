@@ -1,0 +1,7 @@
+[WILDCARD]isolate["./vendor/m/"] changed:
+  grant (ende.json):
+    - {"read":["./data"],"env":true}
+    + {"read":["./data","./other"],"env":true}
+  new run from main.ts (asks for: {"read":true}): read [WILDLINE]data, [WILDLINE]other
+  (never more than the app)
+Recorded the approved changes to isolate["./vendor/m/"] in ende.lock.

@@ -1,3 +1,5 @@
+Recorded isolate["./vendor/none/"] in ende.lock; it will run with: no permissions
+Recorded isolate["./vendor/wide/"] in ende.lock; it will run with: [WILDLINE]
 described: "true function"
 app after the call: "data\n"
 no grant: NotCapable: ./vendor/none/: Requires read access to "[WILDCARD]a.txt"; grant it in ende.json under isolate["./vendor/none/"].permissions.read

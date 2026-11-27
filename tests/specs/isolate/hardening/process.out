@@ -1,3 +1,4 @@
+Recorded isolate["./vendor/none/"] in ende.lock; it will run with: no permissions
 chdir: NotCapable: ./vendor/none/: Ende.chdir() changes the working directory of the whole process, so sandboxed code and extensions can't call it
 stdin: "closed, prompt is undefined"
 app stdin: typed by the user

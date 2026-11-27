@@ -1,0 +1,1 @@
+[WILDCARD]isolate["./vendor/m/"] needs a lockfile, which pins its grant and its packages' manifests, but the lockfile is turned off ("lock": false in the config). Turn it back on, or pass --no-lock to run sandboxes unpinned.[WILDCARD]

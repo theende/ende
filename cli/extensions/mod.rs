@@ -16,6 +16,8 @@ use ende_runtime::ende_permissions::PermissionDescriptorParser;
 use ende_runtime::ende_permissions::PermissionsOptions;
 use ende_runtime::ende_permissions::UngrantedPermission;
 pub use manifest::ExtensionManifest;
+pub use manifest::PackageManifest;
+pub use manifest::extract_package_manifest;
 pub use registry::CliExtensionWorkerProvider;
 pub use registry::EXTENSION_SCHEME;
 pub use registry::ExtensionRegistry;

@@ -41,9 +41,10 @@ pub struct ExtensionManifest {
 
 #[derive(Debug, thiserror::Error, deno_error::JsError)]
 #[class(type)]
-#[error("Invalid extension \"{name}\" ({location}): {message}")]
+#[error("Invalid {subject} ({location}): {message}")]
 pub struct ManifestError {
-  pub name: String,
+  /// What the manifest belongs to, such as `extension "@scope/name"`.
+  pub subject: String,
   /// The entry module, with a line and column when the problem has one.
   pub location: String,
   pub message: String,
@@ -68,7 +69,7 @@ pub fn extract_manifest(
   .map_err(|diagnostic| {
     let position = diagnostic.display_position();
     ManifestError {
-      name: name.to_string(),
+      subject: format!("extension \"{name}\""),
       location: format!(
         "{specifier}:{}:{}",
         position.line_number, position.column_number
@@ -77,18 +78,132 @@ pub fn extract_manifest(
     }
   })?;
   Reader {
-    name,
+    subject: format!("extension \"{name}\""),
+    what: "extension",
     specifier,
     parsed: &parsed,
   }
   .read()
 }
 
-const MANIFEST: &str = "manifest";
-const EXPORT_CONST_HINT: &str = "declare the manifest as `export const manifest = { … }`, so it can be read without running the extension";
+/// What a sandboxed package's entry module asks for (see `crate::isolate`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PackageManifest {
+  /// The permissions it asks for. Paths are absolute. Never prompts.
+  pub permissions: PermissionsOptions,
+  /// `manifest.permissions` as declared, which the lockfile pins.
+  pub permissions_json: Value,
+}
 
+/// Reads the manifest of `specifier`, an entry module of the sandbox of
+/// `isolate[rule]` whose text is `source`, if it declares one: an
+/// `export const manifest = { permissions: … }` holding an object literal
+/// with a `permissions` key, read as an extension's manifest is. Any other
+/// export named `manifest` isn't one, so a package that exports something
+/// else by that name still works. The module's other exports aren't
+/// checked here.
+pub fn extract_package_manifest(
+  rule: &str,
+  specifier: &ModuleSpecifier,
+  media_type: MediaType,
+  source: &str,
+) -> Result<Option<PackageManifest>, ManifestError> {
+  let subject = format!("manifest of a package in isolate[\"{rule}\"]");
+  let parsed = deno_ast::parse_module(deno_ast::ParseParams {
+    specifier: specifier.clone(),
+    text: source.into(),
+    media_type,
+    capture_tokens: false,
+    scope_analysis: false,
+    maybe_syntax: None,
+  })
+  .map_err(|diagnostic| {
+    let position = diagnostic.display_position();
+    ManifestError {
+      subject: subject.clone(),
+      location: format!(
+        "{specifier}:{}:{}",
+        position.line_number, position.column_number
+      ),
+      message: diagnostic.kind().msg().to_string(),
+    }
+  })?;
+  let reader = Reader {
+    subject,
+    what: "package",
+    specifier,
+    parsed: &parsed,
+  };
+  let deno_ast::ProgramRef::Module(module) = parsed.program_ref() else {
+    return Ok(None);
+  };
+  for item in &module.body {
+    let ast::ModuleItem::ModuleDecl(ast::ModuleDecl::ExportDecl(export)) = item
+    else {
+      continue;
+    };
+    let ast::Decl::Var(decl) = &export.decl else {
+      continue;
+    };
+    if decl.declare || decl.kind != ast::VarDeclKind::Const {
+      continue;
+    }
+    for declarator in &decl.decls {
+      let (ast::Pat::Ident(ident), Some(init)) =
+        (&declarator.name, &declarator.init)
+      else {
+        continue;
+      };
+      if &*ident.id.sym != MANIFEST || !declares_permissions(init) {
+        continue;
+      }
+      let manifest = reader.literal(init)?;
+      let permissions_json = match &manifest {
+        Value::Object(object) => {
+          object.get("permissions").cloned().unwrap_or_default()
+        }
+        _ => Value::Null,
+      };
+      return Ok(Some(PackageManifest {
+        permissions: reader.permissions(manifest, declarator.range())?,
+        permissions_json,
+      }));
+    }
+  }
+  Ok(None)
+}
+
+/// Whether `expr` is an object literal with a `permissions` key, under
+/// parentheses and TypeScript-only wrappers.
+fn declares_permissions(expr: &ast::Expr) -> bool {
+  match expr {
+    ast::Expr::Paren(paren) => declares_permissions(&paren.expr),
+    ast::Expr::TsConstAssertion(expr) => declares_permissions(&expr.expr),
+    ast::Expr::TsSatisfies(expr) => declares_permissions(&expr.expr),
+    ast::Expr::TsAs(expr) => declares_permissions(&expr.expr),
+    ast::Expr::Object(object) => object.props.iter().any(|prop| {
+      let ast::PropOrSpread::Prop(prop) = prop else {
+        return false;
+      };
+      let ast::Prop::KeyValue(key_value) = &**prop else {
+        return false;
+      };
+      match &key_value.key {
+        ast::PropName::Ident(ident) => &*ident.sym == "permissions",
+        ast::PropName::Str(str) => str.value.to_string_lossy() == "permissions",
+        _ => false,
+      }
+    }),
+    _ => false,
+  }
+}
+
+const MANIFEST: &str = "manifest";
 struct Reader<'a> {
-  name: &'a str,
+  /// What the manifest belongs to, for errors.
+  subject: String,
+  /// "extension" or "package", for errors.
+  what: &'static str,
   specifier: &'a ModuleSpecifier,
   parsed: &'a ParsedSource,
 }
@@ -113,10 +228,18 @@ impl Reader<'_> {
       None => self.specifier.to_string(),
     };
     ManifestError {
-      name: self.name.to_string(),
+      subject: self.subject.clone(),
       location,
       message,
     }
+  }
+
+  /// How to declare a manifest that can be read.
+  fn hint(&self) -> String {
+    format!(
+      "declare the manifest as `export const manifest = {{ … }}`, so it can be read without running the {}",
+      self.what
+    )
   }
 
   fn non_function(&self, range: SourceRange, export: &str) -> ManifestError {
@@ -192,13 +315,16 @@ impl Reader<'_> {
                 if decl.kind != ast::VarDeclKind::Const {
                   return Err(self.error(
                     Some(declarator.range()),
-                    format!("the manifest must not be reassignable: {EXPORT_CONST_HINT}"),
+                    format!(
+                      "the manifest must not be reassignable: {}",
+                      self.hint()
+                    ),
                   ));
                 }
                 let Some(init) = &declarator.init else {
                   return Err(self.error(
                     Some(declarator.range()),
-                    format!("the manifest has no value: {EXPORT_CONST_HINT}"),
+                    format!("the manifest has no value: {}", self.hint()),
                   ));
                 };
                 manifest = Some((self.literal(init)?, declarator.range()));
@@ -278,7 +404,10 @@ impl Reader<'_> {
             if local == MANIFEST || exported == MANIFEST {
               return Err(self.error(
                 Some(specifier.range()),
-                format!("the manifest must be exported where it is declared: {EXPORT_CONST_HINT}"),
+                format!(
+                  "the manifest must be exported where it is declared: {}",
+                  self.hint()
+                ),
               ));
             }
             if local_functions.contains(&local) {
@@ -363,7 +492,9 @@ impl Reader<'_> {
       self.error(
         Some(range),
         format!(
-          "the manifest may only hold literal objects, arrays, strings and booleans, since it is read without running the extension; {EXPORT_CONST_HINT}"
+          "the manifest may only hold literal objects, arrays, strings and booleans, since it is read without running the {}; {}",
+          self.what,
+          self.hint(),
         ),
       )
     };
@@ -430,7 +561,8 @@ impl Reader<'_> {
     let error = |message: String| self.error(Some(range), message);
     let Value::Object(mut manifest) = manifest else {
       return Err(error(format!(
-        "the manifest must be an object: {EXPORT_CONST_HINT}"
+        "the manifest must be an object: {}",
+        self.hint()
       )));
     };
     if let Some(field) = manifest.keys().find(|key| *key != "permissions") {
@@ -445,9 +577,10 @@ impl Reader<'_> {
       ))
     };
     match manifest.remove("permissions") {
-      None => Err(error(
-        "manifest.permissions is required. Use [] if the extension needs no permissions.".to_string(),
-      )),
+      None => Err(error(format!(
+        "manifest.permissions is required. Use [] if the {} needs no permissions.",
+        self.what
+      ))),
       Some(Value::Array(names)) => {
         let mut list = Vec::with_capacity(names.len());
         for name in names {
@@ -475,7 +608,8 @@ impl Reader<'_> {
           if permission == "all" {
             let Value::Bool(value) = value else {
               return Err(error(
-                "manifest.permissions \"all\" must be true or false.".to_string(),
+                "manifest.permissions \"all\" must be true or false."
+                  .to_string(),
               ));
             };
             all = value;
@@ -501,10 +635,16 @@ impl Reader<'_> {
                   "run" => AllowRunDescriptor::is_path(&entry),
                   _ => false,
                 };
-                if must_be_absolute && !std::path::Path::new(&entry).is_absolute()
+                if must_be_absolute
+                  && !std::path::Path::new(&entry).is_absolute()
                 {
                   return Err(error(format!(
-                    "manifest.permissions.{permission} entry \"{entry}\" must be an absolute path. An extension can't know where the app lives; ask for `true` and let the app grant its own paths."
+                    "manifest.permissions.{permission} entry \"{entry}\" must be an absolute path. {} can't know where the app lives; ask for `true` and let the app grant its own paths.",
+                    if self.what == "extension" {
+                      "An extension"
+                    } else {
+                      "A package"
+                    }
                   )));
                 }
                 out.push(entry);
@@ -521,7 +661,8 @@ impl Reader<'_> {
         if all {
           let every = permission_names_to_options(&["all".to_string()]);
           for permission in EXTENSION_PERMISSION_NAMES {
-            if permission == "all" || named.iter().any(|name| name == permission)
+            if permission == "all"
+              || named.iter().any(|name| name == permission)
             {
               continue;
             }
@@ -859,5 +1000,66 @@ import { h } from "./h.ts";"#,
       ),
       "{err}"
     );
+  }
+  fn package(source: &str) -> Result<Option<PackageManifest>, String> {
+    extract_package_manifest(
+      "./vendor/csv/",
+      &ModuleSpecifier::parse("file:///app/vendor/csv/mod.ts").unwrap(),
+      MediaType::TypeScript,
+      source,
+    )
+    .map_err(|err| err.to_string())
+  }
+
+  #[test]
+  fn package_manifest_is_optional() {
+    assert_eq!(package("export function parse() {}").unwrap(), None);
+    // Other exports named `manifest` aren't a manifest.
+    for source in [
+      "export function manifest() {}",
+      "export const manifest = { name: \"app\", icons: [] };",
+      "export let manifest = { permissions: [] };",
+      "const manifest = { permissions: [] };\nexport { manifest };",
+      "export class Widget {}\nexport let counter = 0;",
+    ] {
+      assert_eq!(package(source).unwrap(), None, "{source}");
+    }
+  }
+
+  #[test]
+  fn package_manifest_is_read_as_an_extension_manifest() {
+    let manifest = package(
+      "export const manifest = { permissions: { net: [\"api.example.com\"] } } as const;\nexport class Widget {}",
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+      manifest.permissions,
+      PermissionsOptions {
+        allow_net: Some(svec(&["api.example.com"])),
+        ..Default::default()
+      }
+    );
+    assert_eq!(
+      manifest.permissions_json,
+      serde_json::json!({ "net": ["api.example.com"] })
+    );
+    let err = package(
+      "export const manifest = { permissions: { read: [\"./data\"] } };",
+    )
+    .unwrap_err();
+    assert!(
+      err.starts_with(
+        "Invalid manifest of a package in isolate[\"./vendor/csv/\"] (file:///app/vendor/csv/mod.ts:1:14): "
+      ),
+      "{err}"
+    );
+    assert!(
+      err.contains("A package can't know where the app lives"),
+      "{err}"
+    );
+    let err = package("export const manifest = { permissions: [], x: 1 };")
+      .unwrap_err();
+    assert!(err.contains("without running the package"), "{err}");
   }
 }

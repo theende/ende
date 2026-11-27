@@ -1,0 +1,370 @@
+{
+  "tempDir": true,
+  "tests": {
+    // A package approved under a narrower rule doesn't move to a broader one that also covers it when the narrower rule is removed: only `ende install` moves it, with approval.
+    "a_package_doesnt_move_to_a_broader_sandbox_when_a_rule_is_removed": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDLINE]\nm: data | string other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts add_inner",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "[WILDCARD]Run `ende install --entrypoint main.ts`[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "m: NotCapable | NotCapable other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts remove_inner",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main.ts",
+          "output": "moved_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main.ts --frozen --yes",
+          "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "m: data | string other: data | string\n"
+        }
+      ]
+    },
+    // Nor when the broader rule is put first.
+    "a_package_doesnt_move_to_a_broader_sandbox_when_rules_are_reordered": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDLINE]\nm: data | string other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts add_inner",
+          "output": ""
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "m: NotCapable | NotCapable other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts reorder",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main.ts",
+          "output": "moved_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main.ts --frozen --yes",
+          "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]takes over ./vendor/m/mod.ts, which isolate[\"./vendor/m/\"] sandboxed[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        // Approved, the move holds for any spelling, and runs write nothing.
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main_query.ts",
+          "output": "m: data | string\n"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main.ts",
+          "output": "m: data | string other: data | string\n"
+        }
+      ]
+    },
+    // A pin of a rule Ende can't read (a hand-added `./`) refuses what it could cover rather than being skipped.
+    "a_pin_ende_cant_read_fails_closed": {
+      "cwd": "badkey",
+      "args": "run --quiet --allow-read main.ts",
+      "output": "badkey.out",
+      "exitCode": 1
+    },
+    // A package is held to its rule by what the rule covers, not by the spelling an entry was recorded under: a query or a fragment doesn't move it either.
+    "another_spelling_after_a_reorder": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDLINE]\nm: data | string other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts add_inner",
+          "output": ""
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "m: NotCapable | NotCapable other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts reorder",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main_query.ts",
+          "output": "[WILDCARD]now falls under isolate[\"./vendor/\"][WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // A fragment is the same module too.
+    "a_fragment_after_a_reorder": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDLINE]\nm: data | string other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts add_inner",
+          "output": ""
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "m: NotCapable | NotCapable other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts reorder",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main_fragment.ts",
+          "output": "[WILDCARD]now falls under isolate[\"./vendor/\"][WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // Nor after the narrower rule is removed.
+    "another_spelling_after_a_removal": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDLINE]\nm: data | string other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts add_inner",
+          "output": ""
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "m: NotCapable | NotCapable other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts remove_inner",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main_query.ts",
+          "output": "[WILDCARD]now falls under isolate[\"./vendor/\"][WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // Nor another case, where paths fold case.
+    "another_case_after_a_reorder": {
+      "if": "mac",
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDLINE]\nm: data | string other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts add_inner",
+          "output": ""
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "m: NotCapable | NotCapable other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts reorder",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main_case.ts",
+          "output": "[WILDCARD]now falls under isolate[\"./vendor/\"][WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // Nor an entry never recorded, because it only ran under --frozen.
+    "an_entry_only_run_frozen": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main_other.ts",
+          "output": "Recorded [WILDLINE]\nother: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts add_inner",
+          "output": ""
+        },
+        {
+          "args": "install --entrypoint main_two.ts --yes",
+          "output": "[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main_two.ts",
+          "output": "two: NotCapable | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main.ts",
+          "output": "m: NotCapable | NotCapable other: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts reorder",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main.ts",
+          "output": "[WILDCARD]now falls under isolate[\"./vendor/\"][WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // A rule declared before another yields only where the first run saw it take a module the other covers: an earlier rule that covered none of them then, here a symlinked folder later repointed, doesn't take them unapproved.
+    "an_earlier_rule_that_covered_nothing_doesnt_take_a_package": {
+      "if": "unix",
+      "steps": [
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts link_other",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --config links.json main_link.ts",
+          "output": "[WILDCARD]m: NotCapable | NotCapable link: data | string\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts link_m",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen --config links.json main_m.ts",
+          "output": "[WILDCARD]now falls under isolate[\"./link/\"][WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // An approved move doesn't outlive the rule it was approved for: removed and declared again with a wider grant, it takes nothing unapproved.
+    "a_move_doesnt_carry_over_to_a_rule_declared_again": {
+      "steps": [
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts read_after",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "[WILDCARD]m: NotCapable | NotCapable other: data | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts read_first",
+          "output": ""
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "m: data | NotCapable other: data | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts inner_only",
+          "output": ""
+        },
+        {
+          "args": "install --yes",
+          "output": "[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts reorder",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_other.ts",
+          "output": "Recorded [WILDLINE]\nother: data | string\n"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main.ts",
+          "output": "[WILDCARD]now falls under isolate[\"./vendor/\"][WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // Nor a new grant for that rule, approved by plain `ende install`.
+    "a_move_doesnt_carry_over_to_a_new_grant": {
+      "steps": [
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts read_after",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "[WILDCARD]m: NotCapable | NotCapable other: data | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts read_first",
+          "output": ""
+        },
+        {
+          "args": "install --entrypoint main.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "m: data | NotCapable other: data | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts reorder",
+          "output": ""
+        },
+        {
+          "args": "install --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --frozen main.ts",
+          "output": "[WILDCARD]now falls under isolate[\"./vendor/\"][WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    }
+  }
+}

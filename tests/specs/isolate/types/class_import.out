@@ -1,0 +1,3 @@
+[WILDCARD]TS2305 [ERROR]: Cannot import "Widget" from "[WILDLINE]/vendor/pkg/mod.ts": it is a class, which can't leave the sandbox of isolate["./vendor/pkg/"].[WILDCARD]Only its type can be used outside the sandbox.
+    at [WILDLINE]class_import.ts:1:10
+[WILDCARD]

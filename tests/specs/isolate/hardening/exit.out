@@ -1,3 +1,4 @@
+Recorded isolate["./vendor/none/"] in ende.lock; it will run with: no permissions
 ping: "pong"
 exit: Error: isolate["./vendor/none/"] stopped: its worker exited or failed, so calls into it fail
 after: Error: isolate["./vendor/none/"] stopped: its worker exited or failed, so calls into it fail

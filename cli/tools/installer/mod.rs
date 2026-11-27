@@ -145,11 +145,45 @@ pub async fn install_from_entrypoints(
     .cache_module_emits(&main_graph_container.graph())
     .await?;
 
+  // `ende install --entrypoint`: what the entrypoints import from the
+  // sandboxes may need approval that the lockfile alone can't settle.
+  if let Some(yes) = entrypoints_flags.approve {
+    let graph = main_graph_container.graph();
+    approve_sandbox_pins(&factory, Some((&graph, &specifiers)), yes).await?;
+    if let Some(lockfile) = factory.maybe_lockfile().await? {
+      lockfile.write_if_changed()?;
+    }
+  }
+
   print_install_report(
     started.elapsed(),
     &factory.install_reporter()?.unwrap().clone(),
   );
   Ok(())
+}
+
+/// Approves the pins of the `isolate` rules (see
+/// `crate::isolate::SandboxRegistry::approve_changes`); `app` is the
+/// entrypoints' graph and the entrypoints, for `ende install --entrypoint`.
+async fn approve_sandbox_pins(
+  factory: &CliFactory,
+  app: Option<(&deno_graph::ModuleGraph, &[ende_core::ModuleSpecifier])>,
+  yes: bool,
+) -> Result<(), AnyError> {
+  let Some(sandboxes) = factory.sandbox_registry().await? else {
+    // No rule is declared: dropping a pin still needs approval, since what
+    // it sandboxed would then run in the app.
+    let Some(lockfile) = factory.maybe_lockfile().await? else {
+      return Ok(());
+    };
+    let pinned = lockfile.lock().content.isolate.clone();
+    let items = pinned
+      .iter()
+      .map(|(key, pin)| crate::isolate::RulePin::removal(key, pin))
+      .collect::<Vec<_>>();
+    return crate::pins::approve_changes(items, lockfile, yes);
+  };
+  sandboxes.approve_changes(app, yes)
 }
 
 pub async fn install_command(

@@ -63,23 +63,100 @@ enum Local {
   },
 }
 
+/// A module as [`module_exports`] reads it.
+pub enum SourceModule {
+  /// JavaScript or TypeScript: its specifier after redirects, text and
+  /// media type.
+  Js {
+    specifier: ModuleSpecifier,
+    text: std::sync::Arc<str>,
+    media_type: MediaType,
+  },
+  /// A JSON module: data, exported as `default`.
+  Json,
+}
+
+/// Where [`module_exports`] reads modules from: the module graph when
+/// running and checking, the editor's documents and cache in the editor.
+pub trait ExportsSource {
+  /// The module `specifier` names, if it is loaded.
+  fn module(&self, specifier: &ModuleSpecifier) -> Option<SourceModule>;
+  /// What the code import `src` in module `referrer` resolves to.
+  fn dependency(
+    &self,
+    referrer: &ModuleSpecifier,
+    src: &str,
+  ) -> Option<ModuleSpecifier>;
+}
+
+impl ExportsSource for ModuleGraph {
+  fn module(&self, specifier: &ModuleSpecifier) -> Option<SourceModule> {
+    match self.get(specifier)? {
+      deno_graph::Module::Js(module) => Some(SourceModule::Js {
+        specifier: module.specifier.clone(),
+        text: module.source.text.clone(),
+        media_type: module.media_type,
+      }),
+      deno_graph::Module::Json(_) => Some(SourceModule::Json),
+      _ => None,
+    }
+  }
+
+  fn dependency(
+    &self,
+    referrer: &ModuleSpecifier,
+    src: &str,
+  ) -> Option<ModuleSpecifier> {
+    let deno_graph::Module::Js(module) = self.get(referrer)? else {
+      return None;
+    };
+    module
+      .dependencies
+      .get(src)
+      .and_then(|dependency| dependency.get_code())
+      .cloned()
+  }
+}
+
 /// The exports of the JavaScript or TypeScript module `specifier` in
 /// `graph`, following re-exports through the graph.
 pub fn module_exports(
   graph: &ModuleGraph,
   specifier: &ModuleSpecifier,
 ) -> ModuleExports {
+  module_exports_from(graph, specifier)
+}
+
+/// The exports of the JavaScript or TypeScript module `specifier`, read
+/// from `source`, following re-exports.
+pub fn module_exports_from(
+  source: &dyn ExportsSource,
+  specifier: &ModuleSpecifier,
+) -> ModuleExports {
   let mut cache = HashMap::new();
-  exports_of(graph, specifier, &mut Vec::new(), &mut cache)
+  exports_of(source, specifier, &mut Vec::new(), &mut cache)
 }
 
 fn exports_of(
-  graph: &ModuleGraph,
+  modules: &dyn ExportsSource,
   specifier: &ModuleSpecifier,
   visiting: &mut Vec<ModuleSpecifier>,
   cache: &mut HashMap<ModuleSpecifier, ModuleExports>,
 ) -> ModuleExports {
-  let specifier = graph.resolve(specifier).clone();
+  let (specifier, text, media_type) = match modules.module(specifier) {
+    Some(SourceModule::Js {
+      specifier,
+      text,
+      media_type,
+    }) => (specifier, text, media_type),
+    Some(SourceModule::Json) => {
+      return ModuleExports {
+        names: BTreeMap::from([("default".to_string(), ExportKind::Value)]),
+        complete: true,
+      };
+    }
+    None => return ModuleExports::default(),
+  };
   if let Some(exports) = cache.get(&specifier) {
     return exports.clone();
   }
@@ -90,20 +167,10 @@ fn exports_of(
       complete: true,
     };
   }
-  let module = match graph.get(&specifier) {
-    Some(deno_graph::Module::Js(module)) => module,
-    Some(deno_graph::Module::Json(_)) => {
-      return ModuleExports {
-        names: BTreeMap::from([("default".to_string(), ExportKind::Value)]),
-        complete: true,
-      };
-    }
-    _ => return ModuleExports::default(),
-  };
   let Ok(parsed) = deno_ast::parse_module(deno_ast::ParseParams {
     specifier: specifier.clone(),
-    text: module.source.text.clone(),
-    media_type: module.media_type,
+    text,
+    media_type,
     capture_tokens: false,
     scope_analysis: false,
     maybe_syntax: None,
@@ -115,11 +182,7 @@ fn exports_of(
   };
   visiting.push(specifier.clone());
   let resolve = |src: &str| -> Option<ModuleSpecifier> {
-    module
-      .dependencies
-      .get(src)
-      .and_then(|dependency| dependency.get_code())
-      .cloned()
+    modules.dependency(&specifier, src)
   };
 
   let mut locals = HashMap::new();
@@ -186,7 +249,7 @@ fn exports_of(
     match locals.get(name) {
       Some(Local::Kind(kind)) => *kind,
       Some(Local::Import { src, name }) => {
-        imported_kind(graph, resolve(src), name, visiting, cache)
+        imported_kind(modules, resolve(src), name, visiting, cache)
       }
       None => ExportKind::Unknown,
     }
@@ -234,7 +297,7 @@ fn exports_of(
                 .unwrap_or_else(|| orig.clone());
               let kind = match &source {
                 Some(src) => {
-                  imported_kind(graph, resolve(src), &orig, visiting, cache)
+                  imported_kind(modules, resolve(src), &orig, visiting, cache)
                 }
                 None => local_kind(&orig, visiting, cache),
               };
@@ -264,7 +327,7 @@ fn exports_of(
   for src in star_sources {
     match resolve(&src) {
       Some(target) => {
-        let star = exports_of(graph, &target, visiting, cache);
+        let star = exports_of(modules, &target, visiting, cache);
         exports.complete &= star.complete;
         for (name, kind) in star.names {
           if name != "default" {
@@ -281,7 +344,7 @@ fn exports_of(
 }
 
 fn imported_kind(
-  graph: &ModuleGraph,
+  modules: &dyn ExportsSource,
   target: Option<ModuleSpecifier>,
   name: &str,
   visiting: &mut Vec<ModuleSpecifier>,
@@ -290,7 +353,7 @@ fn imported_kind(
   let Some(target) = target else {
     return ExportKind::Unknown;
   };
-  exports_of(graph, &target, visiting, cache)
+  exports_of(modules, &target, visiting, cache)
     .names
     .get(name)
     .copied()
@@ -513,6 +576,104 @@ pub fn requested_exports(
   Some(requested)
 }
 
+/// One name a module imports by value from another, where it is written.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ValueImport {
+  /// The specifier as written.
+  pub src: String,
+  /// The export it names (`default` for a default import).
+  pub name: String,
+  /// Where the name is written: zero-based line and column of its start
+  /// and end.
+  pub start: (usize, usize),
+  pub end: (usize, usize),
+}
+
+/// Every name the module `text` (JavaScript or TypeScript, of
+/// `media_type`) imports or re-exports by value, by name: what would cross
+/// a sandbox's boundary if `src` is sandboxed. Type-only imports and
+/// specifiers are left out (TypeScript drops them), and so are namespace
+/// imports and `export *`, which get only what can cross. `None` if it
+/// doesn't parse as a module.
+pub fn value_imports(
+  specifier: &ModuleSpecifier,
+  media_type: MediaType,
+  text: &str,
+) -> Option<Vec<ValueImport>> {
+  use deno_ast::SourceRangedForSpanned as _;
+  let parsed = deno_ast::parse_module(deno_ast::ParseParams {
+    specifier: specifier.clone(),
+    text: text.into(),
+    media_type,
+    capture_tokens: false,
+    scope_analysis: false,
+    maybe_syntax: None,
+  })
+  .ok()?;
+  let deno_ast::ProgramRef::Module(program) = parsed.program_ref() else {
+    return None;
+  };
+  let text_info = parsed.text_info_lazy();
+  let position = |pos: deno_ast::SourcePos| {
+    let index = text_info.line_and_column_index(pos);
+    (index.line_index, index.column_index)
+  };
+  let mut imports = Vec::new();
+  let mut push = |src: &str, name: String, range: deno_ast::SourceRange| {
+    imports.push(ValueImport {
+      src: src.to_string(),
+      name,
+      start: position(range.start),
+      end: position(range.end),
+    });
+  };
+  for item in &program.body {
+    let ast::ModuleItem::ModuleDecl(decl) = item else {
+      continue;
+    };
+    match decl {
+      ast::ModuleDecl::Import(import) if !import.type_only => {
+        let src = import.src.value.to_string_lossy();
+        for specifier in &import.specifiers {
+          match specifier {
+            ast::ImportSpecifier::Named(named) if !named.is_type_only => {
+              let name = named
+                .imported
+                .as_ref()
+                .map(export_name)
+                .unwrap_or_else(|| named.local.sym.to_string());
+              push(&src, name, named.range());
+            }
+            ast::ImportSpecifier::Default(default) => {
+              push(&src, "default".to_string(), default.range());
+            }
+            _ => {}
+          }
+        }
+      }
+      ast::ModuleDecl::ExportNamed(export) if !export.type_only => {
+        let Some(src) = &export.src else {
+          continue;
+        };
+        let src = src.value.to_string_lossy();
+        for specifier in &export.specifiers {
+          match specifier {
+            ast::ExportSpecifier::Named(named) if !named.is_type_only => {
+              push(&src, export_name(&named.orig), named.range());
+            }
+            ast::ExportSpecifier::Default(default) => {
+              push(&src, "default".to_string(), default.range());
+            }
+            _ => {}
+          }
+        }
+      }
+      _ => {}
+    }
+  }
+  Some(imports)
+}
+
 #[cfg(test)]
 mod test {
   use deno_graph::source::MemoryLoader;
@@ -661,5 +822,28 @@ mod test {
     );
     assert!(get("./vendor/c.ts").all);
     assert!(get("./vendor/d.ts").all);
+  }
+
+  #[test]
+  fn value_imports_leave_out_types_and_namespaces() {
+    let specifier = ModuleSpecifier::parse("file:///app/main.ts").unwrap();
+    let imports = value_imports(
+      &specifier,
+      MediaType::TypeScript,
+      "import type { A } from \"./a.ts\";\nimport { type B, C, D as E } from \"./a.ts\";\nimport F, * as G from \"./b.ts\";\nexport { H } from \"./c.ts\";\nexport type { I } from \"./c.ts\";\nexport * from \"./d.ts\";\n",
+    )
+    .unwrap();
+    assert_eq!(
+      imports
+        .iter()
+        .map(|import| (import.src.as_str(), import.name.as_str(), import.start))
+        .collect::<Vec<_>>(),
+      [
+        ("./a.ts", "C", (1, 17)),
+        ("./a.ts", "D", (1, 20)),
+        ("./b.ts", "default", (2, 7)),
+        ("./c.ts", "H", (3, 9)),
+      ]
+    );
   }
 }

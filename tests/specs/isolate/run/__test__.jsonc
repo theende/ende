@@ -11,7 +11,7 @@
     // same code runs in the app, unchanged.
     "calls_are_async": {
       "args": "run --quiet -A plain_call.ts",
-      "output": "true\nNotCapable\n"
+      "output": "Recorded isolate[\"./vendor/none/\"] in ende.lock; it will run with: no permissions\ntrue\nNotCapable\n"
     },
     "no_isolate_key": {
       "args": "run --quiet -A --config no_isolate.json plain_call.ts",
@@ -25,7 +25,7 @@
     },
     "grant_within_the_app": {
       "args": "run --quiet --allow-read --allow-env wide.ts",
-      "output": "read data: \"data\"\nenv: true\n"
+      "output": "Recorded isolate[\"./vendor/wide/\"] in ende.lock; it will run with: [WILDLINE]\nread data: \"data\"\nenv: true\n"
     },
     // The app's revoke after the sandbox started reaches it.
     "revoke_reaches_the_sandbox": {
@@ -40,28 +40,28 @@
     // Neither side sees the other's prototype pollution.
     "prototype_pollution": {
       "args": "run --quiet pollution.ts",
-      "output": "polluted\nclean 2\nclean\n"
+      "output": "Recorded isolate[\"./vendor/none/\"] in ende.lock; it will run with: no permissions\npolluted\nclean 2\nclean\n"
     },
     // The sandbox can't reach the app's resources by guessing their ids.
     "rid_guessing": {
       "args": "run --quiet --allow-read rids.ts",
-      "output": "app [\"secret\\n\"]\nsandbox []\n"
+      "output": "Recorded isolate[\"./vendor/none/\"] in ende.lock; it will run with: no permissions\napp [\"secret\\n\"]\nsandbox []\n"
     },
     // Raw ops give no way around the checks: the gated ones aren't
     // reachable, and a worker the sandbox starts is held to its permissions.
     "raw_ops": {
       "args": "run --quiet -A raw_ops.ts",
-      "output": "gated ops reachable: 0\nTypeError\n"
+      "output": "Recorded isolate[\"./vendor/none/\"] in ende.lock; it will run with: no permissions\ngated ops reachable: 0\nTypeError\n"
     },
     "sandbox_worker": {
       "args": "run --quiet -A sub_worker.ts",
-      "output": "NotCapable: ./vendor/none/: Requires read access to \"secret.txt\"; grant it in ende.json under isolate[\"./vendor/none/\"].permissions.read\n"
+      "output": "Recorded [WILDLINE]\nNotCapable: ./vendor/none/: Requires read access to \"secret.txt\"; grant it in ende.json under isolate[\"./vendor/none/\"].permissions.read\n"
     },
     // A sandbox may start a worker from its own modules; it runs in the
     // sandbox too.
     "worker_of_its_own": {
       "args": "run --quiet -A own_worker.ts",
-      "output": "1 NotCapable\n"
+      "output": "Recorded isolate[\"./vendor/pkg/\"] in ende.lock; it will run with: no permissions\n1 NotCapable\n"
     },
     // Code a sandbox writes into its own folder may run there, but can't
     // load the app's modules without the sandbox's own read access.
@@ -119,7 +119,7 @@
     // Type-only imports of a class are gone from the code that runs.
     "type_only_import": {
       "args": "run --quiet type_only.ts",
-      "output": "hello types undefined\n"
+      "output": "Recorded isolate[\"./vendor/none/\"] in ende.lock; it will run with: no permissions\nhello types undefined\n"
     },
     // A thrown error keeps its class.
     "errors_keep_their_class": {
@@ -138,7 +138,7 @@
     },
     "default_export_and_constants": {
       "args": "run --quiet defaults.ts",
-      "output": "hello world 1.2.3 {\"rows\":10,\"columns\":[\"a\",\"b\"]}\n"
+      "output": "Recorded isolate[\"./vendor/none/\"] in ende.lock; it will run with: no permissions\nhello world 1.2.3 {\"rows\":10,\"columns\":[\"a\",\"b\"]}\n"
     },
     // `import *` and `import()` see only what can cross; an export whose
     // kind shows only when the sandbox runs makes a namespace import fail.
@@ -149,13 +149,13 @@
     // Two entries of one sandbox share its worker.
     "entries_share_a_worker": {
       "args": "run --quiet shared.ts",
-      "output": "1 2 3\n"
+      "output": "Recorded isolate[\"./vendor/pkg/\"] in ende.lock; it will run with: no permissions\n1 2 3\n"
     },
     // A jsr: rule covers every entry of the package; the packages it imports
     // load inside its sandbox.
     "jsr_package": {
       "args": "run --quiet jsr.ts",
-      "output": "true 3 1\n"
+      "output": "Recorded isolate[\"jsr:@endetest/multiple-exports\"] in ende.lock; it will run with: no permissions\ntrue 3 1\n"
     },
     // The app reads a sandbox's JSON as data; the sandbox needs read access
     // for data outside its folder.
@@ -181,11 +181,11 @@
         "-A",
         "const { read } = await import('./vendor/none/reader.ts'); try { await read('secret.txt'); } catch (e) { console.log(e.message); }"
       ],
-      "output": "./vendor/none/: Requires read access to \"secret.txt\"; grant it in ende.json under isolate[\"./vendor/none/\"].permissions.read\n"
+      "output": "Recorded [WILDLINE]\n./vendor/none/: Requires read access to \"secret.txt\"; grant it[WILDLINE]\n"
     },
     "bench": {
       "args": "bench --quiet --allow-read sandbox_bench.ts",
-      "output": "./vendor/none/: Requires read access to \"secret.txt\"; grant it in ende.json under isolate[\"./vendor/none/\"].permissions.read\n[WILDCARD]call[WILDCARD]"
+      "output": "Recorded [WILDLINE]\n./vendor/none/: Requires read access to \"secret.txt\"; grant it[WILDLINE]\n[WILDCARD]call[WILDCARD]"
     },
     // A compiled app can't enforce them, so it refuses them.
     "compile": {

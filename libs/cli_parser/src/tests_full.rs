@@ -9111,6 +9111,26 @@ fn install_yes_flag() {
       InstallTopLevelFlags { yes: true, .. }
     )))
   ));
+  // With --entrypoint, --yes approves what the entrypoints' graph changes
+  // in the isolate pins.
+  let flags = flags_from_vec(svec![
+    "ende",
+    "install",
+    "--entrypoint",
+    "main.ts",
+    "--yes"
+  ])
+  .unwrap();
+  assert_eq!(
+    flags.subcommand,
+    EndeSubcommand::Install(InstallFlags::Local(
+      InstallFlagsLocal::Entrypoints(InstallEntrypointsFlags {
+        entrypoints: svec!["main.ts"],
+        lockfile_only: false,
+        approve: Some(true),
+      })
+    ))
+  );
   // The removed `--dev` isn't answered with "a similar argument exists:
   // '--yes'", which approves extension changes.
   let err =

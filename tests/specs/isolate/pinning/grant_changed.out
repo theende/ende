@@ -1,0 +1,1 @@
+[WILDCARD]isolate["./vendor/m/"] changed since ende.lock approved it: its grant in ende.json. Run `ende install --entrypoint main.ts` to review the change and approve it.[WILDCARD]

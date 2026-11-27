@@ -1,0 +1,155 @@
+{
+  "tempDir": true,
+  "tests": {
+    // A new version of a sandboxed jsr package is a new entry: one that
+    // asks for more blocks runs until `ende install --entrypoint` approves
+    // it, and --frozen refuses to record it.
+    "jsr_manifest_change": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-env main_jsr.ts",
+          "output": "jsr_first.out"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts jsr",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-env main_jsr.ts",
+          "output": "[WILDCARD]this run would get more than any run ende.lock approved (env). Run `ende install --entrypoint main_jsr.ts`[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main_jsr.ts --frozen --yes",
+          "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main_jsr.ts --yes",
+          "output": "jsr_install.out"
+        },
+        {
+          "args": "run --quiet --allow-env main_jsr.ts",
+          "output": "1.1.0\ntrue\n"
+        }
+      ]
+    },
+    // A new module under a sandboxed URL prefix, without a manifest, gets
+    // no more than approved for the rule either.
+    "https_new_entry": {
+      "steps": [
+        {
+          "args": "run --quiet --config prefix.json --cert RootCA.pem --allow-import=localhost:5545 main_https.ts",
+          "output": "Recorded [WILDLINE]\n42\n"
+        },
+        {
+          "args": "run --quiet --config prefix.json --cert RootCA.pem --allow-import=localhost:5545 main_https2.ts",
+          "output": "[WILDCARD]this run would get more than any run ende.lock approved (env). Run `ende install --entrypoint main_https2.ts`[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main_https2.ts --yes --config prefix.json --cert RootCA.pem --allow-import=localhost:5545",
+          "output": "[WILDCARD]Recorded the approved changes to isolate[\"https://localhost:5545/\"] in ende.lock.\n"
+        },
+        {
+          "args": "run --quiet --config prefix.json --cert RootCA.pem --allow-import=localhost:5545 main_https2.ts",
+          "output": "Hi\n"
+        }
+      ]
+    },
+    // Two versions locked: `ende install` doesn't get stuck, and the newer
+    // version's wider manifest is approved from the app's graph.
+    "jsr_two_versions": {
+      "steps": [
+        {
+          "args": "run --quiet --config versions.json --allow-env main_v1.ts",
+          "output": "Recorded [WILDLINE]\n1.0.0\n"
+        },
+        {
+          "args": "run --quiet --config versions.json --allow-env main_v2.ts",
+          "output": "[WILDCARD]this run would get more than any run ende.lock approved (env). Run `ende install --entrypoint main_v2.ts`[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --yes --config versions.json",
+          "output": "[WILDCARD]"
+        },
+        {
+          "args": "install --entrypoint main_v2.ts --yes --config versions.json",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --config versions.json --allow-env main_v2.ts",
+          "output": "1.1.0 true\n"
+        }
+      ]
+    },
+    // A new version that asks for the same is the same run: nothing to
+    // approve, and nothing said.
+    "jsr_version_bump_with_the_same_manifest": {
+      "steps": [
+        {
+          "args": "run --quiet --config versions.json --allow-env main_v1.ts",
+          "output": "Recorded [WILDLINE]\n1.0.0\n"
+        },
+        {
+          "args": "run --quiet --config versions.json --allow-env main_v101.ts",
+          "output": "1.0.1\n"
+        }
+      ]
+    },
+    // A new rule that takes a pinned package over through a redirect needs
+    // approval: what the run loads is compared, not only the rule's text.
+    "a_redirect_doesnt_hand_a_package_to_a_new_rule": {
+      "steps": [
+        {
+          "args": "run --quiet --config redirect_a.json --cert RootCA.pem --allow-import=localhost:5545 main_redirect.ts",
+          "output": "Recorded [WILDLINE]\n42\n"
+        },
+        {
+          "args": "run --quiet --config redirect_b.json --cert RootCA.pem --allow-import=localhost:5545 main_redirect.ts",
+          "output": "redirect_blocked.out",
+          "exitCode": 1
+        },
+        // Nor by importing what the redirect led to directly.
+        {
+          "args": "run --quiet --config redirect_b.json --cert RootCA.pem --allow-import=localhost:5545 main_direct.ts",
+          "output": "[WILDCARD]now falls under isolate[\"https://localhost:5545/run/\"][WILDCARD]",
+          "exitCode": 1
+        }
+      ]
+    },
+    // So does a changed copy of a sandboxed https module in the vendor
+    // folder.
+    "https_manifest_change": {
+      "steps": [
+        {
+          "args": "run --quiet --config vendor.json --cert RootCA.pem --allow-import=localhost:5545 main_https.ts",
+          "output": "Recorded isolate[\"https://localhost:5545/run/extension_lockfile/\"] in ende.lock; [WILDLINE]\n42\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts https",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --config vendor.json --cert RootCA.pem --allow-import=localhost:5545 main_https.ts",
+          "output": "https_changed.out",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main_https.ts --frozen --yes --config vendor.json --cert RootCA.pem --allow-import=localhost:5545",
+          "output": "[WILDCARD]The lockfile is out of date[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main_https.ts --yes --config vendor.json --cert RootCA.pem --allow-import=localhost:5545",
+          "output": "https_install.out"
+        },
+        {
+          "args": "run --quiet --config vendor.json --cert RootCA.pem --allow-import=localhost:5545 main_https.ts",
+          "output": "42\n"
+        }
+      ]
+    }
+  }
+}

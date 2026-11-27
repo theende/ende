@@ -1,0 +1,5 @@
+{
+  "isolate": {
+    "./linked/": { "permissions": { "read": ["./data"], "env": true } }
+  }
+}

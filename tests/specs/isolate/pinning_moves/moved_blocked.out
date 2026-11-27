@@ -1,0 +1,1 @@
+[WILDCARD]./vendor/m/mod.ts was approved under isolate["./vendor/m/"], but it now falls under isolate["./vendor/"][WILDCARD]Run `ende install --entrypoint main.ts`[WILDCARD]

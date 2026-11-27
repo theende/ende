@@ -1,0 +1,4 @@
+[WILDCARD]isolate["jsr:@endetest/isolate-manifest"] changed:
+  new run from main_jsr.ts (asks for: ["env"]): env (all)
+  (never more than the app)
+Recorded the approved changes to isolate["jsr:@endetest/isolate-manifest"] in ende.lock.

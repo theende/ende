@@ -283,10 +283,14 @@ fn stub_source(name: &str, source: &str, exports: &[String]) -> String {
 /// name: what's reachable from an extension stub but not from the app's
 /// roots without passing through one. An extension's own type errors are
 /// its author's to fix, so they aren't reported when the app is checked.
+///
+/// The same goes for sandboxed packages (`isolate` rules): their type stubs
+/// (`crate::isolate::types`) are boundaries too, and the stubs themselves
+/// are left out with what only they reach.
 pub fn extension_only_modules(graph: &ModuleGraph) -> HashSet<String> {
   let stubs = graph
     .modules()
-    .filter(|m| m.specifier().scheme() == EXTENSION_SCHEME)
+    .filter(|m| is_boundary(m.specifier()))
     .map(|m| m.specifier().clone())
     .collect::<Vec<_>>();
   if stubs.is_empty() {
@@ -302,8 +306,16 @@ pub fn extension_only_modules(graph: &ModuleGraph) -> HashSet<String> {
   only
 }
 
+/// Whether `specifier` is a stub that stands between the app and code it
+/// doesn't own: an extension's or a sandboxed module's.
+fn is_boundary(specifier: &ModuleSpecifier) -> bool {
+  specifier.scheme() == EXTENSION_SCHEME
+    || crate::isolate::types::is_stub(specifier)
+}
+
 /// Modules reachable from `roots` through code and type dependencies;
-/// `extension:` stubs are entered only when `into_extensions` is set.
+/// `extension:` and sandbox stubs are entered only when `into_extensions`
+/// is set.
 fn reachable(
   graph: &ModuleGraph,
   roots: impl Iterator<Item = ModuleSpecifier>,
@@ -324,7 +336,7 @@ fn reachable(
     };
     let mut push = |dep: Option<&ModuleSpecifier>| {
       if let Some(dep) = dep {
-        if !into_extensions && dep.scheme() == EXTENSION_SCHEME {
+        if !into_extensions && is_boundary(dep) {
           return;
         }
         queue.push_back(dep.clone());

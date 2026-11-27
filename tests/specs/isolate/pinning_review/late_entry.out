@@ -1,0 +1,1 @@
+[WILDCARD]vendor/m/late.ts" declares a manifest of its own, but it was first imported after the sandbox of isolate["./vendor/m/"] started[WILDCARD]Import it from a module the app imports statically[WILDCARD]

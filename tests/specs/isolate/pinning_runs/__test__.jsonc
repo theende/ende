@@ -1,0 +1,116 @@
+{
+  "tempDir": true,
+  "tests": {
+    // Entries asking for read and for env were approved in separate runs: an entry asking for both, or for nothing, gets both in one run, which no approved run had.
+    "a_run_gets_no_more_than_an_approved_run": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main_a.ts",
+          "output": "Recorded [WILDLINE]\na: data | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_b.ts",
+          "output": "[WILDCARD]Run `ende install --entrypoint main_b.ts`[WILDCARD]",
+          "exitCode": 1
+        },
+        {
+          "args": "install --entrypoint main_b.ts --yes",
+          "output": "[WILDCARD]Recorded the approved changes[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_b.ts",
+          "output": "b: NotCapable | string\n"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_c.ts",
+          "output": "main_c_blocked.out",
+          "exitCode": 1
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main_d.ts",
+          "output": "main_d_blocked.out",
+          "exitCode": 1
+        }
+      ]
+    },
+    // `ende install` never removes what runs were approved, so an entry it can't read again resets nothing.
+    "plain_install_never_lowers_the_bar": {
+      "steps": [
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "Recorded [WILDLINE]\ndata | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts rename_and_unmanifest",
+          "output": ""
+        },
+        {
+          "args": "install --yes",
+          "output": "[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env main.ts",
+          "output": "main_blocked.out",
+          "exitCode": 1
+        }
+      ]
+    },
+    // The rule is keyed as written: repointing its symlinked folder doesn't make a new rule that trusts on first use.
+    "a_repointed_symlink_is_the_same_rule": {
+      "if": "unix",
+      "steps": [
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts link_m1",
+          "output": ""
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --config links.json main_linked.ts",
+          "output": "Recorded [WILDLINE]\ndata | NotCapable\n"
+        },
+        {
+          "args": "run --quiet --no-config --allow-read --allow-write edit.ts link_m2",
+          "output": ""
+        },
+        {
+          "args": "install --yes --config links.json",
+          "output": "[WILDCARD]"
+        },
+        {
+          "args": "run --quiet --allow-read --allow-env --config links.json main_linked.ts",
+          "output": "main_linked_blocked.out",
+          "exitCode": 1
+        }
+      ]
+    },
+    // A lockfile written on Linux (keys as written, paths relative) is the one this machine writes.
+    "a_lockfile_from_another_machine_passes_frozen": {
+      "cwd": "portable/proj",
+      "args": "run --quiet --frozen --allow-read main.ts",
+      "output": "shared\n"
+    },
+    // Paths outside the project, like a grant of `../shared`, stay relative.
+    "the_lockfile_names_no_path_of_this_machine": {
+      "steps": [
+        {
+          "cwd": "portable/proj",
+          "args": [
+            "eval",
+            "--no-config",
+            "Ende.removeSync('ende.lock')"
+          ],
+          "output": ""
+        },
+        {
+          "cwd": "portable/proj",
+          "args": "run --quiet --allow-read main.ts",
+          "output": "Recorded [WILDLINE]\nshared\n"
+        },
+        {
+          "cwd": "portable/proj",
+          "args": "run --quiet --no-config --allow-read show_lock.ts",
+          "output": "portable\n"
+        }
+      ]
+    }
+  }
+}

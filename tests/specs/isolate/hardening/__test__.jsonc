@@ -93,7 +93,7 @@
     // A `then` export can't hang the sandbox, and can't be imported.
     "then_export": {
       "args": "run --quiet then.ts",
-      "output": "hello hello\n"
+      "output": "Recorded isolate[\"./vendor/then/\"] in ende.lock; it will run with: no permissions\nhello hello\n"
     },
     "then_import": {
       "args": "run --quiet then_import.ts",

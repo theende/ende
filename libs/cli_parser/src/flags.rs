@@ -394,6 +394,11 @@ pub struct InstallTopLevelFlags {
 pub struct InstallEntrypointsFlags {
   pub entrypoints: Vec<String>,
   pub lockfile_only: bool,
+  /// For `ende install --entrypoint`: approve changes to the pins of the
+  /// `isolate` rules, read from the entrypoints' module graph; `Some(true)`
+  /// with `--yes`. `None` where nothing is approved (`ende cache`, global
+  /// installs).
+  pub approve: Option<bool>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

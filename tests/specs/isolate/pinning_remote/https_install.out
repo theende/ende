@@ -1,0 +1,7 @@
+[WILDCARD]isolate["https://localhost:5545/run/extension_lockfile/"] changed:
+  manifest of https://localhost:5545/run/extension_lockfile/remote_ext.ts (asks for):
+    - []
+    + ["env"]
+  new run from main_https.ts (asks for: ["env"]): env (all)
+  (never more than the app)
+Recorded the approved changes to isolate["https://localhost:5545/run/extension_lockfile/"] in ende.lock.

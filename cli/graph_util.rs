@@ -855,6 +855,31 @@ impl ModuleGraphBuilder {
     } else {
       None
     };
+    // So does every import from the app into a sandboxed module (see
+    // `crate::isolate::types`).
+    let isolate_types = if graph.graph_kind().include_types() {
+      self
+        .cli_options
+        .workspace()
+        .to_isolate_config()
+        .ok()
+        .and_then(|config| {
+          crate::isolate::types::IsolateTypes::new(
+            &config,
+            crate::args::jsr_url(),
+          )
+        })
+    } else {
+      None
+    };
+    let isolate_resolver = isolate_types
+      .as_ref()
+      .map(|types| types.resolver(&graph_resolver));
+    let app_resolver: &dyn deno_graph::source::Resolver =
+      match &isolate_resolver {
+        Some(resolver) => resolver,
+        None => &graph_resolver,
+      };
     let graph_kind = graph.graph_kind();
     macro_rules! build_options {
       () => {
@@ -874,7 +899,7 @@ impl ModuleGraphBuilder {
           module_analyzer: &analyzer,
           module_info_cacher: self.module_info_cache.as_ref(),
           reporter: maybe_reporter,
-          resolver: Some(&graph_resolver),
+          resolver: Some(app_resolver),
           locker: locker.as_mut().map(|l| l as _),
           unstable_bytes_imports: self.cli_options.unstable_raw_imports(),
           unstable_css_imports: self.cli_options.unstable_raw_imports(),
@@ -913,6 +938,9 @@ impl ModuleGraphBuilder {
         let mut extension_graph = ModuleGraph::new(graph_kind);
         let mut extension_build_options = build_options!();
         extension_build_options.is_dynamic = true;
+        // An extension's dependencies are governed by its own grant, not
+        // by `isolate` rules.
+        extension_build_options.resolver = Some(&graph_resolver);
         // A failure here leaves the extension untyped; running reports it.
         let _ = self
           .build_graph_with_build_options(
@@ -939,6 +967,13 @@ impl ModuleGraphBuilder {
         .zip(extension_graph_loaders.iter().map(|l| l as &dyn Loader))
         .collect();
     let base_loader = loader.as_loader();
+    let isolate_loader = isolate_types
+      .as_ref()
+      .map(|types| types.loader(base_loader));
+    let base_loader: &dyn Loader = match &isolate_loader {
+      Some(isolate_loader) => isolate_loader,
+      None => base_loader,
+    };
     let app_loader = extension_types
       .as_ref()
       .map(|types| types.loader(base_loader, &[]));
@@ -959,11 +994,44 @@ impl ModuleGraphBuilder {
       let stubs = types.resolve_exports(graph, &extension_graphs);
       if !stubs.is_empty() {
         let routed_loader = types.loader(base_loader, &extension_routes);
+        // What this loads is an extension's own code: its imports aren't
+        // the app's, so `isolate` rules don't stub them (see above).
+        let mut extension_stub_options = build_options!();
+        extension_stub_options.resolver = Some(&graph_resolver);
         self
           .build_graph_with_build_options(
             graph,
             BuildGraphRequest::Reload(stubs),
             &routed_loader,
+            extension_stub_options,
+          )
+          .await?;
+      }
+    }
+
+    // The sandboxed modules' exports are in the graph now; load their stubs
+    // again with them.
+    if let Some(types) = &isolate_types {
+      // An import of a URL that redirects into a sandbox gets its stub once
+      // the graph knows the redirect.
+      let importers = types.redirected_importers(graph);
+      if !importers.is_empty() {
+        self
+          .build_graph_with_build_options(
+            graph,
+            BuildGraphRequest::Reload(importers),
+            loader,
+            build_options!(),
+          )
+          .await?;
+      }
+      let stubs = types.fill_stubs(graph);
+      if !stubs.is_empty() {
+        self
+          .build_graph_with_build_options(
+            graph,
+            BuildGraphRequest::Reload(stubs),
+            loader,
             build_options!(),
           )
           .await?;

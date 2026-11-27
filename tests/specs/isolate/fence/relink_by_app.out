@@ -1,2 +1,3 @@
+Recorded isolate["./sandboxed/"] in ende.lock; it will run with: [WILDLINE]
 written
 t1/x.ts: refused: "[WILDCARD]t1/x.ts" is in [WILDCARD], which isolate["./sandboxed/"] may write, and the app never loads code from a folder a sandbox or extension can write

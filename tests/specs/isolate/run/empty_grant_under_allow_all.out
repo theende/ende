@@ -1,3 +1,4 @@
+Recorded isolate["./vendor/none/"] in ende.lock; it will run with: no permissions
 secret
 read: NotCapable: ./vendor/none/: Requires read access to "secret.txt"; grant it in ende.json under isolate["./vendor/none/"].permissions.read
 env: NotCapable: ./vendor/none/: Requires env access to "HOME"; grant it in ende.json under isolate["./vendor/none/"].permissions.env

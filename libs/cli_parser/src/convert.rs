@@ -2242,6 +2242,7 @@ fn install_parse(
       InstallFlagsLocal::Entrypoints(InstallEntrypointsFlags {
         entrypoints,
         lockfile_only,
+        approve: Some(result.get_bool("yes")),
       }),
     ));
   } else if let Some(packages) = result.get_many("cmd") {

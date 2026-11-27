@@ -1100,6 +1100,7 @@ impl<'a> GraphWalker<'a> {
       let mut maybe_js_source_text = None;
       match module {
         Module::Js(module) => {
+          self.add_sandboxed_import_diagnostics(module);
           maybe_module_dependencies =
             Some(module.dependencies_prefer_fast_check());
           maybe_js_source_text = Some(module.source.text.as_ref());
@@ -1191,6 +1192,88 @@ impl<'a> GraphWalker<'a> {
       if let Some(dep) = maybe_types_dependency {
         self.handle_specifier(&dep.specifier, false);
       }
+    }
+  }
+
+  /// Imports, in `module`, of exports that can't leave a sandbox (a class,
+  /// a `let` binding, `then`) that the code that runs still has, so they
+  /// are used as values: an error at the import, as when the app runs (see
+  /// `crate::isolate::types`).
+  fn add_sandboxed_import_diagnostics(
+    &mut self,
+    module: &deno_graph::JsModule,
+  ) {
+    let graph = self.graph;
+    let stub_text = |code: &ModuleSpecifier| {
+      if !crate::isolate::types::is_stub(code) {
+        return None;
+      }
+      graph
+        .get(code)
+        .and_then(|stub| stub.js())
+        .map(|stub| stub.source.text.as_ref())
+    };
+    if !module
+      .dependencies
+      .values()
+      .any(|dep| dep.get_code().and_then(stub_text).is_some())
+    {
+      return;
+    }
+    let transpile = self
+      .compiler_options_resolver
+      .for_specifier(&module.specifier)
+      .transpile_options()
+      .map(|options| options.transpile.clone())
+      .unwrap_or_default();
+    let found = crate::isolate::types::unsupported_imports(
+      &module.specifier,
+      module.media_type,
+      &module.source.text,
+      &transpile,
+      &|src| {
+        let code = module.dependencies.get(src)?.get_code()?;
+        crate::isolate::types::stub_info(stub_text(code)?)
+      },
+    );
+    for import in found {
+      let position = |(line, character): (usize, usize)| tsc::Position {
+        line: line as u64,
+        character: character as u64,
+      };
+      let range = deno_graph::Range {
+        specifier: module.specifier.clone(),
+        range: deno_graph::PositionRange {
+          start: deno_graph::Position {
+            line: import.start.0,
+            character: import.start.1,
+          },
+          end: deno_graph::Position {
+            line: import.end.0,
+            character: import.end.1,
+          },
+        },
+        resolution_mode: None,
+      };
+      let diagnostic = tsc::Diagnostic {
+        category: tsc::DiagnosticCategory::Error,
+        // "Module has no exported member": the proxy doesn't export it.
+        code: 2305,
+        start: Some(position(import.start)),
+        end: Some(position(import.end)),
+        original_source_start: None,
+        message_text: Some(import.message),
+        message_chain: None,
+        source: None,
+        source_line: None,
+        file_name: Some(module.specifier.to_string()),
+        related_information: None,
+        reports_deprecated: None,
+        reports_unnecessary: None,
+        other: Default::default(),
+        missing_specifier: None,
+      };
+      self.push_missing_diagnostic(diagnostic, Some(&range));
     }
   }
 

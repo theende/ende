@@ -1,0 +1,3 @@
+[WILDCARD]isolate["./vendor/m/"] runs unpinned: --no-lock turned off the lockfile, so changes to its grant or its packages' manifests aren't checked.
+data
+[WILDCARD]

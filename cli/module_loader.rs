@@ -393,6 +393,8 @@ struct SharedCliModuleLoaderState {
   extensions: Arc<ExtensionRegistry>,
   /// The app's `isolate` rules, when it declares any.
   sandboxes: Option<Arc<SandboxRegistry>>,
+  /// What the lockfile's `isolate` pins hold the app to.
+  pin_checks: Option<Arc<crate::isolate::PinChecks>>,
 }
 
 struct InFlightModuleLoadsTracker {
@@ -450,6 +452,7 @@ impl CliModuleLoaderFactory {
     watcher_communicator: Option<Arc<WatcherCommunicator>>,
     extensions: Arc<ExtensionRegistry>,
     sandboxes: Option<Arc<SandboxRegistry>>,
+    pin_checks: Option<Arc<crate::isolate::PinChecks>>,
   ) -> Self {
     Self {
       shared: Arc::new(SharedCliModuleLoaderState {
@@ -476,6 +479,7 @@ impl CliModuleLoaderFactory {
         watcher_communicator,
         extensions,
         sandboxes,
+        pin_checks,
       }),
     }
   }
@@ -1216,6 +1220,10 @@ impl<TGraphContainer: ModuleGraphContainer>
     // stub; running always loads the proxy.
     let specifier =
       crate::extensions::runtime_specifier(&specifier).unwrap_or(specifier);
+    // So does an import of a sandboxed module (see `crate::isolate::types`):
+    // running resolves to the module itself, and from there to its proxy.
+    let specifier =
+      crate::isolate::types::stub_entry(&specifier).unwrap_or(specifier);
     if specifier.scheme() == EXTENSION_SCHEME {
       self.check_extension_import(raw_specifier, &specifier)?;
     }
@@ -1972,6 +1980,16 @@ impl<TGraphContainer: ModuleGraphContainer> ModuleLoader
             return Err(JsErrorBox::from_err(err));
           }
         }
+      }
+
+      // What the pins approved stays where it was approved: a package
+      // doesn't move to another sandbox, or out of every sandbox, until
+      // `ende install` approves that.
+      if inner.sandbox.is_none()
+        && inner.extension_name.is_none()
+        && let Some(checks) = &inner.shared.pin_checks
+      {
+        checks.check(&graph_container.graph())?;
       }
 
       // The app's static graph is in: say which rules sandbox nothing, and

@@ -375,6 +375,61 @@ pub struct ExtensionLockEntry {
   pub grant: serde_json::Value,
 }
 
+/// What the lockfile pins about one `isolate` rule of ende.json, as
+/// approved. A run is allowed when the rule's grant is still the one
+/// recorded here and what the run gets (its grant ∩ the manifest of every
+/// entry it imports) is within what one approved run got; anything else
+/// needs `ende install --entrypoint`. The sandboxed code itself is pinned by
+/// the `remote` and `jsr` sections; local folders aren't content-pinned.
+/// Everything is as written (no paths of this machine), so the lockfile is
+/// the same wherever it is written.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IsolateLockEntry {
+  /// The app's grant (`isolate[matcher].permissions`), as written.
+  pub grant: serde_json::Value,
+  /// The approved runs.
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub runs: Vec<IsolateRunPin>,
+  /// The `permissions` of each entry's manifest as last seen (`null` for
+  /// none), by entry, for reviewing changes: a jsr import by package,
+  /// version and export, a URL, or a path relative to the folder of the
+  /// root ende.json. It decides nothing.
+  #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+  pub manifests: BTreeMap<String, serde_json::Value>,
+  /// The rules this one yields to, each with the grant that was approved:
+  /// those the first run that recorded it put a module it covers under, and
+  /// those `ende install --entrypoint` approved taking such a module. A
+  /// module it covers may run under one of them while that rule has that
+  /// grant; under any other rule, or none, it needs approval. Dropping a
+  /// rule's pin drops it from every `yieldsTo`.
+  #[serde(default, rename = "yieldsTo", skip_serializing_if = "Vec::is_empty")]
+  pub yields_to: Vec<IsolateYield>,
+}
+
+/// A rule an `isolate` pin yields to (see `IsolateLockEntry::yields_to`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IsolateYield {
+  /// The rule's key.
+  pub rule: String,
+  /// Its grant when that was approved, as written.
+  pub grant: serde_json::Value,
+}
+
+/// One approved run of a sandbox: it got the grant recorded here ∩ the
+/// sandbox's grant now ∩ each of these manifests.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IsolateRunPin {
+  /// The grant it was approved under, as written.
+  pub grant: serde_json::Value,
+  /// The `permissions` of the manifests of the entries it imported, each
+  /// once, in order; an entry without a manifest adds none.
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub manifests: Vec<serde_json::Value>,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct LockfileContent {
   pub packages: PackagesContent,
@@ -384,6 +439,8 @@ pub struct LockfileContent {
   pub(crate) workspace: WorkspaceConfigContent,
   /// Pins of the extensions the root ende.json declares, by name.
   pub extensions: BTreeMap<String, ExtensionLockEntry>,
+  /// Pins of the `isolate` rules the root ende.json declares, by matcher.
+  pub isolate: BTreeMap<String, IsolateLockEntry>,
 }
 
 impl LockfileContent {
@@ -621,6 +678,7 @@ impl LockfileContent {
       redirects: deserialize_section(&mut json, "redirects")?,
       remote: deserialize_section(&mut json, "remote")?,
       extensions: deserialize_section(&mut json, "extensions")?,
+      isolate: deserialize_section(&mut json, "isolate")?,
       workspace: {
         let mut workspace: WorkspaceConfigContent =
           deserialize_section(&mut json, "workspace")?;
@@ -678,6 +736,9 @@ impl LockfileContent {
     for (name, entry) in theirs.extensions {
       ours.extensions.entry(name).or_insert(entry);
     }
+    for (matcher, entry) in theirs.isolate {
+      ours.isolate.entry(matcher).or_insert(entry);
+    }
     ours
   }
 
@@ -687,6 +748,7 @@ impl LockfileContent {
       && self.remote.is_empty()
       && self.workspace.is_empty()
       && self.extensions.is_empty()
+      && self.isolate.is_empty()
   }
 
   /// Removes everything npm related: the `npm` section, npm specifiers,
@@ -1323,6 +1385,42 @@ impl Lockfile {
     let count = self.content.extensions.len();
     self.content.extensions.retain(|name, _| keep(name));
     if self.content.extensions.len() != count {
+      self.has_content_changed = true;
+    }
+  }
+
+  /// The pin of the `isolate` rule `matcher`, if the lockfile has one.
+  pub fn isolate_rule(&self, matcher: &str) -> Option<&IsolateLockEntry> {
+    self.content.isolate.get(matcher)
+  }
+
+  /// Records the pin of the `isolate` rule `matcher`, replacing any
+  /// previous one.
+  pub fn insert_isolate_rule(
+    &mut self,
+    matcher: String,
+    entry: IsolateLockEntry,
+  ) {
+    match self.content.isolate.entry(matcher) {
+      BTreeMapEntry::Vacant(vacant) => {
+        vacant.insert(entry);
+        self.has_content_changed = true;
+      }
+      BTreeMapEntry::Occupied(mut occupied) => {
+        if *occupied.get() != entry {
+          occupied.insert(entry);
+          self.has_content_changed = true;
+        }
+      }
+    }
+  }
+
+  /// Drops the pins of `isolate` rules for which `keep` returns false (no
+  /// longer declared in ende.json).
+  pub fn retain_isolate_rules(&mut self, keep: impl Fn(&str) -> bool) {
+    let count = self.content.isolate.len();
+    self.content.isolate.retain(|matcher, _| keep(matcher));
+    if self.content.isolate.len() != count {
       self.has_content_changed = true;
     }
   }
@@ -2399,6 +2497,124 @@ mod tests {
     assert!(lockfile.has_content_changed);
     assert!(lockfile.extension("@acme/a").is_some());
     assert!(lockfile.extension("@acme/b").is_none());
+  }
+
+  #[test]
+  fn isolate_round_trip() {
+    let content = r#"{
+  "version": "5",
+  "isolate": {
+    "./vendor/csv/": {
+      "grant": {
+        "read": [
+          "./data"
+        ]
+      },
+      "runs": [
+        {
+          "grant": {
+            "read": [
+              "./data"
+            ]
+          },
+          "manifests": [
+            [
+              "read"
+            ]
+          ]
+        }
+      ],
+      "manifests": {
+        "./vendor/csv/mod.ts": [
+          "read"
+        ]
+      },
+      "yieldsTo": [
+        {
+          "rule": "jsr:@std/path",
+          "grant": []
+        }
+      ]
+    },
+    "jsr:@std/path": {
+      "grant": []
+    }
+  }
+}
+"#;
+    let lockfile = lockfile_from(content);
+    assert!(!lockfile.has_content_changed);
+    assert_eq!(
+      lockfile.isolate_rule("./vendor/csv/"),
+      Some(&IsolateLockEntry {
+        grant: serde_json::json!({ "read": ["./data"] }),
+        runs: vec![IsolateRunPin {
+          grant: serde_json::json!({ "read": ["./data"] }),
+          manifests: vec![serde_json::json!(["read"])],
+        }],
+        manifests: BTreeMap::from([(
+          "./vendor/csv/mod.ts".to_string(),
+          serde_json::json!(["read"])
+        )]),
+        yields_to: vec![IsolateYield {
+          rule: "jsr:@std/path".to_string(),
+          grant: serde_json::json!([]),
+        }],
+      })
+    );
+    assert_eq!(
+      lockfile.isolate_rule("jsr:@std/path").unwrap().runs,
+      Vec::new()
+    );
+    assert_eq!(lockfile.isolate_rule("jsr:@std/csv"), None);
+    assert_eq!(lockfile.as_json_string(), content);
+  }
+
+  #[test]
+  fn lockfile_without_isolate_rules_has_none() {
+    let lockfile = setup(false).unwrap();
+    assert!(lockfile.content.isolate.is_empty());
+    assert!(!lockfile.as_json_string().contains("isolate"));
+  }
+
+  #[test]
+  fn insert_and_retain_isolate_rules_mark_changes() {
+    let mut lockfile = lockfile_from("{ \"version\": \"5\" }");
+    let entry = IsolateLockEntry {
+      grant: serde_json::json!([]),
+      runs: Default::default(),
+      manifests: Default::default(),
+      yields_to: Default::default(),
+    };
+    lockfile.insert_isolate_rule("./vendor/a/".to_string(), entry.clone());
+    assert!(lockfile.has_content_changed);
+    assert!(!lockfile.content.is_empty());
+
+    // the same entry again is no change
+    lockfile.has_content_changed = false;
+    lockfile.insert_isolate_rule("./vendor/a/".to_string(), entry.clone());
+    assert!(!lockfile.has_content_changed);
+
+    // a different grant is
+    lockfile.insert_isolate_rule(
+      "./vendor/a/".to_string(),
+      IsolateLockEntry {
+        grant: serde_json::json!(["read"]),
+        runs: Default::default(),
+        manifests: Default::default(),
+        yields_to: Default::default(),
+      },
+    );
+    assert!(lockfile.has_content_changed);
+
+    lockfile.insert_isolate_rule("./vendor/b/".to_string(), entry);
+    lockfile.has_content_changed = false;
+    lockfile.retain_isolate_rules(|matcher| matcher != "./vendor/c/");
+    assert!(!lockfile.has_content_changed);
+    lockfile.retain_isolate_rules(|matcher| matcher == "./vendor/a/");
+    assert!(lockfile.has_content_changed);
+    assert!(lockfile.isolate_rule("./vendor/a/").is_some());
+    assert!(lockfile.isolate_rule("./vendor/b/").is_none());
   }
 
   #[test]

@@ -529,6 +529,11 @@ async fn main_server(
       );
       Ok(res)
     }
+    // A module that redirects into a sandboxed URL prefix: an `isolate`
+    // rule for the prefix holds it (tests/specs/isolate/types).
+    (_, "/isolate/redirect_into_sandbox.ts") => {
+      Ok(redirect_resp("/run/extension_lockfile/remote_ext.ts"))
+    }
     (_, "/redirect_to_file.json") => {
       // A remote module that redirects to a local file, which must be refused.
       let path = testdata_path()

@@ -321,6 +321,16 @@ fn is_valid_jsr_package_name(name: &str) -> bool {
   )
 }
 
+/// Reads a grant as ende.json writes it (`["read"]` or `{ "read":
+/// ["./data"] }`, relative paths against `base`), for one a lockfile
+/// recorded.
+pub fn grant_from_json(
+  permissions: Value,
+  base: &Url,
+) -> Result<ExtensionPermissions, ExtensionsConfigError> {
+  parse_permissions("lockfile", Some(permissions), base)
+}
+
 pub(super) fn parse_permissions(
   name: &str,
   permissions: Option<Value>,

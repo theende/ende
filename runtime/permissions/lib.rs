@@ -743,6 +743,22 @@ fn sandbox_denied_message(
   }
 }
 
+/// The denial of a sandbox's own check that its grant allows but the
+/// manifests of the entries `withholding` don't ask for.
+fn sandbox_manifest_denied_message(
+  access: &str,
+  withholding: &[&str],
+) -> String {
+  let rule = current_sandbox_label().unwrap_or_default();
+  let manifests = match withholding {
+    [entry] => format!("the manifest of {entry} doesn't"),
+    entries => format!("the manifests of {} don't", entries.join(" and ")),
+  };
+  format!(
+    "{rule}: Requires {access}, which {manifests} request. isolate[\"{rule}\"]'s grant in ende.json allows it, but a sandbox gets only what its packages' manifests ask for"
+  )
+}
+
 /// The denial of the app's check on behalf of a sandbox: the sandbox's grant
 /// allows it, but the app itself may not (never had it, revoked it, or
 /// denies it), and a sandbox never gets more than the app.
@@ -5385,6 +5401,29 @@ pub struct PermissionsContainer {
   /// For a sandbox's container, the app's live permissions, which every
   /// check must pass too (see [`PermissionsContainer::chained_to`]).
   app: Option<AppPermissions>,
+  /// For a sandbox whose packages declare manifests, what explains a denial
+  /// they cause (see [`PermissionsContainer::with_manifest_narrowing`]).
+  manifests: Option<Arc<ManifestNarrowing>>,
+}
+
+/// What a sandbox's grant allows before its packages' manifests narrow it,
+/// and what each manifest leaves, so that a denial a manifest causes says
+/// so instead of pointing at the grant.
+#[derive(Clone, Debug)]
+pub struct ManifestNarrowing {
+  grant: PermissionsContainer,
+  /// Each entry that declares a manifest, by name, with the grant ∩ its
+  /// manifest.
+  manifests: Vec<(String, PermissionsContainer)>,
+}
+
+impl ManifestNarrowing {
+  pub fn new(
+    grant: PermissionsContainer,
+    manifests: Vec<(String, PermissionsContainer)>,
+  ) -> Self {
+    Self { grant, manifests }
+  }
 }
 
 /// The app's permissions as a sandbox sees them: the container the app's
@@ -5437,7 +5476,52 @@ impl PermissionsContainer {
       resolved_import_hosts: Default::default(),
       resolve_import_symlinks: false,
       app: None,
+      manifests: None,
     }
+  }
+
+  /// For a sandbox's container: a denial its grant would allow, but its
+  /// packages' manifests don't, names the manifests that withhold it.
+  pub fn with_manifest_narrowing(
+    mut self,
+    narrowing: ManifestNarrowing,
+  ) -> Self {
+    self.manifests = Some(Arc::new(narrowing));
+    self
+  }
+
+  /// `own`, the result of one of this container's own checks, with the
+  /// denial explained when this sandbox's manifests cause it: `recheck`
+  /// runs the same check against another container.
+  #[inline(always)]
+  fn explained<T>(
+    &self,
+    own: Result<T, PermissionCheckError>,
+    recheck: impl Fn(&mut PermissionsContainer) -> bool,
+  ) -> Result<T, PermissionCheckError> {
+    let Err(PermissionCheckError::PermissionDenied(mut err)) = own else {
+      return own;
+    };
+    if let Some(narrowing) = &self.manifests
+      && err.custom_message.is_none()
+      && !matches!(
+        err.state,
+        PermissionState::Denied | PermissionState::DeniedPartial
+      )
+      && recheck(&mut narrowing.grant.clone())
+    {
+      let withholding = narrowing
+        .manifests
+        .iter()
+        .filter(|(_, manifest)| !recheck(&mut manifest.clone()))
+        .map(|(entry, _)| entry.as_str())
+        .collect::<Vec<_>>();
+      if !withholding.is_empty() {
+        err.custom_message =
+          Some(sandbox_manifest_denied_message(&err.access, &withholding));
+      }
+    }
+    Err(PermissionCheckError::PermissionDenied(err))
   }
 
   /// Chains a sandbox's container to the app's: every check must then pass
@@ -5538,6 +5622,7 @@ impl PermissionsContainer {
       resolved_import_hosts: Default::default(),
       resolve_import_symlinks: self.resolve_import_symlinks,
       app: self.app.clone(),
+      manifests: self.manifests.clone(),
     }
   }
 
@@ -5555,6 +5640,7 @@ impl PermissionsContainer {
       resolved_import_hosts: Default::default(),
       resolve_import_symlinks: self.resolve_import_symlinks,
       app: self.app.clone(),
+      manifests: self.manifests.clone(),
     }
   }
 
@@ -6862,7 +6948,8 @@ impl PermissionsContainer {
     specifier: &Url,
     kind: CheckSpecifierKind,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_specifier(specifier, kind)?;
+    let own = self.own_check_specifier(specifier, kind);
+    self.explained(own, |c| c.own_check_specifier(specifier, kind).is_ok())?;
     self.check_app(|app| app.check_specifier(specifier, kind))
   }
 
@@ -6887,12 +6974,21 @@ impl PermissionsContainer {
         api_name,
       );
     }
-    let checked = self.own_check_open_with_requested(
+    let own = self.own_check_open_with_requested(
       path.clone(),
       access_kind,
       blind_requested,
       api_name,
-    )?;
+    );
+    let checked = self.explained(own, |c| {
+      c.own_check_open_with_requested(
+        path.clone(),
+        access_kind,
+        blind_requested,
+        api_name,
+      )
+      .is_ok()
+    })?;
     self.check_app(|app| {
       app.check_open_with_requested(
         path,
@@ -6909,7 +7005,8 @@ impl PermissionsContainer {
     &self,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_read_all(api_name)?;
+    let own = self.own_check_read_all(api_name);
+    self.explained(own, |c| c.own_check_read_all(api_name).is_ok())?;
     self.check_app(|app| app.check_read_all(api_name))
   }
 
@@ -6927,7 +7024,8 @@ impl PermissionsContainer {
     &self,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_write_all(api_name)?;
+    let own = self.own_check_write_all(api_name);
+    self.explained(own, |c| c.own_check_write_all(api_name).is_ok())?;
     self.check_app(|app| app.check_write_all(api_name))
   }
 
@@ -6943,7 +7041,10 @@ impl PermissionsContainer {
     if self.app.is_none() {
       return self.own_check_write_partial(path, api_name);
     }
-    let checked = self.own_check_write_partial(path.clone(), api_name)?;
+    let own = self.own_check_write_partial(path.clone(), api_name);
+    let checked = self.explained(own, |c| {
+      c.own_check_write_partial(path.clone(), api_name).is_ok()
+    })?;
     self.check_app(|app| app.check_write_partial(path, api_name))?;
     Ok(checked)
   }
@@ -6960,7 +7061,9 @@ impl PermissionsContainer {
     if self.app.is_none() {
       return self.own_check_write(path, api_name);
     }
-    let checked = self.own_check_write(path.clone(), api_name)?;
+    let own = self.own_check_write(path.clone(), api_name);
+    let checked = self
+      .explained(own, |c| c.own_check_write(path.clone(), api_name).is_ok())?;
     self.check_app(|app| app.check_write(path, api_name))?;
     Ok(checked)
   }
@@ -6971,7 +7074,8 @@ impl PermissionsContainer {
     cmd: &RunQueryDescriptor,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_run(cmd, api_name)?;
+    let own = self.own_check_run(cmd, api_name);
+    self.explained(own, |c| c.own_check_run(cmd, api_name).is_ok())?;
     self.check_app(|app| app.check_run(cmd, api_name))
   }
 
@@ -6980,7 +7084,8 @@ impl PermissionsContainer {
     &mut self,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_run_all(api_name)?;
+    let own = self.own_check_run_all(api_name);
+    self.explained(own, |c| c.own_check_run_all(api_name).is_ok())?;
     self.check_app(|app| app.check_run_all(api_name))
   }
 
@@ -6999,31 +7104,36 @@ impl PermissionsContainer {
     kind: &str,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_sys(kind, api_name)?;
+    let own = self.own_check_sys(kind, api_name);
+    self.explained(own, |c| c.own_check_sys(kind, api_name).is_ok())?;
     self.check_app(|app| app.check_sys(kind, api_name))
   }
 
   #[inline(always)]
   pub fn check_env(&self, var: &str) -> Result<(), PermissionCheckError> {
-    self.own_check_env(var)?;
+    let own = self.own_check_env(var);
+    self.explained(own, |c| c.own_check_env(var).is_ok())?;
     self.check_app(|app| app.check_env(var))
   }
 
   #[inline(always)]
   pub fn check_env_all(&self) -> Result<(), PermissionCheckError> {
-    self.own_check_env_all()?;
+    let own = self.own_check_env_all();
+    self.explained(own, |c| c.own_check_env_all().is_ok())?;
     self.check_app(|app| app.check_env_all())
   }
 
   #[inline(always)]
   pub fn check_sys_all(&self) -> Result<(), PermissionCheckError> {
-    self.own_check_sys_all()?;
+    let own = self.own_check_sys_all();
+    self.explained(own, |c| c.own_check_sys_all().is_ok())?;
     self.check_app(|app| app.check_sys_all())
   }
 
   #[inline(always)]
   pub fn check_ffi_all(&self) -> Result<(), PermissionCheckError> {
-    self.own_check_ffi_all()?;
+    let own = self.own_check_ffi_all();
+    self.explained(own, |c| c.own_check_ffi_all().is_ok())?;
     self.check_app(|app| app.check_ffi_all())
   }
 
@@ -7032,7 +7142,10 @@ impl PermissionsContainer {
     &self,
     context_path: &Path,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_has_all_permissions(context_path)?;
+    let own = self.own_check_has_all_permissions(context_path);
+    self.explained(own, |c| {
+      c.own_check_has_all_permissions(context_path).is_ok()
+    })?;
     self.check_app(|app| app.check_has_all_permissions(context_path))
   }
 
@@ -7066,7 +7179,8 @@ impl PermissionsContainer {
     url: &Url,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_net_url(url, api_name)?;
+    let own = self.own_check_net_url(url, api_name);
+    self.explained(own, |c| c.own_check_net_url(url, api_name).is_ok())?;
     self.check_app(|app| app.check_net_url(url, api_name))
   }
 
@@ -7076,7 +7190,8 @@ impl PermissionsContainer {
     host: &(T, Option<u16>),
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_net(host, api_name)?;
+    let own = self.own_check_net(host, api_name);
+    self.explained(own, |c| c.own_check_net(host, api_name).is_ok())?;
     self.check_app(|app| app.check_net(host, api_name))
   }
 
@@ -7090,7 +7205,11 @@ impl PermissionsContainer {
     port: u16,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_net_resolved(resolved_ip, port, api_name)?;
+    let own = self.own_check_net_resolved(resolved_ip, port, api_name);
+    self.explained(own, |c| {
+      c.own_check_net_resolved(resolved_ip, port, api_name)
+        .is_ok()
+    })?;
     self.check_app(|app| app.check_net_resolved(resolved_ip, port, api_name))
   }
 
@@ -7103,7 +7222,11 @@ impl PermissionsContainer {
     port: u16,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_import_resolved(resolved_ip, port, api_name)?;
+    let own = self.own_check_import_resolved(resolved_ip, port, api_name);
+    self.explained(own, |c| {
+      c.own_check_import_resolved(resolved_ip, port, api_name)
+        .is_ok()
+    })?;
     self.check_app(|app| app.check_import_resolved(resolved_ip, port, api_name))
   }
 
@@ -7114,7 +7237,9 @@ impl PermissionsContainer {
     port: u32,
     api_name: &str,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_net_vsock(cid, port, api_name)?;
+    let own = self.own_check_net_vsock(cid, port, api_name);
+    self
+      .explained(own, |c| c.own_check_net_vsock(cid, port, api_name).is_ok())?;
     self.check_app(|app| app.check_net_vsock(cid, port, api_name))
   }
 
@@ -7125,7 +7250,10 @@ impl PermissionsContainer {
     path: &Path,
     api_name: Option<&str>,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_net_unix_socket(path, api_name)?;
+    let own = self.own_check_net_unix_socket(path, api_name);
+    self.explained(own, |c| {
+      c.own_check_net_unix_socket(path, api_name).is_ok()
+    })?;
     self.check_app(|app| app.check_net_unix_socket(path, api_name))
   }
 
@@ -7137,7 +7265,9 @@ impl PermissionsContainer {
     if self.app.is_none() {
       return self.own_check_ffi(path);
     }
-    let checked = self.own_check_ffi(path.clone())?;
+    let own = self.own_check_ffi(path.clone());
+    let checked =
+      self.explained(own, |c| c.own_check_ffi(path.clone()).is_ok())?;
     self.check_app(|app| app.check_ffi(path))?;
     Ok(checked)
   }
@@ -7147,7 +7277,8 @@ impl PermissionsContainer {
   pub fn check_ffi_partial_no_path(
     &mut self,
   ) -> Result<(), PermissionCheckError> {
-    self.own_check_ffi_partial_no_path()?;
+    let own = self.own_check_ffi_partial_no_path();
+    self.explained(own, |c| c.own_check_ffi_partial_no_path().is_ok())?;
     self.check_app(|app| app.check_ffi_partial_no_path())
   }
 
@@ -7160,7 +7291,10 @@ impl PermissionsContainer {
     if self.app.is_none() {
       return self.own_check_ffi_partial_with_path(path);
     }
-    let checked = self.own_check_ffi_partial_with_path(path.clone())?;
+    let own = self.own_check_ffi_partial_with_path(path.clone());
+    let checked = self.explained(own, |c| {
+      c.own_check_ffi_partial_with_path(path.clone()).is_ok()
+    })?;
     self.check_app(|app| app.check_ffi_partial_with_path(path))?;
     Ok(checked)
   }
@@ -7771,6 +7905,63 @@ mod tests {
     })
     .join()
     .unwrap()
+  }
+
+  #[test]
+  fn a_denial_the_manifests_cause_names_the_manifest() {
+    let app = AppPermissions::new(container(PermissionsOptions {
+      allow_env: Some(vec![]),
+      allow_read: Some(vec![]),
+      allow_net: Some(vec![]),
+      ..Default::default()
+    }));
+    let grant = PermissionsOptions {
+      allow_env: Some(vec![]),
+      allow_read: Some(vec![]),
+      ..Default::default()
+    };
+    // One entry's manifest asks for read only, the other's for nothing.
+    let read_only = PermissionsOptions {
+      allow_read: Some(vec![]),
+      ..Default::default()
+    };
+    let sandbox = container(read_only.clone())
+      .chained_to(app)
+      .with_manifest_narrowing(ManifestNarrowing::new(
+        container(grant.clone()),
+        vec![
+          ("./vendor/m/mod.ts".to_string(), container(read_only)),
+          (
+            "./vendor/m/other.ts".to_string(),
+            container(PermissionsOptions::default()),
+          ),
+        ],
+      ));
+    let (env, read, net) = on_sandbox_thread("./vendor/m/", {
+      let sandbox = sandbox.clone();
+      move || {
+        (
+          sandbox.check_env("HOME").unwrap_err().to_string(),
+          sandbox.check_read_all("test").is_ok(),
+          sandbox
+            .clone()
+            .check_net(&("example.com", None), "test")
+            .unwrap_err()
+            .to_string(),
+        )
+      }
+    });
+    assert_eq!(
+      env,
+      "./vendor/m/: Requires env access to \"HOME\", which the manifests of ./vendor/m/mod.ts and ./vendor/m/other.ts don't request. isolate[\"./vendor/m/\"]'s grant in ende.json allows it, but a sandbox gets only what its packages' manifests ask for"
+    );
+    // Read isn't narrowed by the manifests here, so it's allowed.
+    assert!(read);
+    // What the grant itself lacks still points at the grant.
+    assert_eq!(
+      net,
+      "./vendor/m/: Requires net access to \"example.com\"; grant it in ende.json under isolate[\"./vendor/m/\"].permissions.net"
+    );
   }
 
   #[test]
