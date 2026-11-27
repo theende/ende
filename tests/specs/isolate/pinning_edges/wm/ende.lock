@@ -1,0 +1,48 @@
+{
+  "version": "5",
+  "isolate": {
+    "./vendor/m/": {
+      "grant": {
+        "read": [
+          "./data"
+        ],
+        "env": true
+      },
+      "runs": [
+        {
+          "grant": {
+            "read": [
+              "./data"
+            ],
+            "env": true
+          },
+          "manifests": [
+            {
+              "read": [
+                "C:\\data"
+              ]
+            }
+          ]
+        },
+        {
+          "grant": {
+            "read": [
+              "./data"
+            ],
+            "env": true
+          },
+          "manifests": [
+            {
+              "read": true
+            }
+          ]
+        }
+      ],
+      "manifests": {
+        "./vendor/m/mod.ts": {
+          "read": true
+        }
+      }
+    }
+  }
+}
