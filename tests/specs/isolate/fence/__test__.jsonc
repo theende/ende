@@ -4,8 +4,10 @@
     // The app never loads code from where a sandbox may write, matched
     // live: by the grant as written and by where it resolves, now and at
     // start, with names compared as a case-folding file system would.
+    // macOS only: on a case-sensitive file system `OUT` is another folder,
+    // outside the grant, so the sandbox can't create it at all.
     "grant_folder_swapped_for_another_spelling": {
-      "if": "unix",
+      "if": "mac",
       "args": "run --quiet -A swap.ts",
       "output": "swap.out"
     },

@@ -648,7 +648,8 @@ mod test {
     let runs = |command: &str| {
       paths_named_by(command, cwd)
         .into_iter()
-        .map(|path| path.to_string_lossy().into_owned())
+        // Windows builds these with `\`; compare in one spelling.
+        .map(|path| path.to_string_lossy().replace('\\', "/"))
         .collect::<Vec<_>>()
     };
     // the command word, when it names a path
